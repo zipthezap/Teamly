@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   Container,
   Card,
@@ -32,7 +32,6 @@ import { useAuth } from '../contexts/AuthContext';
 
 const EventRequests = () => {
   const { groupId } = useParams();
-  const navigate = useNavigate();
   const { user } = useAuth();
   const [requests, setRequests] = useState([]);
   const [group, setGroup] = useState(null);
@@ -52,23 +51,16 @@ const EventRequests = () => {
 
   const eventTypes = ['football', 'basketball', 'tennis', 'volleyball', 'badminton', 'cricket', 'other'];
 
-  useEffect(() => {
-    if (groupId) {
-      fetchGroup();
-      fetchEventRequests();
-    }
-  }, [groupId]);
-
-  const fetchGroup = async () => {
+  const fetchGroup = useCallback(async () => {
     try {
       const response = await groupsAPI.getById(groupId);
       setGroup(response.data);
     } catch (error) {
       console.error('Error fetching group:', error);
     }
-  };
+  }, [groupId]);
 
-  const fetchEventRequests = async () => {
+  const fetchEventRequests = useCallback(async () => {
     try {
       const response = await eventRequestsAPI.getByGroup(groupId);
       setRequests(response.data);
@@ -82,7 +74,14 @@ const EventRequests = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [groupId]);
+
+  useEffect(() => {
+    if (groupId) {
+      fetchGroup();
+      fetchEventRequests();
+    }
+  }, [groupId, fetchGroup, fetchEventRequests]);
 
   const handleVote = async (requestId, vote) => {
     setVoting({ ...voting, [requestId]: true });

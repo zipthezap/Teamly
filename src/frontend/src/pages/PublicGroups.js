@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -14,8 +14,6 @@ import {
   Alert,
   Snackbar,
   Slider,
-  FormControlLabel,
-  Switch,
   Paper,
 } from '@mui/material';
 import PublicIcon from '@mui/icons-material/Public';
@@ -39,13 +37,57 @@ const PublicGroups = () => {
     fetchPublicGroups();
   }, []);
 
+  // Calculate distance between two coordinates using Haversine formula
+  const calculateDistance = useCallback((lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) *
+        Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }, []);
+
+  const filterGroupsByDistance = useCallback(() => {
+    if (!userLocation) {
+      setFilteredGroups(groups);
+      return;
+    }
+
+    const filtered = groups
+      .map((group) => {
+        if (!group.latitude || !group.longitude) {
+          return { ...group, distance: null };
+        }
+        const distance = calculateDistance(
+          userLocation.latitude,
+          userLocation.longitude,
+          group.latitude,
+          group.longitude
+        );
+        return { ...group, distance };
+      })
+      .filter((group) => group.distance === null || group.distance <= distanceRadius)
+      .sort((a, b) => {
+        if (a.distance === null) return 1;
+        if (b.distance === null) return -1;
+        return a.distance - b.distance;
+      });
+
+    setFilteredGroups(filtered);
+  }, [userLocation, groups, distanceRadius, calculateDistance]);
+
   useEffect(() => {
     if (locationEnabled && userLocation) {
       filterGroupsByDistance();
     } else {
       setFilteredGroups(groups);
     }
-  }, [groups, locationEnabled, userLocation, distanceRadius]);
+  }, [groups, locationEnabled, userLocation, distanceRadius, filterGroupsByDistance]);
 
   const fetchPublicGroups = async () => {
     try {
@@ -97,52 +139,8 @@ const PublicGroups = () => {
     );
   };
 
-  // Calculate distance between two coordinates using Haversine formula
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // Earth's radius in km
-    const dLat = (lat2 - lat1) * (Math.PI / 180);
-    const dLon = (lon2 - lon1) * (Math.PI / 180);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * (Math.PI / 180)) *
-        Math.cos(lat2 * (Math.PI / 180)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
-
-  const filterGroupsByDistance = () => {
-    if (!userLocation) {
-      setFilteredGroups(groups);
-      return;
-    }
-
-    const filtered = groups
-      .map((group) => {
-        if (!group.latitude || !group.longitude) {
-          return { ...group, distance: null };
-        }
-        const distance = calculateDistance(
-          userLocation.latitude,
-          userLocation.longitude,
-          group.latitude,
-          group.longitude
-        );
-        return { ...group, distance };
-      })
-      .filter((group) => group.distance === null || group.distance <= distanceRadius)
-      .sort((a, b) => {
-        if (a.distance === null) return 1;
-        if (b.distance === null) return -1;
-        return a.distance - b.distance;
-      });
-
-    setFilteredGroups(filtered);
-  };
-
   const handleRequestJoin = async (groupId) => {
-    setRequesting({ ...requesting, [groupId]: true });
+    setRequesting(prev => ({ ...prev, [groupId]: true }));
     try {
       await groupsAPI.requestJoin(groupId);
       setSnackbar({
@@ -159,7 +157,7 @@ const PublicGroups = () => {
         severity: 'error',
       });
     } finally {
-      setRequesting({ ...requesting, [groupId]: false });
+      setRequesting(prev => ({ ...prev, [groupId]: false }));
     }
   };
 

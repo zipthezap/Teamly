@@ -20,7 +20,7 @@ const Register = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { register, user } = useAuth();
+  const { register } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 

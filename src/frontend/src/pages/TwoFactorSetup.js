@@ -11,7 +11,6 @@ import {
   Stepper,
   Step,
   StepLabel,
-  CircularProgress,
   Divider,
   List,
   ListItem,
@@ -94,9 +93,13 @@ const TwoFactorSetup = () => {
     }
   };
 
-  const handleCopySecret = () => {
-    navigator.clipboard.writeText(setupData.secret);
-    setSuccess('Secret copied to clipboard!');
+  const handleCopySecret = async () => {
+    try {
+      await navigator.clipboard.writeText(setupData.secret);
+      setSuccess('Secret copied to clipboard!');
+    } catch (error) {
+      setError('Failed to copy to clipboard. Please copy manually.');
+    }
   };
 
   const handleDownloadBackupCodes = () => {

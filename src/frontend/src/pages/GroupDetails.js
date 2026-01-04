@@ -22,7 +22,6 @@ import {
   TextField,
   Alert,
   Chip,
-  Badge,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -47,6 +46,15 @@ const GroupDetails = () => {
   const [chatLoading, setChatLoading] = useState(false);
   const [joinRequests, setJoinRequests] = useState([]);
 
+  const fetchJoinRequests = useCallback(async () => {
+    try {
+      const response = await groupsAPI.getJoinRequests(id);
+      setJoinRequests(response.data);
+    } catch (error) {
+      console.error('Error fetching join requests:', error);
+    }
+  }, [id]);
+
   const fetchGroup = useCallback(async () => {
     try {
       const response = await groupsAPI.getById(id);
@@ -63,7 +71,7 @@ const GroupDetails = () => {
     } finally {
       setLoading(false);
     }
-  }, [id, user?.id]);
+  }, [id, user?.id, fetchJoinRequests]);
 
   useEffect(() => {
     fetchGroup();
@@ -87,15 +95,6 @@ const GroupDetails = () => {
     const interval = setInterval(fetchMessages, 10000);
     return () => clearInterval(interval);
   }, [fetchMessages]);
-
-  const fetchJoinRequests = async () => {
-    try {
-      const response = await groupsAPI.getJoinRequests(id);
-      setJoinRequests(response.data);
-    } catch (error) {
-      console.error('Error fetching join requests:', error);
-    }
-  };
 
   const handleJoinRequest = async (requestId, action) => {
     try {
