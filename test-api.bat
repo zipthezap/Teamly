@@ -85,12 +85,12 @@ echo.
 
 REM Test 6: Create Event
 echo 6. Testing Create Event...
-REM Use a future date for event
+REM Use a future date for event (2030 to avoid date issues)
 set TEMP_FILE3=%TEMP%\teamly_event.json
 curl -s -X POST %BASE_URL%/api/events ^
   -H "Content-Type: application/json" ^
   -H "Authorization: Bearer !TOKEN!" ^
-  -d "{\"groupId\":\"!GROUP_ID!\",\"title\":\"Weekend Football Match\",\"description\":\"Casual game at the park\",\"eventType\":\"football\",\"location\":\"Central Park\",\"startTime\":\"2026-12-31T10:00:00Z\",\"maxPlayers\":10}" > %TEMP_FILE3%
+  -d "{\"groupId\":\"!GROUP_ID!\",\"title\":\"Weekend Football Match\",\"description\":\"Casual game at the park\",\"eventType\":\"football\",\"location\":\"Central Park\",\"startTime\":\"2030-12-31T10:00:00Z\",\"maxPlayers\":10}" > %TEMP_FILE3%
 
 type %TEMP_FILE3%
 echo.
