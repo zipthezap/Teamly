@@ -53,6 +53,12 @@ export const groupsAPI = {
   invite: (id, email) => api.post(`/groups/${id}/invite`, { email }),
   removeMember: (groupId, memberId) => api.delete(`/groups/${groupId}/members/${memberId}`),
   joinByInvite: (userId, groupId) => api.post('/groups/join', { userId, groupId }),
+  // Public groups and join requests
+  getPublic: () => api.get('/groups/public'),
+  requestJoin: (groupId) => api.post(`/groups/${groupId}/join-request`),
+  getJoinRequests: (groupId) => api.get(`/groups/${groupId}/join-requests`),
+  handleJoinRequest: (groupId, requestId, action) => 
+    api.post(`/groups/${groupId}/join-requests/${requestId}`, { action }),
 };
 
 // Events API
@@ -66,6 +72,24 @@ export const eventsAPI = {
   leave: (id) => api.delete(`/events/${id}/leave`),
   updateStatus: (id, status) => api.put(`/events/${id}/status`, { status }),
   markLate: (eventId) => api.post('/chat/event/late', { eventId }),
+};
+
+// Two-Factor Authentication API
+export const twoFactorAPI = {
+  getStatus: () => api.get('/2fa/status'),
+  setup: () => api.post('/2fa/setup'),
+  verify: (token) => api.post('/2fa/verify', { token }),
+  disable: (password) => api.post('/2fa/disable', { password }),
+};
+
+// Event Requests API
+export const eventRequestsAPI = {
+  create: (data) => api.post('/event-requests', data),
+  getByGroup: (groupId) => api.get(`/event-requests/group/${groupId}`),
+  getById: (id) => api.get(`/event-requests/${id}`),
+  vote: (id, vote) => api.post(`/event-requests/${id}/vote`, { vote }),
+  finalize: (id) => api.post(`/event-requests/${id}/finalize`),
+  cancel: (id) => api.post(`/event-requests/${id}/cancel`),
 };
 
 export default api;

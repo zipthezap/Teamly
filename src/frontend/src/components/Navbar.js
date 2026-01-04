@@ -6,6 +6,8 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import HomeIcon from '@mui/icons-material/Home';
 import GroupIcon from '@mui/icons-material/Group';
 import EventIcon from '@mui/icons-material/Event';
+import PublicIcon from '@mui/icons-material/Public';
+import SecurityIcon from '@mui/icons-material/Security';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -34,11 +36,17 @@ const Navbar = () => {
             <Button color="inherit" component={Link} to="/events" startIcon={<EventIcon />}>
               Events
             </Button>
+            <Button color="inherit" component={Link} to="/public-groups" startIcon={<PublicIcon />}>
+              Discover
+            </Button>
           </Box>
         )}
 
         {user && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Button color="inherit" component={Link} to="/2fa-setup" startIcon={<SecurityIcon />} size="small">
+              2FA
+            </Button>
             <Typography variant="body1">
               {user.name}
             </Typography>

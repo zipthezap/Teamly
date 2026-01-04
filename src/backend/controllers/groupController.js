@@ -23,7 +23,7 @@ const prisma = require('../config/database');
 
 const createGroup = async (req, res) => {
   try {
-    const { name, description, isPublic } = req.body;
+    const { name, description, isPublic, latitude, longitude, locationName } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Group name is required' });
@@ -34,6 +34,9 @@ const createGroup = async (req, res) => {
         name,
         description,
         isPublic: isPublic || false,
+        latitude: latitude ? parseFloat(latitude) : null,
+        longitude: longitude ? parseFloat(longitude) : null,
+        locationName,
         creatorId: req.user.id,
         members: {
           create: {
@@ -149,7 +152,7 @@ const getGroup = async (req, res) => {
 const updateGroup = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, isPublic } = req.body;
+    const { name, description, isPublic, latitude, longitude, locationName } = req.body;
 
     // Check if user is admin of the group
     const membership = await prisma.groupMember.findFirst({
@@ -169,7 +172,10 @@ const updateGroup = async (req, res) => {
       data: {
         ...(name && { name }),
         ...(description !== undefined && { description }),
-        ...(isPublic !== undefined && { isPublic })
+        ...(isPublic !== undefined && { isPublic }),
+        ...(latitude !== undefined && { latitude: latitude ? parseFloat(latitude) : null }),
+        ...(longitude !== undefined && { longitude: longitude ? parseFloat(longitude) : null }),
+        ...(locationName !== undefined && { locationName })
       },
       include: {
         creator: {

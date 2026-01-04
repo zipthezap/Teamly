@@ -15,6 +15,8 @@ import LoginIcon from '@mui/icons-material/Login';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [twoFactorToken, setTwoFactorToken] = useState('');
+  const [requires2FA, setRequires2FA] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
@@ -27,8 +29,20 @@ const Login = () => {
     setLoading(true);
 
     try {
-      await login({ email, password });
-      navigate('/dashboard');
+      const credentials = { email, password };
+      if (requires2FA && twoFactorToken) {
+        credentials.twoFactorToken = twoFactorToken;
+      }
+      
+      const result = await login(credentials);
+      
+      // Check if 2FA is required
+      if (result && result.requires2FA) {
+        setRequires2FA(true);
+        setError('');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
     } finally {
@@ -60,6 +74,7 @@ const Login = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={requires2FA}
             />
             <TextField
               label="Password"
@@ -69,17 +84,52 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={requires2FA}
             />
+            
+            {requires2FA && (
+              <Box sx={{ mt: 2 }}>
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  Two-factor authentication is enabled. Enter your verification code.
+                </Alert>
+                <TextField
+                  label="2FA Code"
+                  fullWidth
+                  margin="normal"
+                  value={twoFactorToken}
+                  onChange={(e) => setTwoFactorToken(e.target.value)}
+                  placeholder="000000"
+                  inputProps={{ maxLength: 6, style: { fontSize: '20px', textAlign: 'center' } }}
+                  required
+                  autoFocus
+                />
+              </Box>
+            )}
+            
             <Button
               type="submit"
               variant="contained"
               fullWidth
               size="large"
               sx={{ mt: 3, mb: 2 }}
-              disabled={loading}
+              disabled={loading || (requires2FA && twoFactorToken.length !== 6)}
             >
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? 'Logging in...' : requires2FA ? 'Verify and Login' : 'Login'}
             </Button>
+            
+            {requires2FA && (
+              <Button
+                variant="text"
+                fullWidth
+                onClick={() => {
+                  setRequires2FA(false);
+                  setTwoFactorToken('');
+                  setError('');
+                }}
+              >
+                Back to Login
+              </Button>
+            )}
           </form>
 
           <Typography variant="body2" sx={{ mt: 2 }}>
