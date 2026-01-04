@@ -181,21 +181,28 @@ JWT_SECRET=your-secret-key-change-this-in-production
 ```
 Teamly/
 ├── src/
-│   ├── config/
-│   │   └── database.js       # Prisma client configuration
-│   ├── controllers/
-│   │   ├── authController.js # Authentication logic
-│   │   ├── groupController.js # Group management
-│   │   └── eventController.js # Event management
-│   ├── middleware/
-│   │   └── auth.js           # JWT authentication middleware
-│   ├── routes/
-│   │   ├── authRoutes.js     # Auth endpoints
-│   │   ├── groupRoutes.js    # Group endpoints
-│   │   └── eventRoutes.js    # Event endpoints
-│   ├── utils/
-│   │   └── jwt.js            # JWT utilities
-│   └── server.js             # Express app setup
+│   ├── app/                  # Frontend application
+│   │   ├── pages/            # Application pages/routes
+│   │   │   └── index.js      # Home page
+│   │   └── ui/               # Reusable UI components
+│   │       └── Button.js     # Button component
+│   └── backend/              # Backend API
+│       ├── config/
+│       │   └── database.js       # Prisma client configuration
+│       ├── controllers/
+│       │   ├── authController.js # Authentication logic
+│       │   ├── groupController.js # Group management
+│       │   └── eventController.js # Event management
+│       ├── middleware/
+│       │   ├── auth.js           # JWT authentication middleware
+│       │   └── rateLimiter.js    # Rate limiting
+│       ├── routes/
+│       │   ├── authRoutes.js     # Auth endpoints
+│       │   ├── groupRoutes.js    # Group endpoints
+│       │   └── eventRoutes.js    # Event endpoints
+│       ├── utils/
+│       │   └── jwt.js            # JWT utilities
+│       └── server.js             # Express app setup
 ├── prisma/
 │   └── schema.prisma         # Database schema
 ├── .env                      # Environment variables
