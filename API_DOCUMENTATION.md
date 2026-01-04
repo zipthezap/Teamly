@@ -627,7 +627,8 @@ Login with 2FA token.
 ```json
 {
   "requires2FA": true,
-  "userId": "uuid"
+  "tempAuth": "user@example.com"
+}
 }
 ```
 
