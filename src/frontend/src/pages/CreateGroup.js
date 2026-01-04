@@ -12,11 +12,13 @@ import {
   Checkbox,
 } from '@mui/material';
 import { groupsAPI } from '../services/api';
+import LocationPicker from '../components/LocationPicker';
 
 const CreateGroup = () => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
+  const [location, setLocation] = useState({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -27,7 +29,15 @@ const CreateGroup = () => {
     setLoading(true);
 
     try {
-      const response = await groupsAPI.create({ name, description, isPublic });
+      const groupData = { 
+        name, 
+        description, 
+        isPublic,
+        ...(location.latitude && { latitude: location.latitude }),
+        ...(location.longitude && { longitude: location.longitude }),
+        ...(location.locationName && { locationName: location.locationName }),
+      };
+      const response = await groupsAPI.create(groupData);
       navigate(`/groups/${response.data.id}`);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create group');
@@ -78,6 +88,14 @@ const CreateGroup = () => {
             label="Make this group public (anyone can discover and request to join)"
             sx={{ mt: 2 }}
           />
+          
+          {isPublic && (
+            <LocationPicker
+              value={location}
+              onChange={setLocation}
+            />
+          )}
+          
           <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
             <Button
               type="submit"
