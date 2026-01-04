@@ -71,8 +71,17 @@ echo ""
 
 # Test 6: Create Event
 echo "6. Testing Create Event..."
-# Get tomorrow's date
-TOMORROW=$(date -u -d "+1 day" +"%Y-%m-%dT10:00:00Z" 2>/dev/null || date -u -v+1d +"%Y-%m-%dT10:00:00Z" 2>/dev/null || echo "2024-12-31T10:00:00Z")
+# Function to get tomorrow's date in ISO format
+get_tomorrow_date() {
+  if date -u -d "+1 day" +"%Y-%m-%dT10:00:00Z" 2>/dev/null; then
+    return 0
+  elif date -u -v+1d +"%Y-%m-%dT10:00:00Z" 2>/dev/null; then
+    return 0
+  else
+    echo "2026-12-31T10:00:00Z"
+  fi
+}
+TOMORROW=$(get_tomorrow_date)
 
 EVENT_RESPONSE=$(curl -s -X POST ${BASE_URL}/api/events \
   -H "Content-Type: application/json" \
