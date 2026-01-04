@@ -455,3 +455,336 @@ Common event types include:
 - `pending`: Invited but not confirmed
 - `confirmed`: Confirmed participation
 - `declined`: Declined participation
+
+---
+
+## Public Group Discovery Endpoints
+
+### GET /groups/public
+Get all public groups for discovery (no authentication required).
+
+**Response (200):**
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Public Soccer Group",
+    "description": "Open to all soccer enthusiasts",
+    "isPublic": true,
+    "createdAt": "2024-01-01T00:00:00Z",
+    "creator": {
+      "id": "uuid",
+      "name": "John Doe",
+      "email": "john@example.com"
+    },
+    "_count": {
+      "members": 15,
+      "events": 8
+    }
+  }
+]
+```
+
+### POST /groups/:id/join-request
+Request to join a public group (authenticated).
+
+**Response (201):**
+```json
+{
+  "id": "uuid",
+  "groupId": "uuid",
+  "userId": "uuid",
+  "status": "pending",
+  "createdAt": "2024-01-01T00:00:00Z",
+  "user": {
+    "id": "uuid",
+    "name": "Jane Smith",
+    "email": "jane@example.com"
+  }
+}
+```
+
+### GET /groups/:id/join-requests
+Get all pending join requests for a group (admin only).
+
+**Response (200):**
+```json
+[
+  {
+    "id": "uuid",
+    "groupId": "uuid",
+    "userId": "uuid",
+    "status": "pending",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "user": {
+      "id": "uuid",
+      "name": "Jane Smith",
+      "email": "jane@example.com"
+    }
+  }
+]
+```
+
+### POST /groups/:id/join-requests/:requestId
+Approve or reject a join request (admin only).
+
+**Request Body:**
+```json
+{
+  "action": "approve"  // or "reject"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Join request approved successfully",
+  "request": {
+    "id": "uuid",
+    "status": "approved"
+  }
+}
+```
+
+---
+
+## Two-Factor Authentication Endpoints
+
+### GET /2fa/status
+Get 2FA status for the current user.
+
+**Response (200):**
+```json
+{
+  "enabled": true,
+  "backupCodesRemaining": 8
+}
+```
+
+### POST /2fa/setup
+Setup 2FA - generate secret and QR code.
+
+**Response (200):**
+```json
+{
+  "secret": "BASE32_SECRET",
+  "qrCode": "data:image/png;base64,...",
+  "backupCodes": [
+    "ABCD1234",
+    "EFGH5678",
+    ...
+  ]
+}
+```
+
+### POST /2fa/verify
+Verify and enable 2FA.
+
+**Request Body:**
+```json
+{
+  "token": "123456"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "2FA enabled successfully"
+}
+```
+
+### POST /2fa/disable
+Disable 2FA (requires password).
+
+**Request Body:**
+```json
+{
+  "password": "your-password"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "2FA disabled successfully"
+}
+```
+
+### POST /auth/login (with 2FA)
+Login with 2FA token.
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "password",
+  "twoFactorToken": "123456"  // Optional, required if 2FA is enabled
+}
+```
+
+**Response (200) - 2FA Required:**
+```json
+{
+  "requires2FA": true,
+  "userId": "uuid"
+}
+```
+
+**Response (200) - Success:**
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe"
+  },
+  "token": "jwt-token"
+}
+```
+
+---
+
+## Event Request (Voting) Endpoints
+
+### POST /event-requests
+Create a new event request (admin only).
+
+**Request Body:**
+```json
+{
+  "groupId": "uuid",
+  "title": "Weekend Soccer Match",
+  "description": "Let's play soccer this weekend",
+  "eventType": "soccer",
+  "location": "Central Park",
+  "startTime": "2024-01-15T14:00:00Z",
+  "endTime": "2024-01-15T16:00:00Z",
+  "maxPlayers": 20
+}
+```
+
+**Response (201):**
+```json
+{
+  "id": "uuid",
+  "title": "Weekend Soccer Match",
+  "status": "voting",
+  "creator": {
+    "id": "uuid",
+    "name": "John Doe"
+  },
+  "votes": [],
+  "createdAt": "2024-01-01T00:00:00Z"
+}
+```
+
+### GET /event-requests/group/:groupId
+Get all event requests for a group.
+
+**Response (200):**
+```json
+[
+  {
+    "id": "uuid",
+    "title": "Weekend Soccer Match",
+    "status": "voting",
+    "votes": [
+      {
+        "id": "uuid",
+        "vote": "yes",
+        "user": {
+          "id": "uuid",
+          "name": "Jane Smith"
+        }
+      }
+    ],
+    "_count": {
+      "votes": 5
+    }
+  }
+]
+```
+
+### GET /event-requests/:id
+Get a specific event request.
+
+**Response (200):**
+```json
+{
+  "id": "uuid",
+  "title": "Weekend Soccer Match",
+  "description": "Let's play soccer this weekend",
+  "eventType": "soccer",
+  "status": "voting",
+  "votes": [...],
+  "_count": {
+    "votes": 5
+  }
+}
+```
+
+### POST /event-requests/:id/vote
+Vote on an event request.
+
+**Request Body:**
+```json
+{
+  "vote": "yes"  // or "no"
+}
+```
+
+**Response (201):**
+```json
+{
+  "message": "Vote recorded",
+  "vote": {
+    "id": "uuid",
+    "vote": "yes",
+    "user": {
+      "id": "uuid",
+      "name": "Jane Smith"
+    }
+  }
+}
+```
+
+### POST /event-requests/:id/finalize
+Finalize an event request and create the event (admin only).
+
+**Response (200):**
+```json
+{
+  "message": "Event request finalized and event created",
+  "event": {
+    "id": "uuid",
+    "title": "Weekend Soccer Match",
+    ...
+  },
+  "yesVotes": 12,
+  "noVotes": 3
+}
+```
+
+### POST /event-requests/:id/cancel
+Cancel an event request (admin only).
+
+**Response (200):**
+```json
+{
+  "message": "Event request cancelled"
+}
+```
+
+---
+
+## Vote Status
+
+- `yes`: Vote in favor of the event
+- `no`: Vote against the event
+
+## Event Request Status
+
+- `voting`: Currently accepting votes
+- `finalized`: Approved and event created
+- `cancelled`: Cancelled by admin or insufficient votes
