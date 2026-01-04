@@ -24,6 +24,8 @@ A sports event organization app that allows individuals to set and organize smal
 - PostgreSQL (v12 or higher)
 - npm or yarn
 
+> **💡 Windows Users:** For detailed Windows-specific setup instructions, see [WINDOWS_SETUP.md](WINDOWS_SETUP.md)
+
 ## Installation
 
 1. Clone the repository:
@@ -201,6 +203,51 @@ Teamly/
 ├── package.json
 └── README.md
 ```
+
+## Testing the API
+
+### Using Shell Scripts
+
+**Unix/Linux/Mac/Git Bash:**
+```bash
+./test-api.sh
+```
+
+**Windows (Command Prompt/PowerShell):**
+```cmd
+test-api.bat
+```
+
+The test scripts will:
+- Register a test user
+- Create a group
+- Create an event
+- Test various API endpoints
+- Verify error handling
+
+## Additional Documentation
+
+- **[WINDOWS_SETUP.md](WINDOWS_SETUP.md)** - Comprehensive Windows development guide
+- **[FEATURE_ROADMAP.md](FEATURE_ROADMAP.md)** - Planned features and expansion ideas
+- **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** - Detailed API reference
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guides
+- **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - Project overview and architecture
+
+## Contributing Ideas
+
+Looking to expand Teamly? Check out [FEATURE_ROADMAP.md](FEATURE_ROADMAP.md) for:
+- High-priority feature suggestions
+- Technical design considerations
+- Implementation estimates
+- Database schema proposals
+
+Some exciting features we're considering:
+- 📧 Email notifications
+- 🔄 Recurring events
+- 💬 Event comments and discussions
+- 📱 Mobile application
+- 🗺️ Maps and location services
+- 🏆 Gamification and achievements
 
 ## License
 

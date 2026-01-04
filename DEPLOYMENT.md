@@ -1,5 +1,7 @@
 # Teamly Deployment Guide
 
+> **💡 Windows Users:** For detailed Windows-specific setup and troubleshooting, see [WINDOWS_SETUP.md](WINDOWS_SETUP.md)
+
 ## Local Development Setup
 
 ### Prerequisites
@@ -338,6 +340,39 @@ This opens a web interface at `http://localhost:5555`
 - Check database permissions
 - Verify migration files are present
 - Try `npx prisma migrate resolve --rolled-back <migration_name>`
+
+### Windows-Specific Issues
+
+**See [WINDOWS_SETUP.md](WINDOWS_SETUP.md) for detailed Windows troubleshooting, including:**
+- PostgreSQL connection problems on Windows
+- Port conflicts and how to resolve them
+- Path and environment variable issues
+- Line ending problems with Git
+- Script execution issues
+
+**Quick fixes for common Windows issues:**
+
+1. **PostgreSQL not running:**
+   ```cmd
+   # Check service status
+   sc query postgresql-x64-16
+   
+   # Start service
+   net start postgresql-x64-16
+   ```
+
+2. **Port in use:**
+   ```cmd
+   # Find process using port 3000
+   netstat -ano | findstr :3000
+   
+   # Kill process (replace PID)
+   taskkill /PID <PID> /F
+   ```
+
+3. **Can't run .sh scripts:**
+   - Use Git Bash: `bash test-api.sh`
+   - Or use Windows version: `test-api.bat`
 
 ### Getting Help
 
