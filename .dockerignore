@@ -1,0 +1,17 @@
+node_modules
+npm-debug.log
+.env
+.git
+.gitignore
+*.md
+!README.md
+.vscode
+.idea
+coverage
+.DS_Store
+dist
+build
+*.log
+.github
+test-api.sh
+test-api.bat
