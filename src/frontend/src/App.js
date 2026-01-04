@@ -14,6 +14,9 @@ import CreateGroup from './pages/CreateGroup';
 import EventsList from './pages/EventsList';
 import EventDetails from './pages/EventDetails';
 import CreateEvent from './pages/CreateEvent';
+import PublicGroups from './pages/PublicGroups';
+import TwoFactorSetup from './pages/TwoFactorSetup';
+import EventRequests from './pages/EventRequests';
 
 const theme = createTheme({
   palette: {
@@ -61,11 +64,20 @@ function App() {
             <Route path="/" element={<Navigate to="/dashboard" />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/public-groups" element={<PublicGroups />} />
             <Route
               path="/dashboard"
               element={
                 <PrivateRoute>
                   <Dashboard />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/2fa-setup"
+              element={
+                <PrivateRoute>
+                  <TwoFactorSetup />
                 </PrivateRoute>
               }
             />
@@ -90,6 +102,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <GroupDetails />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/event-requests/:groupId"
+              element={
+                <PrivateRoute>
+                  <EventRequests />
                 </PrivateRoute>
               }
             />

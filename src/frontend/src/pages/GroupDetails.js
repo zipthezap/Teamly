@@ -22,9 +22,13 @@ import {
   TextField,
   Alert,
   Chip,
+  Badge,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
+import HowToVoteIcon from '@mui/icons-material/HowToVote';
 import { groupsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -41,18 +45,25 @@ const GroupDetails = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
+  const [joinRequests, setJoinRequests] = useState([]);
 
   const fetchGroup = useCallback(async () => {
     try {
       const response = await groupsAPI.getById(id);
       setGroup(response.data);
+      
+      // Fetch join requests if user is admin
+      const currentMember = response.data.members?.find(m => m.userId === user?.id);
+      if (currentMember?.role === 'admin') {
+        fetchJoinRequests();
+      }
     } catch (error) {
       console.error('Error fetching group:', error);
       setError('Failed to load group');
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, user?.id]);
 
   useEffect(() => {
     fetchGroup();
@@ -76,6 +87,26 @@ const GroupDetails = () => {
     const interval = setInterval(fetchMessages, 10000);
     return () => clearInterval(interval);
   }, [fetchMessages]);
+
+  const fetchJoinRequests = async () => {
+    try {
+      const response = await groupsAPI.getJoinRequests(id);
+      setJoinRequests(response.data);
+    } catch (error) {
+      console.error('Error fetching join requests:', error);
+    }
+  };
+
+  const handleJoinRequest = async (requestId, action) => {
+    try {
+      await groupsAPI.handleJoinRequest(id, requestId, action);
+      setSuccess(`Join request ${action === 'approve' ? 'approved' : 'rejected'}`);
+      fetchJoinRequests();
+      fetchGroup();
+    } catch (error) {
+      setError(error.response?.data?.error || 'Failed to process join request');
+    }
+  };
 
   const handleInvite = async () => {
     setError('');
@@ -154,16 +185,61 @@ const GroupDetails = () => {
             </Typography>
           </Box>
           {isAdmin && (
-            <Button
-              variant="outlined"
-              startIcon={<PersonAddIcon />}
-              onClick={() => setInviteDialogOpen(true)}
-            >
-              Invite Member
-            </Button>
+            <Box display="flex" gap={1}>
+              <Button
+                variant="outlined"
+                startIcon={<HowToVoteIcon />}
+                onClick={() => navigate(`/event-requests/${id}`)}
+              >
+                Event Requests
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<PersonAddIcon />}
+                onClick={() => setInviteDialogOpen(true)}
+              >
+                Invite Member
+              </Button>
+            </Box>
           )}
         </Box>
       </Paper>
+
+      {/* Join Requests Section (Admin Only) */}
+      {isAdmin && joinRequests.length > 0 && (
+        <Paper sx={{ p: 3, mb: 3, bgcolor: 'info.dark', borderColor: 'info.main', borderWidth: 1, borderStyle: 'solid' }}>
+          <Typography variant="h6" gutterBottom>
+            Pending Join Requests ({joinRequests.length})
+          </Typography>
+          <List>
+            {joinRequests.map((request) => (
+              <ListItem key={request.id} sx={{ bgcolor: 'background.paper', mb: 1, borderRadius: 1 }}>
+                <ListItemText
+                  primary={request.user?.name}
+                  secondary={request.user?.email}
+                />
+                <ListItemSecondaryAction>
+                  <IconButton
+                    edge="end"
+                    onClick={() => handleJoinRequest(request.id, 'approve')}
+                    color="success"
+                    sx={{ mr: 1 }}
+                  >
+                    <CheckIcon />
+                  </IconButton>
+                  <IconButton
+                    edge="end"
+                    onClick={() => handleJoinRequest(request.id, 'reject')}
+                    color="error"
+                  >
+                    <CloseIcon />
+                  </IconButton>
+                </ListItemSecondaryAction>
+              </ListItem>
+            ))}
+          </List>
+        </Paper>
+      )}
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>

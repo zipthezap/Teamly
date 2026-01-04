@@ -8,12 +8,15 @@ import {
   Typography,
   Box,
   Alert,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import { groupsAPI } from '../services/api';
 
 const CreateGroup = () => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [isPublic, setIsPublic] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -24,7 +27,7 @@ const CreateGroup = () => {
     setLoading(true);
 
     try {
-      const response = await groupsAPI.create({ name, description });
+      const response = await groupsAPI.create({ name, description, isPublic });
       navigate(`/groups/${response.data.id}`);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create group');
@@ -63,6 +66,17 @@ const CreateGroup = () => {
             margin="normal"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={isPublic}
+                onChange={(e) => setIsPublic(e.target.checked)}
+                color="primary"
+              />
+            }
+            label="Make this group public (anyone can discover and request to join)"
+            sx={{ mt: 2 }}
           />
           <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
             <Button
