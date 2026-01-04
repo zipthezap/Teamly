@@ -64,6 +64,17 @@ npm start
 
 The server will start on `http://localhost:3000` (or the PORT specified in .env).
 
+## Important Notes
+
+### Prisma v7 Configuration
+
+This project uses Prisma v7, which has a new configuration approach:
+- Database connection URL is configured in `prisma.config.ts` (not in schema.prisma)
+- The `datasource` block in `schema.prisma` only specifies the provider
+- Environment variables are loaded from `.env` via the config file
+
+This is different from Prisma v4-v6 where the URL was in the schema file.
+
 ## Database Schema
 
 - **User**: User accounts with authentication
