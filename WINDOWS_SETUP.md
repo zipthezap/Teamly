@@ -6,9 +6,9 @@ This guide provides detailed instructions for setting up and running Teamly on W
 
 ### Required Software
 
-1. **Node.js** (v14 or higher)
+1. **Node.js** (v20 or higher, LTS recommended)
    - Download from: https://nodejs.org/
-   - Recommended: Use the LTS (Long Term Support) version
+   - The project uses Node.js 20 (specified in .nvmrc)
    - Verify installation: `node --version` and `npm --version`
 
 2. **PostgreSQL** (v12 or higher)
@@ -43,7 +43,7 @@ This guide provides detailed instructions for setting up and running Teamly on W
 Open Command Prompt or PowerShell:
 
 ```cmd
-git clone <repository-url>
+git clone https://github.com/your-username/Teamly.git
 cd Teamly
 ```
 
@@ -122,7 +122,7 @@ This is the easiest method if you have Docker Desktop installed.
 #### 1. Clone the Repository
 
 ```cmd
-git clone <repository-url>
+git clone https://github.com/your-username/Teamly.git
 cd Teamly
 ```
 
