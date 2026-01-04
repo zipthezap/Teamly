@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -39,11 +39,7 @@ const GroupDetails = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  useEffect(() => {
-    fetchGroup();
-  }, [id]);
-
-  const fetchGroup = async () => {
+  const fetchGroup = useCallback(async () => {
     try {
       const response = await groupsAPI.getById(id);
       setGroup(response.data);
@@ -53,7 +49,11 @@ const GroupDetails = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchGroup();
+  }, [fetchGroup]);
 
   const handleInvite = async () => {
     setError('');
