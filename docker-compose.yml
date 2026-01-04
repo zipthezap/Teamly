@@ -15,8 +15,10 @@ services:
       timeout: 5s
       retries: 5
 
-  app:
-    build: .
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
     ports:
       - "3000:3000"
     environment:
@@ -28,6 +30,19 @@ services:
       postgres:
         condition: service_healthy
     command: sh -c "npx prisma migrate deploy && npm start"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        REACT_APP_API_URL: http://localhost:3000/api
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    environment:
+      REACT_APP_API_URL: http://localhost:3000/api
 
 volumes:
   postgres_data:
