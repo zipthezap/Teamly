@@ -58,6 +58,11 @@ model User {
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+  // Two-Factor Authentication fields
+  twoFactorEnabled  Boolean  @default(false)
+  twoFactorSecret   String?
+  twoFactorBackupCodes String[] @default([])
 
   groupMemberships  GroupMember[]
   createdGroups     Group[]             @relation("GroupCreator")
@@ -68,6 +73,8 @@ model User {
   eventAttendances  EventAttendance[]
   eventNotifications EventNotification[]
   groupJoinRequests GroupJoinRequest[]
+  createdEventRequests EventRequest[]   @relation("EventRequestCreator")
+  eventVotes        EventVote[]
 }
 
 model Group {
@@ -85,6 +92,7 @@ model Group {
   events  Event[]
   joinRequests GroupJoinRequest[]
   groupMessages GroupMessage[]
+  eventRequests EventRequest[]
 }
 
 model GroupJoinRequest {
@@ -144,4 +152,38 @@ model EventParticipant {
   user    User   @relation("EventParticipant", fields: [userId], references: [id])
 
   @@unique([eventId, userId])
+}
+
+model EventRequest {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  eventType   String
+  location    String?
+  startTime   DateTime
+  endTime     DateTime?
+  maxPlayers  Int?
+  createdAt   DateTime @default(now())
+  status      String   @default("voting") // voting, finalized, cancelled
+  
+  creatorId   String
+  creator     User     @relation("EventRequestCreator", fields: [creatorId], references: [id])
+  groupId     String
+  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  votes       EventVote[]
+  finalizedEventId String?  @unique
+}
+
+model EventVote {
+  id        String   @id @default(uuid())
+  vote      String   // yes, no
+  createdAt DateTime @default(now())
+  
+  eventRequestId String
+  eventRequest   EventRequest @relation(fields: [eventRequestId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  
+  @@unique([eventRequestId, userId])
 }
