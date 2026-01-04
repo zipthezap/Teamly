@@ -11,6 +11,23 @@ const createEventRequest = async (req, res) => {
       });
     }
 
+    // Validate dates
+    const startDate = new Date(startTime);
+    if (isNaN(startDate.getTime())) {
+      return res.status(400).json({ error: 'Invalid startTime format' });
+    }
+
+    let endDate = null;
+    if (endTime) {
+      endDate = new Date(endTime);
+      if (isNaN(endDate.getTime())) {
+        return res.status(400).json({ error: 'Invalid endTime format' });
+      }
+      if (endDate <= startDate) {
+        return res.status(400).json({ error: 'endTime must be after startTime' });
+      }
+    }
+
     // Check if user is admin of the group
     const membership = await prisma.groupMember.findFirst({
       where: {
@@ -32,8 +49,8 @@ const createEventRequest = async (req, res) => {
         description,
         eventType,
         location,
-        startTime: new Date(startTime),
-        endTime: endTime ? new Date(endTime) : null,
+        startTime: startDate,
+        endTime: endDate,
         maxPlayers,
         status: 'voting'
       },
@@ -271,14 +288,21 @@ const finalizeEventRequest = async (req, res) => {
     const yesVotes = eventRequest.votes.filter(v => v.vote === 'yes').length;
     const noVotes = eventRequest.votes.filter(v => v.vote === 'no').length;
 
+    // Event is created only if yes votes strictly outnumber no votes
+    // Ties and cases where no votes equal or exceed yes votes result in cancellation
     if (yesVotes <= noVotes) {
-      // Not enough support, cancel the request
+      // Not enough support or tie, cancel the request
       await prisma.eventRequest.update({
         where: { id },
         data: { status: 'cancelled' }
       });
+      
+      const reason = yesVotes === noVotes 
+        ? 'Event request cancelled due to tie vote' 
+        : 'Event request cancelled due to insufficient support';
+      
       return res.json({ 
-        message: 'Event request cancelled due to insufficient support',
+        message: reason,
         yesVotes,
         noVotes
       });

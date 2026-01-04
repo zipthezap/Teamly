@@ -2,6 +2,7 @@ const prisma = require('../config/database');
 const speakeasy = require('speakeasy');
 const QRCode = require('qrcode');
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 
 // Setup 2FA - Generate secret and QR code
 const setup2FA = async (req, res) => {
@@ -112,7 +113,6 @@ const disable2FA = async (req, res) => {
     }
 
     // Verify password
-    const bcrypt = require('bcryptjs');
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { password: true, twoFactorEnabled: true }

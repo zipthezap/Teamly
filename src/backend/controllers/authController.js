@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/database');
 const { generateToken } = require('../utils/jwt');
+const { validate2FAToken } = require('./twoFactorController');
 
 const register = async (req, res) => {
   try {
@@ -75,15 +76,15 @@ const login = async (req, res) => {
     // Check if 2FA is enabled
     if (user.twoFactorEnabled) {
       if (!twoFactorToken) {
-        // Return a flag indicating 2FA is required
+        // Return a flag indicating 2FA is required without exposing the user ID
         return res.status(200).json({
           requires2FA: true,
-          userId: user.id
+          // Note: In production, consider using a temporary session token instead
+          tempAuth: email // Use email instead of userId for the second request
         });
       }
 
       // Validate 2FA token
-      const { validate2FAToken } = require('./twoFactorController');
       const validation = await validate2FAToken(user.id, twoFactorToken);
 
       if (!validation.valid) {
