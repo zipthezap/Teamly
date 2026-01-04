@@ -1,0 +1,86 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Note: In Prisma v7, the database URL is configured in prisma.config.ts
+// instead of here. See prisma.config.ts for the datasource configuration.
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  groupMemberships  GroupMember[]
+  createdGroups     Group[]             @relation("GroupCreator")
+  createdEvents     Event[]             @relation("EventCreator")
+  eventParticipants EventParticipant[]  @relation("EventParticipant")
+}
+
+model Group {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  creatorId String
+  creator   User   @relation("GroupCreator", fields: [creatorId], references: [id])
+
+  members GroupMember[]
+  events  Event[]
+}
+
+model GroupMember {
+  id        String   @id @default(uuid())
+  role      String   @default("member") // member, admin
+  joinedAt  DateTime @default(now())
+
+  userId  String
+  user    User   @relation(fields: [userId], references: [id])
+  groupId String
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  eventType   String   // e.g., "football", "basketball", "tennis", etc.
+  location    String?
+  startTime   DateTime
+  endTime     DateTime?
+  maxPlayers  Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  creatorId String
+  creator   User   @relation("EventCreator", fields: [creatorId], references: [id])
+  groupId   String
+  group     Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  participants EventParticipant[]
+}
+
+model EventParticipant {
+  id         String   @id @default(uuid())
+  status     String   @default("pending") // pending, confirmed, declined
+  joinedAt   DateTime @default(now())
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation("EventParticipant", fields: [userId], references: [id])
+
+  @@unique([eventId, userId])
+}
