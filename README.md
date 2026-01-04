@@ -9,44 +9,84 @@ A sports event organization app that allows individuals to set and organize smal
 - **Event Management**: Create sports events with types (football, basketball, tennis, etc.)
 - **Event Participation**: Join/leave events, track participants, set max players
 - **Role-Based Access**: Admin and member roles for group management
+- **Modern UI**: React-based frontend with Material-UI components
+- **Containerized**: Separate Docker containers for backend and frontend
+
+## Architecture
+
+The application is split into two main components:
+
+- **Backend** (`src/backend/`): Node.js/Express REST API
+- **Frontend** (`src/frontend/`): React application with Material-UI
 
 ## Tech Stack
 
-- **Backend**: Node.js with Express.js
+### Backend
+- **Runtime**: Node.js with Express.js
 - **Database**: PostgreSQL
-- **ORM**: Prisma
+- **ORM**: Prisma v7
 - **Authentication**: JWT with bcryptjs
 - **API**: RESTful API
 
+### Frontend
+- **Framework**: React 19
+- **UI Library**: Material-UI (MUI)
+- **Routing**: React Router v7
+- **HTTP Client**: Axios
+- **State Management**: React Context API
+
 ## Prerequisites
 
-- Node.js (v14 or higher)
-- PostgreSQL (v12 or higher)
+- Node.js (v20 or higher)
+- Docker and Docker Compose (for containerized deployment)
+- PostgreSQL (v16 or higher, if running locally)
 - npm or yarn
 
 > **💡 Windows Users:** For detailed Windows-specific setup instructions, see [WINDOWS_SETUP.md](WINDOWS_SETUP.md)
 
-## Installation
+## Quick Start with Docker (Recommended)
 
-1. Clone the repository:
+The easiest way to run Teamly is using Docker Compose:
+
 ```bash
+# Clone the repository
 git clone <repository-url>
 cd Teamly
+
+# Start all services (database, backend, frontend)
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
 ```
 
-2. Install dependencies:
+The application will be available at:
+- **Frontend**: http://localhost (port 80)
+- **Backend API**: http://localhost:3000
+- **Database**: localhost:5432
+
+To stop the services:
+```bash
+docker-compose down
+```
+
+## Local Development Setup
+
+### Backend Setup
+
+1. Install backend dependencies:
 ```bash
 npm install
 ```
 
-3. Set up environment variables:
+2. Set up environment variables:
 ```bash
 cp .env.example .env
 ```
 
 Edit `.env` with your database credentials and JWT secret.
 
-4. Set up the database:
+3. Set up the database:
 ```bash
 # Generate Prisma Client
 npm run prisma:generate
@@ -55,7 +95,7 @@ npm run prisma:generate
 npm run prisma:migrate
 ```
 
-5. Start the server:
+4. Start the backend server:
 ```bash
 # Development mode with auto-reload
 npm run dev
@@ -64,7 +104,58 @@ npm run dev
 npm start
 ```
 
-The server will start on `http://localhost:3000` (or the PORT specified in .env).
+The backend will start on `http://localhost:3000`.
+
+### Frontend Setup
+
+1. Navigate to the frontend directory:
+```bash
+cd src/frontend
+```
+
+2. Install frontend dependencies:
+```bash
+npm install
+```
+
+3. Configure the API URL (optional):
+```bash
+# Create .env file
+echo "REACT_APP_API_URL=http://localhost:3000/api" > .env
+```
+
+4. Start the frontend development server:
+```bash
+npm start
+```
+
+The frontend will start on `http://localhost:3001` (or another available port).
+
+5. Build for production:
+```bash
+npm run build
+```
+
+## Docker Architecture
+
+The application uses three separate containers:
+
+### 1. PostgreSQL Container (`postgres`)
+- Image: `postgres:16-alpine`
+- Port: 5432
+- Persistent storage via Docker volume
+
+### 2. Backend Container (`backend`)
+- Built from `Dockerfile.backend`
+- Port: 3000
+- Runs Express.js API server
+- Includes Prisma for database access
+
+### 3. Frontend Container (`frontend`)
+- Built from `Dockerfile.frontend`
+- Port: 80
+- Uses nginx to serve React build
+- Production-optimized with gzip compression
 
 ## Important Notes
 

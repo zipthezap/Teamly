@@ -1,3 +1,24 @@
+// Join group by invite (public, for invite link)
+const joinGroupByInvite = async (req, res) => {
+  try {
+    const { userId, groupId } = req.body;
+    if (!userId || !groupId) {
+      return res.status(400).json({ error: 'userId and groupId are required' });
+    }
+    // Check if already a member
+    const existing = await prisma.groupMember.findFirst({ where: { userId, groupId } });
+    if (existing) {
+      return res.status(200).json({ message: 'Already a member' });
+    }
+    await prisma.groupMember.create({
+      data: { userId, groupId, role: 'member' }
+    });
+    res.status(201).json({ message: 'Joined group successfully' });
+  } catch (error) {
+    console.error('Join group by invite error:', error);
+    res.status(500).json({ error: 'Failed to join group' });
+  }
+};
 const prisma = require('../config/database');
 
 const createGroup = async (req, res) => {
@@ -266,4 +287,5 @@ module.exports = {
   updateGroup,
   inviteMember,
   removeMember
+  joinGroupByInvite,
 };

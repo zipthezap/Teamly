@@ -4,6 +4,10 @@ const groupController = require('../controllers/groupController');
 const authMiddleware = require('../middleware/auth');
 const { authenticatedLimiter } = require('../middleware/rateLimiter');
 
+
+// Public join via invite link (no auth)
+router.post('/join', groupController.joinGroupByInvite);
+
 router.use(authMiddleware);
 router.use(authenticatedLimiter);
 

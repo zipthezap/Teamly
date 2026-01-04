@@ -50,7 +50,10 @@ const createEvent = async (req, res) => {
             id: true,
             userId: true,
             status: true,
-            joinedAt: true
+            joinedAt: true,
+            user: {
+              select: { name: true }
+            }
           }
         }
       }
@@ -95,7 +98,10 @@ const getEvents = async (req, res) => {
             id: true,
             userId: true,
             status: true,
-            joinedAt: true
+            joinedAt: true,
+            user: {
+              select: { name: true }
+            }
           }
         }
       },
@@ -136,7 +142,10 @@ const getEvent = async (req, res) => {
             id: true,
             userId: true,
             status: true,
-            joinedAt: true
+            joinedAt: true,
+            user: {
+              select: { name: true }
+            }
           }
         }
       }
@@ -190,7 +199,10 @@ const updateEvent = async (req, res) => {
             id: true,
             userId: true,
             status: true,
-            joinedAt: true
+            joinedAt: true,
+            user: {
+              select: { name: true }
+            }
           }
         }
       }

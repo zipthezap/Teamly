@@ -1,0 +1,90 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Container,
+  Paper,
+  TextField,
+  Button,
+  Typography,
+  Box,
+  Alert,
+} from '@mui/material';
+import { groupsAPI } from '../services/api';
+
+const CreateGroup = () => {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await groupsAPI.create({ name, description });
+      navigate(`/groups/${response.data.id}`);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to create group');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
+      <Paper elevation={3} sx={{ p: 4 }}>
+        <Typography variant="h4" gutterBottom>
+          Create New Group
+        </Typography>
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <TextField
+            label="Group Name"
+            fullWidth
+            margin="normal"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+          <TextField
+            label="Description"
+            fullWidth
+            multiline
+            rows={4}
+            margin="normal"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+          <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+            <Button
+              type="submit"
+              variant="contained"
+              size="large"
+              disabled={loading}
+            >
+              {loading ? 'Creating...' : 'Create Group'}
+            </Button>
+            <Button
+              variant="outlined"
+              size="large"
+              onClick={() => navigate('/groups')}
+            >
+              Cancel
+            </Button>
+          </Box>
+        </form>
+      </Paper>
+    </Container>
+  );
+};
+
+export default CreateGroup;
