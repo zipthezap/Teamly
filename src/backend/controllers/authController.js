@@ -45,14 +45,21 @@ const register = async (req, res) => {
 
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, twoFactorToken } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
     const user = await prisma.user.findUnique({
-      where: { email }
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        password: true,
+        twoFactorEnabled: true
+      }
     });
 
     if (!user) {
@@ -63,6 +70,25 @@ const login = async (req, res) => {
 
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Check if 2FA is enabled
+    if (user.twoFactorEnabled) {
+      if (!twoFactorToken) {
+        // Return a flag indicating 2FA is required
+        return res.status(200).json({
+          requires2FA: true,
+          userId: user.id
+        });
+      }
+
+      // Validate 2FA token
+      const { validate2FAToken } = require('./twoFactorController');
+      const validation = await validate2FAToken(user.id, twoFactorToken);
+
+      if (!validation.valid) {
+        return res.status(401).json({ error: validation.error || 'Invalid 2FA token' });
+      }
     }
 
     const token = generateToken(user.id);
