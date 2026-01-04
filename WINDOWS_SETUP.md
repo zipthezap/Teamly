@@ -43,7 +43,7 @@ This guide provides detailed instructions for setting up and running Teamly on W
 Open Command Prompt or PowerShell:
 
 ```cmd
-git clone https://github.com/your-username/Teamly.git
+git clone https://github.com/zipthezap/Teamly.git
 cd Teamly
 ```
 
@@ -122,7 +122,7 @@ This is the easiest method if you have Docker Desktop installed.
 #### 1. Clone the Repository
 
 ```cmd
-git clone https://github.com/your-username/Teamly.git
+git clone https://github.com/zipthezap/Teamly.git
 cd Teamly
 ```
 

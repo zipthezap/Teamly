@@ -51,6 +51,10 @@ $RECYCLE.BIN/
 .directory
 
 # IDE-specific
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # Logs
 logs/
