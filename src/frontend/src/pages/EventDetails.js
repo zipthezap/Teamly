@@ -20,7 +20,7 @@ import {
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import PeopleIcon from '@mui/icons-material/People';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import { eventsAPI } from '../services/api';
+import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 const EventDetails = () => {
@@ -31,6 +31,9 @@ const EventDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [lateSuccess, setLateSuccess] = useState('');
+  const [lateError, setLateError] = useState('');
+  const [notifications, setNotifications] = useState([]);
 
   const fetchEvent = useCallback(async () => {
     try {
@@ -44,9 +47,19 @@ const EventDetails = () => {
     }
   }, [id]);
 
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await groupChatAPI.getNotifications();
+      setNotifications(res.data);
+    } catch (e) {}
+  }, []);
+
   useEffect(() => {
     fetchEvent();
-  }, [fetchEvent]);
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 15000);
+    return () => clearInterval(interval);
+  }, [fetchEvent, fetchNotifications]);
 
   const handleJoin = async () => {
     setError('');
@@ -97,6 +110,18 @@ const EventDetails = () => {
     }
   };
 
+  const handleMarkLate = async () => {
+    setLateError('');
+    setLateSuccess('');
+    try {
+      await eventsAPI.markLate(id);
+      setLateSuccess('Marked as late.');
+      fetchEvent();
+    } catch (err) {
+      setLateError('Failed to mark as late');
+    }
+  };
+
   const isParticipant = event?.participants?.find((p) => p.userId === user?.id);
   const isCreator = event?.creatorId === user?.id;
   const isFull = event?.maxPlayers && event?.participants?.length >= event?.maxPlayers;
@@ -121,6 +146,8 @@ const EventDetails = () => {
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+      {lateSuccess && <Alert severity="success">{lateSuccess}</Alert>}
+      {lateError && <Alert severity="error">{lateError}</Alert>}
 
       <Paper sx={{ p: 3, mb: 3 }}>
         <Box display="flex" justifyContent="space-between" alignItems="start">
@@ -235,9 +262,27 @@ const EventDetails = () => {
             {isFull && !isParticipant && (
               <Chip label="Event Full" color="error" />
             )}
+            {user && event && event.participants?.some(p => p.userId === user.id) && (
+              <Button variant="outlined" color="warning" onClick={handleMarkLate} sx={{ ml: 2 }}>
+                Will be late
+              </Button>
+            )}
           </Box>
         </Box>
       </Paper>
+
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="h6">Notifications</Typography>
+        {notifications.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">No notifications.</Typography>
+        ) : (
+          notifications.map(n => (
+            <Alert key={n.id} severity={n.type === 'join' ? 'info' : 'warning'} sx={{ mb: 1 }}>
+              {n.type === 'join' ? `${n.userId} joined the event.` : `${n.userId} left the event.`}
+            </Alert>
+          ))
+        )}
+      </Box>
 
       <Grid container spacing={3}>
         <Grid item xs={12}>

@@ -5,19 +5,20 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Clean and install all dependencies (not just production)
+RUN rm -rf node_modules package-lock.json && npm install
 
 # Copy backend source files
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 COPY src/backend ./src/backend
 
-# Generate Prisma Client
+
+# Generate Prisma Client (also run before start to ensure up-to-date)
 RUN npx prisma generate
 
 # Expose port
 EXPOSE 3000
 
-# Start the application
-CMD ["npm", "start"]
+# Start the application (run generate again to be safe)
+CMD npx prisma generate && npm start

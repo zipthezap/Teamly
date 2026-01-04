@@ -1,4 +1,10 @@
+
 import axios from 'axios';
+// Group Chat API
+export const groupChatAPI = {
+  sendMessage: (groupId, content) => api.post('/chat/message', { groupId, content }),
+  getMessages: (groupId) => api.get(`/chat/${groupId}/messages`),
+};
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
 
@@ -46,6 +52,7 @@ export const groupsAPI = {
   update: (id, data) => api.put(`/groups/${id}`, data),
   invite: (id, email) => api.post(`/groups/${id}/invite`, { email }),
   removeMember: (groupId, memberId) => api.delete(`/groups/${groupId}/members/${memberId}`),
+  joinByInvite: (userId, groupId) => api.post('/groups/join', { userId, groupId }),
 };
 
 // Events API
@@ -58,6 +65,7 @@ export const eventsAPI = {
   join: (id) => api.post(`/events/${id}/join`),
   leave: (id) => api.delete(`/events/${id}/leave`),
   updateStatus: (id, status) => api.put(`/events/${id}/status`, { status }),
+  markLate: (eventId) => api.post('/chat/event/late', { eventId }),
 };
 
 export default api;

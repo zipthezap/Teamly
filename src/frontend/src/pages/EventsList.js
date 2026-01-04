@@ -74,7 +74,7 @@ const EventsList = () => {
         <Grid container spacing={3}>
           {events.map((event) => (
             <Grid item xs={12} sm={6} md={4} key={event.id}>
-              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', border: 1, borderColor: 'divider', bgcolor: 'background.paper', transition: 'box-shadow 0.2s', '&:hover': { boxShadow: 6, bgcolor: 'action.hover' } }}>
                 <CardContent sx={{ flexGrow: 1 }}>
                   <Typography variant="h6" gutterBottom>
                     {event.title}
@@ -96,6 +96,11 @@ const EventsList = () => {
                       <strong>Participants:</strong> {event.participants?.length || 0}
                       {event.maxPlayers && ` / ${event.maxPlayers}`}
                     </Typography>
+                    {event.participants?.length > 0 && (
+                      <Typography variant="body2" color="text.secondary">
+                        {event.participants.map((p) => p.user?.name).filter(Boolean).join(', ')}
+                      </Typography>
+                    )}
                   </Box>
                 </CardContent>
                 <CardActions>

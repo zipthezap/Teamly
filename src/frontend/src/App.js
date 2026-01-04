@@ -17,11 +17,35 @@ import CreateEvent from './pages/CreateEvent';
 
 const theme = createTheme({
   palette: {
+    mode: 'dark',
     primary: {
       main: '#1976d2',
     },
     secondary: {
       main: '#dc004e',
+    },
+    background: {
+      default: '#181a1b',
+      paper: '#23272a',
+    },
+    divider: '#333',
+  },
+  components: {
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+          border: '1px solid #333',
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+          border: '1px solid #333',
+        },
+      },
     },
   },
 });

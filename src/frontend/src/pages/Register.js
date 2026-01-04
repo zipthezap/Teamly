@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Container,
@@ -20,8 +20,9 @@ const Register = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { register } = useAuth();
+  const { register, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,8 +41,21 @@ const Register = () => {
     setLoading(true);
 
     try {
-      await register({ name, email, password });
-      navigate('/dashboard');
+      const newUser = await register({ name, email, password });
+      // Check for invite param
+      const params = new URLSearchParams(location.search);
+      const inviteGroupId = params.get('invite');
+      if (inviteGroupId && newUser?.id) {
+        // Call backend to join group
+        try {
+          await require('../services/api').groupsAPI.joinByInvite(newUser.id, inviteGroupId);
+        } catch (err) {
+          // Optionally handle join error
+        }
+        navigate(`/groups/${inviteGroupId}`);
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed');
     } finally {

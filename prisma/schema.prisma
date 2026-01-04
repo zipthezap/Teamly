@@ -1,3 +1,43 @@
+model GroupMessage {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+model EventReminder {
+  id        String   @id @default(uuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  remindAt  DateTime
+  sent      Boolean  @default(false)
+}
+
+model EventAttendance {
+  id        String   @id @default(uuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  status    String   @default("on-time") // on-time, late
+  updatedAt DateTime @updatedAt
+}
+
+model EventNotification {
+  id        String   @id @default(uuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // join, leave
+  createdAt DateTime @default(now())
+  read      Boolean  @default(false)
+}
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -23,6 +63,11 @@ model User {
   createdGroups     Group[]             @relation("GroupCreator")
   createdEvents     Event[]             @relation("EventCreator")
   eventParticipants EventParticipant[]  @relation("EventParticipant")
+  groupMessages     GroupMessage[]
+  eventReminders    EventReminder[]
+  eventAttendances  EventAttendance[]
+  eventNotifications EventNotification[]
+  groupJoinRequests GroupJoinRequest[]
 }
 
 model Group {
@@ -31,12 +76,25 @@ model Group {
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  isPublic    Boolean  @default(false)
 
   creatorId String
   creator   User   @relation("GroupCreator", fields: [creatorId], references: [id])
 
   members GroupMember[]
   events  Event[]
+  joinRequests GroupJoinRequest[]
+  groupMessages GroupMessage[]
+}
+
+model GroupJoinRequest {
+  id        String   @id @default(uuid())
+  groupId   String
+  group     Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id])
+  status    String  @default("pending") // pending, approved, rejected
+  createdAt DateTime @default(now())
 }
 
 model GroupMember {
@@ -70,6 +128,9 @@ model Event {
   group     Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   participants EventParticipant[]
+  eventReminders EventReminder[]
+  eventAttendances EventAttendance[]
+  eventNotifications EventNotification[]
 }
 
 model EventParticipant {

@@ -25,7 +25,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import { groupsAPI } from '../services/api';
+import { groupsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 const GroupDetails = () => {
@@ -38,6 +38,9 @@ const GroupDetails = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
 
   const fetchGroup = useCallback(async () => {
     try {
@@ -55,6 +58,25 @@ const GroupDetails = () => {
     fetchGroup();
   }, [fetchGroup]);
 
+  const fetchMessages = useCallback(async () => {
+    setChatLoading(true);
+    try {
+      const res = await groupChatAPI.getMessages(id);
+      setMessages(res.data);
+    } catch (e) {
+      // Optionally handle error
+    } finally {
+      setChatLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchMessages();
+    // Optionally poll for new messages every 10s
+    const interval = setInterval(fetchMessages, 10000);
+    return () => clearInterval(interval);
+  }, [fetchMessages]);
+
   const handleInvite = async () => {
     setError('');
     setSuccess('');
@@ -71,13 +93,25 @@ const GroupDetails = () => {
 
   const handleRemoveMember = async (memberId) => {
     if (!window.confirm('Are you sure you want to remove this member?')) return;
-    
+
     try {
       await groupsAPI.removeMember(id, memberId);
       setSuccess('Member removed successfully');
       fetchGroup();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to remove member');
+    }
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim()) return;
+    try {
+      await groupChatAPI.sendMessage(id, newMessage);
+      setNewMessage('');
+      fetchMessages();
+    } catch (e) {
+      // Optionally handle error
     }
   };
 
@@ -186,7 +220,19 @@ const GroupDetails = () => {
               </Box>
               <List>
                 {group.events?.map((event) => (
-                  <ListItem key={event.id} button onClick={() => navigate(`/events/${event.id}`)}>
+                  <ListItem
+                    key={event.id}
+                    button
+                    onClick={() => navigate(`/events/${event.id}`)}
+                    sx={{
+                      cursor: 'pointer',
+                      transition: 'background 0.2s',
+                      '&:hover': {
+                        backgroundColor: 'action.hover',
+                        boxShadow: 3,
+                      },
+                    }}
+                  >
                     <ListItemText
                       primary={event.title}
                       secondary={`${event.eventType} - ${new Date(event.startTime).toLocaleDateString()}`}
@@ -199,6 +245,39 @@ const GroupDetails = () => {
                   </ListItem>
                 )}
               </List>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={12}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>Group Chat</Typography>
+              <Box sx={{ maxHeight: 250, overflowY: 'auto', mb: 2, bgcolor: 'background.default', p: 1, borderRadius: 1, border: 1, borderColor: 'divider' }}>
+                {chatLoading ? (
+                  <CircularProgress size={24} />
+                ) : messages.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">No messages yet.</Typography>
+                ) : (
+                  messages.map((msg) => (
+                    <Box key={msg.id} sx={{ mb: 1 }}>
+                      <Typography variant="subtitle2" color="primary.main">{msg.user?.name || 'User'}</Typography>
+                      <Typography variant="body2">{msg.content}</Typography>
+                      <Typography variant="caption" color="text.secondary">{new Date(msg.createdAt).toLocaleString()}</Typography>
+                    </Box>
+                  ))
+                )}
+              </Box>
+              <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 8 }}>
+                <TextField
+                  value={newMessage}
+                  onChange={e => setNewMessage(e.target.value)}
+                  placeholder="Type a message..."
+                  size="small"
+                  fullWidth
+                />
+                <Button type="submit" variant="contained" disabled={!newMessage.trim()}>Send</Button>
+              </form>
             </CardContent>
           </Card>
         </Grid>
