@@ -23,7 +23,7 @@ const prisma = require('../config/database');
 
 const createGroup = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, isPublic } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Group name is required' });
@@ -33,6 +33,7 @@ const createGroup = async (req, res) => {
       data: {
         name,
         description,
+        isPublic: isPublic || false,
         creatorId: req.user.id,
         members: {
           create: {
@@ -148,7 +149,7 @@ const getGroup = async (req, res) => {
 const updateGroup = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description } = req.body;
+    const { name, description, isPublic } = req.body;
 
     // Check if user is admin of the group
     const membership = await prisma.groupMember.findFirst({
@@ -167,7 +168,8 @@ const updateGroup = async (req, res) => {
       where: { id },
       data: {
         ...(name && { name }),
-        ...(description !== undefined && { description })
+        ...(description !== undefined && { description }),
+        ...(isPublic !== undefined && { isPublic })
       },
       include: {
         creator: {
@@ -280,12 +282,213 @@ const removeMember = async (req, res) => {
   }
 };
 
+// Get all public groups (for discovery)
+const getPublicGroups = async (req, res) => {
+  try {
+    const groups = await prisma.group.findMany({
+      where: {
+        isPublic: true
+      },
+      include: {
+        creator: {
+          select: { id: true, name: true, email: true }
+        },
+        _count: {
+          select: { members: true, events: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json(groups);
+  } catch (error) {
+    console.error('Get public groups error:', error);
+    res.status(500).json({ error: 'Failed to get public groups' });
+  }
+};
+
+// Request to join a public group
+const requestJoinGroup = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if group exists and is public
+    const group = await prisma.group.findUnique({
+      where: { id }
+    });
+
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+
+    if (!group.isPublic) {
+      return res.status(403).json({ error: 'Group is not public' });
+    }
+
+    // Check if already a member
+    const existingMembership = await prisma.groupMember.findFirst({
+      where: {
+        groupId: id,
+        userId: req.user.id
+      }
+    });
+
+    if (existingMembership) {
+      return res.status(400).json({ error: 'Already a member of this group' });
+    }
+
+    // Check if already has a pending request
+    const existingRequest = await prisma.groupJoinRequest.findFirst({
+      where: {
+        groupId: id,
+        userId: req.user.id,
+        status: 'pending'
+      }
+    });
+
+    if (existingRequest) {
+      return res.status(400).json({ error: 'Join request already pending' });
+    }
+
+    // Create join request
+    const joinRequest = await prisma.groupJoinRequest.create({
+      data: {
+        groupId: id,
+        userId: req.user.id,
+        status: 'pending'
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true }
+        },
+        group: {
+          select: { id: true, name: true, description: true }
+        }
+      }
+    });
+
+    res.status(201).json(joinRequest);
+  } catch (error) {
+    console.error('Request join group error:', error);
+    res.status(500).json({ error: 'Failed to request join group' });
+  }
+};
+
+// Get join requests for a group (admin only)
+const getJoinRequests = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if user is admin of the group
+    const membership = await prisma.groupMember.findFirst({
+      where: {
+        groupId: id,
+        userId: req.user.id,
+        role: 'admin'
+      }
+    });
+
+    if (!membership) {
+      return res.status(403).json({ error: 'Only admins can view join requests' });
+    }
+
+    const joinRequests = await prisma.groupJoinRequest.findMany({
+      where: {
+        groupId: id,
+        status: 'pending'
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true }
+        }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    res.json(joinRequests);
+  } catch (error) {
+    console.error('Get join requests error:', error);
+    res.status(500).json({ error: 'Failed to get join requests' });
+  }
+};
+
+// Approve or reject a join request (admin only)
+const handleJoinRequest = async (req, res) => {
+  try {
+    const { id, requestId } = req.params;
+    const { action } = req.body; // 'approve' or 'reject'
+
+    if (!action || !['approve', 'reject'].includes(action)) {
+      return res.status(400).json({ error: 'Invalid action. Must be "approve" or "reject"' });
+    }
+
+    // Check if user is admin of the group
+    const membership = await prisma.groupMember.findFirst({
+      where: {
+        groupId: id,
+        userId: req.user.id,
+        role: 'admin'
+      }
+    });
+
+    if (!membership) {
+      return res.status(403).json({ error: 'Only admins can handle join requests' });
+    }
+
+    // Get the join request
+    const joinRequest = await prisma.groupJoinRequest.findUnique({
+      where: { id: requestId }
+    });
+
+    if (!joinRequest) {
+      return res.status(404).json({ error: 'Join request not found' });
+    }
+
+    if (joinRequest.groupId !== id) {
+      return res.status(400).json({ error: 'Join request does not belong to this group' });
+    }
+
+    if (joinRequest.status !== 'pending') {
+      return res.status(400).json({ error: 'Join request already processed' });
+    }
+
+    // Update the join request status
+    const updatedRequest = await prisma.groupJoinRequest.update({
+      where: { id: requestId },
+      data: { status: action === 'approve' ? 'approved' : 'rejected' }
+    });
+
+    // If approved, add the user as a member
+    if (action === 'approve') {
+      await prisma.groupMember.create({
+        data: {
+          groupId: id,
+          userId: joinRequest.userId,
+          role: 'member'
+        }
+      });
+    }
+
+    res.json({ 
+      message: `Join request ${action}d successfully`,
+      request: updatedRequest
+    });
+  } catch (error) {
+    console.error('Handle join request error:', error);
+    res.status(500).json({ error: 'Failed to handle join request' });
+  }
+};
+
 module.exports = {
   createGroup,
   getGroups,
   getGroup,
   updateGroup,
   inviteMember,
-  removeMember
+  removeMember,
   joinGroupByInvite,
+  getPublicGroups,
+  requestJoinGroup,
+  getJoinRequests,
+  handleJoinRequest,
 };
