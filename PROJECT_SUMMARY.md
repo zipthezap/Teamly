@@ -2,7 +2,11 @@
 
 ## Overview
 
-Teamly is a complete Node.js backend application for organizing sports events, inspired by how Tricount works for expense tracking. Users can create groups, invite friends, and organize sports matches.
+Teamly is a Node.js backend application with a frontend app structure for organizing sports events, inspired by how Tricount works for expense tracking. Users can create groups, invite friends, and organize sports matches.
+
+The project is organized with:
+- **Backend**: Complete RESTful API in `src/backend/`
+- **Frontend App**: Application structure in `src/app/` with pages and UI components
 
 ## What Was Built
 
@@ -11,6 +15,7 @@ Teamly is a complete Node.js backend application for organizing sports events, i
 - **Database**: PostgreSQL with Prisma ORM v7
 - **Authentication**: JWT with bcryptjs for password hashing
 - **Security**: Rate limiting, proper error handling, input validation
+- **Location**: All backend code is in `src/backend/`
 
 ### 2. Database Schema (5 Models)
 
@@ -87,44 +92,60 @@ EventParticipant
 ```
 Teamly/
 ├── src/
-│   ├── config/
-│   │   └── database.js           # Prisma client setup
-│   ├── controllers/
-│   │   ├── authController.js     # Authentication logic
-│   │   ├── groupController.js    # Group management
-│   │   └── eventController.js    # Event management
-│   ├── middleware/
-│   │   ├── auth.js               # JWT authentication
-│   │   └── rateLimiter.js        # Rate limiting
-│   ├── routes/
-│   │   ├── authRoutes.js         # Auth endpoints
-│   │   ├── groupRoutes.js        # Group endpoints
-│   │   └── eventRoutes.js        # Event endpoints
-│   ├── utils/
-│   │   └── jwt.js                # JWT utilities
-│   └── server.js                 # Express app setup
+│   ├── app/                        # Frontend application
+│   │   ├── pages/                  # Application pages/routes
+│   │   │   └── index.js            # Home page
+│   │   ├── ui/                     # Reusable UI components
+│   │   │   └── Button.js           # Button component
+│   │   └── README.md               # App structure guide
+│   └── backend/                    # Backend API
+│       ├── config/
+│       │   └── database.js         # Prisma client setup
+│       ├── controllers/
+│       │   ├── authController.js   # Authentication logic
+│       │   ├── groupController.js  # Group management
+│       │   └── eventController.js  # Event management
+│       ├── middleware/
+│       │   ├── auth.js             # JWT authentication
+│       │   └── rateLimiter.js      # Rate limiting
+│       ├── routes/
+│       │   ├── authRoutes.js       # Auth endpoints
+│       │   ├── groupRoutes.js      # Group endpoints
+│       │   └── eventRoutes.js      # Event endpoints
+│       ├── utils/
+│       │   └── jwt.js              # JWT utilities
+│       └── server.js               # Express app setup
 ├── prisma/
-│   └── schema.prisma             # Database schema
-├── prisma.config.ts              # Prisma v7 config
-├── .env.example                  # Environment template
-├── .gitignore                    # Git ignore rules
-├── package.json                  # Dependencies
-├── Dockerfile                    # Docker image
-├── docker-compose.yml            # Docker orchestration
-├── test-api.sh                   # API test script
-├── README.md                     # Main documentation
-├── API_DOCUMENTATION.md          # Detailed API docs
-└── DEPLOYMENT.md                 # Deployment guide
+│   └── schema.prisma               # Database schema
+├── prisma.config.ts                # Prisma v7 config
+├── .env.example                    # Environment template
+├── .gitignore                      # Git ignore rules
+├── package.json                    # Dependencies
+├── Dockerfile                      # Docker image
+├── docker-compose.yml              # Docker orchestration
+├── test-api.sh                     # API test script
+├── README.md                       # Main documentation
+├── API_DOCUMENTATION.md            # Detailed API docs
+└── DEPLOYMENT.md                   # Deployment guide
 ```
 
-### 6. Documentation
+### 6. Frontend App Structure
+
+The `src/app/` directory provides a foundation for frontend development:
+- **pages/**: Contains application pages and routes
+  - Ready for integration with frameworks like React, Next.js, or Vue
+- **ui/**: Houses reusable UI components
+  - Includes sample Button component to demonstrate structure
+- Easily expandable to include layouts, hooks, services, and state management
+
+### 7. Documentation
 
 - **README.md**: Complete setup and usage guide
 - **API_DOCUMENTATION.md**: Detailed API reference with examples
 - **DEPLOYMENT.md**: Deployment guides for various platforms
 - **test-api.sh**: Executable test script for API validation
 
-### 7. Deployment Options
+### 8. Deployment Options
 
 ✓ Local development setup
 ✓ Docker Compose (recommended for quick start)
