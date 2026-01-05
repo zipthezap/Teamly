@@ -35,6 +35,7 @@ const CreateEvent = () => {
     description: '',
     eventType: 'football',
     location: '',
+    startDate: '',
     startTime: '',
     endTime: '',
     maxPlayers: '',
@@ -68,20 +69,23 @@ const CreateEvent = () => {
     setLoading(true);
 
     try {
-      // Validate that events are single-day only
-      if (formData.startTime && formData.endTime) {
-        const startDate = new Date(formData.startTime);
-        const endDate = new Date(formData.endTime);
-        
-        // Check if they're on the same day
-        if (startDate.toDateString() !== endDate.toDateString()) {
-          setError('Events must be single-day only. Start and end times must be on the same day.');
-          setLoading(false);
-          return;
-        }
+      // Validate required fields
+      if (!formData.startDate || !formData.startTime) {
+        setError('Start date and time are required.');
+        setLoading(false);
+        return;
+      }
+
+      // Combine date and time for startTime
+      const startDateTime = new Date(`${formData.startDate}T${formData.startTime}`);
+      
+      let endDateTime = null;
+      if (formData.endTime) {
+        // Use the same date for end time (same day event)
+        endDateTime = new Date(`${formData.startDate}T${formData.endTime}`);
         
         // Check that end time is after start time
-        if (endDate <= startDate) {
+        if (endDateTime <= startDateTime) {
           setError('End time must be after start time.');
           setLoading(false);
           return;
@@ -90,8 +94,14 @@ const CreateEvent = () => {
 
       const data = {
         ...formData,
+        startTime: startDateTime.toISOString(),
+        endTime: endDateTime ? endDateTime.toISOString() : null,
         maxPlayers: formData.maxPlayers ? parseInt(formData.maxPlayers) : null,
       };
+      
+      // Remove the separate date/time fields
+      delete data.startDate;
+      
       const response = await eventsAPI.create(data);
       navigate(`/events/${response.data.id}`);
     } catch (err) {
@@ -180,9 +190,21 @@ const CreateEvent = () => {
           />
 
           <TextField
+            label="Event Date"
+            name="startDate"
+            type="date"
+            fullWidth
+            margin="normal"
+            value={formData.startDate}
+            onChange={handleChange}
+            InputLabelProps={{ shrink: true }}
+            required
+          />
+
+          <TextField
             label="Start Time"
             name="startTime"
-            type="datetime-local"
+            type="time"
             fullWidth
             margin="normal"
             value={formData.startTime}
@@ -192,9 +214,9 @@ const CreateEvent = () => {
           />
 
           <TextField
-            label="End Time"
+            label="End Time (optional)"
             name="endTime"
-            type="datetime-local"
+            type="time"
             fullWidth
             margin="normal"
             value={formData.endTime}

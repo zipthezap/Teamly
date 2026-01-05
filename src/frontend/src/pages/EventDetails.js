@@ -42,7 +42,6 @@ const EventDetails = () => {
   const [success, setSuccess] = useState('');
   const [lateSuccess, setLateSuccess] = useState('');
   const [lateError, setLateError] = useState('');
-  const [notifications, setNotifications] = useState([]);
 
   const fetchEvent = useCallback(async () => {
     try {
@@ -56,19 +55,9 @@ const EventDetails = () => {
     }
   }, [id]);
 
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const res = await groupChatAPI.getNotifications();
-      setNotifications(res.data);
-    } catch (e) {}
-  }, []);
-
   useEffect(() => {
     fetchEvent();
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 15000);
-    return () => clearInterval(interval);
-  }, [fetchEvent, fetchNotifications]);
+  }, [fetchEvent]);
 
   const handleJoin = async () => {
     setError('');
@@ -520,32 +509,40 @@ const EventDetails = () => {
                   </Stack>
                 </Box>
               </Paper>
+
+              {/* Recent Activity */}
+              {event.participants && event.participants.length > 0 && (
+                <Paper 
+                  elevation={0}
+                  sx={{ 
+                    p: 2, 
+                    mt: 2,
+                    bgcolor: 'rgba(76, 175, 80, 0.05)',
+                    border: '1px solid rgba(76, 175, 80, 0.2)',
+                  }}
+                >
+                  <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
+                    Recent Activity
+                  </Typography>
+                  <Stack spacing={1}>
+                    {event.participants
+                      ?.sort((a, b) => new Date(b.joinedAt) - new Date(a.joinedAt))
+                      .slice(0, 3)
+                      .map(p => (
+                        <Alert 
+                          key={p.id} 
+                          severity="info"
+                          sx={{ py: 0.5 }}
+                        >
+                          {p.user?.name} joined the event
+                        </Alert>
+                      ))}
+                  </Stack>
+                </Paper>
+              )}
             </Grid>
           </Grid>
         </Paper>
-
-        {notifications.length > 0 && (
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                Recent Activity
-              </Typography>
-              <Stack spacing={1}>
-                {notifications.slice(0, 5).map(n => (
-                  <Alert 
-                    key={n.id} 
-                    severity={n.type === 'join' ? 'info' : 'warning'}
-                    sx={{ py: 0 }}
-                  >
-                    {n.type === 'join' 
-                      ? `Someone joined the event` 
-                      : `Someone left the event`}
-                  </Alert>
-                ))}
-              </Stack>
-            </CardContent>
-          </Card>
-        )}
 
         <Card>
           <CardContent>
