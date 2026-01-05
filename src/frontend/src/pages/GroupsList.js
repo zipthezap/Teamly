@@ -27,6 +27,7 @@ import GroupIcon from '@mui/icons-material/Group';
 import EventIcon from '@mui/icons-material/Event';
 import { groupsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { getAvatarColor } from '../utils/colors';
 
 const GroupsList = () => {
   const [groups, setGroups] = useState([]);
@@ -298,7 +299,7 @@ const GroupsList = () => {
                             {recentMembers.map((member, idx) => (
                               <Avatar 
                                 key={idx}
-                                sx={{ bgcolor: ['primary.main', 'secondary.main', 'success.main', 'warning.main'][idx % 4] }}
+                                sx={{ bgcolor: getAvatarColor(idx) }}
                               >
                                 {getInitials(member.user?.name)}
                               </Avatar>

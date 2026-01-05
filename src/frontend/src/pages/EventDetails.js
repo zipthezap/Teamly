@@ -30,6 +30,7 @@ import ScheduleIcon from '@mui/icons-material/Schedule';
 import PersonIcon from '@mui/icons-material/Person';
 import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { getAvatarColor } from '../utils/colors';
 
 const EventDetails = () => {
   const { id } = useParams();
@@ -575,7 +576,7 @@ const EventDetails = () => {
                       <ListItemAvatar>
                         <Avatar 
                           sx={{ 
-                            bgcolor: ['primary.main', 'secondary.main', 'success.main', 'warning.main'][idx % 4],
+                            bgcolor: getAvatarColor(idx),
                             fontWeight: 600,
                           }}
                         >
