@@ -25,6 +25,7 @@ import PublicIcon from '@mui/icons-material/Public';
 import LockIcon from '@mui/icons-material/Lock';
 import GroupIcon from '@mui/icons-material/Group';
 import EventIcon from '@mui/icons-material/Event';
+import ExploreIcon from '@mui/icons-material/Explore';
 import { groupsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { getAvatarColor } from '../utils/colors';
@@ -116,17 +117,34 @@ const GroupsList = () => {
             {filteredGroups.length} group{filteredGroups.length !== 1 ? 's' : ''} found
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => navigate('/groups/new')}
-          sx={{ 
-            background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)',
-            boxShadow: '0 4px 12px rgba(33, 150, 243, 0.4)',
-          }}
-        >
-          Create Group
-        </Button>
+        <Box display="flex" gap={2}>
+          <Button
+            variant="outlined"
+            startIcon={<ExploreIcon />}
+            onClick={() => navigate('/public-groups')}
+            sx={{ 
+              borderColor: 'primary.main',
+              color: 'primary.main',
+              '&:hover': {
+                borderColor: 'primary.light',
+                backgroundColor: 'rgba(33, 150, 243, 0.1)',
+              }
+            }}
+          >
+            Discover Groups
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => navigate('/groups/new')}
+            sx={{ 
+              background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)',
+              boxShadow: '0 4px 12px rgba(33, 150, 243, 0.4)',
+            }}
+          >
+            Create Group
+          </Button>
+        </Box>
       </Box>
 
       {/* Search and Filters */}
