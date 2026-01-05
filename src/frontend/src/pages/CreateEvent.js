@@ -58,19 +58,45 @@ const CreateEvent = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    let newValue = value;
-    
-    // Auto-insert "00" for end time minutes when only hour is selected
-    if (name === 'endTime' && value && value.length === 2 && !value.includes(':')) {
-      newValue = value + ':00';
-    } else if (name === 'endTime' && value && value.length === 5 && value.endsWith(':')) {
-      newValue = value + '00';
-    }
     
     setFormData({
       ...formData,
-      [name]: newValue,
+      [name]: value,
     });
+  };
+
+  const handleEndTimeBlur = (e) => {
+    const value = e.target.value;
+    // Ensure end time has proper format (HH:MM)
+    // If user enters just hour like "14", convert to "14:00"
+    if (value && !value.includes(':')) {
+      setFormData({
+        ...formData,
+        endTime: value.padStart(2, '0') + ':00',
+      });
+    } else if (value && value.split(':')[1] === '') {
+      // If format is "HH:" without minutes, add "00"
+      setFormData({
+        ...formData,
+        endTime: value + '00',
+      });
+    }
+  };
+
+  const handleStartTimeBlur = (e) => {
+    const value = e.target.value;
+    // Ensure start time has proper format (HH:MM)
+    if (value && !value.includes(':')) {
+      setFormData({
+        ...formData,
+        startTime: value.padStart(2, '0') + ':00',
+      });
+    } else if (value && value.split(':')[1] === '') {
+      setFormData({
+        ...formData,
+        startTime: value + '00',
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -219,6 +245,7 @@ const CreateEvent = () => {
             margin="normal"
             value={formData.startTime}
             onChange={handleChange}
+            onBlur={handleStartTimeBlur}
             InputLabelProps={{ shrink: true }}
             inputProps={{ 
               step: 900, // 15 minutes in seconds
@@ -234,6 +261,7 @@ const CreateEvent = () => {
             margin="normal"
             value={formData.endTime}
             onChange={handleChange}
+            onBlur={handleEndTimeBlur}
             InputLabelProps={{ shrink: true }}
             inputProps={{ 
               step: 900, // 15 minutes in seconds
