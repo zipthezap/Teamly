@@ -65,6 +65,23 @@ const CreateEvent = () => {
     });
   };
 
+  const handleTimeChange = (name) => (e) => {
+    const value = e.target.value;
+    // Auto-fill minutes to :00 when a time is selected
+    if (value && value.includes(':')) {
+      const [hour] = value.split(':');
+      setFormData({
+        ...formData,
+        [name]: `${hour}:00`,
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
+  };
+
   const handleEndTimeBlur = (e) => {
     const value = e.target.value;
     // Ensure end time has proper format (HH:MM)
@@ -244,7 +261,7 @@ const CreateEvent = () => {
             fullWidth
             margin="normal"
             value={formData.startTime}
-            onChange={handleChange}
+            onChange={handleTimeChange('startTime')}
             onBlur={handleStartTimeBlur}
             InputLabelProps={{ shrink: true }}
             inputProps={{ 
@@ -260,7 +277,7 @@ const CreateEvent = () => {
             fullWidth
             margin="normal"
             value={formData.endTime}
-            onChange={handleChange}
+            onChange={handleTimeChange('endTime')}
             onBlur={handleEndTimeBlur}
             InputLabelProps={{ shrink: true }}
             inputProps={{ 

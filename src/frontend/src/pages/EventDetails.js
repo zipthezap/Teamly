@@ -28,6 +28,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import HelpIcon from '@mui/icons-material/Help';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import PersonIcon from '@mui/icons-material/Person';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { getAvatarColor } from '../utils/colors';
@@ -471,17 +472,6 @@ const EventDetails = () => {
                       </>
                     )}
                     
-                    {isCreator && (
-                      <Button 
-                        variant="outlined" 
-                        color="error" 
-                        fullWidth
-                        onClick={handleDelete}
-                      >
-                        Delete Event
-                      </Button>
-                    )}
-                    
                     {isFull && !isParticipant && (
                       <Alert severity="warning">
                         <strong>Event Full</strong><br />
@@ -549,6 +539,27 @@ const EventDetails = () => {
                       </Box>
                     </Stack>
                   </Box>
+                  
+                  {/* Delete button at bottom for creator */}
+                  {isCreator && (
+                    <Box sx={{ mt: 2, textAlign: 'center' }}>
+                      <Button 
+                        variant="text" 
+                        color="error" 
+                        size="small"
+                        startIcon={<DeleteIcon sx={{ fontSize: 16 }} />}
+                        onClick={handleDelete}
+                        sx={{
+                          fontSize: '0.75rem',
+                          textTransform: 'none',
+                          px: 1,
+                          py: 0.5,
+                        }}
+                      >
+                        Delete Event
+                      </Button>
+                    </Box>
+                  )}
                 </Paper>
 
                 {/* Recent Activity */}

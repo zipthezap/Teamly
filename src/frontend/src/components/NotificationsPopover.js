@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   IconButton,
   Badge,
@@ -6,19 +6,20 @@ import {
   Paper,
   Typography,
   List,
-  ListItem,
   ListItemText,
   Box,
   CircularProgress,
   Divider,
-  Alert,
+  ListItemButton,
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import { useNotifications } from '../hooks/useNotifications';
+import { useNavigate } from 'react-router-dom';
 
 const NotificationsPopover = () => {
   const [anchorEl, setAnchorEl] = useState(null);
-  const { notifications, loading, refresh } = useNotifications();
+  const { notifications, loading, refresh, markAsRead } = useNotifications();
+  const navigate = useNavigate();
   const open = Boolean(anchorEl);
   const id = open ? 'notifications-popover' : undefined;
 
@@ -29,6 +30,21 @@ const NotificationsPopover = () => {
 
   const handleClose = () => {
     setAnchorEl(null);
+    // Mark all notifications as read when closing
+    if (notifications.length > 0) {
+      markAsRead();
+    }
+  };
+  
+  const handleNotificationClick = (notif) => {
+    // Navigate to relevant page based on notification type
+    if (notif.notificationType === 'event' && notif.event?.id) {
+      navigate(`/events/${notif.event.id}`);
+      handleClose();
+    } else if (notif.notificationType === 'group' && notif.group?.id) {
+      navigate(`/groups/${notif.group.id}`);
+      handleClose();
+    }
   };
 
   return (
@@ -66,7 +82,7 @@ const NotificationsPopover = () => {
               </Typography>
             </Box>
           ) : (
-            <List sx={{ maxHeight: 350, overflow: 'auto' }}>
+            <List sx={{ maxHeight: 350, overflow: 'auto', p: 0 }}>
               {notifications.map((notif, idx) => {
                 let primary = '';
                 let secondary = '';
@@ -90,6 +106,8 @@ const NotificationsPopover = () => {
                     primary = `Someone joined your event: ${notif.event?.title || ''}`;
                   } else if (notif.type === 'leave') {
                     primary = `Someone left your event: ${notif.event?.title || ''}`;
+                  } else if (notif.type === 'late') {
+                    primary = `Someone will be late to your event: ${notif.event?.title || ''}`;
                   } else {
                     primary = `Event notification: ${notif.event?.title || ''}`;
                   }
@@ -98,15 +116,26 @@ const NotificationsPopover = () => {
                   primary = notif.title || notif.message || 'Notification';
                   secondary = notif.time ? new Date(notif.time).toLocaleString() : '';
                 }
+                
+                const isClickable = (notif.notificationType === 'event' && notif.event?.id) || 
+                                   (notif.notificationType === 'group' && notif.group?.id);
+                
                 return (
                   <React.Fragment key={notif.id || idx}>
                     {idx > 0 && <Divider />}
-                    <ListItem>
+                    <ListItemButton
+                      onClick={() => handleNotificationClick(notif)}
+                      disabled={!isClickable}
+                      sx={{
+                        cursor: isClickable ? 'pointer' : 'default',
+                        '&:hover': isClickable ? { bgcolor: 'rgba(0, 0, 0, 0.04)' } : {},
+                      }}
+                    >
                       <ListItemText
                         primary={primary}
                         secondary={secondary}
                       />
-                    </ListItem>
+                    </ListItemButton>
                   </React.Fragment>
                 );
               })}

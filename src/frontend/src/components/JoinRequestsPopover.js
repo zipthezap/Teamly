@@ -13,7 +13,6 @@ import {
   Divider,
   Alert,
   Tooltip,
-  Button,
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import CheckIcon from '@mui/icons-material/Check';
@@ -169,10 +168,9 @@ const JoinRequestsPopover = ({ groupId = null }) => {
                     <ListItem
                       sx={{
                         display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'stretch',
+                        alignItems: 'center',
                         px: 2,
-                        py: 2.5,
+                        py: 1.5,
                         '&:hover': {
                           bgcolor: 'rgba(0, 0, 0, 0.02)',
                         }
@@ -194,49 +192,44 @@ const JoinRequestsPopover = ({ groupId = null }) => {
                                 📍 {request.groupName}
                               </Typography>
                             )}
+                            <Typography variant="caption" color="text.secondary">
+                              {request.user?.email}
+                            </Typography>
                           </Box>
                         }
-                        secondary={
-                          <Typography variant="caption" color="text.secondary">
-                            {request.user?.email}
-                          </Typography>
-                        }
-                        sx={{ mb: 1.5 }}
                       />
-                      <Box display="flex" gap={1} alignItems="center">
-                        <Tooltip title="Approve Request">
-                          <Button
+                      <Box display="flex" gap={0.5} alignItems="center">
+                        <Tooltip title="Approve">
+                          <IconButton
                             size="small"
-                            variant="contained"
                             color="success"
                             onClick={() => handleAction(request.groupId, request.id, 'approve')}
                             disabled={actionLoading[request.id]}
-                            startIcon={<CheckIcon fontSize="small" />}
                             sx={{
-                              flex: 1,
-                              textTransform: 'none',
-                              fontWeight: 600,
+                              bgcolor: 'success.light',
+                              '&:hover': { bgcolor: 'success.main' },
+                              width: 32,
+                              height: 32,
                             }}
                           >
-                            Accept
-                          </Button>
+                            <CheckIcon fontSize="small" />
+                          </IconButton>
                         </Tooltip>
-                        <Tooltip title="Reject Request">
-                          <Button
+                        <Tooltip title="Reject">
+                          <IconButton
                             size="small"
-                            variant="outlined"
                             color="error"
                             onClick={() => handleAction(request.groupId, request.id, 'reject')}
                             disabled={actionLoading[request.id]}
-                            startIcon={<CloseIcon fontSize="small" />}
                             sx={{
-                              flex: 1,
-                              textTransform: 'none',
-                              fontWeight: 600,
+                              bgcolor: 'error.light',
+                              '&:hover': { bgcolor: 'error.main' },
+                              width: 32,
+                              height: 32,
                             }}
                           >
-                            Decline
-                          </Button>
+                            <CloseIcon fontSize="small" />
+                          </IconButton>
                         </Tooltip>
                       </Box>
                     </ListItem>

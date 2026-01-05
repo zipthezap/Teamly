@@ -14,5 +14,6 @@ router.post('/event/late', chat.markLate);
 
 // Notifications
 router.get('/notifications', chat.getNotifications);
+router.post('/notifications/mark-read', chat.markNotificationsRead);
 
 module.exports = router;
