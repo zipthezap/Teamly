@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Paper,
@@ -16,7 +15,6 @@ import { useAuth } from '../contexts/AuthContext';
 
 const Profile = () => {
   const { user, setUser } = useAuth();
-  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
