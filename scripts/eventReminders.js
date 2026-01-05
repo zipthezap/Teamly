@@ -12,8 +12,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-<<<<<<< HEAD
-=======
 async function sendEventReminders() {
   const now = new Date();
   const soon = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
@@ -58,33 +56,3 @@ sendEventReminders().then(() => {
   console.log('Event reminders processed');
   process.exit(0);
 });
-
->>>>>>> main
-async function sendReminders() {
-  // Find reminders that are due and not sent
-  const now = new Date();
-  const reminders = await prisma.eventReminder.findMany({
-    where: {
-      remindAt: { lte: now },
-      sent: false,
-    },
-    include: { user: true, event: true },
-  });
-
-  for (const reminder of reminders) {
-    if (!reminder.user.email) continue;
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: reminder.user.email,
-      subject: `Reminder: Upcoming Event ${reminder.event.title}`,
-      text: `Hi ${reminder.user.name},\n\nThis is a reminder for your upcoming event: ${reminder.event.title} at ${reminder.event.startTime}.\n\nTeamly`,
-    });
-    await prisma.eventReminder.update({ where: { id: reminder.id }, data: { sent: true } });
-  }
-}
-
-sendReminders().then(() => process.exit(0));
-<<<<<<< HEAD
-=======
-
->>>>>>> main

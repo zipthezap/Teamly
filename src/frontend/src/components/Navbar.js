@@ -9,11 +9,7 @@ import EventIcon from '@mui/icons-material/Event';
 import PublicIcon from '@mui/icons-material/Public';
 import SecurityIcon from '@mui/icons-material/Security';
 import SportsIcon from '@mui/icons-material/Sports';
-<<<<<<< HEAD
-import JoinRequestsPopover from './JoinRequestsPopover';
-=======
 import NotificationsPopover from './NotificationsPopover';
->>>>>>> main
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -132,11 +128,7 @@ const Navbar = () => {
 
         {user && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-<<<<<<< HEAD
-            <JoinRequestsPopover />
-=======
             <NotificationsPopover />
->>>>>>> main
             
             <IconButton 
               color="inherit" 

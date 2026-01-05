@@ -40,8 +40,6 @@ const createGroup = async (req, res) => {
       }
     });
 
-<<<<<<< HEAD
-=======
     // Notify users nearby (within 10km) except creator
     if (latitude && longitude) {
       const R = 6371; // km
@@ -74,7 +72,6 @@ const createGroup = async (req, res) => {
         })
       ));
     }
->>>>>>> main
     res.status(201).json(group);
   } catch (error) {
     console.error('Create group error:', error);
@@ -411,8 +408,6 @@ const requestJoinGroup = async (req, res) => {
       }
     });
 
-<<<<<<< HEAD
-=======
     // Notify all group admins
     const admins = await prisma.groupMember.findMany({
       where: { groupId: id, role: 'admin' },
@@ -428,7 +423,6 @@ const requestJoinGroup = async (req, res) => {
       })
     ));
 
->>>>>>> main
     res.status(201).json(joinRequest);
   } catch (error) {
     console.error('Request join group error:', error);
