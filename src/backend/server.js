@@ -11,6 +11,7 @@ const emailRoutes = require('./routes/emailRoutes');
 const commentRoutes = require('./routes/commentRoutes');
 
 const groupChatRoutes = require('./routes/groupChatRoutes');
+const notificationPreferenceRoutes = require('./routes/notificationPreferenceRoutes');
 const { apiLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
@@ -34,6 +35,7 @@ app.use('/api/event-requests', eventRequestRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/chat', groupChatRoutes);
+app.use('/api/notification-preferences', notificationPreferenceRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

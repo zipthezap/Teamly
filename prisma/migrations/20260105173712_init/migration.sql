@@ -44,6 +44,18 @@ CREATE TABLE "EventNotification" (
 );
 
 -- CreateTable
+CREATE TABLE "GroupNotification" (
+    "id" TEXT NOT NULL,
+    "groupId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "read" BOOLEAN NOT NULL DEFAULT false,
+
+    CONSTRAINT "GroupNotification_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
@@ -57,6 +69,8 @@ CREATE TABLE "User" (
     "emailNotifications" BOOLEAN NOT NULL DEFAULT true,
     "emailVerified" BOOLEAN NOT NULL DEFAULT false,
     "emailVerificationToken" TEXT,
+    "city" TEXT,
+    "country" TEXT,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -203,6 +217,9 @@ CREATE TABLE "CommentMention" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "EventAttendance_eventId_userId_key" ON "EventAttendance"("eventId", "userId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
@@ -246,6 +263,12 @@ ALTER TABLE "EventNotification" ADD CONSTRAINT "EventNotification_eventId_fkey" 
 
 -- AddForeignKey
 ALTER TABLE "EventNotification" ADD CONSTRAINT "EventNotification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "GroupNotification" ADD CONSTRAINT "GroupNotification_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "Group"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "GroupNotification" ADD CONSTRAINT "GroupNotification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Group" ADD CONSTRAINT "Group_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

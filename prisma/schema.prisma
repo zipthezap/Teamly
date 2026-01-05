@@ -238,6 +238,15 @@ model EmailPreference {
   eventCancellations Boolean @default(true)
   groupInvites    Boolean  @default(true)
   commentMentions Boolean  @default(true)
+
+  muteEventInvites    Boolean  @default(false)
+  muteEventReminders  Boolean  @default(false)
+  muteEventUpdates    Boolean  @default(false)
+  muteEventCancellations Boolean @default(false)
+  muteGroupInvites    Boolean  @default(false)
+  muteGroupRequests   Boolean  @default(false)
+  muteNearbyGroups    Boolean  @default(false)
+  muteEventCreated    Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }

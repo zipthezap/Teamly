@@ -12,10 +12,46 @@ import {
   Grid,
 } from '@mui/material';
 import { authAPI } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
+import { notificationPreferenceAPI } from '../services/notificationPreferenceAPI';
+
+// List of muteable notification types and their labels
+const notificationMuteFields = [
+  { key: 'muteEventInvites', label: 'Mute Event Invites' },
+  { key: 'muteEventReminders', label: 'Mute Event Reminders' },
+  { key: 'muteEventUpdates', label: 'Mute Event Updates' },
+  { key: 'muteEventCancellations', label: 'Mute Event Cancellations' },
+  { key: 'muteGroupInvites', label: 'Mute Group Invites' },
+  { key: 'muteGroupRequests', label: 'Mute Group Join Requests' },
+  { key: 'muteNearbyGroups', label: 'Mute Nearby Group Notifications' },
+  { key: 'muteEventCreated', label: 'Mute New Event Created' },
+];
 
 const Profile = () => {
-  const { user, setUser } = useAuth();
+  // ...existing state and handlers...
+
+  // Notification preferences handlers
+  const handleNotifCheckbox = (e) => {
+    setNotificationPrefs({
+      ...notificationPrefs,
+      [e.target.name]: e.target.checked,
+    });
+  };
+
+  const handleSaveNotifPrefs = async () => {
+    setNotifLoading(true);
+    setNotifError('');
+    setNotifSuccess('');
+    try {
+      await notificationPreferenceAPI.update(notificationPrefs);
+      setNotifSuccess('Notification preferences updated');
+    } catch (e) {
+      setNotifError('Failed to update notification preferences');
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  // Profile and password state
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -31,6 +67,15 @@ const Profile = () => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Notification preferences state and logic
+  const [notificationPrefs, setNotificationPrefs] = useState(null);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifError, setNotifError] = useState('');
+  const [notifSuccess, setNotifSuccess] = useState('');
+
+  // Auth context
+  const { user, setUser } = React.useContext(require('../contexts/AuthContext').AuthContext);
+
   useEffect(() => {
     if (user) {
       setFormData({
@@ -41,6 +86,22 @@ const Profile = () => {
       });
     }
   }, [user]);
+
+  useEffect(() => {
+    const fetchPrefs = async () => {
+      setNotifLoading(true);
+      setNotifError('');
+      try {
+        const res = await notificationPreferenceAPI.get();
+        setNotificationPrefs(res.data);
+      } catch (e) {
+        setNotifError('Failed to load notification preferences');
+      } finally {
+        setNotifLoading(false);
+      }
+    };
+    fetchPrefs();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({
@@ -61,12 +122,10 @@ const Profile = () => {
     setError('');
     setSuccess('');
     setLoading(true);
-
     try {
       const response = await authAPI.updateProfile(formData);
       const updatedUser = response.data.user;
       setUser(updatedUser);
-      // Update localStorage to maintain consistency
       localStorage.setItem('user', JSON.stringify(updatedUser));
       setSuccess('Profile updated successfully');
     } catch (err) {
@@ -80,19 +139,15 @@ const Profile = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
-
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setError('New passwords do not match');
       return;
     }
-
     if (passwordData.newPassword.length < 6) {
       setError('New password must be at least 6 characters');
       return;
     }
-
     setLoading(true);
-
     try {
       await authAPI.updatePassword({
         currentPassword: passwordData.currentPassword,
@@ -110,6 +165,7 @@ const Profile = () => {
       setLoading(false);
     }
   };
+
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -267,12 +323,48 @@ const Profile = () => {
               Notification Preferences
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Manage your email notification preferences for events and group activities.
+              Manage which in-app notifications you want to mute. You will still receive notifications for types not muted below.
             </Typography>
-            <Alert severity="info">
-              Email notification settings can be configured through your email preferences. 
-              You will receive notifications for event invites, reminders, and group activities by default.
-            </Alert>
+            {notifError && (
+              <Alert severity="error" sx={{ mb: 2 }} onClose={() => setNotifError('')}>
+                {notifError}
+              </Alert>
+            )}
+            {notifSuccess && (
+              <Alert severity="success" sx={{ mb: 2 }} onClose={() => setNotifSuccess('')}>
+                {notifSuccess}
+              </Alert>
+            )}
+            <Box sx={{ mb: 2 }}>
+              {notificationPrefs ? (
+                <Stack direction="row" flexWrap="wrap" spacing={2}>
+                  {notificationMuteFields.map(({ key, label }) => (
+                    <Box key={key} sx={{ minWidth: 220, mb: 1 }}>
+                      <label>
+                        <input
+                          type="checkbox"
+                          name={key}
+                          checked={!!notificationPrefs[key]}
+                          onChange={handleNotifCheckbox}
+                          disabled={notifLoading}
+                          style={{ marginRight: 8 }}
+                        />
+                        {label}
+                      </label>
+                    </Box>
+                  ))}
+                </Stack>
+              ) : (
+                <Typography variant="body2" color="text.secondary">Loading preferences...</Typography>
+              )}
+            </Box>
+            <Button
+              variant="contained"
+              onClick={handleSaveNotifPrefs}
+              disabled={notifLoading || !notificationPrefs}
+            >
+              Save Notification Preferences
+            </Button>
           </Paper>
         </Grid>
 

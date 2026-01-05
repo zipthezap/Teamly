@@ -81,7 +81,7 @@ const Dashboard = () => {
 
       <Grid container spacing={3}>
         {/* Main Content - Left Side */}
-        <Grid item xs={12} lg={9}>
+        <Grid item xs={12} lg={10}>
           {/* Recent Groups */}
           <Box sx={{ mb: 4 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -97,7 +97,7 @@ const Dashboard = () => {
             </Box>
             <Grid container spacing={3}>
               {groups.slice(0, 3).map((group) => (
-                <Grid item xs={12} sm={6} key={group.id}>
+                <Grid item xs={12} sm={6} md={4} key={group.id}>
                   <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                     <CardContent sx={{ flexGrow: 1 }}>
                       <Box display="flex" justifyContent="space-between" alignItems="start" mb={2}>
@@ -180,7 +180,7 @@ const Dashboard = () => {
                 const isFull = event.maxPlayers && event.participants?.length >= event.maxPlayers;
                 
                 return (
-                  <Grid item xs={12} sm={6} key={event.id}>
+                  <Grid item xs={12} sm={6} md={4} key={event.id}>
                     <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                       <CardContent sx={{ flexGrow: 1 }}>
                         <Box display="flex" justifyContent="space-between" alignItems="start" mb={2}>
@@ -276,14 +276,14 @@ const Dashboard = () => {
         </Grid>
 
         {/* Right Sidebar */}
-        <Grid item xs={12} lg={3}>
+        <Grid item xs={12} lg={1}>
           {/* Enhanced Stats Section */}
           <Box sx={{ mb: 2 }}>
             <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>
               Statistics
             </Typography>
             <Grid container spacing={1.5}>
-              <Grid item xs={6}>
+              <Grid item xs={6} sm={6} md={6} lg={6}>
                 <Paper 
                   sx={{ 
                     p: 1.5, 
@@ -312,7 +312,7 @@ const Dashboard = () => {
                 </Paper>
               </Grid>
               
-              <Grid item xs={6}>
+              <Grid item xs={6} sm={6} md={6} lg={6}>
                 <Paper 
                   sx={{ 
                     p: 1.5, 
@@ -341,7 +341,7 @@ const Dashboard = () => {
                 </Paper>
               </Grid>
 
-              <Grid item xs={6}>
+              <Grid item xs={6} sm={6} md={6} lg={6}>
                 <Paper 
                   sx={{ 
                     p: 1.5, 
@@ -363,7 +363,7 @@ const Dashboard = () => {
                 </Paper>
               </Grid>
 
-              <Grid item xs={6}>
+              <Grid item xs={6} sm={6} md={6} lg={6}>
                 <Paper 
                   sx={{ 
                     p: 1.5, 

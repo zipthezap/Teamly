@@ -146,63 +146,62 @@ const JoinRequestsPopover = ({ groupId = null }) => {
                       py: 2,
                     }}
                   >
-                    <ListItemText
-                      primary={
-                        <Box>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                            {request.user?.name}
+                    <Box display="flex" alignItems="center" width="100%">
+                      <Box flexGrow={1} minWidth={0}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {request.user?.name}
+                        </Typography>
+                        {!groupId && request.groupName && (
+                          <Typography variant="caption" color="primary.main" sx={{ display: 'block' }}>
+                            {request.groupName}
                           </Typography>
-                          {!groupId && request.groupName && (
-                            <Typography variant="caption" color="primary.main" sx={{ display: 'block' }}>
-                              {request.groupName}
-                            </Typography>
-                          )}
-                        </Box>
-                      }
-                      secondary={request.user?.email}
-                      sx={{ mb: 1 }}
-                    />
-                    <Box display="flex" gap={0.5} alignItems="center">
-                      <Tooltip title="Approve">
-                        <IconButton
-                          size="small"
-                          color="success"
-                          onClick={() => handleAction(request.groupId, request.id, 'approve')}
-                          disabled={actionLoading[request.id]}
-                          sx={{
-                            bgcolor: 'success.main',
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: 'success.dark',
-                            },
-                            '&:disabled': {
-                              bgcolor: 'action.disabledBackground',
-                            }
-                          }}
-                        >
-                          <CheckIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Reject">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleAction(request.groupId, request.id, 'reject')}
-                          disabled={actionLoading[request.id]}
-                          sx={{
-                            bgcolor: 'error.main',
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: 'error.dark',
-                            },
-                            '&:disabled': {
-                              bgcolor: 'action.disabledBackground',
-                            }
-                          }}
-                        >
-                          <CloseIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
+                        )}
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85em' }}>
+                          {request.user?.email}
+                        </Typography>
+                      </Box>
+                      <Box display="flex" gap={0.5} alignItems="center" ml={2}>
+                        <Tooltip title="Approve">
+                          <IconButton
+                            size="small"
+                            color="success"
+                            onClick={() => handleAction(request.groupId, request.id, 'approve')}
+                            disabled={actionLoading[request.id]}
+                            sx={{
+                              bgcolor: 'success.main',
+                              color: 'white',
+                              '&:hover': {
+                                bgcolor: 'success.dark',
+                              },
+                              '&:disabled': {
+                                bgcolor: 'action.disabledBackground',
+                              }
+                            }}
+                          >
+                            <CheckIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Reject">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleAction(request.groupId, request.id, 'reject')}
+                            disabled={actionLoading[request.id]}
+                            sx={{
+                              bgcolor: 'error.main',
+                              color: 'white',
+                              '&:hover': {
+                                bgcolor: 'error.dark',
+                              },
+                              '&:disabled': {
+                                bgcolor: 'action.disabledBackground',
+                              }
+                            }}
+                          >
+                            <CloseIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
                     </Box>
                   </ListItem>
                 </React.Fragment>
