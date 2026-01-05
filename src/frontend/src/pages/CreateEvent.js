@@ -57,9 +57,19 @@ const CreateEvent = () => {
   };
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
+    let newValue = value;
+    
+    // Auto-insert "00" for end time minutes when only hour is selected
+    if (name === 'endTime' && value && value.length === 2 && !value.includes(':')) {
+      newValue = value + ':00';
+    } else if (name === 'endTime' && value && value.length === 5 && value.endsWith(':')) {
+      newValue = value + '00';
+    }
+    
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: newValue,
     });
   };
 

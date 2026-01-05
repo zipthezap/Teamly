@@ -377,211 +377,215 @@ const EventDetails = () => {
             </Grid>
           </Grid>
           
-          {/* Actions and Activity Section */}
+          {/* Event Description and Actions Section */}
           <Grid container spacing={3} sx={{ mt: 2 }}>
             <Grid item xs={12} md={8}>
-              <Paper 
-                elevation={0}
-                sx={{ 
-                  p: 3, 
-                  bgcolor: 'rgba(33, 150, 243, 0.05)',
-                  border: '1px solid rgba(33, 150, 243, 0.2)',
-                }}
-              >
-                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                  Event Actions
-                </Typography>
-                
-                <Stack spacing={2}>
-                  {!isParticipant && !isFull && (
-                    <Button 
-                      variant="contained" 
-                      fullWidth 
-                      size="large"
-                      onClick={handleJoin}
-                      sx={{
-                        background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)',
-                        py: 1.5,
-                      }}
-                    >
-                      Join Event
-                    </Button>
-                  )}
+              {/* Event Description is already shown above, no need to duplicate */}
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <Stack spacing={3}>
+                {/* Event Actions */}
+                <Paper 
+                  elevation={0}
+                  sx={{ 
+                    p: 3, 
+                    bgcolor: 'rgba(33, 150, 243, 0.05)',
+                    border: '1px solid rgba(33, 150, 243, 0.2)',
+                  }}
+                >
+                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    Event Actions
+                  </Typography>
                   
-                  {isParticipant && !isCreator && (
-                    <>
-                      <Typography variant="subtitle2" gutterBottom sx={{ mt: 1 }}>
-                        Your Status
-                      </Typography>
-                      <Stack direction="row" spacing={1}>
-                        <Button
-                          variant={isParticipant.status === 'confirmed' ? 'contained' : 'outlined'}
-                          color="success"
-                          fullWidth
-                          startIcon={<CheckCircleIcon />}
-                          onClick={() => handleUpdateStatus('confirmed')}
-                        >
-                          Confirm
-                        </Button>
-                        <Button
-                          variant={isParticipant.status === 'declined' ? 'contained' : 'outlined'}
-                          color="error"
-                          fullWidth
-                          startIcon={<CancelIcon />}
-                          onClick={() => handleUpdateStatus('declined')}
-                        >
-                          Decline
-                        </Button>
-                      </Stack>
+                  <Stack spacing={2}>
+                    {!isParticipant && !isFull && (
                       <Button 
-                        variant="outlined" 
-                        color="warning" 
-                        fullWidth
-                        startIcon={<ScheduleIcon />}
-                        onClick={handleMarkLate}
+                        variant="contained" 
+                        fullWidth 
+                        size="large"
+                        onClick={handleJoin}
+                        sx={{
+                          background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)',
+                          py: 1.5,
+                        }}
                       >
-                        Will be late
+                        Join Event
                       </Button>
+                    )}
+                    
+                    {isParticipant && !isCreator && (
+                      <>
+                        <Typography variant="subtitle2" gutterBottom sx={{ mt: 1 }}>
+                          Your Status
+                        </Typography>
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                            variant={isParticipant.status === 'confirmed' ? 'contained' : 'outlined'}
+                            color="success"
+                            fullWidth
+                            startIcon={<CheckCircleIcon />}
+                            onClick={() => handleUpdateStatus('confirmed')}
+                          >
+                            Confirm
+                          </Button>
+                          <Button
+                            variant={isParticipant.status === 'declined' ? 'contained' : 'outlined'}
+                            color="error"
+                            fullWidth
+                            startIcon={<CancelIcon />}
+                            onClick={() => handleUpdateStatus('declined')}
+                          >
+                            Decline
+                          </Button>
+                        </Stack>
+                        <Button 
+                          variant="outlined" 
+                          color="warning" 
+                          fullWidth
+                          startIcon={<ScheduleIcon />}
+                          onClick={handleMarkLate}
+                        >
+                          Will be late
+                        </Button>
+                        <Button 
+                          variant="outlined" 
+                          color="error" 
+                          fullWidth
+                          onClick={handleLeave}
+                        >
+                          Leave Event
+                        </Button>
+                      </>
+                    )}
+                    
+                    {isCreator && (
                       <Button 
                         variant="outlined" 
                         color="error" 
                         fullWidth
-                        onClick={handleLeave}
+                        onClick={handleDelete}
                       >
-                        Leave Event
+                        Delete Event
                       </Button>
-                    </>
-                  )}
-                  
-                  {isCreator && (
-                    <Button 
-                      variant="outlined" 
-                      color="error" 
-                      fullWidth
-                      onClick={handleDelete}
-                    >
-                      Delete Event
-                    </Button>
-                  )}
-                  
-                  {isFull && !isParticipant && (
-                    <Alert severity="warning">
-                      <strong>Event Full</strong><br />
-                      This event has reached maximum capacity
-                    </Alert>
-                  )}
-                </Stack>
-
-                <Divider sx={{ my: 3 }} />
-
-                <Box>
-                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                      Capacity
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {participantCount}
-                      {event.maxPlayers && ` / ${event.maxPlayers}`}
-                    </Typography>
-                  </Box>
-                  {event.maxPlayers && (
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={fillPercentage} 
-                      sx={{ 
-                        height: 8, 
-                        borderRadius: 4,
-                        bgcolor: 'rgba(255, 255, 255, 0.1)',
-                        '& .MuiLinearProgress-bar': {
-                          borderRadius: 4,
-                          background: fillPercentage >= 100 
-                            ? 'linear-gradient(90deg, #f44336 0%, #d32f2f 100%)'
-                            : fillPercentage >= 80
-                            ? 'linear-gradient(90deg, #ff9800 0%, #f57c00 100%)'
-                            : 'linear-gradient(90deg, #4caf50 0%, #388e3c 100%)',
-                        }
-                      }}
-                    />
-                  )}
-                  
-                  <Stack spacing={1} sx={{ mt: 2 }}>
-                    <Box display="flex" justifyContent="space-between">
-                      <Typography variant="caption" color="text.secondary">
-                        ✅ Confirmed
-                      </Typography>
-                      <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                        {confirmedCount}
-                      </Typography>
-                    </Box>
-                    <Box display="flex" justifyContent="space-between">
-                      <Typography variant="caption" color="text.secondary">
-                        ❌ Declined
-                      </Typography>
-                      <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                        {declinedCount}
-                      </Typography>
-                    </Box>
-                    <Box display="flex" justifyContent="space-between">
-                      <Typography variant="caption" color="text.secondary">
-                        ⏳ Pending
-                      </Typography>
-                      <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                        {pendingCount}
-                      </Typography>
-                    </Box>
+                    )}
+                    
+                    {isFull && !isParticipant && (
+                      <Alert severity="warning">
+                        <strong>Event Full</strong><br />
+                        This event has reached maximum capacity
+                      </Alert>
+                    )}
                   </Stack>
-                </Box>
-              </Paper>
-            </Grid>
 
-            <Grid item xs={12} md={4}>
-              {/* Recent Activity */}
-              <Paper 
-                elevation={0}
-                sx={{ 
-                  p: 3, 
-                  bgcolor: 'rgba(76, 175, 80, 0.05)',
-                  border: '1px solid rgba(76, 175, 80, 0.2)',
-                  height: '100%',
-                }}
-              >
-                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                  Recent Activity
-                </Typography>
-                <Stack spacing={1}>
-                  {event.eventNotifications && event.eventNotifications.length > 0 ? (
-                    event.eventNotifications
-                      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-                      .slice(0, 10)
-                      .map((notif, idx) => (
-                        <Alert 
-                          key={notif.id || idx} 
-                          severity="info"
-                          sx={{ py: 0.5 }}
-                        >
-                          {getActivityMessage(notif)}
-                        </Alert>
-                      ))
-                  ) : event.participants && event.participants.length > 0 ? (
-                    event.participants
-                      ?.sort((a, b) => new Date(b.joinedAt) - new Date(a.joinedAt))
-                      .slice(0, 5)
-                      .map(p => (
-                        <Alert 
-                          key={p.id} 
-                          severity="info"
-                          sx={{ py: 0.5 }}
-                        >
-                          {p.user?.name} joined the event
-                        </Alert>
-                      ))
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      No activity yet
-                    </Typography>
-                  )}
-                </Stack>
-              </Paper>
+                  <Divider sx={{ my: 3 }} />
+
+                  <Box>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                        Capacity
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {participantCount}
+                        {event.maxPlayers && ` / ${event.maxPlayers}`}
+                      </Typography>
+                    </Box>
+                    {event.maxPlayers && (
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={fillPercentage} 
+                        sx={{ 
+                          height: 8, 
+                          borderRadius: 4,
+                          bgcolor: 'rgba(255, 255, 255, 0.1)',
+                          '& .MuiLinearProgress-bar': {
+                            borderRadius: 4,
+                            background: fillPercentage >= 100 
+                              ? 'linear-gradient(90deg, #f44336 0%, #d32f2f 100%)'
+                              : fillPercentage >= 80
+                              ? 'linear-gradient(90deg, #ff9800 0%, #f57c00 100%)'
+                              : 'linear-gradient(90deg, #4caf50 0%, #388e3c 100%)',
+                          }
+                        }}
+                      />
+                    )}
+                    
+                    <Stack spacing={1} sx={{ mt: 2 }}>
+                      <Box display="flex" justifyContent="space-between">
+                        <Typography variant="caption" color="text.secondary">
+                          ✅ Confirmed
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                          {confirmedCount}
+                        </Typography>
+                      </Box>
+                      <Box display="flex" justifyContent="space-between">
+                        <Typography variant="caption" color="text.secondary">
+                          ❌ Declined
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                          {declinedCount}
+                        </Typography>
+                      </Box>
+                      <Box display="flex" justifyContent="space-between">
+                        <Typography variant="caption" color="text.secondary">
+                          ⏳ Pending
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                          {pendingCount}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </Box>
+                </Paper>
+
+                {/* Recent Activity */}
+                <Paper 
+                  elevation={0}
+                  sx={{ 
+                    p: 3, 
+                    bgcolor: 'rgba(76, 175, 80, 0.05)',
+                    border: '1px solid rgba(76, 175, 80, 0.2)',
+                  }}
+                >
+                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    Recent Activity
+                  </Typography>
+                  <Stack spacing={1}>
+                    {event.eventNotifications && event.eventNotifications.length > 0 ? (
+                      event.eventNotifications
+                        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                        .slice(0, 10)
+                        .map((notif, idx) => (
+                          <Alert 
+                            key={notif.id || idx} 
+                            severity="info"
+                            sx={{ py: 0.5 }}
+                          >
+                            {getActivityMessage(notif)}
+                          </Alert>
+                        ))
+                    ) : event.participants && event.participants.length > 0 ? (
+                      event.participants
+                        ?.sort((a, b) => new Date(b.joinedAt) - new Date(a.joinedAt))
+                        .slice(0, 5)
+                        .map(p => (
+                          <Alert 
+                            key={p.id} 
+                            severity="info"
+                            sx={{ py: 0.5 }}
+                          >
+                            {p.user?.name} joined the event
+                          </Alert>
+                        ))
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        No activity yet
+                      </Typography>
+                    )}
+                  </Stack>
+                </Paper>
+              </Stack>
             </Grid>
           </Grid>
         </Paper>
