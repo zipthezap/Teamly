@@ -271,7 +271,7 @@ const PublicGroups = () => {
                       lng: customSearchLocation.longitude,
                     }}
                     icon={{
-                      url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+                      url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
                     }}
                   />
                 )}
@@ -294,7 +294,7 @@ const PublicGroups = () => {
                       }}
                       title={group.name}
                       icon={{
-                        url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
+                        url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
                       }}
                     />
                   ) : null

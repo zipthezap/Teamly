@@ -32,6 +32,24 @@ import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { getAvatarColor } from '../utils/colors';
 
+const getActivityMessage = (notif) => {
+  const userName = notif.user?.name || 'Someone';
+  switch (notif.type) {
+    case 'join':
+      return `${userName} joined the event`;
+    case 'leave':
+      return `${userName} left the event`;
+    case 'late':
+      return `${userName} marked as late`;
+    case 'confirmed':
+      return `${userName} confirmed attendance`;
+    case 'declined':
+      return `${userName} declined`;
+    default:
+      return `${userName} ${notif.type}`;
+  }
+};
+
 const EventDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -541,7 +559,7 @@ const EventDetails = () => {
                           severity="info"
                           sx={{ py: 0.5 }}
                         >
-                          {notif.user?.name} {notif.type === 'join' ? 'joined' : notif.type === 'leave' ? 'left' : notif.type === 'late' ? 'marked as late' : notif.type === 'confirmed' ? 'confirmed attendance' : notif.type === 'declined' ? 'declined' : notif.type} {notif.type !== 'leave' ? 'the event' : 'the event'}
+                          {getActivityMessage(notif)}
                         </Alert>
                       ))
                   ) : event.participants && event.participants.length > 0 ? (

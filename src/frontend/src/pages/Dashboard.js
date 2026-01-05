@@ -66,11 +66,6 @@ const Dashboard = () => {
   const myEvents = events.filter(e => 
     e.participants?.some(p => p.userId === user?.id)
   );
-  
-  // Check if user is admin in any group
-  const isAdminInAnyGroup = groups.some(group => 
-    group.members?.some(member => member.userId === user?.id && member.role === 'admin')
-  );
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
