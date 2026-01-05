@@ -97,4 +97,11 @@ export const eventRequestsAPI = {
   cancel: (id) => api.post(`/event-requests/${id}/cancel`),
 };
 
+// Email Preferences API
+export const emailAPI = {
+  getPreferences: () => api.get('/email/preferences'),
+  updatePreferences: (data) => api.put('/email/preferences', data),
+  toggleNotifications: (enabled) => api.put('/email/notifications/toggle', { enabled }),
+};
+
 export default api;

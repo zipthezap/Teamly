@@ -13,6 +13,7 @@ import {
   Divider,
   Alert,
   Tooltip,
+  Button,
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import CheckIcon from '@mui/icons-material/Check';
@@ -105,109 +106,145 @@ const JoinRequestsPopover = ({ groupId = null }) => {
           paper: {
             sx: {
               mt: 1.5,
-              width: 400,
-              maxHeight: 500,
+              width: 420,
+              maxHeight: 550,
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+              borderRadius: 2,
             }
           }
         }}
       >
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            Join Requests {requestCount > 0 && `(${requestCount})`}
-          </Typography>
+        <Paper sx={{ p: 0 }}>
+          <Box sx={{ 
+            p: 2.5, 
+            borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+            background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(33, 150, 243, 0.02) 100%)',
+          }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Join Requests {requestCount > 0 && (
+                <Box component="span" sx={{ 
+                  ml: 1, 
+                  px: 1.5, 
+                  py: 0.5, 
+                  bgcolor: 'error.main', 
+                  color: 'white', 
+                  borderRadius: 2,
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                }}>
+                  {requestCount}
+                </Box>
+              )}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Pending requests to join your groups
+            </Typography>
+          </Box>
           
-          {feedback && (
-            <Alert severity={feedback.type} sx={{ mb: 2 }}>
-              {feedback.message}
-            </Alert>
-          )}
+          <Box sx={{ p: 2 }}>
+            {feedback && (
+              <Alert severity={feedback.type} sx={{ mb: 2 }}>
+                {feedback.message}
+              </Alert>
+            )}
 
-          {loading ? (
-            <Box display="flex" justifyContent="center" py={3}>
-              <CircularProgress size={32} />
-            </Box>
-          ) : requestCount === 0 ? (
-            <Box textAlign="center" py={3}>
-              <Typography variant="body2" color="text.secondary">
-                No pending join requests
-              </Typography>
-            </Box>
-          ) : (
-            <List sx={{ maxHeight: 350, overflow: 'auto' }}>
-              {joinRequests.map((request, index) => (
-                <React.Fragment key={request.id}>
-                  {index > 0 && <Divider />}
-                  <ListItem
-                    sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'stretch',
-                      px: 0,
-                      py: 2,
-                    }}
-                  >
-                    <Box display="flex" alignItems="center" width="100%">
-                      <Box flexGrow={1} minWidth={0}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {request.user?.name}
-                        </Typography>
-                        {!groupId && request.groupName && (
-                          <Typography variant="caption" color="primary.main" sx={{ display: 'block' }}>
-                            {request.groupName}
+            {loading ? (
+              <Box display="flex" justifyContent="center" py={4}>
+                <CircularProgress size={36} />
+              </Box>
+            ) : requestCount === 0 ? (
+              <Box textAlign="center" py={4}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  🎉 All caught up!
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  No pending join requests at the moment
+                </Typography>
+              </Box>
+            ) : (
+              <List sx={{ maxHeight: 380, overflow: 'auto', p: 0 }}>
+                {joinRequests.map((request, index) => (
+                  <React.Fragment key={request.id}>
+                    {index > 0 && <Divider />}
+                    <ListItem
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'stretch',
+                        px: 2,
+                        py: 2.5,
+                        '&:hover': {
+                          bgcolor: 'rgba(0, 0, 0, 0.02)',
+                        }
+                      }}
+                    >
+                      <ListItemText
+                        primary={
+                          <Box>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                              {request.user?.name}
+                            </Typography>
+                            {!groupId && request.groupName && (
+                              <Typography variant="caption" sx={{ 
+                                color: 'primary.main',
+                                display: 'block',
+                                fontWeight: 500,
+                                mb: 0.5,
+                              }}>
+                                📍 {request.groupName}
+                              </Typography>
+                            )}
+                          </Box>
+                        }
+                        secondary={
+                          <Typography variant="caption" color="text.secondary">
+                            {request.user?.email}
                           </Typography>
-                        )}
-                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85em' }}>
-                          {request.user?.email}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" gap={0.5} alignItems="center" ml={2}>
-                        <Tooltip title="Approve">
-                          <IconButton
+                        }
+                        sx={{ mb: 1.5 }}
+                      />
+                      <Box display="flex" gap={1} alignItems="center">
+                        <Tooltip title="Approve Request">
+                          <Button
                             size="small"
+                            variant="contained"
                             color="success"
                             onClick={() => handleAction(request.groupId, request.id, 'approve')}
                             disabled={actionLoading[request.id]}
+                            startIcon={<CheckIcon fontSize="small" />}
                             sx={{
-                              bgcolor: 'success.main',
-                              color: 'white',
-                              '&:hover': {
-                                bgcolor: 'success.dark',
-                              },
-                              '&:disabled': {
-                                bgcolor: 'action.disabledBackground',
-                              }
+                              flex: 1,
+                              textTransform: 'none',
+                              fontWeight: 600,
                             }}
                           >
-                            <CheckIcon fontSize="small" />
-                          </IconButton>
+                            Accept
+                          </Button>
                         </Tooltip>
-                        <Tooltip title="Reject">
-                          <IconButton
+                        <Tooltip title="Reject Request">
+                          <Button
                             size="small"
+                            variant="outlined"
                             color="error"
                             onClick={() => handleAction(request.groupId, request.id, 'reject')}
                             disabled={actionLoading[request.id]}
+                            startIcon={<CloseIcon fontSize="small" />}
                             sx={{
-                              bgcolor: 'error.main',
-                              color: 'white',
-                              '&:hover': {
-                                bgcolor: 'error.dark',
-                              },
-                              '&:disabled': {
-                                bgcolor: 'action.disabledBackground',
-                              }
+                              flex: 1,
+                              textTransform: 'none',
+                              fontWeight: 600,
                             }}
                           >
-                            <CloseIcon fontSize="small" />
-                          </IconButton>
+                            Decline
+                          </Button>
                         </Tooltip>
                       </Box>
-                    </Box>
-                  </ListItem>
-                </React.Fragment>
-              ))}
-            </List>
-          )}
+                    </ListItem>
+                  </React.Fragment>
+                ))}
+              </List>
+            )}
+          </Box>
         </Paper>
       </Popover>
     </>

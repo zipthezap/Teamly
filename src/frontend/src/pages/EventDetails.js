@@ -205,383 +205,399 @@ const EventDetails = () => {
         {lateError && <Alert severity="error" onClose={() => setLateError('')}>{lateError}</Alert>}
 
         <Paper sx={{ p: 4 }}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Box display="flex" alignItems="start" gap={2} mb={2}>
-                <Avatar 
-                  sx={{ 
-                    width: 64, 
-                    height: 64, 
-                    bgcolor: 'primary.main',
-                    fontSize: '1.5rem',
-                    fontWeight: 600,
-                  }}
-                >
-                  {event.eventType?.charAt(0).toUpperCase()}
-                </Avatar>
-                <Box flexGrow={1}>
-                  <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
-                    {event.title}
-                  </Typography>
-                  <Box display="flex" gap={1} flexWrap="wrap">
-                    <Chip 
-                      label={event.eventType} 
-                      color="secondary"
-                      sx={{ fontWeight: 600 }}
-                    />
-                    {isFull && (
-                      <Chip 
-                        label="Full" 
-                        color="warning"
-                        sx={{ fontWeight: 600 }}
-                      />
-                    )}
-                    {isParticipant && (
-                      <Chip 
-                        label="Joined" 
-                        color="success"
-                        sx={{ fontWeight: 600 }}
-                      />
-                    )}
-                    {isCreator && (
-                      <Chip 
-                        label="Organizer" 
-                        color="primary"
-                        sx={{ fontWeight: 600 }}
-                      />
-                    )}
-                  </Box>
-                </Box>
-              </Box>
-              
-              <Typography variant="body1" paragraph sx={{ mt: 2, mb: 3 }}>
-                {event.description || 'No description provided'}
+          {/* Header Section */}
+          <Box display="flex" alignItems="start" gap={2} mb={3}>
+            <Avatar 
+              sx={{ 
+                width: 64, 
+                height: 64, 
+                bgcolor: 'primary.main',
+                fontSize: '1.5rem',
+                fontWeight: 600,
+              }}
+            >
+              {event.eventType?.charAt(0).toUpperCase()}
+            </Avatar>
+            <Box flexGrow={1}>
+              <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
+                {event.title}
               </Typography>
+              <Box display="flex" gap={1} flexWrap="wrap">
+                <Chip 
+                  label={event.eventType} 
+                  color="secondary"
+                  sx={{ fontWeight: 600 }}
+                />
+                {isFull && (
+                  <Chip 
+                    label="Full" 
+                    color="warning"
+                    sx={{ fontWeight: 600 }}
+                  />
+                )}
+                {isParticipant && (
+                  <Chip 
+                    label="Joined" 
+                    color="success"
+                    sx={{ fontWeight: 600 }}
+                  />
+                )}
+                {isCreator && (
+                  <Chip 
+                    label="Organizer" 
+                    color="primary"
+                    sx={{ fontWeight: 600 }}
+                  />
+                )}
+              </Box>
+            </Box>
+          </Box>
 
-              <Grid container spacing={3}>
-                <Grid item xs={12} sm={6}>
-                  <Box 
+          {/* Main Content Grid: Description/Details on left, Actions/Activity on right */}
+          <Grid container spacing={3}>
+            {/* Left Column: Event Description and Details */}
+            <Grid item xs={12} md={8}>
+              <Stack spacing={3}>
+                {/* Description */}
+                <Box>
+                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    Description
+                  </Typography>
+                  <Typography variant="body1" paragraph>
+                    {event.description || 'No description provided'}
+                  </Typography>
+                </Box>
+
+                {/* Time and Location Details */}
+                <Box>
+                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    Event Details
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <Box 
+                        sx={{ 
+                          p: 2, 
+                          bgcolor: 'rgba(33, 150, 243, 0.05)',
+                          borderRadius: 2,
+                          border: '1px solid rgba(33, 150, 243, 0.2)',
+                        }}
+                      >
+                        <Box display="flex" alignItems="center" gap={1} mb={1}>
+                          <AccessTimeIcon color="primary" />
+                          <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>
+                            Start Time
+                          </Typography>
+                        </Box>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          📅 {new Date(event.startTime).toLocaleDateString('en-US', { 
+                            weekday: 'long', 
+                            year: 'numeric',
+                            month: 'long', 
+                            day: 'numeric' 
+                          })}
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          🕐 {new Date(event.startTime).toLocaleTimeString('en-GB', { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            hour12: false
+                          })}
+                        </Typography>
+                      </Box>
+                    </Grid>
+
+                    {event.endTime && (
+                      <Grid item xs={12} sm={6}>
+                        <Box 
+                          sx={{ 
+                            p: 2, 
+                            bgcolor: 'rgba(245, 0, 87, 0.05)',
+                            borderRadius: 2,
+                            border: '1px solid rgba(245, 0, 87, 0.2)',
+                          }}
+                        >
+                          <Box display="flex" alignItems="center" gap={1} mb={1}>
+                            <AccessTimeIcon color="secondary" />
+                            <Typography variant="subtitle2" color="secondary" sx={{ fontWeight: 600 }}>
+                              End Time
+                            </Typography>
+                          </Box>
+                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                            📅 {new Date(event.endTime).toLocaleDateString('en-US', { 
+                              weekday: 'long',
+                              month: 'long', 
+                              day: 'numeric' 
+                            })}
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                            🕐 {new Date(event.endTime).toLocaleTimeString('en-GB', { 
+                              hour: '2-digit', 
+                              minute: '2-digit',
+                              hour12: false
+                            })}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    )}
+
+                    {event.location && (
+                      <Grid item xs={12}>
+                        <Box 
+                          sx={{ 
+                            p: 2, 
+                            bgcolor: 'rgba(76, 175, 80, 0.05)',
+                            borderRadius: 2,
+                            border: '1px solid rgba(76, 175, 80, 0.2)',
+                          }}
+                        >
+                          <Box display="flex" alignItems="center" gap={1} mb={1}>
+                            <LocationOnIcon color="success" />
+                            <Typography variant="subtitle2" color="success.main" sx={{ fontWeight: 600 }}>
+                              Location
+                            </Typography>
+                          </Box>
+                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                            📍 {event.location}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    )}
+                  </Grid>
+                </Box>
+
+                <Divider />
+
+                {/* Organizer Info */}
+                <Box display="flex" alignItems="center" gap={2}>
+                  <Avatar 
                     sx={{ 
-                      p: 2, 
-                      bgcolor: 'rgba(33, 150, 243, 0.05)',
-                      borderRadius: 2,
-                      border: '1px solid rgba(33, 150, 243, 0.2)',
+                      bgcolor: 'secondary.main',
+                      width: 40,
+                      height: 40,
                     }}
                   >
-                    <Box display="flex" alignItems="center" gap={1} mb={1}>
-                      <AccessTimeIcon color="primary" />
-                      <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>
-                        Start Time
-                      </Typography>
-                    </Box>
-                    <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                      📅 {new Date(event.startTime).toLocaleDateString('en-US', { 
-                        weekday: 'long', 
-                        year: 'numeric',
-                        month: 'long', 
-                        day: 'numeric' 
-                      })}
+                    {getInitials(event.creator?.name)}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      Organized by
                     </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                      🕐 {new Date(event.startTime).toLocaleTimeString('en-GB', { 
-                        hour: '2-digit', 
-                        minute: '2-digit',
-                        hour12: false
-                      })}
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {event.creator?.name}
                     </Typography>
                   </Box>
-                </Grid>
-
-                {event.endTime && (
-                  <Grid item xs={12} sm={6}>
-                    <Box 
-                      sx={{ 
-                        p: 2, 
-                        bgcolor: 'rgba(245, 0, 87, 0.05)',
-                        borderRadius: 2,
-                        border: '1px solid rgba(245, 0, 87, 0.2)',
-                      }}
-                    >
-                      <Box display="flex" alignItems="center" gap={1} mb={1}>
-                        <AccessTimeIcon color="secondary" />
-                        <Typography variant="subtitle2" color="secondary" sx={{ fontWeight: 600 }}>
-                          End Time
-                        </Typography>
-                      </Box>
-                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                        📅 {new Date(event.endTime).toLocaleDateString('en-US', { 
-                          weekday: 'long',
-                          month: 'long', 
-                          day: 'numeric' 
-                        })}
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                        🕐 {new Date(event.endTime).toLocaleTimeString('en-GB', { 
-                          hour: '2-digit', 
-                          minute: '2-digit',
-                          hour12: false
-                        })}
-                      </Typography>
-                    </Box>
-                  </Grid>
-                )}
-
-                {event.location && (
-                  <Grid item xs={12}>
-                    <Box 
-                      sx={{ 
-                        p: 2, 
-                        bgcolor: 'rgba(76, 175, 80, 0.05)',
-                        borderRadius: 2,
-                        border: '1px solid rgba(76, 175, 80, 0.2)',
-                      }}
-                    >
-                      <Box display="flex" alignItems="center" gap={1} mb={1}>
-                        <LocationOnIcon color="success" />
-                        <Typography variant="subtitle2" color="success.main" sx={{ fontWeight: 600 }}>
-                          Location
-                        </Typography>
-                      </Box>
-                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                        📍 {event.location}
-                      </Typography>
-                    </Box>
-                  </Grid>
-                )}
-              </Grid>
-
-              <Divider sx={{ my: 3 }} />
-
-              <Box display="flex" alignItems="center" gap={2}>
-                <Avatar 
-                  sx={{ 
-                    bgcolor: 'secondary.main',
-                    width: 40,
-                    height: 40,
-                  }}
-                >
-                  {getInitials(event.creator?.name)}
-                </Avatar>
-                <Box>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    Organized by
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {event.creator?.name}
+                  <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto' }}>
+                    Group: <strong>{event.group?.name}</strong>
                   </Typography>
                 </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto' }}>
-                  Group: <strong>{event.group?.name}</strong>
-                </Typography>
-              </Box>
+              </Stack>
             </Grid>
-          </Grid>
-          
-          {/* Actions and Activity Section */}
-          <Grid container spacing={3} sx={{ mt: 2 }}>
-            <Grid item xs={12} md={8}>
-              <Paper 
-                elevation={0}
-                sx={{ 
-                  p: 3, 
-                  bgcolor: 'rgba(33, 150, 243, 0.05)',
-                  border: '1px solid rgba(33, 150, 243, 0.2)',
-                }}
-              >
-                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                  Event Actions
-                </Typography>
-                
-                <Stack spacing={2}>
-                  {!isParticipant && !isFull && (
-                    <Button 
-                      variant="contained" 
-                      fullWidth 
-                      size="large"
-                      onClick={handleJoin}
-                      sx={{
-                        background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)',
-                        py: 1.5,
-                      }}
-                    >
-                      Join Event
-                    </Button>
-                  )}
+
+            {/* Right Column: Event Actions and Recent Activity */}
+            <Grid item xs={12} md={4}>
+              <Stack spacing={3}>
+                {/* Event Actions */}
+                <Paper 
+                  elevation={0}
+                  sx={{ 
+                    p: 3, 
+                    bgcolor: 'rgba(33, 150, 243, 0.05)',
+                    border: '1px solid rgba(33, 150, 243, 0.2)',
+                  }}
+                >
+                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    Event Actions
+                  </Typography>
                   
-                  {isParticipant && !isCreator && (
-                    <>
-                      <Typography variant="subtitle2" gutterBottom sx={{ mt: 1 }}>
-                        Your Status
-                      </Typography>
-                      <Stack direction="row" spacing={1}>
-                        <Button
-                          variant={isParticipant.status === 'confirmed' ? 'contained' : 'outlined'}
-                          color="success"
-                          fullWidth
-                          startIcon={<CheckCircleIcon />}
-                          onClick={() => handleUpdateStatus('confirmed')}
-                        >
-                          Confirm
-                        </Button>
-                        <Button
-                          variant={isParticipant.status === 'declined' ? 'contained' : 'outlined'}
-                          color="error"
-                          fullWidth
-                          startIcon={<CancelIcon />}
-                          onClick={() => handleUpdateStatus('declined')}
-                        >
-                          Decline
-                        </Button>
-                      </Stack>
+                  <Stack spacing={2}>
+                    {!isParticipant && !isFull && (
                       <Button 
-                        variant="outlined" 
-                        color="warning" 
-                        fullWidth
-                        startIcon={<ScheduleIcon />}
-                        onClick={handleMarkLate}
+                        variant="contained" 
+                        fullWidth 
+                        size="large"
+                        onClick={handleJoin}
+                        sx={{
+                          background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)',
+                          py: 1.5,
+                        }}
                       >
-                        Will be late
+                        Join Event
                       </Button>
+                    )}
+                    
+                    {isParticipant && !isCreator && (
+                      <>
+                        <Typography variant="subtitle2" gutterBottom sx={{ mt: 1 }}>
+                          Your Status
+                        </Typography>
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                            variant={isParticipant.status === 'confirmed' ? 'contained' : 'outlined'}
+                            color="success"
+                            fullWidth
+                            startIcon={<CheckCircleIcon />}
+                            onClick={() => handleUpdateStatus('confirmed')}
+                          >
+                            Confirm
+                          </Button>
+                          <Button
+                            variant={isParticipant.status === 'declined' ? 'contained' : 'outlined'}
+                            color="error"
+                            fullWidth
+                            startIcon={<CancelIcon />}
+                            onClick={() => handleUpdateStatus('declined')}
+                          >
+                            Decline
+                          </Button>
+                        </Stack>
+                        <Button 
+                          variant="outlined" 
+                          color="warning" 
+                          fullWidth
+                          startIcon={<ScheduleIcon />}
+                          onClick={handleMarkLate}
+                        >
+                          Will be late
+                        </Button>
+                        <Button 
+                          variant="outlined" 
+                          color="error" 
+                          fullWidth
+                          onClick={handleLeave}
+                        >
+                          Leave Event
+                        </Button>
+                      </>
+                    )}
+                    
+                    {isCreator && (
                       <Button 
                         variant="outlined" 
                         color="error" 
                         fullWidth
-                        onClick={handleLeave}
+                        onClick={handleDelete}
                       >
-                        Leave Event
+                        Delete Event
                       </Button>
-                    </>
-                  )}
-                  
-                  {isCreator && (
-                    <Button 
-                      variant="outlined" 
-                      color="error" 
-                      fullWidth
-                      onClick={handleDelete}
-                    >
-                      Delete Event
-                    </Button>
-                  )}
-                  
-                  {isFull && !isParticipant && (
-                    <Alert severity="warning">
-                      <strong>Event Full</strong><br />
-                      This event has reached maximum capacity
-                    </Alert>
-                  )}
-                </Stack>
-
-                <Divider sx={{ my: 3 }} />
-
-                <Box>
-                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                      Capacity
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {participantCount}
-                      {event.maxPlayers && ` / ${event.maxPlayers}`}
-                    </Typography>
-                  </Box>
-                  {event.maxPlayers && (
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={fillPercentage} 
-                      sx={{ 
-                        height: 8, 
-                        borderRadius: 4,
-                        bgcolor: 'rgba(255, 255, 255, 0.1)',
-                        '& .MuiLinearProgress-bar': {
-                          borderRadius: 4,
-                          background: fillPercentage >= 100 
-                            ? 'linear-gradient(90deg, #f44336 0%, #d32f2f 100%)'
-                            : fillPercentage >= 80
-                            ? 'linear-gradient(90deg, #ff9800 0%, #f57c00 100%)'
-                            : 'linear-gradient(90deg, #4caf50 0%, #388e3c 100%)',
-                        }
-                      }}
-                    />
-                  )}
-                  
-                  <Stack spacing={1} sx={{ mt: 2 }}>
-                    <Box display="flex" justifyContent="space-between">
-                      <Typography variant="caption" color="text.secondary">
-                        ✅ Confirmed
-                      </Typography>
-                      <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                        {confirmedCount}
-                      </Typography>
-                    </Box>
-                    <Box display="flex" justifyContent="space-between">
-                      <Typography variant="caption" color="text.secondary">
-                        ❌ Declined
-                      </Typography>
-                      <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                        {declinedCount}
-                      </Typography>
-                    </Box>
-                    <Box display="flex" justifyContent="space-between">
-                      <Typography variant="caption" color="text.secondary">
-                        ⏳ Pending
-                      </Typography>
-                      <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                        {pendingCount}
-                      </Typography>
-                    </Box>
+                    )}
+                    
+                    {isFull && !isParticipant && (
+                      <Alert severity="warning">
+                        <strong>Event Full</strong><br />
+                        This event has reached maximum capacity
+                      </Alert>
+                    )}
                   </Stack>
-                </Box>
-              </Paper>
-            </Grid>
 
-            <Grid item xs={12} md={4}>
-              {/* Recent Activity */}
-              <Paper 
-                elevation={0}
-                sx={{ 
-                  p: 3, 
-                  bgcolor: 'rgba(76, 175, 80, 0.05)',
-                  border: '1px solid rgba(76, 175, 80, 0.2)',
-                  height: '100%',
-                }}
-              >
-                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                  Recent Activity
-                </Typography>
-                <Stack spacing={1}>
-                  {event.eventNotifications && event.eventNotifications.length > 0 ? (
-                    event.eventNotifications
-                      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-                      .slice(0, 10)
-                      .map((notif, idx) => (
-                        <Alert 
-                          key={notif.id || idx} 
-                          severity="info"
-                          sx={{ py: 0.5 }}
-                        >
-                          {getActivityMessage(notif)}
-                        </Alert>
-                      ))
-                  ) : event.participants && event.participants.length > 0 ? (
-                    event.participants
-                      ?.sort((a, b) => new Date(b.joinedAt) - new Date(a.joinedAt))
-                      .slice(0, 5)
-                      .map(p => (
-                        <Alert 
-                          key={p.id} 
-                          severity="info"
-                          sx={{ py: 0.5 }}
-                        >
-                          {p.user?.name} joined the event
-                        </Alert>
-                      ))
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      No activity yet
-                    </Typography>
-                  )}
-                </Stack>
-              </Paper>
+                  <Divider sx={{ my: 3 }} />
+
+                  <Box>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                        Capacity
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {participantCount}
+                        {event.maxPlayers && ` / ${event.maxPlayers}`}
+                      </Typography>
+                    </Box>
+                    {event.maxPlayers && (
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={fillPercentage} 
+                        sx={{ 
+                          height: 8, 
+                          borderRadius: 4,
+                          bgcolor: 'rgba(255, 255, 255, 0.1)',
+                          '& .MuiLinearProgress-bar': {
+                            borderRadius: 4,
+                            background: fillPercentage >= 100 
+                              ? 'linear-gradient(90deg, #f44336 0%, #d32f2f 100%)'
+                              : fillPercentage >= 80
+                              ? 'linear-gradient(90deg, #ff9800 0%, #f57c00 100%)'
+                              : 'linear-gradient(90deg, #4caf50 0%, #388e3c 100%)',
+                          }
+                        }}
+                      />
+                    )}
+                    
+                    <Stack spacing={1} sx={{ mt: 2 }}>
+                      <Box display="flex" justifyContent="space-between">
+                        <Typography variant="caption" color="text.secondary">
+                          ✅ Confirmed
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                          {confirmedCount}
+                        </Typography>
+                      </Box>
+                      <Box display="flex" justifyContent="space-between">
+                        <Typography variant="caption" color="text.secondary">
+                          ❌ Declined
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                          {declinedCount}
+                        </Typography>
+                      </Box>
+                      <Box display="flex" justifyContent="space-between">
+                        <Typography variant="caption" color="text.secondary">
+                          ⏳ Pending
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                          {pendingCount}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </Box>
+                </Paper>
+
+                {/* Recent Activity */}
+                <Paper 
+                  elevation={0}
+                  sx={{ 
+                    p: 3, 
+                    bgcolor: 'rgba(76, 175, 80, 0.05)',
+                    border: '1px solid rgba(76, 175, 80, 0.2)',
+                  }}
+                >
+                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    Recent Activity
+                  </Typography>
+                  <Stack spacing={1}>
+                    {event.eventNotifications && event.eventNotifications.length > 0 ? (
+                      event.eventNotifications
+                        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                        .slice(0, 10)
+                        .map((notif, idx) => (
+                          <Alert 
+                            key={notif.id || idx} 
+                            severity="info"
+                            sx={{ py: 0.5 }}
+                          >
+                            {getActivityMessage(notif)}
+                          </Alert>
+                        ))
+                    ) : event.participants && event.participants.length > 0 ? (
+                      event.participants
+                        ?.sort((a, b) => new Date(b.joinedAt) - new Date(a.joinedAt))
+                        .slice(0, 5)
+                        .map(p => (
+                          <Alert 
+                            key={p.id} 
+                            severity="info"
+                            sx={{ py: 0.5 }}
+                          >
+                            {p.user?.name} joined the event
+                          </Alert>
+                        ))
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        No activity yet
+                      </Typography>
+                    )}
+                  </Stack>
+                </Paper>
+              </Stack>
             </Grid>
           </Grid>
         </Paper>

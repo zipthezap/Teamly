@@ -10,48 +10,16 @@ import {
   Divider,
   Stack,
   Grid,
+  Switch,
+  FormControlLabel,
+  FormGroup,
+  CircularProgress,
 } from '@mui/material';
-import { authAPI } from '../services/api';
-import { notificationPreferenceAPI } from '../services/notificationPreferenceAPI';
-
-// List of muteable notification types and their labels
-const notificationMuteFields = [
-  { key: 'muteEventInvites', label: 'Mute Event Invites' },
-  { key: 'muteEventReminders', label: 'Mute Event Reminders' },
-  { key: 'muteEventUpdates', label: 'Mute Event Updates' },
-  { key: 'muteEventCancellations', label: 'Mute Event Cancellations' },
-  { key: 'muteGroupInvites', label: 'Mute Group Invites' },
-  { key: 'muteGroupRequests', label: 'Mute Group Join Requests' },
-  { key: 'muteNearbyGroups', label: 'Mute Nearby Group Notifications' },
-  { key: 'muteEventCreated', label: 'Mute New Event Created' },
-];
+import { authAPI, emailAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const Profile = () => {
-  // ...existing state and handlers...
-
-  // Notification preferences handlers
-  const handleNotifCheckbox = (e) => {
-    setNotificationPrefs({
-      ...notificationPrefs,
-      [e.target.name]: e.target.checked,
-    });
-  };
-
-  const handleSaveNotifPrefs = async () => {
-    setNotifLoading(true);
-    setNotifError('');
-    setNotifSuccess('');
-    try {
-      await notificationPreferenceAPI.update(notificationPrefs);
-      setNotifSuccess('Notification preferences updated');
-    } catch (e) {
-      setNotifError('Failed to update notification preferences');
-    } finally {
-      setNotifLoading(false);
-    }
-  };
-
-  // Profile and password state
+  const { user, setUser } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -63,18 +31,19 @@ const Profile = () => {
     newPassword: '',
     confirmPassword: '',
   });
+  const [emailPreferences, setEmailPreferences] = useState({
+    eventInvites: true,
+    eventReminders: true,
+    eventUpdates: true,
+    eventCancellations: true,
+    groupInvites: true,
+    commentMentions: true,
+  });
+  const [allNotificationsMuted, setAllNotificationsMuted] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // Notification preferences state and logic
-  const [notificationPrefs, setNotificationPrefs] = useState(null);
-  const [notifLoading, setNotifLoading] = useState(false);
-  const [notifError, setNotifError] = useState('');
-  const [notifSuccess, setNotifSuccess] = useState('');
-
-  // Auth context
-  const { user, setUser } = React.useContext(require('../contexts/AuthContext').AuthContext);
+  const [preferencesLoading, setPreferencesLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
@@ -84,24 +53,21 @@ const Profile = () => {
         city: user.city || '',
         country: user.country || '',
       });
+      setAllNotificationsMuted(!user.emailNotifications);
     }
+    fetchEmailPreferences();
   }, [user]);
 
-  useEffect(() => {
-    const fetchPrefs = async () => {
-      setNotifLoading(true);
-      setNotifError('');
-      try {
-        const res = await notificationPreferenceAPI.get();
-        setNotificationPrefs(res.data);
-      } catch (e) {
-        setNotifError('Failed to load notification preferences');
-      } finally {
-        setNotifLoading(false);
-      }
-    };
-    fetchPrefs();
-  }, []);
+  const fetchEmailPreferences = async () => {
+    try {
+      const response = await emailAPI.getPreferences();
+      setEmailPreferences(response.data);
+    } catch (err) {
+      console.error('Failed to fetch email preferences:', err);
+    } finally {
+      setPreferencesLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({
@@ -122,10 +88,12 @@ const Profile = () => {
     setError('');
     setSuccess('');
     setLoading(true);
+
     try {
       const response = await authAPI.updateProfile(formData);
       const updatedUser = response.data.user;
       setUser(updatedUser);
+      // Update localStorage to maintain consistency
       localStorage.setItem('user', JSON.stringify(updatedUser));
       setSuccess('Profile updated successfully');
     } catch (err) {
@@ -139,15 +107,19 @@ const Profile = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setError('New passwords do not match');
       return;
     }
+
     if (passwordData.newPassword.length < 6) {
       setError('New password must be at least 6 characters');
       return;
     }
+
     setLoading(true);
+
     try {
       await authAPI.updatePassword({
         currentPassword: passwordData.currentPassword,
@@ -166,26 +138,68 @@ const Profile = () => {
     }
   };
 
+  const handleMuteToggle = async (event) => {
+    const muted = event.target.checked;
+    setAllNotificationsMuted(muted);
+    
+    try {
+      await emailAPI.toggleNotifications(!muted);
+      setSuccess(muted ? 'All notifications muted' : 'Notifications unmuted');
+      // Update user context
+      const updatedUser = { ...user, emailNotifications: !muted };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    } catch (err) {
+      setError('Failed to update notification settings');
+      // Revert on error
+      setAllNotificationsMuted(!muted);
+    }
+  };
+
+  const handlePreferenceChange = (preference) => async (event) => {
+    const newValue = event.target.checked;
+    const previousPreferences = emailPreferences; // Store old state
+    const updatedPreferences = {
+      ...emailPreferences,
+      [preference]: newValue,
+    };
+    setEmailPreferences(updatedPreferences);
+    
+    try {
+      await emailAPI.updatePreferences(updatedPreferences);
+      setSuccess('Notification preferences updated');
+    } catch (err) {
+      setError('Failed to update preferences');
+      // Revert to previous state on error
+      setEmailPreferences(previousPreferences);
+    }
+  };
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 4 }}>
-        Profile Settings
-      </Typography>
+      {!user ? (
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
+          <CircularProgress size={60} thickness={4} />
+        </Box>
+      ) : (
+        <>
+          <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 4 }}>
+            Profile Settings
+          </Typography>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
-          {error}
-        </Alert>
-      )}
+          {error && (
+            <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
+              {error}
+            </Alert>
+          )}
 
-      {success && (
-        <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess('')}>
-          {success}
-        </Alert>
-      )}
+          {success && (
+            <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess('')}>
+              {success}
+            </Alert>
+          )}
 
-      <Grid container spacing={3}>
+          <Grid container spacing={3}>
         {/* Profile Information */}
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3, height: '100%' }}>
@@ -322,49 +336,170 @@ const Profile = () => {
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
               Notification Preferences
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Manage which in-app notifications you want to mute. You will still receive notifications for types not muted below.
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Control which email notifications you receive for events and group activities.
             </Typography>
-            {notifError && (
-              <Alert severity="error" sx={{ mb: 2 }} onClose={() => setNotifError('')}>
-                {notifError}
-              </Alert>
-            )}
-            {notifSuccess && (
-              <Alert severity="success" sx={{ mb: 2 }} onClose={() => setNotifSuccess('')}>
-                {notifSuccess}
-              </Alert>
-            )}
-            <Box sx={{ mb: 2 }}>
-              {notificationPrefs ? (
-                <Stack direction="row" flexWrap="wrap" spacing={2}>
-                  {notificationMuteFields.map(({ key, label }) => (
-                    <Box key={key} sx={{ minWidth: 220, mb: 1 }}>
-                      <label>
-                        <input
-                          type="checkbox"
-                          name={key}
-                          checked={!!notificationPrefs[key]}
-                          onChange={handleNotifCheckbox}
-                          disabled={notifLoading}
-                          style={{ marginRight: 8 }}
+
+            {preferencesLoading ? (
+              <Box display="flex" justifyContent="center" py={3}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <Stack spacing={3}>
+                <Box 
+                  sx={{ 
+                    p: 2, 
+                    bgcolor: allNotificationsMuted ? 'rgba(255, 152, 0, 0.1)' : 'rgba(76, 175, 80, 0.1)',
+                    borderRadius: 2,
+                    border: allNotificationsMuted ? '2px solid #ff9800' : '2px solid #4caf50',
+                  }}
+                >
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={allNotificationsMuted}
+                        onChange={handleMuteToggle}
+                        color="warning"
+                      />
+                    }
+                    label={
+                      <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                          {allNotificationsMuted ? '🔕 All Notifications Muted' : '🔔 Notifications Active'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {allNotificationsMuted 
+                            ? 'You will not receive any email notifications' 
+                            : 'You will receive email notifications based on your preferences below'}
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                </Box>
+
+                <Divider />
+
+                <FormGroup>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2 }}>
+                    Event Notifications
+                  </Typography>
+                  <Stack spacing={1.5}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={emailPreferences.eventInvites}
+                          onChange={handlePreferenceChange('eventInvites')}
+                          disabled={allNotificationsMuted}
                         />
-                        {label}
-                      </label>
-                    </Box>
-                  ))}
-                </Stack>
-              ) : (
-                <Typography variant="body2" color="text.secondary">Loading preferences...</Typography>
-              )}
-            </Box>
-            <Button
-              variant="contained"
-              onClick={handleSaveNotifPrefs}
-              disabled={notifLoading || !notificationPrefs}
-            >
-              Save Notification Preferences
-            </Button>
+                      }
+                      label={
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>Event Invites</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Get notified when you're invited to new events
+                          </Typography>
+                        </Box>
+                      }
+                    />
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={emailPreferences.eventReminders}
+                          onChange={handlePreferenceChange('eventReminders')}
+                          disabled={allNotificationsMuted}
+                        />
+                      }
+                      label={
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>Event Reminders</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Receive reminders before events start
+                          </Typography>
+                        </Box>
+                      }
+                    />
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={emailPreferences.eventUpdates}
+                          onChange={handlePreferenceChange('eventUpdates')}
+                          disabled={allNotificationsMuted}
+                        />
+                      }
+                      label={
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>Event Updates</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Get notified about changes to event details
+                          </Typography>
+                        </Box>
+                      }
+                    />
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={emailPreferences.eventCancellations}
+                          onChange={handlePreferenceChange('eventCancellations')}
+                          disabled={allNotificationsMuted}
+                        />
+                      }
+                      label={
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>Event Cancellations</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Be informed when events are cancelled
+                          </Typography>
+                        </Box>
+                      }
+                    />
+                  </Stack>
+                </FormGroup>
+
+                <Divider />
+
+                <FormGroup>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2 }}>
+                    Group & Social Notifications
+                  </Typography>
+                  <Stack spacing={1.5}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={emailPreferences.groupInvites}
+                          onChange={handlePreferenceChange('groupInvites')}
+                          disabled={allNotificationsMuted}
+                        />
+                      }
+                      label={
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>Group Invites</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Get notified when you're invited to join groups
+                          </Typography>
+                        </Box>
+                      }
+                    />
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={emailPreferences.commentMentions}
+                          onChange={handlePreferenceChange('commentMentions')}
+                          disabled={allNotificationsMuted}
+                        />
+                      }
+                      label={
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>Comment Mentions</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Be notified when someone mentions you in comments
+                          </Typography>
+                        </Box>
+                      }
+                    />
+                  </Stack>
+                </FormGroup>
+              </Stack>
+            )}
           </Paper>
         </Grid>
 
@@ -384,6 +519,8 @@ const Profile = () => {
           </Paper>
         </Grid>
       </Grid>
+        </>
+      )}
     </Container>
   );
 };
