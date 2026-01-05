@@ -177,6 +177,14 @@ const getEvents = async (req, res) => {
               select: { name: true }
             }
           }
+        },
+        eventAttendances: {
+          select: {
+            id: true,
+            userId: true,
+            status: true,
+            updatedAt: true
+          }
         }
       },
       orderBy: { startTime: 'asc' }
@@ -218,8 +226,16 @@ const getEvent = async (req, res) => {
             status: true,
             joinedAt: true,
             user: {
-              select: { name: true }
+              select: { name: true, email: true }
             }
+          }
+        },
+        eventAttendances: {
+          select: {
+            id: true,
+            userId: true,
+            status: true,
+            updatedAt: true
           }
         }
       }

@@ -13,6 +13,7 @@ import {
   CircularProgress,
   Divider,
   Alert,
+  Tooltip,
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import CheckIcon from '@mui/icons-material/Check';
@@ -162,29 +163,47 @@ const JoinRequestsPopover = ({ groupId = null }) => {
                       secondary={request.user?.email}
                       sx={{ mb: 1 }}
                     />
-                    <Box display="flex" gap={1}>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        color="success"
-                        startIcon={<CheckIcon />}
-                        onClick={() => handleAction(request.groupId, request.id, 'approve')}
-                        disabled={actionLoading[request.id]}
-                        fullWidth
-                      >
-                        {actionLoading[request.id] ? 'Processing...' : 'Approve'}
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="error"
-                        startIcon={<CloseIcon />}
-                        onClick={() => handleAction(request.groupId, request.id, 'reject')}
-                        disabled={actionLoading[request.id]}
-                        fullWidth
-                      >
-                        {actionLoading[request.id] ? 'Processing...' : 'Reject'}
-                      </Button>
+                    <Box display="flex" gap={0.5} alignItems="center">
+                      <Tooltip title="Approve">
+                        <IconButton
+                          size="small"
+                          color="success"
+                          onClick={() => handleAction(request.groupId, request.id, 'approve')}
+                          disabled={actionLoading[request.id]}
+                          sx={{
+                            bgcolor: 'success.main',
+                            color: 'white',
+                            '&:hover': {
+                              bgcolor: 'success.dark',
+                            },
+                            '&:disabled': {
+                              bgcolor: 'action.disabledBackground',
+                            }
+                          }}
+                        >
+                          <CheckIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Reject">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleAction(request.groupId, request.id, 'reject')}
+                          disabled={actionLoading[request.id]}
+                          sx={{
+                            bgcolor: 'error.main',
+                            color: 'white',
+                            '&:hover': {
+                              bgcolor: 'error.dark',
+                            },
+                            '&:disabled': {
+                              bgcolor: 'action.disabledBackground',
+                            }
+                          }}
+                        >
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </Box>
                   </ListItem>
                 </React.Fragment>
