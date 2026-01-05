@@ -77,7 +77,6 @@ export const eventsAPI = {
   join: (id) => api.post(`/events/${id}/join`),
   leave: (id) => api.delete(`/events/${id}/leave`),
   updateStatus: (id, status) => api.put(`/events/${id}/status`, { status }),
-  markLate: (eventId) => api.post('/chat/event/late', { eventId }),
 };
 
 // Two-Factor Authentication API

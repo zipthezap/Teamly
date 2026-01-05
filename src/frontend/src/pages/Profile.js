@@ -59,7 +59,10 @@ const Profile = () => {
 
     try {
       const response = await authAPI.updateProfile(formData);
-      setUser(response.data.user);
+      const updatedUser = response.data.user;
+      setUser(updatedUser);
+      // Update localStorage to maintain consistency
+      localStorage.setItem('user', JSON.stringify(updatedUser));
       setSuccess('Profile updated successfully');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update profile');
