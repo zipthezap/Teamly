@@ -90,18 +90,13 @@ const JoinGroup = () => {
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
         
-        {loading ? (
+        {loading && (
           <Box display="flex" justifyContent="center" alignItems="center" py={4}>
             <CircularProgress />
+            <Typography variant="body1" sx={{ ml: 2 }}>
+              Joining group...
+            </Typography>
           </Box>
-        ) : (
-          !success && !error && (
-            <Box>
-              <Typography variant="body1" paragraph>
-                Joining group...
-              </Typography>
-            </Box>
-          )
         )}
         
         {error && !loading && (
