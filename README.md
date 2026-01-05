@@ -12,6 +12,15 @@ A sports event organization app that allows individuals to set and organize smal
 - **Modern UI**: React-based frontend with Material-UI components
 - **Containerized**: Separate Docker containers for backend and frontend
 
+### 🆕 New Features
+
+- **📧 Email Notifications**: Receive notifications for event invitations, updates, cancellations, and group invites
+- **🔄 Recurring Events**: Create events that repeat on daily, weekly, or monthly schedules
+- **💬 Event Comments**: Discuss events with threaded comments and @mentions
+- **⚙️ Customizable Preferences**: Control which email notifications you receive
+
+For detailed documentation on these features, see [NEW_FEATURES_IMPLEMENTATION.md](NEW_FEATURES_IMPLEMENTATION.md).
+
 ## Architecture
 
 The application is split into two main components:
@@ -325,6 +334,7 @@ The test scripts will:
 
 ## Additional Documentation
 
+- **[NEW_FEATURES_IMPLEMENTATION.md](NEW_FEATURES_IMPLEMENTATION.md)** - Complete guide for new features (Email, Recurring Events, Comments)
 - **[WINDOWS_SETUP.md](WINDOWS_SETUP.md)** - Comprehensive Windows development guide
 - **[FEATURE_ROADMAP.md](FEATURE_ROADMAP.md)** - Planned features and expansion ideas
 - **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** - Detailed API reference
@@ -339,13 +349,16 @@ Looking to expand Teamly? Check out [FEATURE_ROADMAP.md](FEATURE_ROADMAP.md) for
 - Implementation estimates
 - Database schema proposals
 
-Some exciting features we're considering:
-- 📧 Email notifications
-- 🔄 Recurring events
-- 💬 Event comments and discussions
+Some recently implemented features:
+- ✅ Email notifications
+- ✅ Recurring events
+- ✅ Event comments and discussions
+
+Additional features we're considering:
 - 📱 Mobile application
 - 🗺️ Maps and location services
 - 🏆 Gamification and achievements
+- 📊 Event analytics and statistics
 
 ## License
 
