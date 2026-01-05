@@ -17,10 +17,20 @@ export const useNotifications = () => {
       setLoading(false);
     }
   };
+  
+  const markAsRead = async () => {
+    try {
+      await groupChatAPI.markNotificationsRead();
+      // Clear notifications after marking as read
+      setNotifications([]);
+    } catch (e) {
+      console.error('Failed to mark notifications as read:', e);
+    }
+  };
 
   useEffect(() => {
     fetchNotifications();
   }, []);
 
-  return { notifications, loading, refresh: fetchNotifications };
+  return { notifications, loading, refresh: fetchNotifications, markAsRead };
 };

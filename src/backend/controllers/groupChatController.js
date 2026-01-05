@@ -107,3 +107,26 @@ exports.getNotifications = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch notifications' });
   }
 };
+
+exports.markNotificationsRead = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Mark all unread notifications as read
+    await Promise.all([
+      prisma.eventNotification.updateMany({
+        where: { userId, read: false },
+        data: { read: true }
+      }),
+      prisma.groupNotification.updateMany({
+        where: { userId, read: false },
+        data: { read: true }
+      })
+    ]);
+    
+    res.json({ message: 'Notifications marked as read' });
+  } catch (e) {
+    console.error('Mark notifications read error:', e);
+    res.status(500).json({ error: 'Failed to mark notifications as read' });
+  }
+};

@@ -59,6 +59,24 @@ const CreateEvent = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     
+    // Auto-fill minutes to :00 when hour is selected for time inputs
+    if ((name === 'startTime' || name === 'endTime') && value) {
+      const timeParts = value.split(':');
+      if (timeParts.length === 2) {
+        const hour = timeParts[0];
+        const minute = timeParts[1];
+        // If user just changed the hour (minute is empty or changed from previous)
+        // Auto-fill to :00
+        if (minute === '' || formData[name] === '') {
+          setFormData({
+            ...formData,
+            [name]: `${hour}:00`,
+          });
+          return;
+        }
+      }
+    }
+    
     setFormData({
       ...formData,
       [name]: value,

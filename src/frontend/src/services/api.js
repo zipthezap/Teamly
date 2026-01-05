@@ -5,6 +5,7 @@ export const groupChatAPI = {
   sendMessage: (groupId, content) => api.post('/chat/message', { groupId, content }),
   getMessages: (groupId) => api.get(`/chat/${groupId}/messages`),
   getNotifications: () => api.get('/chat/notifications'),
+  markNotificationsRead: () => api.post('/chat/notifications/mark-read'),
   markLate: (eventId) => api.post('/chat/event/late', { eventId }),
 };
 
