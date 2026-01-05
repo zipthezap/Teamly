@@ -6,7 +6,6 @@ import {
   Paper,
   Typography,
   List,
-  ListItem,
   ListItemText,
   Box,
   CircularProgress,
