@@ -16,14 +16,19 @@ const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
+const bcrypt = require('bcryptjs');
+
 async function main() {
+  // Hash the password for both users
+  const hashedPassword = await bcrypt.hash('password123', 10);
+
   // Create two initial users
   const user1 = await prisma.user.upsert({
     where: { email: 'alice@example.com' },
     update: {},
     create: {
       email: 'alice@example.com',
-      password: 'password123', // In production, hash passwords!
+      password: hashedPassword, // In production, hash passwords!
       name: 'Alice',
     },
   });
@@ -32,7 +37,7 @@ async function main() {
     update: {},
     create: {
       email: 'bob@example.com',
-      password: 'password123',
+      password: hashedPassword,
       name: 'Bob',
     },
   });
