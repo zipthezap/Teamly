@@ -123,7 +123,7 @@ const EventDetails = () => {
     setLateError('');
     setLateSuccess('');
     try {
-      await eventsAPI.markLate(id);
+      await groupChatAPI.markLate(id);
       setLateSuccess('Marked as late.');
       fetchEvent();
     } catch (err) {

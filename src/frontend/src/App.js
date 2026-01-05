@@ -18,6 +18,7 @@ import PublicGroups from './pages/PublicGroups';
 import TwoFactorSetup from './pages/TwoFactorSetup';
 import EventRequests from './pages/EventRequests';
 import JoinGroup from './pages/JoinGroup';
+import Profile from './pages/Profile';
 
 const theme = createTheme({
   palette: {
@@ -151,6 +152,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <TwoFactorSetup />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <PrivateRoute>
+                  <Profile />
                 </PrivateRoute>
               }
             />

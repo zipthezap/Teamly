@@ -145,6 +145,8 @@ const Navbar = () => {
             </IconButton>
             
             <Box 
+              component={Link}
+              to="/profile"
               sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
@@ -153,6 +155,14 @@ const Navbar = () => {
                 py: 0.5,
                 borderRadius: 2,
                 backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                textDecoration: 'none',
+                color: 'inherit',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                '&:hover': {
+                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  transform: 'translateY(-1px)',
+                }
               }}
             >
               <Avatar 

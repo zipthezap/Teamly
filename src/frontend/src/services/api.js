@@ -4,6 +4,8 @@ import axios from 'axios';
 export const groupChatAPI = {
   sendMessage: (groupId, content) => api.post('/chat/message', { groupId, content }),
   getMessages: (groupId) => api.get(`/chat/${groupId}/messages`),
+  getNotifications: () => api.get('/chat/notifications'),
+  markLate: (eventId) => api.post('/chat/event/late', { eventId }),
 };
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
@@ -42,6 +44,8 @@ export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
   getProfile: () => api.get('/auth/profile'),
+  updateProfile: (data) => api.put('/auth/profile', data),
+  updatePassword: (data) => api.put('/auth/password', data),
 };
 
 // Groups API

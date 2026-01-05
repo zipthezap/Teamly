@@ -26,6 +26,8 @@ model EventAttendance {
   user      User     @relation(fields: [userId], references: [id])
   status    String   @default("on-time") // on-time, late
   updatedAt DateTime @updatedAt
+  
+  @@unique([eventId, userId])
 }
 
 model EventNotification {
@@ -34,7 +36,18 @@ model EventNotification {
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  type      String   // join, leave
+  type      String   // join, leave, late
+  createdAt DateTime @default(now())
+  read      Boolean  @default(false)
+}
+
+model GroupNotification {
+  id        String   @id @default(uuid())
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String   // accepted, invited
   createdAt DateTime @default(now())
   read      Boolean  @default(false)
 }
@@ -77,6 +90,7 @@ model User {
   eventReminders    EventReminder[]
   eventAttendances  EventAttendance[]
   eventNotifications EventNotification[]
+  groupNotifications GroupNotification[]
   groupJoinRequests GroupJoinRequest[]
   createdEventRequests EventRequest[]   @relation("EventRequestCreator")
   eventVotes        EventVote[]
@@ -103,6 +117,7 @@ model Group {
   events  Event[]
   joinRequests GroupJoinRequest[]
   groupMessages GroupMessage[]
+  groupNotifications GroupNotification[]
   eventRequests EventRequest[]
 }
 

@@ -68,6 +68,26 @@ const CreateEvent = () => {
     setLoading(true);
 
     try {
+      // Validate that events are single-day only
+      if (formData.startTime && formData.endTime) {
+        const startDate = new Date(formData.startTime);
+        const endDate = new Date(formData.endTime);
+        
+        // Check if they're on the same day
+        if (startDate.toDateString() !== endDate.toDateString()) {
+          setError('Events must be single-day only. Start and end times must be on the same day.');
+          setLoading(false);
+          return;
+        }
+        
+        // Check that end time is after start time
+        if (endDate <= startDate) {
+          setError('End time must be after start time.');
+          setLoading(false);
+          return;
+        }
+      }
+
       const data = {
         ...formData,
         maxPlayers: formData.maxPlayers ? parseInt(formData.maxPlayers) : null,

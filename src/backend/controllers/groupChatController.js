@@ -34,13 +34,37 @@ exports.markLate = async (req, res) => {
   try {
     const { eventId } = req.body;
     const userId = req.user.id;
+
+    // Get event to find the organizer
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: { creatorId: true }
+    });
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
     const attendance = await prisma.eventAttendance.upsert({
       where: { eventId_userId: { eventId, userId } },
       update: { status: 'late' },
       create: { eventId, userId, status: 'late' }
     });
+
+    // Notify event organizer if the user marking late is not the organizer
+    if (event.creatorId !== userId) {
+      await prisma.eventNotification.create({
+        data: {
+          eventId,
+          userId: event.creatorId,
+          type: 'late'
+        }
+      });
+    }
+
     res.json(attendance);
   } catch (e) {
+    console.error('Mark late error:', e);
     res.status(500).json({ error: 'Failed to mark as late' });
   }
 };
