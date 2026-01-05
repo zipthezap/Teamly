@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -41,22 +41,7 @@ const GroupsList = () => {
     fetchGroups();
   }, []);
 
-  useEffect(() => {
-    filterGroups();
-  }, [groups, searchTerm, filter]);
-
-  const fetchGroups = async () => {
-    try {
-      const response = await groupsAPI.getAll();
-      setGroups(response.data);
-    } catch (error) {
-      console.error('Error fetching groups:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filterGroups = () => {
+  const filterGroups = useCallback(() => {
     let filtered = [...groups];
 
     // Search filter
@@ -79,6 +64,21 @@ const GroupsList = () => {
     }
 
     setFilteredGroups(filtered);
+  }, [groups, searchTerm, filter, user?.id]);
+
+  useEffect(() => {
+    filterGroups();
+  }, [filterGroups]);
+
+  const fetchGroups = async () => {
+    try {
+      const response = await groupsAPI.getAll();
+      setGroups(response.data);
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getInitials = (name) => {

@@ -62,7 +62,6 @@ const Dashboard = () => {
 
   // Calculate statistics
   const upcomingEvents = events.filter(e => new Date(e.startTime) > new Date());
-  const totalMembers = groups.reduce((sum, g) => sum + (g.members?.length || 0), 0);
   const myEvents = events.filter(e => 
     e.participants?.some(p => p.userId === user?.id)
   );

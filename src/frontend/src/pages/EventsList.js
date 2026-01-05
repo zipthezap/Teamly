@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -41,22 +41,7 @@ const EventsList = () => {
     fetchEvents();
   }, []);
 
-  useEffect(() => {
-    filterAndSortEvents();
-  }, [events, searchTerm, filterType, filterStatus, sortBy]);
-
-  const fetchEvents = async () => {
-    try {
-      const response = await eventsAPI.getAll();
-      setEvents(response.data);
-    } catch (error) {
-      console.error('Error fetching events:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filterAndSortEvents = () => {
+  const filterAndSortEvents = useCallback(() => {
     let filtered = [...events];
 
     // Search filter
@@ -107,6 +92,21 @@ const EventsList = () => {
     });
 
     setFilteredEvents(filtered);
+  }, [events, searchTerm, filterType, filterStatus, sortBy, user?.id]);
+
+  useEffect(() => {
+    filterAndSortEvents();
+  }, [filterAndSortEvents]);
+
+  const fetchEvents = async () => {
+    try {
+      const response = await eventsAPI.getAll();
+      setEvents(response.data);
+    } catch (error) {
+      console.error('Error fetching events:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getEventTypes = () => {
@@ -133,8 +133,6 @@ const EventsList = () => {
       </Box>
     );
   }
-
-  const eventStatus = filteredEvents.length > 0 ? getEventStatus(filteredEvents[0]) : null;
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -260,7 +258,6 @@ const EventsList = () => {
         <Grid container spacing={3}>
           {filteredEvents.map((event) => {
             const status = getEventStatus(event);
-            const isUpcoming = new Date(event.startTime) > new Date();
             const participantCount = event.participants?.length || 0;
             const spotsLeft = event.maxPlayers ? event.maxPlayers - participantCount : null;
             
