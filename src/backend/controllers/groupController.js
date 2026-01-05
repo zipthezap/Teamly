@@ -476,6 +476,15 @@ const handleJoinRequest = async (req, res) => {
           role: 'member'
         }
       });
+
+      // Create notification for the user who was accepted
+      await prisma.groupNotification.create({
+        data: {
+          groupId: id,
+          userId: joinRequest.userId,
+          type: 'accepted'
+        }
+      });
     }
 
     res.json({ 

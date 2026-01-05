@@ -14,6 +14,22 @@ const createEvent = async (req, res) => {
       return res.status(400).json({ error: 'Group ID, title, event type, and start time are required' });
     }
 
+    // Validate that events are single-day only
+    if (endTime) {
+      const startDate = new Date(startTime);
+      const endDate = new Date(endTime);
+      
+      // Check if they're on the same day
+      if (startDate.toDateString() !== endDate.toDateString()) {
+        return res.status(400).json({ error: 'Events must be single-day only. Start and end times must be on the same day.' });
+      }
+      
+      // Check that end time is after start time
+      if (endDate <= startDate) {
+        return res.status(400).json({ error: 'End time must be after start time.' });
+      }
+    }
+
     // Validate recurrence rule if provided
     if (isRecurring && recurrenceRule) {
       if (!validateRecurrenceRule(recurrenceRule)) {
@@ -225,6 +241,22 @@ const updateEvent = async (req, res) => {
     const { id } = req.params;
     const { title, description, eventType, location, startTime, endTime, maxPlayers } = req.body;
 
+    // Validate that events are single-day only if both times are provided
+    if (startTime && endTime) {
+      const startDate = new Date(startTime);
+      const endDate = new Date(endTime);
+      
+      // Check if they're on the same day
+      if (startDate.toDateString() !== endDate.toDateString()) {
+        return res.status(400).json({ error: 'Events must be single-day only. Start and end times must be on the same day.' });
+      }
+      
+      // Check that end time is after start time
+      if (endDate <= startDate) {
+        return res.status(400).json({ error: 'End time must be after start time.' });
+      }
+    }
+
     // Check if user is the creator of the event
     const event = await prisma.event.findUnique({
       where: { id },
@@ -422,6 +454,17 @@ const joinEvent = async (req, res) => {
       }
     });
 
+    // Notify event organizer if the user joining is not the organizer
+    if (event.creatorId !== req.user.id) {
+      await prisma.eventNotification.create({
+        data: {
+          eventId: id,
+          userId: event.creatorId,
+          type: 'join'
+        }
+      });
+    }
+
     res.status(201).json(participant);
   } catch (error) {
     console.error('Join event error:', error);
@@ -432,6 +475,16 @@ const joinEvent = async (req, res) => {
 const leaveEvent = async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Get event to find the organizer
+    const event = await prisma.event.findUnique({
+      where: { id },
+      select: { creatorId: true }
+    });
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
 
     const participant = await prisma.eventParticipant.findFirst({
       where: {
@@ -447,6 +500,17 @@ const leaveEvent = async (req, res) => {
     await prisma.eventParticipant.delete({
       where: { id: participant.id }
     });
+
+    // Notify event organizer if the user leaving is not the organizer
+    if (event.creatorId !== req.user.id) {
+      await prisma.eventNotification.create({
+        data: {
+          eventId: id,
+          userId: event.creatorId,
+          type: 'leave'
+        }
+      });
+    }
 
     res.json({ message: 'Left event successfully' });
   } catch (error) {

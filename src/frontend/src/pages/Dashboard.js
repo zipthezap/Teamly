@@ -65,6 +65,11 @@ const Dashboard = () => {
   const myEvents = events.filter(e => 
     e.participants?.some(p => p.userId === user?.id)
   );
+  
+  // Check if user is admin in any group
+  const isAdminInAnyGroup = groups.some(group => 
+    group.members?.some(member => member.userId === user?.id && member.role === 'admin')
+  );
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -158,27 +163,29 @@ const Dashboard = () => {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Paper 
-            sx={{ 
-              p: 3, 
-              display: 'flex', 
-              flexDirection: 'column', 
-              alignItems: 'center',
-              background: 'linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%)',
-            }}
-          >
-            <Avatar sx={{ bgcolor: 'warning.main', width: 56, height: 56, mb: 2 }}>
-              <TrendingUpIcon sx={{ fontSize: 32 }} />
-            </Avatar>
-            <Typography variant="h3" sx={{ fontWeight: 700, mb: 0.5 }}>
-              {myEvents.length}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
-              Your Events
-            </Typography>
-          </Paper>
-        </Grid>
+        {isAdminInAnyGroup && (
+          <Grid item xs={12} sm={6} md={3}>
+            <Paper 
+              sx={{ 
+                p: 3, 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center',
+                background: 'linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%)',
+              }}
+            >
+              <Avatar sx={{ bgcolor: 'warning.main', width: 56, height: 56, mb: 2 }}>
+                <TrendingUpIcon sx={{ fontSize: 32 }} />
+              </Avatar>
+              <Typography variant="h3" sx={{ fontWeight: 700, mb: 0.5 }}>
+                {myEvents.length}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                Your Events
+              </Typography>
+            </Paper>
+          </Grid>
+        )}
       </Grid>
 
       {/* Quick Actions */}
