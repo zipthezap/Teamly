@@ -1,5 +1,8 @@
 const { RRule, RRuleSet, rrulestr } = require('rrule');
 
+// Constants
+const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000; // Milliseconds in one year
+
 // Parse recurrence rule string
 const parseRecurrenceRule = (ruleString) => {
   try {
@@ -33,10 +36,10 @@ const generateRecurrenceInstances = (
     // Calculate end date
     const until = recurrenceEnd ? new Date(recurrenceEnd) : undefined;
     
-    // Generate dates
+    // Generate dates (default to 1 year from now if no end date)
     const dates = rule.between(
       new Date(startDate),
-      until || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now if no end date
+      until || new Date(Date.now() + ONE_YEAR_MS),
       true
     );
 

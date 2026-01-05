@@ -86,40 +86,62 @@ const createComment = async (req, res) => {
     if (mentions.length > 0) {
       const groupMembers = event.group.members;
       
+      // Create lookup maps for efficient matching
+      const membersByName = new Map();
+      const membersByEmail = new Map();
+      
+      groupMembers.forEach(m => {
+        membersByName.set(m.user.name.toLowerCase(), m);
+        membersByEmail.set(m.user.email.split('@')[0].toLowerCase(), m);
+      });
+      
+      // Find unique mentioned users
+      const mentionedUsers = new Set();
       for (const mention of mentions) {
-        const mentionedMember = groupMembers.find(
-          m => m.user.name.toLowerCase() === mention.toLowerCase() || 
-               m.user.email.split('@')[0].toLowerCase() === mention.toLowerCase()
-        );
-
+        const mentionLower = mention.toLowerCase();
+        const mentionedMember = membersByName.get(mentionLower) || membersByEmail.get(mentionLower);
+        
         if (mentionedMember && mentionedMember.user.id !== req.user.id) {
-          // Create mention record
-          await prisma.commentMention.create({
-            data: {
-              commentId: comment.id,
-              userId: mentionedMember.user.id
-            }
-          });
-
-          // Check if user wants email notifications for mentions
-          const preferences = await prisma.emailPreference.findUnique({
-            where: { userId: mentionedMember.user.id }
-          });
-
-          const user = await prisma.user.findUnique({
-            where: { id: mentionedMember.user.id }
-          });
-
-          if (user.emailNotifications && (!preferences || preferences.commentMentions)) {
-            await sendEmail(
-              mentionedMember.user.email,
-              'commentMention',
-              mentionedMember.user.name,
-              req.user.name,
-              event.title,
-              content
-            );
+          mentionedUsers.add(mentionedMember.user);
+        }
+      }
+      
+      // Batch fetch preferences for all mentioned users
+      const mentionedUserIds = Array.from(mentionedUsers).map(u => u.id);
+      const preferences = await prisma.emailPreference.findMany({
+        where: { userId: { in: mentionedUserIds } }
+      });
+      const preferencesMap = new Map(preferences.map(p => [p.userId, p]));
+      
+      const users = await prisma.user.findMany({
+        where: { id: { in: mentionedUserIds } },
+        select: { id: true, emailNotifications: true }
+      });
+      const usersMap = new Map(users.map(u => [u.id, u]));
+      
+      // Create mentions and send notifications
+      for (const mentionedUser of mentionedUsers) {
+        // Create mention record
+        await prisma.commentMention.create({
+          data: {
+            commentId: comment.id,
+            userId: mentionedUser.id
           }
+        });
+        
+        // Send email notification if enabled
+        const userPrefs = preferencesMap.get(mentionedUser.id);
+        const user = usersMap.get(mentionedUser.id);
+        
+        if (user?.emailNotifications && (!userPrefs || userPrefs.commentMentions)) {
+          await sendEmail(
+            mentionedUser.email,
+            'commentMention',
+            mentionedUser.name,
+            req.user.name,
+            event.title,
+            content
+          );
         }
       }
     }

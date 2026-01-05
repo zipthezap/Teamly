@@ -39,7 +39,12 @@ const createEvent = async (req, res) => {
         members: {
           include: {
             user: {
-              select: { id: true, name: true, email: true }
+              select: { 
+                id: true, 
+                name: true, 
+                email: true,
+                emailNotifications: true
+              }
             }
           }
         }
@@ -93,16 +98,18 @@ const createEvent = async (req, res) => {
       .filter(m => m.userId !== req.user.id)
       .map(m => m.user);
     
+    // Batch fetch email preferences for all recipients
+    const userIds = recipients.map(r => r.id);
+    const preferences = await prisma.emailPreference.findMany({
+      where: { userId: { in: userIds } }
+    });
+    const preferencesMap = new Map(preferences.map(p => [p.userId, p]));
+    
+    // Send emails
     for (const recipient of recipients) {
-      const user = await prisma.user.findUnique({
-        where: { id: recipient.id }
-      });
-
-      const preferences = await prisma.emailPreference.findUnique({
-        where: { userId: recipient.id }
-      });
-
-      if (user.emailNotifications && (!preferences || preferences.eventInvites)) {
+      const userPrefs = preferencesMap.get(recipient.id);
+      
+      if (recipient.emailNotifications && (!userPrefs || userPrefs.eventInvites)) {
         await sendEmail(
           recipient.email,
           'eventInvitation',
@@ -268,7 +275,12 @@ const updateEvent = async (req, res) => {
             status: true,
             joinedAt: true,
             user: {
-              select: { name: true, email: true }
+              select: { 
+                id: true,
+                name: true, 
+                email: true,
+                emailNotifications: true
+              }
             }
           }
         }
@@ -276,20 +288,22 @@ const updateEvent = async (req, res) => {
     });
 
     // Send email notifications to participants
-    const recipients = event.participants
+    const recipients = updatedEvent.participants
       .filter(p => p.user.id !== req.user.id)
       .map(p => p.user);
     
+    // Batch fetch email preferences
+    const userIds = recipients.map(r => r.id);
+    const preferences = await prisma.emailPreference.findMany({
+      where: { userId: { in: userIds } }
+    });
+    const preferencesMap = new Map(preferences.map(p => [p.userId, p]));
+    
+    // Send emails
     for (const recipient of recipients) {
-      const user = await prisma.user.findUnique({
-        where: { id: recipient.id }
-      });
+      const userPrefs = preferencesMap.get(recipient.id);
 
-      const preferences = await prisma.emailPreference.findUnique({
-        where: { userId: recipient.id }
-      });
-
-      if (user.emailNotifications && (!preferences || preferences.eventUpdates)) {
+      if (recipient.emailNotifications && (!userPrefs || userPrefs.eventUpdates)) {
         await sendEmail(
           recipient.email,
           'eventUpdate',
@@ -321,7 +335,12 @@ const deleteEvent = async (req, res) => {
         participants: {
           include: {
             user: {
-              select: { id: true, name: true, email: true }
+              select: { 
+                id: true, 
+                name: true, 
+                email: true,
+                emailNotifications: true
+              }
             }
           }
         }
@@ -337,16 +356,18 @@ const deleteEvent = async (req, res) => {
       .filter(p => p.user.id !== req.user.id)
       .map(p => p.user);
     
+    // Batch fetch email preferences
+    const userIds = recipients.map(r => r.id);
+    const preferences = await prisma.emailPreference.findMany({
+      where: { userId: { in: userIds } }
+    });
+    const preferencesMap = new Map(preferences.map(p => [p.userId, p]));
+    
+    // Send emails
     for (const recipient of recipients) {
-      const user = await prisma.user.findUnique({
-        where: { id: recipient.id }
-      });
+      const userPrefs = preferencesMap.get(recipient.id);
 
-      const preferences = await prisma.emailPreference.findUnique({
-        where: { userId: recipient.id }
-      });
-
-      if (user.emailNotifications && (!preferences || preferences.eventCancellations)) {
+      if (recipient.emailNotifications && (!userPrefs || userPrefs.eventCancellations)) {
         await sendEmail(
           recipient.email,
           'eventCancellation',
