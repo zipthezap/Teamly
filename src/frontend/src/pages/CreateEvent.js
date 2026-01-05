@@ -59,28 +59,27 @@ const CreateEvent = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     
-    // Auto-fill minutes to :00 when hour is selected for time inputs
-    if ((name === 'startTime' || name === 'endTime') && value) {
-      const timeParts = value.split(':');
-      if (timeParts.length === 2) {
-        const hour = timeParts[0];
-        const minute = timeParts[1];
-        // If user just changed the hour (minute is empty or changed from previous)
-        // Auto-fill to :00
-        if (minute === '' || formData[name] === '') {
-          setFormData({
-            ...formData,
-            [name]: `${hour}:00`,
-          });
-          return;
-        }
-      }
-    }
-    
     setFormData({
       ...formData,
       [name]: value,
     });
+  };
+
+  const handleTimeChange = (name) => (e) => {
+    const value = e.target.value;
+    // Auto-fill minutes to :00 when a time is selected
+    if (value && value.includes(':')) {
+      const [hour] = value.split(':');
+      setFormData({
+        ...formData,
+        [name]: `${hour}:00`,
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
   };
 
   const handleEndTimeBlur = (e) => {
@@ -262,7 +261,7 @@ const CreateEvent = () => {
             fullWidth
             margin="normal"
             value={formData.startTime}
-            onChange={handleChange}
+            onChange={handleTimeChange('startTime')}
             onBlur={handleStartTimeBlur}
             InputLabelProps={{ shrink: true }}
             inputProps={{ 
@@ -278,7 +277,7 @@ const CreateEvent = () => {
             fullWidth
             margin="normal"
             value={formData.endTime}
-            onChange={handleChange}
+            onChange={handleTimeChange('endTime')}
             onBlur={handleEndTimeBlur}
             InputLabelProps={{ shrink: true }}
             inputProps={{ 
