@@ -119,7 +119,7 @@ const getProfile = async (req, res) => {
 
 const updateProfile = async (req, res) => {
   try {
-    const { name, email } = req.body;
+    const { name, email, city, country } = req.body;
 
     if (!name || !email) {
       return res.status(400).json({ error: 'Name and email are required' });
@@ -138,11 +138,18 @@ const updateProfile = async (req, res) => {
 
     const updatedUser = await prisma.user.update({
       where: { id: req.user.id },
-      data: { name, email },
+      data: { 
+        name, 
+        email,
+        city: city || null,
+        country: country || null
+      },
       select: {
         id: true,
         email: true,
         name: true,
+        city: true,
+        country: true,
         createdAt: true
       }
     });

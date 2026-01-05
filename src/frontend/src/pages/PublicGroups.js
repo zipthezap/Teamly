@@ -15,12 +15,24 @@ import {
   Snackbar,
   Slider,
   Paper,
+  TextField,
+  IconButton,
 } from '@mui/material';
 import PublicIcon from '@mui/icons-material/Public';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
+import SearchIcon from '@mui/icons-material/Search';
+import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 import { groupsAPI } from '../services/api';
+
+const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '';
+
+const mapContainerStyle = {
+  width: '100%',
+  height: '400px',
+  borderRadius: '8px',
+};
 
 const PublicGroups = () => {
   const [groups, setGroups] = useState([]);
@@ -31,6 +43,9 @@ const PublicGroups = () => {
   const [userLocation, setUserLocation] = useState(null);
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [distanceRadius, setDistanceRadius] = useState(25); // km
+  const [mapCenter, setMapCenter] = useState(null);
+  const [customSearchLocation, setCustomSearchLocation] = useState(null);
+  const [searchAddress, setSearchAddress] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -53,7 +68,8 @@ const PublicGroups = () => {
   }, []);
 
   const filterGroupsByDistance = useCallback(() => {
-    if (!userLocation) {
+    const searchLoc = customSearchLocation || userLocation;
+    if (!searchLoc) {
       setFilteredGroups(groups);
       return;
     }
@@ -64,8 +80,8 @@ const PublicGroups = () => {
           return { ...group, distance: null };
         }
         const distance = calculateDistance(
-          userLocation.latitude,
-          userLocation.longitude,
+          searchLoc.latitude,
+          searchLoc.longitude,
           group.latitude,
           group.longitude
         );
@@ -79,15 +95,15 @@ const PublicGroups = () => {
       });
 
     setFilteredGroups(filtered);
-  }, [userLocation, groups, distanceRadius, calculateDistance]);
+  }, [customSearchLocation, userLocation, groups, distanceRadius, calculateDistance]);
 
   useEffect(() => {
-    if (locationEnabled && userLocation) {
+    if ((locationEnabled && userLocation) || customSearchLocation) {
       filterGroupsByDistance();
     } else {
       setFilteredGroups(groups);
     }
-  }, [groups, locationEnabled, userLocation, distanceRadius, filterGroupsByDistance]);
+  }, [groups, locationEnabled, userLocation, customSearchLocation, distanceRadius, filterGroupsByDistance]);
 
   const fetchPublicGroups = async () => {
     try {
@@ -118,11 +134,14 @@ const PublicGroups = () => {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setUserLocation({
+        const location = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
-        });
+        };
+        setUserLocation(location);
+        setMapCenter(location);
         setLocationEnabled(true);
+        setCustomSearchLocation(null); // Reset custom location when using current location
         setSnackbar({
           open: true,
           message: 'Location detected successfully!',
@@ -137,6 +156,32 @@ const PublicGroups = () => {
         });
       }
     );
+  };
+
+  const handleMapClick = (e) => {
+    const clickedLocation = {
+      latitude: e.latLng.lat(),
+      longitude: e.latLng.lng(),
+    };
+    setCustomSearchLocation(clickedLocation);
+    setMapCenter(clickedLocation);
+    setLocationEnabled(true);
+    setSnackbar({
+      open: true,
+      message: 'Custom search location set!',
+      severity: 'success',
+    });
+  };
+
+  const handleSearchAddress = async () => {
+    if (!searchAddress.trim()) return;
+    
+    // Note: In production, you would use Google Geocoding API here
+    setSnackbar({
+      open: true,
+      message: 'Address search requires Google Maps Geocoding API configuration',
+      severity: 'info',
+    });
   };
 
   const handleRequestJoin = async (groupId) => {
@@ -186,24 +231,100 @@ const PublicGroups = () => {
           Filter by Location
         </Typography>
         
-        <Box display="flex" alignItems="center" gap={2} mb={2}>
+        <Box display="flex" alignItems="center" gap={2} mb={2} flexWrap="wrap">
           <Button
             variant="outlined"
             startIcon={<MyLocationIcon />}
             onClick={getCurrentLocation}
-            disabled={locationEnabled}
+            disabled={locationEnabled && !customSearchLocation}
           >
-            {locationEnabled ? 'Location Enabled' : 'Enable Location'}
+            {locationEnabled && !customSearchLocation ? 'Using Current Location' : 'Use My Location'}
           </Button>
           
-          {userLocation && (
+          {(userLocation || customSearchLocation) && (
             <Typography variant="body2" color="text.secondary">
-              Your location: {userLocation.latitude.toFixed(4)}, {userLocation.longitude.toFixed(4)}
+              Search from: {customSearchLocation 
+                ? `Custom point (${customSearchLocation.latitude.toFixed(4)}, ${customSearchLocation.longitude.toFixed(4)})`
+                : `Your location (${userLocation?.latitude.toFixed(4)}, ${userLocation?.longitude.toFixed(4)})`
+              }
             </Typography>
           )}
         </Box>
 
-        {locationEnabled && userLocation && (
+        {/* Google Maps Integration */}
+        {GOOGLE_MAPS_API_KEY ? (
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              Click on the map to set a custom search location
+            </Typography>
+            <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+              <GoogleMap
+                mapContainerStyle={mapContainerStyle}
+                center={mapCenter || { lat: 0, lng: 0 }}
+                zoom={mapCenter ? 12 : 2}
+                onClick={handleMapClick}
+              >
+                {customSearchLocation && (
+                  <Marker
+                    position={{
+                      lat: customSearchLocation.latitude,
+                      lng: customSearchLocation.longitude,
+                    }}
+                    icon={{
+                      url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+                    }}
+                  />
+                )}
+                {userLocation && !customSearchLocation && (
+                  <Marker
+                    position={{
+                      lat: userLocation.latitude,
+                      lng: userLocation.longitude,
+                    }}
+                  />
+                )}
+                {/* Show group locations */}
+                {filteredGroups.map((group) => 
+                  group.latitude && group.longitude ? (
+                    <Marker
+                      key={group.id}
+                      position={{
+                        lat: group.latitude,
+                        lng: group.longitude,
+                      }}
+                      title={group.name}
+                      icon={{
+                        url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
+                      }}
+                    />
+                  ) : null
+                )}
+              </GoogleMap>
+            </LoadScript>
+          </Box>
+        ) : (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Google Maps API key not configured. Set REACT_APP_GOOGLE_MAPS_API_KEY environment variable to enable map view.
+            You can still use location-based filtering without the map visualization.
+          </Alert>
+        )}
+
+        {/* Address Search */}
+        <Box display="flex" gap={1} mb={2}>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Search by address or city"
+            value={searchAddress}
+            onChange={(e) => setSearchAddress(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSearchAddress()}
+          />
+          <IconButton color="primary" onClick={handleSearchAddress}>
+            <SearchIcon />
+          </IconButton>
+        </Box>
+
+        {(locationEnabled && (userLocation || customSearchLocation)) && (
           <Box>
             <Typography variant="body2" gutterBottom>
               Distance Radius: {distanceRadius} km
@@ -223,7 +344,7 @@ const PublicGroups = () => {
               valueLabelDisplay="auto"
             />
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Showing groups within {distanceRadius} km of your location
+              Showing groups within {distanceRadius} km of {customSearchLocation ? 'custom point' : 'your location'}
             </Typography>
           </Box>
         )}

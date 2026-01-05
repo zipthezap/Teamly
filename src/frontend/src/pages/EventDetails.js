@@ -188,7 +188,7 @@ const EventDetails = () => {
 
         <Paper sx={{ p: 4 }}>
           <Grid container spacing={3}>
-            <Grid item xs={12} md={8}>
+            <Grid item xs={12}>
               <Box display="flex" alignItems="start" gap={2} mb={2}>
                 <Avatar 
                   sx={{ 
@@ -265,9 +265,10 @@ const EventDetails = () => {
                       })}
                     </Typography>
                     <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                      🕐 {new Date(event.startTime).toLocaleTimeString([], { 
+                      🕐 {new Date(event.startTime).toLocaleTimeString('en-GB', { 
                         hour: '2-digit', 
-                        minute: '2-digit' 
+                        minute: '2-digit',
+                        hour12: false
                       })}
                     </Typography>
                   </Box>
@@ -297,9 +298,10 @@ const EventDetails = () => {
                         })}
                       </Typography>
                       <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                        🕐 {new Date(event.endTime).toLocaleTimeString([], { 
+                        🕐 {new Date(event.endTime).toLocaleTimeString('en-GB', { 
                           hour: '2-digit', 
-                          minute: '2-digit' 
+                          minute: '2-digit',
+                          hour12: false
                         })}
                       </Typography>
                     </Box>
@@ -355,8 +357,11 @@ const EventDetails = () => {
                 </Typography>
               </Box>
             </Grid>
-
-            <Grid item xs={12} md={4}>
+          </Grid>
+          
+          {/* Actions and Activity Section */}
+          <Grid container spacing={3} sx={{ mt: 2 }}>
+            <Grid item xs={12} md={8}>
               <Paper 
                 elevation={0}
                 sx={{ 
@@ -509,25 +514,40 @@ const EventDetails = () => {
                   </Stack>
                 </Box>
               </Paper>
+            </Grid>
 
+            <Grid item xs={12} md={4}>
               {/* Recent Activity */}
-              {event.participants && event.participants.length > 0 && (
-                <Paper 
-                  elevation={0}
-                  sx={{ 
-                    p: 2, 
-                    mt: 2,
-                    bgcolor: 'rgba(76, 175, 80, 0.05)',
-                    border: '1px solid rgba(76, 175, 80, 0.2)',
-                  }}
-                >
-                  <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
-                    Recent Activity
-                  </Typography>
-                  <Stack spacing={1}>
-                    {event.participants
+              <Paper 
+                elevation={0}
+                sx={{ 
+                  p: 3, 
+                  bgcolor: 'rgba(76, 175, 80, 0.05)',
+                  border: '1px solid rgba(76, 175, 80, 0.2)',
+                  height: '100%',
+                }}
+              >
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                  Recent Activity
+                </Typography>
+                <Stack spacing={1}>
+                  {event.eventNotifications && event.eventNotifications.length > 0 ? (
+                    event.eventNotifications
+                      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                      .slice(0, 10)
+                      .map((notif, idx) => (
+                        <Alert 
+                          key={notif.id || idx} 
+                          severity="info"
+                          sx={{ py: 0.5 }}
+                        >
+                          {notif.user?.name} {notif.type === 'join' ? 'joined' : notif.type === 'leave' ? 'left' : notif.type === 'late' ? 'marked as late' : notif.type === 'confirmed' ? 'confirmed attendance' : notif.type === 'declined' ? 'declined' : notif.type} {notif.type !== 'leave' ? 'the event' : 'the event'}
+                        </Alert>
+                      ))
+                  ) : event.participants && event.participants.length > 0 ? (
+                    event.participants
                       ?.sort((a, b) => new Date(b.joinedAt) - new Date(a.joinedAt))
-                      .slice(0, 3)
+                      .slice(0, 5)
                       .map(p => (
                         <Alert 
                           key={p.id} 
@@ -536,10 +556,14 @@ const EventDetails = () => {
                         >
                           {p.user?.name} joined the event
                         </Alert>
-                      ))}
-                  </Stack>
-                </Paper>
-              )}
+                      ))
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No activity yet
+                    </Typography>
+                  )}
+                </Stack>
+              </Paper>
             </Grid>
           </Grid>
         </Paper>
