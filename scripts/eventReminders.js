@@ -12,6 +12,8 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+<<<<<<< HEAD
+=======
 async function sendEventReminders() {
   const now = new Date();
   const soon = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
@@ -57,6 +59,7 @@ sendEventReminders().then(() => {
   process.exit(0);
 });
 
+>>>>>>> main
 async function sendReminders() {
   // Find reminders that are due and not sent
   const now = new Date();
@@ -81,4 +84,7 @@ async function sendReminders() {
 }
 
 sendReminders().then(() => process.exit(0));
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
