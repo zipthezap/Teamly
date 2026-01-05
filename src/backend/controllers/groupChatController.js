@@ -79,6 +79,7 @@ exports.notifyJoinLeave = async (eventId, userId, type) => {
 exports.getNotifications = async (req, res) => {
   try {
     const userId = req.user.id;
+<<<<<<< HEAD
     const notifications = await prisma.eventNotification.findMany({
       where: { userId },
       include: {
@@ -98,6 +99,32 @@ exports.getNotifications = async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
     res.json(notifications);
+=======
+    const [eventNotifications, groupNotifications] = await Promise.all([
+      prisma.eventNotification.findMany({
+        where: { userId },
+        include: {
+          event: { select: { id: true, title: true } },
+        },
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.groupNotification.findMany({
+        where: { userId },
+        include: {
+          group: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'desc' }
+      })
+    ]);
+    // Tag type for frontend
+    const all = [
+      ...eventNotifications.map(n => ({ ...n, notificationType: 'event' })),
+      ...groupNotifications.map(n => ({ ...n, notificationType: 'group' })),
+    ];
+    // Sort by createdAt desc
+    all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    res.json(all);
+>>>>>>> main
   } catch (e) {
     res.status(500).json({ error: 'Failed to fetch notifications' });
   }

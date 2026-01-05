@@ -40,6 +40,41 @@ const createGroup = async (req, res) => {
       }
     });
 
+<<<<<<< HEAD
+=======
+    // Notify users nearby (within 10km) except creator
+    if (latitude && longitude) {
+      const R = 6371; // km
+      const toRad = deg => deg * Math.PI / 180;
+      const users = await prisma.user.findMany({
+        where: {
+          id: { not: req.user.id },
+          latitude: { not: null },
+          longitude: { not: null },
+        },
+        select: { id: true, latitude: true, longitude: true }
+      });
+      const isNearby = (lat1, lon1, lat2, lon2) => {
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c < 10; // 10km
+      };
+      const nearbyUserIds = users.filter(u => isNearby(latitude, longitude, u.latitude, u.longitude)).map(u => u.id);
+      await Promise.all(nearbyUserIds.map(userId =>
+        prisma.groupNotification.create({
+          data: {
+            groupId: group.id,
+            userId,
+            type: 'nearby_created',
+          }
+        })
+      ));
+    }
+>>>>>>> main
     res.status(201).json(group);
   } catch (error) {
     console.error('Create group error:', error);
@@ -376,6 +411,24 @@ const requestJoinGroup = async (req, res) => {
       }
     });
 
+<<<<<<< HEAD
+=======
+    // Notify all group admins
+    const admins = await prisma.groupMember.findMany({
+      where: { groupId: id, role: 'admin' },
+      select: { userId: true }
+    });
+    await Promise.all(admins.map(admin =>
+      prisma.groupNotification.create({
+        data: {
+          groupId: id,
+          userId: admin.userId,
+          type: 'join_request',
+        }
+      })
+    ));
+
+>>>>>>> main
     res.status(201).json(joinRequest);
   } catch (error) {
     console.error('Request join group error:', error);

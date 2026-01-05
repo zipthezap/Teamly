@@ -12,6 +12,54 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+<<<<<<< HEAD
+=======
+async function sendEventReminders() {
+  const now = new Date();
+  const soon = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
+
+  // Find events starting within the next hour
+  const events = await prisma.event.findMany({
+    where: {
+      startTime: {
+        gte: now,
+        lte: soon,
+      },
+    },
+    include: {
+      participants: true,
+    },
+  });
+
+  for (const event of events) {
+    for (const participant of event.participants) {
+      // Check if reminder already sent
+      const exists = await prisma.eventNotification.findFirst({
+        where: {
+          eventId: event.id,
+          userId: participant.userId,
+          type: 'reminder',
+        },
+      });
+      if (!exists) {
+        await prisma.eventNotification.create({
+          data: {
+            eventId: event.id,
+            userId: participant.userId,
+            type: 'reminder',
+          },
+        });
+      }
+    }
+  }
+}
+
+sendEventReminders().then(() => {
+  console.log('Event reminders processed');
+  process.exit(0);
+});
+
+>>>>>>> main
 async function sendReminders() {
   // Find reminders that are due and not sent
   const now = new Date();
@@ -36,3 +84,7 @@ async function sendReminders() {
 }
 
 sendReminders().then(() => process.exit(0));
+<<<<<<< HEAD
+=======
+
+>>>>>>> main

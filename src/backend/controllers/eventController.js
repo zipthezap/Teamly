@@ -133,6 +133,21 @@ const createEvent = async (req, res) => {
       }
     }
 
+<<<<<<< HEAD
+=======
+    // Notify all group members (except creator)
+    const memberIds = group.members.map(m => m.userId).filter(uid => uid !== req.user.id);
+    await Promise.all(memberIds.map(userId =>
+      prisma.eventNotification.create({
+        data: {
+          eventId: event.id,
+          userId,
+          type: 'created',
+        }
+      })
+    ));
+
+>>>>>>> main
     res.status(201).json(event);
   } catch (error) {
     console.error('Create event error:', error);
