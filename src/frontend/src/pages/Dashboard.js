@@ -81,7 +81,7 @@ const Dashboard = () => {
 
       <Grid container spacing={3}>
         {/* Main Content - Left Side */}
-        <Grid item xs={12} lg={10}>
+        <Grid item xs={12} lg={9}>
           {/* Recent Groups */}
           <Box sx={{ mb: 4 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -276,7 +276,7 @@ const Dashboard = () => {
         </Grid>
 
         {/* Right Sidebar */}
-        <Grid item xs={12} lg={1}>
+        <Grid item xs={12} lg={3}>
           {/* Enhanced Stats Section */}
           <Box sx={{ mb: 2 }}>
             <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>
