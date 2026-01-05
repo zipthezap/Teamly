@@ -20,6 +20,8 @@ const joinGroupByInvite = async (req, res) => {
   }
 };
 const prisma = require('../config/database');
+const { sendEmail } = require('../utils/emailService');
+const { shouldSendEmailNotification } = require('../utils/notificationHelper');
 
 const createGroup = async (req, res) => {
   try {
@@ -219,6 +221,11 @@ const inviteMember = async (req, res) => {
       return res.status(403).json({ error: 'Only group members can invite others' });
     }
 
+    // Get group info
+    const group = await prisma.group.findUnique({
+      where: { id }
+    });
+
     // Find user to invite
     const userToInvite = await prisma.user.findUnique({
       where: { email }
@@ -252,6 +259,23 @@ const inviteMember = async (req, res) => {
         }
       }
     });
+
+    // Send email notification
+    const inviterUser = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+
+    const shouldSend = await shouldSendEmailNotification(userToInvite.id, 'groupInvites');
+
+    if (shouldSend) {
+      await sendEmail(
+        userToInvite.email,
+        'groupInvitation',
+        userToInvite.name,
+        group.name,
+        inviterUser.name
+      );
+    }
 
     res.status(201).json(newMember);
   } catch (error) {

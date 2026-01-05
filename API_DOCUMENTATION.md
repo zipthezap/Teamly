@@ -789,3 +789,358 @@ Cancel an event request (admin only).
 - `voting`: Currently accepting votes
 - `finalized`: Approved and event created
 - `cancelled`: Cancelled by admin or insufficient votes
+
+---
+
+## Email Notification Endpoints
+
+### GET /email/preferences
+Get user's email notification preferences.
+
+**Authentication Required:** Yes
+
+**Response (200):**
+```json
+{
+  "id": "uuid",
+  "userId": "uuid",
+  "eventInvites": true,
+  "eventReminders": true,
+  "eventUpdates": true,
+  "eventCancellations": true,
+  "groupInvites": true,
+  "commentMentions": true,
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-01T00:00:00Z"
+}
+```
+
+### PUT /email/preferences
+Update user's email notification preferences.
+
+**Authentication Required:** Yes
+
+**Request Body:**
+```json
+{
+  "eventInvites": false,
+  "eventReminders": true,
+  "eventUpdates": true,
+  "eventCancellations": true,
+  "groupInvites": false,
+  "commentMentions": true
+}
+```
+
+**Response (200):**
+```json
+{
+  "id": "uuid",
+  "userId": "uuid",
+  "eventInvites": false,
+  "eventReminders": true,
+  ...
+}
+```
+
+### PUT /email/notifications/toggle
+Toggle all email notifications on or off.
+
+**Authentication Required:** Yes
+
+**Request Body:**
+```json
+{
+  "enabled": false
+}
+```
+
+**Response (200):**
+```json
+{
+  "emailNotifications": false
+}
+```
+
+### POST /email/verify/send
+Send email verification link to user's email.
+
+**Authentication Required:** Yes
+
+**Response (200):**
+```json
+{
+  "message": "Verification email sent"
+}
+```
+
+### GET /email/verify/:token
+Verify user's email address using verification token.
+
+**Authentication Required:** No
+
+**Response (200):**
+```json
+{
+  "message": "Email verified successfully"
+}
+```
+
+---
+
+## Recurring Event Endpoints
+
+### POST /events (with recurrence)
+Create a recurring event.
+
+**Authentication Required:** Yes
+
+**Request Body:**
+```json
+{
+  "groupId": "uuid",
+  "title": "Weekly Football Match",
+  "description": "Every Sunday morning",
+  "eventType": "football",
+  "location": "Central Park",
+  "startTime": "2024-01-20T10:00:00Z",
+  "endTime": "2024-01-20T12:00:00Z",
+  "maxPlayers": 10,
+  "isRecurring": true,
+  "recurrenceRule": "FREQ=WEEKLY;BYDAY=SU;INTERVAL=1",
+  "recurrenceEnd": "2024-12-31T23:59:59Z"
+}
+```
+
+**Response (201):**
+```json
+{
+  "id": "uuid",
+  "title": "Weekly Football Match",
+  "isRecurring": true,
+  "recurrenceRule": "FREQ=WEEKLY;BYDAY=SU;INTERVAL=1",
+  "recurrenceEnd": "2024-12-31T23:59:59Z",
+  ...
+}
+```
+
+### GET /events/:id/instances
+Get all instances of a recurring event.
+
+**Authentication Required:** Yes
+
+**Query Parameters:**
+- `startDate` (optional): Start date for instances
+- `endDate` (optional): End date for instances
+- `limit` (optional): Maximum number of instances (default: 100)
+
+**Response (200):**
+```json
+[
+  {
+    "id": "event-uuid-2024-01-20T10:00:00.000Z",
+    "title": "Weekly Football Match",
+    "startTime": "2024-01-20T10:00:00.000Z",
+    "endTime": "2024-01-20T12:00:00.000Z",
+    "isInstance": true,
+    "parentEventId": "event-uuid",
+    ...
+  },
+  {
+    "id": "event-uuid-2024-01-27T10:00:00.000Z",
+    "title": "Weekly Football Match",
+    "startTime": "2024-01-27T10:00:00.000Z",
+    ...
+  }
+]
+```
+
+### POST /events/:id/exceptions
+Add an exception date to skip a recurring event instance.
+
+**Authentication Required:** Yes (creator only)
+
+**Request Body:**
+```json
+{
+  "exceptionDate": "2024-02-10T10:00:00Z"
+}
+```
+
+**Response (200):**
+```json
+{
+  "id": "uuid",
+  "exceptionDates": [
+    "2024-02-10T10:00:00.000Z"
+  ],
+  ...
+}
+```
+
+### DELETE /events/:id/exceptions
+Remove an exception date from a recurring event.
+
+**Authentication Required:** Yes (creator only)
+
+**Request Body:**
+```json
+{
+  "exceptionDate": "2024-02-10T10:00:00Z"
+}
+```
+
+**Response (200):**
+```json
+{
+  "id": "uuid",
+  "exceptionDates": [],
+  ...
+}
+```
+
+---
+
+## Comment Endpoints
+
+### POST /comments
+Create a comment on an event.
+
+**Authentication Required:** Yes
+
+**Request Body:**
+```json
+{
+  "eventId": "uuid",
+  "content": "Looking forward to this! @john can you bring the ball?",
+  "parentId": null
+}
+```
+
+**Note:** Use `parentId` to reply to an existing comment. Mentions are automatically detected using `@username` syntax.
+
+**Response (201):**
+```json
+{
+  "id": "uuid",
+  "content": "Looking forward to this! @john can you bring the ball?",
+  "eventId": "uuid",
+  "userId": "uuid",
+  "parentId": null,
+  "createdAt": "2024-01-15T10:00:00.000Z",
+  "updatedAt": "2024-01-15T10:00:00.000Z",
+  "user": {
+    "id": "uuid",
+    "name": "Jane Doe",
+    "email": "jane@example.com"
+  },
+  "replies": []
+}
+```
+
+### GET /comments/event/:eventId
+Get all comments for an event (includes nested replies).
+
+**Authentication Required:** Yes
+
+**Response (200):**
+```json
+[
+  {
+    "id": "uuid",
+    "content": "Looking forward to this!",
+    "createdAt": "2024-01-15T10:00:00.000Z",
+    "user": {
+      "id": "uuid",
+      "name": "Jane Doe",
+      "email": "jane@example.com"
+    },
+    "replies": [
+      {
+        "id": "uuid",
+        "content": "Me too!",
+        "createdAt": "2024-01-15T10:30:00.000Z",
+        "user": {
+          "id": "uuid",
+          "name": "John Smith"
+        },
+        "replies": []
+      }
+    ],
+    "mentions": [
+      {
+        "user": {
+          "id": "uuid",
+          "name": "John Smith"
+        }
+      }
+    ]
+  }
+]
+```
+
+### PUT /comments/:commentId
+Update a comment (own comments only).
+
+**Authentication Required:** Yes
+
+**Request Body:**
+```json
+{
+  "content": "Updated comment text"
+}
+```
+
+**Response (200):**
+```json
+{
+  "id": "uuid",
+  "content": "Updated comment text",
+  "updatedAt": "2024-01-15T11:00:00.000Z",
+  ...
+}
+```
+
+### DELETE /comments/:commentId
+Delete a comment (own comments only).
+
+**Authentication Required:** Yes
+
+**Response (200):**
+```json
+{
+  "message": "Comment deleted successfully"
+}
+```
+
+---
+
+## Recurrence Rule Format
+
+Recurring events use the iCalendar RRULE format. Common examples:
+
+- **Daily**: `FREQ=DAILY;INTERVAL=1`
+- **Weekly (every Monday)**: `FREQ=WEEKLY;BYDAY=MO;INTERVAL=1`
+- **Weekly (Mon, Wed, Fri)**: `FREQ=WEEKLY;BYDAY=MO,WE,FR;INTERVAL=1`
+- **Bi-weekly**: `FREQ=WEEKLY;INTERVAL=2`
+- **Monthly (15th day)**: `FREQ=MONTHLY;BYMONTHDAY=15;INTERVAL=1`
+- **Monthly (2nd Tuesday)**: `FREQ=MONTHLY;BYDAY=2TU;INTERVAL=1`
+- **Yearly**: `FREQ=YEARLY;BYMONTH=6;BYMONTHDAY=15;INTERVAL=1`
+
+**Day abbreviations:**
+- MO (Monday), TU (Tuesday), WE (Wednesday), TH (Thursday), FR (Friday), SA (Saturday), SU (Sunday)
+
+---
+
+## Email Notification Types
+
+When users receive email notifications, they can control which types they receive through their email preferences:
+
+- **Event Invites**: Notifications when invited to new events
+- **Event Reminders**: Reminders before events start (requires background job)
+- **Event Updates**: Notifications when event details change
+- **Event Cancellations**: Notifications when events are cancelled
+- **Group Invites**: Notifications when invited to groups
+- **Comment Mentions**: Notifications when mentioned in comments (@username)
+
+Users can also toggle all email notifications on/off with a single setting.

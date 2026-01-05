@@ -1,11 +1,24 @@
 const prisma = require('../config/database');
+const { validateRecurrenceRule, generateRecurrenceInstances, calculateDuration, applyDuration } = require('../utils/recurrenceService');
+const { sendEmail, sendBatchEmails } = require('../utils/emailService');
+const { batchShouldSendEmailNotification } = require('../utils/notificationHelper');
 
 const createEvent = async (req, res) => {
   try {
-    const { groupId, title, description, eventType, location, startTime, endTime, maxPlayers } = req.body;
+    const { 
+      groupId, title, description, eventType, location, startTime, endTime, maxPlayers,
+      isRecurring, recurrenceRule, recurrenceEnd
+    } = req.body;
 
     if (!groupId || !title || !eventType || !startTime) {
       return res.status(400).json({ error: 'Group ID, title, event type, and start time are required' });
+    }
+
+    // Validate recurrence rule if provided
+    if (isRecurring && recurrenceRule) {
+      if (!validateRecurrenceRule(recurrenceRule)) {
+        return res.status(400).json({ error: 'Invalid recurrence rule format' });
+      }
     }
 
     // Check if user is member of the group
@@ -20,6 +33,25 @@ const createEvent = async (req, res) => {
       return res.status(403).json({ error: 'Only group members can create events' });
     }
 
+    // Get group members for notifications
+    const group = await prisma.group.findUnique({
+      where: { id: groupId },
+      include: {
+        members: {
+          include: {
+            user: {
+              select: { 
+                id: true, 
+                name: true, 
+                email: true,
+                emailNotifications: true
+              }
+            }
+          }
+        }
+      }
+    });
+
     const event = await prisma.event.create({
       data: {
         groupId,
@@ -31,6 +63,9 @@ const createEvent = async (req, res) => {
         startTime: new Date(startTime),
         endTime: endTime ? new Date(endTime) : null,
         maxPlayers: maxPlayers ? parseInt(maxPlayers) : null,
+        isRecurring: isRecurring || false,
+        recurrenceRule: isRecurring ? recurrenceRule : null,
+        recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : null,
         participants: {
           create: {
             userId: req.user.id,
@@ -58,6 +93,29 @@ const createEvent = async (req, res) => {
         }
       }
     });
+
+    // Send email notifications to group members
+    const recipients = group.members
+      .filter(m => m.userId !== req.user.id)
+      .map(m => m.user);
+    
+    // Check which users should receive notifications
+    const userIds = recipients.map(r => r.id);
+    const notificationMap = await batchShouldSendEmailNotification(userIds, 'eventInvites');
+    
+    // Send emails
+    for (const recipient of recipients) {
+      if (notificationMap.get(recipient.id)) {
+        await sendEmail(
+          recipient.email,
+          'eventInvitation',
+          recipient.name,
+          event.title,
+          event.startTime,
+          group.name
+        );
+      }
+    }
 
     res.status(201).json(event);
   } catch (error) {
@@ -169,7 +227,19 @@ const updateEvent = async (req, res) => {
 
     // Check if user is the creator of the event
     const event = await prisma.event.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        group: {
+          select: { id: true, name: true }
+        },
+        participants: {
+          include: {
+            user: {
+              select: { id: true, name: true, email: true }
+            }
+          }
+        }
+      }
     });
 
     if (!event || event.creatorId !== req.user.id) {
@@ -201,12 +271,39 @@ const updateEvent = async (req, res) => {
             status: true,
             joinedAt: true,
             user: {
-              select: { name: true }
+              select: { 
+                id: true,
+                name: true, 
+                email: true,
+                emailNotifications: true
+              }
             }
           }
         }
       }
     });
+
+    // Send email notifications to participants
+    const recipients = updatedEvent.participants
+      .filter(p => p.user.id !== req.user.id)
+      .map(p => p.user);
+    
+    // Check which users should receive notifications
+    const userIds = recipients.map(r => r.id);
+    const notificationMap = await batchShouldSendEmailNotification(userIds, 'eventUpdates');
+    
+    // Send emails
+    for (const recipient of recipients) {
+      if (notificationMap.get(recipient.id)) {
+        await sendEmail(
+          recipient.email,
+          'eventUpdate',
+          recipient.name,
+          updatedEvent.title,
+          event.group.name
+        );
+      }
+    }
 
     res.json(updatedEvent);
   } catch (error) {
@@ -221,11 +318,50 @@ const deleteEvent = async (req, res) => {
 
     // Check if user is the creator of the event
     const event = await prisma.event.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        group: {
+          select: { id: true, name: true }
+        },
+        participants: {
+          include: {
+            user: {
+              select: { 
+                id: true, 
+                name: true, 
+                email: true,
+                emailNotifications: true
+              }
+            }
+          }
+        }
+      }
     });
 
     if (!event || event.creatorId !== req.user.id) {
       return res.status(403).json({ error: 'Only the event creator can delete it' });
+    }
+
+    // Send email notifications to participants
+    const recipients = event.participants
+      .filter(p => p.user.id !== req.user.id)
+      .map(p => p.user);
+    
+    // Check which users should receive notifications
+    const userIds = recipients.map(r => r.id);
+    const notificationMap = await batchShouldSendEmailNotification(userIds, 'eventCancellations');
+    
+    // Send emails
+    for (const recipient of recipients) {
+      if (notificationMap.get(recipient.id)) {
+        await sendEmail(
+          recipient.email,
+          'eventCancellation',
+          recipient.name,
+          event.title,
+          event.group.name
+        );
+      }
     }
 
     await prisma.event.delete({
@@ -351,6 +487,152 @@ const updateParticipationStatus = async (req, res) => {
   }
 };
 
+// Get recurring event instances
+const getRecurringEventInstances = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { startDate, endDate, limit } = req.query;
+
+    // Get the parent event
+    const event = await prisma.event.findFirst({
+      where: {
+        id,
+        group: {
+          members: {
+            some: {
+              userId: req.user.id
+            }
+          }
+        }
+      }
+    });
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    if (!event.isRecurring || !event.recurrenceRule) {
+      return res.status(400).json({ error: 'Event is not recurring' });
+    }
+
+    // Generate instances
+    const exceptionDates = event.exceptionDates ? JSON.parse(JSON.stringify(event.exceptionDates)) : [];
+    const instances = generateRecurrenceInstances(
+      startDate || event.startTime,
+      event.recurrenceRule,
+      endDate || event.recurrenceEnd,
+      exceptionDates,
+      limit ? parseInt(limit) : 100
+    );
+
+    // Calculate duration if endTime exists
+    const duration = calculateDuration(event.startTime, event.endTime);
+
+    // Map instances to event objects
+    const eventInstances = instances.map(instanceDate => ({
+      ...event,
+      id: `${event.id}-${instanceDate.toISOString()}`,
+      startTime: instanceDate,
+      endTime: duration ? applyDuration(instanceDate, duration) : null,
+      parentEventId: event.id,
+      isInstance: true
+    }));
+
+    res.json(eventInstances);
+  } catch (error) {
+    console.error('Get recurring event instances error:', error);
+    res.status(500).json({ error: 'Failed to get recurring event instances' });
+  }
+};
+
+// Add exception date to recurring event
+const addRecurringEventException = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { exceptionDate } = req.body;
+
+    if (!exceptionDate) {
+      return res.status(400).json({ error: 'Exception date is required' });
+    }
+
+    // Check if user is the creator of the event
+    const event = await prisma.event.findUnique({
+      where: { id }
+    });
+
+    if (!event || event.creatorId !== req.user.id) {
+      return res.status(403).json({ error: 'Only the event creator can add exceptions' });
+    }
+
+    if (!event.isRecurring) {
+      return res.status(400).json({ error: 'Event is not recurring' });
+    }
+
+    // Get existing exceptions
+    const existingExceptions = event.exceptionDates 
+      ? JSON.parse(JSON.stringify(event.exceptionDates))
+      : [];
+
+    // Add new exception
+    const updatedExceptions = [...existingExceptions, new Date(exceptionDate).toISOString()];
+
+    const updatedEvent = await prisma.event.update({
+      where: { id },
+      data: {
+        exceptionDates: updatedExceptions
+      }
+    });
+
+    res.json(updatedEvent);
+  } catch (error) {
+    console.error('Add recurring event exception error:', error);
+    res.status(500).json({ error: 'Failed to add exception' });
+  }
+};
+
+// Remove exception date from recurring event
+const removeRecurringEventException = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { exceptionDate } = req.body;
+
+    if (!exceptionDate) {
+      return res.status(400).json({ error: 'Exception date is required' });
+    }
+
+    // Check if user is the creator of the event
+    const event = await prisma.event.findUnique({
+      where: { id }
+    });
+
+    if (!event || event.creatorId !== req.user.id) {
+      return res.status(403).json({ error: 'Only the event creator can remove exceptions' });
+    }
+
+    // Get existing exceptions
+    const existingExceptions = event.exceptionDates 
+      ? JSON.parse(JSON.stringify(event.exceptionDates))
+      : [];
+
+    // Remove exception
+    const updatedExceptions = existingExceptions.filter(
+      d => new Date(d).toISOString() !== new Date(exceptionDate).toISOString()
+    );
+
+    const updatedEvent = await prisma.event.update({
+      where: { id },
+      data: {
+        exceptionDates: updatedExceptions
+      }
+    });
+
+    res.json(updatedEvent);
+  } catch (error) {
+    console.error('Remove recurring event exception error:', error);
+    res.status(500).json({ error: 'Failed to remove exception' });
+  }
+};
+
 module.exports = {
   createEvent,
   getEvents,
@@ -359,5 +641,8 @@ module.exports = {
   deleteEvent,
   joinEvent,
   leaveEvent,
-  updateParticipationStatus
+  updateParticipationStatus,
+  getRecurringEventInstances,
+  addRecurringEventException,
+  removeRecurringEventException
 };

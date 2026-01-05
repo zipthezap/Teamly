@@ -64,6 +64,11 @@ model User {
   twoFactorSecret   String?
   twoFactorBackupCodes String[] @default([])
 
+  // Email notification fields
+  emailNotifications Boolean  @default(true)
+  emailVerified      Boolean  @default(false)
+  emailVerificationToken String?
+
   groupMemberships  GroupMember[]
   createdGroups     Group[]             @relation("GroupCreator")
   createdEvents     Event[]             @relation("EventCreator")
@@ -75,6 +80,9 @@ model User {
   groupJoinRequests GroupJoinRequest[]
   createdEventRequests EventRequest[]   @relation("EventRequestCreator")
   eventVotes        EventVote[]
+  emailPreferences  EmailPreference?
+  comments          Comment[]
+  commentMentions   CommentMention[]
 }
 
 model Group {
@@ -133,6 +141,15 @@ model Event {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Recurring event fields
+  isRecurring     Boolean   @default(false)
+  recurrenceRule  String?   // RRULE format: "FREQ=WEEKLY;BYDAY=SU"
+  recurrenceEnd   DateTime?
+  parentEventId   String?
+  parentEvent     Event?    @relation("RecurringEvents", fields: [parentEventId], references: [id], onDelete: Cascade)
+  instances       Event[]   @relation("RecurringEvents")
+  exceptionDates  Json?     // Array of dates to skip
+
   creatorId String
   creator   User   @relation("EventCreator", fields: [creatorId], references: [id])
   groupId   String
@@ -142,6 +159,7 @@ model Event {
   eventReminders EventReminder[]
   eventAttendances EventAttendance[]
   eventNotifications EventNotification[]
+  comments Comment[]
 }
 
 model EventParticipant {
@@ -189,4 +207,47 @@ model EventVote {
   user           User         @relation(fields: [userId], references: [id])
   
   @@unique([eventRequestId, userId])
+}
+
+model EmailPreference {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventInvites    Boolean  @default(true)
+  eventReminders  Boolean  @default(true)
+  eventUpdates    Boolean  @default(true)
+  eventCancellations Boolean @default(true)
+  groupInvites    Boolean  @default(true)
+  commentMentions Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  parentId  String?
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  
+  mentions  CommentMention[]
+}
+
+model CommentMention {
+  id        String   @id @default(uuid())
+  commentId String
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  
+  @@unique([commentId, userId])
 }

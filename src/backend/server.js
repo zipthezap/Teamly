@@ -7,6 +7,8 @@ const groupRoutes = require('./routes/groupRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const twoFactorRoutes = require('./routes/twoFactorRoutes');
 const eventRequestRoutes = require('./routes/eventRequestRoutes');
+const emailRoutes = require('./routes/emailRoutes');
+const commentRoutes = require('./routes/commentRoutes');
 
 const groupChatRoutes = require('./routes/groupChatRoutes');
 const { apiLimiter } = require('./middleware/rateLimiter');
@@ -29,6 +31,8 @@ app.use('/api/groups', groupRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/2fa', twoFactorRoutes);
 app.use('/api/event-requests', eventRequestRoutes);
+app.use('/api/email', emailRoutes);
+app.use('/api/comments', commentRoutes);
 app.use('/api/chat', groupChatRoutes);
 
 // Health check
