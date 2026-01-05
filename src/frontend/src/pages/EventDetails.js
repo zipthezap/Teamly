@@ -516,7 +516,7 @@ const EventDetails = () => {
                             }
                           }}
                         >
-                          Running Late
+                          Will be Late
                         </Button>
                         <Button 
                           variant="outlined" 

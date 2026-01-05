@@ -45,8 +45,14 @@ const NotificationsPopover = () => {
   };
 
   const handleMarkAllRead = async () => {
-    await markAsRead();
-    refresh();
+    try {
+      await markAsRead();
+      refresh();
+    } catch (error) {
+      console.error('Failed to mark notifications as read:', error);
+      // Still refresh to show current state
+      refresh();
+    }
   };
 
   return (
