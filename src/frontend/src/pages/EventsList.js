@@ -126,6 +126,23 @@ const EventsList = () => {
     return { label: 'Open', color: 'primary' };
   };
 
+  // Utility to format time in 24h and round minutes to nearest 15
+  function formatEventTime(dateString) {
+    const date = new Date(dateString);
+    let hour = date.getHours();
+    let minute = date.getMinutes();
+    // Round to nearest 15
+    minute = Math.round(minute / 15) * 15;
+    if (minute === 60) {
+      minute = 0;
+      hour = (hour + 1) % 24;
+    }
+    // Pad with zeros
+    const hourStr = hour.toString().padStart(2, '0');
+    const minuteStr = minute.toString().padStart(2, '0');
+    return `${hourStr}:${minuteStr}`;
+  }
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
@@ -326,10 +343,7 @@ const EventsList = () => {
                           })}
                         </Typography>
                         <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          🕐 {new Date(event.startTime).toLocaleTimeString([], { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
+                          🕐 {formatEventTime(event.startTime)}
                         </Typography>
                         {event.location && (
                           <Typography 

@@ -79,16 +79,18 @@ exports.notifyJoinLeave = async (eventId, userId, type) => {
 exports.getNotifications = async (req, res) => {
   try {
     const userId = req.user.id;
+    // Only fetch unread notifications
     const [eventNotifications, groupNotifications] = await Promise.all([
       prisma.eventNotification.findMany({
-        where: { userId },
+        where: { userId, read: false },
         include: {
           event: { select: { id: true, title: true } },
+          user: { select: { name: true } }
         },
         orderBy: { createdAt: 'desc' }
       }),
       prisma.groupNotification.findMany({
-        where: { userId },
+        where: { userId, read: false },
         include: {
           group: { select: { id: true, name: true } },
         },
