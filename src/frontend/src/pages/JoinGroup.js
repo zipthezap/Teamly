@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -21,15 +21,7 @@ const JoinGroup = () => {
   const [success, setSuccess] = useState('');
   const [hasAttemptedJoin, setHasAttemptedJoin] = useState(false);
 
-  useEffect(() => {
-    // Auto-join if user is logged in and hasn't attempted yet
-    if (user && groupId && !hasAttemptedJoin) {
-      setHasAttemptedJoin(true);
-      handleJoinGroup();
-    }
-  }, [user, groupId, hasAttemptedJoin]);
-
-  const handleJoinGroup = async () => {
+  const handleJoinGroup = useCallback(async () => {
     if (!user) {
       setError('Please log in to join this group');
       return;
@@ -49,7 +41,15 @@ const JoinGroup = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, groupId, navigate]);
+
+  useEffect(() => {
+    // Auto-join if user is logged in and hasn't attempted yet
+    if (user && groupId && !hasAttemptedJoin) {
+      setHasAttemptedJoin(true);
+      handleJoinGroup();
+    }
+  }, [user, groupId, hasAttemptedJoin, handleJoinGroup]);
 
   if (!user) {
     return (
