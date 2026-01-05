@@ -11,11 +11,15 @@ import {
   CardActions,
   Button,
   CircularProgress,
+  Chip,
+  Avatar,
 } from '@mui/material';
 import { groupsAPI, eventsAPI } from '../services/api';
 import GroupIcon from '@mui/icons-material/Group';
 import EventIcon from '@mui/icons-material/Event';
 import AddIcon from '@mui/icons-material/Add';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import ScheduleIcon from '@mui/icons-material/Schedule';
 import { useAuth } from '../contexts/AuthContext';
 
 const Dashboard = () => {
@@ -36,7 +40,11 @@ const Dashboard = () => {
         eventsAPI.getAll(),
       ]);
       setGroups(groupsRes.data);
-      setEvents(eventsRes.data);
+      // Sort events by startTime
+      const sortedEvents = eventsRes.data.sort((a, b) => 
+        new Date(a.startTime) - new Date(b.startTime)
+      );
+      setEvents(sortedEvents);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -47,68 +55,224 @@ const Dashboard = () => {
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
-        <CircularProgress />
+        <CircularProgress size={60} thickness={4} />
       </Box>
     );
   }
 
+  // Calculate statistics
+  const upcomingEvents = events.filter(e => new Date(e.startTime) > new Date());
+  const totalMembers = groups.reduce((sum, g) => sum + (g.members?.length || 0), 0);
+  const myEvents = events.filter(e => 
+    e.participants?.some(p => p.userId === user?.id)
+  );
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Welcome, {user?.name}!
-      </Typography>
+      {/* Welcome Section */}
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 1 }}>
+          Welcome back, {user?.name}! 👋
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Here's what's happening with your sports activities
+        </Typography>
+      </Box>
 
-      {/* Stats Section */}
+      {/* Enhanced Stats Section */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <GroupIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
-            <Typography variant="h4">{groups.length}</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Groups
+          <Paper 
+            sx={{ 
+              p: 3, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0.05) 100%)',
+              cursor: 'pointer',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: '0 12px 24px rgba(33, 150, 243, 0.3)',
+              }
+            }}
+            onClick={() => navigate('/groups')}
+          >
+            <Avatar sx={{ bgcolor: 'primary.main', width: 56, height: 56, mb: 2 }}>
+              <GroupIcon sx={{ fontSize: 32 }} />
+            </Avatar>
+            <Typography variant="h3" sx={{ fontWeight: 700, mb: 0.5 }}>
+              {groups.length}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+              Your Groups
             </Typography>
           </Paper>
         </Grid>
+        
         <Grid item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <EventIcon sx={{ fontSize: 40, color: 'secondary.main', mb: 1 }} />
-            <Typography variant="h4">{events.length}</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Events
+          <Paper 
+            sx={{ 
+              p: 3, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, rgba(245, 0, 87, 0.1) 0%, rgba(245, 0, 87, 0.05) 100%)',
+              cursor: 'pointer',
+              '&:hover': {
+                transform: 'translateY(-4px)',
+                boxShadow: '0 12px 24px rgba(245, 0, 87, 0.3)',
+              }
+            }}
+            onClick={() => navigate('/events')}
+          >
+            <Avatar sx={{ bgcolor: 'secondary.main', width: 56, height: 56, mb: 2 }}>
+              <EventIcon sx={{ fontSize: 32 }} />
+            </Avatar>
+            <Typography variant="h3" sx={{ fontWeight: 700, mb: 0.5 }}>
+              {events.length}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+              Total Events
+            </Typography>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper 
+            sx={{ 
+              p: 3, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%)',
+            }}
+          >
+            <Avatar sx={{ bgcolor: 'success.main', width: 56, height: 56, mb: 2 }}>
+              <ScheduleIcon sx={{ fontSize: 32 }} />
+            </Avatar>
+            <Typography variant="h3" sx={{ fontWeight: 700, mb: 0.5 }}>
+              {upcomingEvents.length}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+              Upcoming Events
+            </Typography>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper 
+            sx={{ 
+              p: 3, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%)',
+            }}
+          >
+            <Avatar sx={{ bgcolor: 'warning.main', width: 56, height: 56, mb: 2 }}>
+              <TrendingUpIcon sx={{ fontSize: 32 }} />
+            </Avatar>
+            <Typography variant="h3" sx={{ fontWeight: 700, mb: 0.5 }}>
+              {myEvents.length}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+              Your Events
             </Typography>
           </Paper>
         </Grid>
       </Grid>
 
+      {/* Quick Actions */}
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
+          Quick Actions
+        </Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} md={4}>
+            <Button
+              variant="contained"
+              fullWidth
+              startIcon={<AddIcon />}
+              onClick={() => navigate('/groups/new')}
+              sx={{ 
+                py: 2, 
+                justifyContent: 'flex-start',
+                background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)',
+              }}
+            >
+              Create New Group
+            </Button>
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <Button
+              variant="contained"
+              fullWidth
+              startIcon={<AddIcon />}
+              onClick={() => navigate('/events/new')}
+              sx={{ 
+                py: 2, 
+                justifyContent: 'flex-start',
+                background: 'linear-gradient(135deg, #f50057 0%, #c51162 100%)',
+              }}
+            >
+              Create New Event
+            </Button>
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <Button
+              variant="outlined"
+              fullWidth
+              onClick={() => navigate('/public-groups')}
+              sx={{ py: 2, justifyContent: 'flex-start' }}
+            >
+              Discover Groups
+            </Button>
+          </Grid>
+        </Grid>
+      </Box>
+
       {/* Recent Groups */}
       <Box sx={{ mb: 4 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="h5">Your Groups</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 600 }}>Your Groups</Typography>
           <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => navigate('/groups/new')}
+            variant="text"
+            onClick={() => navigate('/groups')}
+            sx={{ textTransform: 'none' }}
           >
-            Create Group
+            View All
           </Button>
         </Box>
-        <Grid container spacing={2}>
+        <Grid container spacing={3}>
           {groups.slice(0, 3).map((group) => (
             <Grid item xs={12} sm={6} md={4} key={group.id}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    {group.name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
+              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <CardContent sx={{ flexGrow: 1 }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="start" mb={2}>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                      {group.name}
+                    </Typography>
+                    {group.isPublic && (
+                      <Chip label="Public" size="small" color="primary" />
+                    )}
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2, minHeight: 40 }}>
                     {group.description || 'No description'}
                   </Typography>
-                  <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                    {group.members?.length || 0} members
-                  </Typography>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <GroupIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                      {group.members?.length || 0} members
+                    </Typography>
+                  </Box>
                 </CardContent>
-                <CardActions>
-                  <Button size="small" onClick={() => navigate(`/groups/${group.id}`)}>
+                <CardActions sx={{ px: 2, pb: 2 }}>
+                  <Button 
+                    size="small" 
+                    variant="contained"
+                    onClick={() => navigate(`/groups/${group.id}`)}
+                    fullWidth
+                  >
                     View Details
                   </Button>
                 </CardActions>
@@ -117,10 +281,27 @@ const Dashboard = () => {
           ))}
           {groups.length === 0 && (
             <Grid item xs={12}>
-              <Paper sx={{ p: 3, textAlign: 'center' }}>
-                <Typography variant="body1" color="text.secondary">
+              <Paper 
+                sx={{ 
+                  p: 4, 
+                  textAlign: 'center',
+                  background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(33, 150, 243, 0.02) 100%)',
+                }}
+              >
+                <GroupIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+                <Typography variant="h6" gutterBottom>
+                  No groups yet
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                   You haven't joined any groups yet. Create one to get started!
                 </Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => navigate('/groups/new')}
+                >
+                  Create Your First Group
+                </Button>
               </Paper>
             </Grid>
           )}
@@ -130,47 +311,108 @@ const Dashboard = () => {
       {/* Upcoming Events */}
       <Box>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="h5">Upcoming Events</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 600 }}>Upcoming Events</Typography>
           <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => navigate('/events/new')}
+            variant="text"
+            onClick={() => navigate('/events')}
+            sx={{ textTransform: 'none' }}
           >
-            Create Event
+            View All
           </Button>
         </Box>
-        <Grid container spacing={2}>
-          {events.slice(0, 3).map((event) => (
-            <Grid item xs={12} sm={6} md={4} key={event.id}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    {event.title}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    {event.eventType}
-                  </Typography>
-                  <Typography variant="body2">
-                    {new Date(event.startTime).toLocaleString()}
-                  </Typography>
-                  <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                    {event.participants?.length || 0} participants
-                  </Typography>
-                </CardContent>
-                <CardActions>
-                  <Button size="small" onClick={() => navigate(`/events/${event.id}`)}>
-                    View Details
-                  </Button>
-                </CardActions>
-              </Card>
-            </Grid>
-          ))}
-          {events.length === 0 && (
+        <Grid container spacing={3}>
+          {upcomingEvents.slice(0, 3).map((event) => {
+            const isParticipating = event.participants?.some(p => p.userId === user?.id);
+            const isFull = event.maxPlayers && event.participants?.length >= event.maxPlayers;
+            
+            return (
+              <Grid item xs={12} sm={6} md={4} key={event.id}>
+                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Box display="flex" justifyContent="space-between" alignItems="start" mb={2}>
+                      <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, pr: 1 }}>
+                        {event.title}
+                      </Typography>
+                      <Chip 
+                        label={event.eventType} 
+                        size="small" 
+                        color="secondary"
+                        sx={{ flexShrink: 0 }}
+                      />
+                    </Box>
+                    
+                    {isFull && (
+                      <Chip 
+                        label="Full" 
+                        size="small" 
+                        color="warning" 
+                        sx={{ mb: 1 }}
+                      />
+                    )}
+                    {isParticipating && (
+                      <Chip 
+                        label="Joined" 
+                        size="small" 
+                        color="success" 
+                        sx={{ mb: 1, ml: isFull ? 1 : 0 }}
+                      />
+                    )}
+                    
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        📅 {new Date(event.startTime).toLocaleDateString()}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        🕐 {new Date(event.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Typography>
+                      {event.location && (
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          📍 {event.location}
+                        </Typography>
+                      )}
+                      <Typography variant="body2" color="text.secondary">
+                        👥 {event.participants?.length || 0}
+                        {event.maxPlayers && ` / ${event.maxPlayers}`} participants
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                  <CardActions sx={{ px: 2, pb: 2 }}>
+                    <Button 
+                      size="small" 
+                      variant="contained"
+                      onClick={() => navigate(`/events/${event.id}`)}
+                      fullWidth
+                    >
+                      View Details
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            );
+          })}
+          {upcomingEvents.length === 0 && (
             <Grid item xs={12}>
-              <Paper sx={{ p: 3, textAlign: 'center' }}>
-                <Typography variant="body1" color="text.secondary">
+              <Paper 
+                sx={{ 
+                  p: 4, 
+                  textAlign: 'center',
+                  background: 'linear-gradient(135deg, rgba(245, 0, 87, 0.05) 0%, rgba(245, 0, 87, 0.02) 100%)',
+                }}
+              >
+                <EventIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+                <Typography variant="h6" gutterBottom>
+                  No upcoming events
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                   No upcoming events. Create one to start organizing!
                 </Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => navigate('/events/new')}
+                >
+                  Create Your First Event
+                </Button>
               </Paper>
             </Grid>
           )}
