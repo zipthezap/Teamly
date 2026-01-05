@@ -27,6 +27,8 @@ export const useJoinRequests = (groupId = null) => {
         );
         
         // Fetch join requests for each admin group
+        // Note: This creates N API calls for N admin groups. 
+        // Could be optimized with a dedicated backend endpoint like /groups/join-requests/all
         const requestsPromises = adminGroups.map(group => 
           groupsAPI.getJoinRequests(group.id)
             .then(res => res.data.map(req => ({ ...req, groupId: group.id, groupName: group.name })))

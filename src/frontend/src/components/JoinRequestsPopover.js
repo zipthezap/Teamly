@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   IconButton,
   Badge,
@@ -24,6 +24,16 @@ const JoinRequestsPopover = ({ groupId = null }) => {
   const [actionLoading, setActionLoading] = useState({});
   const [feedback, setFeedback] = useState(null);
   const { joinRequests, loading, handleJoinRequest } = useJoinRequests(groupId);
+  const feedbackTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    // Cleanup timeout on unmount
+    return () => {
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -39,6 +49,11 @@ const JoinRequestsPopover = ({ groupId = null }) => {
     setActionLoading({ [requestId]: true });
     setFeedback(null);
     
+    // Clear any existing timeout
+    if (feedbackTimeoutRef.current) {
+      clearTimeout(feedbackTimeoutRef.current);
+    }
+    
     const result = await handleJoinRequest(requestGroupId, requestId, action);
     
     setActionLoading({ [requestId]: false });
@@ -46,7 +61,7 @@ const JoinRequestsPopover = ({ groupId = null }) => {
     if (result.success) {
       setFeedback({ type: 'success', message: result.message });
       // Auto-close feedback after 2 seconds
-      setTimeout(() => setFeedback(null), 2000);
+      feedbackTimeoutRef.current = setTimeout(() => setFeedback(null), 2000);
     } else {
       setFeedback({ type: 'error', message: result.message });
     }
