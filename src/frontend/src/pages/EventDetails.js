@@ -20,6 +20,11 @@ import {
   ListItemAvatar,
   Stack,
   LinearProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton,
 } from '@mui/material';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -29,6 +34,8 @@ import HelpIcon from '@mui/icons-material/Help';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import PersonIcon from '@mui/icons-material/Person';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CloseIcon from '@mui/icons-material/Close';
+import HistoryIcon from '@mui/icons-material/History';
 import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { getAvatarColor } from '../utils/colors';
@@ -41,13 +48,30 @@ const getActivityMessage = (notif) => {
     case 'leave':
       return `${userName} left the event`;
     case 'late':
-      return `${userName} marked as late`;
+      return `${userName} will be late`;
     case 'confirmed':
       return `${userName} confirmed attendance`;
     case 'declined':
       return `${userName} declined`;
     default:
       return `${userName} ${notif.type}`;
+  }
+};
+
+const getActivityIcon = (type) => {
+  switch (type) {
+    case 'join':
+      return '➕';
+    case 'leave':
+      return '➖';
+    case 'late':
+      return '⏰';
+    case 'confirmed':
+      return '✅';
+    case 'declined':
+      return '❌';
+    default:
+      return '📌';
   }
 };
 
@@ -61,6 +85,7 @@ const EventDetails = () => {
   const [success, setSuccess] = useState('');
   const [lateSuccess, setLateSuccess] = useState('');
   const [lateError, setLateError] = useState('');
+  const [activityDialogOpen, setActivityDialogOpen] = useState(false);
 
   const fetchEvent = useCallback(async () => {
     try {
@@ -400,14 +425,14 @@ const EventDetails = () => {
               <Stack spacing={3}>
                 {/* Event Actions */}
                 <Paper 
-                  elevation={0}
+                  elevation={2}
                   sx={{ 
                     p: 3, 
-                    bgcolor: 'rgba(33, 150, 243, 0.05)',
-                    border: '1px solid rgba(33, 150, 243, 0.2)',
+                    bgcolor: 'background.paper',
+                    borderRadius: 2,
                   }}
                 >
-                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
                     Event Actions
                   </Typography>
                   
@@ -421,6 +446,11 @@ const EventDetails = () => {
                         sx={{
                           background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)',
                           py: 1.5,
+                          fontWeight: 600,
+                          boxShadow: '0 4px 12px rgba(76, 175, 80, 0.4)',
+                          '&:hover': {
+                            boxShadow: '0 6px 16px rgba(76, 175, 80, 0.5)',
+                          }
                         }}
                       >
                         Join Event
@@ -429,43 +459,74 @@ const EventDetails = () => {
                     
                     {isParticipant && !isCreator && (
                       <>
-                        <Typography variant="subtitle2" gutterBottom sx={{ mt: 1 }}>
-                          Your Status
-                        </Typography>
-                        <Stack direction="row" spacing={1}>
-                          <Button
-                            variant={isParticipant.status === 'confirmed' ? 'contained' : 'outlined'}
-                            color="success"
-                            fullWidth
-                            startIcon={<CheckCircleIcon />}
-                            onClick={() => handleUpdateStatus('confirmed')}
-                          >
-                            Confirm
-                          </Button>
-                          <Button
-                            variant={isParticipant.status === 'declined' ? 'contained' : 'outlined'}
-                            color="error"
-                            fullWidth
-                            startIcon={<CancelIcon />}
-                            onClick={() => handleUpdateStatus('declined')}
-                          >
-                            Decline
-                          </Button>
-                        </Stack>
+                        <Box>
+                          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
+                            Update Your Status
+                          </Typography>
+                          <Stack direction="row" spacing={1.5}>
+                            <Button
+                              variant={isParticipant.status === 'confirmed' ? 'contained' : 'outlined'}
+                              color="success"
+                              fullWidth
+                              startIcon={<CheckCircleIcon />}
+                              onClick={() => handleUpdateStatus('confirmed')}
+                              sx={{
+                                py: 1,
+                                fontWeight: 600,
+                                ...(isParticipant.status === 'confirmed' && {
+                                  boxShadow: '0 2px 8px rgba(76, 175, 80, 0.4)',
+                                })
+                              }}
+                            >
+                              Confirm
+                            </Button>
+                            <Button
+                              variant={isParticipant.status === 'declined' ? 'contained' : 'outlined'}
+                              color="error"
+                              fullWidth
+                              startIcon={<CancelIcon />}
+                              onClick={() => handleUpdateStatus('declined')}
+                              sx={{
+                                py: 1,
+                                fontWeight: 600,
+                                ...(isParticipant.status === 'declined' && {
+                                  boxShadow: '0 2px 8px rgba(244, 67, 54, 0.4)',
+                                })
+                              }}
+                            >
+                              Decline
+                            </Button>
+                          </Stack>
+                        </Box>
+                        
+                        <Divider />
+                        
                         <Button 
                           variant="outlined" 
                           color="warning" 
                           fullWidth
                           startIcon={<ScheduleIcon />}
                           onClick={handleMarkLate}
+                          sx={{
+                            py: 1,
+                            fontWeight: 500,
+                            borderWidth: 2,
+                            '&:hover': {
+                              borderWidth: 2,
+                            }
+                          }}
                         >
-                          Will be late
+                          Running Late
                         </Button>
                         <Button 
                           variant="outlined" 
                           color="error" 
                           fullWidth
                           onClick={handleLeave}
+                          sx={{
+                            py: 1,
+                            fontWeight: 500,
+                          }}
                         >
                           Leave Event
                         </Button>
@@ -473,9 +534,13 @@ const EventDetails = () => {
                     )}
                     
                     {isFull && !isParticipant && (
-                      <Alert severity="warning">
-                        <strong>Event Full</strong><br />
-                        This event has reached maximum capacity
+                      <Alert severity="warning" sx={{ mt: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          Event Full
+                        </Typography>
+                        <Typography variant="caption">
+                          This event has reached maximum capacity
+                        </Typography>
                       </Alert>
                     )}
                   </Stack>
@@ -564,47 +629,108 @@ const EventDetails = () => {
 
                 {/* Recent Activity */}
                 <Paper 
-                  elevation={0}
+                  elevation={2}
                   sx={{ 
                     p: 3, 
-                    bgcolor: 'rgba(76, 175, 80, 0.05)',
-                    border: '1px solid rgba(76, 175, 80, 0.2)',
+                    bgcolor: 'background.paper',
+                    borderRadius: 2,
                   }}
                 >
-                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                    Recent Activity
-                  </Typography>
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      Recent Activity
+                    </Typography>
+                    {event.eventNotifications && event.eventNotifications.length > 10 && (
+                      <Button
+                        size="small"
+                        startIcon={<HistoryIcon />}
+                        onClick={() => setActivityDialogOpen(true)}
+                        sx={{ 
+                          textTransform: 'none',
+                          fontWeight: 500,
+                        }}
+                      >
+                        View All
+                      </Button>
+                    )}
+                  </Box>
                   <Stack spacing={1}>
                     {event.eventNotifications && event.eventNotifications.length > 0 ? (
                       event.eventNotifications
                         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                         .slice(0, 10)
                         .map((notif, idx) => (
-                          <Alert 
-                            key={notif.id || idx} 
-                            severity="info"
-                            sx={{ py: 0.5 }}
+                          <Box 
+                            key={notif.id || idx}
+                            sx={{
+                              p: 1.5,
+                              borderRadius: 1,
+                              bgcolor: 'rgba(255, 255, 255, 0.7)',
+                              border: '1px solid rgba(76, 175, 80, 0.1)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1.5,
+                            }}
                           >
-                            {getActivityMessage(notif)}
-                          </Alert>
+                            <Typography sx={{ fontSize: '1.2rem' }}>
+                              {getActivityIcon(notif.type)}
+                            </Typography>
+                            <Box flexGrow={1}>
+                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                {getActivityMessage(notif)}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {new Date(notif.createdAt).toLocaleString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </Typography>
+                            </Box>
+                          </Box>
                         ))
                     ) : event.participants && event.participants.length > 0 ? (
                       event.participants
                         ?.sort((a, b) => new Date(b.joinedAt) - new Date(a.joinedAt))
                         .slice(0, 5)
                         .map(p => (
-                          <Alert 
-                            key={p.id} 
-                            severity="info"
-                            sx={{ py: 0.5 }}
+                          <Box 
+                            key={p.id}
+                            sx={{
+                              p: 1.5,
+                              borderRadius: 1,
+                              bgcolor: 'rgba(255, 255, 255, 0.7)',
+                              border: '1px solid rgba(76, 175, 80, 0.1)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1.5,
+                            }}
                           >
-                            {p.user?.name} joined the event
-                          </Alert>
+                            <Typography sx={{ fontSize: '1.2rem' }}>
+                              {getActivityIcon('join')}
+                            </Typography>
+                            <Box flexGrow={1}>
+                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                {p.user?.name} joined the event
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {new Date(p.joinedAt).toLocaleString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </Typography>
+                            </Box>
+                          </Box>
                         ))
                     ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        No activity yet
-                      </Typography>
+                      <Box textAlign="center" py={2}>
+                        <Typography variant="body2" color="text.secondary">
+                          No activity yet
+                        </Typography>
+                      </Box>
                     )}
                   </Stack>
                 </Paper>
@@ -697,6 +823,77 @@ const EventDetails = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Activity History Dialog */}
+        <Dialog
+          open={activityDialogOpen}
+          onClose={() => setActivityDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Box display="flex" alignItems="center" gap={1}>
+                <HistoryIcon />
+                <Typography variant="h6">Complete Activity History</Typography>
+              </Box>
+              <IconButton onClick={() => setActivityDialogOpen(false)} size="small">
+                <CloseIcon />
+              </IconButton>
+            </Box>
+          </DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={1.5}>
+              {event.eventNotifications && event.eventNotifications.length > 0 ? (
+                event.eventNotifications
+                  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                  .map((notif, idx) => (
+                    <Box 
+                      key={notif.id || idx}
+                      sx={{
+                        p: 2,
+                        borderRadius: 1,
+                        bgcolor: 'rgba(76, 175, 80, 0.05)',
+                        border: '1px solid rgba(76, 175, 80, 0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                      }}
+                    >
+                      <Typography sx={{ fontSize: '1.5rem' }}>
+                        {getActivityIcon(notif.type)}
+                      </Typography>
+                      <Box flexGrow={1}>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {getActivityMessage(notif)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(notif.createdAt).toLocaleString('en-US', {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  ))
+              ) : (
+                <Box textAlign="center" py={4}>
+                  <Typography variant="body2" color="text.secondary">
+                    No activity recorded yet
+                  </Typography>
+                </Box>
+              )}
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setActivityDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Stack>
     </Container>
   );

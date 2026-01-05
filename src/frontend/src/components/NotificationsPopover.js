@@ -11,6 +11,7 @@ import {
   CircularProgress,
   Divider,
   ListItemButton,
+  Button,
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import { useNotifications } from '../hooks/useNotifications';
@@ -30,10 +31,6 @@ const NotificationsPopover = () => {
 
   const handleClose = () => {
     setAnchorEl(null);
-    // Mark all notifications as read when closing
-    if (notifications.length > 0) {
-      markAsRead();
-    }
   };
   
   const handleNotificationClick = (notif) => {
@@ -45,6 +42,11 @@ const NotificationsPopover = () => {
       navigate(`/groups/${notif.group.id}`);
       handleClose();
     }
+  };
+
+  const handleMarkAllRead = async () => {
+    await markAsRead();
+    refresh();
   };
 
   return (
@@ -68,9 +70,20 @@ const NotificationsPopover = () => {
         slotProps={{ paper: { sx: { mt: 1.5, width: 400, maxHeight: 500 } } }}
       >
         <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            Notifications
-          </Typography>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+            <Typography variant="h6">
+              Notifications
+            </Typography>
+            {notifications.length > 0 && (
+              <Button 
+                size="small" 
+                onClick={handleMarkAllRead}
+                sx={{ textTransform: 'none' }}
+              >
+                Mark all read
+              </Button>
+            )}
+          </Box>
           {loading ? (
             <Box display="flex" justifyContent="center" py={3}>
               <CircularProgress size={32} />
@@ -88,34 +101,58 @@ const NotificationsPopover = () => {
                 let secondary = '';
                 if (notif.notificationType === 'group') {
                   if (notif.type === 'join_request') {
-                    primary = `New join request for group: ${notif.group?.name || ''}`;
+                    primary = `New join request for "${notif.group?.name || 'group'}"`;
+                    secondary = 'Someone wants to join your group';
                   } else if (notif.type === 'accepted') {
-                    primary = `You were accepted to group: ${notif.group?.name || ''}`;
+                    primary = `Welcome to "${notif.group?.name || 'group'}"!`;
+                    secondary = 'Your join request was accepted';
                   } else if (notif.type === 'nearby_created') {
-                    primary = `A new group was created near you: ${notif.group?.name || ''}`;
+                    primary = `New group near you: "${notif.group?.name || 'group'}"`;
+                    secondary = 'Check it out and join!';
                   } else {
-                    primary = `Group notification: ${notif.group?.name || ''}`;
+                    primary = `Group update: ${notif.group?.name || 'group'}`;
+                    secondary = '';
                   }
-                  secondary = new Date(notif.createdAt).toLocaleString();
                 } else if (notif.notificationType === 'event') {
+                  const userName = notif.user?.name || 'Someone';
                   if (notif.type === 'created') {
-                    primary = `New event created: ${notif.event?.title || ''}`;
+                    primary = `New event: "${notif.event?.title || 'event'}"`;
+                    secondary = 'Check out the details and join!';
                   } else if (notif.type === 'reminder') {
-                    primary = `Event starting soon: ${notif.event?.title || ''}`;
+                    primary = `Reminder: "${notif.event?.title || 'event'}" starts soon`;
+                    secondary = 'Don\'t forget to attend!';
                   } else if (notif.type === 'join') {
-                    primary = `Someone joined your event: ${notif.event?.title || ''}`;
+                    primary = `${userName} joined "${notif.event?.title || 'your event'}"`;
+                    secondary = 'New participant added';
                   } else if (notif.type === 'leave') {
-                    primary = `Someone left your event: ${notif.event?.title || ''}`;
+                    primary = `${userName} left "${notif.event?.title || 'your event'}"`;
+                    secondary = 'Participant has left the event';
                   } else if (notif.type === 'late') {
-                    primary = `Someone will be late to your event: ${notif.event?.title || ''}`;
+                    primary = `${userName} will be late to "${notif.event?.title || 'your event'}"`;
+                    secondary = 'Participant marked as late';
+                  } else if (notif.type === 'confirmed') {
+                    primary = `${userName} confirmed for "${notif.event?.title || 'your event'}"`;
+                    secondary = 'Attendance confirmed';
+                  } else if (notif.type === 'declined') {
+                    primary = `${userName} declined "${notif.event?.title || 'your event'}"`;
+                    secondary = 'Attendance declined';
                   } else {
-                    primary = `Event notification: ${notif.event?.title || ''}`;
+                    primary = `Event update: ${notif.event?.title || 'event'}`;
+                    secondary = '';
                   }
-                  secondary = new Date(notif.createdAt).toLocaleString();
                 } else {
                   primary = notif.title || notif.message || 'Notification';
                   secondary = notif.time ? new Date(notif.time).toLocaleString() : '';
                 }
+                
+                // Add timestamp to secondary text
+                const timestamp = new Date(notif.createdAt).toLocaleString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                });
+                secondary = secondary ? `${secondary} • ${timestamp}` : timestamp;
                 
                 const isClickable = (notif.notificationType === 'event' && notif.event?.id) || 
                                    (notif.notificationType === 'group' && notif.group?.id);

@@ -539,9 +539,19 @@ const leaveEvent = async (req, res) => {
       return res.status(404).json({ error: 'Not participating in this event' });
     }
 
-    await prisma.eventParticipant.delete({
-      where: { id: participant.id }
-    });
+    // Delete participant and attendance records
+    await prisma.$transaction([
+      prisma.eventParticipant.delete({
+        where: { id: participant.id }
+      }),
+      // Also delete the attendance record (late status) when leaving
+      prisma.eventAttendance.deleteMany({
+        where: {
+          eventId: id,
+          userId: req.user.id
+        }
+      })
+    ]);
 
     // Notify event organizer if the user leaving is not the organizer
     if (event.creatorId !== req.user.id) {

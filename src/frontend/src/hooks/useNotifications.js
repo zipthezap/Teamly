@@ -21,8 +21,8 @@ export const useNotifications = () => {
   const markAsRead = async () => {
     try {
       await groupChatAPI.markNotificationsRead();
-      // Clear notifications after marking as read
-      setNotifications([]);
+      // Refresh notifications after marking as read
+      fetchNotifications();
     } catch (e) {
       console.error('Failed to mark notifications as read:', e);
     }
