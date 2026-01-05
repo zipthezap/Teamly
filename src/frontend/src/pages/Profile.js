@@ -158,6 +158,7 @@ const Profile = () => {
 
   const handlePreferenceChange = (preference) => async (event) => {
     const newValue = event.target.checked;
+    const previousPreferences = emailPreferences; // Store old state
     const updatedPreferences = {
       ...emailPreferences,
       [preference]: newValue,
@@ -169,8 +170,8 @@ const Profile = () => {
       setSuccess('Notification preferences updated');
     } catch (err) {
       setError('Failed to update preferences');
-      // Revert on error
-      setEmailPreferences(emailPreferences);
+      // Revert to previous state on error
+      setEmailPreferences(previousPreferences);
     }
   };
 
