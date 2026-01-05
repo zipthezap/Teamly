@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+
 const {
   getEmailPreferences,
   updateEmailPreferences,
@@ -7,19 +8,20 @@ const {
   verifyEmail,
   toggleEmailNotifications
 } = require('../controllers/emailController');
-const { authenticate } = require('../middleware/auth');
+const authMiddleware = require('../middleware/auth');
+
 
 // Get email preferences
-router.get('/preferences', authenticate, getEmailPreferences);
+router.get('/preferences', authMiddleware, getEmailPreferences);
 
 // Update email preferences
-router.put('/preferences', authenticate, updateEmailPreferences);
+router.put('/preferences', authMiddleware, updateEmailPreferences);
 
 // Toggle email notifications on/off
-router.put('/notifications/toggle', authenticate, toggleEmailNotifications);
+router.put('/notifications/toggle', authMiddleware, toggleEmailNotifications);
 
 // Send verification email
-router.post('/verify/send', authenticate, sendVerificationEmail);
+router.post('/verify/send', authMiddleware, sendVerificationEmail);
 
 // Verify email with token
 router.get('/verify/:token', verifyEmail);
