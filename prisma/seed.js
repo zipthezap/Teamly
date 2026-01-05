@@ -17,7 +17,7 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  // Create two initial users
+  // Create four initial users
   const user1 = await prisma.user.upsert({
     where: { email: 'alice@example.com' },
     update: {},
@@ -36,7 +36,25 @@ async function main() {
       name: 'Bob',
     },
   });
-  console.log('Seeded users:', user1.email, user2.email);
+  const user3 = await prisma.user.upsert({
+    where: { email: 'charlie@example.com' },
+    update: {},
+    create: {
+      email: 'charlie@example.com',
+      password: 'password123',
+      name: 'Charlie',
+    },
+  });
+  const user4 = await prisma.user.upsert({
+    where: { email: 'diana@example.com' },
+    update: {},
+    create: {
+      email: 'diana@example.com',
+      password: 'password123',
+      name: 'Diana',
+    },
+  });
+  console.log('Seeded users:', user1.email, user2.email, user3.email, user4.email);
 }
 
 main()

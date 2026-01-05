@@ -20,6 +20,8 @@ router.get('/:id', groupController.getGroup);
 router.put('/:id', groupController.updateGroup);
 router.post('/:id/invite', groupController.inviteMember);
 router.delete('/:id/members/:memberId', groupController.removeMember);
+router.delete('/:id/leave', groupController.leaveGroup);
+router.get('/:id/invite-link', groupController.getInviteLink);
 
 // Join request routes
 router.post('/:id/join-request', groupController.requestJoinGroup);

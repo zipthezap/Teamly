@@ -22,12 +22,15 @@ import {
   TextField,
   Alert,
   Chip,
+  Snackbar,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import HowToVoteIcon from '@mui/icons-material/HowToVote';
+import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import LinkIcon from '@mui/icons-material/Link';
 import { groupsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -45,6 +48,8 @@ const GroupDetails = () => {
   const [newMessage, setNewMessage] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [joinRequests, setJoinRequests] = useState([]);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   const fetchJoinRequests = useCallback(async () => {
     try {
@@ -145,6 +150,32 @@ const GroupDetails = () => {
     }
   };
 
+  const handleLeaveGroup = async () => {
+    if (!window.confirm('Are you sure you want to leave this group?')) return;
+
+    try {
+      await groupsAPI.leave(id);
+      setSuccess('Left group successfully');
+      setTimeout(() => {
+        navigate('/groups');
+      }, 1500);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to leave group');
+    }
+  };
+
+  const handleCopyInviteLink = async () => {
+    try {
+      const response = await groupsAPI.getInviteLink(id);
+      const inviteLink = `${window.location.origin}/groups/join/${response.data.groupId}`;
+      await navigator.clipboard.writeText(inviteLink);
+      setSnackbarMessage('Invite link copied to clipboard!');
+      setSnackbarOpen(true);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to get invite link');
+    }
+  };
+
   const isAdmin = group?.members?.find(
     (m) => m.userId === user?.id && m.role === 'admin'
   );
@@ -183,24 +214,41 @@ const GroupDetails = () => {
               Created by {group.creator?.name} on {new Date(group.createdAt).toLocaleDateString()}
             </Typography>
           </Box>
-          {isAdmin && (
-            <Box display="flex" gap={1}>
-              <Button
-                variant="outlined"
-                startIcon={<HowToVoteIcon />}
-                onClick={() => navigate(`/event-requests/${id}`)}
-              >
-                Event Requests
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<PersonAddIcon />}
-                onClick={() => setInviteDialogOpen(true)}
-              >
-                Invite Member
-              </Button>
-            </Box>
-          )}
+          <Box display="flex" gap={1} flexWrap="wrap">
+            <Button
+              variant="outlined"
+              startIcon={<LinkIcon />}
+              onClick={handleCopyInviteLink}
+            >
+              Copy Invite Link
+            </Button>
+            {isAdmin && (
+              <>
+                <Button
+                  variant="outlined"
+                  startIcon={<HowToVoteIcon />}
+                  onClick={() => navigate(`/event-requests/${id}`)}
+                >
+                  Event Requests
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<PersonAddIcon />}
+                  onClick={() => setInviteDialogOpen(true)}
+                >
+                  Invite Member
+                </Button>
+              </>
+            )}
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<ExitToAppIcon />}
+              onClick={handleLeaveGroup}
+            >
+              Leave Group
+            </Button>
+          </Box>
         </Box>
       </Paper>
 
@@ -378,6 +426,14 @@ const GroupDetails = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Snackbar for invite link copied */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
+        message={snackbarMessage}
+      />
     </Container>
   );
 };

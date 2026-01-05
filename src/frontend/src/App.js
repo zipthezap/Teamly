@@ -17,6 +17,7 @@ import CreateEvent from './pages/CreateEvent';
 import PublicGroups from './pages/PublicGroups';
 import TwoFactorSetup from './pages/TwoFactorSetup';
 import EventRequests from './pages/EventRequests';
+import JoinGroup from './pages/JoinGroup';
 
 const theme = createTheme({
   palette: {
@@ -136,6 +137,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/public-groups" element={<PublicGroups />} />
+            <Route path="/groups/join/:groupId" element={<JoinGroup />} />
             <Route
               path="/dashboard"
               element={
