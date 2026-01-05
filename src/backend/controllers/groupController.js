@@ -1,3 +1,72 @@
+// Leave a group
+const leaveGroup = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Find the membership
+    const membership = await prisma.groupMember.findFirst({
+      where: {
+        groupId: id,
+        userId: userId
+      }
+    });
+
+    if (!membership) {
+      return res.status(404).json({ error: 'Not a member of this group' });
+    }
+
+    // Check if user is the creator/admin and the only admin
+    const group = await prisma.group.findUnique({
+      where: { id },
+      include: {
+        members: {
+          where: { role: 'admin' }
+        }
+      }
+    });
+
+    if (membership.role === 'admin' && group.members.length === 1) {
+      return res.status(400).json({ error: 'Cannot leave group as the only admin. Please assign another admin first or delete the group.' });
+    }
+
+    // Delete the membership
+    await prisma.groupMember.delete({
+      where: { id: membership.id }
+    });
+
+    res.json({ message: 'Left group successfully' });
+  } catch (error) {
+    console.error('Leave group error:', error);
+    res.status(500).json({ error: 'Failed to leave group' });
+  }
+};
+
+// Get invite link for a group
+const getInviteLink = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if user is a member of the group
+    const membership = await prisma.groupMember.findFirst({
+      where: {
+        groupId: id,
+        userId: req.user.id
+      }
+    });
+
+    if (!membership) {
+      return res.status(403).json({ error: 'Only group members can get invite links' });
+    }
+
+    // Return the group ID which can be used to construct the invite link on the frontend
+    res.json({ groupId: id });
+  } catch (error) {
+    console.error('Get invite link error:', error);
+    res.status(500).json({ error: 'Failed to get invite link' });
+  }
+};
+
 // Join group by invite (public, for invite link)
 const joinGroupByInvite = async (req, res) => {
   try {
@@ -516,6 +585,8 @@ module.exports = {
   updateGroup,
   inviteMember,
   removeMember,
+  leaveGroup,
+  getInviteLink,
   joinGroupByInvite,
   getPublicGroups,
   requestJoinGroup,

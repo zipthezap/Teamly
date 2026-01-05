@@ -52,6 +52,8 @@ export const groupsAPI = {
   update: (id, data) => api.put(`/groups/${id}`, data),
   invite: (id, email) => api.post(`/groups/${id}/invite`, { email }),
   removeMember: (groupId, memberId) => api.delete(`/groups/${groupId}/members/${memberId}`),
+  leave: (groupId) => api.delete(`/groups/${groupId}/leave`),
+  getInviteLink: (groupId) => api.get(`/groups/${groupId}/invite-link`),
   joinByInvite: (userId, groupId) => api.post('/groups/join', { userId, groupId }),
   // Public groups and join requests
   getPublic: () => api.get('/groups/public'),
