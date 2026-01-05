@@ -558,58 +558,72 @@ const EventDetails = () => {
               </Box>
             ) : (
               <List>
-                {event.participants.map((participant, idx) => (
-                  <React.Fragment key={participant.id}>
-                    <ListItem 
-                      sx={{ 
-                        px: 2,
-                        py: 1.5,
-                        borderRadius: 2,
-                        '&:hover': {
-                          bgcolor: 'rgba(255, 255, 255, 0.05)',
-                        }
-                      }}
-                    >
-                      <ListItemAvatar>
-                        <Avatar 
-                          sx={{ 
-                            bgcolor: getAvatarColor(idx),
-                            fontWeight: 600,
-                          }}
-                        >
-                          {getInitials(participant.user?.name)}
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={
-                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                            {participant.user?.name}
-                            {participant.userId === event.creatorId && (
-                              <Chip 
-                                label="Organizer" 
-                                size="small" 
-                                color="primary"
-                                sx={{ ml: 1, height: 20, fontSize: '0.7rem' }}
-                              />
-                            )}
-                          </Typography>
-                        }
-                        secondary={participant.user?.email}
-                      />
-                      <Chip
-                        icon={getStatusIcon(participant.status)}
-                        label={participant.status}
-                        size="small"
-                        color={getStatusColor(participant.status)}
+                {event.participants.map((participant, idx) => {
+                  // Find attendance status for this participant
+                  const attendance = event.eventAttendances?.find(a => a.userId === participant.userId);
+                  const isLate = attendance?.status === 'late';
+                  
+                  return (
+                    <React.Fragment key={participant.id}>
+                      <ListItem 
                         sx={{ 
-                          fontWeight: 600,
-                          textTransform: 'capitalize',
+                          px: 2,
+                          py: 1.5,
+                          borderRadius: 2,
+                          '&:hover': {
+                            bgcolor: 'rgba(255, 255, 255, 0.05)',
+                          }
                         }}
-                      />
-                    </ListItem>
-                    {idx < event.participants.length - 1 && <Divider variant="inset" component="li" />}
-                  </React.Fragment>
-                ))}
+                      >
+                        <ListItemAvatar>
+                          <Avatar 
+                            sx={{ 
+                              bgcolor: getAvatarColor(idx),
+                              fontWeight: 600,
+                            }}
+                          >
+                            {getInitials(participant.user?.name)}
+                          </Avatar>
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={
+                            <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                              {participant.user?.name}
+                              {participant.userId === event.creatorId && (
+                                <Chip 
+                                  label="Organizer" 
+                                  size="small" 
+                                  color="primary"
+                                  sx={{ ml: 1, height: 20, fontSize: '0.7rem' }}
+                                />
+                              )}
+                              {isLate && (
+                                <Chip 
+                                  label="Late" 
+                                  size="small" 
+                                  color="warning"
+                                  sx={{ ml: 1, height: 20, fontSize: '0.7rem' }}
+                                />
+                              )}
+                            </Typography>
+                          }
+                          secondary={participant.user?.email}
+                        />
+                        <Chip
+                          icon={getStatusIcon(participant.status)}
+                          label={participant.status}
+                          size="small"
+                          color={getStatusColor(participant.status)}
+                          sx={{ 
+                            fontWeight: 600,
+                            textTransform: 'capitalize',
+                          }}
+                        />
+                      </ListItem>
+                      {idx < event.participants.length - 1 && <Divider variant="inset" component="li" />}
+                    </React.Fragment>
+                  );
+                })}
               </List>
             )}
           </CardContent>
