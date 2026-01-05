@@ -1,6 +1,7 @@
 const prisma = require('../config/database');
 const { validateRecurrenceRule, generateRecurrenceInstances, calculateDuration, applyDuration } = require('../utils/recurrenceService');
 const { sendEmail, sendBatchEmails } = require('../utils/emailService');
+const { batchShouldSendEmailNotification } = require('../utils/notificationHelper');
 
 const createEvent = async (req, res) => {
   try {
@@ -98,18 +99,13 @@ const createEvent = async (req, res) => {
       .filter(m => m.userId !== req.user.id)
       .map(m => m.user);
     
-    // Batch fetch email preferences for all recipients
+    // Check which users should receive notifications
     const userIds = recipients.map(r => r.id);
-    const preferences = await prisma.emailPreference.findMany({
-      where: { userId: { in: userIds } }
-    });
-    const preferencesMap = new Map(preferences.map(p => [p.userId, p]));
+    const notificationMap = await batchShouldSendEmailNotification(userIds, 'eventInvites');
     
     // Send emails
     for (const recipient of recipients) {
-      const userPrefs = preferencesMap.get(recipient.id);
-      
-      if (recipient.emailNotifications && (!userPrefs || userPrefs.eventInvites)) {
+      if (notificationMap.get(recipient.id)) {
         await sendEmail(
           recipient.email,
           'eventInvitation',
@@ -292,18 +288,13 @@ const updateEvent = async (req, res) => {
       .filter(p => p.user.id !== req.user.id)
       .map(p => p.user);
     
-    // Batch fetch email preferences
+    // Check which users should receive notifications
     const userIds = recipients.map(r => r.id);
-    const preferences = await prisma.emailPreference.findMany({
-      where: { userId: { in: userIds } }
-    });
-    const preferencesMap = new Map(preferences.map(p => [p.userId, p]));
+    const notificationMap = await batchShouldSendEmailNotification(userIds, 'eventUpdates');
     
     // Send emails
     for (const recipient of recipients) {
-      const userPrefs = preferencesMap.get(recipient.id);
-
-      if (recipient.emailNotifications && (!userPrefs || userPrefs.eventUpdates)) {
+      if (notificationMap.get(recipient.id)) {
         await sendEmail(
           recipient.email,
           'eventUpdate',
@@ -356,18 +347,13 @@ const deleteEvent = async (req, res) => {
       .filter(p => p.user.id !== req.user.id)
       .map(p => p.user);
     
-    // Batch fetch email preferences
+    // Check which users should receive notifications
     const userIds = recipients.map(r => r.id);
-    const preferences = await prisma.emailPreference.findMany({
-      where: { userId: { in: userIds } }
-    });
-    const preferencesMap = new Map(preferences.map(p => [p.userId, p]));
+    const notificationMap = await batchShouldSendEmailNotification(userIds, 'eventCancellations');
     
     // Send emails
     for (const recipient of recipients) {
-      const userPrefs = preferencesMap.get(recipient.id);
-
-      if (recipient.emailNotifications && (!userPrefs || userPrefs.eventCancellations)) {
+      if (notificationMap.get(recipient.id)) {
         await sendEmail(
           recipient.email,
           'eventCancellation',

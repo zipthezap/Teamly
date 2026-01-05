@@ -1,5 +1,6 @@
 const prisma = require('../config/database');
 const { sendEmail } = require('../utils/emailService');
+const { batchShouldSendEmailNotification } = require('../utils/notificationHelper');
 
 // Create a comment
 const createComment = async (req, res) => {
@@ -54,11 +55,8 @@ const createComment = async (req, res) => {
 
     // Extract mentions from content (@username)
     const mentionRegex = /@(\w+)/g;
-    const mentions = [];
-    let match;
-    while ((match = mentionRegex.exec(content)) !== null) {
-      mentions.push(match[1]);
-    }
+    const mentionMatches = content.matchAll(mentionRegex);
+    const mentions = Array.from(mentionMatches, match => match[1]);
 
     // Create comment
     const comment = await prisma.comment.create({
@@ -108,16 +106,7 @@ const createComment = async (req, res) => {
       
       // Batch fetch preferences for all mentioned users
       const mentionedUserIds = Array.from(mentionedUsers).map(u => u.id);
-      const preferences = await prisma.emailPreference.findMany({
-        where: { userId: { in: mentionedUserIds } }
-      });
-      const preferencesMap = new Map(preferences.map(p => [p.userId, p]));
-      
-      const users = await prisma.user.findMany({
-        where: { id: { in: mentionedUserIds } },
-        select: { id: true, emailNotifications: true }
-      });
-      const usersMap = new Map(users.map(u => [u.id, u]));
+      const notificationMap = await batchShouldSendEmailNotification(mentionedUserIds, 'commentMentions');
       
       // Create mentions and send notifications
       for (const mentionedUser of mentionedUsers) {
@@ -130,10 +119,7 @@ const createComment = async (req, res) => {
         });
         
         // Send email notification if enabled
-        const userPrefs = preferencesMap.get(mentionedUser.id);
-        const user = usersMap.get(mentionedUser.id);
-        
-        if (user?.emailNotifications && (!userPrefs || userPrefs.commentMentions)) {
+        if (notificationMap.get(mentionedUser.id)) {
           await sendEmail(
             mentionedUser.email,
             'commentMention',

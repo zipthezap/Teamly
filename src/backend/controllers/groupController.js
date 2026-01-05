@@ -21,6 +21,7 @@ const joinGroupByInvite = async (req, res) => {
 };
 const prisma = require('../config/database');
 const { sendEmail } = require('../utils/emailService');
+const { shouldSendEmailNotification } = require('../utils/notificationHelper');
 
 const createGroup = async (req, res) => {
   try {
@@ -264,11 +265,9 @@ const inviteMember = async (req, res) => {
       where: { id: req.user.id }
     });
 
-    const preferences = await prisma.emailPreference.findUnique({
-      where: { userId: userToInvite.id }
-    });
+    const shouldSend = await shouldSendEmailNotification(userToInvite.id, 'groupInvites');
 
-    if (userToInvite.emailNotifications && (!preferences || preferences.groupInvites)) {
+    if (shouldSend) {
       await sendEmail(
         userToInvite.email,
         'groupInvitation',
