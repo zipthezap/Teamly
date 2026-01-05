@@ -210,6 +210,9 @@ const CreateEvent = () => {
             value={formData.startTime}
             onChange={handleChange}
             InputLabelProps={{ shrink: true }}
+            inputProps={{ 
+              step: 900, // 15 minutes in seconds
+            }}
             required
           />
 
@@ -222,6 +225,9 @@ const CreateEvent = () => {
             value={formData.endTime}
             onChange={handleChange}
             InputLabelProps={{ shrink: true }}
+            inputProps={{ 
+              step: 900, // 15 minutes in seconds
+            }}
           />
 
           <TextField

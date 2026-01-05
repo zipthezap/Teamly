@@ -237,6 +237,20 @@ const getEvent = async (req, res) => {
             status: true,
             updatedAt: true
           }
+        },
+        eventNotifications: {
+          select: {
+            id: true,
+            userId: true,
+            type: true,
+            createdAt: true,
+            user: {
+              select: { name: true }
+            }
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
         }
       }
     });
@@ -555,10 +569,26 @@ const updateParticipationStatus = async (req, res) => {
       return res.status(404).json({ error: 'Not participating in this event' });
     }
 
+    // Get the event to find the organizer
+    const event = await prisma.event.findUnique({
+      where: { id }
+    });
+
     const updatedParticipant = await prisma.eventParticipant.update({
       where: { id: participant.id },
       data: { status }
     });
+
+    // Create notification for status change (if not the organizer)
+    if (event && event.creatorId !== req.user.id) {
+      await prisma.eventNotification.create({
+        data: {
+          eventId: id,
+          userId: event.creatorId,
+          type: status // 'confirmed' or 'declined'
+        }
+      });
+    }
 
     res.json(updatedParticipant);
   } catch (error) {

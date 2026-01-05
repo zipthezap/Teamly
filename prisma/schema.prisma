@@ -81,6 +81,10 @@ model User {
   emailNotifications Boolean  @default(true)
   emailVerified      Boolean  @default(false)
   emailVerificationToken String?
+  
+  // Location fields
+  city              String?
+  country           String?
 
   groupMemberships  GroupMember[]
   createdGroups     Group[]             @relation("GroupCreator")
