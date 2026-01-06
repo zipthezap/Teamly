@@ -5,6 +5,19 @@ import { useAuth } from '../contexts/AuthContext';
 // All MUI icon imports removed; using inline SVGs
 import NotificationsPopover from './NotificationsPopover';
 
+
+// NavLink helper for nav items
+const NavLink = ({ to, label, svg }: { to: string; label: string; svg: React.ReactNode }) => (
+  <Link
+    to={to}
+    className="flex items-center gap-1 px-3 py-2 rounded text-white font-medium hover:bg-white/10 transition no-underline"
+    style={{ textDecoration: 'none' }}
+  >
+    {svg}
+    <span>{label}</span>
+  </Link>
+);
+
 const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -73,18 +86,6 @@ const Navbar = () => {
       </div>
     </nav>
   );
-
-// NavLink helper for nav items
-const NavLink = ({ to, label, svg }: { to: string; label: string; svg: React.ReactNode }) => (
-  <Link
-    to={to}
-    className="flex items-center gap-1 px-3 py-2 rounded text-white font-medium hover:bg-white/10 transition no-underline"
-    style={{ textDecoration: 'none' }}
-  >
-    {svg}
-    <span>{label}</span>
-  </Link>
-);
 };
 
 export default Navbar;

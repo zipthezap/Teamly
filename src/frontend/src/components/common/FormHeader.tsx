@@ -1,10 +1,10 @@
 import React, { ReactNode } from 'react';
-import { Box, Typography, SxProps, Theme } from '@mui/material';
 
 interface FormHeaderProps {
   icon?: ReactNode;
   title: string;
-  iconSx?: SxProps<Theme>;
+  iconColor?: string;
+  iconSize?: string;
 }
 
 /**
@@ -13,18 +13,19 @@ interface FormHeaderProps {
 export const FormHeader: React.FC<FormHeaderProps> = ({ 
   icon, 
   title,
-  iconSx = { fontSize: 48, mb: 2, color: 'primary.main' }
+  iconColor = 'text-blue-600',
+  iconSize = 'text-5xl'
 }) => {
   return (
     <>
       {icon && (
-        <Box sx={iconSx}>
+        <div className={`${iconColor} ${iconSize} mb-4`}>
           {icon}
-        </Box>
+        </div>
       )}
-      <Typography variant="h4" component="h1" gutterBottom>
+      <h1 className="text-3xl font-semibold mb-4">
         {title}
-      </Typography>
+      </h1>
     </>
   );
 };

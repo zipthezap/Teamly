@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react';
 
-
+interface EmptyStateProps {
   icon: React.ReactNode;
   title: string;
   description: string;
@@ -12,6 +12,7 @@ import React, { ReactNode } from 'react';
 /**
  * Reusable empty state component for when there's no data to display
  */
+export const EmptyState: React.FC<EmptyStateProps> = ({
   icon,
   title,
   description,

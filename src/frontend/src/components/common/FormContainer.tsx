@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react';
 
-
+interface FormContainerProps {
   children: ReactNode;
   maxWidth?: string | number;
   className?: string;
@@ -9,6 +9,7 @@ import React, { ReactNode } from 'react';
 /**
  * Reusable container for form pages with consistent styling
  */
+export const FormContainer: React.FC<FormContainerProps> = ({
   children,
   maxWidth = '28rem',
   className = '',

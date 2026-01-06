@@ -313,7 +313,6 @@ const PublicGroups = () => {
           </div>
         )}
       </div>
-      </Paper>
 
       {filteredGroups.length === 0 ? (
         <EmptyState
