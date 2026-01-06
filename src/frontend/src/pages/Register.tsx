@@ -78,7 +78,7 @@ const Register = () => {
             </Alert>
           )}
 
-          <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
             <TextField
               label="Full Name"
               fullWidth
@@ -124,12 +124,14 @@ const Register = () => {
             >
               {loading ? 'Registering...' : 'Register'}
             </Button>
-          </form>
+          </Box>
 
           <Typography variant="body2" sx={{ mt: 2 }}>
             Already have an account?{' '}
-            <Link to="/login" style={{ color: '#1976d2' }}>
-              Login here
+            <Link to="/login" style={{ textDecoration: 'none' }}>
+              <Typography component="span" sx={{ color: 'primary.dark' }}>
+                Login here
+              </Typography>
             </Link>
           </Typography>
         </Box>

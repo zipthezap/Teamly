@@ -65,7 +65,7 @@ const Login = () => {
             </Alert>
           )}
 
-          <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
             <TextField
               label="Email"
               type="email"
@@ -130,12 +130,14 @@ const Login = () => {
                 Back to Login
               </Button>
             )}
-          </form>
+          </Box>
 
           <Typography variant="body2" sx={{ mt: 2 }}>
             Don't have an account?{' '}
-            <Link to="/register" style={{ color: '#1976d2' }}>
-              Register here
+            <Link to="/register" style={{ textDecoration: 'none' }}>
+              <Typography component="span" sx={{ color: 'primary.dark' }}>
+                Register here
+              </Typography>
             </Link>
           </Typography>
         </Box>
