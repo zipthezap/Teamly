@@ -8,17 +8,17 @@
     "@mui/icons-material": "^7.3.6",
     "@mui/material": "^7.3.6",
     "@react-google-maps/api": "^2.20.8",
+    "@vitejs/plugin-react": "^5.1.2",
     "axios": "^1.13.2",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-router-dom": "^7.11.0",
-    "react-scripts": "5.0.1"
+    "vite": "^7.3.0"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "eslintConfig": {
     "extends": "react-app"

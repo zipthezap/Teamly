@@ -106,25 +106,25 @@ export const createComment = async (req: Request, res: Response) => {
       }
       
       // Batch fetch preferences for all mentioned users
-      const mentionedUserIds = Array.from(mentionedUsers).map(u => u.id);
+      const mentionedUserIds = Array.from(mentionedUsers).map(u => (u as { id: string }).id);
       const notificationMap = await batchShouldSendEmailNotification(mentionedUserIds, 'commentMentions');
       
       // Create mentions and send notifications
       for (const mentionedUser of mentionedUsers) {
+        const user = mentionedUser as { id: string; email: string; name: string };
         // Create mention record
         await prisma.commentMention.create({
           data: {
             commentId: comment.id,
-            userId: mentionedUser.id
+            userId: user.id
           }
         });
-        
         // Send email notification if enabled
-        if (notificationMap.get(mentionedUser.id)) {
+        if (notificationMap.get(user.id)) {
           await sendEmail(
-            mentionedUser.email,
+            user.email,
             'commentMention',
-            mentionedUser.name,
+            user.name,
             req.user.name,
             event.title,
             content

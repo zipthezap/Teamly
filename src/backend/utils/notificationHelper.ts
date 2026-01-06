@@ -62,9 +62,8 @@ export const batchShouldSendEmailNotification = async (userIds: string[], notifi
     const result = new Map();
     for (const userId of userIds) {
       const user = usersMap.get(userId);
-      
       // If user doesn't exist or has notifications disabled globally, don't send
-      if (!user || !user.emailNotifications) {
+      if (!user || !(user as { emailNotifications?: boolean }).emailNotifications) {
         result.set(userId, false);
         continue;
       }

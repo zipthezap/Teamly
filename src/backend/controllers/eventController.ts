@@ -157,19 +157,18 @@ export const getEvents = async (req: Request, res: Response) => {
   try {
     const { groupId } = req.query;
 
-    const where = {
-      group: {
-        members: {
-          some: {
-            userId: req.user.id
-          }
-        }
-      }
-    };
-
+    // Build where filter
+    const where: any = {};
     if (groupId) {
       where.groupId = groupId;
     }
+    where.group = {
+      members: {
+        some: {
+          userId: req.user.id
+        }
+      }
+    };
 
     const events = await prisma.event.findMany({
       where,
@@ -649,13 +648,36 @@ export const getRecurringEventInstances = async (req: Request, res: Response) =>
     }
 
     // Generate instances
-    const exceptionDates = event.exceptionDates ? JSON.parse(JSON.stringify(event.exceptionDates)) : [];
+    let start: Date;
+    if (startDate instanceof Date) {
+      start = startDate;
+    } else if (typeof startDate === 'string') {
+      start = new Date(startDate);
+    } else {
+      start = event.startTime;
+    }
+    // Ensure exceptionDates is defined and parsed
+    let exceptionDates: any = [];
+    if (event.exceptionDates) {
+      exceptionDates = Array.isArray(event.exceptionDates)
+        ? event.exceptionDates
+        : JSON.parse(JSON.stringify(event.exceptionDates));
+    }
+    // Ensure endDate is a Date
+    let end: Date;
+    if (endDate instanceof Date) {
+      end = endDate;
+    } else if (typeof endDate === 'string') {
+      end = new Date(endDate);
+    } else {
+      end = event.recurrenceEnd;
+    }
     const instances = generateRecurrenceInstances(
-      startDate || event.startTime,
+      start,
       event.recurrenceRule,
-      endDate || event.recurrenceEnd,
+      end,
       exceptionDates,
-      limit ? parseInt(limit) : 100
+      limit ? parseInt(limit as string) : 100
     );
 
     // Calculate duration if endTime exists

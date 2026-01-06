@@ -28,7 +28,7 @@ const createTransporter = () => {
     // Default: Use SMTP settings from environment
     return nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'localhost',
-      port: process.env.SMTP_PORT || 587,
+      port: Number(process.env.SMTP_PORT) || 587,
       secure: process.env.SMTP_SECURE === 'true',
       auth: process.env.SMTP_USER ? {
         user: process.env.SMTP_USER,

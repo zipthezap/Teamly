@@ -47,11 +47,9 @@ export const createGroup = async (req: Request, res: Response) => {
       const toRad = deg => deg * Math.PI / 180;
       const users = await prisma.user.findMany({
         where: {
-          id: { not: req.user.id },
-          latitude: { not: null },
-          longitude: { not: null },
+          id: { not: req.user.id }
         },
-        select: { id: true, latitude: true, longitude: true }
+        select: { id: true }
       });
       const isNearby = (lat1, lon1, lat2, lon2) => {
         const dLat = toRad(lat2 - lat1);
@@ -62,7 +60,7 @@ export const createGroup = async (req: Request, res: Response) => {
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         return R * c < 10; // 10km
       };
-      const nearbyUserIds = users.filter(u => isNearby(latitude, longitude, u.latitude, u.longitude)).map(u => u.id);
+      const nearbyUserIds = users.map(u => u.id);
       await Promise.all(nearbyUserIds.map(userId =>
         prisma.groupNotification.create({
           data: {

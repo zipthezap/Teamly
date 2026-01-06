@@ -12,10 +12,15 @@ RUN npm install
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 COPY src/backend ./src/backend
+# Copy tsconfig.json for TypeScript build
+COPY tsconfig.json ./
 
 
 # Generate Prisma Client (uses already installed prisma)
 RUN npm run prisma:generate
+
+# Build backend TypeScript
+RUN npm run build
 
 # Expose port
 EXPOSE 3000
