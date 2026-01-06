@@ -1,7 +1,6 @@
 import React, { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { CircularProgress, Box } from '@mui/material';
 
 interface PrivateRouteProps {
   children: ReactNode;
@@ -12,9 +11,9 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
-      </Box>
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
     );
   }
 
