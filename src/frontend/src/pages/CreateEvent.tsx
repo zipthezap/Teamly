@@ -36,8 +36,10 @@ const CreateEvent = () => {
     eventType: 'football',
     location: '',
     startDate: '',
-    startTime: '',
-    endTime: '',
+    startHour: '',
+    startMinute: '00',
+    endHour: '',
+    endMinute: '00',
     maxPlayers: '',
   });
   const [error, setError] = useState('');
@@ -65,21 +67,26 @@ const CreateEvent = () => {
     });
   };
 
-  const handleTimeChange = (name) => (e) => {
-    const value = e.target.value;
-    // Auto-fill minutes to :00 when a time is selected
-    if (value && value.includes(':')) {
-      const [hour] = value.split(':');
+  // Dropdown handlers for hour/minute
+  const handleHourChange = (name) => (e) => {
+    if (name === 'endHour') {
       setFormData({
         ...formData,
-        [name]: `${hour}:00`,
+        [name]: e.target.value,
+        endMinute: '00', // Only autofill for endHour
       });
     } else {
       setFormData({
         ...formData,
-        [name]: value,
+        [name]: e.target.value,
       });
     }
+  };
+  const handleMinuteChange = (name) => (e) => {
+    setFormData({
+      ...formData,
+      [name]: e.target.value,
+    });
   };
 
   const handleEndTimeBlur = (e) => {
@@ -123,21 +130,24 @@ const CreateEvent = () => {
 
     try {
       // Validate required fields
-      if (!formData.startDate || !formData.startTime) {
+      if (!formData.startDate || !formData.startHour) {
         setError('Start date and time are required.');
         setLoading(false);
         return;
       }
 
+      // Compose time strings
+      const startTime = `${formData.startHour.padStart(2, '0')}:${formData.startMinute}`;
+      let endTime = null;
+      if (formData.endHour) {
+        endTime = `${formData.endHour.padStart(2, '0')}:${formData.endMinute}`;
+      }
+
       // Combine date and time for startTime
-      const startDateTime = new Date(`${formData.startDate}T${formData.startTime}`);
-      
+      const startDateTime = new Date(`${formData.startDate}T${startTime}`);
       let endDateTime = null;
-      if (formData.endTime) {
-        // Use the same date for end time (same day event)
-        endDateTime = new Date(`${formData.startDate}T${formData.endTime}`);
-        
-        // Check that end time is after start time
+      if (endTime) {
+        endDateTime = new Date(`${formData.startDate}T${endTime}`);
         if (endDateTime <= startDateTime) {
           setError('End time must be after start time.');
           setLoading(false);
@@ -151,9 +161,12 @@ const CreateEvent = () => {
         endTime: endDateTime ? endDateTime.toISOString() : null,
         maxPlayers: formData.maxPlayers ? parseInt(formData.maxPlayers) : null,
       };
-      
       // Remove the separate date/time fields
       delete data.startDate;
+      delete data.startHour;
+      delete data.startMinute;
+      delete data.endHour;
+      delete data.endMinute;
       
       const response = await eventsAPI.create(data);
       navigate(`/events/${response.data.id}`);
@@ -254,36 +267,69 @@ const CreateEvent = () => {
             required
           />
 
-          <TextField
-            label="Start Time"
-            name="startTime"
-            type="time"
-            fullWidth
-            margin="normal"
-            value={formData.startTime}
-            onChange={handleTimeChange('startTime')}
-            onBlur={handleStartTimeBlur}
-            InputLabelProps={{ shrink: true }}
-            inputProps={{ 
-              step: 900, // 15 minutes in seconds
-            }}
-            required
-          />
 
-          <TextField
-            label="End Time (optional)"
-            name="endTime"
-            type="time"
-            fullWidth
-            margin="normal"
-            value={formData.endTime}
-            onChange={handleTimeChange('endTime')}
-            onBlur={handleEndTimeBlur}
-            InputLabelProps={{ shrink: true }}
-            inputProps={{ 
-              step: 900, // 15 minutes in seconds
-            }}
-          />
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 2 }}>
+            <Typography>Start Time</Typography>
+            <TextField
+              select
+              label="Hour"
+              name="startHour"
+              value={formData.startHour}
+              onChange={handleHourChange('startHour')}
+              required
+              sx={{ width: 100 }}
+            >
+              {[...Array(24)].map((_, i) => (
+                <MenuItem key={i+1} value={(i+1).toString().padStart(2, '0')}>
+                  {(i+1).toString().padStart(2, '0')}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Minute"
+              name="startMinute"
+              value={formData.startMinute}
+              onChange={handleMinuteChange('startMinute')}
+              required
+              sx={{ width: 100 }}
+            >
+              {['00', '15', '30', '45'].map((m) => (
+                <MenuItem key={m} value={m}>{m}</MenuItem>
+              ))}
+            </TextField>
+          </Box>
+
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 2 }}>
+            <Typography>End Time (optional)</Typography>
+            <TextField
+              select
+              label="Hour"
+              name="endHour"
+              value={formData.endHour}
+              onChange={handleHourChange('endHour')}
+              sx={{ width: 100 }}
+            >
+              <MenuItem value="">--</MenuItem>
+              {[...Array(24)].map((_, i) => (
+                <MenuItem key={i+1} value={(i+1).toString().padStart(2, '0')}>
+                  {(i+1).toString().padStart(2, '0')}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Minute"
+              name="endMinute"
+              value={formData.endMinute}
+              onChange={handleMinuteChange('endMinute')}
+              sx={{ width: 100 }}
+            >
+              {['00', '15', '30', '45'].map((m) => (
+                <MenuItem key={m} value={m}>{m}</MenuItem>
+              ))}
+            </TextField>
+          </Box>
 
           <TextField
             label="Max Players"

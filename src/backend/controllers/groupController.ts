@@ -1,3 +1,28 @@
+// Delete a group (admin only)
+export const deleteGroup = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    // Check if user is admin of the group
+    const membership = await prisma.groupMember.findFirst({
+      where: {
+        groupId: id,
+        userId: req.user.id,
+        role: 'admin'
+      }
+    });
+    if (!membership) {
+      return res.status(403).json({ error: 'Only admins can delete the group' });
+    }
+    // Delete group and cascade related data (members, events, etc.)
+    await prisma.group.delete({
+      where: { id },
+    });
+    res.json({ message: 'Group deleted successfully' });
+  } catch (error) {
+    console.error('Delete group error:', error);
+    res.status(500).json({ error: 'Failed to delete group' });
+  }
+};
 import prisma from '../config/database';
 import { sendEmail } from '../utils/emailService';
 import { shouldSendEmailNotification } from '../utils/notificationHelper';

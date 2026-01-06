@@ -17,6 +17,9 @@ router.use(authenticatedLimiter);
 router.post('/', groupController.createGroup);
 router.get('/', groupController.getGroups);
 router.get('/:id', groupController.getGroup);
+
+// Delete group (admin only)
+router.delete('/:id', groupController.deleteGroup);
 router.put('/:id', groupController.updateGroup);
 router.post('/:id/invite', groupController.inviteMember);
 router.delete('/:id/members/:memberId', groupController.removeMember);
