@@ -19,12 +19,21 @@ import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import { useJoinRequests } from '../hooks/useJoinRequests';
 
-const JoinRequestsPopover = ({ groupId = null }) => {
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [actionLoading, setActionLoading] = useState({});
-  const [feedback, setFeedback] = useState(null);
+interface JoinRequestsPopoverProps {
+  groupId?: string | number | null;
+}
+
+interface Feedback {
+  type: 'success' | 'error';
+  message: string;
+}
+
+const JoinRequestsPopover: React.FC<JoinRequestsPopoverProps> = ({ groupId = null }) => {
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const [actionLoading, setActionLoading] = useState<Record<string | number, boolean>>({});
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
   const { joinRequests, loading, handleJoinRequest } = useJoinRequests(groupId);
-  const feedbackTimeoutRef = useRef(null);
+  const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Cleanup timeout on unmount
@@ -35,7 +44,7 @@ const JoinRequestsPopover = ({ groupId = null }) => {
     };
   }, []);
 
-  const handleClick = (event) => {
+  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
     setFeedback(null);
   };
@@ -45,7 +54,7 @@ const JoinRequestsPopover = ({ groupId = null }) => {
     setFeedback(null);
   };
 
-  const handleAction = async (requestGroupId, requestId, action) => {
+  const handleAction = async (requestGroupId: string | number, requestId: string | number, action: string) => {
     setActionLoading({ [requestId]: true });
     setFeedback(null);
     

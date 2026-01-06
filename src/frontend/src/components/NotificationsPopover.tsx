@@ -17,14 +17,14 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import { useNotifications } from '../hooks/useNotifications';
 import { useNavigate } from 'react-router-dom';
 
-const NotificationsPopover = () => {
-  const [anchorEl, setAnchorEl] = useState(null);
+const NotificationsPopover: React.FC = () => {
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const { notifications, loading, refresh, markAsRead } = useNotifications();
   const navigate = useNavigate();
   const open = Boolean(anchorEl);
   const id = open ? 'notifications-popover' : undefined;
 
-  const handleClick = (event) => {
+  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
     refresh();
   };
@@ -33,7 +33,7 @@ const NotificationsPopover = () => {
     setAnchorEl(null);
   };
   
-  const handleNotificationClick = (notif) => {
+  const handleNotificationClick = (notif: any) => {
     // Navigate to relevant page based on notification type
     if (notif.notificationType === 'event' && notif.event?.id) {
       navigate(`/events/${notif.event.id}`);

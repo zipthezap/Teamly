@@ -6,16 +6,27 @@ import {
   Typography,
   Alert,
   Paper,
-  Grid,
+  Grid2 as Grid,
   CircularProgress,
 } from '@mui/material';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 
-const LocationPicker = ({ value = {}, onChange }) => {
+interface LocationValue {
+  latitude?: number | string;
+  longitude?: number | string;
+  locationName?: string;
+}
+
+interface LocationPickerProps {
+  value?: LocationValue;
+  onChange?: (location: LocationValue) => void;
+}
+
+const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [location, setLocation] = useState({
+  const [location, setLocation] = useState<LocationValue>({
     latitude: value.latitude || '',
     longitude: value.longitude || '',
     locationName: value.locationName || '',
@@ -31,7 +42,7 @@ const LocationPicker = ({ value = {}, onChange }) => {
     }
   }, [value]);
 
-  const handleLocationChange = (field, val) => {
+  const handleLocationChange = (field: keyof LocationValue, val: string | number) => {
     const newLocation = { ...location, [field]: val };
     setLocation(newLocation);
     if (onChange) {

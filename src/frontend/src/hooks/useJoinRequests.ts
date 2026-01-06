@@ -2,8 +2,22 @@ import { useState, useEffect, useCallback } from 'react';
 import { groupsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
-export const useJoinRequests = (groupId = null) => {
-  const [joinRequests, setJoinRequests] = useState([]);
+interface JoinRequest {
+  id: string | number;
+  groupId?: string | number;
+  groupName?: string;
+  [key: string]: any;
+}
+
+interface UseJoinRequestsReturn {
+  joinRequests: JoinRequest[];
+  loading: boolean;
+  refresh: () => Promise<void>;
+  handleJoinRequest: (requestGroupId: string | number, requestId: string | number, action: string) => Promise<{ success: boolean; message: string }>;
+}
+
+export const useJoinRequests = (groupId: string | number | null = null): UseJoinRequestsReturn => {
+  const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
 
@@ -22,16 +36,16 @@ export const useJoinRequests = (groupId = null) => {
         const allGroups = groupsResponse.data || [];
         
         // Find groups where user is admin
-        const adminGroups = allGroups.filter(group => 
-          group.members?.some(m => m.userId === user.id && m.role === 'admin')
+        const adminGroups = allGroups.filter((group: any) => 
+          group.members?.some((m: any) => m.userId === user.id && m.role === 'admin')
         );
         
         // Fetch join requests for each admin group
         // Note: This creates N API calls for N admin groups. 
         // Could be optimized with a dedicated backend endpoint like /groups/join-requests/all
-        const requestsPromises = adminGroups.map(group => 
+        const requestsPromises = adminGroups.map((group: any) => 
           groupsAPI.getJoinRequests(group.id)
-            .then(res => res.data.map(req => ({ ...req, groupId: group.id, groupName: group.name })))
+            .then(res => res.data.map((req: any) => ({ ...req, groupId: group.id, groupName: group.name })))
             .catch(() => [])
         );
         
@@ -51,13 +65,13 @@ export const useJoinRequests = (groupId = null) => {
     fetchJoinRequests();
   }, [fetchJoinRequests]);
 
-  const handleJoinRequest = async (requestGroupId, requestId, action) => {
+  const handleJoinRequest = async (requestGroupId: string | number, requestId: string | number, action: string) => {
     try {
       await groupsAPI.handleJoinRequest(requestGroupId, requestId, action);
       // Refresh the requests after handling
       await fetchJoinRequests();
       return { success: true, message: `Join request ${action === 'approve' ? 'approved' : 'rejected'}` };
-    } catch (error) {
+    } catch (error: any) {
       return { 
         success: false, 
         message: error.response?.data?.error || 'Failed to process join request' 

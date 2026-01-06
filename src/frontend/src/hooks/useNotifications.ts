@@ -1,8 +1,19 @@
 import { useState, useEffect } from 'react';
 import { groupChatAPI } from '../services/api';
 
-export const useNotifications = () => {
-  const [notifications, setNotifications] = useState([]);
+interface Notification {
+  [key: string]: any;
+}
+
+interface UseNotificationsReturn {
+  notifications: Notification[];
+  loading: boolean;
+  refresh: () => Promise<void>;
+  markAsRead: () => Promise<void>;
+}
+
+export const useNotifications = (): UseNotificationsReturn => {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchNotifications = async () => {
