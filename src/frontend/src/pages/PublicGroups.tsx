@@ -395,11 +395,11 @@ const PublicGroups = () => {
                       {group.description || 'No description available'}
                     </Typography>
                     
-                    {group.locationName && (
+                    {(group.city || group.country || group.locationName) && (
                       <Box display="flex" alignItems="center" mb={1}>
                         <LocationOnIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
                         <Typography variant="caption" color="text.secondary">
-                          {group.locationName}
+                          {[group.city, group.country, group.locationName].filter(Boolean).join(', ')}
                         </Typography>
                       </Box>
                     )}
