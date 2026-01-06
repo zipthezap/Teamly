@@ -353,60 +353,81 @@ export const updateMemberRole = async (req: Request, res: Response) => {
     const { id, memberId } = req.params;
     const { role } = req.body;
 
-    if (!role || !['admin', 'member'].includes(role)) {
+    // Validate role with explicit type check
+    const validRoles = ['admin', 'member'] as const;
+    if (!role || !validRoles.includes(role as typeof validRoles[number])) {
       return res.status(400).json({ error: 'Invalid role. Must be "admin" or "member"' });
     }
 
-    // Check if user is admin of the group
-    const adminMembership = await prisma.groupMember.findFirst({
-      where: {
-        groupId: id,
-        userId: req.user.id,
-        role: 'admin'
-      }
-    });
-
-    if (!adminMembership) {
-      return res.status(403).json({ error: 'Only admins can update member roles' });
-    }
-
-    // Get the member to update
-    const memberToUpdate = await prisma.groupMember.findUnique({
-      where: { id: memberId }
-    });
-
-    if (!memberToUpdate || memberToUpdate.groupId !== id) {
-      return res.status(404).json({ error: 'Member not found in this group' });
-    }
-
-    // Check if trying to demote the last admin
-    if (memberToUpdate.role === 'admin' && role === 'member') {
-      const adminCount = await prisma.groupMember.count({
+    // Use a transaction to prevent race conditions when demoting admins
+    const result = await prisma.$transaction(async (tx) => {
+      // Check if user is admin of the group
+      const adminMembership = await tx.groupMember.findFirst({
         where: {
           groupId: id,
+          userId: req.user.id,
           role: 'admin'
         }
       });
 
-      if (adminCount <= 1) {
-        return res.status(400).json({ error: 'Cannot demote the last admin. Please assign another admin first.' });
+      if (!adminMembership) {
+        throw new Error('FORBIDDEN');
       }
-    }
 
-    // Update the member role
-    const updatedMember = await prisma.groupMember.update({
-      where: { id: memberId },
-      data: { role },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true }
+      // Get the member to update with groupId constraint
+      const memberToUpdate = await tx.groupMember.findFirst({
+        where: {
+          id: memberId,
+          groupId: id
+        }
+      });
+
+      if (!memberToUpdate) {
+        throw new Error('NOT_FOUND');
+      }
+
+      // Check if trying to demote the last admin
+      if (memberToUpdate.role === 'admin' && role === 'member') {
+        const adminCount = await tx.groupMember.count({
+          where: {
+            groupId: id,
+            role: 'admin'
+          }
+        });
+
+        if (adminCount <= 1) {
+          throw new Error('LAST_ADMIN');
         }
       }
+
+      // Update the member role
+      const updatedMember = await tx.groupMember.update({
+        where: { id: memberId },
+        data: { role },
+        include: {
+          user: {
+            select: { id: true, name: true, email: true }
+          }
+        }
+      });
+
+      return updatedMember;
     });
 
-    res.json(updatedMember);
-  } catch (error) {
+    res.json(result);
+  } catch (error: any) {
     console.error('Update member role error:', error);
+    
+    if (error.message === 'FORBIDDEN') {
+      return res.status(403).json({ error: 'Only admins can update member roles' });
+    }
+    if (error.message === 'NOT_FOUND') {
+      return res.status(404).json({ error: 'Member not found in this group' });
+    }
+    if (error.message === 'LAST_ADMIN') {
+      return res.status(400).json({ error: 'Cannot demote the last admin. Please assign another admin first.' });
+    }
+    
     res.status(500).json({ error: 'Failed to update member role' });
   }
 };
