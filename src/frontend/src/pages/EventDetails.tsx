@@ -1,30 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  Container,
-  Paper,
-  Box,
-  CircularProgress,
-  Grid,
-  Alert,
-  Stack,
-  LinearProgress,
-  Avatar,
-  Divider,
-  Typography,
-  Button,
-} from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import IconButton from '@mui/material/IconButton';
 import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import {
-  EventInformation,
-  ParticipantsList,
-  EventActions,
-} from '../components/event';
-import EventActivityFeedModern from '../components/event/EventActivityFeedModern';
 
 const EventDetails = () => {
   const { id } = useParams();
@@ -143,17 +120,17 @@ const EventDetails = () => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
-        <CircularProgress size={60} thickness={4} />
-      </Box>
+      <div className="flex justify-center items-center min-h-[80vh]">
+        <div className="w-12 h-12 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
     );
   }
 
   if (!event) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
-        <Alert severity="error">Event not found</Alert>
-      </Container>
+      <div className="max-w-2xl mx-auto mt-8">
+        <div className="bg-red-100 text-red-700 p-4 rounded">Event not found</div>
+      </div>
     );
   }
 
@@ -164,132 +141,111 @@ const EventDetails = () => {
   const fillPercentage = event.maxPlayers ? (participantCount / event.maxPlayers) * 100 : 0;
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Stack spacing={3}>
-        {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
-        {success && <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>}
-        {lateSuccess && <Alert severity="success" onClose={() => setLateSuccess('')}>{lateSuccess}</Alert>}
-        {lateError && <Alert severity="error" onClose={() => setLateError('')}>{lateError}</Alert>}
+    <div className="max-w-5xl mx-auto mt-8 mb-8 px-2">
+      {/* Alerts */}
+      {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
+      {success && <div className="bg-green-100 text-green-700 p-3 rounded mb-4">{success}</div>}
+      {lateSuccess && <div className="bg-green-100 text-green-700 p-3 rounded mb-4">{lateSuccess}</div>}
+      {lateError && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{lateError}</div>}
 
-
-        <Paper sx={{ p: 4, position: 'relative' }}>
-          {/* Admin icon buttons in top right */}
-          {isCreator && (
-            <Box sx={{ position: 'absolute', top: 16, right: 16, display: 'flex', gap: 1 }}>
-              <IconButton color="primary" onClick={() => navigate(`/events/${event.id}/edit`)} size="large">
-                <EditIcon />
-              </IconButton>
-              <IconButton color="error" onClick={handleDelete} size="large">
-                <DeleteIcon />
-              </IconButton>
-            </Box>
-          )}
-          <Grid container spacing={3}>
-            {/* Main: Event Info */}
-            <Grid item xs={12} md={5}>
-              <Stack spacing={3}>
-                <EventInformation
-                  event={event}
-                  isParticipant={!!isParticipant}
-                  isCreator={isCreator}
-                  isFull={isFull}
-                />
-                <Divider />
-                {/* Organizer Info */}
-                <Box display="flex" alignItems="center" gap={2}>
-                  <Avatar 
-                    sx={{ 
-                      bgcolor: 'secondary.main',
-                      width: 40,
-                      height: 40,
-                    }}
-                  >
-                    {getInitials(event.creator?.name)}
-                  </Avatar>
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" display="block">
-                      Organized by
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {event.creator?.name}
-                    </Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto' }}>
-                    Group: <strong>{event.group?.name}</strong>
-                  </Typography>
-                </Box>
-              </Stack>
-            </Grid>
-
-            {/* Middle: Capacity & Attendance + Activity Feed in a row */}
-            <Grid item xs={12} md={7}>
-              <Stack spacing={2}>
-                {/* Capacity Section: always show, progress bar only if maxPlayers exists */}
-                <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
-                    Event Capacity
-                  </Typography>
-                  <Box sx={{ mb: 1 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      {event.maxPlayers ? `${participantCount} / ${event.maxPlayers} participants` : `${participantCount} participants`}
-                    </Typography>
-                  </Box>
-                  {event.maxPlayers && (
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={fillPercentage} 
-                      sx={{ 
-                        height: 8, 
-                        borderRadius: 5,
-                        bgcolor: 'rgba(255, 255, 255, 0.1)',
-                      }}
-                    />
-                  )}
-                  <Box display="flex" gap={2} mt={2}>
-                    <Typography variant="caption" color="text.secondary">
-                      ✅ {confirmedCount} confirmed
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      ❌ {declinedCount} declined
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      ⏳ {pendingCount} pending
-                    </Typography>
-                  </Box>
-                </Paper>
-
-                {/* Attendance + Activity Feed side by side */}
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'stretch' }}>
-                  <Paper elevation={2} sx={{ p: 2, flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'stretch' }}>
-                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
-                      Attendance
-                    </Typography>
-                    <EventActions
-                      event={event}
-                      isParticipant={!!isParticipant}
-                      isCreator={isCreator}
-                      isFull={isFull}
-                      onJoin={handleJoin}
-                      onLeave={handleLeave}
-                      onUpdateStatus={handleUpdateStatus}
-                      onDelete={() => {}}
-                      onMarkLate={handleMarkLate}
-                      onUnmarkLate={handleUnmarkLate}
-                    />
-                  </Paper>
-                  <Box sx={{ flex: 1.2, minWidth: 0, display: 'flex' }}>
-                    <EventActivityFeedModern notifications={event.eventNotifications || []} />
-                  </Box>
-                </Box>
-              </Stack>
-            </Grid>
-          </Grid>
-        </Paper>
-
-        {/* Participants List */}
-        <ParticipantsList event={event} participantCount={participantCount} />
-      </Stack>
-    </Container>
+      <div className="relative bg-[#232946] rounded-xl shadow-md p-6 mb-8">
+        {/* Admin icon buttons in top right */}
+        {isCreator && (
+          <div className="absolute top-4 right-4 flex gap-2 z-10">
+            <button onClick={() => navigate(`/events/${event.id}/edit`)} className="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2"><span className="material-icons">edit</span></button>
+            <button onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white rounded-full p-2"><span className="material-icons">delete</span></button>
+          </div>
+        )}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+          {/* Main: Event Info */}
+          <div className="md:col-span-2 flex flex-col gap-6">
+            {/* Event Information */}
+            <div>
+              <h2 className="text-xl font-bold mb-2">{event.title}</h2>
+              <div className="text-sm text-[#a1a6b4] mb-2">{event.eventType}</div>
+              <div className="text-sm text-[#a1a6b4] mb-2">{event.description || 'No description'}</div>
+              <div className="flex items-center gap-2 mb-2">
+                <span role="img" aria-label="date">📅</span>
+                <span className="text-xs text-[#a1a6b4]">{new Date(event.startTime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                <span role="img" aria-label="time">🕐</span>
+                <span className="text-xs text-[#a1a6b4]">{new Date(event.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                {event.location && <><span role="img" aria-label="location">📍</span><span className="text-xs text-[#a1a6b4]">{event.location}</span></>}
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <div className="w-10 h-10 rounded-full bg-blue-700 text-white flex items-center justify-center text-lg font-bold">{getInitials(event.creator?.name)}</div>
+                <div>
+                  <div className="text-xs text-[#a1a6b4]">Organized by</div>
+                  <div className="text-sm font-semibold">{event.creator?.name}</div>
+                </div>
+                <div className="ml-auto text-xs text-[#a1a6b4]">Group: <span className="font-bold">{event.group?.name}</span></div>
+              </div>
+            </div>
+          </div>
+          {/* Middle: Capacity & Attendance + Activity Feed in a row */}
+          <div className="md:col-span-3 flex flex-col gap-6">
+            {/* Capacity Section */}
+            <div className="bg-[#1a2233] rounded-lg p-4 mb-2">
+              <div className="font-semibold mb-2">Event Capacity</div>
+              <div className="text-sm text-[#a1a6b4] mb-2">{event.maxPlayers ? `${participantCount} / ${event.maxPlayers} participants` : `${participantCount} participants`}</div>
+              {event.maxPlayers && (
+                <div className="w-full bg-gray-700 rounded-full h-3 mb-2">
+                  <div className="bg-blue-600 h-3 rounded-full" style={{ width: `${fillPercentage}%` }}></div>
+                </div>
+              )}
+              <div className="flex gap-4 mt-2 text-xs text-[#a1a6b4]">
+                <span>✅ {confirmedCount} confirmed</span>
+                <span>❌ {declinedCount} declined</span>
+                <span>⏳ {pendingCount} pending</span>
+              </div>
+            </div>
+            {/* Attendance Actions */}
+            <div className="bg-[#1a2233] rounded-lg p-4 mb-2">
+              <div className="font-semibold mb-2">Attendance</div>
+              {/* Actions: Join, Leave, Status, Mark Late, etc. */}
+              <div className="flex flex-wrap gap-2">
+                {!isParticipant && !isFull && <button onClick={handleJoin} className="bg-blue-600 hover:bg-blue-700 text-white rounded-md px-3 py-1.5 text-sm">Join Event</button>}
+                {isParticipant && <button onClick={handleLeave} className="bg-pink-600 hover:bg-pink-700 text-white rounded-md px-3 py-1.5 text-sm">Leave Event</button>}
+                {isParticipant && <button onClick={() => handleUpdateStatus('confirmed')} className="bg-green-600 hover:bg-green-700 text-white rounded-md px-3 py-1.5 text-sm">Confirm</button>}
+                {isParticipant && <button onClick={() => handleUpdateStatus('declined')} className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-md px-3 py-1.5 text-sm">Decline</button>}
+                <button onClick={handleMarkLate} className="bg-gray-600 hover:bg-gray-700 text-white rounded-md px-3 py-1.5 text-sm">Mark Late</button>
+                <button onClick={handleUnmarkLate} className="bg-gray-600 hover:bg-gray-700 text-white rounded-md px-3 py-1.5 text-sm">Undo Late</button>
+              </div>
+            </div>
+            {/* Activity Feed */}
+            <div className="bg-[#1a2233] rounded-lg p-4">
+              <div className="font-semibold mb-2">Activity Feed</div>
+              <div className="max-h-40 overflow-y-auto text-xs text-[#a1a6b4]">
+                {(event.eventNotifications || []).length === 0 ? (
+                  <div>No activity yet.</div>
+                ) : (
+                  event.eventNotifications.map((n, idx) => (
+                    <div key={idx} className="mb-2 border-b border-[#232946] pb-1">
+                      <span className="font-semibold text-white">{n.user?.name || 'User'}</span>: {n.message} <span className="ml-2 text-[#a1a6b4]">{new Date(n.createdAt).toLocaleString()}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Participants List */}
+      <div className="bg-[#232946] rounded-xl shadow-md p-6 mt-8">
+        <div className="font-semibold mb-4">Participants ({participantCount})</div>
+        <div className="flex flex-wrap gap-4">
+          {event.participants?.map((p, idx) => (
+            <div key={p.id || idx} className="flex items-center gap-2 bg-[#1a2233] rounded-lg px-3 py-2">
+              <div className="w-8 h-8 rounded-full bg-blue-700 text-white flex items-center justify-center text-xs font-bold">{getInitials(p.user?.name)}</div>
+              <div>
+                <div className="text-sm font-semibold text-white">{p.user?.name}</div>
+                <div className="text-xs text-[#a1a6b4]">{p.user?.email}</div>
+                <div className="text-xs text-[#a1a6b4]">Status: {p.status}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 };
 

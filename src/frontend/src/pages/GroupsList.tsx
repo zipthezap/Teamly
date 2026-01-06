@@ -1,34 +1,8 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Container,
-  Grid,
-  Card,
-  CardContent,
-  CardActions,
-  Button,
-  Typography,
-  Box,
-  CircularProgress,
-  Chip,
-  TextField,
-  InputAdornment,
-  ToggleButtonGroup,
-  ToggleButton,
-  Avatar,
-  AvatarGroup,
-  Stack,
-} from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import SearchIcon from '@mui/icons-material/Search';
-import PublicIcon from '@mui/icons-material/Public';
-import LockIcon from '@mui/icons-material/Lock';
-import GroupIcon from '@mui/icons-material/Group';
-import EventIcon from '@mui/icons-material/Event';
-import ExploreIcon from '@mui/icons-material/Explore';
 import { groupsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { getAvatarColor } from '../utils/colors';
 
 const GroupsList = () => {
   const [groups, setGroups] = useState([]);
@@ -100,258 +74,115 @@ const GroupsList = () => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
-        <CircularProgress size={60} thickness={4} />
-      </Box>
+      <div className="flex justify-center items-center min-h-[80vh]">
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
-            My Groups
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {filteredGroups.length} group{filteredGroups.length !== 1 ? 's' : ''} found
-          </Typography>
-        </Box>
-        <Box display="flex" gap={2}>
-          <Button
-            variant="outlined"
-            startIcon={<ExploreIcon />}
-            onClick={() => navigate('/public-groups')}
-            sx={{ 
-              borderColor: 'primary.main',
-              color: 'primary.main',
-              '&:hover': {
-                borderColor: 'primary.light',
-                backgroundColor: 'rgba(33, 150, 243, 0.1)',
-              }
-            }}
-          >
-            Discover Groups
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => navigate('/groups/new')}
-            sx={{ 
-              background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)',
-              boxShadow: '0 4px 12px rgba(33, 150, 243, 0.4)',
-            }}
-          >
-            Create Group
-          </Button>
-        </Box>
-      </Box>
-
+    <div className="max-w-6xl mx-auto mt-8 mb-8 px-2">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold mb-1">My Groups</h1>
+          <div className="text-sm text-[#a1a6b4]">{filteredGroups.length} group{filteredGroups.length !== 1 ? 's' : ''} found</div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => navigate('/public-groups')} className="border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium rounded-md px-3 py-1.5 text-sm transition">Discover Groups</button>
+          <button onClick={() => navigate('/groups/new')} className="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">Create Group</button>
+        </div>
+      </div>
       {/* Search and Filters */}
-      <Box sx={{ mb: 4 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
+      <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <div className="relative">
+            <input
+              type="text"
+              className="w-full pl-10 pr-3 py-2 rounded-lg bg-[#232946] text-white border border-[#3a3f4b] focus:outline-none focus:border-blue-500 text-sm"
               placeholder="Search groups..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
+              onChange={e => setSearchTerm(e.target.value)}
             />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <ToggleButtonGroup
-              value={filter}
-              exclusive
-              onChange={(e, newFilter) => newFilter && setFilter(newFilter)}
-              fullWidth
-              sx={{ 
-                '& .MuiToggleButton-root': {
-                  textTransform: 'none',
-                  fontWeight: 500,
-                }
-              }}
+            <span className="absolute left-3 top-2.5 text-[#a1a6b4]">
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+            </span>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {['all', 'public', 'private', 'admin'].map(f => (
+            <button
+              key={f}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium border transition ${filter === f ? 'bg-blue-600 text-white border-blue-600' : 'bg-[#232946] text-[#a1a6b4] border-[#3a3f4b] hover:bg-blue-50 hover:text-blue-700'}`}
+              onClick={() => setFilter(f)}
             >
-              <ToggleButton value="all">
-                All Groups
-              </ToggleButton>
-              <ToggleButton value="public">
-                <PublicIcon sx={{ mr: 0.5, fontSize: 18 }} />
-                Public
-              </ToggleButton>
-              <ToggleButton value="private">
-                <LockIcon sx={{ mr: 0.5, fontSize: 18 }} />
-                Private
-              </ToggleButton>
-              <ToggleButton value="admin">
-                Admin
-              </ToggleButton>
-            </ToggleButtonGroup>
-          </Grid>
-        </Grid>
-      </Box>
-
+              {f === 'all' && 'All Groups'}
+              {f === 'public' && 'Public'}
+              {f === 'private' && 'Private'}
+              {f === 'admin' && 'Admin'}
+            </button>
+          ))}
+        </div>
+      </div>
       {filteredGroups.length === 0 ? (
-        <Box textAlign="center" py={8}>
-          <GroupIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
-          <Typography variant="h6" color="text.secondary" gutterBottom>
-            {searchTerm || filter !== 'all' 
-              ? 'No groups match your filters'
-              : "You haven't joined any groups yet"}
-          </Typography>
+        <div className="text-center py-16">
+          <div className="mx-auto mb-4 text-[#a1a6b4]">
+            <svg width="64" height="64" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M8 12h8M12 8v8" /></svg>
+          </div>
+          <div className="text-lg text-[#a1a6b4] mb-2">
+            {searchTerm || filter !== 'all' ? 'No groups match your filters' : "You haven't joined any groups yet"}
+          </div>
           {!searchTerm && filter === 'all' && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => navigate('/groups/new')}
-              sx={{ mt: 2 }}
-            >
-              Create Your First Group
-            </Button>
+            <button onClick={() => navigate('/groups/new')} className="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition mt-2">Create Your First Group</button>
           )}
-        </Box>
+        </div>
       ) : (
-        <Grid container spacing={3}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {filteredGroups.map((group) => {
             const role = getUserRole(group);
             const memberCount = group.members?.length || 0;
             const eventCount = group.events?.length || 0;
             const recentMembers = group.members?.slice(0, 4) || [];
-            
             return (
-              <Grid item xs={12} sm={6} md={4} key={group.id}>
-                <Card 
-                  sx={{ 
-                    height: '100%', 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    position: 'relative',
-                  }}
-                >
-                  <Box 
-                    sx={{ 
-                      position: 'absolute', 
-                      top: 12, 
-                      right: 12, 
-                      zIndex: 1,
-                      display: 'flex',
-                      gap: 0.5,
-                    }}
-                  >
-                    {group.isPublic ? (
-                      <Chip 
-                        icon={<PublicIcon />}
-                        label="Public" 
-                        size="small" 
-                        color="primary"
-                        sx={{ fontWeight: 600 }}
-                      />
-                    ) : (
-                      <Chip 
-                        icon={<LockIcon />}
-                        label="Private" 
-                        size="small"
-                        sx={{ fontWeight: 600 }}
-                      />
-                    )}
-                  </Box>
-                  
-                  <CardContent sx={{ flexGrow: 1, pt: 3 }}>
-                    <Stack spacing={2}>
-                      <Box>
-                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, pr: 10 }}>
-                          {group.name}
-                        </Typography>
-                        {role === 'admin' && (
-                          <Chip 
-                            label="Admin" 
-                            size="small" 
-                            color="secondary"
-                            sx={{ mb: 1, fontWeight: 600 }}
-                          />
-                        )}
-                      </Box>
-                      
-                      <Typography 
-                        variant="body2" 
-                        color="text.secondary"
-                        sx={{ 
-                          minHeight: 60,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 3,
-                          WebkitBoxOrient: 'vertical',
-                        }}
-                      >
-                        {group.description || 'No description provided'}
-                      </Typography>
-                      
-                      <Box>
-                        <Box display="flex" alignItems="center" gap={1} mb={1}>
-                          <GroupIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
-                            {memberCount} member{memberCount !== 1 ? 's' : ''}
-                          </Typography>
-                        </Box>
-                        
-                        {recentMembers.length > 0 && (
-                          <AvatarGroup 
-                            max={4} 
-                            sx={{ 
-                              justifyContent: 'flex-start',
-                              mb: 1,
-                              '& .MuiAvatar-root': { 
-                                width: 32, 
-                                height: 32,
-                                fontSize: '0.75rem',
-                              }
-                            }}
-                          >
-                            {recentMembers.map((member, idx) => (
-                              <Avatar 
-                                key={idx}
-                                sx={{ bgcolor: getAvatarColor(idx) }}
-                              >
-                                {getInitials(member.user?.name)}
-                              </Avatar>
-                            ))}
-                          </AvatarGroup>
-                        )}
-                        
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <EventIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
-                            {eventCount} event{eventCount !== 1 ? 's' : ''}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Stack>
-                  </CardContent>
-                  
-                  <CardActions sx={{ px: 2, pb: 2 }}>
-                    <Button 
-                      size="small" 
-                      variant="contained"
-                      onClick={() => navigate(`/groups/${group.id}`)}
-                      fullWidth
-                    >
-                      View Details
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
+              <div key={group.id} className="relative bg-[#232946] rounded-xl shadow-md p-5 flex flex-col h-full">
+                <div className="absolute top-4 right-4 flex gap-1 z-10">
+                  {group.isPublic ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">Public</span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gray-200 text-gray-700 border border-gray-300">Private</span>
+                  )}
+                </div>
+                <div className="flex-1 flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-bold flex-1 truncate">{group.name}</h2>
+                    {role === 'admin' && <span className="ml-2 text-xs bg-blue-700 text-white px-2 py-0.5 rounded">Admin</span>}
+                  </div>
+                  <div className="text-sm text-[#a1a6b4] min-h-[48px] line-clamp-3">{group.description || 'No description provided'}</div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /></svg>
+                    <span className="text-xs text-[#a1a6b4]">{memberCount} member{memberCount !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /></svg>
+                    <span className="text-xs text-[#a1a6b4]">{eventCount} event{eventCount !== 1 ? 's' : ''}</span>
+                  </div>
+                  {/* Recent members avatars (initials) */}
+                  {recentMembers.length > 0 && (
+                    <div className="flex -space-x-2 mt-2">
+                      {recentMembers.map((member, idx) => (
+                        <div key={idx} className="w-8 h-8 rounded-full bg-blue-700 text-white flex items-center justify-center text-xs font-bold border-2 border-white" title={member.user?.name}>
+                          {getInitials(member.user?.name)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => navigate(`/groups/${group.id}`)} className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">View Details</button>
+              </div>
             );
           })}
-        </Grid>
+        </div>
       )}
-    </Container>
+    </div>
   );
 };
 

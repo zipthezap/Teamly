@@ -1,18 +1,5 @@
 import React from 'react';
-import {
-  Paper,
-  Typography,
-  Box,
-  List,
-  ListItem,
-  ListItemText,
-  Chip,
-  Divider,
-  Avatar,
-} from '@mui/material';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
+// Removed all MUI imports; using Tailwind and SVGs
 
 interface Event {
   id: string;
@@ -69,24 +56,18 @@ const UpcomingEventsCalendar: React.FC<UpcomingEventsCalendarProps> = ({ events,
     .slice(0, 5);
 
   return (
-    <Paper sx={{ p: 2.5, height: '100%' }}>
-      <Box display="flex" alignItems="center" gap={1.5} mb={2}>
-        <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>
-          <CalendarTodayIcon sx={{ fontSize: 20 }} />
-        </Avatar>
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>
-          Upcoming Schedule
-        </Typography>
-      </Box>
+    <div className="bg-[#1a2233] rounded-xl shadow-md p-5 h-full">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="bg-blue-600 rounded-full w-9 h-9 flex items-center justify-center">
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+        </div>
+        <div className="text-lg font-semibold">Upcoming Schedule</div>
+      </div>
 
       {upcomingEvents.length === 0 ? (
-        <Box textAlign="center" py={4}>
-          <Typography variant="body2" color="text.secondary">
-            No upcoming events scheduled
-          </Typography>
-        </Box>
+        <div className="text-center py-8 text-sm text-gray-400">No upcoming events scheduled</div>
       ) : (
-        <List sx={{ p: 0 }}>
+        <ul className="divide-y divide-[#232946]">
           {upcomingEvents.map((event, index) => {
             const dayInfo = getDayInfo(event.startTime);
             const eventDate = new Date(event.startTime);
@@ -94,93 +75,38 @@ const UpcomingEventsCalendar: React.FC<UpcomingEventsCalendarProps> = ({ events,
             const isFull = event.maxPlayers && participantCount >= event.maxPlayers;
 
             return (
-              <React.Fragment key={event.id}>
-                {index > 0 && <Divider sx={{ my: 1.5 }} />}
-                <ListItem
-                  sx={{
-                    p: 0,
-                    cursor: 'pointer',
-                    borderRadius: 1,
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      bgcolor: 'rgba(0, 0, 0, 0.02)',
-                    },
-                  }}
-                  onClick={() => onEventClick(event.id)}
-                >
-                  <Box
-                    sx={{
-                      width: 4,
-                      height: 60,
-                      bgcolor: getEventColor(event.eventType),
-                      borderRadius: 1,
-                      mr: 2,
-                    }}
-                  />
-                  <ListItemText
-                    primary={
-                      <Box display="flex" alignItems="center" gap={1} mb={0.5}>
-                        <Typography variant="body1" sx={{ fontWeight: 600, flexGrow: 1 }}>
-                          {event.title}
-                        </Typography>
-                        <Chip
-                          label={dayInfo.label}
-                          size="small"
-                          color={dayInfo.color}
-                          sx={{ height: 20, fontSize: '0.7rem' }}
-                        />
-                      </Box>
-                    }
-                    secondary={
-                      <Box sx={{ mt: 0.5 }}>
-                        <Box display="flex" alignItems="center" gap={0.5} mb={0.3}>
-                          <AccessTimeIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                          <Typography variant="caption" color="text.secondary">
-                            {eventDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" sx={{ mx: 0.5 }}>•</Typography>
-                          <Chip 
-                            label={event.eventType} 
-                            size="small" 
-                            sx={{ 
-                              height: 18, 
-                              fontSize: '0.65rem',
-                              bgcolor: getEventColor(event.eventType),
-                              color: 'white',
-                            }} 
-                          />
-                        </Box>
-                        {event.location && (
-                          <Box display="flex" alignItems="center" gap={0.5}>
-                            <LocationOnIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-                            <Typography variant="caption" color="text.secondary" noWrap>
-                              {event.location}
-                            </Typography>
-                          </Box>
-                        )}
-                        <Box display="flex" alignItems="center" gap={1} mt={0.3}>
-                          <Typography variant="caption" color="text.secondary">
-                            👥 {participantCount}{event.maxPlayers ? ` / ${event.maxPlayers}` : ''}
-                          </Typography>
-                          {isFull && (
-                            <Chip 
-                              label="Full" 
-                              size="small" 
-                              color="warning"
-                              sx={{ height: 18, fontSize: '0.65rem' }} 
-                            />
-                          )}
-                        </Box>
-                      </Box>
-                    }
-                  />
-                </ListItem>
-              </React.Fragment>
+              <li key={event.id} className={`flex items-start py-3 cursor-pointer rounded-lg transition hover:bg-[#232946]`} onClick={() => onEventClick(event.id)}>
+                <div className="w-1.5 h-14 rounded bg-opacity-80 mr-4" style={{ background: getEventColor(event.eventType) }} />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold text-base flex-1 truncate">{event.title}</span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${dayInfo.color === 'success' ? 'bg-green-500 text-white' : dayInfo.color === 'info' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-200'}`}>{dayInfo.label}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-400 mb-0.5">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+                    <span>{eventDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+                    <span className="mx-1">•</span>
+                    <span className="px-2 py-0.5 rounded text-xs font-semibold" style={{ background: getEventColor(event.eventType), color: 'white' }}>{event.eventType}</span>
+                  </div>
+                  {event.location && (
+                    <div className="flex items-center gap-1 text-xs text-gray-400">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z" /></svg>
+                      <span className="truncate">{event.location}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-400">
+                    <span>👥 {participantCount}{event.maxPlayers ? ` / ${event.maxPlayers}` : ''}</span>
+                    {isFull && (
+                      <span className="px-2 py-0.5 rounded bg-yellow-500 text-white text-xs font-semibold">Full</span>
+                    )}
+                  </div>
+                </div>
+              </li>
             );
           })}
-        </List>
+        </ul>
       )}
-    </Paper>
+    </div>
   );
 };
 

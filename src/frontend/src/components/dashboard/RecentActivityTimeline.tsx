@@ -1,25 +1,5 @@
 import React from 'react';
-import {
-  Paper,
-  Typography,
-  Box,
-  List,
-  ListItem,
-  ListItemText,
-  Avatar,
-  Collapse,
-  IconButton,
-  Divider,
-  Chip,
-} from '@mui/material';
-import TimelineIcon from '@mui/icons-material/Timeline';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import ExitToAppIcon from '@mui/icons-material/ExitToApp';
-import AddCircleIcon from '@mui/icons-material/AddCircle';
-import GroupAddIcon from '@mui/icons-material/GroupAdd';
-import EventIcon from '@mui/icons-material/Event';
+// Removed all MUI imports; using Tailwind and SVGs
 
 interface Activity {
   id: string;
@@ -107,23 +87,36 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
   };
 
   const getActivityIcon = (type: Activity['type']) => {
-    const iconMap = {
-      event_created: <AddCircleIcon sx={{ fontSize: 18 }} />,
-      event_joined: <PersonAddIcon sx={{ fontSize: 18 }} />,
-      event_left: <ExitToAppIcon sx={{ fontSize: 18 }} />,
-      group_created: <GroupAddIcon sx={{ fontSize: 18 }} />,
-      group_joined: <GroupAddIcon sx={{ fontSize: 18 }} />,
-    };
-    return iconMap[type];
+    switch (type) {
+      case 'event_created':
+        return (
+          <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 8v8M8 12h8" /></svg>
+        );
+      case 'event_joined':
+        return (
+          <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-8 0v2" /><circle cx="12" cy="7" r="4" /></svg>
+        );
+      case 'event_left':
+        return (
+          <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7" /><circle cx="5" cy="12" r="2" /></svg>
+        );
+      case 'group_created':
+      case 'group_joined':
+        return (
+          <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-8 0v2" /><circle cx="12" cy="7" r="4" /></svg>
+        );
+      default:
+        return null;
+    }
   };
 
   const getActivityColor = (type: Activity['type']) => {
     const colorMap = {
-      event_created: 'secondary.main',
-      event_joined: 'success.main',
-      event_left: 'error.main',
-      group_created: 'primary.main',
-      group_joined: 'info.main',
+      event_created: 'bg-yellow-500',
+      event_joined: 'bg-green-500',
+      event_left: 'bg-red-500',
+      group_created: 'bg-blue-500',
+      group_joined: 'bg-blue-400',
     };
     return colorMap[type];
   };
@@ -143,50 +136,33 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
   const activities = generateActivities();
 
   return (
-    <Paper sx={{ p: 2.5 }}>
-      <Box 
-        display="flex" 
-        alignItems="center" 
-        justifyContent="space-between"
-        sx={{ cursor: 'pointer' }}
-        onClick={() => setExpanded(!expanded)}
-      >
-        <Box display="flex" alignItems="center" gap={1.5}>
-          <Avatar sx={{ bgcolor: 'warning.main', width: 36, height: 36 }}>
-            <TimelineIcon sx={{ fontSize: 20 }} />
-          </Avatar>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            Recent Activity
-          </Typography>
-        </Box>
-        <IconButton size="small">
-          {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-        </IconButton>
-      </Box>
-
-      <Collapse in={expanded}>
-        <Box sx={{ mt: 2 }}>
-          {activities.length === 0 ? (
-            <Box textAlign="center" py={3}>
-              <Typography variant="body2" color="text.secondary">
-                No recent activity
-              </Typography>
-            </Box>
+    <div className="bg-[#1a2233] rounded-xl shadow-md p-5">
+      <div className="flex items-center justify-between cursor-pointer" onClick={() => setExpanded(!expanded)}>
+        <div className="flex items-center gap-3">
+          <div className="bg-yellow-500 rounded-full w-9 h-9 flex items-center justify-center">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 17l6-6 4 4 6-6" /></svg>
+          </div>
+          <div className="text-lg font-semibold">Recent Activity</div>
+        </div>
+        <button className="focus:outline-none">
+          {expanded ? (
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" /></svg>
           ) : (
-            <List sx={{ p: 0 }}>
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 15l7-7 7 7" /></svg>
+          )}
+        </button>
+      </div>
+      {expanded && (
+        <div className="mt-4">
+          {activities.length === 0 ? (
+            <div className="text-center py-6 text-sm text-gray-400">No recent activity</div>
+          ) : (
+            <ul>
               {activities.map((activity, index) => (
                 <React.Fragment key={`${activity.id}-${activity.type}-${activity.timestamp}`}>
-                  {index > 0 && <Divider sx={{ my: 1 }} />}
-                  <ListItem
-                    sx={{
-                      p: 1,
-                      cursor: 'pointer',
-                      borderRadius: 1,
-                      transition: 'all 0.2s',
-                      '&:hover': {
-                        bgcolor: 'rgba(0, 0, 0, 0.02)',
-                      },
-                    }}
+                  {index > 0 && <div className="my-2 border-t border-[#232946]" />}
+                  <li
+                    className="flex items-center gap-3 p-2 rounded-lg transition hover:bg-[#232946] cursor-pointer"
                     onClick={() => {
                       if (onActivityClick) {
                         const type = activity.type.includes('event') ? 'event' : 'group';
@@ -194,57 +170,32 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
                       }
                     }}
                   >
-                    <Avatar
-                      sx={{
-                        bgcolor: getActivityColor(activity.type),
-                        width: 32,
-                        height: 32,
-                        mr: 1.5,
-                      }}
-                    >
+                    <div className={`w-8 h-8 flex items-center justify-center rounded-full ${getActivityColor(activity.type)} mr-2`}>
                       {getActivityIcon(activity.type)}
-                    </Avatar>
-                    <ListItemText
-                      primary={
-                        <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.3 }}>
-                          {activity.title}
-                        </Typography>
-                      }
-                      secondary={
-                        <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
-                          <Typography variant="caption" color="text.secondary">
-                            {getRelativeTime(activity.timestamp)}
-                          </Typography>
-                          {activity.relatedEntityName && (
-                            <>
-                              <Typography variant="caption" color="text.secondary">•</Typography>
-                              <Chip
-                                label={activity.relatedEntityName}
-                                size="small"
-                                sx={{ height: 18, fontSize: '0.65rem' }}
-                              />
-                            </>
-                          )}
-                          {activity.relatedEntityType && (
-                            <Chip
-                              label={activity.relatedEntityType}
-                              size="small"
-                              color="primary"
-                              variant="outlined"
-                              sx={{ height: 18, fontSize: '0.65rem' }}
-                            />
-                          )}
-                        </Box>
-                      }
-                    />
-                  </ListItem>
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-sm mb-0.5">{activity.title}</div>
+                      <div className="flex items-center gap-2 flex-wrap text-xs text-gray-400">
+                        <span>{getRelativeTime(activity.timestamp)}</span>
+                        {activity.relatedEntityName && (
+                          <>
+                            <span>•</span>
+                            <span className="px-2 py-0.5 rounded bg-[#232946] text-gray-200 text-xs font-semibold">{activity.relatedEntityName}</span>
+                          </>
+                        )}
+                        {activity.relatedEntityType && (
+                          <span className="px-2 py-0.5 rounded border border-blue-500 text-blue-400 text-xs font-semibold">{activity.relatedEntityType}</span>
+                        )}
+                      </div>
+                    </div>
+                  </li>
                 </React.Fragment>
               ))}
-            </List>
+            </ul>
           )}
-        </Box>
-      </Collapse>
-    </Paper>
+        </div>
+      )}
+    </div>
   );
 };
 

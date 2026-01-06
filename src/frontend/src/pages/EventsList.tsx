@@ -1,19 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Container,
-  Grid,
-  Card,
-  CardContent,
-  CardActions,
-  Button,
-  Typography,
-  Box,
-  CircularProgress,
-  Chip,
-  Stack,
-} from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import { eventsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import EventSearchFilters from '../components/event/EventSearchFilters';
@@ -76,9 +63,9 @@ const EventsList = () => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
-        <CircularProgress size={60} thickness={4} />
-      </Box>
+      <div className="flex justify-center items-center min-h-[80vh]">
+        <div className="w-12 h-12 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
     );
   }
 
@@ -94,163 +81,71 @@ const EventsList = () => {
           </Typography>
           <Typography variant="body2" color="text.secondary">
             {filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''} found
-          </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => navigate('/events/new')}
-          sx={{ 
-            background: 'linear-gradient(135deg, #f50057 0%, #c51162 100%)',
-            boxShadow: '0 4px 12px rgba(245, 0, 87, 0.4)',
-          }}
-        >
-          Create Event
-        </Button>
-      </Box>
-
-      {/* Filters and Search */}
-      <EventSearchFilters onSearch={handleSearch} />
-
-      {events.length === 0 ? (
-        <Box textAlign="center" py={8}>
-          <Typography variant="h6" color="text.secondary" gutterBottom>
-            {Object.keys(searchFilters).length > 0 
-              ? 'No events match your filters'
-              : 'No events available'}
-          </Typography>
-          {Object.keys(searchFilters).length === 0 && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => navigate('/events/new')}
-              sx={{ mt: 2 }}
-            >
-              Create Your First Event
-            </Button>
-          )}
-        </Box>
-      ) : (
-        <Grid container spacing={3}>
-          {events.map((event: any) => {
-            const status = getEventStatus(event);
-            const participantCount = event.participants?.length || 0;
-            const spotsLeft = event.maxPlayers ? event.maxPlayers - participantCount : null;
-            
-            return (
-              <Grid item xs={12} sm={6} md={4} key={event.id}>
-                <Card 
-                  sx={{ 
-                    height: '100%', 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    position: 'relative',
-                    overflow: 'visible',
-                  }}
-                >
+          return (
+            <div className="max-w-6xl mx-auto mt-8 mb-8 px-2">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold mb-1">All Events</h1>
+                  <div className="text-sm text-[#a1a6b4]">{filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''} found</div>
+                </div>
+                <button onClick={() => navigate('/events/new')} className="bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">Create Event</button>
+              </div>
+              {/* Filters and Search */}
+              <EventSearchFilters onSearch={handleSearch} />
+              {events.length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="text-lg text-[#a1a6b4] mb-2">
+                    {Object.keys(searchFilters).length > 0 ? 'No events match your filters' : 'No events available'}
+                  </div>
+                  {Object.keys(searchFilters).length === 0 && (
+                    <button onClick={() => navigate('/events/new')} className="bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition mt-2">Create Your First Event</button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                  {events.map((event) => {
+                    const status = getEventStatus(event);
+                    const participantCount = event.participants?.length || 0;
+                    const spotsLeft = event.maxPlayers ? event.maxPlayers - participantCount : null;
+                    return (
+                      <div key={event.id} className="relative bg-[#232946] rounded-xl shadow-md p-5 flex flex-col h-full">
+                        <div className="absolute top-4 right-4 z-10">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${status.label === 'Joined' ? 'bg-green-100 text-green-800 border-green-200' : status.label === 'Full' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : status.label === 'Past' ? 'bg-gray-200 text-gray-700 border-gray-300' : 'bg-blue-100 text-blue-800 border-blue-200'}`}>{status.label}</span>
+                        </div>
+                        <div className="flex-1 flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <h2 className="text-lg font-bold flex-1 truncate">{event.title}</h2>
+                            <span className="ml-2 text-xs bg-pink-700 text-white px-2 py-0.5 rounded">{event.eventType}</span>
+                          </div>
+                          <div className="text-sm text-[#a1a6b4] min-h-[32px] line-clamp-2">{event.description || 'No description'}</div>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span role="img" aria-label="date">📅</span>
+                            <span className="text-xs text-[#a1a6b4]">{new Date(event.startTime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span role="img" aria-label="time">🕐</span>
+                            <span className="text-xs text-[#a1a6b4]">{formatEventTime(event.startTime)}</span>
+                          </div>
+                          {event.location && (
+                            <div className="flex items-center gap-2">
+                              <span role="img" aria-label="location">📍</span>
+                              <span className="text-xs text-[#a1a6b4] truncate">{event.location}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <span role="img" aria-label="participants">👥</span>
+                            <span className="text-xs text-[#a1a6b4]">{participantCount}{event.maxPlayers && ` / ${event.maxPlayers}`} participants</span>
+                          </div>
+                          {spotsLeft !== null && spotsLeft > 0 && spotsLeft <= 3 && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200 mt-1">{spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} left</span>
+                          )}
+                        </div>
+                        <button onClick={() => navigate(`/events/${event.id}`)} className="mt-4 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">View Details</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
                   <Box 
-                    sx={{ 
-                      position: 'absolute', 
-                      top: 12, 
-                      right: 12, 
-                      zIndex: 1,
-                    }}
-                  >
-                    <Chip 
-                      label={status.label} 
-                      color={status.color}
-                      size="small"
-                      sx={{ fontWeight: 600 }}
-                    />
-                  </Box>
-                  
-                  <CardContent sx={{ flexGrow: 1, pt: 3 }}>
-                    <Stack spacing={2}>
-                      <Box>
-                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, pr: 8 }}>
-                          {event.title}
-                        </Typography>
-                        <Chip 
-                          label={event.eventType} 
-                          size="small" 
-                          color="secondary"
-                          sx={{ mb: 1 }}
-                        />
-                      </Box>
-                      
-                      <Typography 
-                        variant="body2" 
-                        color="text.secondary" 
-                        sx={{ 
-                          minHeight: 40,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                        }}
-                      >
-                        {event.description || 'No description'}
-                      </Typography>
-                      
-                      <Box>
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          📅 {new Date(event.startTime).toLocaleDateString('en-US', { 
-                            weekday: 'short', 
-                            month: 'short', 
-                            day: 'numeric' 
-                          })}
-                        </Typography>
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          🕐 {formatEventTime(event.startTime)}
-                        </Typography>
-                        {event.location && (
-                          <Typography 
-                            variant="body2" 
-                            sx={{ 
-                              mb: 0.5,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            📍 {event.location}
-                          </Typography>
-                        )}
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          👥 {participantCount}
-                          {event.maxPlayers && ` / ${event.maxPlayers}`} participants
-                        </Typography>
-                        {spotsLeft !== null && spotsLeft > 0 && spotsLeft <= 3 && (
-                          <Chip 
-                            label={`${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left`}
-                            size="small"
-                            color="warning"
-                            sx={{ mt: 1, fontWeight: 600 }}
-                          />
-                        )}
-                      </Box>
-                    </Stack>
-                  </CardContent>
-                  
-                  <CardActions sx={{ px: 2, pb: 2 }}>
-                    <Button 
-                      size="small" 
-                      variant="contained"
-                      onClick={() => navigate(`/events/${event.id}`)}
-                      fullWidth
-                    >
-                      View Details
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
-            );
-          })}
-        </Grid>
-      )}
-    </Container>
-  );
-};
-
-export default EventsList;

@@ -1,27 +1,25 @@
 import React, { ReactNode } from 'react';
-import { Container, Paper, Box, ContainerProps, PaperProps } from '@mui/material';
 
-interface FormContainerProps {
+
   children: ReactNode;
-  maxWidth?: ContainerProps['maxWidth'];
-  paperElevation?: PaperProps['elevation'];
+  maxWidth?: string | number;
+  className?: string;
 }
 
 /**
  * Reusable container for form pages with consistent styling
  */
-export const FormContainer: React.FC<FormContainerProps> = ({ 
-  children, 
-  maxWidth = 'sm',
-  paperElevation = 3 
+  children,
+  maxWidth = '28rem',
+  className = '',
 }) => {
   return (
-    <Container maxWidth={maxWidth} sx={{ mt: 8 }}>
-      <Paper elevation={paperElevation} sx={{ p: 4 }}>
-        <Box display="flex" flexDirection="column" alignItems="center">
+    <div className={`mx-auto mt-16 w-full`} style={{ maxWidth }}>
+      <div className={`bg-white dark:bg-[#1a2233] rounded-xl shadow-md p-8 ${className}`}>
+        <div className="flex flex-col items-center">
           {children}
-        </Box>
-      </Paper>
-    </Container>
+        </div>
+      </div>
+    </div>
   );
 };

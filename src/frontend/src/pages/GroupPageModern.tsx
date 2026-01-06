@@ -1,0 +1,264 @@
+
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { groupsAPI, groupChatAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+
+const GroupPageModern = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [group, setGroup] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+
+  const fetchGroup = useCallback(async () => {
+    try {
+      const response = await groupsAPI.getById(id);
+      setGroup(response.data);
+    } catch (error) {
+      setError('Failed to load group');
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchGroup();
+  }, [fetchGroup]);
+
+  const fetchMessages = useCallback(async () => {
+    setChatLoading(true);
+    try {
+      const res = await groupChatAPI.getMessages(id);
+      setMessages(res.data);
+    } catch (e) {
+      // Optionally handle error
+    } finally {
+      setChatLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 30000);
+    return () => clearInterval(interval);
+  }, [fetchMessages]);
+
+  const handleInvite = async () => {
+    setError('');
+    setSuccess('');
+    try {
+      await groupsAPI.invite(id, inviteEmail);
+      setSuccess('Member invited successfully');
+      setInviteEmail('');
+      setInviteDialogOpen(false);
+      fetchGroup();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to invite member');
+    }
+  };
+
+  const handleRemoveMember = async (memberId) => {
+    if (!window.confirm('Are you sure you want to remove this member?')) return;
+    try {
+      await groupsAPI.removeMember(id, memberId);
+      setSuccess('Member removed successfully');
+      fetchGroup();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to remove member');
+    }
+  };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim()) return;
+    try {
+      await groupChatAPI.sendMessage(id, newMessage);
+      setNewMessage('');
+      fetchMessages();
+    } catch (e) {
+      // Optionally handle error
+    }
+  };
+
+  const handleLeaveGroup = async () => {
+    if (!window.confirm('Are you sure you want to leave this group?')) return;
+    try {
+      await groupsAPI.leave(id);
+      setSuccess('Left group successfully');
+      setTimeout(() => {
+        navigate('/groups');
+      }, 1500);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to leave group');
+    }
+  };
+
+  const handleCopyInviteLink = async () => {
+    try {
+      const response = await groupsAPI.getInviteLink(id);
+      const inviteLink = `${window.location.origin}/groups/join/${response.data.groupId}`;
+      await navigator.clipboard.writeText(inviteLink);
+      setSnackbarMessage('Invite link copied to clipboard!');
+      setSnackbarOpen(true);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to get invite link');
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!window.confirm('Are you sure you want to delete this group? This action cannot be undone and will delete all events associated with the group.')) return;
+    try {
+      await groupsAPI.delete(id);
+      setSuccess('Group deleted successfully');
+      setTimeout(() => {
+        navigate('/groups');
+      }, 1500);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to delete group');
+    }
+  };
+
+  const isAdmin = group?.members?.find(
+    (m) => m.userId === user?.id && m.role === 'admin'
+  );
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[80vh]">
+        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!group) {
+    return (
+      <div className="max-w-2xl mx-auto mt-8">
+        <div className="bg-red-100 text-red-700 p-4 rounded">Group not found</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#1a2233] to-[#232946] p-6 font-sans text-white">
+      <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Group Info */}
+        <div className="md:col-span-3">
+          <div className="bg-[#232946] rounded-xl shadow-md p-6 flex flex-col md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold mb-1">{group.name}</h1>
+              <p className="text-[#a1a6b4] mb-2">{group.description || 'No description'}</p>
+              <span className="text-xs text-[#a1a6b4]">Created by {group.creator?.name} on {new Date(group.createdAt).toLocaleDateString()}</span>
+            </div>
+            <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
+              <button onClick={handleCopyInviteLink} className="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">Copy Invite Link</button>
+              {isAdmin && <button onClick={() => navigate(`/event-requests/${id}`)} className="bg-blue-900 hover:bg-blue-800 text-blue-200 font-medium rounded-md px-3 py-1.5 text-sm border border-blue-600 transition">Event Requests</button>}
+              {isAdmin && <button onClick={() => setInviteDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">Invite Member</button>}
+              {isAdmin && <button onClick={() => navigate(`/groups/${id}/edit`)} className="bg-gray-700 hover:bg-gray-800 text-gray-200 font-medium rounded-md px-3 py-1.5 text-sm border border-gray-500 transition">Edit Group</button>}
+              {isAdmin && <button onClick={handleDeleteGroup} className="bg-red-600 hover:bg-red-700 text-white font-medium rounded-md px-3 py-1.5 text-sm border border-red-400 transition">Delete Group</button>}
+              <button onClick={handleLeaveGroup} className="bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-md px-3 py-1.5 text-sm border border-pink-400 transition">Leave Group</button>
+            </div>
+          </div>
+        </div>
+        {/* Members */}
+        <div className="bg-[#232946] rounded-xl shadow-md p-4">
+          <h2 className="text-lg font-semibold mb-4">Members <span className="text-[#a1a6b4]">({group.members?.length || 0})</span></h2>
+          <ul className="space-y-3">
+            {group.members?.map((member) => (
+              <li key={member.id} className="flex items-center justify-between">
+                <div>
+                  <span className="font-bold">{member.user?.name}</span>
+                  {member.role === 'admin' && <span className="ml-2 text-xs bg-[#232946] text-[#a1a6b4] px-2 py-0.5 rounded">Admin</span>}
+                  <div className="text-xs text-[#a1a6b4]">{member.user?.email}</div>
+                </div>
+                {isAdmin && member.userId !== user.id && (
+                  <button onClick={() => handleRemoveMember(member.id)} className="bg-red-600 hover:bg-red-700 text-white rounded px-2 py-1 text-xs transition">Remove</button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+        {/* Events */}
+        <div className="bg-[#232946] rounded-xl shadow-md p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Events <span className="text-[#a1a6b4]">({group.events?.length || 0})</span></h2>
+            {isAdmin && <button onClick={() => navigate('/events/new', { state: { groupId: id } })} className="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">Create Event</button>}
+          </div>
+          {group.events?.length > 0 ? group.events.map((event) => (
+            <div key={event.id} onClick={() => navigate(`/events/${event.id}`)} className="bg-[#1a2233] rounded-lg p-3 mb-2 hover:shadow-md transition cursor-pointer">
+              <div className="font-semibold">{event.title}</div>
+              <div className="text-xs text-[#a1a6b4]">{event.eventType} - {new Date(event.startTime).toLocaleDateString()}</div>
+            </div>
+          )) : <div className="text-[#a1a6b4]">No events yet.</div>}
+        </div>
+        {/* Group Chat */}
+        <div className="bg-[#232946] rounded-xl shadow-md p-4">
+          <h2 className="text-lg font-semibold mb-4">Group Chat</h2>
+          <div className="bg-[#1a2233] rounded-lg p-3 mb-2 min-h-[60px] text-[#a1a6b4] max-h-60 overflow-y-auto">
+            {chatLoading ? (
+              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+            ) : messages.length === 0 ? (
+              <div>No messages yet.</div>
+            ) : (
+              messages.map((msg) => (
+                <div key={msg.id} className="mb-2">
+                  <div className="text-blue-300 font-semibold text-xs">{msg.user?.name || 'User'}</div>
+                  <div className="text-white text-sm">{msg.content}</div>
+                  <div className="text-xs text-[#a1a6b4]">{new Date(msg.createdAt).toLocaleString()}</div>
+                </div>
+              ))
+            )}
+          </div>
+          <form onSubmit={handleSendMessage} className="flex gap-2 mt-2">
+            <input
+              value={newMessage}
+              onChange={e => setNewMessage(e.target.value)}
+              className="flex-1 bg-[#1a2233] border border-[#3a3f4b] rounded-lg text-white px-3 py-2 text-sm focus:outline-none focus:border-[#3a86ff]"
+              placeholder="Type a message..."
+            />
+            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition" disabled={!newMessage.trim()}>Send</button>
+          </form>
+        </div>
+      </div>
+      {/* Invite Member Dialog */}
+      {inviteDialogOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+          <div className="bg-[#232946] rounded-xl shadow-lg p-6 w-full max-w-sm">
+            <h3 className="text-lg font-semibold mb-4">Invite Member</h3>
+            <input
+              type="email"
+              className="w-full mb-4 bg-[#1a2233] border border-[#3a3f4b] rounded-lg text-white px-3 py-2 text-sm focus:outline-none focus:border-[#3a86ff]"
+              placeholder="Email Address"
+              value={inviteEmail}
+              onChange={e => setInviteEmail(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setInviteDialogOpen(false)} className="bg-gray-600 hover:bg-gray-700 text-white rounded-md px-3 py-1.5 text-sm">Cancel</button>
+              <button onClick={handleInvite} className="bg-blue-600 hover:bg-blue-700 text-white rounded-md px-3 py-1.5 text-sm">Invite</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Snackbar for invite link copied */}
+      {snackbarOpen && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-blue-700 text-white px-4 py-2 rounded shadow z-50">
+          {snackbarMessage}
+        </div>
+      )}
+      {/* Error/Success Alerts */}
+      {error && <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded shadow z-50">{error}</div>}
+      {success && <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded shadow z-50">{success}</div>}
+    </div>
+  );
+};
+
+export default GroupPageModern;

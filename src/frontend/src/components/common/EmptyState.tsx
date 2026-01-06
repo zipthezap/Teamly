@@ -1,9 +1,7 @@
 import React, { ReactNode } from 'react';
-import { Box, Paper, Typography, Button } from '@mui/material';
-import { SvgIconComponent } from '@mui/icons-material';
 
-interface EmptyStateProps {
-  icon: SvgIconComponent;
+
+  icon: React.ReactNode;
   title: string;
   description: string;
   actionLabel?: string;
@@ -14,8 +12,7 @@ interface EmptyStateProps {
 /**
  * Reusable empty state component for when there's no data to display
  */
-export const EmptyState: React.FC<EmptyStateProps> = ({
-  icon: Icon,
+  icon,
   title,
   description,
   actionLabel,
@@ -23,47 +20,22 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   gradient = 'linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(33, 150, 243, 0.02) 100%)'
 }) => {
   return (
-    <Paper 
-      sx={{ 
-        p: 6, 
-        textAlign: 'center',
-        background: gradient,
-        border: '2px dashed rgba(255, 255, 255, 0.1)',
-      }}
+    <div
+      className="rounded-xl border-2 border-dashed border-white/10 p-10 text-center mx-auto"
+      style={{ background: gradient }}
     >
-      <Box
-        sx={{
-          display: 'inline-flex',
-          p: 3,
-          borderRadius: '50%',
-          background: 'rgba(33, 150, 243, 0.1)',
-          mb: 3
-        }}
-      >
-        <Icon sx={{ fontSize: 64, color: 'primary.main', opacity: 0.7 }} />
-      </Box>
-      <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 1 }}>
-        {title}
-      </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 3, maxWidth: 500, mx: 'auto' }}>
-        {description}
-      </Typography>
+      <div className="inline-flex p-6 rounded-full bg-blue-100 mb-6">{icon}</div>
+      <div className="text-2xl font-bold mb-2">{title}</div>
+      <div className="text-base text-gray-400 mb-6 max-w-xl mx-auto">{description}</div>
       {actionLabel && onAction && (
-        <Button
-          variant="contained"
-          size="large"
+        <button
+          className="inline-flex items-center justify-center px-8 py-3 rounded-md font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 bg-blue-600 text-white hover:bg-blue-700 text-base"
           onClick={onAction}
-          sx={{ 
-            px: 4,
-            py: 1.5,
-            fontSize: '1rem',
-            fontWeight: 600,
-          }}
         >
           {actionLabel}
-        </Button>
+        </button>
       )}
-    </Paper>
+    </div>
   );
 };
 

@@ -1,17 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Grid,
-  Card,
-  CardContent,
-  Typography,
-  Box,
-  CircularProgress,
-  Alert,
-} from '@mui/material';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import HistoryIcon from '@mui/icons-material/History';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { eventsAPI } from '../../services/api';
 
 interface Statistics {
@@ -59,14 +46,14 @@ const UserStatistics: React.FC = () => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" py={4}>
-        <CircularProgress />
-      </Box>
+      <div className="flex justify-center items-center py-8">
+        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
     );
   }
 
   if (error) {
-    return <Alert severity="error">{error}</Alert>;
+    return <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>;
   }
 
   if (!statistics) {
@@ -74,75 +61,55 @@ const UserStatistics: React.FC = () => {
   }
 
   const StatCard = ({ title, value, icon, color }: any) => (
-    <Card sx={{ height: '100%' }}>
-      <CardContent sx={{ bgcolor: `${color}.50` }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Box>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              {title}
-            </Typography>
-            <Typography variant="h3" sx={{ fontWeight: 700, color: `${color}.main` }}>
-              {value}
-            </Typography>
-          </Box>
-          <Box
-            sx={{
-              bgcolor: `${color}.100`,
-              borderRadius: 2,
-              p: 1.5,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {icon}
-          </Box>
-        </Box>
-      </CardContent>
-    </Card>
+    <div className={`bg-[#1a2233] rounded-xl shadow-md p-5 flex flex-col h-full justify-between`}>
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <div className="text-xs text-[#a1a6b4] mb-1">{title}</div>
+          <div className={`text-2xl font-bold ${color}`}>{value}</div>
+        </div>
+        <div className="w-10 h-10 flex items-center justify-center rounded-full bg-[#232946]">{icon}</div>
+      </div>
+    </div>
   );
 
   return (
-    <Box>
-      <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-        Your Activity
-      </Typography>
-
-      <Grid container spacing={3}>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Events Joined"
-            value={statistics.totalEventsJoined}
-            icon={<EmojiEventsIcon sx={{ fontSize: 32, color: 'primary.main' }} />}
-            color="primary"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Upcoming Events"
-            value={statistics.upcomingEvents}
-            icon={<CalendarTodayIcon sx={{ fontSize: 32, color: 'success.main' }} />}
-            color="success"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Past Events"
-            value={statistics.pastEvents}
-            icon={<HistoryIcon sx={{ fontSize: 32, color: 'warning.main' }} />}
-            color="warning"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Confirmed"
-            value={statistics.confirmedEvents}
-            icon={<CheckCircleIcon sx={{ fontSize: 32, color: 'secondary.main' }} />}
-            color="secondary"
-          />
-        </Grid>
-      </Grid>
-    </Box>
+    <div>
+      <div className="text-lg font-bold mb-4">Your Activity</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard
+          title="Events Joined"
+          value={statistics.totalEventsJoined}
+          icon={
+            <svg className="w-7 h-7 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
+          }
+          color="text-blue-500"
+        />
+        <StatCard
+          title="Upcoming Events"
+          value={statistics.upcomingEvents}
+          icon={
+            <svg className="w-7 h-7 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+          }
+          color="text-green-500"
+        />
+        <StatCard
+          title="Past Events"
+          value={statistics.pastEvents}
+          icon={
+            <svg className="w-7 h-7 text-yellow-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+          }
+          color="text-yellow-500"
+        />
+        <StatCard
+          title="Confirmed"
+          value={statistics.confirmedEvents}
+          icon={
+            <svg className="w-7 h-7 text-pink-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M9 12l2 2l4-4" /></svg>
+          }
+          color="text-pink-500"
+        />
+      </div>
+    </div>
   );
 };
 
