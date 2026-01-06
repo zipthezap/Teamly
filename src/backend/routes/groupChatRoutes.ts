@@ -1,9 +1,10 @@
-const express = require('express');
-const router = express.Router();
-const chat = require('../controllers/groupChatController');
-const auth = require('../middleware/auth');
+import { Router } from 'express';
+import * as chat from '../controllers/groupChatController';
+import authMiddleware from '../middleware/auth';
 
-router.use(auth);
+const router = Router();
+
+router.use(authMiddleware);
 
 // Group chat
 router.post('/message', chat.createMessage);
@@ -16,4 +17,4 @@ router.post('/event/late', chat.markLate);
 router.get('/notifications', chat.getNotifications);
 router.post('/notifications/mark-read', chat.markNotificationsRead);
 
-module.exports = router;
+export default router;

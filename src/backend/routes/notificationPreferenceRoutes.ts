@@ -1,9 +1,10 @@
-const express = require('express');
-const router = express.Router();
-const auth = require('../middleware/auth');
-const notificationPref = require('../controllers/notificationPreferenceController');
+import { Router } from 'express';
+import authMiddleware from '../middleware/auth';
+import * as notificationPref from '../controllers/notificationPreferenceController';
 
-router.get('/', auth, notificationPref.getNotificationPreferences);
-router.put('/', auth, notificationPref.updateNotificationPreferences);
+const router = Router();
 
-module.exports = router;
+router.get('/', authMiddleware, notificationPref.getNotificationPreferences);
+router.put('/', authMiddleware, notificationPref.updateNotificationPreferences);
+
+export default router;

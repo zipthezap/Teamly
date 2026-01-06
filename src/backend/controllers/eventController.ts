@@ -1,9 +1,10 @@
-const prisma = require('../config/database');
-const { validateRecurrenceRule, generateRecurrenceInstances, calculateDuration, applyDuration } = require('../utils/recurrenceService');
-const { sendEmail, sendBatchEmails } = require('../utils/emailService');
-const { batchShouldSendEmailNotification } = require('../utils/notificationHelper');
+import prisma from '../config/database';
+import { validateRecurrenceRule, generateRecurrenceInstances, calculateDuration, applyDuration } from '../utils/recurrenceService';
+import { sendEmail, sendBatchEmails } from '../utils/emailService';
+import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
+import { Request, Response } from 'express';
 
-const createEvent = async (req, res) => {
+export const createEvent = async (req: Request, res: Response) => {
   try {
     const { 
       groupId, title, description, eventType, location, startTime, endTime, maxPlayers,
@@ -152,7 +153,7 @@ const createEvent = async (req, res) => {
   }
 };
 
-const getEvents = async (req, res) => {
+export const getEvents = async (req: Request, res: Response) => {
   try {
     const { groupId } = req.query;
 
@@ -209,7 +210,7 @@ const getEvents = async (req, res) => {
   }
 };
 
-const getEvent = async (req, res) => {
+export const getEvent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -278,7 +279,7 @@ const getEvent = async (req, res) => {
   }
 };
 
-const updateEvent = async (req, res) => {
+export const updateEvent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { title, description, eventType, location, startTime, endTime, maxPlayers } = req.body;
@@ -386,7 +387,7 @@ const updateEvent = async (req, res) => {
   }
 };
 
-const deleteEvent = async (req, res) => {
+export const deleteEvent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -449,7 +450,7 @@ const deleteEvent = async (req, res) => {
   }
 };
 
-const joinEvent = async (req, res) => {
+export const joinEvent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -514,7 +515,7 @@ const joinEvent = async (req, res) => {
   }
 };
 
-const leaveEvent = async (req, res) => {
+export const leaveEvent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -571,7 +572,7 @@ const leaveEvent = async (req, res) => {
   }
 };
 
-const updateParticipationStatus = async (req, res) => {
+export const updateParticipationStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -620,7 +621,7 @@ const updateParticipationStatus = async (req, res) => {
 };
 
 // Get recurring event instances
-const getRecurringEventInstances = async (req, res) => {
+export const getRecurringEventInstances = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { startDate, endDate, limit } = req.query;
@@ -678,7 +679,7 @@ const getRecurringEventInstances = async (req, res) => {
 };
 
 // Add exception date to recurring event
-const addRecurringEventException = async (req, res) => {
+export const addRecurringEventException = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { exceptionDate } = req.body;
@@ -723,7 +724,7 @@ const addRecurringEventException = async (req, res) => {
 };
 
 // Remove exception date from recurring event
-const removeRecurringEventException = async (req, res) => {
+export const removeRecurringEventException = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { exceptionDate } = req.body;
@@ -765,16 +766,3 @@ const removeRecurringEventException = async (req, res) => {
   }
 };
 
-module.exports = {
-  createEvent,
-  getEvents,
-  getEvent,
-  updateEvent,
-  deleteEvent,
-  joinEvent,
-  leaveEvent,
-  updateParticipationStatus,
-  getRecurringEventInstances,
-  addRecurringEventException,
-  removeRecurringEventException
-};

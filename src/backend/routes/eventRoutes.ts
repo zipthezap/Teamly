@@ -1,8 +1,9 @@
-const express = require('express');
-const router = express.Router();
-const eventController = require('../controllers/eventController');
-const authMiddleware = require('../middleware/auth');
-const { authenticatedLimiter } = require('../middleware/rateLimiter');
+import { Router } from 'express';
+import * as eventController from '../controllers/eventController';
+import authMiddleware from '../middleware/auth';
+import { authenticatedLimiter } from '../middleware/rateLimiter';
+
+const router = Router();
 
 router.use(authMiddleware);
 router.use(authenticatedLimiter);
@@ -21,4 +22,4 @@ router.get('/:id/instances', eventController.getRecurringEventInstances);
 router.post('/:id/exceptions', eventController.addRecurringEventException);
 router.delete('/:id/exceptions', eventController.removeRecurringEventException);
 
-module.exports = router;
+export default router;

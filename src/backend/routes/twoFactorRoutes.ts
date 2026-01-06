@@ -1,8 +1,9 @@
-const express = require('express');
-const router = express.Router();
-const twoFactorController = require('../controllers/twoFactorController');
-const authMiddleware = require('../middleware/auth');
-const { authenticatedLimiter } = require('../middleware/rateLimiter');
+import { Router } from 'express';
+import * as twoFactorController from '../controllers/twoFactorController';
+import authMiddleware from '../middleware/auth';
+import { authenticatedLimiter } from '../middleware/rateLimiter';
+
+const router = Router();
 
 // All routes require authentication
 router.use(authMiddleware);
@@ -20,4 +21,4 @@ router.post('/verify', twoFactorController.verify2FA);
 // Disable 2FA
 router.post('/disable', twoFactorController.disable2FA);
 
-module.exports = router;
+export default router;

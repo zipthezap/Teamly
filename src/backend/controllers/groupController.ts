@@ -1,8 +1,9 @@
-const prisma = require('../config/database');
-const { sendEmail } = require('../utils/emailService');
-const { shouldSendEmailNotification } = require('../utils/notificationHelper');
+import prisma from '../config/database';
+import { sendEmail } from '../utils/emailService';
+import { shouldSendEmailNotification } from '../utils/notificationHelper';
+import { Request, Response } from 'express';
 
-const createGroup = async (req, res) => {
+export const createGroup = async (req: Request, res: Response) => {
   try {
     const { name, description, isPublic, latitude, longitude, locationName } = req.body;
 
@@ -79,7 +80,7 @@ const createGroup = async (req, res) => {
   }
 };
 
-const getGroups = async (req, res) => {
+export const getGroups = async (req: Request, res: Response) => {
   try {
     const groups = await prisma.group.findMany({
       where: {
@@ -115,7 +116,7 @@ const getGroups = async (req, res) => {
   }
 };
 
-const getGroup = async (req, res) => {
+export const getGroup = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -162,7 +163,7 @@ const getGroup = async (req, res) => {
   }
 };
 
-const updateGroup = async (req, res) => {
+export const updateGroup = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { name, description, isPublic, latitude, longitude, locationName } = req.body;
@@ -211,7 +212,7 @@ const updateGroup = async (req, res) => {
   }
 };
 
-const inviteMember = async (req, res) => {
+export const inviteMember = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { email } = req.body;
@@ -295,7 +296,7 @@ const inviteMember = async (req, res) => {
   }
 };
 
-const removeMember = async (req, res) => {
+export const removeMember = async (req: Request, res: Response) => {
   try {
     const { id, memberId } = req.params;
 
@@ -324,7 +325,7 @@ const removeMember = async (req, res) => {
 };
 
 // Get all public groups (for discovery)
-const getPublicGroups = async (req, res) => {
+export const getPublicGroups = async (req: Request, res: Response) => {
   try {
     const groups = await prisma.group.findMany({
       where: {
@@ -349,7 +350,7 @@ const getPublicGroups = async (req, res) => {
 };
 
 // Request to join a public group
-const requestJoinGroup = async (req, res) => {
+export const requestJoinGroup = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -431,7 +432,7 @@ const requestJoinGroup = async (req, res) => {
 };
 
 // Get join requests for a group (admin only)
-const getJoinRequests = async (req, res) => {
+export const getJoinRequests = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -469,7 +470,7 @@ const getJoinRequests = async (req, res) => {
 };
 
 // Approve or reject a join request (admin only)
-const handleJoinRequest = async (req, res) => {
+export const handleJoinRequest = async (req: Request, res: Response) => {
   try {
     const { id, requestId } = req.params;
     const { action } = req.body; // 'approve' or 'reject'
@@ -545,7 +546,7 @@ const handleJoinRequest = async (req, res) => {
 };
 
 // Join group by invite (public, for invite link)
-const joinGroupByInvite = async (req, res) => {
+export const joinGroupByInvite = async (req: Request, res: Response) => {
   try {
     const { userId, groupId } = req.body;
     if (!userId || !groupId) {
@@ -567,7 +568,7 @@ const joinGroupByInvite = async (req, res) => {
 };
 
 // Leave a group
-const leaveGroup = async (req, res) => {
+export const leaveGroup = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
@@ -611,7 +612,7 @@ const leaveGroup = async (req, res) => {
 };
 
 // Get invite link for a group
-const getInviteLink = async (req, res) => {
+export const getInviteLink = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -635,18 +636,3 @@ const getInviteLink = async (req, res) => {
   }
 };
 
-module.exports = {
-  createGroup,
-  getGroups,
-  getGroup,
-  updateGroup,
-  inviteMember,
-  removeMember,
-  leaveGroup,
-  getInviteLink,
-  joinGroupByInvite,
-  getPublicGroups,
-  requestJoinGroup,
-  getJoinRequests,
-  handleJoinRequest,
-};

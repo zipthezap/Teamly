@@ -1,9 +1,9 @@
-const express = require('express');
-const router = express.Router();
-const groupController = require('../controllers/groupController');
-const authMiddleware = require('../middleware/auth');
-const { authenticatedLimiter } = require('../middleware/rateLimiter');
+import { Router } from 'express';
+import * as groupController from '../controllers/groupController';
+import authMiddleware from '../middleware/auth';
+import { authenticatedLimiter } from '../middleware/rateLimiter';
 
+const router = Router();
 
 // Public join via invite link (no auth)
 router.post('/join', groupController.joinGroupByInvite);
@@ -28,4 +28,4 @@ router.post('/:id/join-request', groupController.requestJoinGroup);
 router.get('/:id/join-requests', groupController.getJoinRequests);
 router.post('/:id/join-requests/:requestId', groupController.handleJoinRequest);
 
-module.exports = router;
+export default router;

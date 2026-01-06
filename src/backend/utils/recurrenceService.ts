@@ -1,10 +1,10 @@
-const { RRule, RRuleSet, rrulestr } = require('rrule');
+import { RRule, RRuleSet, rrulestr } from 'rrule';
 
 // Constants
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000; // Milliseconds in one year
 
 // Parse recurrence rule string
-const parseRecurrenceRule = (ruleString) => {
+const parseRecurrenceRule = (ruleString: string) => {
   try {
     return rrulestr(ruleString);
   } catch (error) {
@@ -13,7 +13,7 @@ const parseRecurrenceRule = (ruleString) => {
 };
 
 // Validate recurrence rule
-const validateRecurrenceRule = (ruleString) => {
+export const validateRecurrenceRule = (ruleString: string): boolean => {
   try {
     parseRecurrenceRule(ruleString);
     return true;
@@ -23,11 +23,11 @@ const validateRecurrenceRule = (ruleString) => {
 };
 
 // Generate recurrence instances
-const generateRecurrenceInstances = (
-  startDate,
-  recurrenceRule,
-  recurrenceEnd,
-  exceptionDates = [],
+export const generateRecurrenceInstances = (
+  startDate: Date,
+  recurrenceRule: string,
+  recurrenceEnd: Date | null,
+  exceptionDates: string[] = [],
   limit = 100
 ) => {
   try {
@@ -61,7 +61,7 @@ const generateRecurrenceInstances = (
 };
 
 // Create common recurrence patterns
-const RecurrencePatterns = {
+export const RecurrencePatterns = {
   daily: (interval = 1) => `FREQ=DAILY;INTERVAL=${interval}`,
   
   weekly: (days = ['MO'], interval = 1) => {
@@ -69,18 +69,18 @@ const RecurrencePatterns = {
     return `FREQ=WEEKLY;BYDAY=${dayStr};INTERVAL=${interval}`;
   },
   
-  monthly: (dayOfMonth, interval = 1) => 
+  monthly: (dayOfMonth: number, interval = 1) => 
     `FREQ=MONTHLY;BYMONTHDAY=${dayOfMonth};INTERVAL=${interval}`,
   
-  monthlyByWeekday: (weekday, weekNumber, interval = 1) => 
+  monthlyByWeekday: (weekday: string, weekNumber: number, interval = 1) => 
     `FREQ=MONTHLY;BYDAY=${weekNumber}${weekday};INTERVAL=${interval}`,
   
-  yearly: (month, day, interval = 1) => 
+  yearly: (month: number, day: number, interval = 1) => 
     `FREQ=YEARLY;BYMONTH=${month};BYMONTHDAY=${day};INTERVAL=${interval}`
 };
 
 // Get next occurrence
-const getNextOccurrence = (startDate, recurrenceRule, exceptionDates = []) => {
+export const getNextOccurrence = (startDate: Date, recurrenceRule: string, exceptionDates: string[] = []): Date | null => {
   const instances = generateRecurrenceInstances(
     startDate,
     recurrenceRule,
@@ -93,23 +93,14 @@ const getNextOccurrence = (startDate, recurrenceRule, exceptionDates = []) => {
 };
 
 // Calculate duration between dates
-const calculateDuration = (startTime, endTime) => {
+export const calculateDuration = (startTime: Date | string, endTime: Date | string): number | null => {
   if (!endTime) return null;
-  return new Date(endTime) - new Date(startTime);
+  return new Date(endTime).getTime() - new Date(startTime).getTime();
 };
 
 // Apply duration to a date
-const applyDuration = (startTime, duration) => {
+export const applyDuration = (startTime: Date | string, duration: number | null): Date | null => {
   if (!duration) return null;
   return new Date(new Date(startTime).getTime() + duration);
 };
 
-module.exports = {
-  parseRecurrenceRule,
-  validateRecurrenceRule,
-  generateRecurrenceInstances,
-  RecurrencePatterns,
-  getNextOccurrence,
-  calculateDuration,
-  applyDuration
-};

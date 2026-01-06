@@ -1,9 +1,10 @@
-const prisma = require('../config/database');
-const crypto = require('crypto');
-const { sendEmail } = require('../utils/emailService');
+import prisma from '../config/database';
+import crypto from 'crypto';
+import { sendEmail } from '../utils/emailService';
+import { Request, Response } from 'express';
 
 // Get user email preferences
-const getEmailPreferences = async (req, res) => {
+export const getEmailPreferences = async (req: Request, res: Response) => {
   try {
     let preferences = await prisma.emailPreference.findUnique({
       where: { userId: req.user.id }
@@ -24,7 +25,7 @@ const getEmailPreferences = async (req, res) => {
 };
 
 // Update user email preferences
-const updateEmailPreferences = async (req, res) => {
+export const updateEmailPreferences = async (req: Request, res: Response) => {
   try {
     const {
       eventInvites,
@@ -64,7 +65,7 @@ const updateEmailPreferences = async (req, res) => {
 };
 
 // Send email verification
-const sendVerificationEmail = async (req, res) => {
+export const sendVerificationEmail = async (req: Request, res: Response) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id }
@@ -95,7 +96,7 @@ const sendVerificationEmail = async (req, res) => {
 };
 
 // Verify email
-const verifyEmail = async (req, res) => {
+export const verifyEmail = async (req: Request, res: Response) => {
   try {
     const { token } = req.params;
 
@@ -123,7 +124,7 @@ const verifyEmail = async (req, res) => {
 };
 
 // Toggle email notifications on/off
-const toggleEmailNotifications = async (req, res) => {
+export const toggleEmailNotifications = async (req: Request, res: Response) => {
   try {
     const { enabled } = req.body;
 
@@ -139,10 +140,3 @@ const toggleEmailNotifications = async (req, res) => {
   }
 };
 
-module.exports = {
-  getEmailPreferences,
-  updateEmailPreferences,
-  sendVerificationEmail,
-  verifyEmail,
-  toggleEmailNotifications
-};
