@@ -1,8 +1,9 @@
-const express = require('express');
-const router = express.Router();
-const authController = require('../controllers/authController');
-const authMiddleware = require('../middleware/auth');
-const { authLimiter } = require('../middleware/rateLimiter');
+import { Router } from 'express';
+import * as authController from '../controllers/authController';
+import authMiddleware from '../middleware/auth';
+import { authLimiter } from '../middleware/rateLimiter';
+
+const router = Router();
 
 // Apply strict rate limiting to auth endpoints
 router.post('/register', authLimiter, authController.register);
@@ -11,4 +12,4 @@ router.get('/profile', authMiddleware, authController.getProfile);
 router.put('/profile', authMiddleware, authController.updateProfile);
 router.put('/password', authMiddleware, authController.updatePassword);
 
-module.exports = router;
+export default router;
