@@ -109,7 +109,12 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
     return location.latitude || location.longitude || location.city || location.country || location.locationName;
   };
 
+  const hasNamedLocation = () => {
+    return location.city || location.country || location.locationName;
+  };
+
   const formatCoordinate = (coord: number | string): string => {
+    if (!coord || coord === '') return 'N/A';
     const num = Number(coord);
     if (isNaN(num)) return 'N/A';
     return num.toFixed(4);
@@ -218,11 +223,11 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
               <>Location: {location.locationName}</>
             )}
             {location.latitude && location.longitude && (
-              <Typography variant="caption" display="block" sx={{ mt: (location.city || location.country || location.locationName) ? 0.5 : 0 }}>
+              <Typography variant="caption" display="block" sx={{ mt: hasNamedLocation() ? 0.5 : 0 }}>
                 Coordinates: {formatCoordinate(location.latitude)}, {formatCoordinate(location.longitude)}
               </Typography>
             )}
-            {!(location.city || location.country || location.locationName) && (location.latitude || location.longitude) && (
+            {!hasNamedLocation() && (location.latitude || location.longitude) && (
               <>Coordinates set</>
             )}
           </Alert>
