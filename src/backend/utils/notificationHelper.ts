@@ -1,4 +1,4 @@
-const prisma = require('../config/database');
+import prisma from '../config/database';
 
 /**
  * Check if a user should receive a specific type of email notification
@@ -6,7 +6,7 @@ const prisma = require('../config/database');
  * @param {string} notificationType - The type of notification (eventInvites, eventUpdates, etc.)
  * @returns {Promise<boolean>} - Whether the user should receive the notification
  */
-const shouldSendEmailNotification = async (userId, notificationType) => {
+export const shouldSendEmailNotification = async (userId: string, notificationType: string): Promise<boolean> => {
   try {
     // Get user's global email notification setting
     const user = await prisma.user.findUnique({
@@ -30,7 +30,7 @@ const shouldSendEmailNotification = async (userId, notificationType) => {
     }
 
     // Check the specific notification type
-    return preferences[notificationType] !== false;
+    return (preferences as any)[notificationType] !== false;
   } catch (error) {
     console.error('Error checking email notification preference:', error);
     return false;
@@ -43,7 +43,7 @@ const shouldSendEmailNotification = async (userId, notificationType) => {
  * @param {string} notificationType - The type of notification
  * @returns {Promise<Map<string, boolean>>} - Map of userId to boolean indicating if they should receive notification
  */
-const batchShouldSendEmailNotification = async (userIds, notificationType) => {
+export const batchShouldSendEmailNotification = async (userIds: string[], notificationType: string): Promise<Map<string, boolean>> => {
   try {
     // Get all users' global settings
     const users = await prisma.user.findMany({
@@ -78,7 +78,7 @@ const batchShouldSendEmailNotification = async (userIds, notificationType) => {
       }
 
       // Check the specific notification type
-      result.set(userId, userPrefs[notificationType] !== false);
+      result.set(userId, (userPrefs as any)[notificationType] !== false);
     }
 
     return result;
@@ -86,9 +86,4 @@ const batchShouldSendEmailNotification = async (userIds, notificationType) => {
     console.error('Error batch checking email notification preferences:', error);
     return new Map();
   }
-};
-
-module.exports = {
-  shouldSendEmailNotification,
-  batchShouldSendEmailNotification
 };

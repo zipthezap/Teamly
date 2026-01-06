@@ -1,15 +1,14 @@
-const express = require('express');
-const router = express.Router();
-
-const {
+import { Router } from 'express';
+import {
   getEmailPreferences,
   updateEmailPreferences,
   sendVerificationEmail,
   verifyEmail,
   toggleEmailNotifications
-} = require('../controllers/emailController');
-const authMiddleware = require('../middleware/auth');
+} from '../controllers/emailController';
+import authMiddleware from '../middleware/auth';
 
+const router = Router();
 
 // Get email preferences
 router.get('/preferences', authMiddleware, getEmailPreferences);
@@ -26,4 +25,4 @@ router.post('/verify/send', authMiddleware, sendVerificationEmail);
 // Verify email with token
 router.get('/verify/:token', verifyEmail);
 
-module.exports = router;
+export default router;

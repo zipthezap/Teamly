@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+import nodemailer from 'nodemailer';
 
 // Create email transporter
 const createTransporter = () => {
@@ -39,7 +39,7 @@ const createTransporter = () => {
 };
 
 // Email templates
-const emailTemplates = {
+export const emailTemplates = {
   eventInvitation: (userName, eventTitle, eventDate, groupName) => ({
     subject: `You're invited to ${eventTitle}`,
     html: `
@@ -115,7 +115,7 @@ const emailTemplates = {
 };
 
 // Send email function
-const sendEmail = async (to, template, ...args) => {
+export const sendEmail = async (to: string, template: string, ...args: any[]) => {
   try {
     const transporter = createTransporter();
     const { subject, html } = emailTemplates[template](...args);
@@ -137,15 +137,10 @@ const sendEmail = async (to, template, ...args) => {
 };
 
 // Batch send emails (for multiple recipients)
-const sendBatchEmails = async (recipients, template, ...args) => {
+export const sendBatchEmails = async (recipients: any[], template: string, ...args: any[]) => {
   const promises = recipients.map(recipient => 
     sendEmail(recipient.email, template, recipient.name, ...args)
   );
   return Promise.all(promises);
 };
 
-module.exports = {
-  sendEmail,
-  sendBatchEmails,
-  emailTemplates
-};

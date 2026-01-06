@@ -1,7 +1,8 @@
-const prisma = require('../config/database');
+import prisma from '../config/database';
+import { Request, Response } from 'express';
 
 // Group Chat
-exports.createMessage = async (req, res) => {
+export const createMessage = async (req: Request, res: Response) => {
   try {
     const { groupId, content } = req.body;
     const userId = req.user.id;
@@ -15,7 +16,7 @@ exports.createMessage = async (req, res) => {
   }
 };
 
-exports.getMessages = async (req, res) => {
+export const getMessages = async (req: Request, res: Response) => {
   try {
     const { groupId } = req.params;
     const messages = await prisma.groupMessage.findMany({
@@ -30,7 +31,7 @@ exports.getMessages = async (req, res) => {
 };
 
 // Event Attendance (late)
-exports.markLate = async (req, res) => {
+export const markLate = async (req: Request, res: Response) => {
   try {
     const { eventId } = req.body;
     const userId = req.user.id;
@@ -70,13 +71,13 @@ exports.markLate = async (req, res) => {
 };
 
 // Event Notifications (organizer)
-exports.notifyJoinLeave = async (eventId, userId, type) => {
+export const notifyJoinLeave = async (eventId: string, userId: string, type: string) => {
   await prisma.eventNotification.create({
     data: { eventId, userId, type }
   });
 };
 
-exports.getNotifications = async (req, res) => {
+export const getNotifications = async (req: Request, res: Response) => {
   try {
     const userId = req.user.id;
     // Only fetch unread notifications
@@ -103,14 +104,14 @@ exports.getNotifications = async (req, res) => {
       ...groupNotifications.map(n => ({ ...n, notificationType: 'group' })),
     ];
     // Sort by createdAt desc
-    all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     res.json(all);
   } catch (e) {
     res.status(500).json({ error: 'Failed to fetch notifications' });
   }
 };
 
-exports.markNotificationsRead = async (req, res) => {
+export const markNotificationsRead = async (req: Request, res: Response) => {
   try {
     const userId = req.user.id;
     

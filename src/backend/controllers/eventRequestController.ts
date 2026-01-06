@@ -1,7 +1,10 @@
-const prisma = require('../config/database');
+import prisma from '../config/database';
+import { sendEmail, sendBatchEmails } from '../utils/emailService';
+import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
+import { Request, Response } from 'express';
 
 // Create event request (admin only)
-const createEventRequest = async (req, res) => {
+export const createEventRequest = async (req: Request, res: Response) => {
   try {
     const { groupId, title, description, eventType, location, startTime, endTime, maxPlayers } = req.body;
 
@@ -76,7 +79,7 @@ const createEventRequest = async (req, res) => {
 };
 
 // Get event requests for a group
-const getEventRequests = async (req, res) => {
+export const getEventRequests = async (req: Request, res: Response) => {
   try {
     const { groupId } = req.params;
 
@@ -123,7 +126,7 @@ const getEventRequests = async (req, res) => {
 };
 
 // Get a specific event request
-const getEventRequest = async (req, res) => {
+export const getEventRequest = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -173,7 +176,7 @@ const getEventRequest = async (req, res) => {
 };
 
 // Vote on an event request
-const voteOnEventRequest = async (req, res) => {
+export const voteOnEventRequest = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { vote } = req.body;
@@ -251,7 +254,7 @@ const voteOnEventRequest = async (req, res) => {
 };
 
 // Finalize event request (admin only) - create actual event
-const finalizeEventRequest = async (req, res) => {
+export const finalizeEventRequest = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -350,7 +353,7 @@ const finalizeEventRequest = async (req, res) => {
 };
 
 // Cancel event request (admin only)
-const cancelEventRequest = async (req, res) => {
+export const cancelEventRequest = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -392,11 +395,3 @@ const cancelEventRequest = async (req, res) => {
   }
 };
 
-module.exports = {
-  createEventRequest,
-  getEventRequests,
-  getEventRequest,
-  voteOnEventRequest,
-  finalizeEventRequest,
-  cancelEventRequest
-};

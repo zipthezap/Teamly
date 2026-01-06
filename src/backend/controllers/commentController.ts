@@ -1,9 +1,10 @@
-const prisma = require('../config/database');
-const { sendEmail } = require('../utils/emailService');
-const { batchShouldSendEmailNotification } = require('../utils/notificationHelper');
+import prisma from '../config/database';
+import { sendEmail } from '../utils/emailService';
+import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
+import { Request, Response } from 'express';
 
 // Create a comment
-const createComment = async (req, res) => {
+export const createComment = async (req: Request, res: Response) => {
   try {
     const { eventId, content, parentId } = req.body;
 
@@ -140,7 +141,7 @@ const createComment = async (req, res) => {
 };
 
 // Get comments for an event
-const getEventComments = async (req, res) => {
+export const getEventComments = async (req: Request, res: Response) => {
   try {
     const { eventId } = req.params;
 
@@ -206,7 +207,7 @@ const getEventComments = async (req, res) => {
 };
 
 // Update a comment
-const updateComment = async (req, res) => {
+export const updateComment = async (req: Request, res: Response) => {
   try {
     const { commentId } = req.params;
     const { content } = req.body;
@@ -246,7 +247,7 @@ const updateComment = async (req, res) => {
 };
 
 // Delete a comment
-const deleteComment = async (req, res) => {
+export const deleteComment = async (req: Request, res: Response) => {
   try {
     const { commentId } = req.params;
 

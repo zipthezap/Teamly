@@ -1,11 +1,12 @@
-const prisma = require('../config/database');
-const speakeasy = require('speakeasy');
-const QRCode = require('qrcode');
-const crypto = require('crypto');
-const bcrypt = require('bcryptjs');
+import prisma from '../config/database';
+import speakeasy from 'speakeasy';
+import QRCode from 'qrcode';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+import { Request, Response } from 'express';
 
 // Setup 2FA - Generate secret and QR code
-const setup2FA = async (req, res) => {
+export const setup2FA = async (req: Request, res: Response) => {
   try {
     const userId = req.user.id;
 
@@ -55,7 +56,7 @@ const setup2FA = async (req, res) => {
 };
 
 // Verify and enable 2FA
-const verify2FA = async (req, res) => {
+export const verify2FA = async (req: Request, res: Response) => {
   try {
     const userId = req.user.id;
     const { token } = req.body;
@@ -103,7 +104,7 @@ const verify2FA = async (req, res) => {
 };
 
 // Disable 2FA
-const disable2FA = async (req, res) => {
+export const disable2FA = async (req: Request, res: Response) => {
   try {
     const userId = req.user.id;
     const { password } = req.body;
@@ -145,7 +146,7 @@ const disable2FA = async (req, res) => {
 };
 
 // Validate 2FA token during login
-const validate2FAToken = async (userId, token) => {
+export const validate2FAToken = async (userId: string, token: string): Promise<boolean> => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -185,7 +186,7 @@ const validate2FAToken = async (userId, token) => {
 };
 
 // Get 2FA status
-const get2FAStatus = async (req, res) => {
+export const get2FAStatus = async (req: Request, res: Response) => {
   try {
     const userId = req.user.id;
     
@@ -207,10 +208,3 @@ const get2FAStatus = async (req, res) => {
   }
 };
 
-module.exports = {
-  setup2FA,
-  verify2FA,
-  disable2FA,
-  validate2FAToken,
-  get2FAStatus
-};

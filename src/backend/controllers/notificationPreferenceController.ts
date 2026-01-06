@@ -1,6 +1,7 @@
-const prisma = require('../config/database');
+import prisma from '../config/database';
+import { Request, Response } from 'express';
 
-exports.getNotificationPreferences = async (req, res) => {
+export const getNotificationPreferences = async (req: Request, res: Response) => {
   try {
     let prefs = await prisma.emailPreference.findUnique({
       where: { userId: req.user.id },
@@ -14,7 +15,7 @@ exports.getNotificationPreferences = async (req, res) => {
   }
 };
 
-exports.updateNotificationPreferences = async (req, res) => {
+export const updateNotificationPreferences = async (req: Request, res: Response) => {
   try {
     const prefs = await prisma.emailPreference.update({
       where: { userId: req.user.id },
