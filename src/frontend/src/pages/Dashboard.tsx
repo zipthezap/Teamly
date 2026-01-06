@@ -10,12 +10,12 @@ import {
   CardContent,
   CardActions,
   Button,
-  CircularProgress,
   Chip,
   Avatar,
   Stack,
 } from '@mui/material';
 import { groupsAPI, eventsAPI } from '../services/api';
+import { LoadingSpinner, EmptyState, StatusBadge } from '../components/common';
 import GroupIcon from '@mui/icons-material/Group';
 import EventIcon from '@mui/icons-material/Event';
 import AddIcon from '@mui/icons-material/Add';
@@ -54,11 +54,7 @@ const Dashboard = () => {
   };
 
   if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
-        <CircularProgress size={60} thickness={4} />
-      </Box>
-    );
+    return <LoadingSpinner message="Loading your dashboard..." />;
   }
 
   // Calculate statistics
@@ -133,29 +129,14 @@ const Dashboard = () => {
               ))}
               {groups.length === 0 && (
                 <Grid item xs={12}>
-                  <Paper 
-                    sx={{ 
-                      p: 4, 
-                      textAlign: 'center',
-                      background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(33, 150, 243, 0.02) 100%)',
-                    }}
-                  >
-                    <GroupIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
-                    <Typography variant="h6" gutterBottom>
-                      No groups yet
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      You haven't joined any groups yet. Create one to get started!
-                    </Typography>
-                    <Button
-                      variant="contained"
-                      size="small"
-                      startIcon={<AddIcon />}
-                      onClick={() => navigate('/groups/new')}
-                    >
-                      Create Your First Group
-                    </Button>
-                  </Paper>
+                  <EmptyState
+                    icon={GroupIcon}
+                    title="No groups yet"
+                    description="You haven't joined any groups yet. Create one to get started and connect with other sports enthusiasts!"
+                    actionLabel="Create Your First Group"
+                    onAction={() => navigate('/groups/new')}
+                    gradient="linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(33, 150, 243, 0.02) 100%)"
+                  />
                 </Grid>
               )}
             </Grid>
@@ -187,27 +168,24 @@ const Dashboard = () => {
                           <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, pr: 1 }}>
                             {event.title}
                           </Typography>
-                          <Chip 
-                            label={event.eventType} 
-                            size="small" 
-                            color="secondary"
+                          <StatusBadge 
+                            status="info"
+                            label={event.eventType}
                             sx={{ flexShrink: 0 }}
                           />
                         </Box>
                         
                         {isFull && (
-                          <Chip 
-                            label="Full" 
-                            size="small" 
-                            color="warning" 
+                          <StatusBadge 
+                            status="warning"
+                            label="Full"
                             sx={{ mb: 1 }}
                           />
                         )}
                         {isParticipating && (
-                          <Chip 
-                            label="Joined" 
-                            size="small" 
-                            color="success" 
+                          <StatusBadge 
+                            status="success"
+                            label="Joined"
                             sx={{ mb: 1, ml: isFull ? 1 : 0 }}
                           />
                         )}
@@ -246,29 +224,14 @@ const Dashboard = () => {
               })}
               {upcomingEvents.length === 0 && (
                 <Grid item xs={12}>
-                  <Paper 
-                    sx={{ 
-                      p: 4, 
-                      textAlign: 'center',
-                      background: 'linear-gradient(135deg, rgba(245, 0, 87, 0.05) 0%, rgba(245, 0, 87, 0.02) 100%)',
-                    }}
-                  >
-                    <EventIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
-                    <Typography variant="h6" gutterBottom>
-                      No upcoming events
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      No upcoming events. Create one to start organizing!
-                    </Typography>
-                    <Button
-                      variant="contained"
-                      size="small"
-                      startIcon={<AddIcon />}
-                      onClick={() => navigate('/events/new')}
-                    >
-                      Create Your First Event
-                    </Button>
-                  </Paper>
+                  <EmptyState
+                    icon={EventIcon}
+                    title="No upcoming events"
+                    description="No upcoming events scheduled. Create an event to start organizing your sports activities!"
+                    actionLabel="Create Your First Event"
+                    onAction={() => navigate('/events/new')}
+                    gradient="linear-gradient(135deg, rgba(245, 0, 87, 0.05) 0%, rgba(245, 0, 87, 0.02) 100%)"
+                  />
                 </Grid>
               )}
             </Grid>
