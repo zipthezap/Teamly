@@ -113,6 +113,8 @@ model Group {
   latitude    Float?
   longitude   Float?
   locationName String?
+  city        String?
+  country     String?
 
   creatorId String
   creator   User   @relation("GroupCreator", fields: [creatorId], references: [id])

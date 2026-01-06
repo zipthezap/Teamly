@@ -15,6 +15,8 @@ interface LocationValue {
   latitude?: number | string;
   longitude?: number | string;
   locationName?: string;
+  city?: string;
+  country?: string;
 }
 
 interface LocationPickerProps {
@@ -29,14 +31,18 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
     latitude: value.latitude || '',
     longitude: value.longitude || '',
     locationName: value.locationName || '',
+    city: value.city || '',
+    country: value.country || '',
   });
 
   useEffect(() => {
-    if (value.latitude || value.longitude || value.locationName) {
+    if (value.latitude || value.longitude || value.locationName || value.city || value.country) {
       setLocation({
         latitude: value.latitude || '',
         longitude: value.longitude || '',
         locationName: value.locationName || '',
+        city: value.city || '',
+        country: value.country || '',
       });
     }
   }, [value]);
@@ -62,6 +68,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const newLocation = {
+          ...location, // Preserve existing city and country
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           locationName: location.locationName || `Location: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`,
@@ -89,11 +96,33 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
       latitude: '',
       longitude: '',
       locationName: '',
+      city: '',
+      country: '',
     };
     setLocation(emptyLocation);
     if (onChange) {
       onChange(emptyLocation);
     }
+  };
+
+  const hasAnyLocationData = () => {
+    return hasValidCoordinate(location.latitude) || hasValidCoordinate(location.longitude) || 
+           location.city || location.country || location.locationName;
+  };
+
+  const hasNamedLocation = () => {
+    return location.city || location.country || location.locationName;
+  };
+
+  const hasValidCoordinate = (coord: number | string): boolean => {
+    return coord !== undefined && coord !== null && coord !== '';
+  };
+
+  const formatCoordinate = (coord: number | string): string => {
+    if (coord === undefined || coord === null || coord === '') return 'N/A';
+    const num = Number(coord);
+    if (isNaN(num)) return 'N/A';
+    return num.toFixed(4);
   };
 
   return (
@@ -110,37 +139,67 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
       )}
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {/* City and Country - Primary fields */}
+        <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+          <TextField
+            label="City"
+            fullWidth
+            value={location.city}
+            onChange={(e) => handleLocationChange('city', e.target.value)}
+            placeholder="e.g., New York"
+            helperText="City where your group is located"
+          />
+          <TextField
+            label="Country"
+            fullWidth
+            value={location.country}
+            onChange={(e) => handleLocationChange('country', e.target.value)}
+            placeholder="e.g., United States"
+            helperText="Country where your group is located"
+          />
+        </Box>
+
+        {/* Location Name - Optional descriptive field */}
         <TextField
-          label="Location Name"
+          label="Location Name (Optional)"
           fullWidth
           value={location.locationName}
           onChange={(e) => handleLocationChange('locationName', e.target.value)}
-          placeholder="e.g., Central Park, NYC"
-          helperText="A descriptive name for this location"
+          placeholder="e.g., Central Park Sports Complex"
+          helperText="Optional: A specific venue or landmark"
         />
-        <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-          <TextField
-            label="Latitude"
-            fullWidth
-            type="number"
-            value={location.latitude}
-            onChange={(e) => handleLocationChange('latitude', e.target.value)}
-            placeholder="40.7128"
-            inputProps={{ step: 'any' }}
-          />
-          <TextField
-            label="Longitude"
-            fullWidth
-            type="number"
-            value={location.longitude}
-            onChange={(e) => handleLocationChange('longitude', e.target.value)}
-            placeholder="-74.0060"
-            inputProps={{ step: 'any' }}
-          />
+
+        {/* Coordinates - Advanced/Optional */}
+        <Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontWeight: 500 }}>
+            Coordinates (Optional - for precise location)
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+            <TextField
+              label="Latitude"
+              fullWidth
+              type="number"
+              value={location.latitude}
+              onChange={(e) => handleLocationChange('latitude', e.target.value)}
+              placeholder="40.7128"
+              inputProps={{ step: 'any' }}
+              size="small"
+            />
+            <TextField
+              label="Longitude"
+              fullWidth
+              type="number"
+              value={location.longitude}
+              onChange={(e) => handleLocationChange('longitude', e.target.value)}
+              placeholder="-74.0060"
+              inputProps={{ step: 'any' }}
+              size="small"
+            />
+          </Box>
         </Box>
       </Box>
 
-      <Box display="flex" gap={1} mt={2}>
+      <Box display="flex" gap={1} mt={2} flexWrap="wrap">
         <Button
           variant="outlined"
           startIcon={loading ? <CircularProgress size={20} /> : <MyLocationIcon />}
@@ -149,18 +208,33 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
         >
           {loading ? 'Getting Location...' : 'Use Current Location'}
         </Button>
-        {(location.latitude || location.longitude) && (
+        {hasAnyLocationData() && (
           <Button variant="outlined" onClick={clearLocation}>
-            Clear Location
+            Clear All
           </Button>
         )}
       </Box>
 
-      {location.latitude && location.longitude && (
+      {hasAnyLocationData() && (
         <Box mt={2}>
-          <Alert severity="info">
-            Location set to: {typeof location.latitude === 'number' ? location.latitude.toFixed(4) : parseFloat(String(location.latitude)).toFixed(4)}, {typeof location.longitude === 'number' ? location.longitude.toFixed(4) : parseFloat(String(location.longitude)).toFixed(4)}
-            {location.locationName && ` (${location.locationName})`}
+          <Alert severity="success">
+            {(location.city || location.country) && (
+              <>
+                Location: {[location.city, location.country].filter(Boolean).join(', ')}
+                {location.locationName && ` - ${location.locationName}`}
+              </>
+            )}
+            {!(location.city || location.country) && location.locationName && (
+              <>Location: {location.locationName}</>
+            )}
+            {hasValidCoordinate(location.latitude) && hasValidCoordinate(location.longitude) && (
+              <Typography variant="caption" display="block" sx={{ mt: hasNamedLocation() ? 0.5 : 0 }}>
+                Coordinates: {formatCoordinate(location.latitude)}, {formatCoordinate(location.longitude)}
+              </Typography>
+            )}
+            {!hasNamedLocation() && (hasValidCoordinate(location.latitude) || hasValidCoordinate(location.longitude)) && (
+              <>Coordinates set</>
+            )}
           </Alert>
         </Box>
       )}
