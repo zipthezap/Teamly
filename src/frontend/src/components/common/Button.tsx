@@ -1,6 +1,7 @@
 import React from 'react';
 
-
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  children: React.ReactNode;
   loading?: boolean;
   type?: 'button' | 'submit' | 'reset';
   className?: string;
@@ -11,6 +12,7 @@ import React from 'react';
 /**
  * Enhanced button component with loading state
  */
+export const Button: React.FC<ButtonProps> = ({
   children,
   loading = false,
   disabled,

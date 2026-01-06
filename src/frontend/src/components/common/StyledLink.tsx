@@ -1,14 +1,16 @@
 import React from 'react';
 import { Link as RouterLink, LinkProps as RouterLinkProps } from 'react-router-dom';
 
+interface StyledLinkProps extends Omit<RouterLinkProps, 'to'> {
   to: string;
+  children: React.ReactNode;
   className?: string;
 }
 
 /**
- * A styled Link component that combines react-router-dom's Link with Material-UI's Link styling.
- * Uses MUI's sx prop system to avoid inline styles.
+ * A styled Link component that combines react-router-dom's Link with custom Tailwind styling.
  */
+export const StyledLink: React.FC<StyledLinkProps> = ({ to, children, className, ...props }) => {
   return (
     <RouterLink
       to={to}

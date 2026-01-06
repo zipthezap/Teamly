@@ -307,9 +307,9 @@ const GroupDetails = () => {
             )}
           </ul>
         </div>
-      </div>
 
-        <div className="col-span-1 md:col-span-2 mt-6">
+        {/* Group Chat Card */}
+        <div className="col-span-1 md:col-span-2">
           <div className="bg-white dark:bg-[#232946] rounded-xl shadow-md p-6">
             <div className="text-lg font-semibold mb-4">Group Chat</div>
             <div className="max-h-64 overflow-y-auto mb-4 bg-gray-50 dark:bg-[#1a2233] p-3 rounded border border-gray-100 dark:border-[#232946]">
@@ -347,7 +347,7 @@ const GroupDetails = () => {
             </form>
           </div>
         </div>
-      </Grid>
+      </div>
 
       {/* Invite Member Dialog */}
       {inviteDialogOpen && (
@@ -387,7 +387,7 @@ const GroupDetails = () => {
           </div>
         </div>
       )}
-    </Container>
+    </div>
   );
 };
 

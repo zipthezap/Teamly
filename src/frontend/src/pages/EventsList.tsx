@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { eventsAPI } from '../services/api';
@@ -69,83 +68,85 @@ const EventsList = () => {
     );
   }
 
-  // If you want to filter events further, do it here. For now, filteredEvents = events
   const filteredEvents = events;
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
-            All Events
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''} found
-          return (
-            <div className="max-w-6xl mx-auto mt-8 mb-8 px-2">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-                <div>
-                  <h1 className="text-2xl font-bold mb-1">All Events</h1>
-                  <div className="text-sm text-[#a1a6b4]">{filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''} found</div>
+    <div className="max-w-6xl mx-auto mt-8 mb-8 px-2">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold mb-1">All Events</h1>
+          <div className="text-sm text-gray-500">{filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''} found</div>
+        </div>
+        <button onClick={() => navigate('/events/new')} className="bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">Create Event</button>
+      </div>
+      
+      {/* Filters and Search */}
+      <EventSearchFilters onSearch={handleSearch} />
+      
+      {events.length === 0 ? (
+        <div className="text-center py-16">
+          <div className="text-lg text-gray-500 mb-2">
+            {Object.keys(searchFilters).length > 0 ? 'No events match your filters' : 'No events available'}
+          </div>
+          {Object.keys(searchFilters).length === 0 && (
+            <button onClick={() => navigate('/events/new')} className="bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition mt-2">Create Your First Event</button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          {events.map((event) => {
+            const status = getEventStatus(event);
+            const participantCount = event.participants?.length || 0;
+            const spotsLeft = event.maxPlayers ? event.maxPlayers - participantCount : null;
+            
+            return (
+              <div key={event.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 hover:shadow-lg transition">
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="text-lg font-semibold truncate flex-1">{event.title}</h3>
+                  <span className={`px-2 py-0.5 rounded text-xs font-semibold ml-2 ${
+                    status.label === 'Joined' ? 'bg-green-100 text-green-700' :
+                    status.label === 'Full' ? 'bg-orange-100 text-orange-700' :
+                    status.label === 'Past' ? 'bg-gray-100 text-gray-600' :
+                    'bg-blue-100 text-blue-700'
+                  }`}>{status.label}</span>
                 </div>
-                <button onClick={() => navigate('/events/new')} className="bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">Create Event</button>
-              </div>
-              {/* Filters and Search */}
-              <EventSearchFilters onSearch={handleSearch} />
-              {events.length === 0 ? (
-                <div className="text-center py-16">
-                  <div className="text-lg text-[#a1a6b4] mb-2">
-                    {Object.keys(searchFilters).length > 0 ? 'No events match your filters' : 'No events available'}
+                
+                <div className="mb-3">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-700 border border-purple-200">{event.eventType}</span>
+                </div>
+                
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span role="img" aria-label="date">📅</span>
+                    <span className="text-xs text-gray-500">{new Date(event.startTime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
                   </div>
-                  {Object.keys(searchFilters).length === 0 && (
-                    <button onClick={() => navigate('/events/new')} className="bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition mt-2">Create Your First Event</button>
+                  <div className="flex items-center gap-2">
+                    <span role="img" aria-label="time">🕐</span>
+                    <span className="text-xs text-gray-500">{formatEventTime(event.startTime)}</span>
+                  </div>
+                  {event.location && (
+                    <div className="flex items-center gap-2">
+                      <span role="img" aria-label="location">📍</span>
+                      <span className="text-xs text-gray-500 truncate">{event.location}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <span role="img" aria-label="participants">👥</span>
+                    <span className="text-xs text-gray-500">{participantCount}{event.maxPlayers && ` / ${event.maxPlayers}`} participants</span>
+                  </div>
+                  {spotsLeft !== null && spotsLeft > 0 && spotsLeft <= 3 && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200 mt-1">{spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} left</span>
                   )}
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                  {events.map((event) => {
-                    const status = getEventStatus(event);
-                    const participantCount = event.participants?.length || 0;
-                    const spotsLeft = event.maxPlayers ? event.maxPlayers - participantCount : null;
-                    return (
-                      <div key={event.id} className="relative bg-[#232946] rounded-xl shadow-md p-5 flex flex-col h-full">
-                        <div className="absolute top-4 right-4 z-10">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${status.label === 'Joined' ? 'bg-green-100 text-green-800 border-green-200' : status.label === 'Full' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : status.label === 'Past' ? 'bg-gray-200 text-gray-700 border-gray-300' : 'bg-blue-100 text-blue-800 border-blue-200'}`}>{status.label}</span>
-                        </div>
-                        <div className="flex-1 flex flex-col gap-2">
-                          <div className="flex items-center gap-2">
-                            <h2 className="text-lg font-bold flex-1 truncate">{event.title}</h2>
-                            <span className="ml-2 text-xs bg-pink-700 text-white px-2 py-0.5 rounded">{event.eventType}</span>
-                          </div>
-                          <div className="text-sm text-[#a1a6b4] min-h-[32px] line-clamp-2">{event.description || 'No description'}</div>
-                          <div className="flex items-center gap-2 mt-2">
-                            <span role="img" aria-label="date">📅</span>
-                            <span className="text-xs text-[#a1a6b4]">{new Date(event.startTime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span role="img" aria-label="time">🕐</span>
-                            <span className="text-xs text-[#a1a6b4]">{formatEventTime(event.startTime)}</span>
-                          </div>
-                          {event.location && (
-                            <div className="flex items-center gap-2">
-                              <span role="img" aria-label="location">📍</span>
-                              <span className="text-xs text-[#a1a6b4] truncate">{event.location}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2">
-                            <span role="img" aria-label="participants">👥</span>
-                            <span className="text-xs text-[#a1a6b4]">{participantCount}{event.maxPlayers && ` / ${event.maxPlayers}`} participants</span>
-                          </div>
-                          {spotsLeft !== null && spotsLeft > 0 && spotsLeft <= 3 && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200 mt-1">{spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} left</span>
-                          )}
-                        </div>
-                        <button onClick={() => navigate(`/events/${event.id}`)} className="mt-4 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">View Details</button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-                  <Box 
+                
+                <button onClick={() => navigate(`/events/${event.id}`)} className="mt-4 w-full bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">View Details</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default EventsList;
