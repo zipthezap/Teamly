@@ -212,7 +212,7 @@ const JoinRequestsPopover: React.FC<JoinRequestsPopoverProps> = ({ groupId = nul
                           <IconButton
                             size="small"
                             color="success"
-                            onClick={() => handleAction(request.groupId, request.id, 'approve')}
+                            onClick={() => request.groupId && handleAction(request.groupId, request.id, 'approve')}
                             disabled={actionLoading[request.id]}
                             sx={{
                               bgcolor: 'success.light',
@@ -228,7 +228,7 @@ const JoinRequestsPopover: React.FC<JoinRequestsPopoverProps> = ({ groupId = nul
                           <IconButton
                             size="small"
                             color="error"
-                            onClick={() => handleAction(request.groupId, request.id, 'reject')}
+                            onClick={() => request.groupId && handleAction(request.groupId, request.id, 'reject')}
                             disabled={actionLoading[request.id]}
                             sx={{
                               bgcolor: 'error.light',

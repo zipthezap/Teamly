@@ -43,7 +43,7 @@ const Dashboard = () => {
       setGroups(groupsRes.data);
       // Sort events by startTime
       const sortedEvents = eventsRes.data.sort((a, b) => 
-        new Date(a.startTime) - new Date(b.startTime)
+        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
       );
       setEvents(sortedEvents);
     } catch (error) {
