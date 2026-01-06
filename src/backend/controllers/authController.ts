@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import prisma from '../config/database';
 import { generateToken } from '../utils/jwt';
 import { validate2FAToken } from './twoFactorController';
+import { logger } from '../utils/logger';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -42,7 +43,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     res.status(201).json({ user, token });
   } catch (error) {
-    console.error('Register error:', error);
+    logger.error('User registration failed', 'AuthController', { error });
     res.status(500).json({ error: 'Failed to register user' });
   }
 };
@@ -111,7 +112,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       token
     });
   } catch (error) {
-    console.error('Login error:', error);
+    logger.error('User login failed', 'AuthController', { error });
     res.status(500).json({ error: 'Failed to login' });
   }
 };
@@ -120,7 +121,7 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
   try {
     res.json({ user: req.user });
   } catch (error) {
-    console.error('Get profile error:', error);
+    logger.error('Failed to get profile', 'AuthController', { error });
     res.status(500).json({ error: 'Failed to get profile' });
   }
 };
@@ -166,7 +167,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
 
     res.json({ user: updatedUser });
   } catch (error) {
-    console.error('Update profile error:', error);
+    logger.error('Failed to update profile', 'AuthController', { error });
     res.status(500).json({ error: 'Failed to update profile' });
   }
 };
@@ -214,7 +215,7 @@ export const updatePassword = async (req: Request, res: Response): Promise<void>
 
     res.json({ message: 'Password updated successfully' });
   } catch (error) {
-    console.error('Update password error:', error);
+    logger.error('Failed to update password', 'AuthController', { error });
     res.status(500).json({ error: 'Failed to update password' });
   }
 };

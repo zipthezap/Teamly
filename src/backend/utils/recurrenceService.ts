@@ -1,4 +1,4 @@
-import { RRule, RRuleSet, rrulestr } from 'rrule';
+import { rrulestr } from 'rrule';
 
 // Constants
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000; // Milliseconds in one year

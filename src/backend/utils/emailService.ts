@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { logger } from './logger';
 
 // Create email transporter
 const createTransporter = () => {
@@ -114,11 +115,21 @@ export const emailTemplates = {
   })
 };
 
+// Type definition for email templates
+type EmailTemplateFunction = (...args: unknown[]) => { subject: string; html: string };
+type EmailTemplates = Record<string, EmailTemplateFunction>;
+
 // Send email function
-export const sendEmail = async (to: string, template: string, ...args: any[]) => {
+export const sendEmail = async (to: string, template: string, ...args: unknown[]): Promise<{ success: boolean; messageId?: string; error?: string }> => {
   try {
     const transporter = createTransporter();
-    const { subject, html } = emailTemplates[template](...args);
+    const emailTemplate = (emailTemplates as EmailTemplates)[template];
+    
+    if (!emailTemplate) {
+      throw new Error(`Email template "${template}" not found`);
+    }
+
+    const { subject, html } = emailTemplate(...args);
 
     const mailOptions = {
       from: process.env.EMAIL_FROM || 'noreply@teamly.app',
@@ -128,16 +139,21 @@ export const sendEmail = async (to: string, template: string, ...args: any[]) =>
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent:', info.messageId);
+    logger.info('Email sent successfully', 'EmailService', { messageId: info.messageId, to, template });
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('Error sending email:', error);
-    return { success: false, error: error.message };
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error('Failed to send email', 'EmailService', { error: errorMessage, to, template });
+    return { success: false, error: errorMessage };
   }
 };
 
 // Batch send emails (for multiple recipients)
-export const sendBatchEmails = async (recipients: any[], template: string, ...args: any[]) => {
+export const sendBatchEmails = async (
+  recipients: Array<{ email: string; name: string }>, 
+  template: string, 
+  ...args: unknown[]
+): Promise<Array<{ success: boolean; messageId?: string; error?: string }>> => {
   const promises = recipients.map(recipient => 
     sendEmail(recipient.email, template, recipient.name, ...args)
   );

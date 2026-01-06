@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt';
 import prisma from '../config/database';
+import { logger } from '../utils/logger';
 
 // Extend Express Request type to include user property
 declare global {
@@ -47,7 +48,7 @@ const authMiddleware = async (req: Request, res: Response, next: NextFunction): 
     req.user = user;
     next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
+    logger.error('Authentication failed', 'AuthMiddleware', { error });
     res.status(401).json({ error: 'Authentication failed' });
   }
 };

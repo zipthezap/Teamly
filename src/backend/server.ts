@@ -12,6 +12,17 @@ import commentRoutes from './routes/commentRoutes';
 import groupChatRoutes from './routes/groupChatRoutes';
 import notificationPreferenceRoutes from './routes/notificationPreferenceRoutes';
 import { apiLimiter } from './middleware/rateLimiter';
+import { logger } from './utils/logger';
+import { validateEnvironmentOrThrow } from './utils/envValidator';
+
+// Validate environment variables before starting the server
+try {
+  validateEnvironmentOrThrow();
+  logger.info('Environment validation successful', 'Server');
+} catch (error) {
+  logger.error('Environment validation failed', 'Server', { error });
+  process.exit(1);
+}
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -36,26 +47,31 @@ app.use('/api/chat', groupChatRoutes);
 app.use('/api/notification-preferences', notificationPreferenceRoutes);
 
 // Health check
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', message: 'Teamly API is running' });
 });
 
 // Error handling middleware
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  console.error('Error:', err);
+app.use((err: Error & { status?: number }, req: Request, res: Response, _next: NextFunction) => {
+  logger.error('Unhandled error', 'ErrorMiddleware', {
+    error: err.message,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    path: req.path,
+    method: req.method
+  });
   res.status(err.status || 500).json({
     error: err.message || 'Internal server error'
   });
 });
 
 // 404 handler
-app.use((req: Request, res: Response) => {
+app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
-  console.log(`📍 API available at http://localhost:${PORT}`);
+  logger.info(`Server is running on port ${PORT}`, 'Server');
+  logger.info(`API available at http://localhost:${PORT}`, 'Server');
 });
 
 export default app;
