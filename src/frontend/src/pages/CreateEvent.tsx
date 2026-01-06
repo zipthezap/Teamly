@@ -280,8 +280,8 @@ const CreateEvent = () => {
               sx={{ width: 100 }}
             >
               {[...Array(24)].map((_, i) => (
-                <MenuItem key={i+1} value={(i+1).toString().padStart(2, '0')}>
-                  {(i+1).toString().padStart(2, '0')}
+                <MenuItem key={i} value={i.toString().padStart(2, '0')}>
+                  {i.toString().padStart(2, '0')}
                 </MenuItem>
               ))}
             </TextField>
@@ -312,8 +312,8 @@ const CreateEvent = () => {
             >
               <MenuItem value="">--</MenuItem>
               {[...Array(24)].map((_, i) => (
-                <MenuItem key={i+1} value={(i+1).toString().padStart(2, '0')}>
-                  {(i+1).toString().padStart(2, '0')}
+                <MenuItem key={i} value={i.toString().padStart(2, '0')}>
+                  {i.toString().padStart(2, '0')}
                 </MenuItem>
               ))}
             </TextField>
