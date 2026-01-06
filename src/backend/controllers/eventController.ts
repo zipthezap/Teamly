@@ -900,7 +900,7 @@ export const getUserStatistics = async (req: Request, res: Response) => {
         total: createdEvents.length,
         totalParticipants: createdEvents.reduce((sum, e) => sum + e.participants.length, 0),
         avgParticipantsPerEvent: createdEvents.length > 0 
-          ? (createdEvents.reduce((sum, e) => sum + e.participants.length, 0) / createdEvents.length).toFixed(1)
+          ? createdEvents.reduce((sum, e) => sum + e.participants.length, 0) / createdEvents.length
           : 0
       }
     };

@@ -40,9 +40,6 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = ({ onSearch }) => 
       [field]: event.target.value,
     };
     setFilters(newFilters);
-    
-    // Auto-search on text input with debounce would go here
-    // For now, we'll require clicking the search button
   };
 
   const handleSearch = () => {

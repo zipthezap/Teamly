@@ -19,8 +19,12 @@ export const validateSingleDay = (startTime: string, endTime?: string): Validati
   const startDate = new Date(startTime);
   const endDate = new Date(endTime);
   
-  // Check if they're on the same day
-  if (startDate.toDateString() !== endDate.toDateString()) {
+  // Check if they're on the same day by comparing year, month, and day
+  const isSameDay = startDate.getFullYear() === endDate.getFullYear() &&
+                    startDate.getMonth() === endDate.getMonth() &&
+                    startDate.getDate() === endDate.getDate();
+  
+  if (!isSameDay) {
     return { 
       isValid: false, 
       error: 'Events must be single-day only. Start and end times must be on the same day.' 

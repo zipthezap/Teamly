@@ -33,7 +33,7 @@ interface Statistics {
   createdEventsStats: {
     total: number;
     totalParticipants: number;
-    avgParticipantsPerEvent: string;
+    avgParticipantsPerEvent: number;
   };
 }
 
@@ -75,8 +75,8 @@ const UserStatistics: React.FC = () => {
   }
 
   const StatCard = ({ title, value, icon, color }: any) => (
-    <Card sx={{ height: '100%', bgcolor: `${color}.50` }}>
-      <CardContent>
+    <Card sx={{ height: '100%' }}>
+      <CardContent sx={{ bgcolor: `${color}.50` }}>
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <Box>
             <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -199,7 +199,7 @@ const UserStatistics: React.FC = () => {
                       Avg/Event
                     </Typography>
                     <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                      {statistics.createdEventsStats.avgParticipantsPerEvent}
+                      {statistics.createdEventsStats.avgParticipantsPerEvent.toFixed(1)}
                     </Typography>
                   </Grid>
                 </Grid>
