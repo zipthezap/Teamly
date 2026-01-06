@@ -1,6 +1,6 @@
 import prisma from '../config/database';
 import { validateRecurrenceRule, generateRecurrenceInstances, calculateDuration, applyDuration } from '../utils/recurrenceService';
-import { sendEmail, sendBatchEmails } from '../utils/emailService';
+import { sendEmail } from '../utils/emailService';
 import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
 import { Request, Response } from 'express';
 

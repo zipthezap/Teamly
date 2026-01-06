@@ -47,12 +47,12 @@ app.use('/api/chat', groupChatRoutes);
 app.use('/api/notification-preferences', notificationPreferenceRoutes);
 
 // Health check
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', message: 'Teamly API is running' });
 });
 
 // Error handling middleware
-app.use((err: Error & { status?: number }, req: Request, res: Response, next: NextFunction) => {
+app.use((err: Error & { status?: number }, req: Request, res: Response, _next: NextFunction) => {
   logger.error('Unhandled error', 'ErrorMiddleware', {
     error: err.message,
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
@@ -65,7 +65,7 @@ app.use((err: Error & { status?: number }, req: Request, res: Response, next: Ne
 });
 
 // 404 handler
-app.use((req: Request, res: Response) => {
+app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: 'Route not found' });
 });
 

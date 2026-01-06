@@ -70,23 +70,25 @@ export const createGroup = async (req: Request, res: Response) => {
 
     // Notify users nearby (within 10km) except creator
     if (latitude && longitude) {
-      const R = 6371; // km
-      const toRad = deg => deg * Math.PI / 180;
+      // Future feature: Find nearby users and notify them
+      // const R = 6371; // km
+      // const toRad = deg => deg * Math.PI / 180;
       const users = await prisma.user.findMany({
         where: {
           id: { not: req.user.id }
         },
         select: { id: true }
       });
-      const isNearby = (lat1, lon1, lat2, lon2) => {
-        const dLat = toRad(lat2 - lat1);
-        const dLon = toRad(lon2 - lon1);
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-                  Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return R * c < 10; // 10km
-      };
+      // Calculate which users are nearby - unused for now but kept for future feature
+      // const isNearby = (lat1, lon1, lat2, lon2) => {
+      //   const dLat = toRad(lat2 - lat1);
+      //   const dLon = toRad(lon2 - lon1);
+      //   const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+      //             Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+      //             Math.sin(dLon/2) * Math.sin(dLon/2);
+      //   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      //   return R * c < 10; // 10km
+      // };
       const nearbyUserIds = users.map(u => u.id);
       await Promise.all(nearbyUserIds.map(userId =>
         prisma.groupNotification.create({
@@ -437,7 +439,7 @@ export const updateMemberRole = async (req: Request, res: Response) => {
 };
 
 // Get all public groups (for discovery)
-export const getPublicGroups = async (req: Request, res: Response) => {
+export const getPublicGroups = async (_req: Request, res: Response) => {
   try {
     const groups = await prisma.group.findMany({
       where: {

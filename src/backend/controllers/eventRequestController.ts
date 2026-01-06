@@ -1,6 +1,4 @@
 import prisma from '../config/database';
-import { sendEmail, sendBatchEmails } from '../utils/emailService';
-import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
 import { Request, Response } from 'express';
 
 // Create event request (admin only)
