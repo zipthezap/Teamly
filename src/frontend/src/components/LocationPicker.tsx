@@ -104,6 +104,14 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
     }
   };
 
+  const hasAnyLocationData = () => {
+    return location.latitude || location.longitude || location.city || location.country || location.locationName;
+  };
+
+  const formatCoordinate = (coord: number | string): string => {
+    return Number(coord).toFixed(4);
+  };
+
   return (
     <Paper variant="outlined" sx={{ p: 2, mt: 2 }}>
       <Box display="flex" alignItems="center" mb={2}>
@@ -187,7 +195,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
         >
           {loading ? 'Getting Location...' : 'Use Current Location'}
         </Button>
-        {(location.latitude || location.longitude || location.city || location.country) && (
+        {hasAnyLocationData() && (
           <Button variant="outlined" onClick={clearLocation}>
             Clear All
           </Button>
@@ -201,7 +209,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
             {location.locationName && ` - ${location.locationName}`}
             {location.latitude && location.longitude && (
               <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
-                Coordinates: {typeof location.latitude === 'number' ? location.latitude.toFixed(4) : parseFloat(String(location.latitude)).toFixed(4)}, {typeof location.longitude === 'number' ? location.longitude.toFixed(4) : parseFloat(String(location.longitude)).toFixed(4)}
+                Coordinates: {formatCoordinate(location.latitude)}, {formatCoordinate(location.longitude)}
               </Typography>
             )}
           </Alert>
