@@ -14,16 +14,24 @@ import {
 import { groupsAPI } from '../services/api';
 import LocationPicker from '../components/LocationPicker';
 
+interface LocationValue {
+  latitude?: number | string;
+  longitude?: number | string;
+  locationName?: string;
+  city?: string;
+  country?: string;
+}
+
 const CreateGroup = () => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
-  const [location, setLocation] = useState<any>({});
+  const [location, setLocation] = useState<LocationValue>({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setLoading(true);

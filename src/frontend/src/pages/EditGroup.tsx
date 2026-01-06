@@ -15,9 +15,9 @@ import {
 import { groupsAPI } from '../services/api';
 import LocationPicker from '../components/LocationPicker';
 
-interface LocationData {
-  latitude?: number;
-  longitude?: number;
+interface LocationValue {
+  latitude?: number | string;
+  longitude?: number | string;
   locationName?: string;
   city?: string;
   country?: string;
@@ -30,7 +30,7 @@ const EditGroup = () => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
-  const [location, setLocation] = useState<LocationData>({});
+  const [location, setLocation] = useState<LocationValue>({});
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
