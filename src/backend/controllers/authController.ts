@@ -68,31 +68,35 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     });
 
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
     }
 
     const isValidPassword = await bcrypt.compare(password, user.password);
 
     if (!isValidPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
     }
 
     // Check if 2FA is enabled
     if (user.twoFactorEnabled) {
       if (!twoFactorToken) {
         // Return a flag indicating 2FA is required without exposing the user ID
-        return res.status(200).json({
+        res.status(200).json({
           requires2FA: true,
           // Note: In production, consider using a temporary session token instead
           tempAuth: email // Use email instead of userId for the second request
         });
+        return;
       }
 
       // Validate 2FA token
       const validation = await validate2FAToken(user.id, twoFactorToken);
 
       if (!validation.valid) {
-        return res.status(401).json({ error: validation.error || 'Invalid 2FA token' });
+        res.status(401).json({ error: validation.error || 'Invalid 2FA token' });
+        return;
       }
     }
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { groupsAPI } from '../services/api';
 import {
   Container,
   Paper,
@@ -48,7 +49,7 @@ const Register = () => {
       if (inviteGroupId && newUser?.id) {
         // Call backend to join group
         try {
-          await require('../services/api').groupsAPI.joinByInvite(newUser.id, inviteGroupId);
+          await groupsAPI.joinByInvite(newUser.id, inviteGroupId);
         } catch (err) {
           // Optionally handle join error
         }
