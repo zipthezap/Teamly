@@ -96,7 +96,7 @@ const EditEvent = () => {
     });
   };
 
-  const handleHourChange = (name) => (e) => {
+  const handleHourChange = (name: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
     if (name === 'endHour') {
       setFormData({
         ...formData,
@@ -111,7 +111,7 @@ const EditEvent = () => {
     }
   };
 
-  const handleMinuteChange = (name) => (e) => {
+  const handleMinuteChange = (name: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [name]: e.target.value,
