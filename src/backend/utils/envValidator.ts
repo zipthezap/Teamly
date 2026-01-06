@@ -28,7 +28,7 @@ const ENV_VARS: EnvVarConfig[] = [
     name: 'PORT',
     required: false,
     defaultValue: '3000',
-    validate: (value: string) => !isNaN(Number(value)) && Number(value) > 0 && Number(value) < 65536,
+    validate: (value: string) => Number.isFinite(Number(value)) && Number(value) > 0 && Number(value) < 65536,
     errorMessage: 'PORT must be a valid port number (1-65535)'
   },
   {

@@ -26,6 +26,8 @@ export function isRequired(value: unknown, fieldName: string): void {
 
 /**
  * Validates email format
+ * Note: This is a basic email validation. For production use, consider a library like 'validator.js'
+ * for more comprehensive RFC 5322 compliance and edge case handling.
  */
 export function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -111,8 +113,8 @@ export function validateNumberRange(
   min?: number,
   max?: number
 ): void {
-  if (isNaN(value)) {
-    throw new ValidationError(`${fieldName} must be a number`, fieldName, 'INVALID_NUMBER');
+  if (!Number.isFinite(value)) {
+    throw new ValidationError(`${fieldName} must be a valid finite number`, fieldName, 'INVALID_NUMBER');
   }
   
   if (min !== undefined && value < min) {
@@ -182,8 +184,8 @@ export function sanitizeString(value: string): string {
 }
 
 /**
- * Validates and sanitizes input fields for an object
- * Note: This function only sanitizes string values. Validation is performed by the provided validators.
+ * Validates and sanitizes string fields in an object based on provided validators.
+ * Only validates fields that have validators provided. All string values are sanitized (trimmed).
  */
 export function validateAndSanitize<T extends Record<string, unknown>>(
   data: T,

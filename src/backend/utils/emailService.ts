@@ -115,11 +115,15 @@ export const emailTemplates = {
   })
 };
 
+// Type definition for email templates
+type EmailTemplateFunction = (...args: unknown[]) => { subject: string; html: string };
+type EmailTemplates = Record<string, EmailTemplateFunction>;
+
 // Send email function
 export const sendEmail = async (to: string, template: string, ...args: unknown[]): Promise<{ success: boolean; messageId?: string; error?: string }> => {
   try {
     const transporter = createTransporter();
-    const emailTemplate = (emailTemplates as Record<string, (...args: unknown[]) => { subject: string; html: string }>)[template];
+    const emailTemplate = (emailTemplates as EmailTemplates)[template];
     
     if (!emailTemplate) {
       throw new Error(`Email template "${template}" not found`);
