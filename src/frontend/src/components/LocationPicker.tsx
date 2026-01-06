@@ -68,6 +68,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const newLocation = {
+          ...location, // Preserve existing city and country
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           locationName: location.locationName || `Location: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`,
@@ -109,6 +110,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
   };
 
   const formatCoordinate = (coord: number | string): string => {
+    if (!coord || coord === '') return '0.0000';
     return Number(coord).toFixed(4);
   };
 
@@ -205,7 +207,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
       {(location.city || location.country) && (
         <Box mt={2}>
           <Alert severity="success">
-            Location: {location.city}{location.city && location.country ? ', ' : ''}{location.country}
+            Location: {[location.city, location.country].filter(Boolean).join(', ')}
             {location.locationName && ` - ${location.locationName}`}
             {location.latitude && location.longitude && (
               <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
