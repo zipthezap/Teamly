@@ -175,7 +175,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
           ) : (
             <List sx={{ p: 0 }}>
               {activities.map((activity, index) => (
-                <React.Fragment key={`${activity.type}-${activity.id}-${index}`}>
+                <React.Fragment key={`${activity.id}-${activity.type}-${activity.timestamp}`}>
                   {index > 0 && <Divider sx={{ my: 1 }} />}
                   <ListItem
                     sx={{
