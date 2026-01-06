@@ -110,8 +110,9 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
   };
 
   const formatCoordinate = (coord: number | string): string => {
-    if (!coord || coord === '') return '0.0000';
-    return Number(coord).toFixed(4);
+    const num = Number(coord);
+    if (isNaN(num)) return 'N/A';
+    return num.toFixed(4);
   };
 
   return (
@@ -204,15 +205,25 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
         )}
       </Box>
 
-      {(location.city || location.country) && (
+      {hasAnyLocationData() && (
         <Box mt={2}>
           <Alert severity="success">
-            Location: {[location.city, location.country].filter(Boolean).join(', ')}
-            {location.locationName && ` - ${location.locationName}`}
+            {(location.city || location.country) && (
+              <>
+                Location: {[location.city, location.country].filter(Boolean).join(', ')}
+                {location.locationName && ` - ${location.locationName}`}
+              </>
+            )}
+            {!(location.city || location.country) && location.locationName && (
+              <>Location: {location.locationName}</>
+            )}
             {location.latitude && location.longitude && (
-              <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+              <Typography variant="caption" display="block" sx={{ mt: (location.city || location.country || location.locationName) ? 0.5 : 0 }}>
                 Coordinates: {formatCoordinate(location.latitude)}, {formatCoordinate(location.longitude)}
               </Typography>
+            )}
+            {!(location.city || location.country || location.locationName) && (location.latitude || location.longitude) && (
+              <>Coordinates set</>
             )}
           </Alert>
         </Box>
