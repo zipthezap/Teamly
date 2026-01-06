@@ -1,22 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import {
   Container,
-  Paper,
   Typography,
   Box,
-  TextField,
-  Button,
   Alert,
-  Divider,
   Stack,
   Grid,
-  Switch,
-  FormControlLabel,
-  FormGroup,
   CircularProgress,
 } from '@mui/material';
 import { authAPI, emailAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import {
+  ProfileForm,
+  PasswordChangeForm,
+  NotificationPreferences,
+} from '../components/profile';
 
 const Profile = () => {
   const { user, setUser } = useAuth();
@@ -69,21 +67,21 @@ const Profile = () => {
     }
   };
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
   };
 
-  const handlePasswordChange = (e) => {
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPasswordData({
       ...passwordData,
       [e.target.name]: e.target.value,
     });
   };
 
-  const handleUpdateProfile = async (e) => {
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -93,17 +91,16 @@ const Profile = () => {
       const response = await authAPI.updateProfile(formData);
       const updatedUser = response.data.user;
       setUser(updatedUser);
-      // Update localStorage to maintain consistency
       localStorage.setItem('user', JSON.stringify(updatedUser));
       setSuccess('Profile updated successfully');
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to update profile');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleUpdatePassword = async (e) => {
+  const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -131,34 +128,32 @@ const Profile = () => {
         newPassword: '',
         confirmPassword: '',
       });
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to update password');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleMuteToggle = async (event) => {
+  const handleMuteToggle = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const muted = event.target.checked;
     setAllNotificationsMuted(muted);
     
     try {
       await emailAPI.toggleNotifications(!muted);
       setSuccess(muted ? 'All notifications muted' : 'Notifications unmuted');
-      // Update user context
       const updatedUser = { ...user, emailNotifications: !muted };
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
     } catch (err) {
       setError('Failed to update notification settings');
-      // Revert on error
       setAllNotificationsMuted(!muted);
     }
   };
 
-  const handlePreferenceChange = (preference) => async (event) => {
+  const handlePreferenceChange = (preference: string) => async (event: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = event.target.checked;
-    const previousPreferences = emailPreferences; // Store old state
+    const previousPreferences = emailPreferences;
     const updatedPreferences = {
       ...emailPreferences,
       [preference]: newValue,
@@ -170,7 +165,6 @@ const Profile = () => {
       setSuccess('Notification preferences updated');
     } catch (err) {
       setError('Failed to update preferences');
-      // Revert to previous state on error
       setEmailPreferences(previousPreferences);
     }
   };
@@ -199,326 +193,34 @@ const Profile = () => {
             </Alert>
           )}
 
-          <Grid container spacing={3}>
-        {/* Profile Information */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, height: '100%' }}>
-            <Box component="form" onSubmit={handleUpdateProfile}>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-                Profile Information
-              </Typography>
-              
-              <Stack spacing={2.5}>
-                <TextField
-                  fullWidth
-                  label="Name"
-                  name="name"
-                  value={formData.name}
+          <Stack spacing={3}>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <ProfileForm
+                  formData={formData}
+                  loading={loading}
                   onChange={handleChange}
-                  required
-                  variant="outlined"
+                  onSubmit={handleUpdateProfile}
                 />
-
-                <TextField
-                  fullWidth
-                  label="Email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  variant="outlined"
-                />
-
-                <Divider sx={{ my: 1 }} />
-
-                <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 600 }}>
-                  Location Settings
-                </Typography>
-
-                <TextField
-                  fullWidth
-                  label="City"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  variant="outlined"
-                  helperText="Used for group discovery in your area"
-                />
-
-                <TextField
-                  fullWidth
-                  label="Country"
-                  name="country"
-                  value={formData.country}
-                  onChange={handleChange}
-                  variant="outlined"
-                />
-
-                <Button
-                  type="submit"
-                  variant="contained"
-                  disabled={loading}
-                  size="large"
-                  sx={{ mt: 2 }}
-                >
-                  Update Profile
-                </Button>
-              </Stack>
-            </Box>
-          </Paper>
-        </Grid>
-
-        {/* Change Password */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, height: '100%' }}>
-            <Box component="form" onSubmit={handleUpdatePassword}>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-                Security Settings
-              </Typography>
-              
-              <Stack spacing={2.5}>
-                <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 600 }}>
-                  Change Password
-                </Typography>
-
-                <TextField
-                  fullWidth
-                  label="Current Password"
-                  name="currentPassword"
-                  type="password"
-                  value={passwordData.currentPassword}
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <PasswordChangeForm
+                  passwordData={passwordData}
+                  loading={loading}
                   onChange={handlePasswordChange}
-                  required
-                  variant="outlined"
+                  onSubmit={handleUpdatePassword}
                 />
+              </Grid>
+            </Grid>
 
-                <TextField
-                  fullWidth
-                  label="New Password"
-                  name="newPassword"
-                  type="password"
-                  value={passwordData.newPassword}
-                  onChange={handlePasswordChange}
-                  required
-                  variant="outlined"
-                  helperText="Minimum 6 characters"
-                />
-
-                <TextField
-                  fullWidth
-                  label="Confirm New Password"
-                  name="confirmPassword"
-                  type="password"
-                  value={passwordData.confirmPassword}
-                  onChange={handlePasswordChange}
-                  required
-                  variant="outlined"
-                />
-
-                <Button
-                  type="submit"
-                  variant="contained"
-                  disabled={loading}
-                  size="large"
-                  sx={{ mt: 2 }}
-                >
-                  Update Password
-                </Button>
-              </Stack>
-            </Box>
-          </Paper>
-        </Grid>
-
-        {/* Notification Preferences */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
-              Notification Preferences
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Control which email notifications you receive for events and group activities.
-            </Typography>
-
-            {preferencesLoading ? (
-              <Box display="flex" justifyContent="center" py={3}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <Stack spacing={3}>
-                <Box 
-                  sx={{ 
-                    p: 2, 
-                    bgcolor: allNotificationsMuted ? 'rgba(255, 152, 0, 0.1)' : 'rgba(76, 175, 80, 0.1)',
-                    borderRadius: 2,
-                    border: allNotificationsMuted ? '2px solid #ff9800' : '2px solid #4caf50',
-                  }}
-                >
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={allNotificationsMuted}
-                        onChange={handleMuteToggle}
-                        color="warning"
-                      />
-                    }
-                    label={
-                      <Box>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                          {allNotificationsMuted ? '🔕 All Notifications Muted' : '🔔 Notifications Active'}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {allNotificationsMuted 
-                            ? 'You will not receive any email notifications' 
-                            : 'You will receive email notifications based on your preferences below'}
-                        </Typography>
-                      </Box>
-                    }
-                  />
-                </Box>
-
-                <Divider />
-
-                <FormGroup>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2 }}>
-                    Event Notifications
-                  </Typography>
-                  <Stack spacing={1.5}>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={emailPreferences.eventInvites}
-                          onChange={handlePreferenceChange('eventInvites')}
-                          disabled={allNotificationsMuted}
-                        />
-                      }
-                      label={
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>Event Invites</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Get notified when you're invited to new events
-                          </Typography>
-                        </Box>
-                      }
-                    />
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={emailPreferences.eventReminders}
-                          onChange={handlePreferenceChange('eventReminders')}
-                          disabled={allNotificationsMuted}
-                        />
-                      }
-                      label={
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>Event Reminders</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Receive reminders before events start
-                          </Typography>
-                        </Box>
-                      }
-                    />
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={emailPreferences.eventUpdates}
-                          onChange={handlePreferenceChange('eventUpdates')}
-                          disabled={allNotificationsMuted}
-                        />
-                      }
-                      label={
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>Event Updates</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Get notified about changes to event details
-                          </Typography>
-                        </Box>
-                      }
-                    />
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={emailPreferences.eventCancellations}
-                          onChange={handlePreferenceChange('eventCancellations')}
-                          disabled={allNotificationsMuted}
-                        />
-                      }
-                      label={
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>Event Cancellations</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Be informed when events are cancelled
-                          </Typography>
-                        </Box>
-                      }
-                    />
-                  </Stack>
-                </FormGroup>
-
-                <Divider />
-
-                <FormGroup>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2 }}>
-                    Group & Social Notifications
-                  </Typography>
-                  <Stack spacing={1.5}>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={emailPreferences.groupInvites}
-                          onChange={handlePreferenceChange('groupInvites')}
-                          disabled={allNotificationsMuted}
-                        />
-                      }
-                      label={
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>Group Invites</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Get notified when you're invited to join groups
-                          </Typography>
-                        </Box>
-                      }
-                    />
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={emailPreferences.commentMentions}
-                          onChange={handlePreferenceChange('commentMentions')}
-                          disabled={allNotificationsMuted}
-                        />
-                      }
-                      label={
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>Comment Mentions</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Be notified when someone mentions you in comments
-                          </Typography>
-                        </Box>
-                      }
-                    />
-                  </Stack>
-                </FormGroup>
-              </Stack>
-            )}
-          </Paper>
-        </Grid>
-
-        {/* Privacy Settings */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
-              Privacy & Display
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Control how your information is displayed to other users.
-            </Typography>
-            <Alert severity="info">
-              Your name and email are visible to members of groups you join. 
-              Your city information is used for location-based group discovery but is not publicly displayed.
-            </Alert>
-          </Paper>
-        </Grid>
-      </Grid>
+            <NotificationPreferences
+              allNotificationsMuted={allNotificationsMuted}
+              emailPreferences={emailPreferences}
+              loading={preferencesLoading}
+              onMuteToggle={handleMuteToggle}
+              onPreferenceChange={handlePreferenceChange}
+            />
+          </Stack>
         </>
       )}
     </Container>

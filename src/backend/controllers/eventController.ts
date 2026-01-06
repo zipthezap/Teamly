@@ -155,13 +155,16 @@ export const createEvent = async (req: Request, res: Response) => {
 
 export const getEvents = async (req: Request, res: Response) => {
   try {
-    const { groupId } = req.query;
+    const { groupId, search, eventType, startDate, endDate, location } = req.query;
 
     // Build where filter
     const where: any = {};
+    
     if (groupId) {
       where.groupId = groupId;
     }
+    
+    // Only show events from groups the user is a member of
     where.group = {
       members: {
         some: {
@@ -169,6 +172,35 @@ export const getEvents = async (req: Request, res: Response) => {
         }
       }
     };
+
+    // Search filter - search in title and description
+    if (search && typeof search === 'string') {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    // Event type filter
+    if (eventType && typeof eventType === 'string') {
+      where.eventType = { contains: eventType, mode: 'insensitive' };
+    }
+
+    // Location filter
+    if (location && typeof location === 'string') {
+      where.location = { contains: location, mode: 'insensitive' };
+    }
+
+    // Date range filters
+    if (startDate || endDate) {
+      where.startTime = {};
+      if (startDate) {
+        where.startTime.gte = new Date(startDate as string);
+      }
+      if (endDate) {
+        where.startTime.lte = new Date(endDate as string);
+      }
+    }
 
     const events = await prisma.event.findMany({
       where,
@@ -785,6 +817,98 @@ export const removeRecurringEventException = async (req: Request, res: Response)
   } catch (error) {
     console.error('Remove recurring event exception error:', error);
     res.status(500).json({ error: 'Failed to remove exception' });
+  }
+};
+
+// Get user event statistics
+export const getUserStatistics = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.id;
+    const now = new Date();
+
+    // Get all events where user is a participant
+    const userParticipations = await prisma.eventParticipant.findMany({
+      where: { userId },
+      include: {
+        event: {
+          include: {
+            group: {
+              select: { id: true, name: true }
+            }
+          }
+        }
+      }
+    });
+
+    // Get events created by user
+    const createdEvents = await prisma.event.findMany({
+      where: { creatorId: userId },
+      include: {
+        participants: true,
+        group: {
+          select: { id: true, name: true }
+        }
+      }
+    });
+
+    // Calculate statistics
+    const totalEventsJoined = userParticipations.length;
+    const totalEventsCreated = createdEvents.length;
+    
+    const upcomingEvents = userParticipations.filter(
+      p => new Date(p.event.startTime) > now
+    ).length;
+    
+    const pastEvents = userParticipations.filter(
+      p => new Date(p.event.startTime) <= now
+    ).length;
+
+    const confirmedEvents = userParticipations.filter(
+      p => p.status === 'confirmed'
+    ).length;
+
+    // Get event type breakdown
+    const eventTypeBreakdown: Record<string, number> = {};
+    userParticipations.forEach(p => {
+      const type = p.event.eventType;
+      eventTypeBreakdown[type] = (eventTypeBreakdown[type] || 0) + 1;
+    });
+
+    // Get upcoming events details (next 5)
+    const upcomingEventsDetails = userParticipations
+      .filter(p => new Date(p.event.startTime) > now)
+      .sort((a, b) => new Date(a.event.startTime).getTime() - new Date(b.event.startTime).getTime())
+      .slice(0, 5)
+      .map(p => ({
+        id: p.event.id,
+        title: p.event.title,
+        eventType: p.event.eventType,
+        startTime: p.event.startTime,
+        group: p.event.group,
+        status: p.status
+      }));
+
+    const statistics = {
+      totalEventsJoined,
+      totalEventsCreated,
+      upcomingEvents,
+      pastEvents,
+      confirmedEvents,
+      eventTypeBreakdown,
+      upcomingEventsDetails,
+      createdEventsStats: {
+        total: createdEvents.length,
+        totalParticipants: createdEvents.reduce((sum, e) => sum + e.participants.length, 0),
+        avgParticipantsPerEvent: createdEvents.length > 0 
+          ? createdEvents.reduce((sum, e) => sum + e.participants.length, 0) / createdEvents.length
+          : 0
+      }
+    };
+
+    res.json(statistics);
+  } catch (error) {
+    console.error('Get user statistics error:', error);
+    res.status(500).json({ error: 'Failed to get statistics' });
   }
 };
 

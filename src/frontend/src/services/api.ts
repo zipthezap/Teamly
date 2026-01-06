@@ -60,9 +60,19 @@ export const groupsAPI = {
 };
 
 // Events API
+interface EventSearchParams {
+  groupId?: string | number;
+  search?: string;
+  eventType?: string;
+  startDate?: string;
+  endDate?: string;
+  location?: string;
+}
+
 export const eventsAPI = {
   create: (data: any) => api.post('/events', data),
-  getAll: (groupId?: string | number) => api.get('/events', { params: groupId ? { groupId } : {} }),
+  getAll: (params?: EventSearchParams) => api.get('/events', { params }),
+  getStatistics: () => api.get('/events/statistics'),
   getById: (id: string | number) => api.get(`/events/${id}`),
   update: (id: string | number, data: any) => api.put(`/events/${id}`, data),
   delete: (id: string | number) => api.delete(`/events/${id}`),

@@ -3,77 +3,24 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
   Paper,
-  Typography,
   Box,
   CircularProgress,
-  Button,
   Grid,
-  Card,
-  CardContent,
-  List,
-  ListItem,
-  ListItemText,
   Alert,
-  Chip,
-  Divider,
-  Avatar,
-  ListItemAvatar,
   Stack,
   LinearProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  IconButton,
+  Avatar,
+  Divider,
+  Typography,
 } from '@mui/material';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CancelIcon from '@mui/icons-material/Cancel';
-import HelpIcon from '@mui/icons-material/Help';
-import ScheduleIcon from '@mui/icons-material/Schedule';
-import PersonIcon from '@mui/icons-material/Person';
-import DeleteIcon from '@mui/icons-material/Delete';
-import CloseIcon from '@mui/icons-material/Close';
-import HistoryIcon from '@mui/icons-material/History';
 import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { getAvatarColor } from '../utils/colors';
-
-const getActivityMessage = (notif) => {
-  const userName = notif.user?.name || 'Someone';
-  switch (notif.type) {
-    case 'join':
-      return `${userName} joined the event`;
-    case 'leave':
-      return `${userName} left the event`;
-    case 'late':
-      return `${userName} will be late`;
-    case 'confirmed':
-      return `${userName} confirmed attendance`;
-    case 'declined':
-      return `${userName} declined`;
-    default:
-      return `${userName} ${notif.type}`;
-  }
-};
-
-const getActivityIcon = (type) => {
-  switch (type) {
-    case 'join':
-      return '➕';
-    case 'leave':
-      return '➖';
-    case 'late':
-      return '⏰';
-    case 'confirmed':
-      return '✅';
-    case 'declined':
-      return '❌';
-    default:
-      return '📌';
-  }
-};
+import {
+  EventInformation,
+  ParticipantsList,
+  EventActions,
+  EventActivityFeed,
+} from '../components/event';
 
 const EventDetails = () => {
   const { id } = useParams();
@@ -110,7 +57,7 @@ const EventDetails = () => {
       await eventsAPI.join(id);
       setSuccess('Successfully joined the event');
       fetchEvent();
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to join event');
     }
   };
@@ -124,19 +71,19 @@ const EventDetails = () => {
       await eventsAPI.leave(id);
       setSuccess('Successfully left the event');
       fetchEvent();
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to leave event');
     }
   };
 
-  const handleUpdateStatus = async (status) => {
+  const handleUpdateStatus = async (status: string) => {
     setError('');
     setSuccess('');
     try {
       await eventsAPI.updateStatus(id, status);
       setSuccess(`Status updated to ${status}`);
       fetchEvent();
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to update status');
     }
   };
@@ -147,7 +94,7 @@ const EventDetails = () => {
     try {
       await eventsAPI.delete(id);
       navigate('/events');
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to delete event');
     }
   };
@@ -164,7 +111,7 @@ const EventDetails = () => {
     }
   };
 
-  const getInitials = (name) => {
+  const getInitials = (name: string) => {
     if (!name) return '?';
     return name
       .split(' ')
@@ -174,29 +121,7 @@ const EventDetails = () => {
       .slice(0, 2);
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'confirmed':
-        return <CheckCircleIcon sx={{ fontSize: 18 }} />;
-      case 'declined':
-        return <CancelIcon sx={{ fontSize: 18 }} />;
-      default:
-        return <HelpIcon sx={{ fontSize: 18 }} />;
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'confirmed':
-        return 'success';
-      case 'declined':
-        return 'error';
-      default:
-        return 'default';
-    }
-  };
-
-  const isParticipant = event?.participants?.find((p) => p.userId === user?.id);
+  const isParticipant = event?.participants?.find((p: any) => p.userId === user?.id);
   const isCreator = event?.creatorId === user?.id;
   const isFull = event?.maxPlayers && event?.participants?.length >= event?.maxPlayers;
 
@@ -217,8 +142,8 @@ const EventDetails = () => {
   }
 
   const participantCount = event.participants?.length || 0;
-  const confirmedCount = event.participants?.filter(p => p.status === 'confirmed').length || 0;
-  const declinedCount = event.participants?.filter(p => p.status === 'declined').length || 0;
+  const confirmedCount = event.participants?.filter((p: any) => p.status === 'confirmed').length || 0;
+  const declinedCount = event.participants?.filter((p: any) => p.status === 'declined').length || 0;
   const pendingCount = participantCount - confirmedCount - declinedCount;
   const fillPercentage = event.maxPlayers ? (participantCount / event.maxPlayers) * 100 : 0;
 
@@ -231,166 +156,16 @@ const EventDetails = () => {
         {lateError && <Alert severity="error" onClose={() => setLateError('')}>{lateError}</Alert>}
 
         <Paper sx={{ p: 4 }}>
-          {/* Header Section */}
-          <Box display="flex" alignItems="start" gap={2} mb={3}>
-            <Avatar 
-              sx={{ 
-                width: 64, 
-                height: 64, 
-                bgcolor: 'primary.main',
-                fontSize: '1.5rem',
-                fontWeight: 600,
-              }}
-            >
-              {event.eventType?.charAt(0).toUpperCase()}
-            </Avatar>
-            <Box flexGrow={1}>
-              <Typography variant="h4" sx={{ fontWeight: 600, mb: 1 }}>
-                {event.title}
-              </Typography>
-              <Box display="flex" gap={1} flexWrap="wrap">
-                <Chip 
-                  label={event.eventType} 
-                  color="secondary"
-                  sx={{ fontWeight: 600 }}
-                />
-                {isFull && (
-                  <Chip 
-                    label="Full" 
-                    color="warning"
-                    sx={{ fontWeight: 600 }}
-                  />
-                )}
-                {isParticipant && (
-                  <Chip 
-                    label="Joined" 
-                    color="success"
-                    sx={{ fontWeight: 600 }}
-                  />
-                )}
-                {isCreator && (
-                  <Chip 
-                    label="Organizer" 
-                    color="primary"
-                    sx={{ fontWeight: 600 }}
-                  />
-                )}
-              </Box>
-            </Box>
-          </Box>
-
-          {/* Main Content Grid: Description/Details on left, Actions/Activity on right */}
           <Grid container spacing={3}>
-            {/* Left Column: Event Description and Details */}
+            {/* Left Column: Event Information */}
             <Grid item xs={12} md={8}>
               <Stack spacing={3}>
-                {/* Description */}
-                <Box>
-                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                    Description
-                  </Typography>
-                  <Typography variant="body1" paragraph>
-                    {event.description || 'No description provided'}
-                  </Typography>
-                </Box>
-
-                {/* Time and Location Details */}
-                <Box>
-                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                    Event Details
-                  </Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <Box 
-                        sx={{ 
-                          p: 2, 
-                          bgcolor: 'rgba(33, 150, 243, 0.05)',
-                          borderRadius: 2,
-                          border: '1px solid rgba(33, 150, 243, 0.2)',
-                        }}
-                      >
-                        <Box display="flex" alignItems="center" gap={1} mb={1}>
-                          <AccessTimeIcon color="primary" />
-                          <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>
-                            Start Time
-                          </Typography>
-                        </Box>
-                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                          📅 {new Date(event.startTime).toLocaleDateString('en-US', { 
-                            weekday: 'long', 
-                            year: 'numeric',
-                            month: 'long', 
-                            day: 'numeric' 
-                          })}
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                          🕐 {new Date(event.startTime).toLocaleTimeString('en-GB', { 
-                            hour: '2-digit', 
-                            minute: '2-digit',
-                            hour12: false
-                          })}
-                        </Typography>
-                      </Box>
-                    </Grid>
-
-                    {event.endTime && (
-                      <Grid item xs={12} sm={6}>
-                        <Box 
-                          sx={{ 
-                            p: 2, 
-                            bgcolor: 'rgba(245, 0, 87, 0.05)',
-                            borderRadius: 2,
-                            border: '1px solid rgba(245, 0, 87, 0.2)',
-                          }}
-                        >
-                          <Box display="flex" alignItems="center" gap={1} mb={1}>
-                            <AccessTimeIcon color="secondary" />
-                            <Typography variant="subtitle2" color="secondary" sx={{ fontWeight: 600 }}>
-                              End Time
-                            </Typography>
-                          </Box>
-                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                            📅 {new Date(event.endTime).toLocaleDateString('en-US', { 
-                              weekday: 'long',
-                              month: 'long', 
-                              day: 'numeric' 
-                            })}
-                          </Typography>
-                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                            🕐 {new Date(event.endTime).toLocaleTimeString('en-GB', { 
-                              hour: '2-digit', 
-                              minute: '2-digit',
-                              hour12: false
-                            })}
-                          </Typography>
-                        </Box>
-                      </Grid>
-                    )}
-
-                    {event.location && (
-                      <Grid item xs={12}>
-                        <Box 
-                          sx={{ 
-                            p: 2, 
-                            bgcolor: 'rgba(76, 175, 80, 0.05)',
-                            borderRadius: 2,
-                            border: '1px solid rgba(76, 175, 80, 0.2)',
-                          }}
-                        >
-                          <Box display="flex" alignItems="center" gap={1} mb={1}>
-                            <LocationOnIcon color="success" />
-                            <Typography variant="subtitle2" color="success.main" sx={{ fontWeight: 600 }}>
-                              Location
-                            </Typography>
-                          </Box>
-                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                            📍 {event.location}
-                          </Typography>
-                        </Box>
-                      </Grid>
-                    )}
-                  </Grid>
-                </Box>
+                <EventInformation
+                  event={event}
+                  isParticipant={!!isParticipant}
+                  isCreator={isCreator}
+                  isFull={isFull}
+                />
 
                 <Divider />
 
@@ -420,480 +195,75 @@ const EventDetails = () => {
               </Stack>
             </Grid>
 
-            {/* Right Column: Event Actions and Recent Activity */}
+            {/* Right Column: Event Actions and Activity */}
             <Grid item xs={12} md={4}>
               <Stack spacing={3}>
+                {/* Capacity Progress */}
+                {event.maxPlayers && (
+                  <Paper elevation={2} sx={{ p: 2.5 }}>
+                    <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
+                      Event Capacity
+                    </Typography>
+                    <Box sx={{ mb: 1 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        {participantCount} / {event.maxPlayers} participants
+                      </Typography>
+                    </Box>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={fillPercentage} 
+                      sx={{ 
+                        height: 8, 
+                        borderRadius: 5,
+                        bgcolor: 'rgba(255, 255, 255, 0.1)',
+                      }}
+                    />
+                    <Box display="flex" gap={2} mt={2}>
+                      <Typography variant="caption" color="text.secondary">
+                        ✅ {confirmedCount} confirmed
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        ❌ {declinedCount} declined
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        ⏳ {pendingCount} pending
+                      </Typography>
+                    </Box>
+                  </Paper>
+                )}
+
                 {/* Event Actions */}
-                <Paper 
-                  elevation={2}
-                  sx={{ 
-                    p: 3, 
-                    bgcolor: 'background.paper',
-                    borderRadius: 2,
-                  }}
-                >
+                <Paper elevation={2} sx={{ p: 3 }}>
                   <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
                     Event Actions
                   </Typography>
-                  
-                  <Stack spacing={2}>
-                    {!isParticipant && !isFull && (
-                      <Button 
-                        variant="contained" 
-                        fullWidth 
-                        size="large"
-                        onClick={handleJoin}
-                        sx={{
-                          background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)',
-                          py: 1.5,
-                          fontWeight: 600,
-                          boxShadow: '0 4px 12px rgba(76, 175, 80, 0.4)',
-                          '&:hover': {
-                            boxShadow: '0 6px 16px rgba(76, 175, 80, 0.5)',
-                          }
-                        }}
-                      >
-                        Join Event
-                      </Button>
-                    )}
-                    
-                    {isParticipant && !isCreator && (
-                      <>
-                        <Box>
-                          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
-                            Update Your Status
-                          </Typography>
-                          <Stack direction="row" spacing={1.5}>
-                            <Button
-                              variant={isParticipant.status === 'confirmed' ? 'contained' : 'outlined'}
-                              color="success"
-                              fullWidth
-                              startIcon={<CheckCircleIcon />}
-                              onClick={() => handleUpdateStatus('confirmed')}
-                              sx={{
-                                py: 1,
-                                fontWeight: 600,
-                                ...(isParticipant.status === 'confirmed' && {
-                                  boxShadow: '0 2px 8px rgba(76, 175, 80, 0.4)',
-                                })
-                              }}
-                            >
-                              Confirm
-                            </Button>
-                            <Button
-                              variant={isParticipant.status === 'declined' ? 'contained' : 'outlined'}
-                              color="error"
-                              fullWidth
-                              startIcon={<CancelIcon />}
-                              onClick={() => handleUpdateStatus('declined')}
-                              sx={{
-                                py: 1,
-                                fontWeight: 600,
-                                ...(isParticipant.status === 'declined' && {
-                                  boxShadow: '0 2px 8px rgba(244, 67, 54, 0.4)',
-                                })
-                              }}
-                            >
-                              Decline
-                            </Button>
-                          </Stack>
-                        </Box>
-                        
-                        <Divider />
-                        
-                        <Button 
-                          variant="outlined" 
-                          color="warning" 
-                          fullWidth
-                          startIcon={<ScheduleIcon />}
-                          onClick={handleMarkLate}
-                          sx={{
-                            py: 1,
-                            fontWeight: 500,
-                            borderWidth: 2,
-                            '&:hover': {
-                              borderWidth: 2,
-                            }
-                          }}
-                        >
-                          Will be Late
-                        </Button>
-                        <Button 
-                          variant="outlined" 
-                          color="error" 
-                          fullWidth
-                          onClick={handleLeave}
-                          sx={{
-                            py: 1,
-                            fontWeight: 500,
-                          }}
-                        >
-                          Leave Event
-                        </Button>
-                      </>
-                    )}
-                    
-                    {isFull && !isParticipant && (
-                      <Alert severity="warning" sx={{ mt: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          Event Full
-                        </Typography>
-                        <Typography variant="caption">
-                          This event has reached maximum capacity
-                        </Typography>
-                      </Alert>
-                    )}
-                  </Stack>
-
-                  <Divider sx={{ my: 3 }} />
-
-                  <Box>
-                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                        Capacity
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {participantCount}
-                        {event.maxPlayers && ` / ${event.maxPlayers}`}
-                      </Typography>
-                    </Box>
-                    {event.maxPlayers && (
-                      <LinearProgress 
-                        variant="determinate" 
-                        value={fillPercentage} 
-                        sx={{ 
-                          height: 8, 
-                          borderRadius: 4,
-                          bgcolor: 'rgba(255, 255, 255, 0.1)',
-                          '& .MuiLinearProgress-bar': {
-                            borderRadius: 4,
-                            background: fillPercentage >= 100 
-                              ? 'linear-gradient(90deg, #f44336 0%, #d32f2f 100%)'
-                              : fillPercentage >= 80
-                              ? 'linear-gradient(90deg, #ff9800 0%, #f57c00 100%)'
-                              : 'linear-gradient(90deg, #4caf50 0%, #388e3c 100%)',
-                          }
-                        }}
-                      />
-                    )}
-                    
-                    <Stack spacing={1} sx={{ mt: 2 }}>
-                      <Box display="flex" justifyContent="space-between">
-                        <Typography variant="caption" color="text.secondary">
-                          ✅ Confirmed
-                        </Typography>
-                        <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                          {confirmedCount}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" justifyContent="space-between">
-                        <Typography variant="caption" color="text.secondary">
-                          ❌ Declined
-                        </Typography>
-                        <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                          {declinedCount}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" justifyContent="space-between">
-                        <Typography variant="caption" color="text.secondary">
-                          ⏳ Pending
-                        </Typography>
-                        <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                          {pendingCount}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                  </Box>
-                  
-                  {/* Delete button at bottom for creator */}
-                  {isCreator && (
-                    <Box sx={{ mt: 2, textAlign: 'center' }}>
-                      <Button 
-                        variant="text" 
-                        color="error" 
-                        size="small"
-                        startIcon={<DeleteIcon sx={{ fontSize: 16 }} />}
-                        onClick={handleDelete}
-                        sx={{
-                          fontSize: '0.75rem',
-                          textTransform: 'none',
-                          px: 1,
-                          py: 0.5,
-                        }}
-                      >
-                        Delete Event
-                      </Button>
-                    </Box>
-                  )}
+                  <EventActions
+                    event={event}
+                    isParticipant={!!isParticipant}
+                    isCreator={isCreator}
+                    isFull={isFull}
+                    onJoin={handleJoin}
+                    onLeave={handleLeave}
+                    onUpdateStatus={handleUpdateStatus}
+                    onDelete={handleDelete}
+                    onMarkLate={handleMarkLate}
+                  />
                 </Paper>
 
-                {/* Recent Activity */}
-                <Paper 
-                  elevation={2}
-                  sx={{ 
-                    p: 3, 
-                    bgcolor: 'background.paper',
-                    borderRadius: 2,
-                  }}
-                >
-                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                      Recent Activity
-                    </Typography>
-                    {event.eventNotifications && event.eventNotifications.length > 10 && (
-                      <Button
-                        size="small"
-                        startIcon={<HistoryIcon />}
-                        onClick={() => setActivityDialogOpen(true)}
-                        sx={{ 
-                          textTransform: 'none',
-                          fontWeight: 500,
-                        }}
-                      >
-                        View All
-                      </Button>
-                    )}
-                  </Box>
-                  <Stack spacing={1}>
-                    {event.eventNotifications && event.eventNotifications.length > 0 ? (
-                      event.eventNotifications
-                        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-                        .slice(0, 10)
-                        .map((notif, idx) => (
-                          <Box 
-                            key={notif.id || idx}
-                            sx={{
-                              p: 1.5,
-                              borderRadius: 1,
-                              bgcolor: 'rgba(255, 255, 255, 0.7)',
-                              border: '1px solid rgba(76, 175, 80, 0.1)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 1.5,
-                            }}
-                          >
-                            <Typography sx={{ fontSize: '1.2rem' }}>
-                              {getActivityIcon(notif.type)}
-                            </Typography>
-                            <Box flexGrow={1}>
-                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                {getActivityMessage(notif)}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {new Date(notif.createdAt).toLocaleString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </Typography>
-                            </Box>
-                          </Box>
-                        ))
-                    ) : event.participants && event.participants.length > 0 ? (
-                      event.participants
-                        ?.sort((a, b) => new Date(b.joinedAt) - new Date(a.joinedAt))
-                        .slice(0, 5)
-                        .map(p => (
-                          <Box 
-                            key={p.id}
-                            sx={{
-                              p: 1.5,
-                              borderRadius: 1,
-                              bgcolor: 'rgba(255, 255, 255, 0.7)',
-                              border: '1px solid rgba(76, 175, 80, 0.1)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 1.5,
-                            }}
-                          >
-                            <Typography sx={{ fontSize: '1.2rem' }}>
-                              {getActivityIcon('join')}
-                            </Typography>
-                            <Box flexGrow={1}>
-                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                {p.user?.name} joined the event
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {new Date(p.joinedAt).toLocaleString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </Typography>
-                            </Box>
-                          </Box>
-                        ))
-                    ) : (
-                      <Box textAlign="center" py={2}>
-                        <Typography variant="body2" color="text.secondary">
-                          No activity yet
-                        </Typography>
-                      </Box>
-                    )}
-                  </Stack>
-                </Paper>
+                {/* Activity Feed */}
+                <EventActivityFeed
+                  event={event}
+                  activityDialogOpen={activityDialogOpen}
+                  onOpenDialog={() => setActivityDialogOpen(true)}
+                  onCloseDialog={() => setActivityDialogOpen(false)}
+                />
               </Stack>
             </Grid>
           </Grid>
         </Paper>
 
-        <Card>
-          <CardContent>
-            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-              Participants ({participantCount})
-            </Typography>
-            {(!event.participants || event.participants.length === 0) ? (
-              <Box textAlign="center" py={4}>
-                <PersonIcon sx={{ fontSize: 48, color: 'text.secondary', opacity: 0.5, mb: 1 }} />
-                <Typography variant="body2" color="text.secondary">
-                  No participants yet. Be the first to join!
-                </Typography>
-              </Box>
-            ) : (
-              <List>
-                {event.participants.map((participant, idx) => {
-                  // Find attendance status for this participant
-                  const attendance = event.eventAttendances?.find(a => a.userId === participant.userId);
-                  const isLate = attendance?.status === 'late';
-                  
-                  return (
-                    <React.Fragment key={participant.id}>
-                      <ListItem 
-                        sx={{ 
-                          px: 2,
-                          py: 1.5,
-                          borderRadius: 2,
-                          '&:hover': {
-                            bgcolor: 'rgba(255, 255, 255, 0.05)',
-                          }
-                        }}
-                      >
-                        <ListItemAvatar>
-                          <Avatar 
-                            sx={{ 
-                              bgcolor: getAvatarColor(idx),
-                              fontWeight: 600,
-                            }}
-                          >
-                            {getInitials(participant.user?.name)}
-                          </Avatar>
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary={
-                            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                              {participant.user?.name}
-                              {participant.userId === event.creatorId && (
-                                <Chip 
-                                  label="Organizer" 
-                                  size="small" 
-                                  color="primary"
-                                  sx={{ ml: 1, height: 20, fontSize: '0.7rem' }}
-                                />
-                              )}
-                              {isLate && (
-                                <Chip 
-                                  label="Late" 
-                                  size="small" 
-                                  color="warning"
-                                  sx={{ ml: 1, height: 20, fontSize: '0.7rem' }}
-                                />
-                              )}
-                            </Typography>
-                          }
-                          secondary={participant.user?.email}
-                        />
-                        <Chip
-                          icon={getStatusIcon(participant.status)}
-                          label={participant.status}
-                          size="small"
-                          color={getStatusColor(participant.status)}
-                          sx={{ 
-                            fontWeight: 600,
-                            textTransform: 'capitalize',
-                          }}
-                        />
-                      </ListItem>
-                      {idx < event.participants.length - 1 && <Divider variant="inset" component="li" />}
-                    </React.Fragment>
-                  );
-                })}
-              </List>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Activity History Dialog */}
-        <Dialog
-          open={activityDialogOpen}
-          onClose={() => setActivityDialogOpen(false)}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle>
-            <Box display="flex" justifyContent="space-between" alignItems="center">
-              <Box display="flex" alignItems="center" gap={1}>
-                <HistoryIcon />
-                <Typography variant="h6">Complete Activity History</Typography>
-              </Box>
-              <IconButton onClick={() => setActivityDialogOpen(false)} size="small">
-                <CloseIcon />
-              </IconButton>
-            </Box>
-          </DialogTitle>
-          <DialogContent dividers>
-            <Stack spacing={1.5}>
-              {event.eventNotifications && event.eventNotifications.length > 0 ? (
-                event.eventNotifications
-                  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-                  .map((notif, idx) => (
-                    <Box 
-                      key={notif.id || idx}
-                      sx={{
-                        p: 2,
-                        borderRadius: 1,
-                        bgcolor: 'rgba(76, 175, 80, 0.05)',
-                        border: '1px solid rgba(76, 175, 80, 0.2)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 2,
-                      }}
-                    >
-                      <Typography sx={{ fontSize: '1.5rem' }}>
-                        {getActivityIcon(notif.type)}
-                      </Typography>
-                      <Box flexGrow={1}>
-                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                          {getActivityMessage(notif)}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {new Date(notif.createdAt).toLocaleString('en-US', {
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  ))
-              ) : (
-                <Box textAlign="center" py={4}>
-                  <Typography variant="body2" color="text.secondary">
-                    No activity recorded yet
-                  </Typography>
-                </Box>
-              )}
-            </Stack>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setActivityDialogOpen(false)}>
-              Close
-            </Button>
-          </DialogActions>
-        </Dialog>
+        {/* Participants List */}
+        <ParticipantsList event={event} participantCount={participantCount} />
       </Stack>
     </Container>
   );
