@@ -2,12 +2,12 @@ import React from 'react';
 import { Paper, Typography, Box, Tooltip, List, ListItem, ListItemText, ListItemIcon } from '@mui/material';
 
 const statusMap = {
-  confirmed: { color: '#4caf50', label: 'Confirmed', icon: '✔️' },
-  declined: { color: '#f44336', label: 'Declined', icon: '❌' },
-  late: { color: '#ff9800', label: 'Late', icon: '⏰' },
-  join: { color: '#2196f3', label: 'Joined', icon: '➕' },
-  leave: { color: '#607d8b', label: 'Left', icon: '➖' },
-  unmark_late: { color: '#00bcd4', label: 'Undo Late', icon: '↩️' },
+  confirmed: { color: '#4caf50', label: 'Confirmed' },
+  declined: { color: '#f44336', label: 'Declined' },
+  late: { color: '#ff9800', label: 'Late' },
+  join: { color: '#2196f3', label: 'Joined' },
+  leave: { color: '#607d8b', label: 'Left' },
+  unmark_late: { color: '#00bcd4', label: 'Undo Late' },
 };
 
 function formatActivity(notif) {
@@ -38,11 +38,18 @@ const EventActivityFeedModern = ({ notifications }) => (
     </Typography>
     <List dense sx={{ p: 0, m: 0, maxHeight: 220, overflowY: 'auto' }}>
       {notifications && notifications.length > 0 ? notifications.slice(0, 8).map((notif, idx) => {
-        const status = statusMap[notif.type] || { color: '#90caf9', label: notif.type, icon: '•' };
+        const status = statusMap[notif.type] || { color: '#90caf9', label: notif.type };
         return (
           <ListItem key={notif.id || idx} sx={{ py: 0.5, px: 0, minHeight: 0 }} disableGutters>
-            <ListItemIcon sx={{ minWidth: 28 }}>
-              <span style={{ fontSize: 18, color: status.color }}>{status.icon}</span>
+            <ListItemIcon sx={{ minWidth: 20, mr: 0.5 }}>
+              <span style={{
+                display: 'inline-block',
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                background: status.color,
+                marginTop: 6,
+              }} />
             </ListItemIcon>
             <ListItemText
               primary={<Typography variant="body2" sx={{ fontWeight: 500, color: 'text.primary', fontSize: 14 }}>{formatActivity(notif)}</Typography>}

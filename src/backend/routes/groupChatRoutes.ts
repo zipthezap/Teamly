@@ -5,10 +5,9 @@ import authMiddleware from '../middleware/auth';
 
 const router = Router();
 
-// Undo mark late (moved after router declaration)
-router.post('/event/unmark-late', chat.unmarkLate);
-
 router.use(authMiddleware);
+// Undo mark late (ensure auth middleware is applied)
+router.post('/event/unmark-late', chat.unmarkLate);
 
 // Group chat
 router.post('/message', chat.createMessage);

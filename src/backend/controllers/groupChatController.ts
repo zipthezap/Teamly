@@ -1,3 +1,6 @@
+import prisma from '../config/database';
+import { Request, Response } from 'express';
+
 // Undo Event Attendance (late)
 export const unmarkLate = async (req: Request, res: Response) => {
   try {
@@ -40,8 +43,6 @@ export const unmarkLate = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to unmark late' });
   }
 };
-import prisma from '../config/database';
-import { Request, Response } from 'express';
 
 // Group Chat
 export const createMessage = async (req: Request, res: Response) => {

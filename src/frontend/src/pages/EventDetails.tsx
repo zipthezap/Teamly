@@ -224,17 +224,17 @@ const EventDetails = () => {
             {/* Middle: Capacity & Attendance + Activity Feed in a row */}
             <Grid item xs={12} md={7}>
               <Stack spacing={2}>
-                {/* Capacity Progress */}
-                {event.maxPlayers && (
-                  <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
-                    <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
-                      Event Capacity
+                {/* Capacity Section: always show, progress bar only if maxPlayers exists */}
+                <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
+                    Event Capacity
+                  </Typography>
+                  <Box sx={{ mb: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      {event.maxPlayers ? `${participantCount} / ${event.maxPlayers} participants` : `${participantCount} participants`}
                     </Typography>
-                    <Box sx={{ mb: 1 }}>
-                      <Typography variant="body2" color="text.secondary">
-                        {participantCount} / {event.maxPlayers} participants
-                      </Typography>
-                    </Box>
+                  </Box>
+                  {event.maxPlayers && (
                     <LinearProgress 
                       variant="determinate" 
                       value={fillPercentage} 
@@ -244,19 +244,19 @@ const EventDetails = () => {
                         bgcolor: 'rgba(255, 255, 255, 0.1)',
                       }}
                     />
-                    <Box display="flex" gap={2} mt={2}>
-                      <Typography variant="caption" color="text.secondary">
-                        ✅ {confirmedCount} confirmed
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        ❌ {declinedCount} declined
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        ⏳ {pendingCount} pending
-                      </Typography>
-                    </Box>
-                  </Paper>
-                )}
+                  )}
+                  <Box display="flex" gap={2} mt={2}>
+                    <Typography variant="caption" color="text.secondary">
+                      ✅ {confirmedCount} confirmed
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      ❌ {declinedCount} declined
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      ⏳ {pendingCount} pending
+                    </Typography>
+                  </Box>
+                </Paper>
 
                 {/* Attendance + Activity Feed side by side */}
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'stretch' }}>

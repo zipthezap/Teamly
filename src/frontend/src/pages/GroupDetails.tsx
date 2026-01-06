@@ -80,8 +80,8 @@ const GroupDetails = () => {
 
   useEffect(() => {
     fetchMessages();
-    // Optionally poll for new messages every 10s
-    const interval = setInterval(fetchMessages, 10000);
+    // Poll for new messages every 30s (reduced frequency to optimize API usage)
+    const interval = setInterval(fetchMessages, 30000);
     return () => clearInterval(interval);
   }, [fetchMessages]);
 

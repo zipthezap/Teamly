@@ -26,11 +26,14 @@ const NotificationsPopover: React.FC = () => {
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
+    // Do not mark as read here
     refresh();
   };
 
-  const handleClose = () => {
+  const handleClose = async () => {
     setAnchorEl(null);
+    await markAsRead();
+    refresh();
   };
   
   const handleNotificationClick = (notif: any) => {

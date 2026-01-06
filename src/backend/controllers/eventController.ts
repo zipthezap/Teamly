@@ -111,37 +111,15 @@ export const createEvent = async (req: Request, res: Response) => {
       }
     });
 
-    // Send email notifications to group members
-    const recipients = group.members
-      .filter(m => m.userId !== req.user.id)
-      .map(m => m.user);
-    
-    // Check which users should receive notifications
-    const userIds = recipients.map(r => r.id);
-    const notificationMap = await batchShouldSendEmailNotification(userIds, 'eventInvites');
-    
-    // Send emails
-    for (const recipient of recipients) {
-      if (notificationMap.get(recipient.id)) {
-        await sendEmail(
-          recipient.email,
-          'eventInvitation',
-          recipient.name,
-          event.title,
-          event.startTime,
-          group.name
-        );
-      }
-    }
-
-    // Notify all group members (except creator)
-    const memberIds = group.members.map(m => m.userId).filter(uid => uid !== req.user.id);
+    // Do not log event creation notifications in the event's recent activity
+    // Send global notification to group members (except creator)
+    const memberIds = group.members.map(m => m.user.id).filter(uid => uid !== req.user.id);
     await Promise.all(memberIds.map(userId =>
-      prisma.eventNotification.create({
+      prisma.groupNotification.create({
         data: {
-          eventId: event.id,
+          groupId: group.id,
           userId,
-          type: 'created',
+          type: 'eventCreated',
         }
       })
     ));
