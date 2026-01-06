@@ -67,7 +67,7 @@ async function main() {
     update: {},
     create: {
       id: 'seed-group-alice-admin',
-      name: 'Alice\'s Sports Club',
+      name: "Alice's Sports Club",
       description: 'A group for organizing weekly sports events',
       isPublic: true,
       creatorId: user1.id,
