@@ -17,9 +17,9 @@ import { LoadingSpinner, EmptyState, StatusBadge } from '../components/common';
 import UserStatistics from '../components/dashboard/UserStatistics';
 import UpcomingEventsCalendar from '../components/dashboard/UpcomingEventsCalendar';
 import RecentActivityTimeline from '../components/dashboard/RecentActivityTimeline';
+import QuickLinks from '../components/dashboard/QuickLinks';
 import GroupIcon from '@mui/icons-material/Group';
 import EventIcon from '@mui/icons-material/Event';
-import AddIcon from '@mui/icons-material/Add';
 import { useAuth } from '../contexts/AuthContext';
 
 const Dashboard = () => {
@@ -78,30 +78,6 @@ const Dashboard = () => {
       <Box sx={{ mb: 3 }}>
         <UserStatistics />
       </Box>
-
-      {/* New Features Section */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={6}>
-          <UpcomingEventsCalendar 
-            events={events} 
-            onEventClick={(eventId) => navigate(`/events/${eventId}`)}
-          />
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <RecentActivityTimeline
-            events={events}
-            groups={groups}
-            userId={user?.id}
-            onActivityClick={(id, type) => {
-              if (type === 'event') {
-                navigate(`/events/${id}`);
-              } else {
-                navigate(`/groups/${id}`);
-              }
-            }}
-          />
-        </Grid>
-      </Grid>
 
       <Grid container spacing={3}>
         {/* Main Content - Left Side */}
@@ -270,51 +246,30 @@ const Dashboard = () => {
 
         {/* Right Sidebar */}
         <Grid item xs={12} lg={3}>
-          {/* Quick Actions */}
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>
-              Quick Actions
-            </Typography>
-            <Stack spacing={1}>
-              <Button
-                variant="contained"
-                size="small"
-                fullWidth
-                startIcon={<AddIcon />}
-                onClick={() => navigate('/groups/new')}
-                sx={{ 
-                  py: 0.75,
-                  justifyContent: 'flex-start',
-                  background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)',
-                }}
-              >
-                Create New Group
-              </Button>
-              <Button
-                variant="contained"
-                size="small"
-                fullWidth
-                startIcon={<AddIcon />}
-                onClick={() => navigate('/events/new')}
-                sx={{ 
-                  py: 0.75,
-                  justifyContent: 'flex-start',
-                  background: 'linear-gradient(135deg, #f50057 0%, #c51162 100%)',
-                }}
-              >
-                Create New Event
-              </Button>
-              <Button
-                variant="outlined"
-                size="small"
-                fullWidth
-                onClick={() => navigate('/public-groups')}
-                sx={{ py: 0.75, justifyContent: 'flex-start' }}
-              >
-                Discover Groups
-              </Button>
-            </Stack>
-          </Box>
+          <Stack spacing={3}>
+            {/* Recent Activity */}
+            <RecentActivityTimeline
+              events={events}
+              groups={groups}
+              userId={user?.id}
+              onActivityClick={(id, type) => {
+                if (type === 'event') {
+                  navigate(`/events/${id}`);
+                } else {
+                  navigate(`/groups/${id}`);
+                }
+              }}
+            />
+
+            {/* Upcoming Schedule */}
+            <UpcomingEventsCalendar 
+              events={events} 
+              onEventClick={(eventId) => navigate(`/events/${eventId}`)}
+            />
+
+            {/* Quick Links */}
+            <QuickLinks onNavigate={(path) => navigate(path)} />
+          </Stack>
         </Grid>
       </Grid>
     </Container>

@@ -7,7 +7,6 @@ import {
   Box,
   CircularProgress,
   Alert,
-  Chip,
 } from '@mui/material';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -141,71 +140,6 @@ const UserStatistics: React.FC = () => {
             icon={<CheckCircleIcon sx={{ fontSize: 32, color: 'secondary.main' }} />}
             color="secondary"
           />
-        </Grid>
-
-        {/* Event Type Breakdown */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                Event Types
-              </Typography>
-              <Box display="flex" flexWrap="wrap" gap={1} mt={2}>
-                {Object.entries(statistics.eventTypeBreakdown).map(([type, count]) => (
-                  <Chip
-                    key={type}
-                    label={`${type}: ${count}`}
-                    color="primary"
-                    variant="outlined"
-                  />
-                ))}
-                {Object.keys(statistics.eventTypeBreakdown).length === 0 && (
-                  <Typography variant="body2" color="text.secondary">
-                    No events yet
-                  </Typography>
-                )}
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Created Events Stats */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                Events You Created
-              </Typography>
-              <Box mt={2}>
-                <Grid container spacing={2}>
-                  <Grid item xs={4}>
-                    <Typography variant="body2" color="text.secondary">
-                      Total
-                    </Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                      {statistics.createdEventsStats.total}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={4}>
-                    <Typography variant="body2" color="text.secondary">
-                      Participants
-                    </Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                      {statistics.createdEventsStats.totalParticipants}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={4}>
-                    <Typography variant="body2" color="text.secondary">
-                      Avg/Event
-                    </Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                      {statistics.createdEventsStats.avgParticipantsPerEvent.toFixed(1)}
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </Box>
-            </CardContent>
-          </Card>
         </Grid>
       </Grid>
     </Box>
