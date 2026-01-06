@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import { groupsAPI, eventsAPI } from '../services/api';
 import { LoadingSpinner, EmptyState, StatusBadge } from '../components/common';
+import UserStatistics from '../components/dashboard/UserStatistics';
 import GroupIcon from '@mui/icons-material/Group';
 import EventIcon from '@mui/icons-material/Event';
 import AddIcon from '@mui/icons-material/Add';
@@ -73,6 +74,11 @@ const Dashboard = () => {
         <Typography variant="body1" color="text.secondary">
           Here's what's happening with your sports activities
         </Typography>
+      </Box>
+
+      {/* Statistics Section */}
+      <Box sx={{ mb: 4 }}>
+        <UserStatistics />
       </Box>
 
       <Grid container spacing={3}>

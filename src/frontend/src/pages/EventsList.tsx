@@ -11,96 +11,28 @@ import {
   Box,
   CircularProgress,
   Chip,
-  TextField,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Select,
-  InputAdornment,
   Stack,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import SearchIcon from '@mui/icons-material/Search';
-import FilterListIcon from '@mui/icons-material/FilterList';
-import SortIcon from '@mui/icons-material/Sort';
 import { eventsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import EventSearchFilters from '../components/event/EventSearchFilters';
 
 const EventsList = () => {
   const [events, setEvents] = useState([]);
-  const [filteredEvents, setFilteredEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [sortBy, setSortBy] = useState('date-asc');
+  const [searchFilters, setSearchFilters] = useState({});
   const navigate = useNavigate();
   const { user } = useAuth();
 
   useEffect(() => {
     fetchEvents();
-  }, []);
-
-  const filterAndSortEvents = useCallback(() => {
-    let filtered = [...events];
-
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(event =>
-        event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        event.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        event.location?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Type filter
-    if (filterType !== 'all') {
-      filtered = filtered.filter(event => event.eventType === filterType);
-    }
-
-    // Status filter
-    if (filterStatus === 'upcoming') {
-      filtered = filtered.filter(event => new Date(event.startTime) > new Date());
-    } else if (filterStatus === 'past') {
-      filtered = filtered.filter(event => new Date(event.startTime) <= new Date());
-    } else if (filterStatus === 'joined') {
-      filtered = filtered.filter(event =>
-        event.participants?.some(p => p.userId === user?.id)
-      );
-    } else if (filterStatus === 'available') {
-      filtered = filtered.filter(event =>
-        !event.maxPlayers || event.participants?.length < event.maxPlayers
-      );
-    }
-
-    // Sort
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'date-asc':
-          return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
-        case 'date-desc':
-          return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
-        case 'participants-desc':
-          return (b.participants?.length || 0) - (a.participants?.length || 0);
-        case 'participants-asc':
-          return (a.participants?.length || 0) - (b.participants?.length || 0);
-        case 'title':
-          return a.title.localeCompare(b.title);
-        default:
-          return 0;
-      }
-    });
-
-    setFilteredEvents(filtered);
-  }, [events, searchTerm, filterType, filterStatus, sortBy, user?.id]);
-
-  useEffect(() => {
-    filterAndSortEvents();
-  }, [filterAndSortEvents]);
+  }, [searchFilters]);
 
   const fetchEvents = async () => {
+    setLoading(true);
     try {
-      const response = await eventsAPI.getAll();
+      const response = await eventsAPI.getAll(searchFilters);
       setEvents(response.data);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -109,9 +41,8 @@ const EventsList = () => {
     }
   };
 
-  const getEventTypes = () => {
-    const types = [...new Set(events.map(e => e.eventType))];
-    return types.sort();
+  const handleSearch = (filters: any) => {
+    setSearchFilters(filters);
   };
 
   const getEventStatus = (event) => {
@@ -176,91 +107,16 @@ const EventsList = () => {
       </Box>
 
       {/* Filters and Search */}
-      <Box sx={{ mb: 4 }}>
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              placeholder="Search events..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={4} md={2}>
-            <FormControl fullWidth>
-              <InputLabel>Type</InputLabel>
-              <Select
-                value={filterType}
-                label="Type"
-                onChange={(e) => setFilterType(e.target.value)}
-                startAdornment={
-                  <InputAdornment position="start">
-                    <FilterListIcon sx={{ ml: 1 }} />
-                  </InputAdornment>
-                }
-              >
-                <MenuItem value="all">All Types</MenuItem>
-                {getEventTypes().map(type => (
-                  <MenuItem key={type} value={type}>{type}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={4} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>Status</InputLabel>
-              <Select
-                value={filterStatus}
-                label="Status"
-                onChange={(e) => setFilterStatus(e.target.value)}
-              >
-                <MenuItem value="all">All Events</MenuItem>
-                <MenuItem value="upcoming">Upcoming</MenuItem>
-                <MenuItem value="past">Past</MenuItem>
-                <MenuItem value="joined">Joined</MenuItem>
-                <MenuItem value="available">Available</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={4} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>Sort By</InputLabel>
-              <Select
-                value={sortBy}
-                label="Sort By"
-                onChange={(e) => setSortBy(e.target.value)}
-                startAdornment={
-                  <InputAdornment position="start">
-                    <SortIcon sx={{ ml: 1 }} />
-                  </InputAdornment>
-                }
-              >
-                <MenuItem value="date-asc">Date (Earliest)</MenuItem>
-                <MenuItem value="date-desc">Date (Latest)</MenuItem>
-                <MenuItem value="participants-desc">Most Participants</MenuItem>
-                <MenuItem value="participants-asc">Least Participants</MenuItem>
-                <MenuItem value="title">Title (A-Z)</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-        </Grid>
-      </Box>
+      <EventSearchFilters onSearch={handleSearch} />
 
-      {filteredEvents.length === 0 ? (
+      {events.length === 0 ? (
         <Box textAlign="center" py={8}>
           <Typography variant="h6" color="text.secondary" gutterBottom>
-            {searchTerm || filterType !== 'all' || filterStatus !== 'all' 
+            {Object.keys(searchFilters).length > 0 
               ? 'No events match your filters'
               : 'No events available'}
           </Typography>
-          {!searchTerm && filterType === 'all' && filterStatus === 'all' && (
+          {Object.keys(searchFilters).length === 0 && (
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -273,7 +129,7 @@ const EventsList = () => {
         </Box>
       ) : (
         <Grid container spacing={3}>
-          {filteredEvents.map((event) => {
+          {events.map((event: any) => {
             const status = getEventStatus(event);
             const participantCount = event.participants?.length || 0;
             const spotsLeft = event.maxPlayers ? event.maxPlayers - participantCount : null;

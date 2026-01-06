@@ -10,6 +10,7 @@ router.use(authenticatedLimiter);
 
 router.post('/', eventController.createEvent);
 router.get('/', eventController.getEvents);
+router.get('/statistics', eventController.getUserStatistics);
 router.get('/:id', eventController.getEvent);
 router.put('/:id', eventController.updateEvent);
 router.delete('/:id', eventController.deleteEvent);
