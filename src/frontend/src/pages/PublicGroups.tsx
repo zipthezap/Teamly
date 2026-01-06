@@ -26,7 +26,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 import { groupsAPI } from '../services/api';
 
-const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '';
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 
 const mapContainerStyle = {
   width: '100%',
