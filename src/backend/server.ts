@@ -1,20 +1,19 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
+import 'dotenv/config';
+import express, { Request, Response, NextFunction, Application } from 'express';
+import cors from 'cors';
 
-const authRoutes = require('./routes/authRoutes');
-const groupRoutes = require('./routes/groupRoutes');
-const eventRoutes = require('./routes/eventRoutes');
-const twoFactorRoutes = require('./routes/twoFactorRoutes');
-const eventRequestRoutes = require('./routes/eventRequestRoutes');
-const emailRoutes = require('./routes/emailRoutes');
-const commentRoutes = require('./routes/commentRoutes');
+import authRoutes from './routes/authRoutes';
+import groupRoutes from './routes/groupRoutes';
+import eventRoutes from './routes/eventRoutes';
+import twoFactorRoutes from './routes/twoFactorRoutes';
+import eventRequestRoutes from './routes/eventRequestRoutes';
+import emailRoutes from './routes/emailRoutes';
+import commentRoutes from './routes/commentRoutes';
+import groupChatRoutes from './routes/groupChatRoutes';
+import notificationPreferenceRoutes from './routes/notificationPreferenceRoutes';
+import { apiLimiter } from './middleware/rateLimiter';
 
-const groupChatRoutes = require('./routes/groupChatRoutes');
-const notificationPreferenceRoutes = require('./routes/notificationPreferenceRoutes');
-const { apiLimiter } = require('./middleware/rateLimiter');
-
-const app = express();
+const app: Application = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
@@ -26,7 +25,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/', apiLimiter);
 
 // Routes
-
 app.use('/api/auth', authRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/events', eventRoutes);
@@ -38,12 +36,12 @@ app.use('/api/chat', groupChatRoutes);
 app.use('/api/notification-preferences', notificationPreferenceRoutes);
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', message: 'Teamly API is running' });
 });
 
 // Error handling middleware
-app.use((err, req, res, next) => {
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.error('Error:', err);
   res.status(err.status || 500).json({
     error: err.message || 'Internal server error'
@@ -51,7 +49,7 @@ app.use((err, req, res, next) => {
 });
 
 // 404 handler
-app.use((req, res) => {
+app.use((req: Request, res: Response) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
@@ -60,4 +58,4 @@ app.listen(PORT, () => {
   console.log(`📍 API available at http://localhost:${PORT}`);
 });
 
-module.exports = app;
+export default app;

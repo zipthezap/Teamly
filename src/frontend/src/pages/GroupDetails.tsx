@@ -330,7 +330,7 @@ const GroupDetails = () => {
                   ))
                 )}
               </Box>
-              <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 8 }}>
+              <Box component="form" onSubmit={handleSendMessage} sx={{ display: 'flex', gap: 1 }}>
                 <TextField
                   value={newMessage}
                   onChange={e => setNewMessage(e.target.value)}
@@ -339,7 +339,7 @@ const GroupDetails = () => {
                   fullWidth
                 />
                 <Button type="submit" variant="contained" disabled={!newMessage.trim()}>Send</Button>
-              </form>
+              </Box>
             </CardContent>
           </Card>
         </Grid>

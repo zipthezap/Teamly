@@ -1,14 +1,16 @@
-const bcrypt = require('bcryptjs');
-const prisma = require('../config/database');
-const { generateToken } = require('../utils/jwt');
-const { validate2FAToken } = require('./twoFactorController');
+import bcrypt from 'bcryptjs';
+import { Request, Response } from 'express';
+import prisma from '../config/database';
+import { generateToken } from '../utils/jwt';
+import { validate2FAToken } from './twoFactorController';
 
-const register = async (req, res) => {
+export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, name } = req.body;
 
     if (!email || !password || !name) {
-      return res.status(400).json({ error: 'Email, password, and name are required' });
+      res.status(400).json({ error: 'Email, password, and name are required' });
+      return;
     }
 
     const existingUser = await prisma.user.findUnique({
@@ -16,7 +18,8 @@ const register = async (req, res) => {
     });
 
     if (existingUser) {
-      return res.status(400).json({ error: 'User already exists' });
+      res.status(400).json({ error: 'User already exists' });
+      return;
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -44,12 +47,13 @@ const register = async (req, res) => {
   }
 };
 
-const login = async (req, res) => {
+export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, twoFactorToken } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+      res.status(400).json({ error: 'Email and password are required' });
+      return;
     }
 
     const user = await prisma.user.findUnique({
@@ -64,31 +68,35 @@ const login = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
     }
 
     const isValidPassword = await bcrypt.compare(password, user.password);
 
     if (!isValidPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
     }
 
     // Check if 2FA is enabled
     if (user.twoFactorEnabled) {
       if (!twoFactorToken) {
         // Return a flag indicating 2FA is required without exposing the user ID
-        return res.status(200).json({
+        res.status(200).json({
           requires2FA: true,
           // Note: In production, consider using a temporary session token instead
           tempAuth: email // Use email instead of userId for the second request
         });
+        return;
       }
 
       // Validate 2FA token
       const validation = await validate2FAToken(user.id, twoFactorToken);
 
       if (!validation.valid) {
-        return res.status(401).json({ error: validation.error || 'Invalid 2FA token' });
+        res.status(401).json({ error: validation.error || 'Invalid 2FA token' });
+        return;
       }
     }
 
@@ -108,7 +116,7 @@ const login = async (req, res) => {
   }
 };
 
-const getProfile = async (req, res) => {
+export const getProfile = async (req: Request, res: Response): Promise<void> => {
   try {
     res.json({ user: req.user });
   } catch (error) {
@@ -117,27 +125,29 @@ const getProfile = async (req, res) => {
   }
 };
 
-const updateProfile = async (req, res) => {
+export const updateProfile = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, email, city, country } = req.body;
 
     if (!name || !email) {
-      return res.status(400).json({ error: 'Name and email are required' });
+      res.status(400).json({ error: 'Name and email are required' });
+      return;
     }
 
     // Check if email is already taken by another user
-    if (email !== req.user.email) {
+    if (email !== req.user!.email) {
       const existingUser = await prisma.user.findUnique({
         where: { email }
       });
 
       if (existingUser) {
-        return res.status(400).json({ error: 'Email already in use' });
+        res.status(400).json({ error: 'Email already in use' });
+        return;
       }
     }
 
     const updatedUser = await prisma.user.update({
-      where: { id: req.user.id },
+      where: { id: req.user!.id },
       data: { 
         name, 
         email,
@@ -161,28 +171,36 @@ const updateProfile = async (req, res) => {
   }
 };
 
-const updatePassword = async (req, res) => {
+export const updatePassword = async (req: Request, res: Response): Promise<void> => {
   try {
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'Current password and new password are required' });
+      res.status(400).json({ error: 'Current password and new password are required' });
+      return;
     }
 
     if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+      res.status(400).json({ error: 'New password must be at least 6 characters' });
+      return;
     }
 
     // Get user with password
     const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
+      where: { id: req.user!.id },
       select: { id: true, password: true }
     });
+
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
 
     // Verify current password
     const isValidPassword = await bcrypt.compare(currentPassword, user.password);
     if (!isValidPassword) {
-      return res.status(401).json({ error: 'Current password is incorrect' });
+      res.status(401).json({ error: 'Current password is incorrect' });
+      return;
     }
 
     // Hash new password
@@ -190,7 +208,7 @@ const updatePassword = async (req, res) => {
 
     // Update password
     await prisma.user.update({
-      where: { id: req.user.id },
+      where: { id: req.user!.id },
       data: { password: hashedPassword }
     });
 
@@ -200,5 +218,3 @@ const updatePassword = async (req, res) => {
     res.status(500).json({ error: 'Failed to update password' });
   }
 };
-
-module.exports = { register, login, getProfile, updateProfile, updatePassword };

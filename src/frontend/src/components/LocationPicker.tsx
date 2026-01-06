@@ -6,16 +6,26 @@ import {
   Typography,
   Alert,
   Paper,
-  Grid,
   CircularProgress,
 } from '@mui/material';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 
-const LocationPicker = ({ value = {}, onChange }) => {
+interface LocationValue {
+  latitude?: number | string;
+  longitude?: number | string;
+  locationName?: string;
+}
+
+interface LocationPickerProps {
+  value?: LocationValue;
+  onChange?: (location: LocationValue) => void;
+}
+
+const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [location, setLocation] = useState({
+  const [location, setLocation] = useState<LocationValue>({
     latitude: value.latitude || '',
     longitude: value.longitude || '',
     locationName: value.locationName || '',
@@ -31,7 +41,7 @@ const LocationPicker = ({ value = {}, onChange }) => {
     }
   }, [value]);
 
-  const handleLocationChange = (field, val) => {
+  const handleLocationChange = (field: keyof LocationValue, val: string | number) => {
     const newLocation = { ...location, [field]: val };
     setLocation(newLocation);
     if (onChange) {
@@ -99,18 +109,16 @@ const LocationPicker = ({ value = {}, onChange }) => {
         </Alert>
       )}
 
-      <Grid container spacing={2}>
-        <Grid item xs={12}>
-          <TextField
-            label="Location Name"
-            fullWidth
-            value={location.locationName}
-            onChange={(e) => handleLocationChange('locationName', e.target.value)}
-            placeholder="e.g., Central Park, NYC"
-            helperText="A descriptive name for this location"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <TextField
+          label="Location Name"
+          fullWidth
+          value={location.locationName}
+          onChange={(e) => handleLocationChange('locationName', e.target.value)}
+          placeholder="e.g., Central Park, NYC"
+          helperText="A descriptive name for this location"
+        />
+        <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
           <TextField
             label="Latitude"
             fullWidth
@@ -120,8 +128,6 @@ const LocationPicker = ({ value = {}, onChange }) => {
             placeholder="40.7128"
             inputProps={{ step: 'any' }}
           />
-        </Grid>
-        <Grid item xs={12} sm={6}>
           <TextField
             label="Longitude"
             fullWidth
@@ -131,8 +137,8 @@ const LocationPicker = ({ value = {}, onChange }) => {
             placeholder="-74.0060"
             inputProps={{ step: 'any' }}
           />
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
 
       <Box display="flex" gap={1} mt={2}>
         <Button
@@ -153,7 +159,7 @@ const LocationPicker = ({ value = {}, onChange }) => {
       {location.latitude && location.longitude && (
         <Box mt={2}>
           <Alert severity="info">
-            Location set to: {parseFloat(location.latitude).toFixed(4)}, {parseFloat(location.longitude).toFixed(4)}
+            Location set to: {typeof location.latitude === 'number' ? location.latitude.toFixed(4) : parseFloat(String(location.latitude)).toFixed(4)}, {typeof location.longitude === 'number' ? location.longitude.toFixed(4) : parseFloat(String(location.longitude)).toFixed(4)}
             {location.locationName && ` (${location.locationName})`}
           </Alert>
         </Box>

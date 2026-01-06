@@ -77,9 +77,9 @@ const EventsList = () => {
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'date-asc':
-          return new Date(a.startTime) - new Date(b.startTime);
+          return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
         case 'date-desc':
-          return new Date(b.startTime) - new Date(a.startTime);
+          return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
         case 'participants-desc':
           return (b.participants?.length || 0) - (a.participants?.length || 0);
         case 'participants-asc':

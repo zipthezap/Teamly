@@ -1,10 +1,30 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { authAPI } from '../services/api';
 
-const AuthContext = createContext(null);
+interface User {
+  id: string | number;
+  email: string;
+  name: string;
+  [key: string]: any;
+}
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+interface AuthContextType {
+  user: User | null;
+  setUser: (user: User | null) => void;
+  login: (credentials: any) => Promise<any>;
+  register: (userData: any) => Promise<User>;
+  logout: () => void;
+  loading: boolean;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,7 +37,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = async (credentials) => {
+  const login = async (credentials: any) => {
     const response = await authAPI.login(credentials);
     
     // Check if 2FA is required
@@ -34,7 +54,7 @@ export const AuthProvider = ({ children }) => {
     return user;
   };
 
-  const register = async (userData) => {
+  const register = async (userData: any) => {
     const response = await authAPI.register(userData);
     const { user, token } = response.data;
     
@@ -58,7 +78,7 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
