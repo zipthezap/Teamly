@@ -36,6 +36,8 @@ const CreateGroup = () => {
         ...(location.latitude && { latitude: location.latitude }),
         ...(location.longitude && { longitude: location.longitude }),
         ...(location.locationName && { locationName: location.locationName }),
+        ...(location.city && { city: location.city }),
+        ...(location.country && { country: location.country }),
       };
       const response = await groupsAPI.create(groupData);
       navigate(`/groups/${response.data.id}`);

@@ -30,7 +30,7 @@ import { Request, Response } from 'express';
 
 export const createGroup = async (req: Request, res: Response) => {
   try {
-    const { name, description, isPublic, latitude, longitude, locationName } = req.body;
+    const { name, description, isPublic, latitude, longitude, locationName, city, country } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Group name is required' });
@@ -44,6 +44,8 @@ export const createGroup = async (req: Request, res: Response) => {
         latitude: latitude ? parseFloat(latitude) : null,
         longitude: longitude ? parseFloat(longitude) : null,
         locationName,
+        city,
+        country,
         creatorId: req.user.id,
         members: {
           create: {
@@ -189,7 +191,7 @@ export const getGroup = async (req: Request, res: Response) => {
 export const updateGroup = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, description, isPublic, latitude, longitude, locationName } = req.body;
+    const { name, description, isPublic, latitude, longitude, locationName, city, country } = req.body;
 
     // Check if user is admin of the group
     const membership = await prisma.groupMember.findFirst({
@@ -212,7 +214,9 @@ export const updateGroup = async (req: Request, res: Response) => {
         ...(isPublic !== undefined && { isPublic }),
         ...(latitude !== undefined && { latitude: latitude ? parseFloat(latitude) : null }),
         ...(longitude !== undefined && { longitude: longitude ? parseFloat(longitude) : null }),
-        ...(locationName !== undefined && { locationName })
+        ...(locationName !== undefined && { locationName }),
+        ...(city !== undefined && { city }),
+        ...(country !== undefined && { country })
       },
       include: {
         creator: {

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Grid,
-  Paper,
   Typography,
   Box,
   Card,
@@ -11,7 +10,6 @@ import {
   CardActions,
   Button,
   Chip,
-  Avatar,
   Stack,
 } from '@mui/material';
 import { groupsAPI, eventsAPI } from '../services/api';
@@ -22,8 +20,6 @@ import RecentActivityTimeline from '../components/dashboard/RecentActivityTimeli
 import GroupIcon from '@mui/icons-material/Group';
 import EventIcon from '@mui/icons-material/Event';
 import AddIcon from '@mui/icons-material/Add';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import ScheduleIcon from '@mui/icons-material/Schedule';
 import { useAuth } from '../contexts/AuthContext';
 
 const Dashboard = () => {
@@ -274,116 +270,6 @@ const Dashboard = () => {
 
         {/* Right Sidebar */}
         <Grid item xs={12} lg={3}>
-          {/* Enhanced Stats Section */}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>
-              Statistics
-            </Typography>
-            <Grid container spacing={1.5}>
-              <Grid item xs={6} sm={6} md={6} lg={12}>
-                <Paper 
-                  sx={{ 
-                    p: 1.5, 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center',
-                    background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0.05) 100%)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 4px 8px rgba(33, 150, 243, 0.2)',
-                    }
-                  }}
-                  onClick={() => navigate('/groups')}
-                >
-                  <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32, mb: 0.5 }}>
-                    <GroupIcon sx={{ fontSize: 16 }} />
-                  </Avatar>
-                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 0 }}>
-                    {groups.length}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textAlign: 'center' }}>
-                    Your Groups
-                  </Typography>
-                </Paper>
-              </Grid>
-              
-              <Grid item xs={6} sm={6} md={6} lg={12}>
-                <Paper 
-                  sx={{ 
-                    p: 1.5, 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center',
-                    background: 'linear-gradient(135deg, rgba(245, 0, 87, 0.1) 0%, rgba(245, 0, 87, 0.05) 100%)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 4px 8px rgba(245, 0, 87, 0.2)',
-                    }
-                  }}
-                  onClick={() => navigate('/events')}
-                >
-                  <Avatar sx={{ bgcolor: 'secondary.main', width: 32, height: 32, mb: 0.5 }}>
-                    <EventIcon sx={{ fontSize: 16 }} />
-                  </Avatar>
-                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 0 }}>
-                    {events.length}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textAlign: 'center' }}>
-                    Total Events
-                  </Typography>
-                </Paper>
-              </Grid>
-
-              <Grid item xs={6} sm={6} md={6} lg={12}>
-                <Paper 
-                  sx={{ 
-                    p: 1.5, 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center',
-                    background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%)',
-                  }}
-                >
-                  <Avatar sx={{ bgcolor: 'success.main', width: 32, height: 32, mb: 0.5 }}>
-                    <ScheduleIcon sx={{ fontSize: 16 }} />
-                  </Avatar>
-                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 0 }}>
-                    {upcomingEvents.length}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textAlign: 'center' }}>
-                    Upcoming
-                  </Typography>
-                </Paper>
-              </Grid>
-
-              <Grid item xs={6} sm={6} md={6} lg={12}>
-                <Paper 
-                  sx={{ 
-                    p: 1.5, 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center',
-                    background: 'linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%)',
-                  }}
-                >
-                  <Avatar sx={{ bgcolor: 'warning.main', width: 32, height: 32, mb: 0.5 }}>
-                    <TrendingUpIcon sx={{ fontSize: 16 }} />
-                  </Avatar>
-                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 0 }}>
-                    {myEvents.length}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textAlign: 'center' }}>
-                    Your Events
-                  </Typography>
-                </Paper>
-              </Grid>
-            </Grid>
-          </Box>
-
           {/* Quick Actions */}
           <Box>
             <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>
