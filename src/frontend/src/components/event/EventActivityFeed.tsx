@@ -82,79 +82,101 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
             </Button>
           )}
         </Box>
-        <Stack spacing={1.5}>
-          {recentActivity.length > 0 ? (
-            recentActivity.map((notif: any, idx: number) => (
-              <Box
-                key={notif.id || idx}
-                sx={{
-                  p: 1.5,
-                  borderRadius: 1,
-                  bgcolor: 'rgba(255, 255, 255, 0.7)',
-                  border: '1px solid rgba(76, 175, 80, 0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.5,
-                }}
-              >
-                <Typography sx={{ fontSize: '1.2rem' }}>
-                  {getActivityIcon(notif.type)}
-                </Typography>
-                <Box flexGrow={1}>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {getActivityMessage(notif)}
+        <Box
+          sx={{
+            maxHeight: '300px',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            '&::-webkit-scrollbar': {
+              width: '8px',
+            },
+            '&::-webkit-scrollbar-track': {
+              backgroundColor: 'rgba(0, 0, 0, 0.05)',
+              borderRadius: '4px',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: 'rgba(76, 175, 80, 0.3)',
+              borderRadius: '4px',
+              '&:hover': {
+                backgroundColor: 'rgba(76, 175, 80, 0.5)',
+              },
+            },
+          }}
+        >
+          <Stack spacing={1.5}>
+            {recentActivity.length > 0 ? (
+              recentActivity.map((notif: any, idx: number) => (
+                <Box
+                  key={notif.id || idx}
+                  sx={{
+                    p: 1.5,
+                    borderRadius: 1,
+                    bgcolor: 'rgba(255, 255, 255, 0.7)',
+                    border: '1px solid rgba(76, 175, 80, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                  }}
+                >
+                  <Typography sx={{ fontSize: '1.2rem' }}>
+                    {getActivityIcon(notif.type)}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {new Date(notif.createdAt).toLocaleString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </Typography>
+                  <Box flexGrow={1}>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {getActivityMessage(notif)}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {new Date(notif.createdAt).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </Typography>
+                  </Box>
                 </Box>
-              </Box>
-            ))
-          ) : recentParticipants.length > 0 ? (
-            recentParticipants.map((p: any, idx: number) => (
-              <Box
-                key={p.id || idx}
-                sx={{
-                  p: 1.5,
-                  borderRadius: 1,
-                  bgcolor: 'rgba(255, 255, 255, 0.7)',
-                  border: '1px solid rgba(76, 175, 80, 0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.5,
-                }}
-              >
-                <Typography sx={{ fontSize: '1.2rem' }}>
-                  {getActivityIcon('join')}
-                </Typography>
-                <Box flexGrow={1}>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {p.user?.name} joined the event
+              ))
+            ) : recentParticipants.length > 0 ? (
+              recentParticipants.map((p: any, idx: number) => (
+                <Box
+                  key={p.id || idx}
+                  sx={{
+                    p: 1.5,
+                    borderRadius: 1,
+                    bgcolor: 'rgba(255, 255, 255, 0.7)',
+                    border: '1px solid rgba(76, 175, 80, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                  }}
+                >
+                  <Typography sx={{ fontSize: '1.2rem' }}>
+                    {getActivityIcon('join')}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {new Date(p.joinedAt).toLocaleString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </Typography>
+                  <Box flexGrow={1}>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {p.user?.name} joined the event
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {new Date(p.joinedAt).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </Typography>
+                  </Box>
                 </Box>
+              ))
+            ) : (
+              <Box textAlign="center" py={2}>
+                <Typography variant="body2" color="text.secondary">
+                  No activity yet
+                </Typography>
               </Box>
-            ))
-          ) : (
-            <Box textAlign="center" py={2}>
-              <Typography variant="body2" color="text.secondary">
-                No activity yet
-              </Typography>
-            </Box>
-          )}
-        </Stack>
+            )}
+          </Stack>
+        </Box>
       </Paper>
 
       {/* Activity History Dialog */}

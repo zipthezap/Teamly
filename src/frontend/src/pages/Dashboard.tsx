@@ -17,6 +17,8 @@ import {
 import { groupsAPI, eventsAPI } from '../services/api';
 import { LoadingSpinner, EmptyState, StatusBadge } from '../components/common';
 import UserStatistics from '../components/dashboard/UserStatistics';
+import UpcomingEventsCalendar from '../components/dashboard/UpcomingEventsCalendar';
+import RecentActivityTimeline from '../components/dashboard/RecentActivityTimeline';
 import GroupIcon from '@mui/icons-material/Group';
 import EventIcon from '@mui/icons-material/Event';
 import AddIcon from '@mui/icons-material/Add';
@@ -67,8 +69,8 @@ const Dashboard = () => {
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       {/* Welcome Section */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 1 }}>
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 0.5 }}>
           Welcome back, {user?.name}! 👋
         </Typography>
         <Typography variant="body1" color="text.secondary">
@@ -77,15 +79,39 @@ const Dashboard = () => {
       </Box>
 
       {/* Statistics Section */}
-      <Box sx={{ mb: 4 }}>
+      <Box sx={{ mb: 3 }}>
         <UserStatistics />
       </Box>
+
+      {/* New Features Section */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={6}>
+          <UpcomingEventsCalendar 
+            events={events} 
+            onEventClick={(eventId) => navigate(`/events/${eventId}`)}
+          />
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <RecentActivityTimeline
+            events={events}
+            groups={groups}
+            userId={user?.id}
+            onActivityClick={(id, type) => {
+              if (type === 'event') {
+                navigate(`/events/${id}`);
+              } else {
+                navigate(`/groups/${id}`);
+              }
+            }}
+          />
+        </Grid>
+      </Grid>
 
       <Grid container spacing={3}>
         {/* Main Content - Left Side */}
         <Grid item xs={12} lg={9}>
           {/* Recent Groups */}
-          <Box sx={{ mb: 4 }}>
+          <Box sx={{ mb: 3 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
               <Typography variant="h5" sx={{ fontWeight: 600 }}>Your Groups</Typography>
               <Button
@@ -97,20 +123,20 @@ const Dashboard = () => {
                 View All
               </Button>
             </Box>
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               {groups.slice(0, 3).map((group) => (
                 <Grid item xs={12} sm={6} md={4} key={group.id}>
                   <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                    <CardContent sx={{ flexGrow: 1 }}>
-                      <Box display="flex" justifyContent="space-between" alignItems="start" mb={2}>
-                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    <CardContent sx={{ flexGrow: 1, p: 2 }}>
+                      <Box display="flex" justifyContent="space-between" alignItems="start" mb={1.5}>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 0 }}>
                           {group.name}
                         </Typography>
                         {group.isPublic && (
                           <Chip label="Public" size="small" color="primary" />
                         )}
                       </Box>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2, minHeight: 40 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, minHeight: 40 }}>
                         {group.description || 'No description'}
                       </Typography>
                       <Box display="flex" alignItems="center" gap={1}>
@@ -120,7 +146,7 @@ const Dashboard = () => {
                         </Typography>
                       </Box>
                     </CardContent>
-                    <CardActions sx={{ px: 2, pb: 2 }}>
+                    <CardActions sx={{ px: 2, pb: 2, pt: 0 }}>
                       <Button 
                         size="small" 
                         variant="contained"
@@ -161,7 +187,7 @@ const Dashboard = () => {
                 View All
               </Button>
             </Box>
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               {upcomingEvents.slice(0, 3).map((event) => {
                 const isParticipating = event.participants?.some(p => p.userId === user?.id);
                 const isFull = event.maxPlayers && event.participants?.length >= event.maxPlayers;
@@ -169,9 +195,9 @@ const Dashboard = () => {
                 return (
                   <Grid item xs={12} sm={6} md={4} key={event.id}>
                     <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                      <CardContent sx={{ flexGrow: 1 }}>
-                        <Box display="flex" justifyContent="space-between" alignItems="start" mb={2}>
-                          <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, pr: 1 }}>
+                      <CardContent sx={{ flexGrow: 1, p: 2 }}>
+                        <Box display="flex" justifyContent="space-between" alignItems="start" mb={1.5}>
+                          <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, pr: 1, mb: 0 }}>
                             {event.title}
                           </Typography>
                           <StatusBadge 
@@ -181,30 +207,32 @@ const Dashboard = () => {
                           />
                         </Box>
                         
-                        {isFull && (
-                          <StatusBadge 
-                            status="warning"
-                            label="Full"
-                            sx={{ mb: 1 }}
-                          />
-                        )}
-                        {isParticipating && (
-                          <StatusBadge 
-                            status="success"
-                            label="Joined"
-                            sx={{ mb: 1, ml: isFull ? 1 : 0 }}
-                          />
+                        {(isFull || isParticipating) && (
+                          <Box display="flex" gap={0.5} mb={1}>
+                            {isFull && (
+                              <StatusBadge 
+                                status="warning"
+                                label="Full"
+                              />
+                            )}
+                            {isParticipating && (
+                              <StatusBadge 
+                                status="success"
+                                label="Joined"
+                              />
+                            )}
+                          </Box>
                         )}
                         
-                        <Box sx={{ mt: 2 }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        <Box sx={{ mt: 1.5 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                             📅 {new Date(event.startTime).toLocaleDateString()}
                           </Typography>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                             🕐 {new Date(event.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}
                           </Typography>
                           {event.location && (
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                               📍 {event.location}
                             </Typography>
                           )}
@@ -214,7 +242,7 @@ const Dashboard = () => {
                           </Typography>
                         </Box>
                       </CardContent>
-                      <CardActions sx={{ px: 2, pb: 2 }}>
+                      <CardActions sx={{ px: 2, pb: 2, pt: 0 }}>
                         <Button 
                           size="small" 
                           variant="contained"
@@ -252,7 +280,7 @@ const Dashboard = () => {
               Statistics
             </Typography>
             <Grid container spacing={1.5}>
-              <Grid item xs={6} sm={6} md={6} lg={6}>
+              <Grid item xs={6} sm={6} md={6} lg={12}>
                 <Paper 
                   sx={{ 
                     p: 1.5, 
@@ -281,7 +309,7 @@ const Dashboard = () => {
                 </Paper>
               </Grid>
               
-              <Grid item xs={6} sm={6} md={6} lg={6}>
+              <Grid item xs={6} sm={6} md={6} lg={12}>
                 <Paper 
                   sx={{ 
                     p: 1.5, 
@@ -310,7 +338,7 @@ const Dashboard = () => {
                 </Paper>
               </Grid>
 
-              <Grid item xs={6} sm={6} md={6} lg={6}>
+              <Grid item xs={6} sm={6} md={6} lg={12}>
                 <Paper 
                   sx={{ 
                     p: 1.5, 
@@ -332,7 +360,7 @@ const Dashboard = () => {
                 </Paper>
               </Grid>
 
-              <Grid item xs={6} sm={6} md={6} lg={6}>
+              <Grid item xs={6} sm={6} md={6} lg={12}>
                 <Paper 
                   sx={{ 
                     p: 1.5, 
