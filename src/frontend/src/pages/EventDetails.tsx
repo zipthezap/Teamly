@@ -12,15 +12,19 @@ import {
   Avatar,
   Divider,
   Typography,
+  Button,
 } from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import IconButton from '@mui/material/IconButton';
 import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import {
   EventInformation,
   ParticipantsList,
   EventActions,
-  EventActivityFeed,
 } from '../components/event';
+import EventActivityFeedModern from '../components/event/EventActivityFeedModern';
 
 const EventDetails = () => {
   const { id } = useParams();
@@ -111,6 +115,18 @@ const EventDetails = () => {
     }
   };
 
+  const handleUnmarkLate = async () => {
+    setLateError('');
+    setLateSuccess('');
+    try {
+      await groupChatAPI.unmarkLate(id);
+      setLateSuccess('Late status undone.');
+      fetchEvent();
+    } catch (err) {
+      setLateError('Failed to undo late');
+    }
+  };
+
   const getInitials = (name: string) => {
     if (!name) return '?';
     return name
@@ -155,10 +171,22 @@ const EventDetails = () => {
         {lateSuccess && <Alert severity="success" onClose={() => setLateSuccess('')}>{lateSuccess}</Alert>}
         {lateError && <Alert severity="error" onClose={() => setLateError('')}>{lateError}</Alert>}
 
-        <Paper sx={{ p: 4 }}>
+
+        <Paper sx={{ p: 4, position: 'relative' }}>
+          {/* Admin icon buttons in top right */}
+          {isCreator && (
+            <Box sx={{ position: 'absolute', top: 16, right: 16, display: 'flex', gap: 1 }}>
+              <IconButton color="primary" onClick={() => navigate(`/events/${event.id}/edit`)} size="large">
+                <EditIcon />
+              </IconButton>
+              <IconButton color="error" onClick={handleDelete} size="large">
+                <DeleteIcon />
+              </IconButton>
+            </Box>
+          )}
           <Grid container spacing={3}>
-            {/* Left Column: Event Information */}
-            <Grid item xs={12} md={8}>
+            {/* Main: Event Info */}
+            <Grid item xs={12} md={5}>
               <Stack spacing={3}>
                 <EventInformation
                   event={event}
@@ -166,9 +194,7 @@ const EventDetails = () => {
                   isCreator={isCreator}
                   isFull={isFull}
                 />
-
                 <Divider />
-
                 {/* Organizer Info */}
                 <Box display="flex" alignItems="center" gap={2}>
                   <Avatar 
@@ -195,12 +221,12 @@ const EventDetails = () => {
               </Stack>
             </Grid>
 
-            {/* Right Column: Event Actions and Activity */}
-            <Grid item xs={12} md={4}>
-              <Stack spacing={3}>
+            {/* Middle: Capacity & Attendance + Activity Feed in a row */}
+            <Grid item xs={12} md={7}>
+              <Stack spacing={2}>
                 {/* Capacity Progress */}
                 {event.maxPlayers && (
-                  <Paper elevation={2} sx={{ p: 2.5 }}>
+                  <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
                     <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
                       Event Capacity
                     </Typography>
@@ -232,31 +258,29 @@ const EventDetails = () => {
                   </Paper>
                 )}
 
-                {/* Event Actions */}
-                <Paper elevation={2} sx={{ p: 3 }}>
-                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
-                    Event Actions
-                  </Typography>
-                  <EventActions
-                    event={event}
-                    isParticipant={!!isParticipant}
-                    isCreator={isCreator}
-                    isFull={isFull}
-                    onJoin={handleJoin}
-                    onLeave={handleLeave}
-                    onUpdateStatus={handleUpdateStatus}
-                    onDelete={handleDelete}
-                    onMarkLate={handleMarkLate}
-                  />
-                </Paper>
-
-                {/* Activity Feed */}
-                <EventActivityFeed
-                  event={event}
-                  activityDialogOpen={activityDialogOpen}
-                  onOpenDialog={() => setActivityDialogOpen(true)}
-                  onCloseDialog={() => setActivityDialogOpen(false)}
-                />
+                {/* Attendance + Activity Feed side by side */}
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'stretch' }}>
+                  <Paper elevation={2} sx={{ p: 2, flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'stretch' }}>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
+                      Attendance
+                    </Typography>
+                    <EventActions
+                      event={event}
+                      isParticipant={!!isParticipant}
+                      isCreator={isCreator}
+                      isFull={isFull}
+                      onJoin={handleJoin}
+                      onLeave={handleLeave}
+                      onUpdateStatus={handleUpdateStatus}
+                      onDelete={() => {}}
+                      onMarkLate={handleMarkLate}
+                      onUnmarkLate={handleUnmarkLate}
+                    />
+                  </Paper>
+                  <Box sx={{ flex: 1.2, minWidth: 0, display: 'flex' }}>
+                    <EventActivityFeedModern notifications={event.eventNotifications || []} />
+                  </Box>
+                </Box>
               </Stack>
             </Grid>
           </Grid>

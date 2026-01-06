@@ -1,3 +1,45 @@
+// Undo Event Attendance (late)
+export const unmarkLate = async (req: Request, res: Response) => {
+  try {
+    const { eventId } = req.body;
+    const userId = req.user.id;
+
+    // Find the attendance record
+    const attendance = await prisma.eventAttendance.findUnique({
+      where: { eventId_userId: { eventId, userId } },
+    });
+
+    if (!attendance || attendance.status !== 'late') {
+      return res.status(400).json({ error: 'Not marked as late' });
+    }
+
+    // Set status back to 'confirmed' (or remove, depending on business logic)
+    const updated = await prisma.eventAttendance.update({
+      where: { eventId_userId: { eventId, userId } },
+      data: { status: 'confirmed' },
+    });
+
+    // Optionally, notify event organizer
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: { creatorId: true },
+    });
+    if (event && event.creatorId !== userId) {
+      await prisma.eventNotification.create({
+        data: {
+          eventId,
+          userId: event.creatorId,
+          type: 'unmark_late',
+        },
+      });
+    }
+
+    res.json(updated);
+  } catch (e) {
+    console.error('Unmark late error:', e);
+    res.status(500).json({ error: 'Failed to unmark late' });
+  }
+};
 import prisma from '../config/database';
 import { Request, Response } from 'express';
 

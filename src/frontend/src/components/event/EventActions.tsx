@@ -20,6 +20,7 @@ interface EventActionsProps {
   onUpdateStatus: (status: string) => Promise<void>;
   onDelete: () => Promise<void>;
   onMarkLate: () => Promise<void>;
+  onUnmarkLate: () => Promise<void>;
 }
 
 const EventActions: React.FC<EventActionsProps> = ({
@@ -32,37 +33,20 @@ const EventActions: React.FC<EventActionsProps> = ({
   onUpdateStatus,
   onDelete,
   onMarkLate,
+  onUnmarkLate,
 }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
   return (
     <Box>
-      <Stack spacing={2}>
-        {isCreator && (
-          <Box display="flex" justifyContent="flex-end" gap={1}>
-            <IconButton 
-              color="primary" 
-              onClick={() => navigate(`/events/${event.id}/edit`)}
-              size="large"
-            >
-              <EditIcon />
-            </IconButton>
-            <IconButton 
-              color="error" 
-              onClick={onDelete}
-              size="large"
-            >
-              <DeleteIcon />
-            </IconButton>
-          </Box>
-        )}
-
+      <Stack spacing={1.5}>
+        {/* Attendance actions only, no admin */}
         {!isParticipant && !isFull && (
           <Button
             variant="contained"
             fullWidth
-            size="large"
+            size="medium"
             onClick={onJoin}
           >
             Join Event
@@ -73,7 +57,7 @@ const EventActions: React.FC<EventActionsProps> = ({
           <Button
             variant="outlined"
             fullWidth
-            size="large"
+            size="medium"
             disabled
           >
             Event Full
@@ -86,7 +70,7 @@ const EventActions: React.FC<EventActionsProps> = ({
               variant="contained"
               color="success"
               fullWidth
-              size="large"
+              size="medium"
               onClick={() => onUpdateStatus('confirmed')}
               disabled={event.participants?.find((p: any) => p.userId === user?.id)?.status === 'confirmed'}
             >
@@ -97,29 +81,41 @@ const EventActions: React.FC<EventActionsProps> = ({
               variant="contained"
               color="error"
               fullWidth
-              size="large"
+              size="medium"
               onClick={() => onUpdateStatus('declined')}
               disabled={event.participants?.find((p: any) => p.userId === user?.id)?.status === 'declined'}
             >
               Decline
             </Button>
 
-            <Button
-              variant="outlined"
-              color="warning"
-              fullWidth
-              size="large"
-              onClick={onMarkLate}
-            >
-              Mark as Late
-            </Button>
+            {event.eventAttendances?.find((a: any) => a.userId === user?.id && a.status === 'late') ? (
+              <Button
+                variant="outlined"
+                color="info"
+                fullWidth
+                size="medium"
+                onClick={onUnmarkLate}
+              >
+                Undo Late
+              </Button>
+            ) : (
+              <Button
+                variant="outlined"
+                color="warning"
+                fullWidth
+                size="medium"
+                onClick={onMarkLate}
+              >
+                Mark as Late
+              </Button>
+            )}
 
             {!isCreator && (
               <Button
                 variant="outlined"
                 color="secondary"
                 fullWidth
-                size="large"
+                size="medium"
                 onClick={onLeave}
               >
                 Leave Event

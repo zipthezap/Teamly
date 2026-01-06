@@ -82,6 +82,9 @@ const EventsList = () => {
     );
   }
 
+  // If you want to filter events further, do it here. For now, filteredEvents = events
+  const filteredEvents = events;
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>

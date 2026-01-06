@@ -1,8 +1,12 @@
+
 import { Router } from 'express';
 import * as chat from '../controllers/groupChatController';
 import authMiddleware from '../middleware/auth';
 
 const router = Router();
+
+// Undo mark late (moved after router declaration)
+router.post('/event/unmark-late', chat.unmarkLate);
 
 router.use(authMiddleware);
 

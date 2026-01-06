@@ -74,16 +74,111 @@ const Dashboard = () => {
         </Typography>
       </Box>
 
-      {/* Statistics Section */}
-      <Box sx={{ mb: 3 }}>
-        <UserStatistics />
-      </Box>
-
-      <Grid container spacing={3}>
+      {/* Main Content and Sidebar Row */}
+      <Grid container spacing={3} alignItems="flex-start">
         {/* Main Content - Left Side */}
         <Grid item xs={12} lg={9}>
-          {/* Recent Groups */}
+          {/* Statistics Section */}
           <Box sx={{ mb: 3 }}>
+            <UserStatistics />
+          </Box>
+
+          {/* Upcoming Events */}
+          <Box sx={{ mb: 3 }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+              <Typography variant="h5" sx={{ fontWeight: 600 }}>Upcoming Events</Typography>
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => navigate('/events')}
+                sx={{ textTransform: 'none' }}
+              >
+                View All
+              </Button>
+            </Box>
+            <Grid container spacing={2}>
+              {upcomingEvents.slice(0, 3).map((event) => {
+                const isParticipating = event.participants?.some(p => p.userId === user?.id);
+                const isFull = event.maxPlayers && event.participants?.length >= event.maxPlayers;
+                return (
+                  <Grid item xs={12} sm={6} md={4} key={event.id}>
+                    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                      <CardContent sx={{ flexGrow: 1, p: 2 }}>
+                        <Box display="flex" justifyContent="space-between" alignItems="start" mb={1.5}>
+                          <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, pr: 1, mb: 0 }}>
+                            {event.title}
+                          </Typography>
+                          <StatusBadge 
+                            status="info"
+                            label={event.eventType}
+                            sx={{ flexShrink: 0 }}
+                          />
+                        </Box>
+                        {(isFull || isParticipating) && (
+                          <Box display="flex" gap={0.5} mb={1}>
+                            {isFull && (
+                              <StatusBadge 
+                                status="warning"
+                                label="Full"
+                              />
+                            )}
+                            {isParticipating && (
+                              <StatusBadge 
+                                status="success"
+                                label="Joined"
+                              />
+                            )}
+                          </Box>
+                        )}
+                        <Box sx={{ mt: 1.5 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                            📅 {new Date(event.startTime).toLocaleDateString()}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                            🕐 {new Date(event.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                          </Typography>
+                          {event.location && (
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                              📍 {event.location}
+                            </Typography>
+                          )}
+                          <Typography variant="body2" color="text.secondary">
+                            👥 {event.participants?.length || 0}
+                            {event.maxPlayers && ` / ${event.maxPlayers}`} participants
+                          </Typography>
+                        </Box>
+                      </CardContent>
+                      <CardActions sx={{ px: 2, pb: 2, pt: 0 }}>
+                        <Button 
+                          size="small" 
+                          variant="contained"
+                          onClick={() => navigate(`/events/${event.id}`)}
+                          fullWidth
+                        >
+                          View Details
+                        </Button>
+                      </CardActions>
+                    </Card>
+                  </Grid>
+                );
+              })}
+              {upcomingEvents.length === 0 && (
+                <Grid item xs={12}>
+                  <EmptyState
+                    icon={EventIcon}
+                    title="No upcoming events"
+                    description="No upcoming events scheduled. Create an event to start organizing your sports activities!"
+                    actionLabel="Create Your First Event"
+                    onAction={() => navigate('/events/new')}
+                    gradient="linear-gradient(135deg, rgba(245, 0, 87, 0.05) 0%, rgba(245, 0, 87, 0.02) 100%)"
+                  />
+                </Grid>
+              )}
+            </Grid>
+          </Box>
+
+          {/* Your Groups */}
+          <Box>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
               <Typography variant="h5" sx={{ fontWeight: 600 }}>Your Groups</Typography>
               <Button
@@ -145,107 +240,10 @@ const Dashboard = () => {
               )}
             </Grid>
           </Box>
-
-          {/* Upcoming Events */}
-          <Box>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h5" sx={{ fontWeight: 600 }}>Upcoming Events</Typography>
-              <Button
-                variant="text"
-                size="small"
-                onClick={() => navigate('/events')}
-                sx={{ textTransform: 'none' }}
-              >
-                View All
-              </Button>
-            </Box>
-            <Grid container spacing={2}>
-              {upcomingEvents.slice(0, 3).map((event) => {
-                const isParticipating = event.participants?.some(p => p.userId === user?.id);
-                const isFull = event.maxPlayers && event.participants?.length >= event.maxPlayers;
-                
-                return (
-                  <Grid item xs={12} sm={6} md={4} key={event.id}>
-                    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                      <CardContent sx={{ flexGrow: 1, p: 2 }}>
-                        <Box display="flex" justifyContent="space-between" alignItems="start" mb={1.5}>
-                          <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, pr: 1, mb: 0 }}>
-                            {event.title}
-                          </Typography>
-                          <StatusBadge 
-                            status="info"
-                            label={event.eventType}
-                            sx={{ flexShrink: 0 }}
-                          />
-                        </Box>
-                        
-                        {(isFull || isParticipating) && (
-                          <Box display="flex" gap={0.5} mb={1}>
-                            {isFull && (
-                              <StatusBadge 
-                                status="warning"
-                                label="Full"
-                              />
-                            )}
-                            {isParticipating && (
-                              <StatusBadge 
-                                status="success"
-                                label="Joined"
-                              />
-                            )}
-                          </Box>
-                        )}
-                        
-                        <Box sx={{ mt: 1.5 }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                            📅 {new Date(event.startTime).toLocaleDateString()}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                            🕐 {new Date(event.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                          </Typography>
-                          {event.location && (
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                              📍 {event.location}
-                            </Typography>
-                          )}
-                          <Typography variant="body2" color="text.secondary">
-                            👥 {event.participants?.length || 0}
-                            {event.maxPlayers && ` / ${event.maxPlayers}`} participants
-                          </Typography>
-                        </Box>
-                      </CardContent>
-                      <CardActions sx={{ px: 2, pb: 2, pt: 0 }}>
-                        <Button 
-                          size="small" 
-                          variant="contained"
-                          onClick={() => navigate(`/events/${event.id}`)}
-                          fullWidth
-                        >
-                          View Details
-                        </Button>
-                      </CardActions>
-                    </Card>
-                  </Grid>
-                );
-              })}
-              {upcomingEvents.length === 0 && (
-                <Grid item xs={12}>
-                  <EmptyState
-                    icon={EventIcon}
-                    title="No upcoming events"
-                    description="No upcoming events scheduled. Create an event to start organizing your sports activities!"
-                    actionLabel="Create Your First Event"
-                    onAction={() => navigate('/events/new')}
-                    gradient="linear-gradient(135deg, rgba(245, 0, 87, 0.05) 0%, rgba(245, 0, 87, 0.02) 100%)"
-                  />
-                </Grid>
-              )}
-            </Grid>
-          </Box>
         </Grid>
 
-        {/* Right Sidebar */}
-        <Grid item xs={12} lg={3}>
+        {/* Right Sidebar - aligns with stats and main content */}
+        <Grid item xs={12} lg={3} sx={{ position: { lg: 'sticky' }, top: { lg: 32 }, alignSelf: 'flex-start' }}>
           <Stack spacing={3}>
             {/* Recent Activity */}
             <RecentActivityTimeline

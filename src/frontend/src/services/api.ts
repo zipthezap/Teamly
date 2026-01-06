@@ -114,6 +114,7 @@ export const groupChatAPI = {
   getNotifications: () => api.get('/chat/notifications'),
   markNotificationsRead: () => api.post('/chat/notifications/mark-read'),
   markLate: (eventId: string | number) => api.post('/chat/event/late', { eventId }),
+  unmarkLate: (eventId: string | number) => api.post('/chat/event/unmark-late', { eventId }),
 };
 
 export default api;

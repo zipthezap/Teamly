@@ -67,9 +67,9 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
 
   return (
     <>
-      <Paper sx={{ p: 3, bgcolor: 'rgba(76, 175, 80, 0.05)' }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+      <Paper sx={{ p: 2, bgcolor: 'rgba(76, 175, 80, 0.03)' }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
             Recent Activity
           </Typography>
           {event.eventNotifications && event.eventNotifications.length > 3 && (
@@ -84,45 +84,38 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
         </Box>
         <Box
           sx={{
-            maxHeight: '300px',
+            maxHeight: '180px',
             overflowY: 'auto',
             overflowX: 'hidden',
             '&::-webkit-scrollbar': {
-              width: '8px',
-            },
-            '&::-webkit-scrollbar-track': {
-              backgroundColor: 'rgba(0, 0, 0, 0.05)',
-              borderRadius: '4px',
+              width: '6px',
             },
             '&::-webkit-scrollbar-thumb': {
-              backgroundColor: 'rgba(76, 175, 80, 0.3)',
+              backgroundColor: 'rgba(76, 175, 80, 0.2)',
               borderRadius: '4px',
-              '&:hover': {
-                backgroundColor: 'rgba(76, 175, 80, 0.5)',
-              },
             },
           }}
         >
-          <Stack spacing={1.5}>
+          <Stack spacing={0.5}>
             {recentActivity.length > 0 ? (
               recentActivity.map((notif: any, idx: number) => (
                 <Box
                   key={notif.id || idx}
                   sx={{
-                    p: 1.5,
+                    p: 0.75,
                     borderRadius: 1,
-                    bgcolor: 'rgba(255, 255, 255, 0.7)',
-                    border: '1px solid rgba(76, 175, 80, 0.1)',
+                    bgcolor: 'rgba(255,255,255,0.8)',
+                    border: '1px solid rgba(76,175,80,0.07)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 1.5,
+                    gap: 1,
                   }}
                 >
-                  <Typography sx={{ fontSize: '1.2rem' }}>
+                  <Typography sx={{ fontSize: '1rem' }}>
                     {getActivityIcon(notif.type)}
                   </Typography>
                   <Box flexGrow={1}>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.95rem' }} noWrap>
                       {getActivityMessage(notif)}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
@@ -141,20 +134,20 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
                 <Box
                   key={p.id || idx}
                   sx={{
-                    p: 1.5,
+                    p: 0.75,
                     borderRadius: 1,
-                    bgcolor: 'rgba(255, 255, 255, 0.7)',
-                    border: '1px solid rgba(76, 175, 80, 0.1)',
+                    bgcolor: 'rgba(255,255,255,0.8)',
+                    border: '1px solid rgba(76,175,80,0.07)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 1.5,
+                    gap: 1,
                   }}
                 >
-                  <Typography sx={{ fontSize: '1.2rem' }}>
+                  <Typography sx={{ fontSize: '1rem' }}>
                     {getActivityIcon('join')}
                   </Typography>
                   <Box flexGrow={1}>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.95rem' }} noWrap>
                       {p.user?.name} joined the event
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
@@ -169,7 +162,7 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
                 </Box>
               ))
             ) : (
-              <Box textAlign="center" py={2}>
+              <Box textAlign="center" py={1}>
                 <Typography variant="body2" color="text.secondary">
                   No activity yet
                 </Typography>
