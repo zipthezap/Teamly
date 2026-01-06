@@ -148,7 +148,12 @@ const TwoFactorSetup = () => {
               Use your authenticator app (Google Authenticator, Authy, etc.) to scan this QR code:
             </Typography>
             <Box display="flex" justifyContent="center" my={3}>
-              <img src={setupData.qrCode} alt="QR Code" style={{ maxWidth: '250px' }} />
+              <Box
+                component="img"
+                src={setupData.qrCode}
+                alt="QR Code"
+                sx={{ maxWidth: '250px', width: '100%', height: 'auto' }}
+              />
             </Box>
             <Divider sx={{ my: 2 }} />
             <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -161,7 +166,7 @@ const TwoFactorSetup = () => {
                 size="small"
                 InputProps={{
                   readOnly: true,
-                  style: { fontFamily: 'monospace' },
+                  sx: { fontFamily: 'monospace' },
                 }}
               />
               <IconButton onClick={handleCopySecret} color="primary">
@@ -196,7 +201,10 @@ const TwoFactorSetup = () => {
                 fullWidth
                 margin="normal"
                 placeholder="000000"
-                inputProps={{ maxLength: 6, style: { fontSize: '24px', textAlign: 'center' } }}
+                inputProps={{ maxLength: 6 }}
+                InputProps={{
+                  sx: { fontSize: '24px', textAlign: 'center' }
+                }}
                 required
               />
               <Button
@@ -296,7 +304,7 @@ const TwoFactorSetup = () => {
               Enter your password to disable two-factor authentication:
             </Typography>
 
-            <form onSubmit={handleDisable2FA} style={{ width: '100%' }}>
+            <Box component="form" onSubmit={handleDisable2FA} sx={{ width: '100%' }}>
               <TextField
                 label="Password"
                 type="password"
@@ -316,7 +324,7 @@ const TwoFactorSetup = () => {
               >
                 {loading ? 'Disabling...' : 'Disable 2FA'}
               </Button>
-            </form>
+            </Box>
           </Box>
         </Paper>
       </Container>

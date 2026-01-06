@@ -4,4 +4,5 @@ export { Button } from './Button';
 export { LoadingSpinner } from './LoadingSpinner';
 export { EmptyState } from './EmptyState';
 export { StatusBadge } from './StatusBadge';
+export { StyledLink } from './StyledLink';
 

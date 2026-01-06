@@ -42,18 +42,26 @@ const EventActivityFeedModern = ({ notifications }) => (
         return (
           <ListItem key={notif.id || idx} sx={{ py: 0.5, px: 0, minHeight: 0 }} disableGutters>
             <ListItemIcon sx={{ minWidth: 20, mr: 0.5 }}>
-              <span style={{
-                display: 'inline-block',
-                width: 10,
-                height: 10,
-                borderRadius: '50%',
-                background: status.color,
-                marginTop: 6,
-              }} />
+              <Box
+                sx={{
+                  display: 'inline-block',
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  bgcolor: status.color,
+                  mt: 0.75,
+                }}
+              />
             </ListItemIcon>
             <ListItemText
               primary={<Typography variant="body2" sx={{ fontWeight: 500, color: 'text.primary', fontSize: 14 }}>{formatActivity(notif)}</Typography>}
-              secondary={<Tooltip title={status.label}><span style={{ color: '#90a4ae', fontSize: 12 }}>{formatTime(notif.createdAt)}</span></Tooltip>}
+              secondary={
+                <Tooltip title={status.label}>
+                  <Typography component="span" sx={{ color: 'text.secondary', fontSize: 12 }}>
+                    {formatTime(notif.createdAt)}
+                  </Typography>
+                </Tooltip>
+              }
               sx={{ m: 0 }}
             />
           </ListItem>

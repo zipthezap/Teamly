@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { groupsAPI } from '../services/api';
 import {
@@ -12,6 +12,7 @@ import {
   Alert,
 } from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import { StyledLink } from '../components/common';
 
 const Register = () => {
   const [name, setName] = useState('');
@@ -129,11 +130,9 @@ const Register = () => {
 
           <Typography variant="body2" sx={{ mt: 2 }}>
             Already have an account?{' '}
-            <Link to="/login" style={{ textDecoration: 'none' }}>
-              <Typography component="span" sx={{ color: 'primary.dark' }}>
-                Login here
-              </Typography>
-            </Link>
+            <StyledLink to="/login">
+              Login here
+            </StyledLink>
           </Typography>
         </Box>
       </Paper>
