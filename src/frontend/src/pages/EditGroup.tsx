@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Container,
   Paper,
@@ -10,6 +10,7 @@ import {
   Alert,
   FormControlLabel,
   Checkbox,
+  CircularProgress,
 } from '@mui/material';
 import { groupsAPI } from '../services/api';
 import LocationPicker from '../components/LocationPicker';
@@ -22,19 +23,48 @@ interface LocationValue {
   country?: string;
 }
 
-const CreateGroup = () => {
+const EditGroup = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
   const [location, setLocation] = useState<LocationValue>({});
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchGroup();
+  }, [id]);
+
+  const fetchGroup = async () => {
+    try {
+      const response = await groupsAPI.getById(id);
+      const group = response.data;
+      
+      setName(group.name || '');
+      setDescription(group.description || '');
+      setIsPublic(group.isPublic || false);
+      setLocation({
+        latitude: group.latitude,
+        longitude: group.longitude,
+        locationName: group.locationName,
+        city: group.city,
+        country: group.country,
+      });
+    } catch (error) {
+      console.error('Error fetching group:', error);
+      setError('Failed to load group');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
+    setSubmitting(true);
 
     try {
       const groupData = { 
@@ -47,20 +77,28 @@ const CreateGroup = () => {
         ...(location.city && { city: location.city }),
         ...(location.country && { country: location.country }),
       };
-      const response = await groupsAPI.create(groupData);
-      navigate(`/groups/${response.data.id}`);
+      await groupsAPI.update(id, groupData);
+      navigate(`/groups/${id}`);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create group');
+      setError(err.response?.data?.error || 'Failed to update group');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
+        <CircularProgress size={60} thickness={4} />
+      </Box>
+    );
+  }
 
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
       <Paper elevation={3} sx={{ p: 4 }}>
         <Typography variant="h4" gutterBottom>
-          Create New Group
+          Edit Group
         </Typography>
 
         {error && (
@@ -111,14 +149,14 @@ const CreateGroup = () => {
               type="submit"
               variant="contained"
               size="large"
-              disabled={loading}
+              disabled={submitting}
             >
-              {loading ? 'Creating...' : 'Create Group'}
+              {submitting ? 'Updating...' : 'Update Group'}
             </Button>
             <Button
               variant="outlined"
               size="large"
-              onClick={() => navigate('/groups')}
+              onClick={() => navigate(`/groups/${id}`)}
             >
               Cancel
             </Button>
@@ -129,4 +167,4 @@ const CreateGroup = () => {
   );
 };
 
-export default CreateGroup;
+export default EditGroup;

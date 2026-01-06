@@ -25,6 +25,7 @@ import {
   Snackbar,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import HowToVoteIcon from '@mui/icons-material/HowToVote';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
@@ -148,6 +149,20 @@ const GroupDetails = () => {
     }
   };
 
+  const handleDeleteGroup = async () => {
+    if (!window.confirm('Are you sure you want to delete this group? This action cannot be undone and will delete all events associated with the group.')) return;
+
+    try {
+      await groupsAPI.delete(id);
+      setSuccess('Group deleted successfully');
+      setTimeout(() => {
+        navigate('/groups');
+      }, 1500);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to delete group');
+    }
+  };
+
   const isAdmin = group?.members?.find(
     (m) => m.userId === user?.id && m.role === 'admin'
   );
@@ -213,11 +228,27 @@ const GroupDetails = () => {
                 >
                   Invite Member
                 </Button>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<EditIcon />}
+                  onClick={() => navigate(`/groups/${id}/edit`)}
+                >
+                  Edit Group
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<DeleteIcon />}
+                  onClick={handleDeleteGroup}
+                >
+                  Delete Group
+                </Button>
               </>
             )}
             <Button
               variant="outlined"
-              color="error"
+              color="secondary"
               startIcon={<ExitToAppIcon />}
               onClick={handleLeaveGroup}
             >

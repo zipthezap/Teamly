@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Container,
   Paper,
@@ -9,8 +9,9 @@ import {
   Box,
   Alert,
   MenuItem,
+  CircularProgress,
 } from '@mui/material';
-import { eventsAPI, groupsAPI } from '../services/api';
+import { eventsAPI } from '../services/api';
 
 const EVENT_TYPES = [
   'football',
@@ -25,12 +26,11 @@ const EVENT_TYPES = [
   'other',
 ];
 
-const CreateEvent = () => {
-  const location = useLocation();
+const EditEvent = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
-    groupId: location.state?.groupId || '',
     title: '',
     description: '',
     eventType: 'football',
@@ -43,37 +43,65 @@ const CreateEvent = () => {
     maxPlayers: '',
   });
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchGroups();
-  }, []);
+    fetchEvent();
+  }, [id]);
 
-  const fetchGroups = async () => {
+  const fetchEvent = async () => {
     try {
-      const response = await groupsAPI.getAll();
-      setGroups(response.data);
+      const response = await eventsAPI.getById(id);
+      const event = response.data;
+      
+      // Parse the event data to populate the form
+      const startTime = new Date(event.startTime);
+      const startDate = startTime.toISOString().split('T')[0];
+      const startHour = startTime.getHours().toString().padStart(2, '0');
+      const startMinute = startTime.getMinutes().toString().padStart(2, '0');
+      
+      let endHour = '';
+      let endMinute = '00';
+      if (event.endTime) {
+        const endTime = new Date(event.endTime);
+        endHour = endTime.getHours().toString().padStart(2, '0');
+        endMinute = endTime.getMinutes().toString().padStart(2, '0');
+      }
+      
+      setFormData({
+        title: event.title || '',
+        description: event.description || '',
+        eventType: event.eventType || 'football',
+        location: event.location || '',
+        startDate,
+        startHour,
+        startMinute,
+        endHour,
+        endMinute,
+        maxPlayers: event.maxPlayers?.toString() || '',
+      });
     } catch (error) {
-      console.error('Error fetching groups:', error);
+      console.error('Error fetching event:', error);
+      setError('Failed to load event');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    
     setFormData({
       ...formData,
       [name]: value,
     });
   };
 
-  // Dropdown handlers for hour/minute
-  const handleHourChange = (name) => (e) => {
+  const handleHourChange = (name: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
     if (name === 'endHour') {
       setFormData({
         ...formData,
         [name]: e.target.value,
-        endMinute: '00', // Only autofill for endHour
+        endMinute: '00',
       });
     } else {
       setFormData({
@@ -82,57 +110,24 @@ const CreateEvent = () => {
       });
     }
   };
-  const handleMinuteChange = (name) => (e) => {
+
+  const handleMinuteChange = (name: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [name]: e.target.value,
     });
   };
 
-  const handleEndTimeBlur = (e) => {
-    const value = e.target.value;
-    // Ensure end time has proper format (HH:MM)
-    // If user enters just hour like "14", convert to "14:00"
-    if (value && !value.includes(':')) {
-      setFormData({
-        ...formData,
-        endTime: value.padStart(2, '0') + ':00',
-      });
-    } else if (value && value.split(':')[1] === '') {
-      // If format is "HH:" without minutes, add "00"
-      setFormData({
-        ...formData,
-        endTime: value + '00',
-      });
-    }
-  };
-
-  const handleStartTimeBlur = (e) => {
-    const value = e.target.value;
-    // Ensure start time has proper format (HH:MM)
-    if (value && !value.includes(':')) {
-      setFormData({
-        ...formData,
-        startTime: value.padStart(2, '0') + ':00',
-      });
-    } else if (value && value.split(':')[1] === '') {
-      setFormData({
-        ...formData,
-        startTime: value + '00',
-      });
-    }
-  };
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
+    setSubmitting(true);
 
     try {
       // Validate required fields
       if (!formData.startDate || !formData.startHour) {
         setError('Start date and time are required.');
-        setLoading(false);
+        setSubmitting(false);
         return;
       }
 
@@ -150,38 +145,43 @@ const CreateEvent = () => {
         endDateTime = new Date(`${formData.startDate}T${endTime}`);
         if (endDateTime <= startDateTime) {
           setError('End time must be after start time.');
-          setLoading(false);
+          setSubmitting(false);
           return;
         }
       }
 
       const data = {
-        ...formData,
+        title: formData.title,
+        description: formData.description,
+        eventType: formData.eventType,
+        location: formData.location,
         startTime: startDateTime.toISOString(),
         endTime: endDateTime ? endDateTime.toISOString() : null,
         maxPlayers: formData.maxPlayers ? parseInt(formData.maxPlayers) : null,
       };
-      // Remove the separate date/time fields
-      delete data.startDate;
-      delete data.startHour;
-      delete data.startMinute;
-      delete data.endHour;
-      delete data.endMinute;
-      
-      const response = await eventsAPI.create(data);
-      navigate(`/events/${response.data.id}`);
+
+      await eventsAPI.update(id, data);
+      navigate(`/events/${id}`);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create event');
+      setError(err.response?.data?.error || 'Failed to update event');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
+        <CircularProgress size={60} thickness={4} />
+      </Box>
+    );
+  }
 
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
       <Paper elevation={3} sx={{ p: 4 }}>
         <Typography variant="h4" gutterBottom>
-          Create New Event
+          Edit Event
         </Typography>
 
         {error && (
@@ -191,23 +191,6 @@ const CreateEvent = () => {
         )}
 
         <form onSubmit={handleSubmit}>
-          <TextField
-            select
-            label="Group"
-            name="groupId"
-            fullWidth
-            margin="normal"
-            value={formData.groupId}
-            onChange={handleChange}
-            required
-          >
-            {groups.map((group) => (
-              <MenuItem key={group.id} value={group.id}>
-                {group.name}
-              </MenuItem>
-            ))}
-          </TextField>
-
           <TextField
             label="Event Title"
             name="title"
@@ -266,7 +249,6 @@ const CreateEvent = () => {
             InputLabelProps={{ shrink: true }}
             required
           />
-
 
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 2 }}>
             <Typography>Start Time</Typography>
@@ -347,14 +329,14 @@ const CreateEvent = () => {
               type="submit"
               variant="contained"
               size="large"
-              disabled={loading}
+              disabled={submitting}
             >
-              {loading ? 'Creating...' : 'Create Event'}
+              {submitting ? 'Updating...' : 'Update Event'}
             </Button>
             <Button
               variant="outlined"
               size="large"
-              onClick={() => navigate('/events')}
+              onClick={() => navigate(`/events/${id}`)}
             >
               Cancel
             </Button>
@@ -365,4 +347,4 @@ const CreateEvent = () => {
   );
 };
 
-export default CreateEvent;
+export default EditEvent;

@@ -12,9 +12,11 @@ import Dashboard from './pages/Dashboard';
 import GroupsList from './pages/GroupsList';
 import GroupDetails from './pages/GroupDetails';
 import CreateGroup from './pages/CreateGroup';
+import EditGroup from './pages/EditGroup';
 import EventsList from './pages/EventsList';
 import EventDetails from './pages/EventDetails';
 import CreateEvent from './pages/CreateEvent';
+import EditEvent from './pages/EditEvent';
 import PublicGroups from './pages/PublicGroups';
 import TwoFactorSetup from './pages/TwoFactorSetup';
 import EventRequests from './pages/EventRequests';
@@ -83,6 +85,14 @@ function App() {
               }
             />
             <Route
+              path="/groups/:id/edit"
+              element={
+                <PrivateRoute>
+                  <EditGroup />
+                </PrivateRoute>
+              }
+            />
+            <Route
               path="/event-requests/:groupId"
               element={
                 <PrivateRoute>
@@ -111,6 +121,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <EventDetails />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/events/:id/edit"
+              element={
+                <PrivateRoute>
+                  <EditEvent />
                 </PrivateRoute>
               }
             />
