@@ -60,6 +60,57 @@ async function main() {
     },
   });
   console.log('Seeded users:', user1.email, user2.email, user3.email, user4.email);
+
+  // Create a group with Alice as admin
+  const group = await prisma.group.upsert({
+    where: { id: 'seed-group-alice-admin' },
+    update: {},
+    create: {
+      id: 'seed-group-alice-admin',
+      name: "Alice's Sports Club",
+      description: 'A group for organizing weekly sports events',
+      isPublic: true,
+      creatorId: user1.id,
+      members: {
+        create: [
+          {
+            userId: user1.id,
+            role: 'admin'
+          },
+          {
+            userId: user2.id,
+            role: 'member'
+          }
+        ]
+      }
+    }
+  });
+  console.log('Seeded group:', group.name, '(Alice as admin)');
+
+  // Create an event in that group created by Alice
+  const event = await prisma.event.upsert({
+    where: { id: 'seed-event-alice-group' },
+    update: {},
+    create: {
+      id: 'seed-event-alice-group',
+      title: 'Weekend Football Match',
+      description: 'Join us for a friendly football match this weekend!',
+      eventType: 'football',
+      location: 'Central Park Field 3',
+      startTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+      endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), // 2 hours duration
+      maxPlayers: 20,
+      creatorId: user1.id,
+      groupId: group.id,
+      participants: {
+        create: {
+          userId: user1.id,
+          status: 'confirmed'
+        }
+      }
+    }
+  });
+  console.log('Seeded event:', event.title, '(created by Alice in group)');
 }
 
 main()
