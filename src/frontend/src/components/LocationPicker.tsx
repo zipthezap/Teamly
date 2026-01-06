@@ -106,15 +106,20 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
   };
 
   const hasAnyLocationData = () => {
-    return location.latitude || location.longitude || location.city || location.country || location.locationName;
+    return hasValidCoordinate(location.latitude) || hasValidCoordinate(location.longitude) || 
+           location.city || location.country || location.locationName;
   };
 
   const hasNamedLocation = () => {
     return location.city || location.country || location.locationName;
   };
 
+  const hasValidCoordinate = (coord: number | string): boolean => {
+    return coord !== undefined && coord !== null && coord !== '';
+  };
+
   const formatCoordinate = (coord: number | string): string => {
-    if (!coord || coord === '') return 'N/A';
+    if (coord === undefined || coord === null || coord === '') return 'N/A';
     const num = Number(coord);
     if (isNaN(num)) return 'N/A';
     return num.toFixed(4);
@@ -222,12 +227,12 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
             {!(location.city || location.country) && location.locationName && (
               <>Location: {location.locationName}</>
             )}
-            {location.latitude && location.longitude && (
+            {hasValidCoordinate(location.latitude) && hasValidCoordinate(location.longitude) && (
               <Typography variant="caption" display="block" sx={{ mt: hasNamedLocation() ? 0.5 : 0 }}>
                 Coordinates: {formatCoordinate(location.latitude)}, {formatCoordinate(location.longitude)}
               </Typography>
             )}
-            {!hasNamedLocation() && (location.latitude || location.longitude) && (
+            {!hasNamedLocation() && (hasValidCoordinate(location.latitude) || hasValidCoordinate(location.longitude)) && (
               <>Coordinates set</>
             )}
           </Alert>
