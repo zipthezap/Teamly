@@ -6,7 +6,9 @@ import {
   IconButton,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface EventActionsProps {
   event: any;
@@ -32,12 +34,20 @@ const EventActions: React.FC<EventActionsProps> = ({
   onMarkLate,
 }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <Box>
       <Stack spacing={2}>
         {isCreator && (
-          <Box display="flex" justifyContent="flex-end">
+          <Box display="flex" justifyContent="flex-end" gap={1}>
+            <IconButton 
+              color="primary" 
+              onClick={() => navigate(`/events/${event.id}/edit`)}
+              size="large"
+            >
+              <EditIcon />
+            </IconButton>
             <IconButton 
               color="error" 
               onClick={onDelete}

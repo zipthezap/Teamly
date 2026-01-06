@@ -46,6 +46,7 @@ export const groupsAPI = {
   getAll: () => api.get('/groups'),
   getById: (id: string | number) => api.get(`/groups/${id}`),
   update: (id: string | number, data: any) => api.put(`/groups/${id}`, data),
+  delete: (id: string | number) => api.delete(`/groups/${id}`),
   invite: (id: string | number, email: string) => api.post(`/groups/${id}/invite`, { email }),
   removeMember: (groupId: string | number, memberId: string | number) => api.delete(`/groups/${groupId}/members/${memberId}`),
   leave: (groupId: string | number) => api.delete(`/groups/${groupId}/leave`),
