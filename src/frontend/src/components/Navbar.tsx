@@ -1,14 +1,8 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography, Button, Box, Avatar, IconButton } from '@mui/material';
+// All MUI imports removed; using Tailwind and SVGs only
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import LogoutIcon from '@mui/icons-material/Logout';
-import HomeIcon from '@mui/icons-material/Home';
-import GroupIcon from '@mui/icons-material/Group';
-import EventIcon from '@mui/icons-material/Event';
-import PublicIcon from '@mui/icons-material/Public';
-import SecurityIcon from '@mui/icons-material/Security';
-import SportsIcon from '@mui/icons-material/Sports';
+// All MUI icon imports removed; using inline SVGs
 import NotificationsPopover from './NotificationsPopover';
 
 const Navbar = () => {
@@ -31,176 +25,66 @@ const Navbar = () => {
   };
 
   return (
-    <AppBar 
-      position="static" 
-      elevation={0}
-      sx={{ 
-        background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-      }}
-    >
-      <Toolbar sx={{ py: 0.5 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 0, mr: 4 }}>
-          <SportsIcon sx={{ fontSize: 32, mr: 1 }} />
-          <Typography 
-            variant="h5" 
-            component="div" 
-            sx={{ 
-              fontWeight: 700,
-              letterSpacing: '0.05em',
-              background: 'linear-gradient(45deg, #fff 30%, #60a5fa 90%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
-            Teamly
-          </Typography>
-        </Box>
-        
-        {user && (
-          <Box sx={{ flexGrow: 1, display: 'flex', gap: 1 }}>
-            <Button 
-              color="inherit" 
-              component={Link} 
-              to="/dashboard" 
-              startIcon={<HomeIcon />}
-              sx={{ 
-                textTransform: 'none',
-                fontWeight: 500,
-                px: 2,
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                }
-              }}
-            >
-              Dashboard
-            </Button>
-            <Button 
-              color="inherit" 
-              component={Link} 
-              to="/groups" 
-              startIcon={<GroupIcon />}
-              sx={{ 
-                textTransform: 'none',
-                fontWeight: 500,
-                px: 2,
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                }
-              }}
-            >
-              Groups
-            </Button>
-            <Button 
-              color="inherit" 
-              component={Link} 
-              to="/events" 
-              startIcon={<EventIcon />}
-              sx={{ 
-                textTransform: 'none',
-                fontWeight: 500,
-                px: 2,
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                }
-              }}
-            >
-              Events
-            </Button>
-            <Button 
-              color="inherit" 
-              component={Link} 
-              to="/public-groups" 
-              startIcon={<PublicIcon />}
-              sx={{ 
-                textTransform: 'none',
-                fontWeight: 500,
-                px: 2,
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                }
-              }}
-            >
-              Discover
-            </Button>
-          </Box>
-        )}
-
-        {user && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <NotificationsPopover />
-            
-            <IconButton 
-              color="inherit" 
-              component={Link} 
-              to="/2fa-setup"
-              size="small"
-              sx={{ 
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                }
-              }}
-            >
-              <SecurityIcon />
-            </IconButton>
-            
-            <Box 
-              component={Link}
-              to="/profile"
-              sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1.5,
-                px: 2,
-                py: 0.5,
-                borderRadius: 2,
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                textDecoration: 'none',
-                color: 'inherit',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                  transform: 'translateY(-1px)',
-                }
-              }}
-            >
-              <Avatar 
-                sx={{ 
-                  width: 32, 
-                  height: 32,
-                  bgcolor: 'secondary.main',
-                  fontWeight: 600,
-                  fontSize: '0.875rem',
-                }}
+    <nav className="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-600 border-b border-white/10">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo and brand */}
+          <div className="flex items-center gap-2 mr-8">
+            {/* Sports SVG */}
+            <span>
+              <svg className="w-8 h-8 text-blue-200" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" /><path d="M8 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+            </span>
+            <span className="text-2xl font-bold bg-gradient-to-r from-white via-blue-300 to-blue-400 bg-clip-text text-transparent tracking-wide select-none">Teamly</span>
+          </div>
+          {/* Main nav links */}
+          {user && (
+            <div className="flex-1 flex gap-1">
+              <NavLink to="/dashboard" label="Dashboard" svg={<svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8v-10h-8v10zm0-18v6h8V3h-8z" /></svg>} />
+              <NavLink to="/groups" label="Groups" svg={<svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4" /><path d="M17 11c0-2.21-1.79-4-4-4s-4 1.79-4 4c0 2.21 1.79 4 4 4s4-1.79 4-4z" /><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" /></svg>} />
+              <NavLink to="/events" label="Events" svg={<svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>} />
+              <NavLink to="/public-groups" label="Discover" svg={<svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2c2.5 2.5 4 6.5 4 10s-1.5 7.5-4 10c-2.5-2.5-4-6.5-4-10s1.5-7.5 4-10z" /></svg>} />
+            </div>
+          )}
+          {/* User actions */}
+          {user && (
+            <div className="flex items-center gap-4">
+              <NotificationsPopover />
+              <Link to="/2fa-setup" className="p-2 rounded hover:bg-white/10 transition">
+                {/* Security SVG */}
+                <svg className="w-5 h-5 text-blue-200" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 2l7 4v6c0 5.25-3.5 10-7 10s-7-4.75-7-10V6l7-4z" /></svg>
+              </Link>
+              <Link to="/profile" className="flex items-center gap-2 px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-white transition no-underline">
+                <span className="w-8 h-8 rounded-full flex items-center justify-center font-bold bg-blue-400 text-white text-base">
+                  {getInitials(user.name)}
+                </span>
+                <span className="font-medium text-white text-sm">{user.name}</span>
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1 px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white font-medium transition"
               >
-                {getInitials(user.name)}
-              </Avatar>
-              <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                {user.name}
-              </Typography>
-            </Box>
-            
-            <Button 
-              color="inherit" 
-              onClick={handleLogout} 
-              startIcon={<LogoutIcon />}
-              sx={{ 
-                textTransform: 'none',
-                fontWeight: 500,
-                px: 2,
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                }
-              }}
-            >
-              Logout
-            </Button>
-          </Box>
-        )}
-      </Toolbar>
-    </AppBar>
+                {/* Logout SVG */}
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7" /><path d="M3 12v7a2 2 0 0 0 2 2h6" /></svg>
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </nav>
   );
+
+// NavLink helper for nav items
+const NavLink = ({ to, label, svg }: { to: string; label: string; svg: React.ReactNode }) => (
+  <Link
+    to={to}
+    className="flex items-center gap-1 px-3 py-2 rounded text-white font-medium hover:bg-white/10 transition no-underline"
+    style={{ textDecoration: 'none' }}
+  >
+    {svg}
+    <span>{label}</span>
+  </Link>
+);
 };
 
 export default Navbar;

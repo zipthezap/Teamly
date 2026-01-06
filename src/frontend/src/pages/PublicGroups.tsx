@@ -1,28 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Container,
-  Grid,
-  Card,
-  CardContent,
-  CardActions,
-  Button,
-  Typography,
-  Box,
-  CircularProgress,
-  Chip,
-  Alert,
-  Snackbar,
-  Slider,
-  Paper,
-  TextField,
-  IconButton,
-} from '@mui/material';
-import PublicIcon from '@mui/icons-material/Public';
-import GroupAddIcon from '@mui/icons-material/GroupAdd';
-import MyLocationIcon from '@mui/icons-material/MyLocation';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
-import SearchIcon from '@mui/icons-material/Search';
+import Button from '../components/common/Button';
+import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import EmptyState from '../components/common/EmptyState';
 import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
 import { groupsAPI } from '../services/api';
 
@@ -211,52 +191,46 @@ const PublicGroups = () => {
   };
 
   if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
-        <CircularProgress />
-      </Box>
-    );
+    return <LoadingSpinner message="Loading public groups..." />;
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Box display="flex" alignItems="center" mb={3}>
-        <PublicIcon sx={{ fontSize: 40, mr: 2, color: 'primary.main' }} />
-        <Typography variant="h4">Discover Public Groups</Typography>
-      </Box>
+    <div className="max-w-6xl mx-auto mt-8 mb-8 px-4">
+      <div className="flex items-center mb-6">
+        {/* Globe SVG icon */}
+        <span className="mr-3">
+          <svg width="40" height="40" fill="none" viewBox="0 0 24 24" className="text-blue-600"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" /><path d="M2 12h20M12 2c2.5 2.5 4 6.5 4 10s-1.5 7.5-4 10c-2.5-2.5-4-6.5-4-10s1.5-7.5 4-10z" stroke="currentColor" strokeWidth="2" /></svg>
+        </span>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Discover Public Groups</h1>
+      </div>
 
       {/* Location Filter Section */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Filter by Location
-        </Typography>
-        
-        <Box display="flex" alignItems="center" gap={2} mb={2} flexWrap="wrap">
+      <div className="bg-white dark:bg-[#1a2233] rounded-xl shadow-md p-6 mb-6">
+        <h2 className="text-lg font-semibold mb-2">Filter by Location</h2>
+        <div className="flex items-center gap-3 mb-2 flex-wrap">
           <Button
-            variant="outlined"
-            startIcon={<MyLocationIcon />}
             onClick={getCurrentLocation}
             disabled={locationEnabled && !customSearchLocation}
+            startIcon={
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" /><path d="M12 8v4l3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            }
+            className="border border-blue-600 bg-white text-blue-600 hover:bg-blue-50"
           >
             {locationEnabled && !customSearchLocation ? 'Using Current Location' : 'Use My Location'}
           </Button>
-          
           {(userLocation || customSearchLocation) && (
-            <Typography variant="body2" color="text.secondary">
-              Search from: {customSearchLocation 
+            <span className="text-sm text-gray-500">
+              Search from: {customSearchLocation
                 ? `Custom point (${customSearchLocation.latitude.toFixed(4)}, ${customSearchLocation.longitude.toFixed(4)})`
-                : `Your location (${userLocation?.latitude.toFixed(4)}, ${userLocation?.longitude.toFixed(4)})`
-              }
-            </Typography>
+                : `Your location (${userLocation?.latitude.toFixed(4)}, ${userLocation?.longitude.toFixed(4)})`}
+            </span>
           )}
-        </Box>
+        </div>
 
-        {/* Google Maps Integration */}
+        {/* Google Maps Integration (unchanged, keep as is) */}
         {GOOGLE_MAPS_API_KEY ? (
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              Click on the map to set a custom search location
-            </Typography>
+          <div className="mb-3">
+            <div className="text-xs text-gray-500 mb-1">Click on the map to set a custom search location</div>
             <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
               <GoogleMap
                 mapContainerStyle={mapContainerStyle}
@@ -270,9 +244,7 @@ const PublicGroups = () => {
                       lat: customSearchLocation.latitude,
                       lng: customSearchLocation.longitude,
                     }}
-                    icon={{
-                      url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-                    }}
+                    icon={{ url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png' }}
                   />
                 )}
                 {userLocation && !customSearchLocation && (
@@ -283,169 +255,137 @@ const PublicGroups = () => {
                     }}
                   />
                 )}
-                {/* Show group locations */}
-                {filteredGroups.map((group) => 
+                {filteredGroups.map((group) =>
                   group.latitude && group.longitude ? (
                     <Marker
                       key={group.id}
-                      position={{
-                        lat: group.latitude,
-                        lng: group.longitude,
-                      }}
+                      position={{ lat: group.latitude, lng: group.longitude }}
                       title={group.name}
-                      icon={{
-                        url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
-                      }}
+                      icon={{ url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png' }}
                     />
                   ) : null
                 )}
               </GoogleMap>
             </LoadScript>
-          </Box>
+          </div>
         ) : (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            Google Maps API key not configured. Set REACT_APP_GOOGLE_MAPS_API_KEY environment variable to enable map view.
+          <div className="mb-2 p-3 bg-yellow-100 text-yellow-800 rounded">
+            <strong>Google Maps API key not configured.</strong> Set <span className="font-mono">REACT_APP_GOOGLE_MAPS_API_KEY</span> environment variable to enable map view.<br />
             You can still use location-based filtering without the map visualization.
-          </Alert>
+          </div>
         )}
 
         {/* Address Search */}
-        <Box display="flex" gap={1} mb={2}>
-          <TextField
-            fullWidth
-            size="small"
+        <div className="flex gap-2 mb-2">
+          <input
+            className="flex-1 px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Search by address or city"
             value={searchAddress}
             onChange={(e) => setSearchAddress(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSearchAddress()}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearchAddress()}
+            type="text"
           />
-          <IconButton color="primary" onClick={handleSearchAddress}>
-            <SearchIcon />
-          </IconButton>
-        </Box>
+          <button
+            className="p-2 rounded bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={handleSearchAddress}
+            aria-label="Search"
+          >
+            {/* Search SVG */}
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2" /><path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+          </button>
+        </div>
 
         {(locationEnabled && (userLocation || customSearchLocation)) && (
-          <Box>
-            <Typography variant="body2" gutterBottom>
-              Distance Radius: {distanceRadius} km
-            </Typography>
-            <Slider
-              value={distanceRadius}
-              onChange={(e, newValue) => setDistanceRadius(newValue)}
+          <div>
+            <div className="text-sm mb-1">Distance Radius: {distanceRadius} km</div>
+            <input
+              type="range"
               min={1}
               max={100}
               step={1}
-              marks={[
-                { value: 1, label: '1km' },
-                { value: 25, label: '25km' },
-                { value: 50, label: '50km' },
-                { value: 100, label: '100km' },
-              ]}
-              valueLabelDisplay="auto"
+              value={distanceRadius}
+              onChange={e => setDistanceRadius(Number(e.target.value))}
+              className="w-full accent-blue-600"
             />
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            <div className="text-xs text-gray-500 mt-1">
               Showing groups within {distanceRadius} km of {customSearchLocation ? 'custom point' : 'your location'}
-            </Typography>
-          </Box>
+            </div>
+          </div>
         )}
+      </div>
       </Paper>
 
       {filteredGroups.length === 0 ? (
-        <Box textAlign="center" py={8}>
-          <Typography variant="h6" color="text.secondary" gutterBottom>
-            {locationEnabled 
-              ? 'No public groups found within your selected radius'
-              : 'No public groups available at the moment'}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {locationEnabled 
-              ? 'Try increasing the distance radius or disable location filter'
-              : 'Check back later or create your own public group!'}
-          </Typography>
-          <Button
-            variant="contained"
-            onClick={() => navigate('/groups/new')}
-            sx={{ mt: 2 }}
-          >
-            Create a Public Group
-          </Button>
-        </Box>
+        <EmptyState
+          icon={
+            <svg className="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" /><path d="M2 12h20M12 2c2.5 2.5 4 6.5 4 10s-1.5 7.5-4 10c-2.5-2.5-4-6.5-4-10s1.5-7.5 4-10z" stroke="currentColor" strokeWidth="2" /></svg>
+          }
+          title={locationEnabled ? 'No public groups found within your selected radius' : 'No public groups available at the moment'}
+          description={locationEnabled ? 'Try increasing the distance radius or disable location filter' : 'Check back later or create your own public group!'}
+          actionLabel="Create a Public Group"
+          onAction={() => navigate('/groups/new')}
+        />
       ) : (
         <>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <div className="text-sm text-gray-500 mb-2">
             Showing {filteredGroups.length} of {groups.length} groups
-          </Typography>
-          <Grid container spacing={3}>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {filteredGroups.map((group) => (
-              <Grid item xs={12} sm={6} md={4} key={group.id}>
-                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Box display="flex" alignItems="center" mb={1}>
-                      <Typography variant="h6" sx={{ flexGrow: 1 }}>
-                        {group.name}
-                      </Typography>
-                      <Chip
-                        label="Public"
-                        size="small"
-                        color="primary"
-                        icon={<PublicIcon />}
-                      />
-                    </Box>
-                    <Typography variant="body2" color="text.secondary" paragraph>
-                      {group.description || 'No description available'}
-                    </Typography>
-                    
-                    {(group.city || group.country || group.locationName) && (
-                      <Box display="flex" alignItems="center" mb={1}>
-                        <LocationOnIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
-                        <Typography variant="caption" color="text.secondary">
-                          {[group.city, group.country, group.locationName].filter(Boolean).join(', ')}
-                        </Typography>
-                      </Box>
-                    )}
-                    
-                    {group.distance !== null && group.distance !== undefined && (
-                      <Chip
-                        label={`${group.distance.toFixed(1)} km away`}
-                        size="small"
-                        color="info"
-                        sx={{ mb: 1 }}
-                      />
-                    )}
-                    
-                    <Typography variant="caption" color="text.secondary">
-                      {group.memberCount || group.members?.length || 0} members
-                    </Typography>
-                  </CardContent>
-                  <CardActions>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      startIcon={<GroupAddIcon />}
-                      onClick={() => handleRequestJoin(group.id)}
-                      disabled={requesting[group.id]}
-                      fullWidth
-                    >
-                      {requesting[group.id] ? 'Requesting...' : 'Request to Join'}
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
+              <div key={group.id} className="bg-white dark:bg-[#1a2233] rounded-xl shadow-md flex flex-col h-full p-5">
+                <div className="flex items-center mb-2">
+                  <div className="flex-1 text-lg font-semibold text-gray-900 dark:text-white">{group.name}</div>
+                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs font-medium">
+                    {/* Globe SVG */}
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" /><path d="M2 12h20M12 2c2.5 2.5 4 6.5 4 10s-1.5 7.5-4 10c-2.5-2.5-4-6.5-4-10s1.5-7.5 4-10z" stroke="currentColor" strokeWidth="2" /></svg>
+                    Public
+                  </span>
+                </div>
+                <div className="text-sm text-gray-500 mb-2">{group.description || 'No description available'}</div>
+                {(group.city || group.country || group.locationName) && (
+                  <div className="flex items-center text-xs text-gray-400 mb-1">
+                    {/* Location SVG */}
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 21c-4.418 0-8-3.582-8-8 0-4.418 3.582-8 8-8s8 3.582 8 8c0 4.418-3.582 8-8 8z" stroke="currentColor" strokeWidth="2" /><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" /></svg>
+                    {[group.city, group.country, group.locationName].filter(Boolean).join(', ')}
+                  </div>
+                )}
+                {group.distance !== null && group.distance !== undefined && (
+                  <span className="inline-block bg-blue-50 text-blue-700 text-xs rounded px-2 py-0.5 mb-1">
+                    {group.distance.toFixed(1)} km away
+                  </span>
+                )}
+                <div className="text-xs text-gray-400 mb-2">{group.memberCount || group.members?.length || 0} members</div>
+                <Button
+                  onClick={() => handleRequestJoin(group.id)}
+                  loading={requesting[group.id]}
+                  startIcon={
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4c0 2.21 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" stroke="currentColor" strokeWidth="2" /></svg>
+                  }
+                  className="mt-auto w-full"
+                  disabled={requesting[group.id]}
+                >
+                  {requesting[group.id] ? 'Requesting...' : 'Request to Join'}
+                </Button>
+              </div>
             ))}
-          </Grid>
+          </div>
         </>
       )}
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-      >
-        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Container>
+      {/* Snackbar/Alert replacement */}
+      {snackbar.open && (
+        <div className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 min-w-[250px] max-w-xs px-4 py-3 rounded shadow-lg text-white transition-all
+          ${snackbar.severity === 'success' ? 'bg-green-600' : snackbar.severity === 'error' ? 'bg-red-600' : 'bg-blue-600'}`}
+          role="alert"
+        >
+          <div className="flex items-center justify-between">
+            <span>{snackbar.message}</span>
+            <button className="ml-4 text-white/80 hover:text-white" onClick={handleCloseSnackbar} aria-label="Close notification">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
