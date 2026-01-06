@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Container,
@@ -11,6 +11,7 @@ import {
   Alert,
 } from '@mui/material';
 import LoginIcon from '@mui/icons-material/Login';
+import { StyledLink } from '../components/common';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -99,7 +100,10 @@ const Login = () => {
                   value={twoFactorToken}
                   onChange={(e) => setTwoFactorToken(e.target.value)}
                   placeholder="000000"
-                  inputProps={{ maxLength: 6, style: { fontSize: '20px', textAlign: 'center' } }}
+                  inputProps={{ maxLength: 6 }}
+                  InputProps={{
+                    sx: { fontSize: '20px', textAlign: 'center' }
+                  }}
                   required
                   autoFocus
                 />
@@ -134,11 +138,9 @@ const Login = () => {
 
           <Typography variant="body2" sx={{ mt: 2 }}>
             Don't have an account?{' '}
-            <Link to="/register" style={{ textDecoration: 'none' }}>
-              <Typography component="span" sx={{ color: 'primary.dark' }}>
-                Register here
-              </Typography>
-            </Link>
+            <StyledLink to="/register">
+              Register here
+            </StyledLink>
           </Typography>
         </Box>
       </Paper>
