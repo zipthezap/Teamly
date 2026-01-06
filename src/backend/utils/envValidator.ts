@@ -103,10 +103,10 @@ export function validateEnvironmentOrThrow(): void {
  */
 export function getEnvVar(name: string, defaultValue?: string): string {
   const value = process.env[name];
-  if (!value && !defaultValue) {
+  if (value === undefined && defaultValue === undefined) {
     throw new Error(`Environment variable ${name} is not set`);
   }
-  return value || defaultValue!;
+  return value !== undefined ? value : defaultValue as string;
 }
 
 /**
@@ -122,8 +122,8 @@ export function getEnvNumber(name: string, defaultValue?: number): number {
   }
   
   const num = Number(value);
-  if (isNaN(num)) {
-    throw new Error(`Environment variable ${name} is not a valid number`);
+  if (!Number.isFinite(num)) {
+    throw new Error(`Environment variable ${name} is not a valid finite number`);
   }
   
   return num;

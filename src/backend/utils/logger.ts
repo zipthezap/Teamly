@@ -58,9 +58,7 @@ class Logger {
         console.info(formattedMessage);
         break;
       case LogLevel.DEBUG:
-        if (process.env.NODE_ENV !== 'production') {
-          console.debug(formattedMessage);
-        }
+        console.debug(formattedMessage);
         break;
     }
   }
@@ -78,6 +76,10 @@ class Logger {
   }
 
   debug(message: string, context?: string, data?: unknown): void {
+    // Skip formatting in production to avoid unnecessary work
+    if (process.env.NODE_ENV === 'production') {
+      return;
+    }
     this.log(LogLevel.DEBUG, message, context, data);
   }
 }

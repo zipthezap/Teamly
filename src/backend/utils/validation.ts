@@ -86,9 +86,10 @@ export function validateStringLength(
 /**
  * Validates that a value is a valid UUID
  */
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function isValidUUID(value: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(value);
+  return UUID_REGEX.test(value);
 }
 
 /**
@@ -182,6 +183,7 @@ export function sanitizeString(value: string): string {
 
 /**
  * Validates and sanitizes input fields for an object
+ * Note: This function only sanitizes string values. Validation is performed by the provided validators.
  */
 export function validateAndSanitize<T extends Record<string, unknown>>(
   data: T,
@@ -189,16 +191,18 @@ export function validateAndSanitize<T extends Record<string, unknown>>(
 ): T {
   const sanitized = { ...data };
   
-  for (const [key, validator] of Object.entries(validators)) {
-    const value = sanitized[key as keyof T];
+  for (const key of Object.keys(validators)) {
+    const typedKey = key as keyof T;
+    const validator = validators[typedKey];
+    const value = sanitized[typedKey];
     
     if (validator && typeof validator === 'function') {
       validator(value);
-      
-      // Sanitize strings
-      if (typeof value === 'string') {
-        sanitized[key as keyof T] = sanitizeString(value) as T[keyof T];
-      }
+    }
+    
+    // Sanitize strings
+    if (typeof value === 'string') {
+      (sanitized as Record<string, unknown>)[key] = sanitizeString(value);
     }
   }
   

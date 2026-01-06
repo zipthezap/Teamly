@@ -252,6 +252,19 @@ curl -X POST http://localhost:3000/api/events \
 
 ## Development
 
+### Code Quality
+
+This project follows best practices for code quality and maintainability:
+
+- **Structured Logging**: Uses a custom logger utility (`src/backend/utils/logger.ts`) for consistent, timestamped logging with different levels (ERROR, WARN, INFO, DEBUG)
+- **Type Safety**: TypeScript with enabled compiler checks for unused locals/parameters and consistent casing
+- **Input Validation**: Validation utilities in `src/backend/utils/validation.ts` for consistent data validation
+- **Environment Validation**: Automatic validation of required environment variables on startup
+- **Security Best Practices**: 
+  - Environment-based JWT secrets (never hardcoded)
+  - Input sanitization and validation
+  - Rate limiting on API endpoints
+
 ### Database Management
 
 ```bash
@@ -334,12 +347,18 @@ The test scripts will:
 
 ## Additional Documentation
 
+### Active Documentation
+
 - **[NEW_FEATURES_IMPLEMENTATION.md](NEW_FEATURES_IMPLEMENTATION.md)** - Complete guide for new features (Email, Recurring Events, Comments)
 - **[WINDOWS_SETUP.md](WINDOWS_SETUP.md)** - Comprehensive Windows development guide
 - **[FEATURE_ROADMAP.md](FEATURE_ROADMAP.md)** - Planned features and expansion ideas
 - **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** - Detailed API reference
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guides
 - **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - Project overview and architecture
+
+### Archived Documentation
+
+Historical implementation notes and summaries have been moved to `docs/archive/` to keep the root directory clean and focused on active documentation.
 
 ## Contributing Ideas
 
