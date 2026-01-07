@@ -87,11 +87,9 @@ async function main() {
   });
   console.log('Seeded group:', group.name, '(Alice as admin)');
 
-  // Create an event in that group created by Alice
-  const event = await prisma.event.upsert({
-    where: { id: 'seed-event-alice-group' },
-    update: {},
-    create: {
+  // Create multiple events in the group
+  const events = [
+    {
       id: 'seed-event-alice-group',
       title: 'Weekend Football Match',
       description: 'Join us for a friendly football match this weekend!',
@@ -102,15 +100,49 @@ async function main() {
       maxPlayers: 20,
       creatorId: user1.id,
       groupId: group.id,
-      participants: {
-        create: {
-          userId: user1.id,
-          status: 'confirmed'
+      participants: [{ userId: user1.id, status: 'confirmed' }]
+    },
+    {
+      id: 'seed-event-tennis-group',
+      title: 'Tennis Doubles Tournament',
+      description: 'Compete in our tennis doubles tournament!',
+      eventType: 'tennis',
+      location: 'Riverside Tennis Courts',
+      startTime: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
+      endTime: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000), // 3 hours duration
+      maxPlayers: 16,
+      creatorId: user2.id,
+      groupId: group.id,
+      participants: [{ userId: user2.id, status: 'confirmed' }, { userId: user3.id, status: 'pending' }]
+    },
+    {
+      id: 'seed-event-basketball-group',
+      title: 'Basketball Pickup Game',
+      description: 'Join us for a casual basketball game!',
+      eventType: 'basketball',
+      location: 'Downtown Gym',
+      startTime: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000), // 21 days from now
+      endTime: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000 + 1.5 * 60 * 60 * 1000), // 1.5 hours duration
+      maxPlayers: 10,
+      creatorId: user3.id,
+      groupId: group.id,
+      participants: [{ userId: user3.id, status: 'confirmed' }, { userId: user4.id, status: 'pending' }]
+    }
+  ];
+
+  for (const eventData of events) {
+    await prisma.event.upsert({
+      where: { id: eventData.id },
+      update: {},
+      create: {
+        ...eventData,
+        participants: {
+          create: eventData.participants
         }
       }
-    }
-  });
-  console.log('Seeded event:', event.title, '(created by Alice in group)');
+    });
+    console.log('Seeded event:', eventData.title);
+  }
 }
 
 main()

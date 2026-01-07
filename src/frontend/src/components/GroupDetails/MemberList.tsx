@@ -8,8 +8,8 @@ interface MemberListProps {
   onRemove?: (email: string) => void;
 }
 
-const getInitials = (name: string) => {
-  if (!name || typeof name !== 'string') return '';
+const getInitials = (name: string | undefined | null) => {
+  if (!name || typeof name !== 'string' || name.trim().length === 0) return '';
   return name.split(' ').map((n) => n[0]).join('').toUpperCase();
 };
 
