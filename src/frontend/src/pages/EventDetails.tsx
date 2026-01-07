@@ -268,20 +268,42 @@ const EventDetails = () => {
                   </div>
                 </div>
               ) : (
-                event.eventNotifications.map((n, idx) => (
-                  <div key={idx} className="mb-3 pb-3 border-b border-[#232946] last:border-b-0">
-                    <div className="flex items-start gap-2">
-                      <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
-                        {getInitials(n.user?.name || t('eventDetails.user'))}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-white font-medium text-sm mb-0.5">{n.user?.name || t('eventDetails.user')}</div>
-                        <div className="text-xs text-[#a1a6b4] mb-1">{n.message}</div>
-                        <div className="text-xs text-[#757b8a]">{new Date(n.createdAt).toLocaleString()}</div>
+                event.eventNotifications.map((n, idx) => {
+                  let action = '';
+                  switch (n.type) {
+                    case 'join':
+                      action = t('eventDetails.activityJoin', { name: n.user?.name || t('eventDetails.user') });
+                      break;
+                    case 'leave':
+                      action = t('eventDetails.activityLeave', { name: n.user?.name || t('eventDetails.user') });
+                      break;
+                    case 'confirmed':
+                      action = t('eventDetails.activityConfirmed', { name: n.user?.name || t('eventDetails.user') });
+                      break;
+                    case 'declined':
+                      action = t('eventDetails.activityDeclined', { name: n.user?.name || t('eventDetails.user') });
+                      break;
+                    case 'late':
+                      action = t('eventDetails.activityLate', { name: n.user?.name || t('eventDetails.user') });
+                      break;
+                    default:
+                      action = n.message || n.type;
+                  }
+                  return (
+                    <div key={idx} className="mb-3 pb-3 border-b border-[#232946] last:border-b-0">
+                      <div className="flex items-start gap-2">
+                        <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                          {getInitials(n.user?.name || t('eventDetails.user'))}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-white font-medium text-sm mb-0.5">{n.user?.name || t('eventDetails.user')}</div>
+                          <div className="text-xs text-[#a1a6b4] mb-1">{action}</div>
+                          <div className="text-xs text-[#757b8a]">{new Date(n.createdAt).toLocaleString()}</div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>

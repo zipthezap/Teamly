@@ -95,9 +95,9 @@ const NotificationsPopover: React.FC = () => {
       <IconButton
         aria-describedby={id}
         onClick={handleClick}
-        sx={{ color: 'inherit', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}
+        sx={{ color: 'inherit', '&:hover': { backgroundColor: 'rgba(255,255,255,0.12)' }, transition: 'background 0.2s' }}
       >
-        <Badge badgeContent={stats?.unread || 0} color="error">
+        <Badge badgeContent={stats?.unread || 0} color="error" sx={{ '& .MuiBadge-badge': { fontWeight: 600, fontSize: 13, minWidth: 22, height: 22 } }}>
           {areNotificationsMuted ? <NotificationsOffIcon /> : <NotificationsIcon />}
         </Badge>
       </IconButton>
@@ -108,23 +108,23 @@ const NotificationsPopover: React.FC = () => {
         onClose={handleClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        slotProps={{ paper: { sx: { mt: 1.5, width: 420, maxHeight: 600 } } }}
+        slotProps={{ paper: { sx: { mt: 1.5, width: 420, maxWidth: '90vw', maxHeight: 600, borderRadius: 3, boxShadow: 8, background: 'rgba(30,34,54,0.98)', backdropFilter: 'blur(6px)' } } }}
       >
-        <Paper sx={{ p: 2 }}>
+        <Paper sx={{ p: 2, background: 'transparent', boxShadow: 'none' }}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-            <Typography variant="h6">Notifications</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: 0.5 }}>Notifications</Typography>
             <Stack direction="row" spacing={1}>
               {notifications.length > 0 && (
-                <Button size="small" onClick={handleMarkAllRead} sx={{ textTransform: 'none' }}>
+                <Button size="small" onClick={handleMarkAllRead} sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 500, color: 'primary.main', px: 1.5, py: 0.5, '&:hover': { bgcolor: 'primary.light', color: 'white' } }}>
                   Mark all read
                 </Button>
               )}
-              <Button size="small" onClick={handleViewAll} sx={{ textTransform: 'none' }}>
+              <Button size="small" onClick={handleViewAll} sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 500, color: 'secondary.main', px: 1.5, py: 0.5, '&:hover': { bgcolor: 'secondary.light', color: 'white' } }}>
                 View All
               </Button>
             </Stack>
           </Box>
-          
+
           {/* Stats chips */}
           {stats && (
             <Stack direction="row" spacing={1} mb={2}>
@@ -132,13 +132,15 @@ const NotificationsPopover: React.FC = () => {
                 label={`${stats.unreadEvent} Events`}
                 size="small"
                 color="primary"
-                variant="outlined"
+                variant="filled"
+                sx={{ borderRadius: 1, fontWeight: 500, bgcolor: 'primary.dark', color: 'white' }}
               />
               <Chip
                 label={`${stats.unreadGroup} Groups`}
                 size="small"
                 color="secondary"
-                variant="outlined"
+                variant="filled"
+                sx={{ borderRadius: 1, fontWeight: 500, bgcolor: 'secondary.dark', color: 'white' }}
               />
             </Stack>
           )}
@@ -169,20 +171,26 @@ const NotificationsPopover: React.FC = () => {
 
                 return (
                   <React.Fragment key={notif.id || idx}>
-                    {idx > 0 && <Divider />}
+                    {idx > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />}
                     <ListItemButton
                       onClick={() => handleNotificationClick(notif)}
                       disabled={!isClickable}
                       sx={{
                         cursor: isClickable ? 'pointer' : 'default',
-                        '&:hover': isClickable ? { bgcolor: 'rgba(0, 0, 0, 0.04)' } : {},
-                        bgcolor: !notif.read ? 'action.hover' : 'transparent',
+                        borderRadius: 2,
+                        mb: 0.5,
+                        px: 2,
+                        py: 1.2,
+                        transition: 'background 0.18s',
+                        '&:hover': isClickable ? { bgcolor: 'primary.light', color: 'white' } : {},
+                        bgcolor: !notif.read ? 'rgba(58,134,255,0.08)' : 'transparent',
+                        boxShadow: !notif.read ? 2 : 'none',
                       }}
                     >
                       <ListItemText
                         primary={
                           <Box display="flex" alignItems="center" gap={1}>
-                            <Typography variant="body2" fontWeight={!notif.read ? 600 : 400}>
+                            <Typography variant="body2" fontWeight={!notif.read ? 700 : 400} sx={{ color: !notif.read ? 'primary.main' : 'inherit' }}>
                               {notif.title}
                             </Typography>
                             {notif.metadata?.priority && notif.metadata.priority !== 'low' && (
@@ -190,7 +198,7 @@ const NotificationsPopover: React.FC = () => {
                                 label={notif.metadata.priority}
                                 size="small"
                                 color={getPriorityColor(notif.metadata.priority)}
-                                sx={{ height: 20, fontSize: '0.7rem' }}
+                                sx={{ height: 20, fontSize: '0.7rem', borderRadius: 1 }}
                               />
                             )}
                           </Box>

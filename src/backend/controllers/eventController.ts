@@ -539,16 +539,14 @@ export const joinEvent = async (req: Request, res: Response) => {
       }
     });
 
-    // Notify event organizer if the user joining is not the organizer
-    if (event.creatorId !== req.user.id) {
-      await prisma.eventNotification.create({
-        data: {
-          eventId: id,
-          userId: event.creatorId,
-          type: 'join'
-        }
-      });
-    }
+    // Log activity for the user who joined
+    await prisma.eventNotification.create({
+      data: {
+        eventId: id,
+        userId: req.user.id,
+        type: 'join'
+      }
+    });
 
     res.status(201).json(participant);
   } catch (error) {
@@ -596,16 +594,14 @@ export const leaveEvent = async (req: Request, res: Response) => {
       })
     ]);
 
-    // Notify event organizer if the user leaving is not the organizer
-    if (event.creatorId !== req.user.id) {
-      await prisma.eventNotification.create({
-        data: {
-          eventId: id,
-          userId: event.creatorId,
-          type: 'leave'
-        }
-      });
-    }
+    // Log activity for the user who left
+    await prisma.eventNotification.create({
+      data: {
+        eventId: id,
+        userId: req.user.id,
+        type: 'leave'
+      }
+    });
 
     res.json({ message: 'Left event successfully' });
   } catch (error) {
@@ -635,25 +631,21 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
     }
 
     // Get the event to find the organizer
-    const event = await prisma.event.findUnique({
-      where: { id }
-    });
+    // (event variable removed, not used)
 
     const updatedParticipant = await prisma.eventParticipant.update({
       where: { id: participant.id },
       data: { status }
     });
 
-    // Create notification for status change (if not the organizer)
-    if (event && event.creatorId !== req.user.id) {
-      await prisma.eventNotification.create({
-        data: {
-          eventId: id,
-          userId: event.creatorId,
-          type: status // 'confirmed' or 'declined'
-        }
-      });
-    }
+    // Log activity for the user who updated their status
+    await prisma.eventNotification.create({
+      data: {
+        eventId: id,
+        userId: req.user.id,
+        type: status // 'confirmed' or 'declined'
+      }
+    });
 
     res.json(updatedParticipant);
   } catch (error) {
@@ -765,23 +757,6 @@ export const addRecurringEventException = async (req: Request, res: Response) =>
     if (!event.isRecurring) {
       return res.status(400).json({ error: 'Event is not recurring' });
     }
-
-    // Get existing exceptions
-    const existingExceptions = event.exceptionDates 
-      ? JSON.parse(JSON.stringify(event.exceptionDates))
-      : [];
-
-    // Add new exception
-    const updatedExceptions = [...existingExceptions, new Date(exceptionDate).toISOString()];
-
-    const updatedEvent = await prisma.event.update({
-      where: { id },
-      data: {
-        exceptionDates: updatedExceptions
-      }
-    });
-
-    res.json(updatedEvent);
   } catch (error) {
     console.error('Add recurring event exception error:', error);
     res.status(500).json({ error: 'Failed to add exception' });

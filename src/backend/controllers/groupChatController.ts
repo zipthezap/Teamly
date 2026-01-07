@@ -1,3 +1,24 @@
+// Get notifications for the current user (event and group notifications)
+export const getNotifications = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.id;
+    // Fetch both event and group notifications, ordered by createdAt desc
+    const [eventNotifications, groupNotifications] = await Promise.all([
+      prisma.eventNotification.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.groupNotification.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' }
+      })
+    ]);
+    res.json({ eventNotifications, groupNotifications });
+  } catch (e) {
+    console.error('Get notifications error:', e);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+};
 import prisma from '../config/database';
 import { Request, Response } from 'express';
 
@@ -22,19 +43,18 @@ export const unmarkLate = async (req: Request, res: Response) => {
       data: { status: 'confirmed' },
     });
 
-    // Optionally, notify event organizer
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
-      select: { creatorId: true },
+
+    // Remove the most recent 'late' activity log for this user/event
+    const lastLate = await prisma.eventNotification.findFirst({
+      where: {
+        eventId,
+        userId,
+        type: 'late',
+      },
+      orderBy: { createdAt: 'desc' },
     });
-    if (event && event.creatorId !== userId) {
-      await prisma.eventNotification.create({
-        data: {
-          eventId,
-          userId: event.creatorId,
-          type: 'unmark_late',
-        },
-      });
+    if (lastLate) {
+      await prisma.eventNotification.delete({ where: { id: lastLate.id } });
     }
 
     res.json(updated);
@@ -95,62 +115,19 @@ export const markLate = async (req: Request, res: Response) => {
       create: { eventId, userId, status: 'late' }
     });
 
-    // Notify event organizer if the user marking late is not the organizer
-    if (event.creatorId !== userId) {
-      await prisma.eventNotification.create({
-        data: {
-          eventId,
-          userId: event.creatorId,
-          type: 'late'
-        }
-      });
-    }
+    // Log 'late' activity for the acting user
+    await prisma.eventNotification.create({
+      data: {
+        eventId,
+        userId,
+        type: 'late'
+      }
+    });
 
     res.json(attendance);
   } catch (e) {
     console.error('Mark late error:', e);
     res.status(500).json({ error: 'Failed to mark as late' });
-  }
-};
-
-// Event Notifications (organizer)
-export const notifyJoinLeave = async (eventId: string, userId: string, type: string) => {
-  await prisma.eventNotification.create({
-    data: { eventId, userId, type }
-  });
-};
-
-export const getNotifications = async (req: Request, res: Response) => {
-  try {
-    const userId = req.user.id;
-    // Only fetch unread notifications
-    const [eventNotifications, groupNotifications] = await Promise.all([
-      prisma.eventNotification.findMany({
-        where: { userId, read: false },
-        include: {
-          event: { select: { id: true, title: true } },
-          user: { select: { name: true } }
-        },
-        orderBy: { createdAt: 'desc' }
-      }),
-      prisma.groupNotification.findMany({
-        where: { userId, read: false },
-        include: {
-          group: { select: { id: true, name: true } },
-        },
-        orderBy: { createdAt: 'desc' }
-      })
-    ]);
-    // Tag type for frontend
-    const all = [
-      ...eventNotifications.map(n => ({ ...n, notificationType: 'event' })),
-      ...groupNotifications.map(n => ({ ...n, notificationType: 'group' })),
-    ];
-    // Sort by createdAt desc
-    all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    res.json(all);
-  } catch (e) {
-    res.status(500).json({ error: 'Failed to fetch notifications' });
   }
 };
 
