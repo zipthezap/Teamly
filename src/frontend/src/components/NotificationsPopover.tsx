@@ -14,15 +14,21 @@ import {
   Button,
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import NotificationsOffIcon from '@mui/icons-material/NotificationsOff';
 import { useNotifications } from '../hooks/useNotifications';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const NotificationsPopover: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const { notifications, loading, refresh, markAsRead } = useNotifications();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const open = Boolean(anchorEl);
   const id = open ? 'notifications-popover' : undefined;
+
+  // Check if notifications are muted
+  const areNotificationsMuted = user?.emailNotifications === false;
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -66,7 +72,7 @@ const NotificationsPopover: React.FC = () => {
         sx={{ color: 'inherit', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}
       >
         <Badge badgeContent={notifications.length} color="error">
-          <NotificationsIcon />
+          {areNotificationsMuted ? <NotificationsOffIcon /> : <NotificationsIcon />}
         </Badge>
       </IconButton>
       <Popover
