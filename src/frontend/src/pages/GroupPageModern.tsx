@@ -209,7 +209,6 @@ const GroupPageModern = () => {
               </button>
             </div>
           )}
-          </div>
         </div>
         {/* Members */}
         <div className="bg-[#232946] rounded-xl shadow-md p-4">
