@@ -5,8 +5,8 @@
  * - Archive old completed events
  * - Expire old event requests
  * 
- * Usage: ts-node scripts/eventMaintenance.ts
- * Or after build: node dist/backend/scripts/eventMaintenance.js
+ * Usage: node scripts/eventMaintenance.js
+ * Or with ts-node: ts-node scripts/eventMaintenance.js (if converted to .ts)
  */
 
 const { PrismaClient } = require('@prisma/client');

@@ -150,8 +150,8 @@ export const validateEventCapacity = (
 /**
  * Validates vote threshold
  */
-export const validateVoteThreshold = (threshold: any): ValidationResult => {
-  const thresholdNum = parseFloat(threshold);
+export const validateVoteThreshold = (threshold: number | string | unknown): ValidationResult => {
+  const thresholdNum = typeof threshold === 'number' ? threshold : parseFloat(String(threshold));
   
   if (isNaN(thresholdNum) || thresholdNum < 0 || thresholdNum > 1) {
     return {

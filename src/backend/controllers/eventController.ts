@@ -51,12 +51,21 @@ export const createEvent = async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Only group members can create events' });
     }
 
-    // Determine event status based on start time
+    // Determine event status based on start and end time
     const now = new Date();
     const eventStartTime = new Date(startTime);
+    const eventEndTime = endTime ? new Date(endTime) : null;
+    
     let eventStatus = 'upcoming';
-    if (eventStartTime < now) {
+    if (eventEndTime && eventEndTime < now) {
+      // Event has ended
       eventStatus = 'completed';
+    } else if (eventStartTime <= now && (!eventEndTime || eventEndTime >= now)) {
+      // Event is currently happening
+      eventStatus = 'ongoing';
+    } else if (eventStartTime > now) {
+      // Event hasn't started yet
+      eventStatus = 'upcoming';
     }
 
     // Get group members for notifications

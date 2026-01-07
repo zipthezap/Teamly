@@ -43,9 +43,17 @@ export const updateEventStatuses = async (): Promise<{
       if (event.endTime && event.endTime < now) {
         // Event has ended
         newStatus = 'completed';
-      } else if (event.startTime <= now && (!event.endTime || event.endTime >= now)) {
-        // Event is currently happening
-        newStatus = 'ongoing';
+      } else if (event.startTime <= now) {
+        // Event has started
+        if (event.endTime && event.endTime >= now) {
+          // Event is currently happening (has end time and hasn't ended)
+          newStatus = 'ongoing';
+        } else if (!event.endTime) {
+          // Event has no end time - mark as ongoing if it started within the last 24 hours
+          // Otherwise mark as completed
+          const hoursSinceStart = (now.getTime() - event.startTime.getTime()) / (1000 * 60 * 60);
+          newStatus = hoursSinceStart <= 24 ? 'ongoing' : 'completed';
+        }
       } else if (event.startTime > now) {
         // Event hasn't started yet
         newStatus = 'upcoming';

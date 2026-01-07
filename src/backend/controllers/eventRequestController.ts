@@ -334,7 +334,11 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
     
     // Get the vote threshold (default 0.5 = 50%)
     const threshold = eventRequest.voteThreshold || 0.5;
-    const requiredYesVotes = Math.ceil(totalVotes * threshold);
+    
+    // Calculate required yes votes based on total group members (not just voters)
+    // This ensures that a minimum participation is required
+    const totalMembers = eventRequest.group.members.length;
+    const requiredYesVotes = Math.ceil(totalMembers * threshold);
     
     // Check if there are enough votes and if they meet the threshold
     if (totalVotes === 0) {
@@ -343,12 +347,14 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
         yesVotes,
         noVotes,
         totalVotes,
+        totalMembers,
         threshold: threshold * 100,
-        requiredYesVotes: 0
+        requiredYesVotes
       });
     }
 
     // Event is created only if yes votes meet the threshold
+    // Threshold is based on total group members to ensure meaningful participation
     if (yesVotes < requiredYesVotes) {
       // Not enough support, cancel the request
       await prisma.eventRequest.update({
@@ -357,10 +363,11 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
       });
       
       return res.json({ 
-        message: `Event request cancelled: ${yesVotes} yes votes out of ${totalVotes} total votes (${(threshold * 100).toFixed(0)}% threshold requires at least ${requiredYesVotes} yes votes)`,
+        message: `Event request cancelled: ${yesVotes} yes votes out of ${totalVotes} total votes (${(threshold * 100).toFixed(0)}% of ${totalMembers} members requires at least ${requiredYesVotes} yes votes)`,
         yesVotes,
         noVotes,
         totalVotes,
+        totalMembers,
         threshold: threshold * 100,
         requiredYesVotes
       });
@@ -402,6 +409,7 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
       yesVotes,
       noVotes,
       totalVotes,
+      totalMembers,
       threshold: threshold * 100,
       requiredYesVotes
     });
