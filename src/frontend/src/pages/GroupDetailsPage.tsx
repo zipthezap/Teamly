@@ -177,10 +177,31 @@ export default function GroupDetailsPage() {
     },
   });
 
-  // Local state for chat input and confirmation dialog
+  // Local state for chat input, confirmation dialog, and join requests
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showConfirm, setShowConfirm] = useState<{ open: boolean; email: string | null }>({ open: false, email: null });
+  // Fetch join requests from API
+  const { data: joinRequests = [], refetch: refetchJoinRequests } = useQuery({
+    queryKey: ["groupJoinRequests", groupId],
+    queryFn: async () => {
+      if (!groupId) return [];
+      const res = await groupsAPI.getJoinRequests(groupId);
+      return res.data;
+    },
+    enabled: !!groupId,
+  });
+
+  const handleAcceptJoin = async (id: string) => {
+    await groupsAPI.acceptJoinRequest(groupId, id);
+    setToast({ message: t('groupDetails.joinAccepted'), type: "success" });
+    refetchJoinRequests();
+  };
+  const handleDeclineJoin = async (id: string) => {
+    await groupsAPI.declineJoinRequest(groupId, id);
+    setToast({ message: t('groupDetails.joinDeclined'), type: "error" });
+    refetchJoinRequests();
+  };
 
   // Handle settings form change
   const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -236,10 +257,13 @@ export default function GroupDetailsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white p-2 sm:p-4 md:p-6">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <GroupHeader 
-        group={group} 
+      <GroupHeader
+        group={group}
         onEdit={isAdmin ? () => setSettingsOpen(true) : undefined}
         isAdmin={isAdmin}
+        joinRequests={joinRequests}
+        onAcceptJoin={handleAcceptJoin}
+        onDeclineJoin={handleDeclineJoin}
       />
       {/* Group Statistics */}
       <GroupStats memberCount={group.members?.length || 0} events={events || []} />

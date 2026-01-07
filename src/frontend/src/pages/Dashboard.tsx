@@ -59,7 +59,12 @@ const Dashboard = () => {
   }
 
   // Calculate statistics
-  const upcomingEvents = events.filter(e => new Date(e.startTime) > new Date());
+  // Only show soon-to-happen events the user is NOT confirmed on yet
+  const upcomingEvents = events.filter(e => {
+    const isSoon = new Date(e.startTime) > new Date();
+    const isConfirmed = e.participants?.some(p => p.userId === user?.id && p.status === 'confirmed');
+    return isSoon && !isConfirmed;
+  });
   const myEvents = events.filter(e => 
     e.participants?.some(p => p.userId === user?.id)
   );

@@ -26,17 +26,18 @@ function Toast({ message, type, onClose }: { message: string; type: "success" | 
 const EventsList = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchFilters, setSearchFilters] = useState({});
-  const [page, setPage] = useState(1);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<any>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<any>(null);
-  const [useInfiniteScroll, setUseInfiniteScroll] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(12);
   const [events, setEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState<any>(null);
+  const [page, setPage] = useState(1);
+  const [useInfiniteScroll, setUseInfiniteScroll] = useState(true);
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -51,12 +52,11 @@ const EventsList = () => {
       } else {
         setIsFetching(true);
       }
-      const response = await eventsAPI.getAll({ ...searchFilters, page });
+      setIsLoading(true);
+      const offset = (page - 1) * visibleCount;
+      const params = { ...searchFilters, offset, limit: visibleCount } as import('../services/api').EventSearchParams;
+      const response = await eventsAPI.getAll(params);
       setEvents(response.data);
-      setError(null);
-    } catch (err: any) {
-      setError(err);
-      setToast({ message: err?.response?.data?.message || t('common.errorLoadingEvents'), type: 'error' });
     } finally {
       setIsLoading(false);
       setIsFetching(false);
@@ -64,7 +64,7 @@ const EventsList = () => {
   }, [searchFilters, page, t]);
 
   useEffect(() => {
-    fetchEvents(true);
+    fetchEvents();
   }, [fetchEvents]);
 
   // Delete event
@@ -111,8 +111,7 @@ const EventsList = () => {
 
   // Handle page change
   const handlePageChange = (newPage: number) => {
-    setPage(newPage);
-    setSearchParams({ ...searchFilters, page: newPage.toString() }, { replace: false });
+    // Removed pagination controls
   };
 
   // Get event status

@@ -90,6 +90,8 @@
   },
   "events": {
     "allEvents": "All Events",
+    "leaveEvent": "Leave Event",
+    "joinEvent": "Join Event",
     "eventFound": "event found",
     "eventsFound": "events found",
     "spotsLeft": "{{count}} spot left",

@@ -61,13 +61,15 @@ export const groupsAPI = {
 };
 
 // Events API
-interface EventSearchParams {
+export interface EventSearchParams {
   groupId?: string | number;
   search?: string;
   eventType?: string;
   startDate?: string;
   endDate?: string;
   location?: string;
+  offset?: number;
+  limit?: number;
 }
 
 export const eventsAPI = {

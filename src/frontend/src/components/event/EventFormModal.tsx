@@ -24,10 +24,11 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ open, onClose, initialD
     title: '',
     eventType: '',
     location: '',
-    startTime: '',
     maxPlayers: '',
     description: '',
   });
+  const [hour, setHour] = useState('');
+  const [minute, setMinute] = useState('');
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -36,14 +37,23 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ open, onClose, initialD
         title: initialData.title || '',
         eventType: initialData.eventType || '',
         location: initialData.location || '',
-        startTime: initialData.startTime ? initialData.startTime.slice(0, 16) : '',
         maxPlayers: initialData.maxPlayers || '',
         description: initialData.description || '',
       });
+      if (initialData.startTime) {
+        const date = new Date(initialData.startTime);
+        setHour(date.getHours().toString().padStart(2, '0'));
+        setMinute(date.getMinutes().toString().padStart(2, '0'));
+      } else {
+        setHour('');
+        setMinute('');
+      }
     } else {
       setForm({
-        title: '', eventType: '', location: '', startTime: '', maxPlayers: '', description: ''
+        title: '', eventType: '', location: '', maxPlayers: '', description: ''
       });
+      setHour('');
+      setMinute('');
     }
   }, [initialData, open]);
 
@@ -66,10 +76,29 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ open, onClose, initialD
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const handleHourChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setHour(e.target.value);
+    if (!minute) setMinute('00');
+  };
+
+  const handleMinuteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMinute(e.target.value);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Compose startTime from today + selected hour/minute
+    let startTime = '';
+    if (hour && minute) {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      startTime = `${year}-${month}-${day}T${hour}:${minute}`;
+    }
     mutation.mutate({
       ...form,
+      startTime,
       maxPlayers: form.maxPlayers ? Number(form.maxPlayers) : undefined,
     });
   };
@@ -108,16 +137,35 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ open, onClose, initialD
               onChange={handleChange}
               fullWidth
             />
-            <TextField
-              label="Start Time"
-              name="startTime"
-              type="datetime-local"
-              value={form.startTime}
-              onChange={handleChange}
-              required
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-            />
+            <Stack direction="row" spacing={2} alignItems="center">
+              <TextField
+                select
+                label="Hour"
+                name="hour"
+                value={hour}
+                onChange={handleHourChange}
+                required
+                sx={{ minWidth: 100 }}
+              >
+                {[...Array(24)].map((_, i) => {
+                  const val = String(i + 1).padStart(2, '0');
+                  return <MenuItem key={val} value={val}>{val}</MenuItem>;
+                })}
+              </TextField>
+              <TextField
+                select
+                label="Minute"
+                name="minute"
+                value={minute}
+                onChange={handleMinuteChange}
+                required
+                sx={{ minWidth: 100 }}
+              >
+                {['00', '15', '30', '45'].map((m) => (
+                  <MenuItem key={m} value={m}>{m}</MenuItem>
+                ))}
+              </TextField>
+            </Stack>
             <TextField
               label="Max Players"
               name="maxPlayers"

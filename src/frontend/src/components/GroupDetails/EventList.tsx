@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "../ui/Button";
 
@@ -25,8 +25,8 @@ const formatEventDate = (dateString: string) => {
 
 const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, onEdit, onDelete, isAdmin }) => {
   const { t } = useTranslation();
-  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
-  const [eventToDelete, setEventToDelete] = React.useState<any | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
 
   const handleDeleteClick = (event: any) => {
     setEventToDelete(event);
@@ -38,52 +38,62 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
     setEventToDelete(null);
   };
 
+  const filteredEvents = events;
+
   return (
     <section className="bg-slate-800 rounded-lg p-4 shadow">
       <div className="flex justify-between items-center mb-2">
-        <h2 className="text-xl font-semibold">{t('groupDetails.events')}</h2>
-        {isAdmin && onCreate && (
-          <Button color="primary" size="sm" onClick={onCreate}>{t('groupDetails.createEvent')}</Button>
-        )}
+        <h2 className="text-xl font-semibold">{t('groupDetails.events', 'Events')}</h2>
+        <div className="flex gap-2">
+            <a
+              href="/events"
+              className="text-pink-400 hover:underline text-sm font-medium"
+              onClick={(e) => { e.preventDefault(); window.location.href = '/events'; }}
+            >
+              {t('groupDetails.viewAll', 'View All')}
+            </a>
+          {isAdmin && onCreate && (
+            <Button color="primary" size="sm" onClick={onCreate}>{t('groupDetails.createEvent', 'Create Event')}</Button>
+          )}
+        </div>
       </div>
-      {events.length === 0 ? (
-        <div className="text-slate-400 text-center py-4">{t('groupDetails.noEvents')}</div>
+      {filteredEvents.length === 0 ? (
+        <div className="text-slate-400 text-center py-4">{t('groupDetails.noEvents', 'No events found.')}</div>
       ) : (
         <ul>
-          {events.map((event) => {
+          {filteredEvents.map((event) => {
             const eventDate = event.startTime || event.date;
             const eventType = event.eventType || event.type;
             const organizerName = event.creator?.name || event.organizer || 'Unknown';
-            
             return (
-            <li
-              key={event.id}
-              className={`mb-3 p-3 bg-slate-700 rounded flex items-center gap-3 cursor-pointer transition hover:bg-slate-600 border-l-4 ${isPastEvent(eventDate) ? "border-slate-500 opacity-70" : "border-green-500"}`}
-              onClick={() => onEventClick(event.id)}
-              tabIndex={0}
-              aria-label={`${t('common.viewDetails')} ${event.title}`}
-            >
-              <div className="w-10 h-10 bg-slate-600 rounded flex items-center justify-center text-2xl">
-                {eventType === "Football" ? "⚽" : eventType === "Tennis" ? "🎾" : "📅"}
-              </div>
-              <div className="flex-1">
-                <div className="font-medium flex items-center gap-2">
-                  {event.title}
-                  {isPastEvent(eventDate) && (
-                    <span className="ml-2 text-xs bg-slate-500 px-2 py-0.5 rounded text-white">{t('groupDetails.past')}</span>
-                  )}
+              <li
+                key={event.id}
+                className={`mb-3 p-3 bg-slate-700 rounded flex items-center gap-3 cursor-pointer transition hover:bg-slate-600 border-l-4 ${isPastEvent(eventDate) ? "border-slate-500 opacity-70" : "border-green-500"}`}
+                onClick={() => onEventClick(event.id)}
+                tabIndex={0}
+                aria-label={`${t('common.viewDetails')} ${event.title}`}
+              >
+                <div className="w-10 h-10 bg-slate-600 rounded flex items-center justify-center text-2xl">
+                  {eventType === "Football" ? "⚽" : eventType === "Tennis" ? "🎾" : "📅"}
                 </div>
-                <div className="text-xs text-slate-400">{eventType} • {formatEventDate(eventDate)}</div>
-                <div className="text-xs text-slate-500">{t('groupDetails.organizer')}: {organizerName}</div>
-              </div>
-              {isAdmin && (
-                <div className="flex gap-2 ml-auto" onClick={(ev) => ev.stopPropagation()}>
-                  {onEdit && <Button color="secondary" size="xs" onClick={() => onEdit(event)}>{t('groupDetails.editEvent')}</Button>}
-                  {onDelete && <Button color="danger" size="xs" onClick={() => handleDeleteClick(event)}>{t('groupDetails.deleteEvent')}</Button>}
+                <div className="flex-1">
+                  <div className="font-medium flex items-center gap-2">
+                    {event.title}
+                    {isPastEvent(eventDate) && (
+                      <span className="ml-2 text-xs bg-slate-500 px-2 py-0.5 rounded text-white">{t('groupDetails.past')}</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-400">{eventType} • {formatEventDate(eventDate)}</div>
+                  <div className="text-xs text-slate-500">{t('groupDetails.organizer')}: {organizerName}</div>
                 </div>
-              )}
-              {!isAdmin && <Button color="secondary" size="xs" className="ml-auto">{t('groupDetails.rsvp')}</Button>}
-            </li>
+                {isAdmin && (
+                  <div className="flex gap-2 ml-auto" onClick={(ev) => ev.stopPropagation()}>
+                    {onEdit && <Button color="secondary" size="xs" onClick={() => onEdit(event)}>{t('groupDetails.editEvent')}</Button>}
+                    {onDelete && <Button color="danger" size="xs" onClick={() => handleDeleteClick(event)}>{t('groupDetails.deleteEvent')}</Button>}
+                  </div>
+                )}
+                {!isAdmin && <Button color="secondary" size="xs" className="ml-auto">{t('groupDetails.rsvp')}</Button>}
+              </li>
             );
           })}
         </ul>
