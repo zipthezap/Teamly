@@ -181,7 +181,7 @@ export const useEnhancedNotifications = (options: UseEnhancedNotificationsOption
   useEffect(() => {
     fetchNotifications(true);
     fetchStats();
-  }, [filters]);
+  }, [filters, fetchNotifications, fetchStats]);
 
   // Auto-refresh
   useEffect(() => {
@@ -207,7 +207,7 @@ export const useEnhancedNotifications = (options: UseEnhancedNotificationsOption
     if (offset > 0) {
       fetchNotifications(false);
     }
-  }, [offset]);
+  }, [offset, fetchNotifications]);
 
   return {
     notifications,
