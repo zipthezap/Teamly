@@ -256,13 +256,15 @@ const GroupDetails = () => {
           <ul>
             {group.members?.map((member) => (
               <li key={member.id} className="flex items-center justify-between py-2 border-b border-gray-700 last:border-b-0">
-                <div>
-                  <div className="font-medium text-gray-200">{member.user?.name}</div>
-                  <div className="text-xs text-gray-400 flex items-center gap-2">
-                    {member.user?.email}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="font-medium text-gray-200">{member.user?.name}</div>
                     {member.role === 'admin' && (
-                      <span className="ml-2 px-2 py-0.5 rounded bg-blue-100 text-blue-600 text-xs font-semibold">Admin</span>
+                      <span className="flex-shrink-0 px-2 py-0.5 rounded bg-blue-100 text-blue-600 text-xs font-semibold whitespace-nowrap">Admin</span>
                     )}
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {member.user?.email}
                   </div>
                 </div>
                 {isAdmin && member.userId !== user.id && (
