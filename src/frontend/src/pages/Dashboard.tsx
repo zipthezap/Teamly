@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Container,
   Grid,
@@ -28,6 +29,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   useEffect(() => {
     fetchData();
@@ -53,7 +55,7 @@ const Dashboard = () => {
   };
 
   if (loading) {
-    return <LoadingSpinner message="Loading your dashboard..." />;
+    return <LoadingSpinner message={t('dashboard.loadingDashboard')} />;
   }
 
   // Calculate statistics
@@ -67,10 +69,10 @@ const Dashboard = () => {
       {/* Welcome Section */}
       <Box sx={{ mb: 3 }}>
         <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 0.5 }}>
-          Welcome back, {user?.name}! 👋
+          {t('dashboard.welcomeBack', { name: user?.name })}
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Here's what's happening with your sports activities
+          {t('dashboard.whatsHappening')}
         </Typography>
       </Box>
 
@@ -86,14 +88,14 @@ const Dashboard = () => {
           {/* Upcoming Events */}
           <Box sx={{ mb: 3 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h5" sx={{ fontWeight: 600 }}>Upcoming Events</Typography>
+              <Typography variant="h5" sx={{ fontWeight: 600 }}>{t('dashboard.upcomingEvents')}</Typography>
               <Button
                 variant="text"
                 size="small"
                 onClick={() => navigate('/events')}
                 sx={{ textTransform: 'none' }}
               >
-                View All
+                {t('common.viewAll')}
               </Button>
             </Box>
             <Grid container spacing={2}>
@@ -119,13 +121,13 @@ const Dashboard = () => {
                             {isFull && (
                               <StatusBadge 
                                 status="warning"
-                                label="Full"
+                                label={t('common.full')}
                               />
                             )}
                             {isParticipating && (
                               <StatusBadge 
                                 status="success"
-                                label="Joined"
+                                label={t('common.joined')}
                               />
                             )}
                           </Box>
@@ -144,7 +146,7 @@ const Dashboard = () => {
                           )}
                           <Typography variant="body2" color="text.secondary">
                             👥 {event.participants?.length || 0}
-                            {event.maxPlayers && ` / ${event.maxPlayers}`} participants
+                            {event.maxPlayers && ` / ${event.maxPlayers}`} {t('common.participants')}
                           </Typography>
                         </Box>
                       </CardContent>
@@ -155,7 +157,7 @@ const Dashboard = () => {
                           onClick={() => navigate(`/events/${event.id}`)}
                           fullWidth
                         >
-                          View Details
+                          {t('common.viewDetails')}
                         </Button>
                       </CardActions>
                     </Card>
@@ -166,9 +168,9 @@ const Dashboard = () => {
                 <Grid item xs={12}>
                   <EmptyState
                     icon={EventIcon}
-                    title="No upcoming events"
-                    description="No upcoming events scheduled. Create an event to start organizing your sports activities!"
-                    actionLabel="Create Your First Event"
+                    title={t('dashboard.noUpcomingEvents')}
+                    description={t('dashboard.noUpcomingEventsDesc')}
+                    actionLabel={t('dashboard.createFirstEvent')}
                     onAction={() => navigate('/events/new')}
                     gradient="linear-gradient(135deg, rgba(245, 0, 87, 0.05) 0%, rgba(245, 0, 87, 0.02) 100%)"
                   />
@@ -180,14 +182,14 @@ const Dashboard = () => {
           {/* Your Groups */}
           <Box>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h5" sx={{ fontWeight: 600 }}>Your Groups</Typography>
+              <Typography variant="h5" sx={{ fontWeight: 600 }}>{t('dashboard.yourGroups')}</Typography>
               <Button
                 variant="text"
                 size="small"
                 onClick={() => navigate('/groups')}
                 sx={{ textTransform: 'none' }}
               >
-                View All
+                {t('common.viewAll')}
               </Button>
             </Box>
             <Grid container spacing={2}>
@@ -200,16 +202,16 @@ const Dashboard = () => {
                           {group.name}
                         </Typography>
                         {group.isPublic && (
-                          <Chip label="Public" size="small" color="primary" />
+                          <Chip label={t('common.public')} size="small" color="primary" />
                         )}
                       </Box>
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, minHeight: 40 }}>
-                        {group.description || 'No description'}
+                        {group.description || t('common.noDescription')}
                       </Typography>
                       <Box display="flex" alignItems="center" gap={1}>
                         <GroupIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
-                          {group.members?.length || 0} members
+                          {group.members?.length || 0} {t('common.members')}
                         </Typography>
                       </Box>
                     </CardContent>
@@ -220,7 +222,7 @@ const Dashboard = () => {
                         onClick={() => navigate(`/groups/${group.id}`)}
                         fullWidth
                       >
-                        View Details
+                        {t('common.viewDetails')}
                       </Button>
                     </CardActions>
                   </Card>
@@ -230,9 +232,9 @@ const Dashboard = () => {
                 <Grid item xs={12}>
                   <EmptyState
                     icon={GroupIcon}
-                    title="No groups yet"
-                    description="You haven't joined any groups yet. Create one to get started and connect with other sports enthusiasts!"
-                    actionLabel="Create Your First Group"
+                    title={t('dashboard.noGroupsYet')}
+                    description={t('dashboard.noGroupsYetDesc')}
+                    actionLabel={t('dashboard.createFirstGroup')}
                     onAction={() => navigate('/groups/new')}
                     gradient="linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(33, 150, 243, 0.02) 100%)"
                   />
