@@ -321,7 +321,7 @@ const PublicGroups = () => {
           </div>
         ) : (
           <div className="mb-3 p-2 bg-yellow-100 text-yellow-900 rounded border border-yellow-300">
-            <strong>{t('groups.publicGroups.apiKeyNotConfigured')}</strong> <span className="font-mono">REACT_APP_GOOGLE_MAPS_API_KEY</span> {t('groups.publicGroups.apiKeyRequired')}<br />
+            <strong>{t('groups.publicGroups.apiKeyNotConfigured')}</strong> <span className="font-mono">VITE_GOOGLE_MAPS_API_KEY</span> {t('groups.publicGroups.apiKeyRequired')}<br />
             {t('groups.publicGroups.locationFilteringWithoutMap')}
           </div>
         )}
