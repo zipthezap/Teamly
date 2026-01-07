@@ -96,7 +96,7 @@ const PublicGroups = () => {
       console.error('Error fetching public groups:', error);
       setSnackbar({
         open: true,
-        message: t('publicGroups.failedToLoad'),
+        message: t('groups.publicGroups.failedToLoad'),
         severity: 'error',
       });
     } finally {
@@ -108,7 +108,7 @@ const PublicGroups = () => {
     if (!navigator.geolocation) {
       setSnackbar({
         open: true,
-        message: t('publicGroups.geolocationNotSupported'),
+        message: t('groups.publicGroups.geolocationNotSupported'),
         severity: 'error',
       });
       return;
@@ -126,14 +126,14 @@ const PublicGroups = () => {
         setCustomSearchLocation(null); // Reset custom location when using current location
         setSnackbar({
           open: true,
-          message: t('publicGroups.locationDetected'),
+          message: t('groups.publicGroups.locationDetected'),
           severity: 'success',
         });
       },
       (error) => {
         setSnackbar({
           open: true,
-          message: t('publicGroups.unableToGetLocation', { error: error.message }),
+          message: t('groups.publicGroups.unableToGetLocation', { error: error.message }),
           severity: 'error',
         });
       }
@@ -150,7 +150,7 @@ const PublicGroups = () => {
     setLocationEnabled(true);
     setSnackbar({
       open: true,
-      message: t('publicGroups.customLocationSet'),
+      message: t('groups.publicGroups.customLocationSet'),
       severity: 'success',
     });
   };
@@ -158,12 +158,57 @@ const PublicGroups = () => {
   const handleSearchAddress = async () => {
     if (!searchAddress.trim()) return;
     
-    // Note: In production, you would use Google Geocoding API here
-    setSnackbar({
-      open: true,
-      message: t('publicGroups.addressSearchRequiresApi'),
-      severity: 'info',
-    });
+    if (!GOOGLE_MAPS_API_KEY) {
+      setSnackbar({
+        open: true,
+        message: t('groups.publicGroups.addressSearchRequiresApi'),
+        severity: 'info',
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // Use Google Geocoding API to search for the address
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(searchAddress)}&key=${GOOGLE_MAPS_API_KEY}`
+      );
+      const data = await response.json();
+
+      if (data.status === 'OK' && data.results && data.results.length > 0) {
+        const result = data.results[0];
+        const { lat, lng } = result.geometry.location;
+        
+        const searchLocation = {
+          latitude: lat,
+          longitude: lng,
+        };
+        
+        setCustomSearchLocation(searchLocation);
+        setMapCenter(searchLocation);
+        setLocationEnabled(true);
+        setSnackbar({
+          open: true,
+          message: t('groups.publicGroups.addressSearchSuccess'),
+          severity: 'success',
+        });
+      } else {
+        setSnackbar({
+          open: true,
+          message: t('groups.publicGroups.addressSearchFailed'),
+          severity: 'error',
+        });
+      }
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      setSnackbar({
+        open: true,
+        message: t('groups.publicGroups.addressSearchFailed'),
+        severity: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRequestJoin = async (groupId) => {
@@ -172,12 +217,12 @@ const PublicGroups = () => {
       await groupsAPI.requestJoin(groupId);
       setSnackbar({
         open: true,
-        message: t('publicGroups.joinRequestSent'),
+        message: t('groups.publicGroups.joinRequestSent'),
         severity: 'success',
       });
       fetchPublicGroups();
     } catch (error) {
-      const message = error.response?.data?.error || t('publicGroups.failedToSendJoinRequest');
+      const message = error.response?.data?.error || t('groups.publicGroups.failedToSendJoinRequest');
       setSnackbar({
         open: true,
         message,
@@ -193,7 +238,7 @@ const PublicGroups = () => {
   };
 
   if (loading) {
-    return <LoadingSpinner message={t('publicGroups.loading')} />;
+    return <LoadingSpinner message={t('groups.publicGroups.loading')} />;
   }
 
   return (
@@ -203,12 +248,12 @@ const PublicGroups = () => {
         <span className="mr-3">
           <svg width="40" height="40" fill="none" viewBox="0 0 24 24" className="text-blue-600"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" /><path d="M2 12h20M12 2c2.5 2.5 4 6.5 4 10s-1.5 7.5-4 10c-2.5-2.5-4-6.5-4-10s1.5-7.5 4-10z" stroke="currentColor" strokeWidth="2" /></svg>
         </span>
-        <h1 className="text-3xl font-bold text-gray-100">{t('publicGroups.title')}</h1>
+        <h1 className="text-3xl font-bold text-gray-100">{t('groups.publicGroups.title')}</h1>
       </div>
 
       {/* Location Filter Section */}
       <div className="bg-[#202334] rounded-lg shadow p-4 mb-6 border border-gray-800">
-        <h2 className="text-base font-bold mb-2 text-white">{t('publicGroups.filterByLocation')}</h2>
+        <h2 className="text-base font-bold mb-2 text-white">{t('groups.publicGroups.filterByLocation')}</h2>
         <div className="flex items-center gap-2 mb-2 flex-wrap">
           <Button
             onClick={getCurrentLocation}
@@ -222,7 +267,7 @@ const PublicGroups = () => {
             }
             className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded px-4 py-1.5 text-sm shadow transition border border-blue-500 focus:ring-2 focus:ring-blue-400 focus:outline-none gap-2"
           >
-            {locationEnabled && !customSearchLocation ? t('publicGroups.usingCurrentLocation') : t('publicGroups.useMyLocation')}
+            {locationEnabled && !customSearchLocation ? t('groups.publicGroups.usingCurrentLocation') : t('groups.publicGroups.useMyLocation')}
           </Button>
           {(userLocation || customSearchLocation) && (
             <span className="text-xs text-blue-200 font-normal">
@@ -236,7 +281,7 @@ const PublicGroups = () => {
         {/* Google Maps Integration (unchanged, keep as is) */}
         {GOOGLE_MAPS_API_KEY ? (
           <div className="mb-3">
-            <div className="text-xs text-gray-400 mb-1">{t('publicGroups.clickMapToSetLocation')}</div>
+            <div className="text-xs text-gray-400 mb-1">{t('groups.publicGroups.clickMapToSetLocation')}</div>
             <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
               <GoogleMap
                 mapContainerStyle={mapContainerStyle}
@@ -276,8 +321,8 @@ const PublicGroups = () => {
           </div>
         ) : (
           <div className="mb-3 p-2 bg-yellow-100 text-yellow-900 rounded border border-yellow-300">
-            <strong>{t('publicGroups.apiKeyNotConfigured')}</strong> <span className="font-mono">REACT_APP_GOOGLE_MAPS_API_KEY</span> {t('publicGroups.apiKeyRequired')}<br />
-            {t('publicGroups.locationFilteringWithoutMap')}
+            <strong>{t('groups.publicGroups.apiKeyNotConfigured')}</strong> <span className="font-mono">REACT_APP_GOOGLE_MAPS_API_KEY</span> {t('groups.publicGroups.apiKeyRequired')}<br />
+            {t('groups.publicGroups.locationFilteringWithoutMap')}
           </div>
         )}
 
@@ -303,7 +348,7 @@ const PublicGroups = () => {
 
         {(locationEnabled && (userLocation || customSearchLocation)) && (
           <div>
-            <div className="text-sm mb-1">{t('publicGroups.distanceRadius', { count: distanceRadius })}</div>
+            <div className="text-sm mb-1">{t('groups.publicGroups.distanceRadius', { count: distanceRadius })}</div>
             <input
               type="range"
               min={1}
@@ -314,7 +359,7 @@ const PublicGroups = () => {
               className="w-full accent-blue-600"
             />
             <div className="text-xs text-gray-400 mt-1">
-              {t('publicGroups.showingGroupsWithin', { count: distanceRadius, location: customSearchLocation ? t('publicGroups.customPoint') : t('publicGroups.yourLocation') })}
+              {t('groups.publicGroups.showingGroupsWithin', { count: distanceRadius, location: customSearchLocation ? t('groups.publicGroups.customPoint') : t('groups.publicGroups.yourLocation') })}
             </div>
           </div>
         )}
@@ -325,15 +370,15 @@ const PublicGroups = () => {
           icon={
             <svg className="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" /><path d="M2 12h20M12 2c2.5 2.5 4 6.5 4 10s-1.5 7.5-4 10c-2.5-2.5-4-6.5-4-10s1.5-7.5 4-10z" stroke="currentColor" strokeWidth="2" /></svg>
           }
-          title={locationEnabled ? t('publicGroups.noGroupsInRadius') : t('publicGroups.noGroupsAvailable')}
-          description={locationEnabled ? t('publicGroups.tryIncreasingRadius') : t('publicGroups.checkBackOrCreate')}
+          title={locationEnabled ? t('groups.publicGroups.noGroupsInRadius') : t('groups.publicGroups.noGroupsAvailable')}
+          description={locationEnabled ? t('groups.publicGroups.tryIncreasingRadius') : t('groups.publicGroups.checkBackOrCreate')}
           actionLabel={t('groups.createPublicGroup')}
           onAction={() => navigate('/groups/new')}
         />
       ) : (
         <>
           <div className="text-sm text-gray-400 mb-2">
-            {t('publicGroups.showingGroups', { count: filteredGroups.length, total: groups.length })}
+            {t('groups.publicGroups.showingGroups', { count: filteredGroups.length, total: groups.length })}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {filteredGroups.map((group) => (
@@ -343,7 +388,7 @@ const PublicGroups = () => {
                 </div>
                 <div className="flex-1 flex flex-col gap-2">
                   <h2 className="text-lg font-bold flex-1 truncate text-gray-100 mb-1">{group.name}</h2>
-                  <div className="text-sm text-gray-400 min-h-[48px] line-clamp-3">{group.description || t('publicGroups.noDescriptionAvailable')}</div>
+                  <div className="text-sm text-gray-400 min-h-[48px] line-clamp-3">{group.description || t('groups.publicGroups.noDescriptionAvailable')}</div>
                   {(group.city || group.country || group.locationName) && (
                     <div className="flex items-center gap-1 text-xs text-gray-400 mb-1">
                       <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 21c-4.418 0-8-3.582-8-8 0-4.418 3.582-8 8-8s8 3.582 8 8c0 4.418-3.582 8-8 8z" stroke="currentColor" strokeWidth="2" /><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" /></svg>
@@ -352,7 +397,7 @@ const PublicGroups = () => {
                   )}
                   {group.distance !== null && group.distance !== undefined && (
                     <span className="inline-block bg-blue-50 text-blue-700 text-xs rounded px-2 py-0.5 mb-1">
-                      {t('publicGroups.kmAway', { count: group.distance.toFixed(1) })}
+                      {t('groups.publicGroups.kmAway', { count: group.distance.toFixed(1) })}
                     </span>
                   )}
                   <div className="text-xs text-gray-400 mb-2">{t('groups.membersCount', { count: group.memberCount || group.members?.length || 0 })}</div>
@@ -366,7 +411,7 @@ const PublicGroups = () => {
                   className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg px-4 py-2 text-base shadow transition"
                   disabled={requesting[group.id]}
                 >
-                  {requesting[group.id] ? t('publicGroups.requesting') : t('publicGroups.requestToJoin')}
+                  {requesting[group.id] ? t('groups.publicGroups.requesting') : t('groups.publicGroups.requestToJoin')}
                 </Button>
               </div>
             ))}
