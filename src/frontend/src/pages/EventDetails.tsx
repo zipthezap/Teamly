@@ -104,7 +104,7 @@ const EventDetails = () => {
     }
   };
 
-  const getInitials = (name: string) => {
+  const getInitials = (name?: string) => {
     if (!name) return '?';
     return name
       .split(' ')
