@@ -52,8 +52,8 @@ const EventForm: React.FC<EventFormProps> = ({
   submitLabel = 'Create',
   showGroupSelect = true,
 }) => {
-  const [formData, setFormData] = useState<EventFormData>({
   const { t } = useTranslation();
+  const [formData, setFormData] = useState<EventFormData>({
     groupId: initialData.groupId || '',
     title: initialData.title || '',
     description: initialData.description || '',

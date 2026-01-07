@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
+import { useTranslation } from 'react-i18next';
 
 interface LocationValue {
   latitude?: number | string;
@@ -25,6 +26,7 @@ interface LocationPickerProps {
 }
 
 const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange }) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [location, setLocation] = useState<LocationValue>({
@@ -60,7 +62,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
     setError('');
 
     if (!navigator.geolocation) {
-      setError('Geolocation is not supported by your browser');
+      setError(t('locationPicker.geolocationNotSupported'));
       setLoading(false);
       return;
     }
@@ -80,7 +82,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
         setLoading(false);
       },
       (err) => {
-        setError('Unable to retrieve your location: ' + err.message);
+        setError(t('locationPicker.unableToRetrieveLocation', { error: err.message }));
         setLoading(false);
       },
       {
@@ -129,7 +131,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
     <Paper variant="outlined" sx={{ p: 2, mt: 2 }}>
       <Box display="flex" alignItems="center" mb={2}>
         <LocationOnIcon sx={{ mr: 1, color: 'primary.main' }} />
-        <Typography variant="h6">Location (Optional)</Typography>
+        <Typography variant="h6">{t('locationPicker.title')}</Typography>
       </Box>
 
       {error && (
@@ -142,56 +144,56 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
         {/* City and Country - Primary fields */}
         <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
           <TextField
-            label="City"
+            label={t('locationPicker.city')}
             fullWidth
             value={location.city}
             onChange={(e) => handleLocationChange('city', e.target.value)}
-            placeholder="e.g., New York"
-            helperText="City where your group is located"
+            placeholder={t('locationPicker.cityPlaceholder')}
+            helperText={t('locationPicker.cityHelper')}
           />
           <TextField
-            label="Country"
+            label={t('locationPicker.country')}
             fullWidth
             value={location.country}
             onChange={(e) => handleLocationChange('country', e.target.value)}
-            placeholder="e.g., United States"
-            helperText="Country where your group is located"
+            placeholder={t('locationPicker.countryPlaceholder')}
+            helperText={t('locationPicker.countryHelper')}
           />
         </Box>
 
         {/* Location Name - Optional descriptive field */}
         <TextField
-          label="Location Name (Optional)"
+          label={t('locationPicker.locationName')}
           fullWidth
           value={location.locationName}
           onChange={(e) => handleLocationChange('locationName', e.target.value)}
-          placeholder="e.g., Central Park Sports Complex"
-          helperText="Optional: A specific venue or landmark"
+          placeholder={t('locationPicker.locationNamePlaceholder')}
+          helperText={t('locationPicker.locationNameHelper')}
         />
 
         {/* Coordinates - Advanced/Optional */}
         <Box>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontWeight: 500 }}>
-            Coordinates (Optional - for precise location)
+            {t('locationPicker.coordinates')}
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
             <TextField
-              label="Latitude"
+              label={t('locationPicker.latitude')}
               fullWidth
               type="number"
               value={location.latitude}
               onChange={(e) => handleLocationChange('latitude', e.target.value)}
-              placeholder="40.7128"
+              placeholder={t('locationPicker.latitudePlaceholder')}
               inputProps={{ step: 'any' }}
               size="small"
             />
             <TextField
-              label="Longitude"
+              label={t('locationPicker.longitude')}
               fullWidth
               type="number"
               value={location.longitude}
               onChange={(e) => handleLocationChange('longitude', e.target.value)}
-              placeholder="-74.0060"
+              placeholder={t('locationPicker.longitudePlaceholder')}
               inputProps={{ step: 'any' }}
               size="small"
             />
@@ -206,11 +208,11 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
           onClick={getCurrentLocation}
           disabled={loading}
         >
-          {loading ? 'Getting Location...' : 'Use Current Location'}
+          {loading ? t('locationPicker.gettingLocation') : t('locationPicker.useCurrentLocation')}
         </Button>
         {hasAnyLocationData() && (
           <Button variant="outlined" onClick={clearLocation}>
-            Clear All
+            {t('locationPicker.clearAll')}
           </Button>
         )}
       </Box>
@@ -220,16 +222,21 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
           <Alert severity="success">
             {(location.city || location.country) && (
               <>
-                Location: {[location.city, location.country].filter(Boolean).join(', ')}
+                {t('locationPicker.locationSet', { 
+                  location: [location.city, location.country].filter(Boolean).join(', ')
+                })}
                 {location.locationName && ` - ${location.locationName}`}
               </>
             )}
             {!(location.city || location.country) && location.locationName && (
-              <>Location: {location.locationName}</>
+              <>{t('locationPicker.locationSet', { location: location.locationName })}</>
             )}
             {hasValidCoordinate(location.latitude) && hasValidCoordinate(location.longitude) && (
               <Typography variant="caption" display="block" sx={{ mt: hasNamedLocation() ? 0.5 : 0 }}>
-                Coordinates: {formatCoordinate(location.latitude)}, {formatCoordinate(location.longitude)}
+                {t('locationPicker.coordinatesSet', { 
+                  lat: formatCoordinate(location.latitude), 
+                  lng: formatCoordinate(location.longitude)
+                })}
               </Typography>
             )}
             {!hasNamedLocation() && (hasValidCoordinate(location.latitude) || hasValidCoordinate(location.longitude)) && (
