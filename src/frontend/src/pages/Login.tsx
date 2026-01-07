@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import {
   Container,
   Paper,
@@ -23,6 +24,7 @@ const Login = () => {
   
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,7 +47,7 @@ const Login = () => {
         navigate('/dashboard');
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed');
+      setError(err.response?.data?.error || t('auth.loginFailed'));
     } finally {
       setLoading(false);
     }
@@ -57,7 +59,10 @@ const Login = () => {
         <Box display="flex" flexDirection="column" alignItems="center">
           <LoginIcon sx={{ fontSize: 48, mb: 2, color: 'primary.main' }} />
           <Typography variant="h4" component="h1" gutterBottom>
-            Login to Teamly
+            {t('auth.loginTitle')}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            {t('auth.loginSubtitle')}
           </Typography>
           
           {error && (
@@ -68,22 +73,24 @@ const Login = () => {
 
           <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
             <TextField
-              label="Email"
+              label={t('common.email')}
               type="email"
               fullWidth
               margin="normal"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder={t('auth.emailPlaceholder')}
               required
               disabled={requires2FA}
             />
             <TextField
-              label="Password"
+              label={t('common.password')}
               type="password"
               fullWidth
               margin="normal"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder={t('auth.passwordPlaceholder')}
               required
               disabled={requires2FA}
             />
@@ -94,12 +101,12 @@ const Login = () => {
                   Two-factor authentication is enabled. Enter your verification code.
                 </Alert>
                 <TextField
-                  label="2FA Code"
+                  label={t('auth.twoFactorToken')}
                   fullWidth
                   margin="normal"
                   value={twoFactorToken}
                   onChange={(e) => setTwoFactorToken(e.target.value)}
-                  placeholder="000000"
+                  placeholder={t('auth.twoFactorPlaceholder')}
                   inputProps={{ maxLength: 6 }}
                   InputProps={{
                     sx: { fontSize: '20px', textAlign: 'center' }
@@ -118,7 +125,7 @@ const Login = () => {
               sx={{ mt: 3, mb: 2 }}
               disabled={loading || (requires2FA && twoFactorToken.length !== 6)}
             >
-              {loading ? 'Logging in...' : requires2FA ? 'Verify and Login' : 'Login'}
+              {loading ? t('common.loading') : requires2FA ? `Verify and ${t('common.login')}` : t('auth.loginButton')}
             </Button>
             
             {requires2FA && (
@@ -131,15 +138,15 @@ const Login = () => {
                   setError('');
                 }}
               >
-                Back to Login
+                {t('common.back')} to {t('common.login')}
               </Button>
             )}
           </Box>
 
           <Typography variant="body2" sx={{ mt: 2 }}>
-            Don't have an account?{' '}
+            {t('auth.noAccount')}{' '}
             <StyledLink to="/register">
-              Register here
+              {t('auth.signUpHere')}
             </StyledLink>
           </Typography>
         </Box>
