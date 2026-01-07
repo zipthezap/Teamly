@@ -332,9 +332,9 @@ const PublicGroups = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {filteredGroups.map((group) => (
               <div key={group.id} className="bg-[#1a202c] rounded-xl shadow-md flex flex-col h-full p-5 border border-gray-700">
-                <div className="flex items-center mb-2">
-                  <div className="flex-1 text-lg font-semibold text-gray-100">{group.name}</div>
-                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded bg-blue-900/50 text-blue-300 border border-blue-700 text-xs font-medium">
+                <div className="flex items-start justify-between mb-2 gap-2">
+                  <div className="flex-1 text-lg font-semibold text-gray-100 break-words">{group.name}</div>
+                  <span className="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded bg-blue-900/50 text-blue-300 border border-blue-700 text-xs font-medium whitespace-nowrap">
                     {/* Globe SVG */}
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" /><path d="M2 12h20M12 2c2.5 2.5 4 6.5 4 10s-1.5 7.5-4 10c-2.5-2.5-4-6.5-4-10s1.5-7.5 4-10z" stroke="currentColor" strokeWidth="2" /></svg>
                     Public

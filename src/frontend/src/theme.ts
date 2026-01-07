@@ -2,6 +2,9 @@ import { createTheme } from '@mui/material/styles';
 
 // Create a dark theme for MUI components
 export const darkTheme = createTheme({
+  typography: {
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Helvetica Neue', sans-serif",
+  },
   palette: {
     mode: 'dark',
     primary: {
@@ -33,6 +36,14 @@ export const darkTheme = createTheme({
       styleOverrides: {
         root: {
           backgroundImage: 'none',
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          cursor: 'pointer',
+          textTransform: 'none',
         },
       },
     },
