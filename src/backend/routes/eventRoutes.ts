@@ -12,11 +12,15 @@ router.post('/', eventController.createEvent);
 router.get('/', eventController.getEvents);
 router.get('/statistics', eventController.getUserStatistics);
 router.get('/:id', eventController.getEvent);
+router.get('/:id/activity', eventController.getEventActivityFeed);
 router.put('/:id', eventController.updateEvent);
 router.delete('/:id', eventController.deleteEvent);
 router.post('/:id/join', eventController.joinEvent);
 router.delete('/:id/leave', eventController.leaveEvent);
 router.put('/:id/status', eventController.updateParticipationStatus);
+router.put('/:id/event-status', eventController.updateEventStatus);
+router.post('/:id/archive', eventController.archiveEvent);
+router.post('/:id/unarchive', eventController.unarchiveEvent);
 
 // Recurring event routes
 router.get('/:id/instances', eventController.getRecurringEventInstances);

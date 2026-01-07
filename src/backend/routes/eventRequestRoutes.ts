@@ -18,6 +18,9 @@ router.get('/group/:groupId', eventRequestController.getEventRequests);
 // Get a specific event request
 router.get('/:id', eventRequestController.getEventRequest);
 
+// Get voting statistics for an event request
+router.get('/:id/statistics', eventRequestController.getEventRequestStatistics);
+
 // Vote on an event request
 router.post('/:id/vote', eventRequestController.voteOnEventRequest);
 

@@ -23,6 +23,8 @@ interface EventActivityFeedProps {
 
 const getActivityMessage = (notif: any) => {
   const userName = notif.user?.name || 'Someone';
+  const metadata = notif.metadata || {};
+  
   switch (notif.type) {
     case 'join':
       return `${userName} joined the event`;
@@ -34,6 +36,10 @@ const getActivityMessage = (notif: any) => {
       return `${userName} confirmed attendance`;
     case 'declined':
       return `${userName} declined`;
+    case 'status_change':
+      return `Event status changed to ${metadata.newStatus || 'updated'}`;
+    case 'comment':
+      return `${userName} commented on the event`;
     default:
       return `${userName} ${notif.type}`;
   }
@@ -51,6 +57,10 @@ const getActivityIcon = (type: string) => {
       return '✅';
     case 'declined':
       return '❌';
+    case 'status_change':
+      return '🔄';
+    case 'comment':
+      return '💬';
     default:
       return '📌';
   }

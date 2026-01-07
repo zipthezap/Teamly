@@ -2,6 +2,8 @@ import prisma from '../config/database';
 import { validateRecurrenceRule, generateRecurrenceInstances, calculateDuration, applyDuration } from '../utils/recurrenceService';
 import { sendEmail } from '../utils/emailService';
 import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
+import { getEventActivity } from '../services/eventNotification';
+import { validateEventStatus } from '../services/eventValidation';
 import { Request, Response } from 'express';
 
 export const createEvent = async (req: Request, res: Response) => {
@@ -50,6 +52,23 @@ export const createEvent = async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Only group members can create events' });
     }
 
+    // Determine event status based on start and end time
+    const now = new Date();
+    const eventStartTime = new Date(startTime);
+    const eventEndTime = endTime ? new Date(endTime) : null;
+    
+    let eventStatus = 'upcoming';
+    if (eventEndTime && eventEndTime < now) {
+      // Event has ended
+      eventStatus = 'completed';
+    } else if (eventStartTime <= now && (!eventEndTime || eventEndTime >= now)) {
+      // Event is currently happening
+      eventStatus = 'ongoing';
+    } else if (eventStartTime > now) {
+      // Event hasn't started yet
+      eventStatus = 'upcoming';
+    }
+
     // Get group members for notifications
     const group = await prisma.group.findUnique({
       where: { id: groupId },
@@ -83,6 +102,7 @@ export const createEvent = async (req: Request, res: Response) => {
         isRecurring: isRecurring || false,
         recurrenceRule: isRecurring ? recurrenceRule : null,
         recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : null,
+        status: eventStatus,
         participants: {
           create: {
             userId: req.user.id,
@@ -133,7 +153,7 @@ export const createEvent = async (req: Request, res: Response) => {
 
 export const getEvents = async (req: Request, res: Response) => {
   try {
-    const { groupId, search, eventType, startDate, endDate, location } = req.query;
+    const { groupId, search, eventType, startDate, endDate, location, status, archived } = req.query;
 
     // Build where filter
     const where: any = {};
@@ -167,6 +187,19 @@ export const getEvents = async (req: Request, res: Response) => {
     // Location filter
     if (location && typeof location === 'string') {
       where.location = { contains: location, mode: 'insensitive' };
+    }
+
+    // Status filter
+    if (status && typeof status === 'string') {
+      where.status = status;
+    }
+
+    // Archived filter
+    if (archived !== undefined) {
+      where.archived = archived === 'true';
+    } else {
+      // By default, exclude archived events
+      where.archived = false;
     }
 
     // Date range filters
@@ -887,6 +920,169 @@ export const getUserStatistics = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Get user statistics error:', error);
     res.status(500).json({ error: 'Failed to get statistics' });
+  }
+};
+
+// Archive an event
+export const archiveEvent = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Check if user is the creator of the event
+    const event = await prisma.event.findUnique({
+      where: { id }
+    });
+
+    if (!event || event.creatorId !== req.user.id) {
+      return res.status(403).json({ error: 'Only the event creator can archive it' });
+    }
+
+    const updatedEvent = await prisma.event.update({
+      where: { id },
+      data: { archived: true }
+    });
+
+    res.json({ message: 'Event archived successfully', event: updatedEvent });
+  } catch (error) {
+    console.error('Archive event error:', error);
+    res.status(500).json({ error: 'Failed to archive event' });
+  }
+};
+
+// Unarchive an event
+export const unarchiveEvent = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Check if user is the creator of the event
+    const event = await prisma.event.findUnique({
+      where: { id }
+    });
+
+    if (!event || event.creatorId !== req.user.id) {
+      return res.status(403).json({ error: 'Only the event creator can unarchive it' });
+    }
+
+    const updatedEvent = await prisma.event.update({
+      where: { id },
+      data: { archived: false }
+    });
+
+    res.json({ message: 'Event unarchived successfully', event: updatedEvent });
+  } catch (error) {
+    console.error('Unarchive event error:', error);
+    res.status(500).json({ error: 'Failed to unarchive event' });
+  }
+};
+
+// Update event status
+export const updateEventStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    // Validate status using the centralized validation function
+    const statusValidation = validateEventStatus(status);
+    if (!statusValidation.isValid) {
+      return res.status(400).json({ error: statusValidation.error });
+    }
+
+    // Check if user is the creator of the event
+    const event = await prisma.event.findUnique({
+      where: { id },
+      include: {
+        participants: {
+          include: {
+            user: {
+              select: { id: true, name: true, email: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (!event || event.creatorId !== req.user.id) {
+      return res.status(403).json({ error: 'Only the event creator can update event status' });
+    }
+
+    const updatedEvent = await prisma.event.update({
+      where: { id },
+      data: { status }
+    });
+
+    // Create notifications for participants about status change
+    const participantIds = event.participants
+      .filter(p => p.userId !== req.user.id)
+      .map(p => p.userId);
+    
+    await Promise.all(participantIds.map(userId =>
+      prisma.eventNotification.create({
+        data: {
+          eventId: id,
+          userId,
+          type: 'status_change',
+          metadata: { newStatus: status, oldStatus: event.status }
+        }
+      })
+    ));
+
+    res.json({ message: 'Event status updated successfully', event: updatedEvent });
+  } catch (error) {
+    console.error('Update event status error:', error);
+    res.status(500).json({ error: 'Failed to update event status' });
+  }
+};
+
+// Get event activity with optional filtering
+export const getEventActivityFeed = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { type, limit, startDate, endDate } = req.query;
+
+    // Check if user has access to the event
+    const event = await prisma.event.findFirst({
+      where: {
+        id,
+        group: {
+          members: {
+            some: {
+              userId: req.user.id
+            }
+          }
+        }
+      }
+    });
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found or access denied' });
+    }
+
+    const options: any = {
+      limit: limit ? parseInt(limit as string) : 50
+    };
+
+    if (type && typeof type === 'string') {
+      options.type = type;
+    }
+
+    if (startDate && typeof startDate === 'string') {
+      options.startDate = new Date(startDate);
+    }
+
+    if (endDate && typeof endDate === 'string') {
+      options.endDate = new Date(endDate);
+    }
+
+    const activity = await getEventActivity(id, prisma, options);
+
+    res.json({
+      eventId: id,
+      total: activity.length,
+      activity
+    });
+  } catch (error) {
+    console.error('Get event activity error:', error);
+    res.status(500).json({ error: 'Failed to get event activity' });
   }
 };
 

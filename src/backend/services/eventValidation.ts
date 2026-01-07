@@ -109,3 +109,92 @@ export const validateEventCreator = async (
 
   return { isValid: true };
 };
+
+/**
+ * Validates event status
+ */
+export const validateEventStatus = (status: string): ValidationResult => {
+  const validStatuses = ['upcoming', 'ongoing', 'completed', 'cancelled'];
+  
+  if (!validStatuses.includes(status)) {
+    return {
+      isValid: false,
+      error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+    };
+  }
+
+  return { isValid: true };
+};
+
+/**
+ * Validates event capacity
+ */
+export const validateEventCapacity = (
+  currentParticipants: number,
+  maxPlayers?: number | null
+): ValidationResult => {
+  if (!maxPlayers) {
+    return { isValid: true };
+  }
+
+  if (currentParticipants >= maxPlayers) {
+    return {
+      isValid: false,
+      error: 'Event is at full capacity'
+    };
+  }
+
+  return { isValid: true };
+};
+
+/**
+ * Validates vote threshold
+ */
+export const validateVoteThreshold = (threshold: number | string | unknown): ValidationResult => {
+  const thresholdNum = typeof threshold === 'number' ? threshold : parseFloat(String(threshold));
+  
+  if (isNaN(thresholdNum) || thresholdNum < 0 || thresholdNum > 1) {
+    return {
+      isValid: false,
+      error: 'Vote threshold must be a number between 0 and 1'
+    };
+  }
+
+  return { isValid: true };
+};
+
+/**
+ * Validates vote deadline
+ */
+export const validateVoteDeadline = (
+  deadline: string,
+  eventStartTime: string
+): ValidationResult => {
+  const deadlineDate = new Date(deadline);
+  const startDate = new Date(eventStartTime);
+  const now = new Date();
+
+  if (isNaN(deadlineDate.getTime())) {
+    return {
+      isValid: false,
+      error: 'Invalid vote deadline format'
+    };
+  }
+
+  if (deadlineDate <= now) {
+    return {
+      isValid: false,
+      error: 'Vote deadline must be in the future'
+    };
+  }
+
+  if (deadlineDate >= startDate) {
+    return {
+      isValid: false,
+      error: 'Vote deadline must be before event start time'
+    };
+  }
+
+  return { isValid: true };
+};
+

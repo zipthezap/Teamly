@@ -1,10 +1,14 @@
 import prisma from '../config/database';
+import { validateVoteThreshold, validateVoteDeadline } from '../services/eventValidation';
 import { Request, Response } from 'express';
 
 // Create event request (admin only)
 export const createEventRequest = async (req: Request, res: Response) => {
   try {
-    const { groupId, title, description, eventType, location, startTime, endTime, maxPlayers } = req.body;
+    const { 
+      groupId, title, description, eventType, location, startTime, endTime, maxPlayers,
+      voteDeadline, voteThreshold 
+    } = req.body;
 
     if (!groupId || !title || !eventType || !startTime) {
       return res.status(400).json({ 
@@ -27,6 +31,26 @@ export const createEventRequest = async (req: Request, res: Response) => {
       if (endDate <= startDate) {
         return res.status(400).json({ error: 'endTime must be after startTime' });
       }
+    }
+
+    // Validate vote deadline if provided
+    let deadlineDate = null;
+    if (voteDeadline) {
+      const deadlineValidation = validateVoteDeadline(voteDeadline, startTime);
+      if (!deadlineValidation.isValid) {
+        return res.status(400).json({ error: deadlineValidation.error });
+      }
+      deadlineDate = new Date(voteDeadline);
+    }
+
+    // Validate vote threshold if provided
+    let threshold = 0.5; // Default 50%
+    if (voteThreshold !== undefined) {
+      const thresholdValidation = validateVoteThreshold(voteThreshold);
+      if (!thresholdValidation.isValid) {
+        return res.status(400).json({ error: thresholdValidation.error });
+      }
+      threshold = parseFloat(voteThreshold);
     }
 
     // Check if user is admin of the group
@@ -53,7 +77,9 @@ export const createEventRequest = async (req: Request, res: Response) => {
         startTime: startDate,
         endTime: endDate,
         maxPlayers,
-        status: 'voting'
+        status: 'voting',
+        voteDeadline: deadlineDate,
+        voteThreshold: threshold
       },
       include: {
         creator: {
@@ -185,7 +211,11 @@ export const voteOnEventRequest = async (req: Request, res: Response) => {
 
     const eventRequest = await prisma.eventRequest.findUnique({
       where: { id },
-      select: { groupId: true, status: true }
+      select: { 
+        groupId: true, 
+        status: true,
+        voteDeadline: true
+      }
     });
 
     if (!eventRequest) {
@@ -194,6 +224,11 @@ export const voteOnEventRequest = async (req: Request, res: Response) => {
 
     if (eventRequest.status !== 'voting') {
       return res.status(400).json({ error: 'This event request is no longer accepting votes' });
+    }
+
+    // Check if vote deadline has passed
+    if (eventRequest.voteDeadline && new Date() > eventRequest.voteDeadline) {
+      return res.status(400).json({ error: 'Vote deadline has passed' });
     }
 
     // Check if user is member of the group
@@ -260,7 +295,11 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
       where: { id },
       include: {
         votes: true,
-        group: true
+        group: {
+          include: {
+            members: true
+          }
+        }
       }
     });
 
@@ -288,24 +327,47 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
     // Count votes
     const yesVotes = eventRequest.votes.filter(v => v.vote === 'yes').length;
     const noVotes = eventRequest.votes.filter(v => v.vote === 'no').length;
+    const totalVotes = yesVotes + noVotes;
+    
+    // Get the vote threshold (default 0.5 = 50%)
+    const threshold = eventRequest.voteThreshold || 0.5;
+    
+    // Calculate required yes votes based on total group members (not just voters)
+    // This ensures that a minimum participation is required
+    const totalMembers = eventRequest.group.members.length;
+    const requiredYesVotes = Math.ceil(totalMembers * threshold);
+    
+    // Check if there are enough votes and if they meet the threshold
+    if (totalVotes === 0) {
+      return res.status(400).json({ 
+        error: 'Cannot finalize event request with no votes',
+        yesVotes,
+        noVotes,
+        totalVotes,
+        totalMembers,
+        threshold: threshold * 100,
+        requiredYesVotes
+      });
+    }
 
-    // Event is created only if yes votes strictly outnumber no votes
-    // Ties and cases where no votes equal or exceed yes votes result in cancellation
-    if (yesVotes <= noVotes) {
-      // Not enough support or tie, cancel the request
+    // Event is created only if yes votes meet the threshold
+    // Threshold is based on total group members to ensure meaningful participation
+    if (yesVotes < requiredYesVotes) {
+      // Not enough support, cancel the request
       await prisma.eventRequest.update({
         where: { id },
         data: { status: 'cancelled' }
       });
       
-      const reason = yesVotes === noVotes 
-        ? 'Event request cancelled due to tie vote' 
-        : 'Event request cancelled due to insufficient support';
-      
       return res.json({ 
-        message: reason,
+        message: `Event request cancelled: Insufficient support. Required ${requiredYesVotes} yes votes (${(threshold * 100).toFixed(0)}% of ${totalMembers} members), received ${yesVotes} yes votes.`,
         yesVotes,
-        noVotes
+        noVotes,
+        totalVotes,
+        totalMembers,
+        threshold: threshold * 100,
+        requiredYesVotes,
+        cancelled: true
       });
     }
 
@@ -320,7 +382,8 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
         location: eventRequest.location,
         startTime: eventRequest.startTime,
         endTime: eventRequest.endTime,
-        maxPlayers: eventRequest.maxPlayers
+        maxPlayers: eventRequest.maxPlayers,
+        status: 'upcoming'
       },
       include: {
         creator: {
@@ -342,7 +405,11 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
       message: 'Event request finalized and event created',
       event,
       yesVotes,
-      noVotes
+      noVotes,
+      totalVotes,
+      totalMembers,
+      threshold: threshold * 100,
+      requiredYesVotes
     });
   } catch (error) {
     console.error('Finalize event request error:', error);
@@ -390,6 +457,108 @@ export const cancelEventRequest = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Cancel event request error:', error);
     res.status(500).json({ error: 'Failed to cancel event request' });
+  }
+};
+
+// Get voting statistics for an event request
+export const getEventRequestStatistics = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const eventRequest = await prisma.eventRequest.findUnique({
+      where: { id },
+      include: {
+        votes: {
+          include: {
+            user: {
+              select: { id: true, name: true, email: true }
+            }
+          }
+        },
+        group: {
+          include: {
+            members: true
+          }
+        }
+      }
+    });
+
+    if (!eventRequest) {
+      return res.status(404).json({ error: 'Event request not found' });
+    }
+
+    // Check if user is member of the group
+    const membership = await prisma.groupMember.findFirst({
+      where: {
+        groupId: eventRequest.groupId,
+        userId: req.user.id
+      }
+    });
+
+    if (!membership) {
+      return res.status(403).json({ error: 'Only group members can view statistics' });
+    }
+
+    const yesVotes = eventRequest.votes.filter(v => v.vote === 'yes').length;
+    const noVotes = eventRequest.votes.filter(v => v.vote === 'no').length;
+    const totalVotes = yesVotes + noVotes;
+    const totalMembers = eventRequest.group.members.length;
+    const votedMembers = new Set(eventRequest.votes.map(v => v.userId)).size;
+    const notVotedCount = totalMembers - votedMembers;
+    
+    const threshold = eventRequest.voteThreshold || 0.5;
+    // Calculate based on total group members (consistent with finalize logic)
+    const requiredYesVotes = Math.ceil(totalMembers * threshold);
+    
+    const yesPercentage = totalVotes > 0 ? (yesVotes / totalVotes) * 100 : 0;
+    const noPercentage = totalVotes > 0 ? (noVotes / totalVotes) * 100 : 0;
+    const participationRate = totalMembers > 0 ? (votedMembers / totalMembers) * 100 : 0;
+    
+    const meetsThreshold = yesVotes >= requiredYesVotes;
+    const isExpired = eventRequest.voteDeadline && new Date() > eventRequest.voteDeadline;
+    
+    const statistics = {
+      eventRequestId: id,
+      status: eventRequest.status,
+      votes: {
+        yes: yesVotes,
+        no: noVotes,
+        total: totalVotes
+      },
+      percentages: {
+        yes: yesPercentage.toFixed(1),
+        no: noPercentage.toFixed(1)
+      },
+      threshold: {
+        value: threshold * 100,
+        requiredYesVotes,
+        meetsThreshold
+      },
+      participation: {
+        voted: votedMembers,
+        notVoted: notVotedCount,
+        total: totalMembers,
+        rate: participationRate.toFixed(1)
+      },
+      deadline: {
+        date: eventRequest.voteDeadline,
+        isExpired
+      },
+      recentVotes: eventRequest.votes
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 5)
+        .map(v => ({
+          userId: v.userId,
+          userName: v.user.name,
+          vote: v.vote,
+          timestamp: v.createdAt
+        }))
+    };
+
+    res.json(statistics);
+  } catch (error) {
+    console.error('Get event request statistics error:', error);
+    res.status(500).json({ error: 'Failed to get statistics' });
   }
 };
 

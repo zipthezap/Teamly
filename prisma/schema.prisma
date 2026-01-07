@@ -36,7 +36,8 @@ model EventNotification {
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  type      String   // join, leave, late
+  type      String   // join, leave, late, confirmed, declined, status_change, comment
+  metadata  Json?    // Additional data for the notification
   createdAt DateTime @default(now())
   read      Boolean  @default(false)
 }
@@ -161,6 +162,8 @@ model Event {
   maxPlayers  Int?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  archived    Boolean  @default(false) // For archiving past events
+  status      String   @default("upcoming") // upcoming, ongoing, completed, cancelled
 
   // Recurring event fields
   isRecurring     Boolean   @default(false)
@@ -206,7 +209,9 @@ model EventRequest {
   endTime     DateTime?
   maxPlayers  Int?
   createdAt   DateTime @default(now())
-  status      String   @default("voting") // voting, finalized, cancelled
+  status      String   @default("voting") // voting, finalized, cancelled, expired
+  voteDeadline DateTime? // When voting closes
+  voteThreshold Float?   @default(0.5) // % of votes needed (0.5 = 50%)
   
   creatorId   String
   creator     User     @relation("EventRequestCreator", fields: [creatorId], references: [id])
