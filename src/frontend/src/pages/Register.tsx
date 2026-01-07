@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { groupsAPI } from '../services/api';
 import {
   Container,
@@ -25,18 +26,19 @@ const Register = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('auth.passwordsDoNotMatch'));
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError(t('auth.passwordTooShort'));
       return;
     }
 
@@ -59,7 +61,7 @@ const Register = () => {
         navigate('/dashboard');
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed');
+      setError(err.response?.data?.error || t('auth.registerFailed'));
     } finally {
       setLoading(false);
     }
@@ -71,7 +73,10 @@ const Register = () => {
         <Box display="flex" flexDirection="column" alignItems="center">
           <PersonAddIcon sx={{ fontSize: 48, mb: 2, color: 'primary.main' }} />
           <Typography variant="h4" component="h1" gutterBottom>
-            Register for Teamly
+            {t('auth.registerTitle')}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            {t('auth.registerSubtitle')}
           </Typography>
           
           {error && (
@@ -82,33 +87,36 @@ const Register = () => {
 
           <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
             <TextField
-              label="Full Name"
+              label={t('common.name')}
               fullWidth
               margin="normal"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              placeholder={t('auth.namePlaceholder')}
               required
             />
             <TextField
-              label="Email"
+              label={t('common.email')}
               type="email"
               fullWidth
               margin="normal"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder={t('auth.emailPlaceholder')}
               required
             />
             <TextField
-              label="Password"
+              label={t('common.password')}
               type="password"
               fullWidth
               margin="normal"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder={t('auth.passwordPlaceholder')}
               required
             />
             <TextField
-              label="Confirm Password"
+              label={t('auth.confirmPassword')}
               type="password"
               fullWidth
               margin="normal"
@@ -124,14 +132,14 @@ const Register = () => {
               sx={{ mt: 3, mb: 2 }}
               disabled={loading}
             >
-              {loading ? 'Registering...' : 'Register'}
+              {loading ? t('common.loading') : t('auth.registerButton')}
             </Button>
           </Box>
 
           <Typography variant="body2" sx={{ mt: 2 }}>
-            Already have an account?{' '}
+            {t('auth.hasAccount')}{' '}
             <StyledLink to="/login">
-              Login here
+              {t('auth.signInHere')}
             </StyledLink>
           </Typography>
         </Box>
