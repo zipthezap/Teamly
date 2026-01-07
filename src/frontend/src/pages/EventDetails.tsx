@@ -152,8 +152,12 @@ const EventDetails = () => {
         {/* Admin icon buttons in top right */}
         {isCreator && (
           <div className="absolute top-4 right-4 flex gap-2 z-10">
-            <button onClick={() => navigate(`/events/${event.id}/edit`)} className="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2 transition-colors"><span className="material-icons">edit</span></button>
-            <button onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white rounded-full p-2 transition-colors"><span className="material-icons">delete</span></button>
+            <button onClick={() => navigate(`/events/${event.id}/edit`)} className="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2 transition-colors" title="Edit Event">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19.5 3 21l1.5-4L16.5 3.5z" /></svg>
+            </button>
+            <button onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white rounded-full p-2 transition-colors" title="Delete Event">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v3" /></svg>
+            </button>
           </div>
         )}
         

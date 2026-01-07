@@ -167,7 +167,7 @@ const Dashboard = () => {
               {upcomingEvents.length === 0 && (
                 <Grid item xs={12}>
                   <EmptyState
-                    icon={EventIcon}
+                    icon={<EventIcon />}
                     title={t('dashboard.noUpcomingEvents')}
                     description={t('dashboard.noUpcomingEventsDesc')}
                     actionLabel={t('dashboard.createFirstEvent')}
@@ -231,7 +231,7 @@ const Dashboard = () => {
               {groups.length === 0 && (
                 <Grid item xs={12}>
                   <EmptyState
-                    icon={GroupIcon}
+                    icon={<GroupIcon />}
                     title={t('dashboard.noGroupsYet')}
                     description={t('dashboard.noGroupsYetDesc')}
                     actionLabel={t('dashboard.createFirstGroup')}

@@ -195,55 +195,61 @@ const GroupDetails = () => {
             <div className="text-base text-gray-400 mb-2">{group.description || 'No description'}</div>
             <div className="text-xs text-gray-400">Created by {group.creator?.name} on {new Date(group.createdAt).toLocaleDateString()}</div>
           </div>
-          <div className="flex flex-wrap gap-2 items-center mt-4 md:mt-0">
+          <div className="flex flex-wrap gap-1 items-center mt-4 md:mt-0">
             {isAdmin && (
               <JoinRequestsPopover groupId={id} />
             )}
             <button
-              className="inline-flex items-center gap-2 px-4 py-2 border border-blue-500 text-blue-600 rounded-md font-semibold hover:bg-blue-50 transition"
+              className="p-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition focus:outline-none"
+              title="Copy Invite Link"
               onClick={handleCopyInviteLink}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 1 7 7l-7-7zm-7-7a5 5 0 0 1 7 7l-7-7z" /></svg>
-              Copy Invite Link
+              {/* Link icon */}
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 1 7 7l-7-7zm-7-7a5 5 0 0 1 7 7l-7-7z" /><path d="M13.5 10.5l-1-1" /></svg>
             </button>
             {isAdmin && (
               <>
                 <button
-                  className="inline-flex items-center gap-2 px-4 py-2 border border-blue-500 text-blue-600 rounded-md font-semibold hover:bg-blue-50 transition"
+                  className="p-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition focus:outline-none"
+                  title="Event Requests"
                   onClick={() => navigate(`/event-requests/${id}`)}
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 8v8M8 12h8" /></svg>
-                  Event Requests
+                  {/* Plus icon */}
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" /></svg>
                 </button>
                 <button
-                  className="inline-flex items-center gap-2 px-4 py-2 border border-blue-500 text-blue-600 rounded-md font-semibold hover:bg-blue-50 transition"
+                  className="p-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition focus:outline-none"
+                  title="Invite Member"
                   onClick={() => setInviteDialogOpen(true)}
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4" /><path d="M17 21v-2a4 4 0 0 0-8 0v2" /></svg>
-                  Invite Member
+                  {/* Person add icon */}
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4" /><path d="M17 21v-2a4 4 0 0 0-8 0v2" /><path d="M19 8v6m3-3h-6" /></svg>
                 </button>
                 <button
-                  className="inline-flex items-center gap-2 px-4 py-2 border border-blue-500 text-blue-600 rounded-md font-semibold hover:bg-blue-50 transition"
+                  className="p-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition focus:outline-none"
+                  title="Edit Group"
                   onClick={() => navigate(`/groups/${id}/edit`)}
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19.5 3 21l1.5-4L16.5 3.5z" /></svg>
-                  Edit Group
+                  {/* Pencil icon */}
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19.5 3 21l1.5-4L16.5 3.5z" /><path d="M12 20h9" /></svg>
                 </button>
                 <button
-                  className="inline-flex items-center gap-2 px-4 py-2 border border-red-500 text-red-600 rounded-md font-semibold hover:bg-red-50 transition"
+                  className="p-2 border border-red-500 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition focus:outline-none"
+                  title="Delete Group"
                   onClick={handleDeleteGroup}
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v3" /></svg>
-                  Delete Group
+                  {/* Trash icon */}
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" /></svg>
                 </button>
               </>
             )}
             <button
-              className="inline-flex items-center gap-2 px-4 py-2 border border-gray-600 text-gray-300 rounded-md font-semibold hover:bg-gray-700 transition"
+              className="p-2 border border-gray-600 text-gray-400 rounded-lg hover:bg-gray-700 hover:text-white transition focus:outline-none"
+              title="Leave Group"
               onClick={handleLeaveGroup}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7" /><circle cx="5" cy="12" r="2" /></svg>
-              Leave Group
+              {/* Arrow right icon */}
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14M13 18l6-6-6-6" /></svg>
             </button>
           </div>
         </div>
@@ -260,7 +266,7 @@ const GroupDetails = () => {
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="font-medium text-gray-200">{member.user?.name}</div>
                     {member.role === 'admin' && (
-                      <span className="flex-shrink-0 px-2 py-0.5 rounded bg-blue-100 text-blue-600 text-xs font-semibold whitespace-nowrap">Admin</span>
+                      <span className="flex-shrink-0 px-2 py-0.5 rounded bg-blue-100 text-blue-600 text-xs font-semibold whitespace-nowrap ml-2">Admin</span>
                     )}
                   </div>
                   <div className="text-xs text-gray-400">

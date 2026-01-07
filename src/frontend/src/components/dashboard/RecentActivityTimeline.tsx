@@ -152,49 +152,51 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
           )}
         </button>
       </div>
-      {expanded && (
-        <div className="mt-4">
-          {activities.length === 0 ? (
-            <div className="text-center py-6 text-sm text-gray-400">No recent activity</div>
-          ) : (
-            <ul>
-              {activities.map((activity, index) => (
-                <React.Fragment key={`${activity.id}-${activity.type}-${activity.timestamp}`}>
-                  {index > 0 && <div className="my-2 border-t border-[#232946]" />}
-                  <li
-                    className="flex items-center gap-3 p-2 rounded-lg transition hover:bg-[#232946] cursor-pointer"
-                    onClick={() => {
-                      if (onActivityClick) {
-                        const type = activity.type.includes('event') ? 'event' : 'group';
-                        onActivityClick(activity.id, type);
-                      }
-                    }}
-                  >
-                    <div className={`w-8 h-8 flex items-center justify-center rounded-full ${getActivityColor(activity.type)} mr-2`}>
-                      {getActivityIcon(activity.type)}
+      <div
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${expanded ? 'max-h-[600px] mt-4' : 'max-h-0'}`}
+        style={{ willChange: 'max-height' }}
+        aria-hidden={!expanded}
+      >
+        {activities.length === 0 ? (
+          <div className="text-center py-6 text-sm text-gray-400">No recent activity</div>
+        ) : (
+          <ul>
+            {activities.map((activity, index) => (
+              <React.Fragment key={`${activity.id}-${activity.type}-${activity.timestamp}`}>
+                {index > 0 && <div className="my-2 border-t border-[#232946]" />}
+                <li
+                  className="flex items-center gap-3 p-2 rounded-lg transition hover:bg-[#232946] cursor-pointer"
+                  onClick={() => {
+                    if (onActivityClick) {
+                      const type = activity.type.includes('event') ? 'event' : 'group';
+                      onActivityClick(activity.id, type);
+                    }
+                  }}
+                >
+                  <div className={`w-8 h-8 flex items-center justify-center rounded-full ${getActivityColor(activity.type)} mr-2`}>
+                    {getActivityIcon(activity.type)}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-sm mb-0.5">{activity.title}</div>
+                    <div className="flex items-center gap-2 flex-wrap text-xs text-gray-400">
+                      <span>{getRelativeTime(activity.timestamp)}</span>
+                      {activity.relatedEntityName && (
+                        <>
+                          <span>•</span>
+                          <span className="px-2 py-0.5 rounded bg-[#232946] text-gray-200 text-xs font-semibold">{activity.relatedEntityName}</span>
+                        </>
+                      )}
+                      {activity.relatedEntityType && (
+                        <span className="px-2 py-0.5 rounded border border-blue-500 text-blue-400 text-xs font-semibold">{activity.relatedEntityType}</span>
+                      )}
                     </div>
-                    <div className="flex-1">
-                      <div className="font-medium text-sm mb-0.5">{activity.title}</div>
-                      <div className="flex items-center gap-2 flex-wrap text-xs text-gray-400">
-                        <span>{getRelativeTime(activity.timestamp)}</span>
-                        {activity.relatedEntityName && (
-                          <>
-                            <span>•</span>
-                            <span className="px-2 py-0.5 rounded bg-[#232946] text-gray-200 text-xs font-semibold">{activity.relatedEntityName}</span>
-                          </>
-                        )}
-                        {activity.relatedEntityType && (
-                          <span className="px-2 py-0.5 rounded border border-blue-500 text-blue-400 text-xs font-semibold">{activity.relatedEntityType}</span>
-                        )}
-                      </div>
-                    </div>
-                  </li>
-                </React.Fragment>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+                  </div>
+                </li>
+              </React.Fragment>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 };

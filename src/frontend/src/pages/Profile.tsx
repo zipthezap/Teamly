@@ -14,6 +14,7 @@ import {
   ProfileForm,
   PasswordChangeForm,
   NotificationPreferences,
+  TwoFactorSection,
 } from '../components/profile';
 
 const Profile = () => {
@@ -194,6 +195,7 @@ const Profile = () => {
           )}
 
           <Stack spacing={3}>
+            <TwoFactorSection />
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <ProfileForm

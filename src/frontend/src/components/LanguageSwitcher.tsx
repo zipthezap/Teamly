@@ -25,7 +25,7 @@ const LanguageSwitcher = () => {
         className="flex items-center gap-2 px-3 py-2 rounded hover:bg-white/10 transition text-white"
         aria-label="Change language"
       >
-        <span className="text-xl">{currentLanguage.flag}</span>
+        {/* Removed flag icon */}
         <span className="text-sm font-medium">{currentLanguage.code.toUpperCase()}</span>
         <svg
           className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -44,7 +44,7 @@ const LanguageSwitcher = () => {
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg border border-gray-700 z-20">
+          <div className="absolute right-0 mt-2 w-20 bg-gray-800 rounded-lg shadow-lg border border-gray-700 z-20 p-0">
             {languages.map((language, index) => {
               const isFirst = index === 0;
               const isLast = index === languages.length - 1;
@@ -54,15 +54,14 @@ const LanguageSwitcher = () => {
                 <button
                   key={language.code}
                   onClick={() => changeLanguage(language.code)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-700 transition ${
+                  className={`w-full flex items-center justify-between px-3 py-1 text-left hover:bg-gray-700 transition text-sm ${
                     isActive ? 'bg-gray-700' : ''
                   } ${isFirst ? 'rounded-t-lg' : ''} ${isLast ? 'rounded-b-lg' : ''}`}
                 >
-                  <span className="text-2xl">{language.flag}</span>
-                  <span className="text-white font-medium">{language.name}</span>
+                  <span className="text-white font-semibold">{language.code.toUpperCase()}</span>
                   {isActive && (
                     <svg
-                      className="w-5 h-5 ml-auto text-blue-400"
+                      className="w-4 h-4 ml-1 text-blue-400"
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="2"
