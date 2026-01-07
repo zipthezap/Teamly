@@ -14,5 +14,4 @@ export { default as EditIcon } from './EditIcon';
 export { default as TrashIcon } from './TrashIcon';
 export { default as ChevronRightIcon } from './ChevronRightIcon';
 export { default as BellIcon } from './BellIcon';
-export { default as BellOffIcon } from './BellOffIcon';
 export { default as ArrowRightIcon } from './ArrowRightIcon';
