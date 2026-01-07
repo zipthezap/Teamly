@@ -509,13 +509,14 @@ export const getEventRequestStatistics = async (req: Request, res: Response) => 
     const notVotedCount = totalMembers - votedMembers;
     
     const threshold = eventRequest.voteThreshold || 0.5;
-    const requiredYesVotes = totalVotes > 0 ? Math.ceil(totalVotes * threshold) : 0;
+    // Calculate based on total group members (consistent with finalize logic)
+    const requiredYesVotes = Math.ceil(totalMembers * threshold);
     
     const yesPercentage = totalVotes > 0 ? (yesVotes / totalVotes) * 100 : 0;
     const noPercentage = totalVotes > 0 ? (noVotes / totalVotes) * 100 : 0;
     const participationRate = totalMembers > 0 ? (votedMembers / totalMembers) * 100 : 0;
     
-    const meetsThreshold = totalVotes > 0 && yesVotes >= requiredYesVotes;
+    const meetsThreshold = yesVotes >= requiredYesVotes;
     const isExpired = eventRequest.voteDeadline && new Date() > eventRequest.voteDeadline;
     
     const statistics = {

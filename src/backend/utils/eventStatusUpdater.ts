@@ -6,6 +6,16 @@
 import prisma from '../config/database';
 
 /**
+ * Configuration constants for event status management
+ */
+const EVENT_CONFIG = {
+  // Hours after start time to keep an event 'ongoing' when no end time is specified
+  DEFAULT_ONGOING_HOURS: 24,
+  // Days before archiving completed events
+  DEFAULT_ARCHIVE_DAYS: 30
+};
+
+/**
  * Update event statuses based on current time
  * - Events that have passed their end time -> 'completed'
  * - Events currently happening -> 'ongoing'
@@ -49,10 +59,10 @@ export const updateEventStatuses = async (): Promise<{
           // Event is currently happening (has end time and hasn't ended)
           newStatus = 'ongoing';
         } else if (!event.endTime) {
-          // Event has no end time - mark as ongoing if it started within the last 24 hours
+          // Event has no end time - mark as ongoing if within configured hours
           // Otherwise mark as completed
           const hoursSinceStart = (now.getTime() - event.startTime.getTime()) / (1000 * 60 * 60);
-          newStatus = hoursSinceStart <= 24 ? 'ongoing' : 'completed';
+          newStatus = hoursSinceStart <= EVENT_CONFIG.DEFAULT_ONGOING_HOURS ? 'ongoing' : 'completed';
         }
       } else if (event.startTime > now) {
         // Event hasn't started yet
@@ -84,7 +94,7 @@ export const updateEventStatuses = async (): Promise<{
 /**
  * Archive old completed events (older than specified days)
  */
-export const archiveOldEvents = async (daysOld: number = 30): Promise<{
+export const archiveOldEvents = async (daysOld: number = EVENT_CONFIG.DEFAULT_ARCHIVE_DAYS): Promise<{
   archived: number;
   errors: number;
 }> => {
