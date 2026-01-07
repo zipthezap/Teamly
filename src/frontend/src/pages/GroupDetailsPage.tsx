@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem } from '@mui/material';
 import GroupHeader from "../components/GroupDetails/GroupHeader";
+import GroupStats from "../components/GroupDetails/GroupStats";
 import MemberList from "../components/GroupDetails/MemberList";
 import EventList from "../components/GroupDetails/EventList";
 import EventFormModal from "../components/event/EventFormModal";
@@ -240,6 +241,8 @@ export default function GroupDetailsPage() {
         onEdit={isAdmin ? () => setSettingsOpen(true) : undefined}
         isAdmin={isAdmin}
       />
+      {/* Group Statistics */}
+      <GroupStats memberCount={group.members?.length || 0} events={events || []} />
       {/* Group Settings Modal */}
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="sm" fullWidth>
         <form onSubmit={handleSettingsSubmit}>
