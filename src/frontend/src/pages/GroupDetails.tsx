@@ -188,10 +188,10 @@ const GroupDetails = () => {
       {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-3">{error}</div>}
       {success && <div className="bg-green-100 text-green-700 p-3 rounded mb-3">{success}</div>}
 
-      <div className="bg-white dark:bg-[#1a2233] rounded-xl shadow-md p-6 mb-6">
+      <div className="bg-[#1a202c] rounded-xl shadow-md p-6 mb-6 border border-gray-700">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
           <div>
-            <div className="text-2xl font-bold mb-2">{group.name}</div>
+            <div className="text-2xl font-bold mb-2 text-gray-100">{group.name}</div>
             <div className="text-base text-gray-400 mb-2">{group.description || 'No description'}</div>
             <div className="text-xs text-gray-400">Created by {group.creator?.name} on {new Date(group.createdAt).toLocaleDateString()}</div>
           </div>
@@ -239,7 +239,7 @@ const GroupDetails = () => {
               </>
             )}
             <button
-              className="inline-flex items-center gap-2 px-4 py-2 border border-gray-400 text-gray-600 rounded-md font-semibold hover:bg-gray-50 transition"
+              className="inline-flex items-center gap-2 px-4 py-2 border border-gray-600 text-gray-300 rounded-md font-semibold hover:bg-gray-700 transition"
               onClick={handleLeaveGroup}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7" /><circle cx="5" cy="12" r="2" /></svg>
@@ -251,13 +251,13 @@ const GroupDetails = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Members Card */}
-        <div className="bg-white dark:bg-[#232946] rounded-xl shadow-md p-6">
-          <div className="text-lg font-semibold mb-4">Members ({group.members?.length || 0})</div>
+        <div className="bg-[#1a202c] rounded-xl shadow-md p-6 border border-gray-700">
+          <div className="text-lg font-semibold mb-4 text-gray-100">Members ({group.members?.length || 0})</div>
           <ul>
             {group.members?.map((member) => (
-              <li key={member.id} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-[#232946] last:border-b-0">
+              <li key={member.id} className="flex items-center justify-between py-2 border-b border-gray-700 last:border-b-0">
                 <div>
-                  <div className="font-medium">{member.user?.name}</div>
+                  <div className="font-medium text-gray-200">{member.user?.name}</div>
                   <div className="text-xs text-gray-400 flex items-center gap-2">
                     {member.user?.email}
                     {member.role === 'admin' && (
@@ -280,11 +280,11 @@ const GroupDetails = () => {
         </div>
 
         {/* Events Card */}
-        <div className="bg-white dark:bg-[#232946] rounded-xl shadow-md p-6">
+        <div className="bg-[#1a202c] rounded-xl shadow-md p-6 border border-gray-700">
           <div className="flex items-center justify-between mb-4">
-            <div className="text-lg font-semibold">Events ({group.events?.length || 0})</div>
+            <div className="text-lg font-semibold text-gray-100">Events ({group.events?.length || 0})</div>
             <button
-              className="inline-flex items-center gap-2 px-4 py-2 border border-blue-500 text-blue-600 rounded-md font-semibold hover:bg-blue-50 transition text-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 border border-blue-600 text-blue-400 rounded-md font-semibold hover:bg-blue-900/30 transition text-sm"
               onClick={() => navigate('/events/new', { state: { groupId: id } })}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 8v8M8 12h8" /></svg>
@@ -295,10 +295,10 @@ const GroupDetails = () => {
             {group.events?.map((event) => (
               <li
                 key={event.id}
-                className="py-2 px-2 rounded-lg cursor-pointer transition hover:bg-blue-50 dark:hover:bg-[#1a2233]"
+                className="py-2 px-2 rounded-lg cursor-pointer transition hover:bg-gray-700"
                 onClick={() => navigate(`/events/${event.id}`)}
               >
-                <div className="font-medium">{event.title}</div>
+                <div className="font-medium text-gray-200">{event.title}</div>
                 <div className="text-xs text-gray-400">{event.eventType} - {new Date(event.startTime).toLocaleDateString()}</div>
               </li>
             ))}
@@ -310,9 +310,9 @@ const GroupDetails = () => {
 
         {/* Group Chat Card */}
         <div className="col-span-1 md:col-span-2">
-          <div className="bg-white dark:bg-[#232946] rounded-xl shadow-md p-6">
-            <div className="text-lg font-semibold mb-4">Group Chat</div>
-            <div className="max-h-64 overflow-y-auto mb-4 bg-gray-50 dark:bg-[#1a2233] p-3 rounded border border-gray-100 dark:border-[#232946]">
+          <div className="bg-[#1a202c] rounded-xl shadow-md p-6 border border-gray-700">
+            <div className="text-lg font-semibold mb-4 text-gray-100">Group Chat</div>
+            <div className="max-h-64 overflow-y-auto mb-4 bg-[#0f1419] p-3 rounded border border-gray-700">
               {chatLoading ? (
                 <div className="flex justify-center items-center py-8">
                   <svg className="animate-spin text-blue-500" width={24} height={24} viewBox="0 0 50 50" fill="none"><circle className="opacity-20" cx="25" cy="25" r="20" stroke="currentColor" strokeWidth="6" /><path className="opacity-80" d="M45 25c0-11.046-8.954-20-20-20" stroke="currentColor" strokeWidth="6" strokeLinecap="round" /></svg>
@@ -322,8 +322,8 @@ const GroupDetails = () => {
               ) : (
                 messages.map((msg) => (
                   <div key={msg.id} className="mb-3">
-                    <div className="font-semibold text-blue-600 dark:text-blue-400 text-sm">{msg.user?.name || 'User'}</div>
-                    <div className="text-sm mb-1">{msg.content}</div>
+                    <div className="font-semibold text-blue-400 text-sm">{msg.user?.name || 'User'}</div>
+                    <div className="text-sm mb-1 text-gray-200">{msg.content}</div>
                     <div className="text-xs text-gray-400">{new Date(msg.createdAt).toLocaleString()}</div>
                   </div>
                 ))
@@ -334,7 +334,7 @@ const GroupDetails = () => {
                 value={newMessage}
                 onChange={e => setNewMessage(e.target.value)}
                 placeholder="Type a message..."
-                className="flex-1 px-3 py-2 rounded border border-gray-200 dark:border-[#232946] bg-white dark:bg-[#232946] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-3 py-2 rounded border border-gray-600 bg-[#0f1419] text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500"
                 type="text"
               />
               <button
@@ -352,14 +352,14 @@ const GroupDetails = () => {
       {/* Invite Member Dialog */}
       {inviteDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white dark:bg-[#232946] rounded-xl shadow-lg p-6 w-full max-w-md">
-            <div className="text-lg font-semibold mb-4">Invite Member</div>
+          <div className="bg-[#1a202c] rounded-xl shadow-lg p-6 w-full max-w-md border border-gray-700">
+            <div className="text-lg font-semibold mb-4 text-gray-100">Invite Member</div>
             <input
               type="email"
               placeholder="Email Address"
               value={inviteEmail}
               onChange={e => setInviteEmail(e.target.value)}
-              className="w-full px-3 py-2 mb-4 rounded border border-gray-200 dark:border-[#232946] bg-white dark:bg-[#232946] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 mb-4 rounded border border-gray-600 bg-[#0f1419] text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500"
             />
             <div className="flex justify-end gap-2">
               <button
