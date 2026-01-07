@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem } from '@mui/material';
 import GroupHeader from "../components/GroupDetails/GroupHeader";
+import GroupStats from "../components/GroupDetails/GroupStats";
 import MemberList from "../components/GroupDetails/MemberList";
 import EventList from "../components/GroupDetails/EventList";
 import EventFormModal from "../components/event/EventFormModal";
@@ -22,7 +24,7 @@ function Toast({ message, type, onClose }: { message: string; type: "success" | 
 
 
 export default function GroupDetailsPage() {
-  // ...existing code...
+  const { t } = useTranslation();
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<any>(null);
   const { id: groupId } = useParams();
@@ -90,12 +92,12 @@ export default function GroupDetailsPage() {
       return data;
     },
     onSuccess: () => {
-      setToast({ message: "Group updated successfully", type: "success" });
+      setToast({ message: t('groupDetails.groupUpdated'), type: "success" });
       queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
       setSettingsOpen(false);
     },
     onError: (err: any) => {
-      setToast({ message: err?.message || "Failed to update group", type: "error" });
+      setToast({ message: err?.message || t('groupDetails.failedToUpdateGroup'), type: "error" });
     },
   });
 
@@ -106,11 +108,11 @@ export default function GroupDetailsPage() {
       return eventId;
     },
     onSuccess: () => {
-      setToast({ message: "Event deleted successfully", type: "success" });
+      setToast({ message: t('groupDetails.eventDeleted'), type: "success" });
       queryClient.invalidateQueries({ queryKey: ["groupEvents", groupId] });
     },
     onError: (err: any) => {
-      setToast({ message: err?.message || "Failed to delete event", type: "error" });
+      setToast({ message: err?.message || t('groupDetails.failedToDeleteEvent'), type: "error" });
     },
   });
 
@@ -135,13 +137,13 @@ export default function GroupDetailsPage() {
       return { prevGroup };
     },
     onError: (err: any, _email, context: any) => {
-      setToast({ message: err?.message || "Failed to remove member", type: "error" });
+      setToast({ message: err?.message || t('groupDetails.failedToRemove'), type: "error" });
       if (context?.prevGroup) {
         queryClient.setQueryData(["groupDetails", groupId], context.prevGroup);
       }
     },
     onSuccess: () => {
-      setToast({ message: "Member removed successfully", type: "success" });
+      setToast({ message: t('groupDetails.memberRemoved'), type: "success" });
       queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
     },
   });
@@ -164,13 +166,13 @@ export default function GroupDetailsPage() {
       return { prevChat };
     },
     onError: (err: any, _content, context: any) => {
-      setToast({ message: err?.message || "Failed to send message", type: "error" });
+      setToast({ message: err?.message || t('groupDetails.failedToSendMessage'), type: "error" });
       if (context?.prevChat) {
         queryClient.setQueryData(["groupChat", groupId], context.prevChat);
       }
     },
     onSuccess: () => {
-      setToast({ message: "Message sent", type: "success" });
+      setToast({ message: t('groupDetails.messageSent'), type: "success" });
       queryClient.invalidateQueries({ queryKey: ["groupChat", groupId] });
     },
   });
@@ -215,7 +217,7 @@ export default function GroupDetailsPage() {
 
   // Event card click handler
   const handleEventClick = (eventId: number) => {
-    alert(`Open event details for event ID: ${eventId}`);
+    alert(`${t('common.viewDetails')} ${eventId}`);
   };
 
   // Chat send handler
@@ -226,70 +228,66 @@ export default function GroupDetailsPage() {
     }
   };
 
-  if (groupLoading || eventsLoading || chatLoading) return <div className="text-center text-slate-300 mt-10">Loading group details...</div>;
-  if (groupError || !group) return <div className="text-center text-red-400 mt-10">Failed to load group details.</div>;
+  if (groupLoading || eventsLoading || chatLoading) return <div className="text-center text-slate-300 mt-10">{t('groupDetails.loadingGroupDetails')}</div>;
+  if (groupError || !group) return <div className="text-center text-red-400 mt-10">{t('groupDetails.failedToLoad')}</div>;
 
   const gridCols = "grid-cols-1 sm:grid-cols-2 md:grid-cols-3";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white p-2 sm:p-4 md:p-6">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <GroupHeader group={group} />
-      {isAdmin && (
-        <div className="flex justify-end mb-4">
-          <button
-            className="bg-blue-700 hover:bg-blue-800 text-white font-medium rounded-md px-4 py-2 text-sm shadow transition"
-            onClick={() => setSettingsOpen(true)}
-          >
-            Edit Group Settings
-          </button>
-        </div>
-      )}
-            {/* Group Settings Modal */}
-            <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="sm" fullWidth>
-              <form onSubmit={handleSettingsSubmit}>
-                <DialogTitle>Edit Group Settings</DialogTitle>
-                <DialogContent>
-                  <TextField
-                    label="Group Name"
-                    name="name"
-                    value={settingsForm.name}
-                    onChange={handleSettingsChange}
-                    required
-                    fullWidth
-                    margin="normal"
-                  />
-                  <TextField
-                    label="Description"
-                    name="description"
-                    value={settingsForm.description}
-                    onChange={handleSettingsChange}
-                    fullWidth
-                    margin="normal"
-                    multiline
-                    rows={3}
-                  />
-                  <TextField
-                    select
-                    label="Privacy"
-                    name="privacy"
-                    value={settingsForm.privacy}
-                    onChange={handleSettingsChange}
-                    fullWidth
-                    margin="normal"
-                  >
-                    <MenuItem value="public">Public</MenuItem>
-                    <MenuItem value="private">Private</MenuItem>
-                  </TextField>
-                </DialogContent>
-                <DialogActions>
-                  <Button onClick={() => setSettingsOpen(false)} color="secondary">Cancel</Button>
-                  <Button type="submit" variant="contained" color="primary" disabled={updateGroupMutation.isPending}>
-                    Save Changes
-                  </Button>
-                </DialogActions>
-              </form>
-            </Dialog>
+      <GroupHeader 
+        group={group} 
+        onEdit={isAdmin ? () => setSettingsOpen(true) : undefined}
+        isAdmin={isAdmin}
+      />
+      {/* Group Statistics */}
+      <GroupStats memberCount={group.members?.length || 0} events={events || []} />
+      {/* Group Settings Modal */}
+      <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="sm" fullWidth>
+        <form onSubmit={handleSettingsSubmit}>
+          <DialogTitle>{t('groupDetails.editGroupSettings')}</DialogTitle>
+          <DialogContent>
+            <TextField
+              label={t('groupDetails.groupName')}
+              name="name"
+              value={settingsForm.name}
+              onChange={handleSettingsChange}
+              required
+              fullWidth
+              margin="normal"
+            />
+            <TextField
+              label={t('groupDetails.description')}
+              name="description"
+              value={settingsForm.description}
+              onChange={handleSettingsChange}
+              fullWidth
+              margin="normal"
+              multiline
+              rows={3}
+            />
+            <TextField
+              select
+              label={t('groupDetails.privacy')}
+              name="privacy"
+              value={settingsForm.privacy}
+              onChange={handleSettingsChange}
+              fullWidth
+              margin="normal"
+            >
+              <MenuItem value="public">{t('groups.public')}</MenuItem>
+              <MenuItem value="private">{t('groups.private')}</MenuItem>
+            </TextField>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setSettingsOpen(false)} color="secondary">{t('common.cancel')}</Button>
+            <Button type="submit" variant="contained" color="primary" disabled={updateGroupMutation.isPending}>
+              {t('groupDetails.saveChanges')}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
       <div className={`grid ${gridCols} gap-6`}>
         <MemberList members={group.members} onRemove={isAdmin ? handleRemoveMember : undefined} />
         <EventList
@@ -313,11 +311,13 @@ export default function GroupDetailsPage() {
       {showConfirm.open && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
           <div className="bg-slate-800 p-6 rounded shadow-lg w-80 text-center">
-            <div className="mb-4 text-lg">Remove this member?</div>
-            <div className="mb-6 text-slate-400">Are you sure you want to remove <span className="font-bold">{showConfirm.email}</span> from the group?</div>
+            <div className="mb-4 text-lg">{t('groupDetails.removeThisMember')}</div>
+            <div className="mb-6 text-slate-400">
+              {t('groupDetails.confirmRemoveMemberDesc', { email: showConfirm.email })}
+            </div>
             <div className="flex gap-4 justify-center">
-              <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded" onClick={confirmRemove} disabled={removeMemberMutation.isPending}>Remove</button>
-              <button className="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded" onClick={() => setShowConfirm({ open: false, email: null })}>Cancel</button>
+              <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded" onClick={confirmRemove} disabled={removeMemberMutation.isPending}>{t('groupDetails.remove')}</button>
+              <button className="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded" onClick={() => setShowConfirm({ open: false, email: null })}>{t('common.cancel')}</button>
             </div>
           </div>
         </div>
