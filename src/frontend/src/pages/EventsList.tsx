@@ -44,9 +44,13 @@ const EventsList = () => {
   const lastEventRef = useRef<HTMLDivElement | null>(null);
 
   // Fetch events
-  const fetchEvents = useCallback(async () => {
+  const fetchEvents = useCallback(async (isInitialLoad = false) => {
     try {
-      setIsFetching(true);
+      if (isInitialLoad) {
+        setIsLoading(true);
+      } else {
+        setIsFetching(true);
+      }
       const response = await eventsAPI.getAll({ ...searchFilters, page });
       setEvents(response.data);
       setError(null);
@@ -60,7 +64,7 @@ const EventsList = () => {
   }, [searchFilters, page, t]);
 
   useEffect(() => {
-    fetchEvents();
+    fetchEvents(true);
   }, [fetchEvents]);
 
   // Delete event
@@ -303,10 +307,8 @@ const EventsList = () => {
       {/* Event create/edit modal */}
       <EventFormModal
         open={modalOpen}
-        onClose={() => {
-          setModalOpen(false);
-          fetchEvents();
-        }}
+        onClose={() => setModalOpen(false)}
+        onSuccess={() => fetchEvents()}
         initialData={editEvent}
       />
 

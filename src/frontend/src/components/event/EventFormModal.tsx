@@ -8,6 +8,7 @@ interface EventFormModalProps {
   onClose: () => void;
   initialData?: any;
   groupId?: string | number;
+  onSuccess?: () => void;
 }
 
 const EVENT_TYPES = [
@@ -18,7 +19,7 @@ const EVENT_TYPES = [
   'Other',
 ];
 
-const EventFormModal: React.FC<EventFormModalProps> = ({ open, onClose, initialData, groupId }) => {
+const EventFormModal: React.FC<EventFormModalProps> = ({ open, onClose, initialData, groupId, onSuccess }) => {
   const [form, setForm] = useState({
     title: '',
     eventType: '',
@@ -54,6 +55,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ open, onClose, initialD
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['events']);
+        if (onSuccess) {
+          onSuccess();
+        }
         onClose();
       },
     }
