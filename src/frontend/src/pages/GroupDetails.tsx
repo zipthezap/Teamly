@@ -33,6 +33,15 @@ import LinkIcon from '@mui/icons-material/Link';
 import { groupsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import JoinRequestsPopover from '../components/JoinRequestsPopover';
+import {
+  ClipboardIcon,
+  PlusIcon,
+  UserPlusIcon,
+  EditIcon as EditIconComponent,
+  TrashIcon,
+  ArrowRightIcon,
+  AlertCircleIcon
+} from '../components/icons';
 
 const GroupDetails = () => {
   const { id } = useParams();
@@ -204,26 +213,18 @@ const GroupDetails = () => {
               title="Copy Invite Link"
               onClick={handleCopyInviteLink}
             >
-              {/* Link icon */}
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 1 7 7l-7-7zm-7-7a5 5 0 0 1 7 7l-7-7z" /><path d="M13.5 10.5l-1-1" /></svg>
+              {/* Clipboard icon */}
+              <ClipboardIcon className="w-5 h-5" />
             </button>
             {isAdmin && (
               <>
-                <button
-                  className="p-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition focus:outline-none"
-                  title="Event Requests"
-                  onClick={() => navigate(`/event-requests/${id}`)}
-                >
-                  {/* Plus icon */}
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" /></svg>
-                </button>
                 <button
                   className="p-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition focus:outline-none"
                   title="Invite Member"
                   onClick={() => setInviteDialogOpen(true)}
                 >
                   {/* Person add icon */}
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4" /><path d="M17 21v-2a4 4 0 0 0-8 0v2" /><path d="M19 8v6m3-3h-6" /></svg>
+                  <UserPlusIcon className="w-5 h-5" />
                 </button>
                 <button
                   className="p-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition focus:outline-none"
@@ -231,7 +232,7 @@ const GroupDetails = () => {
                   onClick={() => navigate(`/groups/${id}/edit`)}
                 >
                   {/* Pencil icon */}
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19.5 3 21l1.5-4L16.5 3.5z" /><path d="M12 20h9" /></svg>
+                  <EditIconComponent className="w-5 h-5" />
                 </button>
                 <button
                   className="p-2 border border-red-500 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition focus:outline-none"
@@ -239,7 +240,7 @@ const GroupDetails = () => {
                   onClick={handleDeleteGroup}
                 >
                   {/* Trash icon */}
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 6h18M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" /></svg>
+                  <TrashIcon className="w-5 h-5" />
                 </button>
               </>
             )}
@@ -249,10 +250,22 @@ const GroupDetails = () => {
               onClick={handleLeaveGroup}
             >
               {/* Arrow right icon */}
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 12h14M13 18l6-6-6-6" /></svg>
+              <ArrowRightIcon className="w-5 h-5" />
             </button>
           </div>
         </div>
+        {/* Event Request Button (large, separate, below other buttons) */}
+        {isAdmin && (
+          <div className="mt-6 w-full">
+            <button 
+              onClick={() => navigate(`/event-requests/${id}`)}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-lg px-6 py-4 text-lg shadow-lg transition flex items-center justify-center gap-3"
+            >
+              <AlertCircleIcon className="w-7 h-7" />
+              Event Requests
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
