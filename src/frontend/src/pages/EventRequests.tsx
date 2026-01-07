@@ -213,17 +213,17 @@ const EventRequests = () => {
             const votePercentage = getVotePercentage(request);
 
             return (
-              <div key={request.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
+              <div key={request.id} className="bg-[#1a202c] rounded-xl shadow-md p-6 border border-gray-700">
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-2">
-                  <div className="text-lg font-semibold">{request.title}</div>
-                  <span className={`px-2 py-0.5 rounded text-xs font-semibold ${request.status === 'voting' ? 'bg-blue-100 text-blue-600' : request.status === 'finalized' ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-600'}`}>{request.status}</span>
+                  <div className="text-lg font-semibold text-gray-100">{request.title}</div>
+                  <span className={`px-2 py-0.5 rounded text-xs font-semibold border ${request.status === 'voting' ? 'bg-blue-900/50 text-blue-300 border-blue-700' : request.status === 'finalized' ? 'bg-green-900/50 text-green-300 border-green-700' : 'bg-gray-700 text-gray-300 border-gray-600'}`}>{request.status}</span>
                 </div>
 
                 {request.description && (
-                  <div className="text-sm text-gray-500 mb-2">{request.description}</div>
+                  <div className="text-sm text-gray-400 mb-2">{request.description}</div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2 text-xs text-gray-500">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2 text-xs text-gray-400">
                   <div>Type: {request.eventType}</div>
                   <div>Location: {request.location || 'TBD'}</div>
                   <div>Start: {new Date(request.startTime).toLocaleString()}</div>
@@ -305,28 +305,28 @@ const EventRequests = () => {
       {/* Create Event Request Dialog */}
       {createDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-full max-w-md">
-            <div className="text-lg font-semibold mb-4">Create Event Request</div>
+          <div className="bg-[#1a202c] rounded-xl shadow-lg p-6 w-full max-w-md border border-gray-700">
+            <div className="text-lg font-semibold mb-4 text-gray-100">Create Event Request</div>
             <div className="space-y-3">
               <input
                 type="text"
                 placeholder="Title"
                 value={newRequest.title}
                 onChange={e => setNewRequest({ ...newRequest, title: e.target.value })}
-                className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 rounded border border-gray-600 bg-[#0f1419] text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500"
                 required
               />
               <textarea
                 placeholder="Description"
                 value={newRequest.description}
                 onChange={e => setNewRequest({ ...newRequest, description: e.target.value })}
-                className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 rounded border border-gray-600 bg-[#0f1419] text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500"
                 rows={3}
               />
               <select
                 value={newRequest.eventType}
                 onChange={e => setNewRequest({ ...newRequest, eventType: e.target.value })}
-                className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 rounded border border-gray-600 bg-[#0f1419] text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
                 {EVENT_TYPES.map((type) => (
@@ -338,14 +338,14 @@ const EventRequests = () => {
                 placeholder="Location"
                 value={newRequest.location}
                 onChange={e => setNewRequest({ ...newRequest, location: e.target.value })}
-                className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 rounded border border-gray-600 bg-[#0f1419] text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500"
               />
               <input
                 type="datetime-local"
                 placeholder="Start Time"
                 value={newRequest.startTime}
                 onChange={e => setNewRequest({ ...newRequest, startTime: e.target.value })}
-                className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 rounded border border-gray-600 bg-[#0f1419] text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
               <input
@@ -353,14 +353,14 @@ const EventRequests = () => {
                 placeholder="End Time"
                 value={newRequest.endTime}
                 onChange={e => setNewRequest({ ...newRequest, endTime: e.target.value })}
-                className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 rounded border border-gray-600 bg-[#0f1419] text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <input
                 type="number"
                 placeholder="Max Players"
                 value={newRequest.maxPlayers}
                 onChange={e => setNewRequest({ ...newRequest, maxPlayers: e.target.value })}
-                className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 rounded border border-gray-600 bg-[#0f1419] text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500"
               />
             </div>
             <div className="flex justify-end gap-2 mt-6">

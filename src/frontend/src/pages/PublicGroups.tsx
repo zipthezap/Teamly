@@ -201,12 +201,12 @@ const PublicGroups = () => {
         <span className="mr-3">
           <svg width="40" height="40" fill="none" viewBox="0 0 24 24" className="text-blue-600"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" /><path d="M2 12h20M12 2c2.5 2.5 4 6.5 4 10s-1.5 7.5-4 10c-2.5-2.5-4-6.5-4-10s1.5-7.5 4-10z" stroke="currentColor" strokeWidth="2" /></svg>
         </span>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Discover Public Groups</h1>
+        <h1 className="text-3xl font-bold text-gray-100">Discover Public Groups</h1>
       </div>
 
       {/* Location Filter Section */}
-      <div className="bg-white dark:bg-[#1a2233] rounded-xl shadow-md p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-2">Filter by Location</h2>
+      <div className="bg-[#1a202c] rounded-xl shadow-md p-6 mb-6 border border-gray-700">
+        <h2 className="text-lg font-semibold mb-2 text-gray-100">Filter by Location</h2>
         <div className="flex items-center gap-3 mb-2 flex-wrap">
           <Button
             onClick={getCurrentLocation}
@@ -214,12 +214,12 @@ const PublicGroups = () => {
             startIcon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" /><path d="M12 8v4l3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
             }
-            className="border border-blue-600 bg-white text-blue-600 hover:bg-blue-50"
+            className="border border-blue-600 bg-transparent text-blue-400 hover:bg-blue-900/30"
           >
             {locationEnabled && !customSearchLocation ? 'Using Current Location' : 'Use My Location'}
           </Button>
           {(userLocation || customSearchLocation) && (
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-gray-400">
               Search from: {customSearchLocation
                 ? `Custom point (${customSearchLocation.latitude.toFixed(4)}, ${customSearchLocation.longitude.toFixed(4)})`
                 : `Your location (${userLocation?.latitude.toFixed(4)}, ${userLocation?.longitude.toFixed(4)})`}
@@ -230,7 +230,7 @@ const PublicGroups = () => {
         {/* Google Maps Integration (unchanged, keep as is) */}
         {GOOGLE_MAPS_API_KEY ? (
           <div className="mb-3">
-            <div className="text-xs text-gray-500 mb-1">Click on the map to set a custom search location</div>
+            <div className="text-xs text-gray-400 mb-1">Click on the map to set a custom search location</div>
             <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
               <GoogleMap
                 mapContainerStyle={mapContainerStyle}
@@ -269,7 +269,7 @@ const PublicGroups = () => {
             </LoadScript>
           </div>
         ) : (
-          <div className="mb-2 p-3 bg-yellow-100 text-yellow-800 rounded">
+          <div className="mb-2 p-3 bg-yellow-900/50 text-yellow-300 rounded border border-yellow-700">
             <strong>Google Maps API key not configured.</strong> Set <span className="font-mono">REACT_APP_GOOGLE_MAPS_API_KEY</span> environment variable to enable map view.<br />
             You can still use location-based filtering without the map visualization.
           </div>
@@ -307,7 +307,7 @@ const PublicGroups = () => {
               onChange={e => setDistanceRadius(Number(e.target.value))}
               className="w-full accent-blue-600"
             />
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-gray-400 mt-1">
               Showing groups within {distanceRadius} km of {customSearchLocation ? 'custom point' : 'your location'}
             </div>
           </div>
@@ -326,21 +326,21 @@ const PublicGroups = () => {
         />
       ) : (
         <>
-          <div className="text-sm text-gray-500 mb-2">
+          <div className="text-sm text-gray-400 mb-2">
             Showing {filteredGroups.length} of {groups.length} groups
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {filteredGroups.map((group) => (
-              <div key={group.id} className="bg-white dark:bg-[#1a2233] rounded-xl shadow-md flex flex-col h-full p-5">
+              <div key={group.id} className="bg-[#1a202c] rounded-xl shadow-md flex flex-col h-full p-5 border border-gray-700">
                 <div className="flex items-center mb-2">
-                  <div className="flex-1 text-lg font-semibold text-gray-900 dark:text-white">{group.name}</div>
-                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs font-medium">
+                  <div className="flex-1 text-lg font-semibold text-gray-100">{group.name}</div>
+                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded bg-blue-900/50 text-blue-300 border border-blue-700 text-xs font-medium">
                     {/* Globe SVG */}
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" /><path d="M2 12h20M12 2c2.5 2.5 4 6.5 4 10s-1.5 7.5-4 10c-2.5-2.5-4-6.5-4-10s1.5-7.5 4-10z" stroke="currentColor" strokeWidth="2" /></svg>
                     Public
                   </span>
                 </div>
-                <div className="text-sm text-gray-500 mb-2">{group.description || 'No description available'}</div>
+                <div className="text-sm text-gray-400 mb-2">{group.description || 'No description available'}</div>
                 {(group.city || group.country || group.locationName) && (
                   <div className="flex items-center text-xs text-gray-400 mb-1">
                     {/* Location SVG */}

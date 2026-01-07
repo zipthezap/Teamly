@@ -74,8 +74,8 @@ const EventsList = () => {
     <div className="max-w-6xl mx-auto mt-8 mb-8 px-2">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold mb-1">All Events</h1>
-          <div className="text-sm text-gray-500">{filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''} found</div>
+          <h1 className="text-2xl font-bold mb-1 text-gray-100">All Events</h1>
+          <div className="text-sm text-gray-400">{filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''} found</div>
         </div>
         <button onClick={() => navigate('/events/new')} className="bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">Create Event</button>
       </div>
@@ -85,7 +85,7 @@ const EventsList = () => {
       
       {events.length === 0 ? (
         <div className="text-center py-16">
-          <div className="text-lg text-gray-500 mb-2">
+          <div className="text-lg text-gray-400 mb-2">
             {Object.keys(searchFilters).length > 0 ? 'No events match your filters' : 'No events available'}
           </div>
           {Object.keys(searchFilters).length === 0 && (
@@ -100,42 +100,42 @@ const EventsList = () => {
             const spotsLeft = event.maxPlayers ? event.maxPlayers - participantCount : null;
             
             return (
-              <div key={event.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 hover:shadow-lg transition">
+              <div key={event.id} className="bg-[#1a202c] rounded-lg shadow-md p-4 hover:shadow-lg transition border border-gray-700">
                 <div className="flex items-start justify-between mb-2">
-                  <h3 className="text-lg font-semibold truncate flex-1">{event.title}</h3>
+                  <h3 className="text-lg font-semibold truncate flex-1 text-gray-100">{event.title}</h3>
                   <span className={`px-2 py-0.5 rounded text-xs font-semibold ml-2 ${
-                    status.label === 'Joined' ? 'bg-green-100 text-green-700' :
-                    status.label === 'Full' ? 'bg-orange-100 text-orange-700' :
-                    status.label === 'Past' ? 'bg-gray-100 text-gray-600' :
-                    'bg-blue-100 text-blue-700'
+                    status.label === 'Joined' ? 'bg-green-900/50 text-green-300 border border-green-700' :
+                    status.label === 'Full' ? 'bg-orange-900/50 text-orange-300 border border-orange-700' :
+                    status.label === 'Past' ? 'bg-gray-700 text-gray-300 border border-gray-600' :
+                    'bg-blue-900/50 text-blue-300 border border-blue-700'
                   }`}>{status.label}</span>
                 </div>
                 
                 <div className="mb-3">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-700 border border-purple-200">{event.eventType}</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-purple-900/50 text-purple-300 border border-purple-700">{event.eventType}</span>
                 </div>
                 
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span role="img" aria-label="date">📅</span>
-                    <span className="text-xs text-gray-500">{new Date(event.startTime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                    <span className="text-xs text-gray-400">{new Date(event.startTime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span role="img" aria-label="time">🕐</span>
-                    <span className="text-xs text-gray-500">{formatEventTime(event.startTime)}</span>
+                    <span className="text-xs text-gray-400">{formatEventTime(event.startTime)}</span>
                   </div>
                   {event.location && (
                     <div className="flex items-center gap-2">
                       <span role="img" aria-label="location">📍</span>
-                      <span className="text-xs text-gray-500 truncate">{event.location}</span>
+                      <span className="text-xs text-gray-400 truncate">{event.location}</span>
                     </div>
                   )}
                   <div className="flex items-center gap-2">
                     <span role="img" aria-label="participants">👥</span>
-                    <span className="text-xs text-gray-500">{participantCount}{event.maxPlayers && ` / ${event.maxPlayers}`} participants</span>
+                    <span className="text-xs text-gray-400">{participantCount}{event.maxPlayers && ` / ${event.maxPlayers}`} participants</span>
                   </div>
                   {spotsLeft !== null && spotsLeft > 0 && spotsLeft <= 3 && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200 mt-1">{spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} left</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-yellow-900/50 text-yellow-300 border border-yellow-700 mt-1">{spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} left</span>
                   )}
                 </div>
                 

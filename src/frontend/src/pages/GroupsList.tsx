@@ -88,7 +88,7 @@ const GroupsList = () => {
           <div className="text-sm text-[#a1a6b4]">{filteredGroups.length} group{filteredGroups.length !== 1 ? 's' : ''} found</div>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => navigate('/public-groups')} className="border border-blue-600 text-blue-600 hover:bg-blue-50 font-medium rounded-md px-3 py-1.5 text-sm transition">Discover Groups</button>
+          <button onClick={() => navigate('/public-groups')} className="border border-blue-600 text-blue-600 hover:bg-blue-900/30 font-medium rounded-md px-3 py-1.5 text-sm transition">Discover Groups</button>
           <button onClick={() => navigate('/groups/new')} className="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">Create Group</button>
         </div>
       </div>
@@ -112,7 +112,7 @@ const GroupsList = () => {
           {['all', 'public', 'private', 'admin'].map(f => (
             <button
               key={f}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium border transition ${filter === f ? 'bg-blue-600 text-white border-blue-600' : 'bg-[#232946] text-[#a1a6b4] border-[#3a3f4b] hover:bg-blue-50 hover:text-blue-700'}`}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium border transition ${filter === f ? 'bg-blue-600 text-white border-blue-600' : 'bg-[#232946] text-[#a1a6b4] border-[#3a3f4b] hover:bg-[#2d3748] hover:text-blue-400'}`}
               onClick={() => setFilter(f)}
             >
               {f === 'all' && 'All Groups'}
@@ -146,9 +146,9 @@ const GroupsList = () => {
               <div key={group.id} className="relative bg-[#232946] rounded-xl shadow-md p-5 flex flex-col h-full">
                 <div className="absolute top-4 right-4 flex gap-1 z-10">
                   {group.isPublic ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">Public</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-900/50 text-blue-300 border border-blue-700">Public</span>
                   ) : (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gray-200 text-gray-700 border border-gray-300">Private</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gray-700 text-gray-300 border border-gray-600">Private</span>
                   )}
                 </div>
                 <div className="flex-1 flex flex-col gap-2">
