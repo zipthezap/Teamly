@@ -42,31 +42,31 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
         <div className="text-slate-400 text-center py-4">{t('groupDetails.noEvents')}</div>
       ) : (
         <ul>
-          {events.map((e) => (
+          {events.map((event) => (
             <li
-              key={e.id}
-              className={`mb-3 p-3 bg-slate-700 rounded flex items-center gap-3 cursor-pointer transition hover:bg-slate-600 border-l-4 ${isPastEvent(e.date) ? "border-slate-500 opacity-70" : "border-green-500"}`}
-              onClick={() => onEventClick(e.id)}
+              key={event.id}
+              className={`mb-3 p-3 bg-slate-700 rounded flex items-center gap-3 cursor-pointer transition hover:bg-slate-600 border-l-4 ${isPastEvent(event.date) ? "border-slate-500 opacity-70" : "border-green-500"}`}
+              onClick={() => onEventClick(event.id)}
               tabIndex={0}
-              aria-label={`${t('common.viewDetails')} ${e.title}`}
+              aria-label={`${t('common.viewDetails')} ${event.title}`}
             >
               <div className="w-10 h-10 bg-slate-600 rounded flex items-center justify-center text-2xl">
-                {e.type === "Football" ? "⚽" : e.type === "Tennis" ? "🎾" : "📅"}
+                {event.type === "Football" ? "⚽" : event.type === "Tennis" ? "🎾" : "📅"}
               </div>
               <div className="flex-1">
                 <div className="font-medium flex items-center gap-2">
-                  {e.title}
-                  {isPastEvent(e.date) && (
+                  {event.title}
+                  {isPastEvent(event.date) && (
                     <span className="ml-2 text-xs bg-slate-500 px-2 py-0.5 rounded text-white">{t('groupDetails.past')}</span>
                   )}
                 </div>
-                <div className="text-xs text-slate-400">{e.type} • {e.date}</div>
-                <div className="text-xs text-slate-500">{t('groupDetails.organizer')}: {e.organizer}</div>
+                <div className="text-xs text-slate-400">{event.type} • {event.date}</div>
+                <div className="text-xs text-slate-500">{t('groupDetails.organizer')}: {event.organizer}</div>
               </div>
               {isAdmin && (
                 <div className="flex gap-2 ml-auto" onClick={(ev) => ev.stopPropagation()}>
-                  {onEdit && <Button color="secondary" size="xs" onClick={() => onEdit(e)}>{t('groupDetails.editEvent')}</Button>}
-                  {onDelete && <Button color="danger" size="xs" onClick={() => handleDeleteClick(e)}>{t('groupDetails.deleteEvent')}</Button>}
+                  {onEdit && <Button color="secondary" size="xs" onClick={() => onEdit(event)}>{t('groupDetails.editEvent')}</Button>}
+                  {onDelete && <Button color="danger" size="xs" onClick={() => handleDeleteClick(event)}>{t('groupDetails.deleteEvent')}</Button>}
                 </div>
               )}
               {!isAdmin && <Button color="secondary" size="xs" className="ml-auto">{t('groupDetails.rsvp')}</Button>}

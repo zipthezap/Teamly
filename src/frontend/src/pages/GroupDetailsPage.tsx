@@ -120,7 +120,7 @@ export default function GroupDetailsPage() {
   const removeMemberMutation = useMutation({
     mutationFn: async (email: string) => {
       const member = group?.members.find((m: Member) => m.email === email);
-      if (!member) throw new Error(t('groupDetails.failedToRemove'));
+      if (!member) throw new Error("Member not found");
       await groupsAPI.removeMember(groupId!, member.email);
       return email;
     },

@@ -29,7 +29,7 @@ const MemberList: React.FC<MemberListProps> = ({ members, onRemove }) => {
                 <span>{getInitials(m.name)}</span>
               )}
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <span className="font-medium">{m.name}</span>
               {m.role === "Admin" && (
                 <span className="ml-2 text-xs bg-blue-700 px-2 py-0.5 rounded">{t('groupDetails.admin')}</span>
@@ -37,11 +37,11 @@ const MemberList: React.FC<MemberListProps> = ({ members, onRemove }) => {
               <div className="text-xs text-slate-400">{m.email}</div>
             </div>
             <span
-              className={`w-2 h-2 rounded-full ${m.online ? "bg-green-400" : "bg-slate-500"}`}
+              className={`w-2 h-2 rounded-full flex-shrink-0 ${m.online ? "bg-green-400" : "bg-slate-500"}`}
               title={m.online ? t('groupDetails.online') : t('groupDetails.offline')}
             ></span>
             {onRemove && (
-              <Button color="danger" size="xs" className="ml-2" onClick={() => onRemove(m.email)}>
+              <Button color="danger" size="xs" className="ml-2 flex-shrink-0" onClick={() => onRemove(m.email)}>
                 {t('groupDetails.remove')}
               </Button>
             )}
