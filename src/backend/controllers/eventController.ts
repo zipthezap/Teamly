@@ -3,6 +3,7 @@ import { validateRecurrenceRule, generateRecurrenceInstances, calculateDuration,
 import { sendEmail } from '../utils/emailService';
 import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
 import { getEventActivity } from '../services/eventNotification';
+import { validateEventStatus } from '../services/eventValidation';
 import { Request, Response } from 'express';
 
 export const createEvent = async (req: Request, res: Response) => {
@@ -980,8 +981,10 @@ export const updateEventStatus = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!['upcoming', 'ongoing', 'completed', 'cancelled'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status. Must be one of: upcoming, ongoing, completed, cancelled' });
+    // Validate status using the centralized validation function
+    const statusValidation = validateEventStatus(status);
+    if (!statusValidation.isValid) {
+      return res.status(400).json({ error: statusValidation.error });
     }
 
     // Check if user is the creator of the event

@@ -12,7 +12,9 @@ const EVENT_CONFIG = {
   // Hours after start time to keep an event 'ongoing' when no end time is specified
   DEFAULT_ONGOING_HOURS: 24,
   // Days before archiving completed events
-  DEFAULT_ARCHIVE_DAYS: 30
+  DEFAULT_ARCHIVE_DAYS: 30,
+  // Milliseconds in one hour (for time calculations)
+  MS_PER_HOUR: 1000 * 60 * 60
 };
 
 /**
@@ -61,7 +63,7 @@ export const updateEventStatuses = async (): Promise<{
         } else if (!event.endTime) {
           // Event has no end time - mark as ongoing if within configured hours
           // Otherwise mark as completed
-          const hoursSinceStart = (now.getTime() - event.startTime.getTime()) / (1000 * 60 * 60);
+          const hoursSinceStart = (now.getTime() - event.startTime.getTime()) / EVENT_CONFIG.MS_PER_HOUR;
           newStatus = hoursSinceStart <= EVENT_CONFIG.DEFAULT_ONGOING_HOURS ? 'ongoing' : 'completed';
         }
       } else if (event.startTime > now) {
