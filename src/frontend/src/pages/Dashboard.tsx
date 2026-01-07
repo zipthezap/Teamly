@@ -245,7 +245,31 @@ const Dashboard = () => {
         </Grid>
 
         {/* Right Sidebar - aligns with stats and main content */}
-        <Grid item xs={12} lg={3} sx={{ position: { lg: 'sticky' }, top: { lg: 32 }, alignSelf: 'flex-start' }}>
+        <Grid 
+          item 
+          xs={12} 
+          lg={3} 
+          sx={{ 
+            position: { lg: 'sticky' }, 
+            top: { lg: 80 }, 
+            alignSelf: { lg: 'flex-start' },
+            maxHeight: { lg: 'calc(100vh - 100px)' },
+            overflowY: { lg: 'auto' },
+            '&::-webkit-scrollbar': {
+              width: '6px',
+            },
+            '&::-webkit-scrollbar-track': {
+              background: 'transparent',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              background: 'rgba(156, 163, 175, 0.3)',
+              borderRadius: '3px',
+            },
+            '&::-webkit-scrollbar-thumb:hover': {
+              background: 'rgba(156, 163, 175, 0.5)',
+            },
+          }}
+        >
           <Stack spacing={3}>
             {/* Recent Activity */}
             <RecentActivityTimeline

@@ -95,10 +95,10 @@ const EventsList = () => {
   const handleLeaveEvent = async (eventId: string | number) => {
     try {
       await eventsAPI.leave(eventId);
-      setToast({ message: 'Left event successfully', type: 'success' });
+      setToast({ message: t('events.leftEvent'), type: 'success' });
       fetchEvents();
     } catch (err: any) {
-      setToast({ message: err?.response?.data?.message || 'Failed to leave event', type: 'error' });
+      setToast({ message: err?.response?.data?.message || t('events.failedToLeaveEvent'), type: 'error' });
     }
   };
 

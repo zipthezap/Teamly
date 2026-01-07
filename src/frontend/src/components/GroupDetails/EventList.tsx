@@ -1,26 +1,34 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Event } from "../../types/group";
 import Button from "../ui/Button";
 
 interface EventListProps {
-  events: Event[];
+  events: any[];
   onEventClick: (eventId: number) => void;
   onCreate?: () => void;
-  onEdit?: (event: Event) => void;
-  onDelete?: (event: Event) => void;
+  onEdit?: (event: any) => void;
+  onDelete?: (event: any) => void;
   isAdmin?: boolean;
 }
 
 const isPastEvent = (date: string) => new Date(date) < new Date();
+const formatEventDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
 
 
 const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, onEdit, onDelete, isAdmin }) => {
   const { t } = useTranslation();
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
-  const [eventToDelete, setEventToDelete] = React.useState<Event | null>(null);
+  const [eventToDelete, setEventToDelete] = React.useState<any | null>(null);
 
-  const handleDeleteClick = (event: Event) => {
+  const handleDeleteClick = (event: any) => {
     setEventToDelete(event);
     setDeleteDialogOpen(true);
   };
@@ -42,26 +50,31 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
         <div className="text-slate-400 text-center py-4">{t('groupDetails.noEvents')}</div>
       ) : (
         <ul>
-          {events.map((event) => (
+          {events.map((event) => {
+            const eventDate = event.startTime || event.date;
+            const eventType = event.eventType || event.type;
+            const organizerName = event.creator?.name || event.organizer || 'Unknown';
+            
+            return (
             <li
               key={event.id}
-              className={`mb-3 p-3 bg-slate-700 rounded flex items-center gap-3 cursor-pointer transition hover:bg-slate-600 border-l-4 ${isPastEvent(event.date) ? "border-slate-500 opacity-70" : "border-green-500"}`}
+              className={`mb-3 p-3 bg-slate-700 rounded flex items-center gap-3 cursor-pointer transition hover:bg-slate-600 border-l-4 ${isPastEvent(eventDate) ? "border-slate-500 opacity-70" : "border-green-500"}`}
               onClick={() => onEventClick(event.id)}
               tabIndex={0}
               aria-label={`${t('common.viewDetails')} ${event.title}`}
             >
               <div className="w-10 h-10 bg-slate-600 rounded flex items-center justify-center text-2xl">
-                {event.type === "Football" ? "⚽" : event.type === "Tennis" ? "🎾" : "📅"}
+                {eventType === "Football" ? "⚽" : eventType === "Tennis" ? "🎾" : "📅"}
               </div>
               <div className="flex-1">
                 <div className="font-medium flex items-center gap-2">
                   {event.title}
-                  {isPastEvent(event.date) && (
+                  {isPastEvent(eventDate) && (
                     <span className="ml-2 text-xs bg-slate-500 px-2 py-0.5 rounded text-white">{t('groupDetails.past')}</span>
                   )}
                 </div>
-                <div className="text-xs text-slate-400">{event.type} • {event.date}</div>
-                <div className="text-xs text-slate-500">{t('groupDetails.organizer')}: {event.organizer}</div>
+                <div className="text-xs text-slate-400">{eventType} • {formatEventDate(eventDate)}</div>
+                <div className="text-xs text-slate-500">{t('groupDetails.organizer')}: {organizerName}</div>
               </div>
               {isAdmin && (
                 <div className="flex gap-2 ml-auto" onClick={(ev) => ev.stopPropagation()}>
@@ -71,7 +84,8 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
               )}
               {!isAdmin && <Button color="secondary" size="xs" className="ml-auto">{t('groupDetails.rsvp')}</Button>}
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
       {/* Delete confirmation dialog */}
