@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Container,
   Paper,
@@ -28,6 +29,7 @@ const EVENT_TYPES = [
 const CreateEvent = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [groups, setGroups] = useState([]);
   const [formData, setFormData] = useState({
     groupId: location.state?.groupId || '',
@@ -131,7 +133,7 @@ const CreateEvent = () => {
     try {
       // Validate required fields
       if (!formData.startDate || !formData.startHour) {
-        setError('Start date and time are required.');
+        setError(t('events.startDateRequired'));
         setLoading(false);
         return;
       }
@@ -181,7 +183,7 @@ const CreateEvent = () => {
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
       <Paper elevation={3} sx={{ p: 4 }}>
         <Typography variant="h4" gutterBottom>
-          Create New Event
+          {t('events.createNewEvent')}
         </Typography>
 
         {error && (
@@ -193,7 +195,7 @@ const CreateEvent = () => {
         <form onSubmit={handleSubmit}>
           <TextField
             select
-            label="Group"
+            label={t('events.group')}
             name="groupId"
             fullWidth
             margin="normal"
@@ -209,7 +211,7 @@ const CreateEvent = () => {
           </TextField>
 
           <TextField
-            label="Event Title"
+            label={t('events.eventTitle')}
             name="title"
             fullWidth
             margin="normal"
@@ -219,7 +221,7 @@ const CreateEvent = () => {
           />
 
           <TextField
-            label="Description"
+            label={t('events.description')}
             name="description"
             fullWidth
             multiline
@@ -231,7 +233,7 @@ const CreateEvent = () => {
 
           <TextField
             select
-            label="Event Type"
+            label={t('events.eventType')}
             name="eventType"
             fullWidth
             margin="normal"
@@ -247,7 +249,7 @@ const CreateEvent = () => {
           </TextField>
 
           <TextField
-            label="Location"
+            label={t('events.location')}
             name="location"
             fullWidth
             margin="normal"
@@ -256,7 +258,7 @@ const CreateEvent = () => {
           />
 
           <TextField
-            label="Event Date"
+            label={t('events.eventDate')}
             name="startDate"
             type="date"
             fullWidth
@@ -272,7 +274,7 @@ const CreateEvent = () => {
             <Typography>Start Time</Typography>
             <TextField
               select
-              label="Hour"
+              label={t('events.hour')}
               name="startHour"
               value={formData.startHour}
               onChange={handleHourChange('startHour')}
@@ -287,7 +289,7 @@ const CreateEvent = () => {
             </TextField>
             <TextField
               select
-              label="Minute"
+              label={t('events.minute')}
               name="startMinute"
               value={formData.startMinute}
               onChange={handleMinuteChange('startMinute')}
@@ -304,7 +306,7 @@ const CreateEvent = () => {
             <Typography>End Time (optional)</Typography>
             <TextField
               select
-              label="Hour"
+              label={t('events.hour')}
               name="endHour"
               value={formData.endHour}
               onChange={handleHourChange('endHour')}
@@ -319,7 +321,7 @@ const CreateEvent = () => {
             </TextField>
             <TextField
               select
-              label="Minute"
+              label={t('events.minute')}
               name="endMinute"
               value={formData.endMinute}
               onChange={handleMinuteChange('endMinute')}
@@ -332,7 +334,7 @@ const CreateEvent = () => {
           </Box>
 
           <TextField
-            label="Max Players"
+            label={t('events.maxPlayers')}
             name="maxPlayers"
             type="number"
             fullWidth
@@ -349,14 +351,14 @@ const CreateEvent = () => {
               size="large"
               disabled={loading}
             >
-              {loading ? 'Creating...' : 'Create Event'}
+              {loading ? t('events.creating') : t('common.create')}
             </Button>
             <Button
               variant="outlined"
               size="large"
               onClick={() => navigate('/events')}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
           </Box>
         </form>

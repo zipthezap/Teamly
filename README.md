@@ -19,7 +19,7 @@ A sports event organization app that allows individuals to set and organize smal
 - **💬 Event Comments**: Discuss events with threaded comments and @mentions
 - **⚙️ Customizable Preferences**: Control which email notifications you receive
 
-For detailed documentation on these features, see [NEW_FEATURES_IMPLEMENTATION.md](NEW_FEATURES_IMPLEMENTATION.md).
+For detailed documentation on these features, see [docs/guides/FEATURES.md](docs/guides/FEATURES.md).
 
 ## Architecture
 
@@ -51,7 +51,7 @@ The application is split into two main components:
 - PostgreSQL (v16 or higher, if running locally)
 - npm or yarn
 
-> **💡 Windows Users:** For detailed Windows-specific setup instructions, see [WINDOWS_SETUP.md](WINDOWS_SETUP.md)
+> **💡 Windows Users:** For detailed Windows-specific setup instructions, see [docs/guides/WINDOWS_SETUP.md](docs/guides/WINDOWS_SETUP.md)
 
 ## Quick Start with Docker (Recommended)
 
@@ -349,20 +349,18 @@ The test scripts will:
 
 ### Active Documentation
 
-- **[NEW_FEATURES_IMPLEMENTATION.md](NEW_FEATURES_IMPLEMENTATION.md)** - Complete guide for new features (Email, Recurring Events, Comments)
-- **[WINDOWS_SETUP.md](WINDOWS_SETUP.md)** - Comprehensive Windows development guide
-- **[FEATURE_ROADMAP.md](FEATURE_ROADMAP.md)** - Planned features and expansion ideas
 - **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** - Detailed API reference
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guides
-- **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - Project overview and architecture
-
-### Archived Documentation
-
-Historical implementation notes and summaries have been moved to `docs/archive/` to keep the root directory clean and focused on active documentation.
+- **[QUICK_START.md](QUICK_START.md)** - Quick setup instructions
+- **[docs/guides/FEATURES.md](docs/guides/FEATURES.md)** - Complete guide for new features (Email, Recurring Events, Comments)
+- **[docs/guides/WINDOWS_SETUP.md](docs/guides/WINDOWS_SETUP.md)** - Comprehensive Windows development guide
+- **[docs/guides/FEATURE_ROADMAP.md](docs/guides/FEATURE_ROADMAP.md)** - Planned features and expansion ideas
+- **[docs/guides/FRONTEND_GUIDE.md](docs/guides/FRONTEND_GUIDE.md)** - Frontend implementation details
+- **[docs/guides/SOCIAL_LOGIN_GUIDE.md](docs/guides/SOCIAL_LOGIN_GUIDE.md)** - Social authentication setup
 
 ## Contributing Ideas
 
-Looking to expand Teamly? Check out [FEATURE_ROADMAP.md](FEATURE_ROADMAP.md) for:
+Looking to expand Teamly? Check out [docs/guides/FEATURE_ROADMAP.md](docs/guides/FEATURE_ROADMAP.md) for:
 - High-priority feature suggestions
 - Technical design considerations
 - Implementation estimates
