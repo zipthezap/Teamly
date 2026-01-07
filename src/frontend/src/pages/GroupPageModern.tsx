@@ -3,6 +3,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { groupsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import {
+  BellIcon,
+  ClipboardIcon,
+  PlusIcon,
+  UserPlusIcon,
+  EditIcon,
+  TrashIcon,
+  ChevronRightIcon,
+  AlertCircleIcon
+} from '../components/icons';
 
 const GroupPageModern = () => {
   const { id } = useParams();
@@ -159,45 +169,46 @@ const GroupPageModern = () => {
                 {group.name}
                 {/* Bell notification icon */}
                 <span className="ml-2 align-middle">
-                  <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6.002 6.002 0 0 0-4-5.659V5a2 2 0 1 0-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 0 1-6 0v-1m6 0H9" /></svg>
+                  <BellIcon className="w-6 h-6 text-blue-400" />
                 </span>
               </h1>
             </div>
             <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
-              {/* Copy Link (chain) */}
+              {/* Copy Link (clipboard) */}
               <button title="Copy Invite Link" onClick={handleCopyInviteLink} className="border border-blue-500 text-blue-500 bg-transparent rounded-md p-2 flex items-center justify-center hover:bg-blue-900/20 transition">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 7a5 5 0 0 0-7.07 0l-3.88 3.88a5 5 0 0 0 7.07 7.07l1.06-1.06" /><path d="M7 17a5 5 0 0 0 7.07 0l3.88-3.88a5 5 0 0 0-7.07-7.07l-1.06 1.06" /></svg>
+                <ClipboardIcon className="w-5 h-5" />
               </button>
               {/* Add (plus) */}
               <button title="Add" className="border border-blue-500 text-blue-500 bg-transparent rounded-md p-2 flex items-center justify-center hover:bg-blue-900/20 transition">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" /></svg>
+                <PlusIcon className="w-5 h-5" />
               </button>
               {/* Invite (user-plus) */}
               <button title="Invite Member" onClick={() => setInviteDialogOpen(true)} className="border border-blue-500 text-blue-500 bg-transparent rounded-md p-2 flex items-center justify-center hover:bg-blue-900/20 transition">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M16 11V9a4 4 0 1 0-8 0v2M12 19c-4 0-8-2-8-6V9a8 8 0 0 1 16 0v4c0 4-4 6-8 6zm6-2v-2m0 0h2m-2 0h-2" /></svg>
+                <UserPlusIcon className="w-5 h-5" />
               </button>
               {/* Edit (pencil) */}
               <button title="Edit Group" onClick={() => navigate(`/groups/${id}/edit`)} className="border border-blue-500 text-blue-500 bg-transparent rounded-md p-2 flex items-center justify-center hover:bg-blue-900/20 transition">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19.5 3 21l1.5-4L16.5 3.5z" /></svg>
+                <EditIcon className="w-5 h-5" />
               </button>
               {/* Delete (trash) */}
               <button title="Delete Group" onClick={handleDeleteGroup} className="border border-red-500 text-red-500 bg-transparent rounded-md p-2 flex items-center justify-center hover:bg-red-900/20 transition">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                <TrashIcon className="w-5 h-5" />
               </button>
               {/* Arrow (navigate/forward) */}
               <button title="Go" className="border border-gray-500 text-gray-400 bg-transparent rounded-md p-2 flex items-center justify-center hover:bg-gray-800/20 transition">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg>
+                <ChevronRightIcon className="w-5 h-5" />
               </button>
             </div>
-            {/* Event Request Button (large, below actions) */}
-            {isAdmin && (
-              <div className="mt-3">
-                <button onClick={() => navigate(`/event-requests/${id}`)} className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-lg px-4 py-3 text-base shadow transition flex items-center justify-center gap-2">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 8v4m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" /></svg>
-                  Event Requests
-                </button>
-              </div>
-            )}
+          </div>
+          {/* Event Request Button (large, separate, below action buttons) */}
+          {isAdmin && (
+            <div className="mt-6 w-full">
+              <button onClick={() => navigate(`/event-requests/${id}`)} className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-lg px-6 py-4 text-lg shadow-lg transition flex items-center justify-center gap-3">
+                <AlertCircleIcon className="w-7 h-7" />
+                Event Requests
+              </button>
+            </div>
+          )}
           </div>
         </div>
         {/* Members */}
