@@ -19,6 +19,7 @@ import TwoFactorSetup from './pages/TwoFactorSetup';
 import EventRequests from './pages/EventRequests';
 import JoinGroup from './pages/JoinGroup';
 import Profile from './pages/Profile';
+import NotificationsCenter from './pages/NotificationsCenter';
 
 function App() {
   return (
@@ -52,6 +53,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <Profile />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/notifications"
+              element={
+                <PrivateRoute>
+                  <NotificationsCenter />
                 </PrivateRoute>
               }
             />

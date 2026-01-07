@@ -117,4 +117,20 @@ export const groupChatAPI = {
   unmarkLate: (eventId: string | number) => api.post('/chat/event/unmark-late', { eventId }),
 };
 
+// Enhanced Notifications API
+export const notificationsAPI = {
+  getAll: (params?: {
+    includeRead?: boolean;
+    limit?: number;
+    offset?: number;
+    type?: string;
+    notificationType?: 'event' | 'group';
+    startDate?: string;
+    endDate?: string;
+  }) => api.get('/notifications', { params }),
+  markAsRead: (notificationIds?: string[]) => api.put('/notifications/read', { notificationIds }),
+  getStats: () => api.get('/notifications/stats'),
+  getUnreadCount: () => api.get('/notifications/unread-count'),
+};
+
 export default api;

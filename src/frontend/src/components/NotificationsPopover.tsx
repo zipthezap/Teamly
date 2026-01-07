@@ -12,16 +12,21 @@ import {
   Divider,
   ListItemButton,
   Button,
+  Chip,
+  Stack,
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import NotificationsOffIcon from '@mui/icons-material/NotificationsOff';
-import { useNotifications } from '../hooks/useNotifications';
+import { useEnhancedNotifications } from '../hooks/useEnhancedNotifications';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const NotificationsPopover: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const { notifications, loading, refresh, markAsRead } = useNotifications();
+  const { notifications, loading, stats, refresh, markAsRead } = useEnhancedNotifications({
+    autoRefresh: true,
+    refreshInterval: 30000,
+  });
   const { user } = useAuth();
   const navigate = useNavigate();
   const open = Boolean(anchorEl);
@@ -32,25 +37,30 @@ const NotificationsPopover: React.FC = () => {
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
-    // Do not mark as read here
     refresh();
   };
 
   const handleClose = async () => {
     setAnchorEl(null);
-    await markAsRead();
-    refresh();
   };
-  
-  const handleNotificationClick = (notif: any) => {
-    // Navigate to relevant page based on notification type
-    if (notif.notificationType === 'event' && notif.event?.id) {
+
+  const handleNotificationClick = async (notif: any) => {
+    // Mark this notification as read
+    try {
+      await markAsRead([notif.id]);
+    } catch (err) {
+      console.error('Failed to mark notification as read:', err);
+    }
+
+    // Navigate based on metadata or fallback to type
+    if (notif.metadata?.actionUrl) {
+      navigate(notif.metadata.actionUrl);
+    } else if (notif.notificationType === 'event' && notif.event?.id) {
       navigate(`/events/${notif.event.id}`);
-      handleClose();
     } else if (notif.notificationType === 'group' && notif.group?.id) {
       navigate(`/groups/${notif.group.id}`);
-      handleClose();
     }
+    handleClose();
   };
 
   const handleMarkAllRead = async () => {
@@ -59,8 +69,24 @@ const NotificationsPopover: React.FC = () => {
       refresh();
     } catch (error) {
       console.error('Failed to mark notifications as read:', error);
-      // Still refresh to show current state
       refresh();
+    }
+  };
+
+  const handleViewAll = () => {
+    navigate('/notifications');
+    handleClose();
+  };
+
+  // Get priority color
+  const getPriorityColor = (priority?: string) => {
+    switch (priority) {
+      case 'high':
+        return 'error';
+      case 'medium':
+        return 'warning';
+      default:
+        return 'default';
     }
   };
 
@@ -71,7 +97,7 @@ const NotificationsPopover: React.FC = () => {
         onClick={handleClick}
         sx={{ color: 'inherit', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}
       >
-        <Badge badgeContent={notifications.length} color="error">
+        <Badge badgeContent={stats?.unread || 0} color="error">
           {areNotificationsMuted ? <NotificationsOffIcon /> : <NotificationsIcon />}
         </Badge>
       </IconButton>
@@ -82,23 +108,41 @@ const NotificationsPopover: React.FC = () => {
         onClose={handleClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        slotProps={{ paper: { sx: { mt: 1.5, width: 400, maxHeight: 500 } } }}
+        slotProps={{ paper: { sx: { mt: 1.5, width: 420, maxHeight: 600 } } }}
       >
         <Paper sx={{ p: 2 }}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-            <Typography variant="h6">
-              Notifications
-            </Typography>
-            {notifications.length > 0 && (
-              <Button 
-                size="small" 
-                onClick={handleMarkAllRead}
-                sx={{ textTransform: 'none' }}
-              >
-                Mark all read
+            <Typography variant="h6">Notifications</Typography>
+            <Stack direction="row" spacing={1}>
+              {notifications.length > 0 && (
+                <Button size="small" onClick={handleMarkAllRead} sx={{ textTransform: 'none' }}>
+                  Mark all read
+                </Button>
+              )}
+              <Button size="small" onClick={handleViewAll} sx={{ textTransform: 'none' }}>
+                View All
               </Button>
-            )}
+            </Stack>
           </Box>
+          
+          {/* Stats chips */}
+          {stats && (
+            <Stack direction="row" spacing={1} mb={2}>
+              <Chip
+                label={`${stats.unreadEvent} Events`}
+                size="small"
+                color="primary"
+                variant="outlined"
+              />
+              <Chip
+                label={`${stats.unreadGroup} Groups`}
+                size="small"
+                color="secondary"
+                variant="outlined"
+              />
+            </Stack>
+          )}
+
           {loading ? (
             <Box display="flex" justifyContent="center" py={3}>
               <CircularProgress size={32} />
@@ -110,68 +154,19 @@ const NotificationsPopover: React.FC = () => {
               </Typography>
             </Box>
           ) : (
-            <List sx={{ maxHeight: 350, overflow: 'auto', p: 0 }}>
+            <List sx={{ maxHeight: 400, overflow: 'auto', p: 0 }}>
               {notifications.map((notif, idx) => {
-                let primary = '';
-                let secondary = '';
-                if (notif.notificationType === 'group') {
-                  if (notif.type === 'join_request') {
-                    primary = `New join request for "${notif.group?.name || 'group'}"`;
-                    secondary = 'Someone wants to join your group';
-                  } else if (notif.type === 'accepted') {
-                    primary = `Welcome to "${notif.group?.name || 'group'}"!`;
-                    secondary = 'Your join request was accepted';
-                  } else if (notif.type === 'nearby_created') {
-                    primary = `New group near you: "${notif.group?.name || 'group'}"`;
-                    secondary = 'Check it out and join!';
-                  } else {
-                    primary = `Group update: ${notif.group?.name || 'group'}`;
-                    secondary = '';
-                  }
-                } else if (notif.notificationType === 'event') {
-                  const userName = notif.user?.name || 'Someone';
-                  if (notif.type === 'created') {
-                    primary = `New event: "${notif.event?.title || 'event'}"`;
-                    secondary = 'Check out the details and join!';
-                  } else if (notif.type === 'reminder') {
-                    primary = `Reminder: "${notif.event?.title || 'event'}" starts soon`;
-                    secondary = 'Don\'t forget to attend!';
-                  } else if (notif.type === 'join') {
-                    primary = `${userName} joined "${notif.event?.title || 'your event'}"`;
-                    secondary = 'New participant added';
-                  } else if (notif.type === 'leave') {
-                    primary = `${userName} left "${notif.event?.title || 'your event'}"`;
-                    secondary = 'Participant has left the event';
-                  } else if (notif.type === 'late') {
-                    primary = `${userName} will be late to "${notif.event?.title || 'your event'}"`;
-                    secondary = 'Participant marked as late';
-                  } else if (notif.type === 'confirmed') {
-                    primary = `${userName} confirmed for "${notif.event?.title || 'your event'}"`;
-                    secondary = 'Attendance confirmed';
-                  } else if (notif.type === 'declined') {
-                    primary = `${userName} declined "${notif.event?.title || 'your event'}"`;
-                    secondary = 'Attendance declined';
-                  } else {
-                    primary = `Event update: ${notif.event?.title || 'event'}`;
-                    secondary = '';
-                  }
-                } else {
-                  primary = notif.title || notif.message || 'Notification';
-                  secondary = notif.time ? new Date(notif.time).toLocaleString() : '';
-                }
-                
-                // Add timestamp to secondary text
                 const timestamp = new Date(notif.createdAt).toLocaleString('en-US', {
                   month: 'short',
                   day: 'numeric',
                   hour: '2-digit',
-                  minute: '2-digit'
+                  minute: '2-digit',
                 });
-                secondary = secondary ? `${secondary} • ${timestamp}` : timestamp;
-                
-                const isClickable = (notif.notificationType === 'event' && notif.event?.id) || 
-                                   (notif.notificationType === 'group' && notif.group?.id);
-                
+
+                const isClickable = notif.metadata?.actionUrl ||
+                  (notif.notificationType === 'event' && notif.event?.id) ||
+                  (notif.notificationType === 'group' && notif.group?.id);
+
                 return (
                   <React.Fragment key={notif.id || idx}>
                     {idx > 0 && <Divider />}
@@ -181,11 +176,35 @@ const NotificationsPopover: React.FC = () => {
                       sx={{
                         cursor: isClickable ? 'pointer' : 'default',
                         '&:hover': isClickable ? { bgcolor: 'rgba(0, 0, 0, 0.04)' } : {},
+                        bgcolor: !notif.read ? 'action.hover' : 'transparent',
                       }}
                     >
                       <ListItemText
-                        primary={primary}
-                        secondary={secondary}
+                        primary={
+                          <Box display="flex" alignItems="center" gap={1}>
+                            <Typography variant="body2" fontWeight={!notif.read ? 600 : 400}>
+                              {notif.title}
+                            </Typography>
+                            {notif.metadata?.priority && notif.metadata.priority !== 'low' && (
+                              <Chip
+                                label={notif.metadata.priority}
+                                size="small"
+                                color={getPriorityColor(notif.metadata.priority)}
+                                sx={{ height: 20, fontSize: '0.7rem' }}
+                              />
+                            )}
+                          </Box>
+                        }
+                        secondary={
+                          <Box>
+                            <Typography variant="body2" color="text.secondary">
+                              {notif.message}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {timestamp}
+                            </Typography>
+                          </Box>
+                        }
                       />
                     </ListItemButton>
                   </React.Fragment>

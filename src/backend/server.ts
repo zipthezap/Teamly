@@ -11,6 +11,7 @@ import emailRoutes from './routes/emailRoutes';
 import commentRoutes from './routes/commentRoutes';
 import groupChatRoutes from './routes/groupChatRoutes';
 import notificationPreferenceRoutes from './routes/notificationPreferenceRoutes';
+import notificationRoutes from './routes/notificationRoutes';
 import { apiLimiter } from './middleware/rateLimiter';
 import { logger } from './utils/logger';
 import { validateEnvironmentOrThrow } from './utils/envValidator';
@@ -45,6 +46,7 @@ app.use('/api/email', emailRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/chat', groupChatRoutes);
 app.use('/api/notification-preferences', notificationPreferenceRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/health', (_req: Request, res: Response) => {
