@@ -9,6 +9,7 @@ import {
   Divider,
   CircularProgress,
 } from '@mui/material';
+import { useTranslation } from 'react-i18next';
 
 interface NotificationPreferencesProps {
   allNotificationsMuted: boolean;
@@ -32,6 +33,8 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
   onMuteToggle,
   onPreferenceChange,
 }) => {
+  const { t } = useTranslation();
+
   if (loading) {
     return (
       <Paper sx={{ p: 4 }}>
