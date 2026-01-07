@@ -47,21 +47,20 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ open, onClose, initialD
     }
   }, [initialData, open]);
 
-  const mutation = useMutation(
-    (data: any) =>
+  const mutation = useMutation({
+    mutationFn: (data: any) =>
       initialData && initialData.id
         ? eventsAPI.update(initialData.id, data)
         : eventsAPI.create({ ...data, groupId }),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['events']);
-        if (onSuccess) {
-          onSuccess();
-        }
-        onClose();
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      queryClient.invalidateQueries({ queryKey: ['groupEvents'] });
+      if (onSuccess) {
+        onSuccess();
+      }
+      onClose();
+    },
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -141,7 +140,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ open, onClose, initialD
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose} color="secondary">Cancel</Button>
-          <Button type="submit" variant="contained" color="primary" disabled={mutation.isLoading}>
+          <Button type="submit" variant="contained" color="primary" disabled={mutation.isPending}>
             {initialData ? 'Save Changes' : 'Create Event'}
           </Button>
         </DialogActions>

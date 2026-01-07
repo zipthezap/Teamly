@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem } from '@mui/material';
 import GroupHeader from "../components/GroupDetails/GroupHeader";
 import MemberList from "../components/GroupDetails/MemberList";
 import EventList from "../components/GroupDetails/EventList";
@@ -30,105 +31,166 @@ export default function GroupDetailsPage() {
   // Toast state
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
+  // Group settings state
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({
+    name: '',
+    description: '',
+    privacy: 'public',
+  });
+
   // Fetch group details
-  const { data: group, isLoading: groupLoading, error: groupError } = useQuery([
-    "groupDetails",
-    groupId,
-  ], async () => {
-    const res = await groupsAPI.getById(groupId!);
-    return res.data;
-  }, { enabled: !!groupId });
+  const { data: group, isLoading: groupLoading, error: groupError } = useQuery({
+    queryKey: ["groupDetails", groupId],
+    queryFn: async () => {
+      const res = await groupsAPI.getById(groupId!);
+      return res.data;
+    },
+    enabled: !!groupId,
+  });
 
   // Fetch events for this group
-  const { data: events, isLoading: eventsLoading, error: eventsError, refetch: refetchEvents } = useQuery([
-    "groupEvents",
-    groupId,
-  ], async () => {
-    const res = await eventsAPI.getAll({ groupId });
-    return res.data;
-  }, { enabled: !!groupId });
+  const { data: events, isLoading: eventsLoading, error: eventsError, refetch: refetchEvents } = useQuery({
+    queryKey: ["groupEvents", groupId],
+    queryFn: async () => {
+      const res = await eventsAPI.getAll({ groupId });
+      return res.data;
+    },
+    enabled: !!groupId,
+  });
 
   // Fetch chat messages for this group
-  const { data: chatMessages, isLoading: chatLoading, error: chatError, refetch: refetchChat } = useQuery([
-    "groupChat",
-    groupId,
-  ], async () => {
-    const res = await groupChatAPI.getMessages(groupId!);
-    return res.data;
-  }, { enabled: !!groupId });
+  const { data: chatMessages, isLoading: chatLoading, error: chatError, refetch: refetchChat } = useQuery({
+    queryKey: ["groupChat", groupId],
+    queryFn: async () => {
+      const res = await groupChatAPI.getMessages(groupId!);
+      return res.data;
+    },
+    enabled: !!groupId,
+  });
 
   // Assume user role is available (replace with real user/role logic)
   const isAdmin = group?.members?.find((m: Member) => m.role === "Admin")?.email === localStorage.getItem("userEmail");
 
+  // Update group settings when group data loads
+  React.useEffect(() => {
+    if (group) {
+      setSettingsForm({
+        name: group.name || '',
+        description: group.description || '',
+        privacy: group.privacy || 'public',
+      });
+    }
+  }, [group]);
+
+  // Update group mutation
+  const updateGroupMutation = useMutation({
+    mutationFn: async (data: any) => {
+      await groupsAPI.update(groupId!, data);
+      return data;
+    },
+    onSuccess: () => {
+      setToast({ message: "Group updated successfully", type: "success" });
+      queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
+      setSettingsOpen(false);
+    },
+    onError: (err: any) => {
+      setToast({ message: err?.message || "Failed to update group", type: "error" });
+    },
+  });
+
+  // Delete event mutation
+  const deleteEventMutation = useMutation({
+    mutationFn: async (eventId: number) => {
+      await eventsAPI.delete(eventId);
+      return eventId;
+    },
+    onSuccess: () => {
+      setToast({ message: "Event deleted successfully", type: "success" });
+      queryClient.invalidateQueries({ queryKey: ["groupEvents", groupId] });
+      refetchEvents();
+    },
+    onError: (err: any) => {
+      setToast({ message: err?.message || "Failed to delete event", type: "error" });
+    },
+  });
+
   // Remove member mutation (optimistic UI)
-  const removeMemberMutation = useMutation(
-    async (email: string) => {
+  const removeMemberMutation = useMutation({
+    mutationFn: async (email: string) => {
       const member = group?.members.find((m: Member) => m.email === email);
       if (!member) throw new Error("Member not found");
       await groupsAPI.removeMember(groupId!, member.email);
       return email;
     },
-    {
-      onMutate: async (email) => {
-        // Optimistically update group members
-        await queryClient.cancelQueries(["groupDetails", groupId]);
-        const prevGroup = queryClient.getQueryData(["groupDetails", groupId]);
-        if (prevGroup && (prevGroup as any).members) {
-          queryClient.setQueryData(["groupDetails", groupId], {
-            ...(prevGroup as any),
-            members: (prevGroup as any).members.filter((m: Member) => m.email !== email),
-          });
-        }
-        return { prevGroup };
-      },
-      onError: (err: any, _email, context: any) => {
-        setToast({ message: err?.message || "Failed to remove member", type: "error" });
-        if (context?.prevGroup) {
-          queryClient.setQueryData(["groupDetails", groupId], context.prevGroup);
-        }
-      },
-      onSuccess: () => {
-        setToast({ message: "Member removed successfully", type: "success" });
-        queryClient.invalidateQueries(["groupDetails", groupId]);
-      },
-    }
-  );
+    onMutate: async (email) => {
+      // Optimistically update group members
+      await queryClient.cancelQueries({ queryKey: ["groupDetails", groupId] });
+      const prevGroup = queryClient.getQueryData(["groupDetails", groupId]);
+      if (prevGroup && (prevGroup as any).members) {
+        queryClient.setQueryData(["groupDetails", groupId], {
+          ...(prevGroup as any),
+          members: (prevGroup as any).members.filter((m: Member) => m.email !== email),
+        });
+      }
+      return { prevGroup };
+    },
+    onError: (err: any, _email, context: any) => {
+      setToast({ message: err?.message || "Failed to remove member", type: "error" });
+      if (context?.prevGroup) {
+        queryClient.setQueryData(["groupDetails", groupId], context.prevGroup);
+      }
+    },
+    onSuccess: () => {
+      setToast({ message: "Member removed successfully", type: "success" });
+      queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
+    },
+  });
 
   // Send chat message mutation (optimistic UI)
-  const sendMessageMutation = useMutation(
-    async (content: string) => {
+  const sendMessageMutation = useMutation({
+    mutationFn: async (content: string) => {
       await groupChatAPI.sendMessage(groupId!, content);
       return content;
     },
-    {
-      onMutate: async (content) => {
-        await queryClient.cancelQueries(["groupChat", groupId]);
-        const prevChat = queryClient.getQueryData(["groupChat", groupId]);
-        if (prevChat) {
-          queryClient.setQueryData(["groupChat", groupId], [
-            ...(prevChat as ChatMessage[]),
-            { sender: "You", text: content, time: new Date().toLocaleTimeString() },
-          ]);
-        }
-        return { prevChat };
-      },
-      onError: (err: any, _content, context: any) => {
-        setToast({ message: err?.message || "Failed to send message", type: "error" });
-        if (context?.prevChat) {
-          queryClient.setQueryData(["groupChat", groupId], context.prevChat);
-        }
-      },
-      onSuccess: () => {
-        setToast({ message: "Message sent", type: "success" });
-        refetchChat();
-      },
-    }
-  );
+    onMutate: async (content) => {
+      await queryClient.cancelQueries({ queryKey: ["groupChat", groupId] });
+      const prevChat = queryClient.getQueryData(["groupChat", groupId]);
+      if (prevChat) {
+        queryClient.setQueryData(["groupChat", groupId], [
+          ...(prevChat as ChatMessage[]),
+          { sender: "You", text: content, time: new Date().toLocaleTimeString() },
+        ]);
+      }
+      return { prevChat };
+    },
+    onError: (err: any, _content, context: any) => {
+      setToast({ message: err?.message || "Failed to send message", type: "error" });
+      if (context?.prevChat) {
+        queryClient.setQueryData(["groupChat", groupId], context.prevChat);
+      }
+    },
+    onSuccess: () => {
+      setToast({ message: "Message sent", type: "success" });
+      refetchChat();
+    },
+  });
 
   // Local state for chat input and confirmation dialog
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showConfirm, setShowConfirm] = useState<{ open: boolean; email: string | null }>({ open: false, email: null });
+
+  // Handle settings form change
+  const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSettingsForm({ ...settingsForm, [e.target.name]: e.target.value });
+  };
+
+  // Handle settings form submit
+  const handleSettingsSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateGroupMutation.mutate(settingsForm);
+  };
 
   // Simulate typing indicator (for demo)
   React.useEffect(() => {
@@ -223,7 +285,7 @@ export default function GroupDetailsPage() {
                 </DialogContent>
                 <DialogActions>
                   <Button onClick={() => setSettingsOpen(false)} color="secondary">Cancel</Button>
-                  <Button type="submit" variant="contained" color="primary" disabled={updateGroupMutation.isLoading}>
+                  <Button type="submit" variant="contained" color="primary" disabled={updateGroupMutation.isPending}>
                     Save Changes
                   </Button>
                 </DialogActions>
@@ -255,7 +317,7 @@ export default function GroupDetailsPage() {
             <div className="mb-4 text-lg">Remove this member?</div>
             <div className="mb-6 text-slate-400">Are you sure you want to remove <span className="font-bold">{showConfirm.email}</span> from the group?</div>
             <div className="flex gap-4 justify-center">
-              <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded" onClick={confirmRemove} disabled={removeMemberMutation.isLoading}>Remove</button>
+              <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded" onClick={confirmRemove} disabled={removeMemberMutation.isPending}>Remove</button>
               <button className="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded" onClick={() => setShowConfirm({ open: false, email: null })}>Cancel</button>
             </div>
           </div>
