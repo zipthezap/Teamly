@@ -69,7 +69,7 @@ const Dashboard = () => {
       {/* Welcome Section */}
       <Box sx={{ mb: 3 }}>
         <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 0.5 }}>
-          {t('dashboard.welcomeBack', { name: user?.name })}
+          {t('dashboard.welcomeBack', { name: user?.name || 'User' })}
         </Typography>
         <Typography variant="body1" color="text.secondary">
           {t('dashboard.whatsHappening')}
