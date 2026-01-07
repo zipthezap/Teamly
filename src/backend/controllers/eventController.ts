@@ -50,6 +50,14 @@ export const createEvent = async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Only group members can create events' });
     }
 
+    // Determine event status based on start time
+    const now = new Date();
+    const eventStartTime = new Date(startTime);
+    let eventStatus = 'upcoming';
+    if (eventStartTime < now) {
+      eventStatus = 'completed';
+    }
+
     // Get group members for notifications
     const group = await prisma.group.findUnique({
       where: { id: groupId },
@@ -83,6 +91,7 @@ export const createEvent = async (req: Request, res: Response) => {
         isRecurring: isRecurring || false,
         recurrenceRule: isRecurring ? recurrenceRule : null,
         recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : null,
+        status: eventStatus,
         participants: {
           create: {
             userId: req.user.id,
@@ -887,6 +896,114 @@ export const getUserStatistics = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Get user statistics error:', error);
     res.status(500).json({ error: 'Failed to get statistics' });
+  }
+};
+
+// Archive an event
+export const archiveEvent = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Check if user is the creator of the event
+    const event = await prisma.event.findUnique({
+      where: { id }
+    });
+
+    if (!event || event.creatorId !== req.user.id) {
+      return res.status(403).json({ error: 'Only the event creator can archive it' });
+    }
+
+    const updatedEvent = await prisma.event.update({
+      where: { id },
+      data: { archived: true }
+    });
+
+    res.json({ message: 'Event archived successfully', event: updatedEvent });
+  } catch (error) {
+    console.error('Archive event error:', error);
+    res.status(500).json({ error: 'Failed to archive event' });
+  }
+};
+
+// Unarchive an event
+export const unarchiveEvent = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Check if user is the creator of the event
+    const event = await prisma.event.findUnique({
+      where: { id }
+    });
+
+    if (!event || event.creatorId !== req.user.id) {
+      return res.status(403).json({ error: 'Only the event creator can unarchive it' });
+    }
+
+    const updatedEvent = await prisma.event.update({
+      where: { id },
+      data: { archived: false }
+    });
+
+    res.json({ message: 'Event unarchived successfully', event: updatedEvent });
+  } catch (error) {
+    console.error('Unarchive event error:', error);
+    res.status(500).json({ error: 'Failed to unarchive event' });
+  }
+};
+
+// Update event status
+export const updateEventStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!['upcoming', 'ongoing', 'completed', 'cancelled'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status. Must be one of: upcoming, ongoing, completed, cancelled' });
+    }
+
+    // Check if user is the creator of the event
+    const event = await prisma.event.findUnique({
+      where: { id },
+      include: {
+        participants: {
+          include: {
+            user: {
+              select: { id: true, name: true, email: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (!event || event.creatorId !== req.user.id) {
+      return res.status(403).json({ error: 'Only the event creator can update event status' });
+    }
+
+    const updatedEvent = await prisma.event.update({
+      where: { id },
+      data: { status }
+    });
+
+    // Create notifications for participants about status change
+    const participantIds = event.participants
+      .filter(p => p.userId !== req.user.id)
+      .map(p => p.userId);
+    
+    await Promise.all(participantIds.map(userId =>
+      prisma.eventNotification.create({
+        data: {
+          eventId: id,
+          userId,
+          type: 'status_change',
+          metadata: { newStatus: status, oldStatus: event.status }
+        }
+      })
+    ));
+
+    res.json({ message: 'Event status updated successfully', event: updatedEvent });
+  } catch (error) {
+    console.error('Update event status error:', error);
+    res.status(500).json({ error: 'Failed to update event status' });
   }
 };
 
