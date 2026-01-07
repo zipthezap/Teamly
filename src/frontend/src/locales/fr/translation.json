@@ -40,6 +40,11 @@
     "signInHere": "Connectez-vous ici",
     "twoFactorToken": "Code à deux facteurs",
     "twoFactorPlaceholder": "Entrez votre code 2FA",
+    "twoFactorRequired": "L'authentification à deux facteurs est activée. Entrez votre code de vérification.",
+    "verifyAndLogin": "Vérifier et se connecter",
+    "backToLogin": "Retour à la connexion",
+    "passwordsDoNotMatch": "Les mots de passe ne correspondent pas",
+    "passwordTooShort": "Le mot de passe doit contenir au moins 6 caractères",
     "loginFailed": "Échec de la connexion",
     "registerFailed": "Échec de l'inscription"
   },

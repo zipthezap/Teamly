@@ -40,6 +40,11 @@
     "signInHere": "Sign in here",
     "twoFactorToken": "Two-Factor Token",
     "twoFactorPlaceholder": "Enter your 2FA code",
+    "twoFactorRequired": "Two-factor authentication is enabled. Enter your verification code.",
+    "verifyAndLogin": "Verify and Login",
+    "backToLogin": "Back to Login",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "passwordTooShort": "Password must be at least 6 characters",
     "loginFailed": "Login failed",
     "registerFailed": "Registration failed"
   },

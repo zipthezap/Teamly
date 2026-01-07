@@ -98,7 +98,7 @@ const Login = () => {
             {requires2FA && (
               <Box sx={{ mt: 2 }}>
                 <Alert severity="info" sx={{ mb: 2 }}>
-                  Two-factor authentication is enabled. Enter your verification code.
+                  {t('auth.twoFactorRequired')}
                 </Alert>
                 <TextField
                   label={t('auth.twoFactorToken')}
@@ -125,7 +125,7 @@ const Login = () => {
               sx={{ mt: 3, mb: 2 }}
               disabled={loading || (requires2FA && twoFactorToken.length !== 6)}
             >
-              {loading ? t('common.loading') : requires2FA ? `Verify and ${t('common.login')}` : t('auth.loginButton')}
+              {loading ? t('common.loading') : requires2FA ? t('auth.verifyAndLogin') : t('auth.loginButton')}
             </Button>
             
             {requires2FA && (
@@ -138,7 +138,7 @@ const Login = () => {
                   setError('');
                 }}
               >
-                {t('common.back')} to {t('common.login')}
+                {t('auth.backToLogin')}
               </Button>
             )}
           </Box>
