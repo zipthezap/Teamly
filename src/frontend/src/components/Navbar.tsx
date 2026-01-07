@@ -86,6 +86,12 @@ const Navbar = () => {
               </button>
             </div>
           )}
+          {/* Language switcher for non-authenticated users */}
+          {!user && (
+            <div className="flex items-center gap-4">
+              <LanguageSwitcher />
+            </div>
+          )}
         </div>
       </div>
     </nav>

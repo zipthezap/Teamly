@@ -31,6 +31,7 @@
     "emailPlaceholder": "Enter your email",
     "passwordPlaceholder": "Enter your password",
     "namePlaceholder": "Enter your full name",
+    "confirmPassword": "Confirm Password",
     "loginButton": "Sign In",
     "registerButton": "Create Account",
     "noAccount": "Don't have an account?",

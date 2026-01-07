@@ -116,7 +116,7 @@ const Register = () => {
               required
             />
             <TextField
-              label="Confirm Password"
+              label={t('auth.confirmPassword')}
               type="password"
               fullWidth
               margin="normal"
