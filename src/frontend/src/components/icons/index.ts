@@ -1,3 +1,4 @@
+export { default as LinkIcon } from './LinkIcon';
 export { default as GridIcon } from './GridIcon';
 export { default as ClipboardIcon } from './ClipboardIcon';
 export { default as AlertCircleIcon } from './AlertCircleIcon';

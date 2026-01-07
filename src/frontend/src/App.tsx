@@ -7,7 +7,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import GroupsList from './pages/GroupsList';
-import GroupDetails from './pages/GroupDetails';
+import GroupPage from './pages/GroupPage';
 import CreateGroup from './pages/CreateGroup';
 import EditGroup from './pages/EditGroup';
 import EventsList from './pages/EventsList';
@@ -75,7 +75,7 @@ function App() {
               path="/groups/:id"
               element={
                 <PrivateRoute>
-                  <GroupDetails />
+                  <GroupPage />
                 </PrivateRoute>
               }
             />

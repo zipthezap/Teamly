@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,6 +8,7 @@ const EventDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -21,7 +23,7 @@ const EventDetails = () => {
       setEvent(response.data);
     } catch (error) {
       console.error('Error fetching event:', error);
-      setError('Failed to load event');
+      setError(t('eventDetails.failedToLoad'));
     } finally {
       setLoading(false);
     }
@@ -36,24 +38,24 @@ const EventDetails = () => {
     setSuccess('');
     try {
       await eventsAPI.join(id);
-      setSuccess('Successfully joined the event');
+      setSuccess(t('eventDetails.joined'));
       fetchEvent();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to join event');
+      setError(err.response?.data?.error || t('eventDetails.failedToJoin'));
     }
   };
 
   const handleLeave = async () => {
-    if (!window.confirm('Are you sure you want to leave this event?')) return;
+    if (!window.confirm(t('eventDetails.confirmLeave'))) return;
     
     setError('');
     setSuccess('');
     try {
       await eventsAPI.leave(id);
-      setSuccess('Successfully left the event');
+      setSuccess(t('eventDetails.left'));
       fetchEvent();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to leave event');
+      setError(err.response?.data?.error || t('eventDetails.failedToLeave'));
     }
   };
 
@@ -62,21 +64,21 @@ const EventDetails = () => {
     setSuccess('');
     try {
       await eventsAPI.updateStatus(id, status);
-      setSuccess(`Status updated to ${status}`);
+      setSuccess(t('eventDetails.statusUpdated', { status }));
       fetchEvent();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to update status');
+      setError(err.response?.data?.error || t('eventDetails.failedToUpdateStatus'));
     }
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) return;
+    if (!window.confirm(t('eventDetails.confirmDelete'))) return;
     
     try {
       await eventsAPI.delete(id);
       navigate('/events');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to delete event');
+      setError(err.response?.data?.error || t('eventDetails.failedToDelete'));
     }
   };
 
@@ -85,10 +87,10 @@ const EventDetails = () => {
     setLateSuccess('');
     try {
       await groupChatAPI.markLate(id);
-      setLateSuccess('Marked as late.');
+      setLateSuccess(t('eventDetails.markedLate'));
       fetchEvent();
     } catch (err) {
-      setLateError('Failed to mark as late');
+      setLateError(t('eventDetails.failedToMarkLate'));
     }
   };
 
@@ -97,10 +99,10 @@ const EventDetails = () => {
     setLateSuccess('');
     try {
       await groupChatAPI.unmarkLate(id);
-      setLateSuccess('Late status undone.');
+      setLateSuccess(t('eventDetails.lateUndone'));
       fetchEvent();
     } catch (err) {
-      setLateError('Failed to undo late');
+      setLateError(t('eventDetails.failedToUndoLate'));
     }
   };
 
@@ -129,7 +131,7 @@ const EventDetails = () => {
   if (!event) {
     return (
       <div className="max-w-2xl mx-auto mt-8">
-        <div className="bg-red-900/50 text-red-300 p-4 rounded border border-red-700">Event not found</div>
+        <div className="bg-red-900/50 text-red-300 p-4 rounded border border-red-700">{t('eventDetails.notFound')}</div>
       </div>
     );
   }
@@ -165,7 +167,7 @@ const EventDetails = () => {
         <div className="mb-6">
           <h2 className="text-2xl font-bold mb-3 pr-24">{event.title}</h2>
           <div className="text-base text-[#a1a6b4] mb-3 font-medium">{event.eventType}</div>
-          <div className="text-sm text-[#d4d8e1] mb-4 leading-relaxed">{event.description || 'No description'}</div>
+          <div className="text-sm text-[#d4d8e1] mb-4 leading-relaxed">{event.description || t('common.noDescription')}</div>
           
           {/* Date, Time, Location */}
           <div className="flex flex-wrap items-center gap-4 mb-4 text-sm">
@@ -189,11 +191,11 @@ const EventDetails = () => {
           <div className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3 mb-4">
             <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center text-lg font-bold flex-shrink-0">{getInitials(event.creator?.name)}</div>
             <div>
-              <div className="text-xs text-[#a1a6b4] mb-0.5">Organized by</div>
+              <div className="text-xs text-[#a1a6b4] mb-0.5">{t('eventDetails.organizedBy')}</div>
               <div className="text-base font-semibold text-white">{event.creator?.name}</div>
             </div>
             <div className="ml-auto text-sm text-[#a1a6b4]">
-              Group: <span className="font-bold text-blue-400">{event.group?.name}</span>
+              {t('eventDetails.group')}: <span className="font-bold text-blue-400">{event.group?.name}</span>
             </div>
           </div>
         </div>
@@ -204,48 +206,48 @@ const EventDetails = () => {
           <div className="flex flex-col gap-4">
             {/* Capacity Section */}
             <div className="bg-[#1a2233] rounded-lg p-5">
-              <div className="font-semibold mb-3 text-lg">Event Capacity</div>
-              <div className="text-sm text-[#a1a6b4] mb-3">{event.maxPlayers ? `${participantCount} / ${event.maxPlayers} participants` : `${participantCount} participants`}</div>
+              <div className="font-semibold mb-3 text-lg">{t('eventDetails.capacity')}</div>
+              <div className="text-sm text-[#a1a6b4] mb-3">{event.maxPlayers ? t('eventDetails.participantsCount', { count: participantCount, max: event.maxPlayers }) : t('eventDetails.participants', { count: participantCount })}</div>
               {event.maxPlayers && (
                 <div className="w-full bg-gray-700 rounded-full h-3 mb-3">
                   <div className="bg-blue-600 h-3 rounded-full transition-all" style={{ width: `${fillPercentage}%` }}></div>
                 </div>
               )}
               <div className="flex flex-wrap gap-3 text-xs text-[#a1a6b4]">
-                <span className="bg-[#232946] px-2 py-1 rounded">✅ {confirmedCount} confirmed</span>
-                <span className="bg-[#232946] px-2 py-1 rounded">❌ {declinedCount} declined</span>
-                <span className="bg-[#232946] px-2 py-1 rounded">⏳ {pendingCount} pending</span>
+                <span className="bg-[#232946] px-2 py-1 rounded">✅ {confirmedCount} {t('eventDetails.confirmed')}</span>
+                <span className="bg-[#232946] px-2 py-1 rounded">❌ {declinedCount} {t('eventDetails.declined')}</span>
+                <span className="bg-[#232946] px-2 py-1 rounded">⏳ {pendingCount} {t('eventDetails.pending')}</span>
               </div>
             </div>
             
             {/* Attendance Actions */}
             <div className="bg-[#1a2233] rounded-lg p-5">
-              <div className="font-semibold mb-3 text-lg">Your Attendance</div>
+              <div className="font-semibold mb-3 text-lg">{t('eventDetails.yourAttendance')}</div>
               <div className="flex flex-col gap-2">
                 {!isParticipant && !isFull && (
                   <button onClick={handleJoin} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
-                    Join Event
+                    {t('eventDetails.join')}
                   </button>
                 )}
                 {isParticipant && (
                   <>
                     <button onClick={() => handleUpdateStatus('confirmed')} className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
-                      ✓ Confirm Attendance
+                      ✓ {t('eventDetails.confirmAttendance')}
                     </button>
                     <button onClick={() => handleUpdateStatus('declined')} className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
-                      ✗ Decline
+                      ✗ {t('eventDetails.decline')}
                     </button>
                     <div className="grid grid-cols-2 gap-2 mt-1">
                       <button onClick={handleMarkLate} className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs font-medium transition-colors">
-                        ⏰ Mark Late
+                        ⏰ {t('eventDetails.markLate')}
                       </button>
                       <button onClick={handleUnmarkLate} className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs font-medium transition-colors">
-                        ↩ Undo Late
+                        ↩ {t('eventDetails.undoLate')}
                       </button>
                     </div>
                     {!isCreator && (
                       <button onClick={handleLeave} className="bg-pink-600 hover:bg-pink-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full mt-2">
-                        Leave Event
+                        {t('eventDetails.leave')}
                       </button>
                     )}
                   </>
@@ -256,13 +258,13 @@ const EventDetails = () => {
           
           {/* Right Column: Activity Feed - Fixed Height */}
           <div className="bg-[#1a2233] rounded-lg p-5 flex flex-col max-h-[500px]">
-            <div className="font-semibold mb-3 text-lg flex-shrink-0">Activity Feed</div>
+            <div className="font-semibold mb-3 text-lg flex-shrink-0">{t('eventDetails.activityFeed')}</div>
             <div className="flex-1 overflow-y-auto text-sm text-[#a1a6b4] pr-2">
               {(event.eventNotifications || []).length === 0 ? (
                 <div className="flex items-center justify-center h-full text-center">
                   <div>
                     <div className="text-4xl mb-2">📋</div>
-                    <div>No activity yet.</div>
+                    <div>{t('eventDetails.noActivity')}</div>
                   </div>
                 </div>
               ) : (
@@ -270,10 +272,10 @@ const EventDetails = () => {
                   <div key={idx} className="mb-3 pb-3 border-b border-[#232946] last:border-b-0">
                     <div className="flex items-start gap-2">
                       <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
-                        {getInitials(n.user?.name || 'User')}
+                        {getInitials(n.user?.name || t('eventDetails.user'))}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-white font-medium text-sm mb-0.5">{n.user?.name || 'User'}</div>
+                        <div className="text-white font-medium text-sm mb-0.5">{n.user?.name || t('eventDetails.user')}</div>
                         <div className="text-xs text-[#a1a6b4] mb-1">{n.message}</div>
                         <div className="text-xs text-[#757b8a]">{new Date(n.createdAt).toLocaleString()}</div>
                       </div>
@@ -288,7 +290,7 @@ const EventDetails = () => {
       
       {/* Participants List */}
       <div className="bg-[#232946] rounded-xl shadow-md p-6 mt-8">
-        <div className="font-semibold mb-4 text-xl">Participants ({participantCount})</div>
+        <div className="font-semibold mb-4 text-xl">{t('eventDetails.participantsList', { count: participantCount })}</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {event.participants?.map((p, idx) => (
             <div key={p.id || idx} className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3">
@@ -302,7 +304,7 @@ const EventDetails = () => {
                     p.status === 'declined' ? 'bg-red-900/50 text-red-300' :
                     'bg-yellow-900/50 text-yellow-300'
                   }`}>
-                    {p.status}
+                    {t(`eventDetails.status.${p.status}`)}
                   </span>
                 </div>
               </div>

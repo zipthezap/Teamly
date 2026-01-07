@@ -11,11 +11,13 @@ import {
 } from '@mui/material';
 import { groupsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const JoinGroup = () => {
   const { groupId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -23,7 +25,7 @@ const JoinGroup = () => {
 
   const handleJoinGroup = useCallback(async () => {
     if (!user) {
-      setError('Please log in to join this group');
+      setError(t('joinGroup.loginToJoin'));
       return;
     }
 
@@ -32,12 +34,12 @@ const JoinGroup = () => {
     
     try {
       await groupsAPI.joinByInvite(user.id, groupId);
-      setSuccess('Successfully joined the group!');
+      setSuccess(t('joinGroup.successfullyJoined'));
       setTimeout(() => {
         navigate(`/groups/${groupId}`);
       }, 1500);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to join group');
+      setError(err.response?.data?.error || t('joinGroup.failedToJoin'));
     } finally {
       setLoading(false);
     }
@@ -56,23 +58,23 @@ const JoinGroup = () => {
       <Container maxWidth="sm" sx={{ mt: 8 }}>
         <Paper sx={{ p: 4 }}>
           <Typography variant="h5" gutterBottom>
-            Join Group
+            {t('joinGroup.title')}
           </Typography>
           <Typography variant="body1" paragraph>
-            Please log in to join this group.
+            {t('joinGroup.loginToJoin')}
           </Typography>
           <Box display="flex" gap={2}>
             <Button
               variant="contained"
               onClick={() => navigate('/login', { state: { returnTo: `/groups/join/${groupId}` } })}
             >
-              Log In
+              {t('joinGroup.login')}
             </Button>
             <Button
               variant="outlined"
               onClick={() => navigate('/register', { state: { returnTo: `/groups/join/${groupId}` } })}
             >
-              Sign Up
+              {t('joinGroup.signup')}
             </Button>
           </Box>
         </Paper>
@@ -84,7 +86,7 @@ const JoinGroup = () => {
     <Container maxWidth="sm" sx={{ mt: 8 }}>
       <Paper sx={{ p: 4 }}>
         <Typography variant="h5" gutterBottom>
-          Join Group
+          {t('joinGroup.title')}
         </Typography>
         
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -94,7 +96,7 @@ const JoinGroup = () => {
           <Box display="flex" justifyContent="center" alignItems="center" py={4}>
             <CircularProgress />
             <Typography variant="body1" sx={{ ml: 2 }}>
-              Joining group...
+              {t('joinGroup.joining')}
             </Typography>
           </Box>
         )}
@@ -105,13 +107,13 @@ const JoinGroup = () => {
               variant="contained"
               onClick={handleJoinGroup}
             >
-              Try Again
+              {t('joinGroup.tryAgain')}
             </Button>
             <Button
               variant="outlined"
               onClick={() => navigate('/groups')}
             >
-              Go to Groups
+              {t('joinGroup.goToGroups')}
             </Button>
           </Box>
         )}

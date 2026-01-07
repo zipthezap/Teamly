@@ -1,4 +1,6 @@
+...entire file removed...
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -47,6 +49,7 @@ const GroupDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
@@ -65,7 +68,7 @@ const GroupDetails = () => {
       setGroup(response.data);
     } catch (error) {
       console.error('Error fetching group:', error);
-      setError('Failed to load group');
+      setError(t('groupDetails.failedToLoad'));
     } finally {
       setLoading(false);
     }
@@ -99,24 +102,24 @@ const GroupDetails = () => {
     setSuccess('');
     try {
       await groupsAPI.invite(id, inviteEmail);
-      setSuccess('Member invited successfully');
+      setSuccess(t('groupDetails.memberInvited'));
       setInviteEmail('');
       setInviteDialogOpen(false);
       fetchGroup();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to invite member');
+      setError(err.response?.data?.error || t('groupDetails.failedToInvite'));
     }
   };
 
   const handleRemoveMember = async (memberId) => {
-    if (!window.confirm('Are you sure you want to remove this member?')) return;
+    if (!window.confirm(t('groupDetails.confirmRemoveMember'))) return;
 
     try {
       await groupsAPI.removeMember(id, memberId);
-      setSuccess('Member removed successfully');
+      setSuccess(t('groupDetails.memberRemoved'));
       fetchGroup();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to remove member');
+      setError(err.response?.data?.error || t('groupDetails.failedToRemove'));
     }
   };
 
@@ -133,16 +136,16 @@ const GroupDetails = () => {
   };
 
   const handleLeaveGroup = async () => {
-    if (!window.confirm('Are you sure you want to leave this group?')) return;
+    if (!window.confirm(t('groupDetails.confirmLeave'))) return;
 
     try {
       await groupsAPI.leave(id);
-      setSuccess('Left group successfully');
+      setSuccess(t('groupDetails.leftGroup'));
       setTimeout(() => {
         navigate('/groups');
       }, 1500);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to leave group');
+      setError(err.response?.data?.error || t('groupDetails.failedToLeave'));
     }
   };
 
@@ -151,24 +154,24 @@ const GroupDetails = () => {
       const response = await groupsAPI.getInviteLink(id);
       const inviteLink = `${window.location.origin}/groups/join/${response.data.groupId}`;
       await navigator.clipboard.writeText(inviteLink);
-      setSnackbarMessage('Invite link copied to clipboard!');
+      setSnackbarMessage(t('groupDetails.inviteLinkCopied'));
       setSnackbarOpen(true);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to get invite link');
+      setError(err.response?.data?.error || t('groupDetails.failedToGetInviteLink'));
     }
   };
 
   const handleDeleteGroup = async () => {
-    if (!window.confirm('Are you sure you want to delete this group? This action cannot be undone and will delete all events associated with the group.')) return;
+    if (!window.confirm(t('groupDetails.confirmDelete'))) return;
 
     try {
       await groupsAPI.delete(id);
-      setSuccess('Group deleted successfully');
+      setSuccess(t('groupDetails.groupDeleted'));
       setTimeout(() => {
         navigate('/groups');
       }, 1500);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to delete group');
+      setError(err.response?.data?.error || t('groupDetails.failedToDelete'));
     }
   };
 
@@ -187,7 +190,7 @@ const GroupDetails = () => {
   if (!group) {
     return (
       <div className="max-w-4xl mx-auto mt-8">
-        <div className="bg-red-900/50 text-red-300 p-4 rounded border border-red-700">Group not found.</div>
+        <div className="bg-red-900/50 text-red-300 p-4 rounded border border-red-700">{t('groupDetails.notFound')}</div>
       </div>
     );
   }
@@ -201,8 +204,8 @@ const GroupDetails = () => {
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
           <div>
             <div className="text-2xl font-bold mb-2 text-gray-100">{group.name}</div>
-            <div className="text-base text-gray-400 mb-2">{group.description || 'No description'}</div>
-            <div className="text-xs text-gray-400">Created by {group.creator?.name} on {new Date(group.createdAt).toLocaleDateString()}</div>
+            <div className="text-base text-gray-400 mb-2">{group.description || t('common.noDescription')}</div>
+            <div className="text-xs text-gray-400">{t('groupDetails.createdBy', { name: group.creator?.name, date: new Date(group.createdAt).toLocaleDateString() })}</div>
           </div>
           <div className="flex flex-wrap gap-1 items-center mt-4 md:mt-0">
             {isAdmin && (
@@ -262,7 +265,7 @@ const GroupDetails = () => {
               className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-lg px-6 py-4 text-lg shadow-lg transition flex items-center justify-center gap-3"
             >
               <AlertCircleIcon className="w-7 h-7" />
-              Event Requests
+              {t('eventRequests.title')}
             </button>
           </div>
         )}
@@ -271,7 +274,7 @@ const GroupDetails = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Members Card */}
         <div className="bg-[#1a202c] rounded-xl shadow-md p-6 border border-gray-700">
-          <div className="text-lg font-semibold mb-4 text-gray-100">Members ({group.members?.length || 0})</div>
+          <div className="text-lg font-semibold mb-4 text-gray-100">{t('groupDetails.members', { count: group.members?.length || 0 })}</div>
           <ul>
             {group.members?.map((member) => (
               <li key={member.id} className="flex items-center justify-between py-2 border-b border-gray-700 last:border-b-0">
@@ -279,7 +282,7 @@ const GroupDetails = () => {
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="font-medium text-gray-200">{member.user?.name}</div>
                     {member.role === 'admin' && (
-                      <span className="flex-shrink-0 px-2 py-0.5 rounded bg-blue-100 text-blue-600 text-xs font-semibold whitespace-nowrap ml-2">Admin</span>
+                      <span className="flex-shrink-0 px-2 py-0.5 rounded bg-blue-100 text-blue-600 text-xs font-semibold whitespace-nowrap ml-2">{t('groupDetails.admin')}</span>
                     )}
                   </div>
                   <div className="text-xs text-gray-400">
@@ -324,7 +327,7 @@ const GroupDetails = () => {
               </li>
             ))}
             {(!group.events || group.events.length === 0) && (
-              <li className="text-xs text-gray-400 py-2">No events yet</li>
+              <li className="text-xs text-gray-400 py-2">{t('groupDetails.noEvents')}</li>
             )}
           </ul>
         </div>
@@ -332,18 +335,18 @@ const GroupDetails = () => {
         {/* Group Chat Card */}
         <div className="col-span-1 md:col-span-2">
           <div className="bg-[#1a202c] rounded-xl shadow-md p-6 border border-gray-700">
-            <div className="text-lg font-semibold mb-4 text-gray-100">Group Chat</div>
+            <div className="text-lg font-semibold mb-4 text-gray-100">{t('groupDetails.groupChat')}</div>
             <div className="max-h-64 overflow-y-auto mb-4 bg-[#0f1419] p-3 rounded border border-gray-700">
               {chatLoading ? (
                 <div className="flex justify-center items-center py-8">
                   <svg className="animate-spin text-blue-500" width={24} height={24} viewBox="0 0 50 50" fill="none"><circle className="opacity-20" cx="25" cy="25" r="20" stroke="currentColor" strokeWidth="6" /><path className="opacity-80" d="M45 25c0-11.046-8.954-20-20-20" stroke="currentColor" strokeWidth="6" strokeLinecap="round" /></svg>
                 </div>
               ) : messages.length === 0 ? (
-                <div className="text-xs text-gray-400">No messages yet.</div>
+                <div className="text-xs text-gray-400">{t('groupDetails.noMessages')}</div>
               ) : (
                 messages.map((msg) => (
                   <div key={msg.id} className="mb-3">
-                    <div className="font-semibold text-blue-400 text-sm">{msg.user?.name || 'User'}</div>
+                    <div className="font-semibold text-blue-400 text-sm">{msg.user?.name || t('groupDetails.user')}</div>
                     <div className="text-sm mb-1 text-gray-200">{msg.content}</div>
                     <div className="text-xs text-gray-400">{new Date(msg.createdAt).toLocaleString()}</div>
                   </div>
@@ -354,7 +357,7 @@ const GroupDetails = () => {
               <input
                 value={newMessage}
                 onChange={e => setNewMessage(e.target.value)}
-                placeholder="Type a message..."
+                placeholder={t('groupDetails.typeMessage')}
                 className="flex-1 px-3 py-2 rounded border border-gray-600 bg-[#0f1419] text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500"
                 type="text"
               />
@@ -363,7 +366,7 @@ const GroupDetails = () => {
                 className="px-4 py-2 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition text-sm disabled:opacity-60"
                 disabled={!newMessage.trim()}
               >
-                Send
+                {t('groupDetails.send')}
               </button>
             </form>
           </div>
@@ -374,10 +377,10 @@ const GroupDetails = () => {
       {inviteDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-[#1a202c] rounded-xl shadow-lg p-6 w-full max-w-md border border-gray-700">
-            <div className="text-lg font-semibold mb-4 text-gray-100">Invite Member</div>
+            <div className="text-lg font-semibold mb-4 text-gray-100">{t('groupDetails.inviteMember')}</div>
             <input
               type="email"
-              placeholder="Email Address"
+              placeholder={t('common.email')}
               value={inviteEmail}
               onChange={e => setInviteEmail(e.target.value)}
               className="w-full px-3 py-2 mb-4 rounded border border-gray-600 bg-[#0f1419] text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500"
@@ -387,13 +390,13 @@ const GroupDetails = () => {
                 className="px-4 py-2 rounded bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 transition"
                 onClick={() => setInviteDialogOpen(false)}
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 className="px-4 py-2 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
                 onClick={handleInvite}
               >
-                Invite
+                {t('groupDetails.invite')}
               </button>
             </div>
           </div>

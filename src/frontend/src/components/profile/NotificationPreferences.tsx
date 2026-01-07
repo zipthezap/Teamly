@@ -85,7 +85,7 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
                 disabled={allNotificationsMuted}
               />
             }
-            label="Event Invitations"
+            label={t('notificationPreferences.eventInvites')}
           />
           <FormControlLabel
             control={
@@ -95,7 +95,7 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
                 disabled={allNotificationsMuted}
               />
             }
-            label="Event Reminders"
+            label={t('notificationPreferences.eventReminders')}
           />
           <FormControlLabel
             control={
@@ -105,7 +105,7 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
                 disabled={allNotificationsMuted}
               />
             }
-            label="Event Updates"
+            label={t('notificationPreferences.eventUpdates')}
           />
           <FormControlLabel
             control={
@@ -115,7 +115,7 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
                 disabled={allNotificationsMuted}
               />
             }
-            label="Event Cancellations"
+            label={t('notificationPreferences.eventCancellations')}
           />
           <FormControlLabel
             control={
@@ -125,7 +125,7 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
                 disabled={allNotificationsMuted}
               />
             }
-            label="Group Invitations"
+            label={t('notificationPreferences.groupInvites')}
           />
           <FormControlLabel
             control={
@@ -135,7 +135,7 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
                 disabled={allNotificationsMuted}
               />
             }
-            label="Comment Mentions (@mentions)"
+            label={t('notificationPreferences.commentMentions')}
           />
         </FormGroup>
       </Box>

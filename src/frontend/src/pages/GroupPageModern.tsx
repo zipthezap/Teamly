@@ -1,11 +1,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { groupsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import {
   BellIcon,
-  ClipboardIcon,
+  LinkIcon,
   PlusIcon,
   UserPlusIcon,
   EditIcon,
@@ -14,7 +15,8 @@ import {
   AlertCircleIcon
 } from '../components/icons';
 
-const GroupPageModern = () => {
+const GroupPage = () => {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -35,7 +37,7 @@ const GroupPageModern = () => {
       const response = await groupsAPI.getById(id);
       setGroup(response.data);
     } catch (error) {
-      setError('Failed to load group');
+      setError('groupDetails.failedToLoad');
     } finally {
       setLoading(false);
     }
@@ -174,55 +176,63 @@ const GroupPageModern = () => {
               </h1>
             </div>
             <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
-              {/* Copy Link (clipboard) */}
-              <button title="Copy Invite Link" onClick={handleCopyInviteLink} className="border border-blue-500 text-blue-500 bg-transparent rounded-md p-2 flex items-center justify-center hover:bg-blue-900/20 transition">
-                <ClipboardIcon className="w-5 h-5" />
+              {/* Copy Link (link icon) */}
+              <button title={t('groupDetails.inviteLinkCopied')} onClick={handleCopyInviteLink} className="border border-blue-500 text-blue-500 bg-transparent rounded-md p-2 flex items-center justify-center hover:bg-blue-900/20 transition">
+                <LinkIcon className="w-5 h-5" />
               </button>
               {/* Add (plus) */}
-              <button title="Add" className="border border-blue-500 text-blue-500 bg-transparent rounded-md p-2 flex items-center justify-center hover:bg-blue-900/20 transition">
+              <button title={t('common.create')} className="border border-blue-500 text-blue-500 bg-transparent rounded-md p-2 flex items-center justify-center hover:bg-blue-900/20 transition">
                 <PlusIcon className="w-5 h-5" />
               </button>
               {/* Invite (user-plus) */}
-              <button title="Invite Member" onClick={() => setInviteDialogOpen(true)} className="border border-blue-500 text-blue-500 bg-transparent rounded-md p-2 flex items-center justify-center hover:bg-blue-900/20 transition">
+              <button title={t('groupDetails.inviteMember')} onClick={() => setInviteDialogOpen(true)} className="border border-blue-500 text-blue-500 bg-transparent rounded-md p-2 flex items-center justify-center hover:bg-blue-900/20 transition">
                 <UserPlusIcon className="w-5 h-5" />
               </button>
               {/* Edit (pencil) */}
-              <button title="Edit Group" onClick={() => navigate(`/groups/${id}/edit`)} className="border border-blue-500 text-blue-500 bg-transparent rounded-md p-2 flex items-center justify-center hover:bg-blue-900/20 transition">
+              <button title={t('groups.editGroup')} onClick={() => navigate(`/groups/${id}/edit`)} className="border border-blue-500 text-blue-500 bg-transparent rounded-md p-2 flex items-center justify-center hover:bg-blue-900/20 transition">
                 <EditIcon className="w-5 h-5" />
               </button>
               {/* Delete (trash) */}
-              <button title="Delete Group" onClick={handleDeleteGroup} className="border border-red-500 text-red-500 bg-transparent rounded-md p-2 flex items-center justify-center hover:bg-red-900/20 transition">
+              <button title={t('common.delete')} onClick={handleDeleteGroup} className="border border-red-500 text-red-500 bg-transparent rounded-md p-2 flex items-center justify-center hover:bg-red-900/20 transition">
                 <TrashIcon className="w-5 h-5" />
               </button>
               {/* Arrow (navigate/forward) */}
-              <button title="Go" className="border border-gray-500 text-gray-400 bg-transparent rounded-md p-2 flex items-center justify-center hover:bg-gray-800/20 transition">
+              <button title={t('common.viewDetails')} className="border border-gray-500 text-gray-400 bg-transparent rounded-md p-2 flex items-center justify-center hover:bg-gray-800/20 transition">
                 <ChevronRightIcon className="w-5 h-5" />
               </button>
             </div>
           </div>
-          {/* Event Request Button (large, separate, below action buttons) */}
-          {isAdmin && (
-            <div className="mt-6 w-full">
-              <button onClick={() => navigate(`/event-requests/${id}`)} className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-lg px-6 py-4 text-lg shadow-lg transition flex items-center justify-center gap-3">
-                <AlertCircleIcon className="w-7 h-7" />
-                Event Requests
+          {/* Event Request Button (smaller, just below action buttons) */}
+          {/* Only non-admin group members can submit event requests. Admins see only the management button. */}
+          {isAdmin ? (
+            <div className="mt-2 flex w-full justify-center">
+              <button onClick={() => navigate(`/event-requests/${id}`)} className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-md px-4 py-2 text-base shadow-md transition flex items-center justify-center gap-2" style={{ minWidth: '220px', maxWidth: '260px' }}>
+                <AlertCircleIcon className="w-5 h-5" />
+                {t('eventRequests.title')}
+              </button>
+            </div>
+          ) : (
+            <div className="mt-2 flex w-full justify-center">
+              <button onClick={() => navigate(`/event-requests/${id}/new`)} className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-md px-4 py-2 text-base shadow-md transition flex items-center justify-center gap-2" style={{ minWidth: '220px', maxWidth: '260px' }}>
+                <AlertCircleIcon className="w-5 h-5" />
+                {t('eventRequests.createRequest')}
               </button>
             </div>
           )}
         </div>
         {/* Members */}
         <div className="bg-[#232946] rounded-xl shadow-md p-4">
-          <h2 className="text-lg font-semibold mb-4">Members <span className="text-[#a1a6b4]">({group.members?.length || 0})</span></h2>
+          <h2 className="text-lg font-semibold mb-4">{t('groupDetails.members', { count: group.members?.length || 0 })}</h2>
           <ul className="space-y-3">
             {group.members?.map((member) => (
               <li key={member.id} className="flex items-center justify-between">
                 <div>
                   <span className="font-bold">{member.user?.name}</span>
-                  {member.role === 'admin' && <span className="ml-2 text-xs bg-[#232946] text-[#a1a6b4] px-2 py-0.5 rounded">Admin</span>}
+                  {member.role === 'admin' && <span className="ml-2 text-xs bg-[#232946] text-[#a1a6b4] px-2 py-0.5 rounded">{t('groupDetails.admin')}</span>}
                   <div className="text-xs text-[#a1a6b4]">{member.user?.email}</div>
                 </div>
                 {isAdmin && member.userId !== user.id && (
-                  <button onClick={() => handleRemoveMember(member.id)} className="bg-red-600 hover:bg-red-700 text-white rounded px-2 py-1 text-xs transition">Remove</button>
+                  <button onClick={() => handleRemoveMember(member.id)} className="bg-red-600 hover:bg-red-700 text-white rounded px-2 py-1 text-xs transition">{t('groups.removeMember')}</button>
                 )}
               </li>
             ))}
@@ -231,28 +241,28 @@ const GroupPageModern = () => {
         {/* Events */}
         <div className="bg-[#232946] rounded-xl shadow-md p-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Events <span className="text-[#a1a6b4]">({group.events?.length || 0})</span></h2>
-            {isAdmin && <button onClick={() => navigate('/events/new', { state: { groupId: id } })} className="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">Create Event</button>}
+            <h2 className="text-lg font-semibold">{t('events.eventsFound', { count: group.events?.length || 0 })}</h2>
+            {isAdmin && <button onClick={() => navigate('/events/new', { state: { groupId: id } })} className="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">{t('events.createEvent')}</button>}
           </div>
           {group.events?.length > 0 ? group.events.map((event) => (
             <div key={event.id} onClick={() => navigate(`/events/${event.id}`)} className="bg-[#1a2233] rounded-lg p-3 mb-2 hover:shadow-md transition cursor-pointer">
               <div className="font-semibold">{event.title}</div>
-              <div className="text-xs text-[#a1a6b4]">{event.eventType} - {new Date(event.startTime).toLocaleDateString()}</div>
+              <div className="text-xs text-[#a1a6b4]">{t(`events.types.${event.eventType}`)} - {new Date(event.startTime).toLocaleDateString()}</div>
             </div>
-          )) : <div className="text-[#a1a6b4]">No events yet.</div>}
+          )) : <div className="text-[#a1a6b4]">{t('groupDetails.noEvents')}</div>}
         </div>
         {/* Group Chat */}
         <div className="bg-[#232946] rounded-xl shadow-md p-4">
-          <h2 className="text-lg font-semibold mb-4">Group Chat</h2>
+          <h2 className="text-lg font-semibold mb-4">{t('groupDetails.groupChat')}</h2>
           <div className="bg-[#1a2233] rounded-lg p-3 mb-2 min-h-[60px] text-[#a1a6b4] max-h-60 overflow-y-auto">
             {chatLoading ? (
               <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
             ) : messages.length === 0 ? (
-              <div>No messages yet.</div>
+              <div>{t('groupDetails.noMessages')}</div>
             ) : (
               messages.map((msg) => (
                 <div key={msg.id} className="mb-2">
-                  <div className="text-blue-300 font-semibold text-xs">{msg.user?.name || 'User'}</div>
+                  <div className="text-blue-300 font-semibold text-xs">{msg.user?.name || t('groupDetails.user')}</div>
                   <div className="text-white text-sm">{msg.content}</div>
                   <div className="text-xs text-[#a1a6b4]">{new Date(msg.createdAt).toLocaleString()}</div>
                 </div>
@@ -264,9 +274,9 @@ const GroupPageModern = () => {
               value={newMessage}
               onChange={e => setNewMessage(e.target.value)}
               className="flex-1 bg-[#1a2233] border border-[#3a3f4b] rounded-lg text-white px-3 py-2 text-sm focus:outline-none focus:border-[#3a86ff]"
-              placeholder="Type a message..."
+              placeholder={t('groupDetails.typeMessage')}
             />
-            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition" disabled={!newMessage.trim()}>Send</button>
+            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition" disabled={!newMessage.trim()}>{t('groupDetails.send')}</button>
           </form>
         </div>
       </div>
@@ -274,17 +284,17 @@ const GroupPageModern = () => {
       {inviteDialogOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
           <div className="bg-[#232946] rounded-xl shadow-lg p-6 w-full max-w-sm">
-            <h3 className="text-lg font-semibold mb-4">Invite Member</h3>
+            <h3 className="text-lg font-semibold mb-4">{t('groupDetails.inviteMember')}</h3>
             <input
               type="email"
               className="w-full mb-4 bg-[#1a2233] border border-[#3a3f4b] rounded-lg text-white px-3 py-2 text-sm focus:outline-none focus:border-[#3a86ff]"
-              placeholder="Email Address"
+              placeholder={t('groups.emailAddress')}
               value={inviteEmail}
               onChange={e => setInviteEmail(e.target.value)}
             />
             <div className="flex justify-end gap-2">
-              <button onClick={() => setInviteDialogOpen(false)} className="bg-gray-600 hover:bg-gray-700 text-white rounded-md px-3 py-1.5 text-sm">Cancel</button>
-              <button onClick={handleInvite} className="bg-blue-600 hover:bg-blue-700 text-white rounded-md px-3 py-1.5 text-sm">Invite</button>
+              <button onClick={() => setInviteDialogOpen(false)} className="bg-gray-600 hover:bg-gray-700 text-white rounded-md px-3 py-1.5 text-sm">{t('common.cancel')}</button>
+              <button onClick={handleInvite} className="bg-blue-600 hover:bg-blue-700 text-white rounded-md px-3 py-1.5 text-sm">{t('groupDetails.invite')}</button>
             </div>
           </div>
         </div>
@@ -292,14 +302,14 @@ const GroupPageModern = () => {
       {/* Snackbar for invite link copied */}
       {snackbarOpen && (
         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-blue-700 text-white px-4 py-2 rounded shadow z-50">
-          {snackbarMessage}
+          {t(snackbarMessage)}
         </div>
       )}
       {/* Error/Success Alerts */}
-      {error && <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded shadow z-50">{error}</div>}
-      {success && <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded shadow z-50">{success}</div>}
+      {error && <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded shadow z-50">{t(error)}</div>}
+      {success && <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded shadow z-50">{t(success)}</div>}
     </div>
   );
 };
 
-export default GroupPageModern;
+export default GroupPage;

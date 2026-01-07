@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import { groupsAPI } from '../services/api';
 import LocationPicker from '../components/LocationPicker';
+import { useTranslation } from 'react-i18next';
 
 interface LocationValue {
   latitude?: number | string;
@@ -27,6 +28,7 @@ const EditGroup = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
@@ -55,7 +57,7 @@ const EditGroup = () => {
       });
     } catch (error) {
       console.error('Error fetching group:', error);
-      setError('Failed to load group');
+      setError(t('groups.failedToLoad'));
     } finally {
       setLoading(false);
     }
@@ -80,7 +82,7 @@ const EditGroup = () => {
       await groupsAPI.update(id, groupData);
       navigate(`/groups/${id}`);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to update group');
+      setError(err.response?.data?.error || t('groups.failedToUpdate'));
     } finally {
       setSubmitting(false);
     }
@@ -98,7 +100,7 @@ const EditGroup = () => {
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
       <Paper elevation={3} sx={{ p: 4 }}>
         <Typography variant="h4" gutterBottom>
-          Edit Group
+          {t('groups.editGroup')}
         </Typography>
 
         {error && (
@@ -109,7 +111,7 @@ const EditGroup = () => {
 
         <form onSubmit={handleSubmit}>
           <TextField
-            label="Group Name"
+            label={t('groups.groupName')}
             fullWidth
             margin="normal"
             value={name}
@@ -117,7 +119,7 @@ const EditGroup = () => {
             required
           />
           <TextField
-            label="Description"
+            label={t('groups.description')}
             fullWidth
             multiline
             rows={4}
@@ -133,7 +135,7 @@ const EditGroup = () => {
                 color="primary"
               />
             }
-            label="Make this group public (anyone can discover and request to join)"
+            label={t('groups.makePublic')}
             sx={{ mt: 2 }}
           />
           
@@ -151,14 +153,14 @@ const EditGroup = () => {
               size="large"
               disabled={submitting}
             >
-              {submitting ? 'Updating...' : 'Update Group'}
+              {submitting ? t('groups.updating') : t('groups.updateGroup')}
             </Button>
             <Button
               variant="outlined"
               size="large"
               onClick={() => navigate(`/groups/${id}`)}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
           </Box>
         </form>

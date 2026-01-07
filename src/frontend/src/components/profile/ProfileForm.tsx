@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Paper,
   Typography,
@@ -27,16 +28,17 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
   onChange,
   onSubmit,
 }) => {
+  const { t } = useTranslation();
   return (
     <Paper sx={{ p: 4 }}>
       <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-        Profile Information
+        {t('profile.infoTitle')}
       </Typography>
       <form onSubmit={onSubmit}>
         <Grid container spacing={3}>
           <Grid item xs={12} sm={6}>
             <TextField
-              label="Name"
+              label={t('common.name')}
               name="name"
               value={formData.name}
               onChange={onChange}
@@ -46,7 +48,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
           </Grid>
           <Grid item xs={12} sm={6}>
             <TextField
-              label="Email"
+              label={t('common.email')}
               name="email"
               type="email"
               value={formData.email}
@@ -57,7 +59,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
           </Grid>
           <Grid item xs={12} sm={6}>
             <TextField
-              label="City"
+              label={t('profile.city')}
               name="city"
               value={formData.city}
               onChange={onChange}
@@ -66,7 +68,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
           </Grid>
           <Grid item xs={12} sm={6}>
             <TextField
-              label="Country"
+              label={t('profile.country')}
               name="country"
               value={formData.country}
               onChange={onChange}
@@ -81,7 +83,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
             size="large"
             disabled={loading}
           >
-            Update Profile
+            {t('profile.updateProfile')}
           </Button>
         </Box>
       </form>

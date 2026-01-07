@@ -136,14 +136,16 @@ const EventsList = () => {
                   )}
                   <div className="flex items-center gap-2">
                     <span role="img" aria-label="participants">👥</span>
-                    <span className="text-xs text-gray-400">{participantCount}{event.maxPlayers && ` / ${event.maxPlayers}`} participants</span>
+                    <span className="text-xs text-gray-400">{participantCount}{event.maxPlayers && ` / ${event.maxPlayers}`} {t('common.participants')}</span>
                   </div>
                   {spotsLeft !== null && spotsLeft > 0 && spotsLeft <= 3 && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-yellow-900/50 text-yellow-300 border border-yellow-700 mt-1">{spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} left</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-yellow-900/50 text-yellow-300 border border-yellow-700 mt-1">
+                      {t('events.spotsLeft', { count: spotsLeft })}
+                    </span>
                   )}
                 </div>
                 
-                <button onClick={() => navigate(`/events/${event.id}`)} className="mt-4 w-full bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">View Details</button>
+                <button onClick={() => navigate(`/events/${event.id}`)} className="mt-4 w-full bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">{t('common.viewDetails')}</button>
               </div>
             );
           })}

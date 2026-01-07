@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Paper,
   Typography,
@@ -26,15 +27,16 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({
   onChange,
   onSubmit,
 }) => {
+  const { t } = useTranslation();
   return (
     <Paper sx={{ p: 4 }}>
       <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-        Change Password
+        {t('profile.changePassword')}
       </Typography>
       <form onSubmit={onSubmit}>
         <Stack spacing={3}>
           <TextField
-            label="Current Password"
+            label={t('profile.currentPassword')}
             name="currentPassword"
             type="password"
             value={passwordData.currentPassword}
@@ -43,17 +45,17 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({
             required
           />
           <TextField
-            label="New Password"
+            label={t('profile.newPassword')}
             name="newPassword"
             type="password"
             value={passwordData.newPassword}
             onChange={onChange}
             fullWidth
             required
-            helperText="Password must be at least 6 characters"
+            helperText={t('profile.passwordMinLength')}
           />
           <TextField
-            label="Confirm New Password"
+            label={t('profile.confirmNewPassword')}
             name="confirmPassword"
             type="password"
             value={passwordData.confirmPassword}
@@ -69,7 +71,7 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({
             size="large"
             disabled={loading}
           >
-            Update Password
+            {t('profile.updatePassword')}
           </Button>
         </Box>
       </form>
