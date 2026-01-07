@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Container,
   Paper,
@@ -30,6 +31,7 @@ const CreateGroup = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -60,7 +62,7 @@ const CreateGroup = () => {
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
       <Paper elevation={3} sx={{ p: 4 }}>
         <Typography variant="h4" gutterBottom>
-          Create New Group
+          {t('groups.createNewGroup')}
         </Typography>
 
         {error && (
@@ -71,7 +73,7 @@ const CreateGroup = () => {
 
         <form onSubmit={handleSubmit}>
           <TextField
-            label="Group Name"
+            label={t('groups.groupName')}
             fullWidth
             margin="normal"
             value={name}
@@ -79,7 +81,7 @@ const CreateGroup = () => {
             required
           />
           <TextField
-            label="Description"
+            label={t('groups.description')}
             fullWidth
             multiline
             rows={4}
@@ -95,7 +97,7 @@ const CreateGroup = () => {
                 color="primary"
               />
             }
-            label="Make this group public (anyone can discover and request to join)"
+            label={t('groups.makePublic')}
             sx={{ mt: 2 }}
           />
           
@@ -113,14 +115,14 @@ const CreateGroup = () => {
               size="large"
               disabled={loading}
             >
-              {loading ? 'Creating...' : 'Create Group'}
+              {loading ? t('groups.creating') : t('groups.createGroup')}
             </Button>
             <Button
               variant="outlined"
               size="large"
               onClick={() => navigate('/groups')}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
           </Box>
         </form>

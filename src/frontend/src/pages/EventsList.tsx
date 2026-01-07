@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { eventsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import EventSearchFilters from '../components/event/EventSearchFilters';
@@ -10,6 +11,7 @@ const EventsList = () => {
   const [searchFilters, setSearchFilters] = useState({});
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   useEffect(() => {
     fetchEvents();
@@ -37,10 +39,10 @@ const EventsList = () => {
     const isFull = event.maxPlayers && event.participants?.length >= event.maxPlayers;
     const isJoined = event.participants?.some(p => p.userId === user?.id);
 
-    if (eventDate < now) return { label: 'Past', color: 'default' };
-    if (isFull) return { label: 'Full', color: 'warning' };
-    if (isJoined) return { label: 'Joined', color: 'success' };
-    return { label: 'Open', color: 'primary' };
+    if (eventDate < now) return { label: t('common.past'), color: 'default' };
+    if (isFull) return { label: t('common.full'), color: 'warning' };
+    if (isJoined) return { label: t('common.joined'), color: 'success' };
+    return { label: t('common.open'), color: 'primary' };
   };
 
   // Utility to format time in 24h and round minutes to nearest 15
@@ -74,10 +76,12 @@ const EventsList = () => {
     <div className="max-w-6xl mx-auto mt-8 mb-8 px-2">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold mb-1 text-gray-100">All Events</h1>
-          <div className="text-sm text-gray-400">{filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''} found</div>
+          <h1 className="text-2xl font-bold mb-1 text-gray-100">{t('events.allEvents')}</h1>
+          <div className="text-sm text-gray-400">
+            {filteredEvents.length} {filteredEvents.length !== 1 ? t('events.eventsFound') : t('events.eventFound')}
+          </div>
         </div>
-        <button onClick={() => navigate('/events/new')} className="bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">Create Event</button>
+        <button onClick={() => navigate('/events/new')} className="bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">{t('events.createEvent')}</button>
       </div>
       
       {/* Filters and Search */}
@@ -86,10 +90,10 @@ const EventsList = () => {
       {events.length === 0 ? (
         <div className="text-center py-16">
           <div className="text-lg text-gray-400 mb-2">
-            {Object.keys(searchFilters).length > 0 ? 'No events match your filters' : 'No events available'}
+            {Object.keys(searchFilters).length > 0 ? t('events.noEventsMatch') : t('events.noEventsAvailable')}
           </div>
           {Object.keys(searchFilters).length === 0 && (
-            <button onClick={() => navigate('/events/new')} className="bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition mt-2">Create Your First Event</button>
+            <button onClick={() => navigate('/events/new')} className="bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition mt-2">{t('events.createFirstEvent')}</button>
           )}
         </div>
       ) : (
