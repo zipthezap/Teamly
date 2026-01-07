@@ -2,6 +2,7 @@ import prisma from '../config/database';
 import { validateRecurrenceRule, generateRecurrenceInstances, calculateDuration, applyDuration } from '../utils/recurrenceService';
 import { sendEmail } from '../utils/emailService';
 import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
+import { getEventActivity } from '../services/eventNotification';
 import { Request, Response } from 'express';
 
 export const createEvent = async (req: Request, res: Response) => {
@@ -1004,6 +1005,59 @@ export const updateEventStatus = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Update event status error:', error);
     res.status(500).json({ error: 'Failed to update event status' });
+  }
+};
+
+// Get event activity with optional filtering
+export const getEventActivityFeed = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { type, limit, startDate, endDate } = req.query;
+
+    // Check if user has access to the event
+    const event = await prisma.event.findFirst({
+      where: {
+        id,
+        group: {
+          members: {
+            some: {
+              userId: req.user.id
+            }
+          }
+        }
+      }
+    });
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found or access denied' });
+    }
+
+    const options: any = {
+      limit: limit ? parseInt(limit as string) : 50
+    };
+
+    if (type && typeof type === 'string') {
+      options.type = type;
+    }
+
+    if (startDate && typeof startDate === 'string') {
+      options.startDate = new Date(startDate);
+    }
+
+    if (endDate && typeof endDate === 'string') {
+      options.endDate = new Date(endDate);
+    }
+
+    const activity = await getEventActivity(id, prisma, options);
+
+    res.json({
+      eventId: id,
+      total: activity.length,
+      activity
+    });
+  } catch (error) {
+    console.error('Get event activity error:', error);
+    res.status(500).json({ error: 'Failed to get event activity' });
   }
 };
 

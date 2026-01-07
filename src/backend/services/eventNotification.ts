@@ -1,6 +1,6 @@
 /**
  * Event Notification Service
- * Handles all event-related email notifications
+ * Handles all event-related email notifications and activity tracking
  */
 
 import { sendEmail } from '../utils/emailService';
@@ -120,7 +120,8 @@ export const createEventNotifications = async (
   eventId: string,
   userIds: string[],
   type: string,
-  prisma: any
+  prisma: any,
+  metadata?: any
 ): Promise<void> => {
   await Promise.all(
     userIds.map(userId =>
@@ -129,8 +130,79 @@ export const createEventNotifications = async (
           eventId,
           userId,
           type,
+          metadata: metadata || undefined,
         }
       })
     )
   );
 };
+
+/**
+ * Create a batch of activity notifications with metadata
+ */
+export const createActivityNotification = async (
+  eventId: string,
+  userId: string,
+  type: string,
+  metadata: any,
+  prisma: any
+): Promise<void> => {
+  await prisma.eventNotification.create({
+    data: {
+      eventId,
+      userId,
+      type,
+      metadata,
+    }
+  });
+};
+
+/**
+ * Get recent activity for an event with optional filtering
+ */
+export const getEventActivity = async (
+  eventId: string,
+  prisma: any,
+  options?: {
+    limit?: number;
+    type?: string;
+    startDate?: Date;
+    endDate?: Date;
+  }
+): Promise<any[]> => {
+  const where: any = { eventId };
+  
+  if (options?.type) {
+    where.type = options.type;
+  }
+  
+  if (options?.startDate || options?.endDate) {
+    where.createdAt = {};
+    if (options.startDate) {
+      where.createdAt.gte = options.startDate;
+    }
+    if (options.endDate) {
+      where.createdAt.lte = options.endDate;
+    }
+  }
+  
+  const notifications = await prisma.eventNotification.findMany({
+    where,
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true
+        }
+      }
+    },
+    orderBy: {
+      createdAt: 'desc'
+    },
+    take: options?.limit || 50
+  });
+  
+  return notifications;
+};
+
