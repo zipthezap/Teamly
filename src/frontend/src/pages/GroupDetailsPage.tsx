@@ -108,7 +108,6 @@ export default function GroupDetailsPage() {
     onSuccess: () => {
       setToast({ message: "Event deleted successfully", type: "success" });
       queryClient.invalidateQueries({ queryKey: ["groupEvents", groupId] });
-      refetchEvents();
     },
     onError: (err: any) => {
       setToast({ message: err?.message || "Failed to delete event", type: "error" });
@@ -172,7 +171,7 @@ export default function GroupDetailsPage() {
     },
     onSuccess: () => {
       setToast({ message: "Message sent", type: "success" });
-      refetchChat();
+      queryClient.invalidateQueries({ queryKey: ["groupChat", groupId] });
     },
   });
 
@@ -306,7 +305,7 @@ export default function GroupDetailsPage() {
       {/* Event create/edit modal */}
       <EventFormModal
         open={eventModalOpen}
-        onClose={() => { setEventModalOpen(false); refetchEvents(); }}
+        onClose={() => setEventModalOpen(false)}
         initialData={editEvent}
         groupId={groupId}
       />
