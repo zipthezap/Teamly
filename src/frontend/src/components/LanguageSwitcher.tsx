@@ -45,31 +45,35 @@ const LanguageSwitcher = () => {
             onClick={() => setIsOpen(false)}
           />
           <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg border border-gray-700 z-20">
-            {languages.map((language) => (
-              <button
-                key={language.code}
-                onClick={() => changeLanguage(language.code)}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-700 transition ${
-                  i18n.language === language.code ? 'bg-gray-700' : ''
-                } ${languages[0].code === language.code ? 'rounded-t-lg' : ''} ${
-                  languages[languages.length - 1].code === language.code ? 'rounded-b-lg' : ''
-                }`}
-              >
-                <span className="text-2xl">{language.flag}</span>
-                <span className="text-white font-medium">{language.name}</span>
-                {i18n.language === language.code && (
-                  <svg
-                    className="w-5 h-5 ml-auto text-blue-400"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-              </button>
-            ))}
+            {languages.map((language, index) => {
+              const isFirst = index === 0;
+              const isLast = index === languages.length - 1;
+              const isActive = i18n.language === language.code;
+              
+              return (
+                <button
+                  key={language.code}
+                  onClick={() => changeLanguage(language.code)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-700 transition ${
+                    isActive ? 'bg-gray-700' : ''
+                  } ${isFirst ? 'rounded-t-lg' : ''} ${isLast ? 'rounded-b-lg' : ''}`}
+                >
+                  <span className="text-2xl">{language.flag}</span>
+                  <span className="text-white font-medium">{language.name}</span>
+                  {isActive && (
+                    <svg
+                      className="w-5 h-5 ml-auto text-blue-400"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </>
       )}
