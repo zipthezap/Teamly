@@ -34,3 +34,23 @@ a:disabled,
 [aria-disabled="true"] {
   cursor: not-allowed;
 }
+
+/* Custom scrollbar styling for webkit browsers */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #1a2233;
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #4a5568;
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #5a6578;
+}
