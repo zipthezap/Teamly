@@ -52,7 +52,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({ chat, message, setMessage, onSend, is
           </div>
           <div>
             <h2 className="text-lg font-semibold text-gray-100">{t('groupDetails.groupChat')}</h2>
-            <p className="text-xs text-slate-400">{chat.length} {chat.length === 1 ? 'message' : 'messages'}</p>
+            <p className="text-xs text-slate-400">{chat.length} {chat.length === 1 ? t('groupDetails.message') : t('groupDetails.messages')}</p>
           </div>
         </div>
       </div>
@@ -67,7 +67,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({ chat, message, setMessage, onSend, is
               </svg>
             </div>
             <p className="text-slate-400 text-sm">{t('groupDetails.noMessages')}</p>
-            <p className="text-slate-500 text-xs mt-1">Start the conversation!</p>
+            <p className="text-slate-500 text-xs mt-1">{t('groupDetails.startConversation')}</p>
           </div>
         ) : (
           chat.map((msg, idx) => {

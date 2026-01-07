@@ -38,7 +38,7 @@ const MemberList: React.FC<MemberListProps> = ({ members, onRemove }) => {
             </div>
             <div className="flex-1 min-w-0">
               <span className="font-medium">{memberName}</span>
-              {memberRole.toLowerCase() === "admin" && (
+              {(memberRole && memberRole.toLowerCase() === "admin") && (
                 <span className="ml-2 text-xs bg-blue-700 px-2 py-0.5 rounded">{t('groupDetails.admin')}</span>
               )}
               <div className="text-xs text-slate-400">{memberEmail}</div>
