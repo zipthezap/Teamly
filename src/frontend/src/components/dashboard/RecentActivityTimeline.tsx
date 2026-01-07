@@ -17,6 +17,9 @@ interface RecentActivityTimelineProps {
   onActivityClick?: (id: string, type: string) => void;
 }
 
+type TimeFilter = 'all' | 'today' | 'week' | 'month';
+type ActivityFilter = 'all' | 'events' | 'groups';
+
 const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
   events,
   groups,
@@ -24,6 +27,9 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
   onActivityClick,
 }) => {
   const [expanded, setExpanded] = React.useState(true);
+  const [timeFilter, setTimeFilter] = React.useState<TimeFilter>('all');
+  const [activityFilter, setActivityFilter] = React.useState<ActivityFilter>('all');
+  const [visibleCount, setVisibleCount] = React.useState(5);
 
   const generateActivities = (): Activity[] => {
     const activities: Activity[] = [];
@@ -82,8 +88,38 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
 
     // Sort by timestamp descending
     return activities
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 8);
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  };
+
+  const filterActivitiesByTime = (activities: Activity[]) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    return activities.filter(activity => {
+      const activityDate = new Date(activity.timestamp);
+      switch (timeFilter) {
+        case 'today':
+          return activityDate >= today;
+        case 'week':
+          return activityDate >= weekAgo;
+        case 'month':
+          return activityDate >= monthAgo;
+        case 'all':
+        default:
+          return true;
+      }
+    });
+  };
+
+  const filterActivitiesByType = (activities: Activity[]) => {
+    if (activityFilter === 'events') {
+      return activities.filter(a => a.type.includes('event'));
+    } else if (activityFilter === 'groups') {
+      return activities.filter(a => a.type.includes('group'));
+    }
+    return activities;
   };
 
   const getActivityIcon = (type: Activity['type']) => {
@@ -134,6 +170,17 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
   };
 
   const activities = generateActivities();
+  const filteredActivities = filterActivitiesByType(filterActivitiesByTime(activities));
+  const visibleActivities = filteredActivities.slice(0, visibleCount);
+  const hasMore = filteredActivities.length > visibleCount;
+
+  const handleLoadMore = () => {
+    setVisibleCount(prev => Math.min(prev + 5, filteredActivities.length));
+  };
+
+  const handleShowLess = () => {
+    setVisibleCount(5);
+  };
 
   return (
     <div className="bg-[#1a2233] rounded-xl shadow-md p-5">
@@ -142,7 +189,10 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
           <div className="bg-yellow-500 rounded-full w-9 h-9 flex items-center justify-center">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 17l6-6 4 4 6-6" /></svg>
           </div>
-          <div className="text-lg font-semibold">Recent Activity</div>
+          <div>
+            <div className="text-lg font-semibold">Recent Activity</div>
+            <div className="text-xs text-gray-400">{filteredActivities.length} {filteredActivities.length === 1 ? 'activity' : 'activities'}</div>
+          </div>
         </div>
         <button className="focus:outline-none">
           {expanded ? (
@@ -152,16 +202,87 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
           )}
         </button>
       </div>
+      
+      {/* Filters */}
+      {expanded && (
+        <div className="mt-4 space-y-3">
+          {/* Time Filter */}
+          <div>
+            <label className="text-xs font-medium text-gray-400 mb-1.5 block">Time Range</label>
+            <div className="flex gap-2 flex-wrap">
+              {(['all', 'today', 'week', 'month'] as TimeFilter[]).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setTimeFilter(filter);
+                    setVisibleCount(5);
+                  }}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${
+                    timeFilter === filter
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-[#232946] text-gray-300 hover:bg-[#2a3350]'
+                  }`}
+                >
+                  {filter === 'all' ? 'All Time' : filter === 'today' ? 'Today' : filter === 'week' ? 'This Week' : 'This Month'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Activity Type Filter */}
+          <div>
+            <label className="text-xs font-medium text-gray-400 mb-1.5 block">Activity Type</label>
+            <div className="flex gap-2 flex-wrap">
+              {(['all', 'events', 'groups'] as ActivityFilter[]).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActivityFilter(filter);
+                    setVisibleCount(5);
+                  }}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition flex items-center gap-1.5 ${
+                    activityFilter === filter
+                      ? 'bg-green-600 text-white'
+                      : 'bg-[#232946] text-gray-300 hover:bg-[#2a3350]'
+                  }`}
+                >
+                  {filter === 'events' && (
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+                    </svg>
+                  )}
+                  {filter === 'groups' && (
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path d="M17 21v-2a4 4 0 0 0-8 0v2" /><circle cx="12" cy="7" r="4" />
+                    </svg>
+                  )}
+                  {filter === 'all' ? 'All Types' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${expanded ? 'max-h-[600px] mt-4' : 'max-h-0'}`}
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${expanded ? 'max-h-[800px] mt-4' : 'max-h-0'}`}
         style={{ willChange: 'max-height' }}
         aria-hidden={!expanded}
       >
-        {activities.length === 0 ? (
-          <div className="text-center py-6 text-sm text-gray-400">No recent activity</div>
+        {visibleActivities.length === 0 ? (
+          <div className="text-center py-8 px-4">
+            <svg className="w-12 h-12 text-gray-500 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+              <path d="M3 12h18M12 3v18" strokeLinecap="round" />
+            </svg>
+            <div className="text-sm text-gray-400">No activity found</div>
+            <div className="text-xs text-gray-500 mt-1">Try adjusting your filters</div>
+          </div>
         ) : (
-          <ul>
-            {activities.map((activity, index) => (
+          <>
+            <ul>
+            {visibleActivities.map((activity, index) => (
               <React.Fragment key={`${activity.id}-${activity.type}-${activity.timestamp}`}>
                 {index > 0 && <div className="my-2 border-t border-[#232946]" />}
                 <li
@@ -173,7 +294,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
                     }
                   }}
                 >
-                  <div className={`w-8 h-8 flex items-center justify-center rounded-full ${getActivityColor(activity.type)} mr-2`}>
+                  <div className={`w-8 h-8 flex items-center justify-center rounded-full ${getActivityColor(activity.type)} mr-2 flex-shrink-0`}>
                     {getActivityIcon(activity.type)}
                   </div>
                   <div className="flex-1">
@@ -195,6 +316,41 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
               </React.Fragment>
             ))}
           </ul>
+          
+          {/* Load More / Show Less Buttons */}
+          {filteredActivities.length > 5 && (
+            <div className="mt-4 flex gap-2 justify-center">
+              {hasMore && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleLoadMore();
+                  }}
+                  className="px-4 py-2 text-xs font-medium text-blue-400 bg-[#232946] rounded-lg hover:bg-[#2a3350] transition flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M19 9l-7 7-7-7" />
+                  </svg>
+                  Load More ({filteredActivities.length - visibleCount} more)
+                </button>
+              )}
+              {visibleCount > 5 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleShowLess();
+                  }}
+                  className="px-4 py-2 text-xs font-medium text-gray-400 bg-[#232946] rounded-lg hover:bg-[#2a3350] transition flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M5 15l7-7 7 7" />
+                  </svg>
+                  Show Less
+                </button>
+              )}
+            </div>
+          )}
+        </>
         )}
       </div>
     </div>
