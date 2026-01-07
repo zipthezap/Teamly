@@ -269,7 +269,7 @@ const PublicGroups = () => {
             </LoadScript>
           </div>
         ) : (
-          <div className="mb-2 p-3 bg-yellow-100 text-yellow-800 rounded">
+          <div className="mb-2 p-3 bg-yellow-900/50 text-yellow-300 rounded border border-yellow-700">
             <strong>Google Maps API key not configured.</strong> Set <span className="font-mono">REACT_APP_GOOGLE_MAPS_API_KEY</span> environment variable to enable map view.<br />
             You can still use location-based filtering without the map visualization.
           </div>

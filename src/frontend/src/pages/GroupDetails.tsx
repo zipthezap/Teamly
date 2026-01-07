@@ -178,15 +178,15 @@ const GroupDetails = () => {
   if (!group) {
     return (
       <div className="max-w-4xl mx-auto mt-8">
-        <div className="bg-red-100 text-red-700 p-4 rounded">Group not found.</div>
+        <div className="bg-red-900/50 text-red-300 p-4 rounded border border-red-700">Group not found.</div>
       </div>
     );
   }
 
   return (
     <div className="max-w-6xl mx-auto mt-8 mb-8 px-4">
-      {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-3">{error}</div>}
-      {success && <div className="bg-green-100 text-green-700 p-3 rounded mb-3">{success}</div>}
+      {error && <div className="bg-red-900/50 text-red-300 p-3 rounded mb-3 border border-red-700">{error}</div>}
+      {success && <div className="bg-green-900/50 text-green-300 p-3 rounded mb-3 border border-green-700">{success}</div>}
 
       <div className="bg-[#1a202c] rounded-xl shadow-md p-6 mb-6 border border-gray-700">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">

@@ -143,7 +143,7 @@ const GroupPageModern = () => {
   if (!group) {
     return (
       <div className="max-w-2xl mx-auto mt-8">
-        <div className="bg-red-100 text-red-700 p-4 rounded">Group not found</div>
+        <div className="bg-red-900/50 text-red-300 p-4 rounded border border-red-700">Group not found</div>
       </div>
     );
   }

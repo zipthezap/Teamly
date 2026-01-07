@@ -129,7 +129,7 @@ const EventDetails = () => {
   if (!event) {
     return (
       <div className="max-w-2xl mx-auto mt-8">
-        <div className="bg-red-100 text-red-700 p-4 rounded">Event not found</div>
+        <div className="bg-red-900/50 text-red-300 p-4 rounded border border-red-700">Event not found</div>
       </div>
     );
   }
@@ -143,10 +143,10 @@ const EventDetails = () => {
   return (
     <div className="max-w-5xl mx-auto mt-8 mb-8 px-2">
       {/* Alerts */}
-      {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
-      {success && <div className="bg-green-100 text-green-700 p-3 rounded mb-4">{success}</div>}
-      {lateSuccess && <div className="bg-green-100 text-green-700 p-3 rounded mb-4">{lateSuccess}</div>}
-      {lateError && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{lateError}</div>}
+      {error && <div className="bg-red-900/50 text-red-300 p-3 rounded mb-4 border border-red-700">{error}</div>}
+      {success && <div className="bg-green-900/50 text-green-300 p-3 rounded mb-4 border border-green-700">{success}</div>}
+      {lateSuccess && <div className="bg-green-900/50 text-green-300 p-3 rounded mb-4 border border-green-700">{lateSuccess}</div>}
+      {lateError && <div className="bg-red-900/50 text-red-300 p-3 rounded mb-4 border border-red-700">{lateError}</div>}
 
       <div className="relative bg-[#232946] rounded-xl shadow-md p-6 mb-8">
         {/* Admin icon buttons in top right */}
