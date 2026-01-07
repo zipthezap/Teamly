@@ -381,41 +381,6 @@ export const cancelEventRequest = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'This event request has already been processed' });
     }
 
-            // Auto-join all 'yes' voters to the event
-            const yesVoters = eventRequest.votes.filter(v => v.vote === 'yes');
-            await Promise.all(
-              yesVoters.map(vote =>
-                prisma.eventParticipant.upsert({
-                  where: { eventId_userId: { eventId: event.id, userId: vote.userId } },
-                  update: { status: 'confirmed' },
-                  create: { eventId: event.id, userId: vote.userId, status: 'confirmed' }
-                })
-              )
-            );
-
-            // Send notifications/emails to all 'yes' voters (except creator)
-            const group = await prisma.group.findUnique({
-              where: { id: eventRequest.groupId },
-              include: { members: { include: { user: true } } }
-            });
-            if (group) {
-              const yesVoterUsers = group.members
-                .filter(m => yesVoters.some(v => v.userId === m.userId) && m.userId !== eventRequest.creatorId)
-                .map(m => m.user);
-              await sendEventInvitations(
-                yesVoterUsers,
-                eventRequest.creatorId,
-                eventRequest.title,
-                eventRequest.startTime,
-                group.name
-              );
-              await createEventNotifications(
-                event.id,
-                yesVoterUsers.map(u => u.id),
-                'join',
-                prisma
-              );
-            }
     await prisma.eventRequest.update({
       where: { id },
       data: { status: 'cancelled' }
