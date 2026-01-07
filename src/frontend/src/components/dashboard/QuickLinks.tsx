@@ -53,9 +53,9 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ onNavigate }) => {
         <div className="text-lg font-semibold flex-1">Quick Links</div>
         <button className="focus:outline-none" onClick={() => setOpen((v) => !v)} aria-label={open ? 'Collapse' : 'Expand'}>
           {open ? (
-            <ChevronDownIcon className="w-5 h-5 text-gray-400" />
-          ) : (
             <ChevronUpIcon className="w-5 h-5 text-gray-400" />
+          ) : (
+            <ChevronDownIcon className="w-5 h-5 text-gray-400" />
           )}
         </button>
       </div>
