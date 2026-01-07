@@ -251,9 +251,9 @@ const EventDetails = () => {
           </div>
           
           {/* Right Column: Activity Feed - Fixed Height */}
-          <div className="bg-[#1a2233] rounded-lg p-5 flex flex-col" style={{ maxHeight: '500px' }}>
+          <div className="bg-[#1a2233] rounded-lg p-5 flex flex-col max-h-[500px]">
             <div className="font-semibold mb-3 text-lg flex-shrink-0">Activity Feed</div>
-            <div className="flex-1 overflow-y-auto text-sm text-[#a1a6b4] pr-2" style={{ scrollbarWidth: 'thin', scrollbarColor: '#4a5568 #1a2233' }}>
+            <div className="flex-1 overflow-y-auto text-sm text-[#a1a6b4] pr-2">
               {(event.eventNotifications || []).length === 0 ? (
                 <div className="flex items-center justify-center h-full text-center">
                   <div>
