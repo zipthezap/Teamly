@@ -172,7 +172,7 @@ export const runEventMaintenance = async (): Promise<{
   console.log('Starting event maintenance...');
   
   const statusResult = await updateEventStatuses();
-  const archiveResult = await archiveOldEvents(30);
+  const archiveResult = await archiveOldEvents(EVENT_CONFIG.DEFAULT_ARCHIVE_DAYS);
   const expireResult = await expireOldEventRequests();
 
   const summary = {

@@ -1,4 +1,5 @@
 import prisma from '../config/database';
+import { validateVoteThreshold, validateVoteDeadline } from '../services/eventValidation';
 import { Request, Response } from 'express';
 
 // Create event request (admin only)
@@ -35,25 +36,21 @@ export const createEventRequest = async (req: Request, res: Response) => {
     // Validate vote deadline if provided
     let deadlineDate = null;
     if (voteDeadline) {
+      const deadlineValidation = validateVoteDeadline(voteDeadline, startTime);
+      if (!deadlineValidation.isValid) {
+        return res.status(400).json({ error: deadlineValidation.error });
+      }
       deadlineDate = new Date(voteDeadline);
-      if (isNaN(deadlineDate.getTime())) {
-        return res.status(400).json({ error: 'Invalid voteDeadline format' });
-      }
-      if (deadlineDate <= new Date()) {
-        return res.status(400).json({ error: 'voteDeadline must be in the future' });
-      }
-      if (deadlineDate >= startDate) {
-        return res.status(400).json({ error: 'voteDeadline must be before event startTime' });
-      }
     }
 
     // Validate vote threshold if provided
     let threshold = 0.5; // Default 50%
     if (voteThreshold !== undefined) {
-      threshold = parseFloat(voteThreshold);
-      if (isNaN(threshold) || threshold < 0 || threshold > 1) {
-        return res.status(400).json({ error: 'voteThreshold must be between 0 and 1' });
+      const thresholdValidation = validateVoteThreshold(voteThreshold);
+      if (!thresholdValidation.isValid) {
+        return res.status(400).json({ error: thresholdValidation.error });
       }
+      threshold = parseFloat(voteThreshold);
     }
 
     // Check if user is admin of the group
@@ -363,13 +360,14 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
       });
       
       return res.json({ 
-        message: `Event request cancelled: ${yesVotes} yes votes out of ${totalVotes} total votes (${(threshold * 100).toFixed(0)}% of ${totalMembers} members requires at least ${requiredYesVotes} yes votes)`,
+        message: `Event request cancelled: Insufficient support. Required ${requiredYesVotes} yes votes (${(threshold * 100).toFixed(0)}% of ${totalMembers} members), received ${yesVotes} yes votes.`,
         yesVotes,
         noVotes,
         totalVotes,
         totalMembers,
         threshold: threshold * 100,
-        requiredYesVotes
+        requiredYesVotes,
+        cancelled: true
       });
     }
 
