@@ -19,7 +19,21 @@ A sports event organization app that allows individuals to set and organize smal
 - **💬 Event Comments**: Discuss events with threaded comments and @mentions
 - **⚙️ Customizable Preferences**: Control which email notifications you receive
 
-For detailed documentation on these features, see [docs/guides/FEATURES.md](docs/guides/FEATURES.md).
+### ⭐ Recently Enhanced
+
+- **🔔 Enhanced Notification System**: Comprehensive in-app notification center with:
+  - Complete notification history and archiving
+  - Advanced filtering by type, date, and read status
+  - Full-text search across notifications
+  - Priority indicators (high/medium/low)
+  - Real-time auto-refresh every 30 seconds
+  - Notification statistics and analytics
+  - Quick actions for navigation
+  - Dedicated notification center page
+
+For detailed documentation on these features, see:
+- [docs/guides/FEATURES.md](docs/guides/FEATURES.md) - Core features
+- [docs/ENHANCED_NOTIFICATIONS.md](docs/ENHANCED_NOTIFICATIONS.md) - Enhanced notification system
 
 ## Architecture
 
