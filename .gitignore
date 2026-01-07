@@ -78,6 +78,7 @@ temp/
 dist/
 build/
 src/frontend/build/
+src/frontend/dist/
 
 # TypeScript
 *.tsbuildinfo
