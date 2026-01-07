@@ -143,7 +143,7 @@ export const createEvent = async (req: Request, res: Response) => {
 
 export const getEvents = async (req: Request, res: Response) => {
   try {
-    const { groupId, search, eventType, startDate, endDate, location } = req.query;
+    const { groupId, search, eventType, startDate, endDate, location, status, archived } = req.query;
 
     // Build where filter
     const where: any = {};
@@ -177,6 +177,19 @@ export const getEvents = async (req: Request, res: Response) => {
     // Location filter
     if (location && typeof location === 'string') {
       where.location = { contains: location, mode: 'insensitive' };
+    }
+
+    // Status filter
+    if (status && typeof status === 'string') {
+      where.status = status;
+    }
+
+    // Archived filter
+    if (archived !== undefined) {
+      where.archived = archived === 'true';
+    } else {
+      // By default, exclude archived events
+      where.archived = false;
     }
 
     // Date range filters
