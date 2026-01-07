@@ -7,7 +7,6 @@ import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsAPI } from '../services/api';
 import EventFormModal from '../components/event/EventFormModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,95 +26,77 @@ function Toast({ message, type, onClose }: { message: string; type: "success" | 
 const EventsList = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchFilters, setSearchFilters] = useState({});
-  const [page, setPage] = useState(1); // Page state for pagination
+  const [page, setPage] = useState(1);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<any>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<any>(null);
   const [useInfiniteScroll, setUseInfiniteScroll] = useState(true);
+  const [events, setEvents] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
+  const [error, setError] = useState<any>(null);
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const queryClient = useQueryClient();
   const lastEventRef = useRef<HTMLDivElement | null>(null);
 
   // Fetch events
-  const {
-    data: eventsData,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useQuery([
-    'events',
-    { ...searchFilters },
-  ], () => eventsAPI.getAll({ ...searchFilters, page }).then(res => res.data), {
-    keepPreviousData: true,
-  });
-  const events = eventsData || [];
-
-  // Delete event mutation
-  const deleteMutation = useMutation(
-    (eventId: string | number) => eventsAPI.delete(eventId),
-    {
-      onSuccess: () => {
-        setToast({ message: t('events.eventDeleted'), type: 'success' });
-        setDeleteDialogOpen(false);
-        setEventToDelete(null);
-        queryClient.invalidateQueries(['events']);
-      },
-      onError: (err: any) => {
-        setToast({ message: err?.message || t('events.errorDeletingEvent'), type: 'error' });
-      },
+  const fetchEvents = useCallback(async () => {
+    try {
+      setIsFetching(true);
+      const response = await eventsAPI.getAll({ ...searchFilters, page });
+      setEvents(response.data);
+      setError(null);
+    } catch (err: any) {
+      setError(err);
+      setToast({ message: err?.response?.data?.message || t('common.errorLoadingEvents'), type: 'error' });
+    } finally {
+      setIsLoading(false);
+      setIsFetching(false);
     }
-  );
+  }, [searchFilters, page, t]);
 
-  // Join event mutation
-  const joinMutation = useMutation(
-    (eventId: string | number) => eventsAPI.join(eventId),
-    {
-      onSuccess: () => {
-        setToast({ message: t('events.eventJoined'), type: 'success' });
-        queryClient.invalidateQueries(['events']);
-      },
-      onError: (err: any) => {
-        setToast({ message: err?.message || t('events.errorJoiningEvent'), type: 'error' });
-      },
-    }
-  );
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
 
-  // Leave event mutation
-  const leaveMutation = useMutation(
-    (eventId: string | number) => eventsAPI.leave(eventId),
-    {
-      onMutate: async (eventId) => {
-        await queryClient.cancelQueries(['events']);
-        const prevEvents = queryClient.getQueryData(['events']);
-        if (prevEvents) {
-          queryClient.setQueryData(['events'], (prev: any) =>
-            prev.map((e: any) =>
-              e.id === eventId
-                ? { ...e, participants: (e.participants || []).filter((p: any) => p.userId !== user?.id) }
-                : e
-            )
-          );
-        }
-        return { prevEvents };
-      },
-      onError: (err: any, _eventId, context: any) => {
-        setToast({ message: err?.message || 'Failed to leave event', type: 'error' });
-        if (context?.prevEvents) {
-          queryClient.setQueryData(['events'], context.prevEvents);
-        }
-      },
-      onSuccess: () => {
-        setToast({ message: 'Left event successfully', type: 'success' });
-        queryClient.invalidateQueries(['events']);
-      },
+  // Delete event
+  const handleDeleteEvent = async (eventId: string | number) => {
+    try {
+      await eventsAPI.delete(eventId);
+      setToast({ message: t('events.eventDeleted'), type: 'success' });
+      setDeleteDialogOpen(false);
+      setEventToDelete(null);
+      fetchEvents();
+    } catch (err: any) {
+      setToast({ message: err?.response?.data?.message || t('events.errorDeletingEvent'), type: 'error' });
     }
-  );
+  };
+
+  // Join event
+  const handleJoinEvent = async (eventId: string | number) => {
+    try {
+      await eventsAPI.join(eventId);
+      setToast({ message: t('events.eventJoined'), type: 'success' });
+      fetchEvents();
+    } catch (err: any) {
+      setToast({ message: err?.response?.data?.message || t('events.errorJoiningEvent'), type: 'error' });
+    }
+  };
+
+  // Leave event
+  const handleLeaveEvent = async (eventId: string | number) => {
+    try {
+      await eventsAPI.leave(eventId);
+      setToast({ message: 'Left event successfully', type: 'success' });
+      fetchEvents();
+    } catch (err: any) {
+      setToast({ message: err?.response?.data?.message || 'Failed to leave event', type: 'error' });
+    }
+  };
 
   // Handle search/filter
   const handleSearch = (filters: any) => {
@@ -164,7 +145,7 @@ const EventsList = () => {
     return (
       <div className="flex flex-col justify-center items-center min-h-[80vh] text-red-400">
         {t('common.errorLoadingEvents')}
-        <button className="mt-4 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition" onClick={() => refetch()}>{t('common.retry')}</button>
+        <button className="mt-4 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition" onClick={() => fetchEvents()}>{t('common.retry')}</button>
       </div>
     );
   }
@@ -175,10 +156,6 @@ const EventsList = () => {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold mb-1 text-gray-100">{t('events.allEvents')}</h1>
-          <div className="text-sm text-gray-400">
-            {events.length} {events.length !== 1 ? t('events.eventsFound') : t('events.eventFound')}
-          </div>
           <h1 className="text-2xl font-bold mb-1 text-gray-100">{t('events.allEvents')}</h1>
           <div className="text-sm text-gray-400">
             {events.length} {events.length !== 1 ? t('events.eventsFound') : t('events.eventFound')}
@@ -230,42 +207,22 @@ const EventsList = () => {
                     status.label === 'Past' ? 'bg-gray-700 text-gray-300 border border-gray-600' :
                     'bg-blue-900/50 text-blue-300 border border-blue-700'
                   }`}>{status.label}</span>
-                  {isAdmin && [
-                    <button
-                      key="edit"
-                      className="ml-2 px-2 py-0.5 text-xs rounded bg-gray-700 hover:bg-gray-800 text-gray-200 border border-gray-600"
-                      onClick={() => { setEditEvent(event); setModalOpen(true); }}
-                    >
-                      {t('common.edit')}
-                    </button>,
-                    <button
-                      key="delete"
-                      className="ml-2 px-2 py-0.5 text-xs rounded bg-red-700 hover:bg-red-800 text-red-100 border border-red-600"
-                      onClick={() => { setEventToDelete(event); setDeleteDialogOpen(true); }}
-                    >
-                      {t('common.delete')}
-                    </button>
-                  ]}
-                  {/* Delete confirmation dialog */}
-                  <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-                    <DialogTitle>{t('events.confirmDeleteTitle') || 'Delete Event?'}</DialogTitle>
-                    <DialogContent>
-                      {t('events.confirmDeleteText') || 'Are you sure you want to delete this event? This action cannot be undone.'}
-                    </DialogContent>
-                    <DialogActions>
-                      <Button onClick={() => setDeleteDialogOpen(false)} color="secondary">
-                        {t('common.cancel')}
-                      </Button>
-                      <Button
-                        onClick={() => eventToDelete && deleteMutation.mutate(eventToDelete.id)}
-                        color="error"
-                        variant="contained"
-                        disabled={deleteMutation.isLoading}
+                  {isAdmin && (
+                    <>
+                      <button
+                        className="ml-2 px-2 py-0.5 text-xs rounded bg-gray-700 hover:bg-gray-800 text-gray-200 border border-gray-600"
+                        onClick={() => { setEditEvent(event); setModalOpen(true); }}
+                      >
+                        {t('common.edit')}
+                      </button>
+                      <button
+                        className="ml-2 px-2 py-0.5 text-xs rounded bg-red-700 hover:bg-red-800 text-red-100 border border-red-600"
+                        onClick={() => { setEventToDelete(event); setDeleteDialogOpen(true); }}
                       >
                         {t('common.delete')}
-                      </Button>
-                    </DialogActions>
-                  </Dialog>
+                      </button>
+                    </>
+                  )}
                 </div>
                 <div className="mb-3">
                   <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-purple-900/50 text-purple-300 border border-purple-700">{event.eventType}</span>
@@ -301,113 +258,88 @@ const EventsList = () => {
                   isJoined ? (
                     <button
                       className="mt-2 w-full bg-gray-700 hover:bg-gray-800 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition"
-                      onClick={() => leaveMutation.mutate(event.id)}
-                      disabled={leaveMutation.isLoading}
+                      onClick={() => handleLeaveEvent(event.id)}
+                      disabled={isFetching}
                     >
                       {t('events.leaveEvent')}
                     </button>
                   ) : (
                     <button
                       className="mt-2 w-full bg-green-700 hover:bg-green-800 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition"
-                      onClick={() => joinMutation.mutate(event.id)}
-                      disabled={joinMutation.isLoading || status.label === t('common.full')}
+                      onClick={() => handleJoinEvent(event.id)}
+                      disabled={isFetching || status.label === t('common.full')}
                     >
                       {t('events.joinEvent')}
                     </button>
                   )
                 )}
-                {/* Delete action for admins only */}
-                {isAdmin && (
-                  <button
-                    className="mt-2 w-full bg-red-700 hover:bg-red-800 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition"
-                    // onClick={...} // Add delete logic if needed
-                    disabled
-                  >
-                    {t('events.deleteEvent')}
-                  </button>
-                )}
               </div>
             );
-                                )
-                              )}
-                              {/* Delete action for admins only */}
-                              {isAdmin && (
-                                <button
-                                  className="mt-2 w-full bg-red-700 hover:bg-red-800 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition"
-                                  // onClick={...} // Add delete logic if needed
-                                  disabled
-                                >
-                                  {t('events.deleteEvent')}
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
-                        </div>
-                        {/* Event create/edit modal */}
-                        <EventFormModal
-                          open={modalOpen}
-                          onClose={() => setModalOpen(false)}
-                          initialData={editEvent}
-                        />
-                        {/* Pagination controls */}
-                        <div className="flex justify-center mt-8 gap-2">
-                          <button
-                            className="px-3 py-1 rounded border border-gray-600 bg-gray-800 text-gray-200 hover:bg-gray-700 transition disabled:opacity-50"
-                            onClick={() => handlePageChange(page - 1)}
-                            disabled={page <= 1}
-                          >
-                            {t('common.prev')}
-                          </button>
-                          {[...Array(page + 1)].map((_, i) => (
-                            <button
-                              key={i + 1}
-                              className={`px-3 py-1 rounded border ${page === i + 1 ? 'bg-pink-600 text-white' : 'bg-gray-800 text-gray-200'} hover:bg-pink-700 transition`}
-                              onClick={() => handlePageChange(i + 1)}
-                            >
-                              {i + 1}
-                            </button>
-                          ))}
-                          <button
-                            className="px-3 py-1 rounded border border-gray-600 bg-gray-800 text-gray-200 hover:bg-gray-700 transition disabled:opacity-50"
-                            onClick={() => handlePageChange(page + 1)}
-                          >
-                            {t('common.next')}
-                          </button>
-                        </div>
+          })}
+        </div>
+      )}
 
-                        {/* Infinite scroll loader */}
-                        {isFetching && (
-                          <div className="flex justify-center py-6">
-                            <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
-                          </div>
-                        )}
-                            {t('common.prev')}
-                          </button>
-                          {[...Array(page + 1)].map((_, i) => (
-                            <button
-                              key={i + 1}
-                              className={`px-3 py-1 rounded border ${page === i + 1 ? 'bg-pink-600 text-white' : 'bg-gray-800 text-gray-200'} hover:bg-pink-700 transition`}
-                              onClick={() => handlePageChange(i + 1)}
-                            >
-                              {i + 1}
-                            </button>
-                          ))}
-                          <button
-                            className="px-3 py-1 rounded border border-gray-600 bg-gray-800 text-gray-200 hover:bg-gray-700 transition disabled:opacity-50"
-                            onClick={() => handlePageChange(page + 1)}
-                          >
-                            {t('common.next')}
-                          </button>
-                        </div>
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>{t('events.confirmDeleteTitle') || 'Delete Event?'}</DialogTitle>
+        <DialogContent>
+          {t('events.confirmDeleteText') || 'Are you sure you want to delete this event? This action cannot be undone.'}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} color="secondary">
+            {t('common.cancel')}
+          </Button>
+          <Button
+            onClick={() => eventToDelete && handleDeleteEvent(eventToDelete.id)}
+            color="error"
+            variant="contained"
+            disabled={isFetching}
+          >
+            {t('common.delete')}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-                        {/* Infinite scroll loader */}
-                        {isFetching && (
-                          <div className="flex justify-center py-6">
-                            <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
-                          </div>
-                        )}
-                      )}
+      {/* Event create/edit modal */}
+      <EventFormModal
+        open={modalOpen}
+        onClose={() => {
+          setModalOpen(false);
+          fetchEvents();
+        }}
+        initialData={editEvent}
+      />
+
+      {/* Pagination controls */}
+      <div className="flex justify-center mt-8 gap-2">
+        <button
+          className="px-3 py-1 rounded border border-gray-600 bg-gray-800 text-gray-200 hover:bg-gray-700 transition disabled:opacity-50"
+          onClick={() => handlePageChange(page - 1)}
+          disabled={page <= 1}
+        >
+          {t('common.prev')}
+        </button>
+        {[...Array(page + 1)].map((_, i) => (
+          <button
+            key={i + 1}
+            className={`px-3 py-1 rounded border ${page === i + 1 ? 'bg-pink-600 text-white' : 'bg-gray-800 text-gray-200'} hover:bg-pink-700 transition`}
+            onClick={() => handlePageChange(i + 1)}
+          >
+            {i + 1}
+          </button>
+        ))}
+        <button
+          className="px-3 py-1 rounded border border-gray-600 bg-gray-800 text-gray-200 hover:bg-gray-700 transition disabled:opacity-50"
+          onClick={() => handlePageChange(page + 1)}
+        >
+          {t('common.next')}
+        </button>
+      </div>
+
+      {/* Infinite scroll loader */}
+      {isFetching && (
+        <div className="flex justify-center py-6">
+          <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
       )}
     </div>
