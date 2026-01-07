@@ -7,7 +7,10 @@ interface MemberListProps {
   onRemove: (email: string) => void;
 }
 
-const getInitials = (name: string) => name.split(" ").map((n) => n[0]).join("").toUpperCase();
+const getInitials = (name: string) => {
+  if (!name || typeof name !== 'string') return '';
+  return name.split(' ').map((n) => n[0]).join('').toUpperCase();
+};
 
 const MemberList: React.FC<MemberListProps> = ({ members, onRemove }) => (
   <section className="bg-slate-800 rounded-lg p-4 shadow">
