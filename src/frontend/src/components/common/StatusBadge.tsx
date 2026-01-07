@@ -6,7 +6,6 @@ interface StatusBadgeProps {
   status: StatusType;
   label: string;
   className?: string;
-  sx?: any;
 }
 
 /**
@@ -15,8 +14,7 @@ interface StatusBadgeProps {
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ 
   status, 
   label,
-  className = '',
-  sx
+  className = ''
 }) => {
   const colorClasses: Record<StatusType, string> = {
     success: 'bg-green-900/50 text-green-300 border-green-700',
