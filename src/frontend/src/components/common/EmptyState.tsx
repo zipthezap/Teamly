@@ -22,11 +22,13 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 }) => {
   return (
     <div
-      className="rounded-xl border-2 border-dashed border-white/10 p-10 text-center mx-auto"
+      className="rounded-xl border-2 border-dashed border-gray-600 p-10 text-center mx-auto"
       style={{ background: gradient }}
     >
-      <div className="inline-flex p-6 rounded-full bg-blue-100 mb-6">{icon}</div>
-      <div className="text-2xl font-bold mb-2">{title}</div>
+      <div className="inline-flex p-6 rounded-full bg-blue-900/50 mb-6 text-blue-400">
+        {icon}
+      </div>
+      <div className="text-2xl font-bold mb-2 text-gray-100">{title}</div>
       <div className="text-base text-gray-400 mb-6 max-w-xl mx-auto">{description}</div>
       {actionLabel && onAction && (
         <button
