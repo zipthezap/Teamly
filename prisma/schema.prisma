@@ -85,6 +85,14 @@ model User {
   emailVerified      Boolean  @default(false)
   emailVerificationToken String?
   
+  // Password reset fields
+  passwordResetToken String?
+  passwordResetExpires DateTime?
+  
+  // Security: Failed login attempts tracking
+  failedLoginAttempts Int      @default(0)
+  accountLockedUntil  DateTime?
+  
   // Location fields
   city              String?
   country           String?

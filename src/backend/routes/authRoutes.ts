@@ -12,4 +12,8 @@ router.get('/profile', authMiddleware, authController.getProfile);
 router.put('/profile', authMiddleware, authController.updateProfile);
 router.put('/password', authMiddleware, authController.updatePassword);
 
+// Password reset routes (with rate limiting)
+router.post('/forgot-password', authLimiter, authController.requestPasswordReset);
+router.post('/reset-password', authLimiter, authController.resetPassword);
+
 export default router;

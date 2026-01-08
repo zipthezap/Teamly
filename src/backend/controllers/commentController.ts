@@ -2,6 +2,7 @@ import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import { sendEmail } from '../utils/emailService';
 import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
+import { sanitizeUserInput } from '../utils/validation';
 import { Request, Response } from 'express';
 
 // Create a comment
@@ -12,6 +13,9 @@ export const createComment = async (req: Request, res: Response) => {
     if (!eventId || !content) {
       return res.status(400).json({ error: 'Event ID and content are required' });
     }
+
+    // Sanitize content to prevent XSS
+    const sanitizedContent = sanitizeUserInput(content);
 
     // Check if event exists and user has access
     const event = await prisma.event.findFirst({
@@ -55,15 +59,15 @@ export const createComment = async (req: Request, res: Response) => {
       }
     }
 
-    // Extract mentions from content (@username)
+    // Extract mentions from sanitized content (@username)
     const mentionRegex = /@(\w+)/g;
-    const mentionMatches = content.matchAll(mentionRegex);
+    const mentionMatches = sanitizedContent.matchAll(mentionRegex);
     const mentions = Array.from(mentionMatches, match => match[1]);
 
-    // Create comment
+    // Create comment with sanitized content
     const comment = await prisma.comment.create({
       data: {
-        content,
+        content: sanitizedContent,
         eventId,
         userId: req.user.id,
         parentId: parentId || null

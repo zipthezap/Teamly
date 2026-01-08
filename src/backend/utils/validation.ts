@@ -60,6 +60,58 @@ export function validatePassword(password: string, minLength: number = 6): void 
 }
 
 /**
+ * Validates password with strong requirements
+ * Requires at least 8 characters, uppercase, lowercase, number, and special character
+ */
+export function validateStrongPassword(password: string): void {
+  isRequired(password, 'Password');
+  
+  if (password.length < 8) {
+    throw new ValidationError(
+      'Password must be at least 8 characters long',
+      'password',
+      'PASSWORD_TOO_SHORT'
+    );
+  }
+  
+  // Check for uppercase letter
+  if (!/[A-Z]/.test(password)) {
+    throw new ValidationError(
+      'Password must contain at least one uppercase letter',
+      'password',
+      'PASSWORD_MISSING_UPPERCASE'
+    );
+  }
+  
+  // Check for lowercase letter
+  if (!/[a-z]/.test(password)) {
+    throw new ValidationError(
+      'Password must contain at least one lowercase letter',
+      'password',
+      'PASSWORD_MISSING_LOWERCASE'
+    );
+  }
+  
+  // Check for number
+  if (!/[0-9]/.test(password)) {
+    throw new ValidationError(
+      'Password must contain at least one number',
+      'password',
+      'PASSWORD_MISSING_NUMBER'
+    );
+  }
+  
+  // Check for special character
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    throw new ValidationError(
+      'Password must contain at least one special character',
+      'password',
+      'PASSWORD_MISSING_SPECIAL'
+    );
+  }
+}
+
+/**
  * Validates string length
  */
 export function validateStringLength(
@@ -181,6 +233,30 @@ export function validateEnum<T extends string>(
  */
 export function sanitizeString(value: string): string {
   return value.trim();
+}
+
+/**
+ * Escapes HTML special characters to prevent XSS attacks
+ * This should be used for user-generated content that will be displayed as HTML
+ */
+export function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#x27;',
+    '/': '&#x2F;',
+  };
+  return text.replace(/[&<>"'/]/g, (char) => map[char]);
+}
+
+/**
+ * Sanitizes user input to prevent XSS and other injection attacks
+ * Trims whitespace and escapes HTML characters
+ */
+export function sanitizeUserInput(value: string): string {
+  return escapeHtml(sanitizeString(value));
 }
 
 /**

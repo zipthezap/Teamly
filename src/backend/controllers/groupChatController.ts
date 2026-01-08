@@ -21,6 +21,7 @@ export const getNotifications = async (req: Request, res: Response) => {
 };
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
+import { sanitizeUserInput } from '../utils/validation';
 import { Request, Response } from 'express';
 
 // Undo Event Attendance (late)
@@ -70,8 +71,12 @@ export const createMessage = async (req: Request, res: Response) => {
   try {
     const { groupId, content } = req.body;
     const userId = req.user.id;
+    
+    // Sanitize content to prevent XSS
+    const sanitizedContent = sanitizeUserInput(content);
+    
     const message = await prisma.groupMessage.create({
-      data: { groupId, userId, content },
+      data: { groupId, userId, content: sanitizedContent },
       include: { user: { select: { id: true, name: true } } }
     });
     res.status(201).json(message);
