@@ -20,6 +20,9 @@ interface RecentActivityTimelineProps {
 type TimeFilter = 'all' | 'today' | 'week' | 'month';
 type ActivityFilter = 'all' | 'events' | 'groups';
 
+const INITIAL_VISIBLE_COUNT = 5;
+const LOAD_MORE_INCREMENT = 5;
+
 const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
   events,
   groups,
@@ -29,7 +32,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
   const [expanded, setExpanded] = React.useState(true);
   const [timeFilter, setTimeFilter] = React.useState<TimeFilter>('all');
   const [activityFilter, setActivityFilter] = React.useState<ActivityFilter>('all');
-  const [visibleCount, setVisibleCount] = React.useState(5);
+  const [visibleCount, setVisibleCount] = React.useState(INITIAL_VISIBLE_COUNT);
 
   const generateActivities = (): Activity[] => {
     const activities: Activity[] = [];
@@ -175,11 +178,11 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
   const hasMore = filteredActivities.length > visibleCount;
 
   const handleLoadMore = () => {
-    setVisibleCount(prev => Math.min(prev + 5, filteredActivities.length));
+    setVisibleCount(prev => Math.min(prev + LOAD_MORE_INCREMENT, filteredActivities.length));
   };
 
   const handleShowLess = () => {
-    setVisibleCount(5);
+    setVisibleCount(INITIAL_VISIBLE_COUNT);
   };
 
   return (
@@ -216,7 +219,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     setTimeFilter(filter);
-                    setVisibleCount(5);
+                    setVisibleCount(INITIAL_VISIBLE_COUNT);
                   }}
                   className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${
                     timeFilter === filter
@@ -240,7 +243,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     setActivityFilter(filter);
-                    setVisibleCount(5);
+                    setVisibleCount(INITIAL_VISIBLE_COUNT);
                   }}
                   className={`px-3 py-1.5 text-xs font-medium rounded-lg transition flex items-center gap-1.5 ${
                     activityFilter === filter
@@ -267,7 +270,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
       )}
 
       <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${expanded ? 'max-h-[800px] mt-4' : 'max-h-0'}`}
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${expanded ? 'max-h-[1200px] mt-4' : 'max-h-0'}`}
         style={{ willChange: 'max-height' }}
         aria-hidden={!expanded}
       >
@@ -318,7 +321,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
           </ul>
           
           {/* Load More / Show Less Buttons */}
-          {filteredActivities.length > 5 && (
+          {filteredActivities.length > INITIAL_VISIBLE_COUNT && (
             <div className="mt-4 flex gap-2 justify-center">
               {hasMore && (
                 <button
@@ -334,7 +337,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
                   Load More ({filteredActivities.length - visibleCount} more)
                 </button>
               )}
-              {visibleCount > 5 && (
+              {visibleCount > INITIAL_VISIBLE_COUNT && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
