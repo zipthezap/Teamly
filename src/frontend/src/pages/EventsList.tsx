@@ -31,7 +31,7 @@ import { eventsAPI } from '../services/api';
 import EventFormModal from '../components/event/EventFormModal';
 import { useAuth } from '../contexts/AuthContext';
 import EventSearchFilters from '../components/event/EventSearchFilters';
-import { LoadingSpinner, EmptyState, StatusBadge } from '../components/common';
+import { LoadingSpinner, EmptyState, StatusBadge, StatusType } from '../components/common';
 
 
 const EventsList = () => {
@@ -124,7 +124,7 @@ const EventsList = () => {
   };
 
   // Get event status
-  const getEventStatus = (event: any) => {
+  const getEventStatus = (event: any): { label: string; status: StatusType } => {
     const now = new Date();
     const eventDate = new Date(event.startTime);
     const isFull = event.maxPlayers && event.participants?.length >= event.maxPlayers;
@@ -235,7 +235,7 @@ const EventsList = () => {
                       </Typography>
                       <Box display="flex" gap={0.5} alignItems="center">
                         <StatusBadge 
-                          status={status.status as any}
+                          status={status.status}
                           label={status.label}
                         />
                         {isAdmin && (
