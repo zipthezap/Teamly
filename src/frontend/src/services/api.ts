@@ -82,6 +82,9 @@ export const eventsAPI = {
   join: (id: string | number) => api.post(`/events/${id}/join`),
   leave: (id: string | number) => api.delete(`/events/${id}/leave`),
   updateStatus: (id: string | number, status: string) => api.put(`/events/${id}/status`, { status }),
+  generateInviteToken: (id: string | number) => api.post(`/events/${id}/generate-invite`),
+  getByInviteToken: (token: string) => axios.get(`${API_BASE_URL}/events/invite/${token}`),
+  joinAsGuest: (token: string, name: string) => axios.post(`${API_BASE_URL}/events/invite/${token}/join`, { name }),
 };
 
 // Two-Factor Authentication API

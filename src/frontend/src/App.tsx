@@ -18,6 +18,7 @@ import PublicGroups from './pages/PublicGroups';
 import TwoFactorSetup from './pages/TwoFactorSetup';
 import EventRequests from './pages/EventRequests';
 import JoinGroup from './pages/JoinGroup';
+import JoinEventByInvite from './pages/JoinEventByInvite';
 import Profile from './pages/Profile';
 import NotificationsCenter from './pages/NotificationsCenter';
 
@@ -32,6 +33,7 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/public-groups" element={<PublicGroups />} />
             <Route path="/groups/join/:groupId" element={<JoinGroup />} />
+            <Route path="/events/join/:token" element={<JoinEventByInvite />} />
             <Route
               path="/dashboard"
               element={
