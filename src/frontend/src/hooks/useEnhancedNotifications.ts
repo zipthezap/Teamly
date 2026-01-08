@@ -27,6 +27,7 @@ export interface Notification {
   read: boolean;
   createdAt: string;
   metadata?: NotificationMetadata;
+  params?: Record<string, any>; // Parameters for translation
   event?: {
     id: string;
     title: string;
@@ -102,7 +103,7 @@ export const useEnhancedNotifications = (options: UseEnhancedNotificationsOption
         // Map notifications to add translated message
         const mappedNotifications = response.data.notifications.map((notif: Notification) => ({
           ...notif,
-          message: t(`notifications.${notif.type}`, notif.metadata || {}),
+          message: t(`notifications.${notif.type}`, notif.params || {}),
         }));
         if (resetOffset) {
           setNotifications(mappedNotifications);
