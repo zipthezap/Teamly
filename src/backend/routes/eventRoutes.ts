@@ -5,6 +5,11 @@ import { authenticatedLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
+// Public routes (no authentication required)
+router.get('/invite/:token', eventController.getEventByInviteToken);
+router.post('/invite/:token/join', eventController.joinEventAsGuest);
+
+// Protected routes (authentication required)
 router.use(authMiddleware);
 router.use(authenticatedLimiter);
 
@@ -13,6 +18,7 @@ router.get('/', eventController.getEvents);
 router.get('/statistics', eventController.getUserStatistics);
 router.get('/:id', eventController.getEvent);
 router.get('/:id/activity', eventController.getEventActivityFeed);
+router.post('/:id/generate-invite', eventController.generateInviteToken);
 router.put('/:id', eventController.updateEvent);
 router.delete('/:id', eventController.deleteEvent);
 router.post('/:id/join', eventController.joinEvent);
