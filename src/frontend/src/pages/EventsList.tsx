@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { Tabs, Tab } from '@mui/material';
 import {
   Container,
   Typography,
@@ -44,6 +45,7 @@ const EventsList = () => {
   const [eventToDelete, setEventToDelete] = useState<any>(null);
   const [visibleCount, setVisibleCount] = useState(12);
   const [events, setEvents] = useState<any[]>([]);
+  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
   const [isLoading, setIsLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState<any>(null);
@@ -160,6 +162,17 @@ const EventsList = () => {
     );
   }
 
+  // Filter events by tab
+  const now = new Date();
+  const filteredEvents = events.filter(event => {
+    const eventDate = new Date(event.startTime);
+    if (tab === 'upcoming') {
+      return eventDate >= now;
+    } else {
+      return eventDate < now;
+    }
+  });
+
   // Main render
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
@@ -193,11 +206,18 @@ const EventsList = () => {
         </Button>
       </Box>
 
+      {/* Tabs for Upcoming/Past */}
+      <Box mb={2}>
+        <Tabs value={tab} onChange={(e, v) => setTab(v)} aria-label="event tabs">
+          <Tab value="upcoming" label={t('events.upcomingEvents') || 'Upcoming Events'} />
+          <Tab value="past" label={t('events.pastEvents') || 'Past Events'} />
+        </Tabs>
+      </Box>
       {/* Filters and Search */}
       <Box mb={3}>
         <EventSearchFilters onSearch={handleSearch} />
       </Box>
-      {events.length === 0 ? (
+      {filteredEvents.length === 0 ? (
         <EmptyState
           icon={<EventIcon />}
           title={Object.keys(searchFilters).length > 0 ? t('events.noEventsMatch') : t('events.noEventsAvailable')}
@@ -208,7 +228,7 @@ const EventsList = () => {
         />
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
-          {events.map((event: any, idx: number) => {
+          {filteredEvents.map((event: any, idx: number) => {
             const status = getEventStatus(event);
             const participantCount = event.participants?.length || 0;
             const spotsLeft = event.maxPlayers ? event.maxPlayers - participantCount : null;
@@ -364,6 +384,7 @@ const EventsList = () => {
         onClose={() => setModalOpen(false)}
         onSuccess={() => fetchEvents()}
         initialData={editEvent}
+        groupId={events.length > 0 ? events[0].groupId : undefined}
       />
 
       {/* Pagination controls */}

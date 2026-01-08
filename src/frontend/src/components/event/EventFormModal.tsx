@@ -29,6 +29,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ open, onClose, initialD
   });
   const [hour, setHour] = useState('');
   const [minute, setMinute] = useState('');
+  const [endHour, setEndHour] = useState('');
+  const [endMinute, setEndMinute] = useState('');
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -48,12 +50,22 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ open, onClose, initialD
         setHour('');
         setMinute('');
       }
+      if (initialData.endTime) {
+        const endDate = new Date(initialData.endTime);
+        setEndHour(endDate.getHours().toString().padStart(2, '0'));
+        setEndMinute(endDate.getMinutes().toString().padStart(2, '0'));
+      } else {
+        setEndHour('');
+        setEndMinute('');
+      }
     } else {
       setForm({
         title: '', eventType: '', location: '', maxPlayers: '', description: ''
       });
       setHour('');
       setMinute('');
+      setEndHour('');
+      setEndMinute('');
     }
   }, [initialData, open]);
 
@@ -85,10 +97,23 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ open, onClose, initialD
     setMinute(e.target.value);
   };
 
+  const handleEndHourChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEndHour(e.target.value);
+    if (!endMinute) setEndMinute('00');
+  };
+
+  const handleEndMinuteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEndMinute(e.target.value);
+  };
+
+  const [formError, setFormError] = useState<string | null>(null);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Compose startTime from today + selected hour/minute
+    setFormError(null);
+    // Compose startTime and endTime from today + selected hour/minute
     let startTime = '';
+    let endTime = '';
     if (hour && minute) {
       const now = new Date();
       const year = now.getFullYear();
@@ -96,9 +121,30 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ open, onClose, initialD
       const day = String(now.getDate()).padStart(2, '0');
       startTime = `${year}-${month}-${day}T${hour}:${minute}`;
     }
+    if (endHour && endMinute) {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      endTime = `${year}-${month}-${day}T${endHour}:${endMinute}`;
+    }
+    // Validation: endTime must be after startTime and same day
+    if (startTime && endTime) {
+      const startDate = new Date(startTime);
+      const endDate = new Date(endTime);
+      if (startDate.toDateString() !== endDate.toDateString()) {
+        setFormError('Start and end times must be on the same day.');
+        return;
+      }
+      if (endDate <= startDate) {
+        setFormError('End time must be after start time.');
+        return;
+      }
+    }
     mutation.mutate({
       ...form,
       startTime,
+      endTime: endTime || undefined,
       maxPlayers: form.maxPlayers ? Number(form.maxPlayers) : undefined,
     });
   };
@@ -108,6 +154,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ open, onClose, initialD
       <form onSubmit={handleSubmit}>
         <DialogTitle>{initialData ? 'Edit Event' : 'Create Event'}</DialogTitle>
         <DialogContent>
+          {formError && (
+            <div style={{ color: 'red', marginBottom: 8 }}>{formError}</div>
+          )}
           <Stack spacing={2} mt={1}>
             <TextField
               label="Title"
@@ -148,7 +197,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ open, onClose, initialD
                 sx={{ minWidth: 100 }}
               >
                 {[...Array(24)].map((_, i) => {
-                  const val = String(i + 1).padStart(2, '0');
+                  const val = String(i).padStart(2, '0');
                   return <MenuItem key={val} value={val}>{val}</MenuItem>;
                 })}
               </TextField>
@@ -159,6 +208,34 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ open, onClose, initialD
                 value={minute}
                 onChange={handleMinuteChange}
                 required
+                sx={{ minWidth: 100 }}
+              >
+                {['00', '15', '30', '45'].map((m) => (
+                  <MenuItem key={m} value={m}>{m}</MenuItem>
+                ))}
+              </TextField>
+            </Stack>
+            {/* End Time (optional) */}
+            <Stack direction="row" spacing={2} alignItems="center">
+              <TextField
+                select
+                label="End Hour (optional)"
+                name="endHour"
+                value={endHour}
+                onChange={handleEndHourChange}
+                sx={{ minWidth: 100 }}
+              >
+                {[...Array(24)].map((_, i) => {
+                  const val = String(i).padStart(2, '0');
+                  return <MenuItem key={val} value={val}>{val}</MenuItem>;
+                })}
+              </TextField>
+              <TextField
+                select
+                label="End Minute (optional)"
+                name="endMinute"
+                value={endMinute}
+                onChange={handleEndMinuteChange}
                 sx={{ minWidth: 100 }}
               >
                 {['00', '15', '30', '45'].map((m) => (

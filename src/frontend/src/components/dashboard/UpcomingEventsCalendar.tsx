@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 // Removed all MUI imports; using Tailwind and SVGs
 
 interface Event {
@@ -31,6 +32,7 @@ const UpcomingEventsCalendar: React.FC<UpcomingEventsCalendarProps> = ({ events,
     return colors[eventType] || colors.Other;
   };
 
+  const { t } = useTranslation();
   const getDayInfo = (dateString: string) => {
     const date = new Date(dateString);
     const today = new Date();
@@ -38,15 +40,15 @@ const UpcomingEventsCalendar: React.FC<UpcomingEventsCalendarProps> = ({ events,
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     if (date.toDateString() === today.toDateString()) {
-      return { label: 'Today', color: 'success' as const };
+      return { label: t('dashboard.today', 'Today'), color: 'success' as const };
     } else if (date.toDateString() === tomorrow.toDateString()) {
-      return { label: 'Tomorrow', color: 'info' as const };
+      return { label: t('dashboard.tomorrow', 'Tomorrow'), color: 'info' as const };
     } else {
       const daysUntil = Math.ceil((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       if (daysUntil <= 7) {
-        return { label: date.toLocaleDateString('en-US', { weekday: 'short' }), color: 'default' as const };
+        return { label: date.toLocaleDateString(), color: 'default' as const };
       }
-      return { label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), color: 'default' as const };
+      return { label: date.toLocaleDateString(), color: 'default' as const };
     }
   };
 
@@ -62,7 +64,7 @@ const UpcomingEventsCalendar: React.FC<UpcomingEventsCalendarProps> = ({ events,
         <div className="bg-blue-600 rounded-full w-9 h-9 flex items-center justify-center">
           <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
         </div>
-        <div className="text-lg font-semibold flex-1">Upcoming Schedule</div>
+        <div className="text-lg font-semibold flex-1">{t('dashboard.upcomingSchedule', 'Upcoming Schedule')}</div>
         <button className="focus:outline-none" onClick={() => setOpen((v) => !v)} aria-label={open ? 'Collapse' : 'Expand'}>
           {open ? (
             <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" /></svg>
@@ -77,7 +79,7 @@ const UpcomingEventsCalendar: React.FC<UpcomingEventsCalendarProps> = ({ events,
         aria-hidden={!open}
       >
         {upcomingEvents.length === 0 ? (
-          <div className="text-center py-8 text-sm text-gray-400">No upcoming events scheduled</div>
+          <div className="text-center py-8 text-sm text-gray-400">{t('dashboard.noUpcomingEvents', 'No upcoming events scheduled')}</div>
         ) : (
           <ul className="divide-y divide-[#232946]">
             {upcomingEvents.map((event, index) => {
@@ -109,7 +111,7 @@ const UpcomingEventsCalendar: React.FC<UpcomingEventsCalendarProps> = ({ events,
                   <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-400">
                     <span>👥 {participantCount}{event.maxPlayers ? ` / ${event.maxPlayers}` : ''}</span>
                     {isFull && (
-                      <span className="px-2 py-0.5 rounded bg-yellow-500 text-white text-xs font-semibold">Full</span>
+                      <span className="px-2 py-0.5 rounded bg-yellow-500 text-white text-xs font-semibold">{t('common.full', 'Full')}</span>
                     )}
                   </div>
                 </div>

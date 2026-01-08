@@ -94,6 +94,8 @@
     "joinEvent": "Join Event",
     "eventFound": "event found",
     "eventsFound": "events found",
+    "upcoming": "Upcoming",
+    "pastEvents": "Past Events",
     "spotsLeft": "{{count}} spot left",
     "spotsLeft_plural": "{{count}} spots left",
     "createEvent": "Create Event",

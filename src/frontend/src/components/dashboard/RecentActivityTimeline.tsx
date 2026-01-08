@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 // Removed all MUI imports; using Tailwind and SVGs
 
 interface Activity {
@@ -33,6 +34,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
   const [timeFilter, setTimeFilter] = React.useState<TimeFilter>('all');
   const [activityFilter, setActivityFilter] = React.useState<ActivityFilter>('all');
   const [visibleCount, setVisibleCount] = React.useState(INITIAL_VISIBLE_COUNT);
+  const { t } = useTranslation();
 
   const generateActivities = (): Activity[] => {
     const activities: Activity[] = [];
@@ -44,7 +46,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
         activities.push({
           id: event.id,
           type: 'event_created',
-          title: `Created event "${event.title}"`,
+          title: t('dashboard.activity.createdEvent', { title: event.title }),
           timestamp: event.createdAt || event.startTime,
           relatedEntityName: event.group?.name,
           relatedEntityType: event.eventType,
@@ -57,7 +59,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
         activities.push({
           id: event.id,
           type: 'event_joined',
-          title: `Joined event "${event.title}"`,
+          title: t('dashboard.activity.joinedEvent', { title: event.title }),
           timestamp: userParticipation.joinedAt,
           relatedEntityName: event.group?.name,
           relatedEntityType: event.eventType,
@@ -72,7 +74,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
         activities.push({
           id: group.id,
           type: 'group_created',
-          title: `Created group "${group.name}"`,
+          title: t('dashboard.activity.createdGroup', { name: group.name }),
           timestamp: group.createdAt || new Date().toISOString(),
           relatedEntityName: `${group.members?.length || 0} members`,
           relatedEntityType: group.isPublic ? 'Public' : 'Private',
@@ -81,7 +83,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
         activities.push({
           id: group.id,
           type: 'group_joined',
-          title: `Joined group "${group.name}"`,
+          title: t('dashboard.activity.joinedGroup', { name: group.name }),
           timestamp: group.createdAt || new Date().toISOString(),
           relatedEntityName: `${group.members?.length || 0} members`,
           relatedEntityType: group.isPublic ? 'Public' : 'Private',
@@ -165,11 +167,11 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
     const then = new Date(timestamp);
     const diffInSeconds = Math.floor((now.getTime() - then.getTime()) / 1000);
 
-    if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
-    return then.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    if (diffInSeconds < 60) return t('dashboard.activity.justNow', 'Just now');
+    if (diffInSeconds < 3600) return t('dashboard.activity.minutesAgo', { count: Math.floor(diffInSeconds / 60) });
+    if (diffInSeconds < 86400) return t('dashboard.activity.hoursAgo', { count: Math.floor(diffInSeconds / 3600) });
+    if (diffInSeconds < 604800) return t('dashboard.activity.daysAgo', { count: Math.floor(diffInSeconds / 86400) });
+    return then.toLocaleDateString();
   };
 
   const activities = generateActivities();
@@ -193,8 +195,8 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 17l6-6 4 4 6-6" /></svg>
           </div>
           <div>
-            <div className="text-lg font-semibold">Recent Activity</div>
-            <div className="text-xs text-gray-400">{filteredActivities.length} {filteredActivities.length === 1 ? 'activity' : 'activities'}</div>
+            <div className="text-lg font-semibold">{t('dashboard.recentActivity', 'Recent Activity')}</div>
+            <div className="text-xs text-gray-400">{filteredActivities.length} {filteredActivities.length === 1 ? t('dashboard.activity.activity', 'activity') : t('dashboard.activity.activities', 'activities')}</div>
           </div>
         </div>
         <button className="focus:outline-none">
@@ -211,7 +213,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
         <div className="mt-4 space-y-3">
           {/* Time Filter */}
           <div>
-            <label className="text-xs font-medium text-gray-400 mb-1.5 block">Time Range</label>
+            <label className="text-xs font-medium text-gray-400 mb-1.5 block">{t('dashboard.timeRange', 'Time Range')}</label>
             <div className="flex gap-2 flex-wrap">
               {(['all', 'today', 'week', 'month'] as TimeFilter[]).map((filter) => (
                 <button
@@ -227,7 +229,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
                       : 'bg-[#232946] text-gray-300 hover:bg-[#2a3350]'
                   }`}
                 >
-                  {filter === 'all' ? 'All Time' : filter === 'today' ? 'Today' : filter === 'week' ? 'This Week' : 'This Month'}
+                  {filter === 'all' ? t('dashboard.allTime', 'All Time') : filter === 'today' ? t('dashboard.today', 'Today') : filter === 'week' ? t('dashboard.thisWeek', 'This Week') : t('dashboard.thisMonth', 'This Month')}
                 </button>
               ))}
             </div>
@@ -235,7 +237,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
 
           {/* Activity Type Filter */}
           <div>
-            <label className="text-xs font-medium text-gray-400 mb-1.5 block">Activity Type</label>
+            <label className="text-xs font-medium text-gray-400 mb-1.5 block">{t('dashboard.activityType', 'Activity Type')}</label>
             <div className="flex gap-2 flex-wrap">
               {(['all', 'events', 'groups'] as ActivityFilter[]).map((filter) => (
                 <button
@@ -261,7 +263,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
                       <path d="M17 21v-2a4 4 0 0 0-8 0v2" /><circle cx="12" cy="7" r="4" />
                     </svg>
                   )}
-                  {filter === 'all' ? 'All Types' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                  {filter === 'all' ? t('dashboard.allTypes', 'All Types') : filter === 'events' ? t('events.events', 'Events') : t('groups.groups', 'Groups')}
                 </button>
               ))}
             </div>
@@ -279,8 +281,8 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
             <svg className="w-12 h-12 text-gray-500 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
               <path d="M3 12h18M12 3v18" strokeLinecap="round" />
             </svg>
-            <div className="text-sm text-gray-400">No activity found</div>
-            <div className="text-xs text-gray-500 mt-1">Try adjusting your filters</div>
+            <div className="text-sm text-gray-400">{t('dashboard.activity.noActivity', 'No activity found')}</div>
+            <div className="text-xs text-gray-500 mt-1">{t('dashboard.activity.tryAdjustingFilters', 'Try adjusting your filters')}</div>
           </div>
         ) : (
           <>
@@ -334,7 +336,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path d="M19 9l-7 7-7-7" />
                   </svg>
-                  Load More ({filteredActivities.length - visibleCount} more)
+                  {t('dashboard.loadMore', 'Load More')} ({filteredActivities.length - visibleCount} {t('dashboard.activity.more', 'more')})
                 </button>
               )}
               {visibleCount > INITIAL_VISIBLE_COUNT && (
@@ -348,7 +350,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path d="M5 15l7-7 7 7" />
                   </svg>
-                  Show Less
+                  {t('dashboard.activity.showLess', 'Show Less')}
                 </button>
               )}
             </div>

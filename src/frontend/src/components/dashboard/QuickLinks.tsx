@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 // Removed all MUI imports; using Tailwind and SVGs
 import { 
   GridIcon, 
@@ -15,27 +16,28 @@ interface QuickLinksProps {
 }
 
 const QuickLinks: React.FC<QuickLinksProps> = ({ onNavigate }) => {
+  const { t } = useTranslation();
   const links = [
     {
-      label: 'My Groups',
+      label: t('dashboard.myGroups', 'My Groups'),
       icon: <UsersIcon className="w-5 h-5 text-white" />,
       path: '/groups',
       color: 'bg-blue-500',
     },
     {
-      label: 'All Events',
+      label: t('dashboard.allEvents', 'All Events'),
       icon: <CalendarIcon className="w-5 h-5 text-white" />,
       path: '/events',
       color: 'bg-pink-500',
     },
     {
-      label: 'Discover Groups',
+      label: t('dashboard.discoverGroups', 'Discover Groups'),
       icon: <GlobeIcon className="w-5 h-5 text-white" />,
       path: '/public-groups',
       color: 'bg-green-500',
     },
     {
-      label: 'My Profile',
+      label: t('dashboard.myProfile', 'My Profile'),
       icon: <UserIcon className="w-5 h-5 text-white" />,
       path: '/profile',
       color: 'bg-yellow-500',
@@ -50,7 +52,7 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ onNavigate }) => {
           {/* Grid icon for Quick Links */}
           <GridIcon className="w-6 h-6 text-white" />
         </div>
-        <div className="text-lg font-semibold flex-1">Quick Links</div>
+        <div className="text-lg font-semibold flex-1">{t('dashboard.quickLinks', 'Quick Links')}</div>
         <button className="focus:outline-none" onClick={() => setOpen((v) => !v)} aria-label={open ? 'Collapse' : 'Expand'}>
           {open ? (
             <ChevronUpIcon className="w-5 h-5 text-gray-400" />
