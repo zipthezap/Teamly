@@ -97,6 +97,10 @@ export const createGroup = async (req: Request, res: Response) => {
             groupId: group.id,
             userId,
             type: 'nearby_created',
+            params: {
+              groupName: group.name,
+              name: req.user.name
+            }
           }
         })
       ));
@@ -535,6 +539,10 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
           groupId: id,
           userId: admin.userId,
           type: 'join_request',
+          params: {
+            groupName: joinRequest.group.name,
+            name: req.user.name
+          }
         }
       })
     ));
@@ -640,14 +648,26 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
         }
       });
 
-      // Create notification for the user who was accepted
-      await prisma.groupNotification.create({
-        data: {
-          groupId: id,
-          userId: joinRequest.userId,
-          type: 'accepted'
-        }
+      // Get group name for notification
+      const groupInfo = await prisma.group.findUnique({
+        where: { id },
+        select: { name: true }
       });
+
+      // Create notification for the user who was accepted
+      if (groupInfo) {
+        await prisma.groupNotification.create({
+          data: {
+            groupId: id,
+            userId: joinRequest.userId,
+            type: 'accepted',
+            params: {
+              groupName: groupInfo.name,
+              name: req.user.name
+            }
+          }
+        });
+      }
     }
 
     res.json({ 

@@ -117,13 +117,25 @@ export const markLate = async (req: Request, res: Response) => {
     });
 
     // Log 'late' activity for the acting user
-    await prisma.eventNotification.create({
-      data: {
-        eventId,
-        userId,
-        type: 'late'
-      }
+    // Get event details
+    const eventDetails = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: { title: true }
     });
+
+    if (eventDetails) {
+      await prisma.eventNotification.create({
+        data: {
+          eventId,
+          userId,
+          type: 'late',
+          params: {
+            name: req.user.name,
+            eventTitle: eventDetails.title
+          }
+        }
+      });
+    }
 
     res.json(attendance);
   } catch (e) {
