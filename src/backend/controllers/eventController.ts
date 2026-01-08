@@ -1119,6 +1119,9 @@ export const getEventActivityFeed = async (req: Request, res: Response) => {
 };
 
 // Get event by invite token (no authentication required)
+// Note: This endpoint allows access to both public AND private events via invite token.
+// This is intentional - private events with invite tokens are shared privately via the link,
+// which provides controlled access without making the event publicly discoverable.
 export const getEventByInviteToken = async (req: Request, res: Response) => {
   try {
     const { token } = req.params;
@@ -1126,7 +1129,8 @@ export const getEventByInviteToken = async (req: Request, res: Response) => {
     const event = await prisma.event.findFirst({
       where: {
         inviteToken: token
-        // Removed isPublic check - allow access to both public and private events via invite link
+        // Both public and private events can be accessed via valid invite token
+        // Private events remain unlisted but accessible to those with the link
       },
       include: {
         creator: {

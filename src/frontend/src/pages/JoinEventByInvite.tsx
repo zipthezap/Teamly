@@ -94,7 +94,15 @@ const JoinEventByInvite = () => {
         navigate(`/events/${event.id}`);
       }, 1500);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to join event. You may need to be a group member.');
+      const errorMsg = err.response?.data?.error || 'Failed to join event';
+      // Provide specific error messages
+      if (errorMsg.includes('full')) {
+        setError('This event is currently full. Please check back later.');
+      } else if (errorMsg.includes('already joined')) {
+        setError('You have already joined this event!');
+      } else {
+        setError(`${errorMsg}. Note: You must be a member of the event's group to join.`);
+      }
       setJoining(false);
     }
   };
@@ -132,7 +140,7 @@ const JoinEventByInvite = () => {
 
   const isFull = event.maxPlayers && totalParticipants >= event.maxPlayers;
 
-  // Check if user is already a participant
+  // Check if user is already a participant (done efficiently with some())
   const isAlreadyParticipant = user && event.participants?.some((p: any) => p.userId === user.id);
 
   const getInitials = (name?: string) => {
