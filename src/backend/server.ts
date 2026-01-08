@@ -46,8 +46,16 @@ app.use(helmet({
   },
 }));
 
-// Middleware
-app.use(cors());
+// Middleware - CORS configuration
+// In production, specify exact origins instead of allowing all
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? process.env.FRONTEND_URL || 'http://localhost:3001'
+    : '*',
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
 
 // Security: Limit request body size to prevent DoS attacks
 app.use(express.json({ limit: '10mb' }));

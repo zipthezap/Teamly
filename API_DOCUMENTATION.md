@@ -84,6 +84,95 @@ Get the current user's profile. Requires authentication.
 }
 ```
 
+#### PUT /auth/profile
+Update the current user's profile. Requires authentication.
+
+**Request Body:**
+```json
+{
+  "name": "John Smith",
+  "email": "john.smith@example.com",
+  "city": "New York",
+  "country": "USA"
+}
+```
+
+**Response (200):**
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "john.smith@example.com",
+    "name": "John Smith",
+    "city": "New York",
+    "country": "USA",
+    "createdAt": "2024-01-01T00:00:00Z"
+  }
+}
+```
+
+#### PUT /auth/password
+Update the current user's password. Requires authentication.
+
+**Request Body:**
+```json
+{
+  "currentPassword": "oldpassword",
+  "newPassword": "newSecurePassword123!"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Password updated successfully"
+}
+```
+
+#### POST /auth/forgot-password
+Request a password reset email. Rate limited to 5 requests per 15 minutes.
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "If an account with that email exists, a password reset link has been sent."
+}
+```
+
+**Note:** For security reasons, the response is the same whether or not the email exists.
+
+#### POST /auth/reset-password
+Reset password using a token received via email. Rate limited to 5 requests per 15 minutes.
+
+**Request Body:**
+```json
+{
+  "token": "reset-token-from-email",
+  "newPassword": "newSecurePassword123!"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Password has been reset successfully"
+}
+```
+
+**Error (400):**
+```json
+{
+  "error": "Invalid or expired reset token"
+}
+```
+
 ---
 
 ### Group Endpoints
