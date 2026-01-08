@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
 import prisma from '../config/database';
+import { ACCOUNT_LOCKOUT, PASSWORD_RESET } from '../config/security';
 import { generateToken } from '../utils/jwt';
 import { validate2FAToken } from './twoFactorController';
 import { logger } from '../utils/logger';
@@ -112,16 +113,14 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     if (!isValidPassword) {
       // Increment failed login attempts
       const newFailedAttempts = user.failedLoginAttempts + 1;
-      const MAX_FAILED_ATTEMPTS = 5;
-      const LOCK_DURATION_MINUTES = 15;
       
       let updateData: { failedLoginAttempts: number; accountLockedUntil?: Date } = {
         failedLoginAttempts: newFailedAttempts
       };
 
       // Lock account after max attempts
-      if (newFailedAttempts >= MAX_FAILED_ATTEMPTS) {
-        updateData.accountLockedUntil = new Date(Date.now() + LOCK_DURATION_MINUTES * 60000);
+      if (newFailedAttempts >= ACCOUNT_LOCKOUT.MAX_ATTEMPTS) {
+        updateData.accountLockedUntil = new Date(Date.now() + ACCOUNT_LOCKOUT.LOCK_DURATION_MINUTES * 60000);
         logger.warn('Account locked due to failed login attempts', 'AuthController', { 
           userId: user.id, 
           email: sanitizedEmail 
@@ -134,8 +133,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       });
 
       res.status(401).json({ 
-        error: newFailedAttempts >= MAX_FAILED_ATTEMPTS 
-          ? `Account locked for ${LOCK_DURATION_MINUTES} minutes due to too many failed attempts` 
+        error: newFailedAttempts >= ACCOUNT_LOCKOUT.MAX_ATTEMPTS 
+          ? `Account locked for ${ACCOUNT_LOCKOUT.LOCK_DURATION_MINUTES} minutes due to too many failed attempts` 
           : 'Invalid credentials' 
       });
       return;
@@ -329,8 +328,8 @@ export const requestPasswordReset = async (req: Request, res: Response): Promise
     const resetToken = crypto.randomBytes(32).toString('hex');
     const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
 
-    // Token expires in 1 hour
-    const expiresAt = new Date(Date.now() + 3600000);
+    // Token expires based on configuration (default: 1 hour)
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET.TOKEN_EXPIRY_HOURS * 3600000);
 
     await prisma.user.update({
       where: { id: user.id },

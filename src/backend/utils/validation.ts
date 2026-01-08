@@ -60,6 +60,16 @@ export function validatePassword(password: string, minLength: number = 6): void 
 }
 
 /**
+ * Password validation constants
+ */
+const PASSWORD_REGEX = {
+  UPPERCASE: /[A-Z]/,
+  LOWERCASE: /[a-z]/,
+  NUMBER: /[0-9]/,
+  SPECIAL_CHAR: /[!@#$%^&*()_+=\[\]{};':"\\|,.<>\/?-]/,
+};
+
+/**
  * Validates password with strong requirements
  * Requires at least 8 characters, uppercase, lowercase, number, and special character
  */
@@ -75,7 +85,7 @@ export function validateStrongPassword(password: string): void {
   }
   
   // Check for uppercase letter
-  if (!/[A-Z]/.test(password)) {
+  if (!PASSWORD_REGEX.UPPERCASE.test(password)) {
     throw new ValidationError(
       'Password must contain at least one uppercase letter',
       'password',
@@ -84,7 +94,7 @@ export function validateStrongPassword(password: string): void {
   }
   
   // Check for lowercase letter
-  if (!/[a-z]/.test(password)) {
+  if (!PASSWORD_REGEX.LOWERCASE.test(password)) {
     throw new ValidationError(
       'Password must contain at least one lowercase letter',
       'password',
@@ -93,7 +103,7 @@ export function validateStrongPassword(password: string): void {
   }
   
   // Check for number
-  if (!/[0-9]/.test(password)) {
+  if (!PASSWORD_REGEX.NUMBER.test(password)) {
     throw new ValidationError(
       'Password must contain at least one number',
       'password',
@@ -102,7 +112,7 @@ export function validateStrongPassword(password: string): void {
   }
   
   // Check for special character
-  if (!/[!@#$%^&*()_+=\[\]{};':"\\|,.<>\/?-]/.test(password)) {
+  if (!PASSWORD_REGEX.SPECIAL_CHAR.test(password)) {
     throw new ValidationError(
       'Password must contain at least one special character',
       'password',
