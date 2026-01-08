@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import express, { Request, Response, NextFunction, Application } from 'express';
+import express, { Request, Response, Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 
@@ -16,18 +16,33 @@ import notificationRoutes from './routes/notificationRoutes';
 import { apiLimiter } from './middleware/rateLimiter';
 import { logger } from './utils/logger';
 import { validateEnvironmentOrThrow } from './utils/envValidator';
+import { config, logConfig } from './config/appConfig';
+import { requestContext, performanceMonitor } from './middleware/requestContext';
+import { sanitizeInput } from './middleware/sanitizeInput';
+import { errorHandler } from './middleware/errorHandler';
+import { checkDatabaseHealth, setupGracefulShutdown } from './utils/databaseHealth';
 
 // Validate environment variables before starting the server
 try {
   validateEnvironmentOrThrow();
   logger.info('Environment validation successful', 'Server');
+  
+  // Log application configuration
+  logConfig();
 } catch (error) {
   logger.error('Environment validation failed', 'Server', { error });
   process.exit(1);
 }
 
+// Setup graceful shutdown handlers
+setupGracefulShutdown();
+
 const app: Application = express();
-const PORT = process.env.PORT || 3000;
+const PORT = config.port;
+
+// Add request context and performance monitoring
+app.use(requestContext);
+app.use(performanceMonitor(config.slowRequestThresholdMs));
 
 // Security: Add helmet for security headers
 app.use(helmet({
@@ -47,19 +62,19 @@ app.use(helmet({
 }));
 
 // Middleware - CORS configuration
-// In production, specify exact origins instead of allowing all
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? process.env.FRONTEND_URL || 'http://localhost:3001'
-    : '*',
+  origin: config.corsOrigin,
   credentials: true,
   optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
 
 // Security: Limit request body size to prevent DoS attacks
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: config.requestBodySizeLimit }));
+app.use(express.urlencoded({ extended: true, limit: config.requestBodySizeLimit }));
+
+// Sanitize all incoming data to prevent XSS
+app.use(sanitizeInput);
 
 // Apply rate limiting to all API routes
 app.use('/api/', apiLimiter);
@@ -76,23 +91,29 @@ app.use('/api/chat', groupChatRoutes);
 app.use('/api/notification-preferences', notificationPreferenceRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-// Health check
-app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', message: 'Teamly API is running' });
+// Health check with database connectivity check
+app.get('/health', async (_req: Request, res: Response) => {
+  const dbHealthy = await checkDatabaseHealth();
+  
+  if (dbHealthy) {
+    res.json({ 
+      status: 'ok', 
+      message: 'Teamly API is running',
+      database: 'connected',
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    res.status(503).json({ 
+      status: 'error', 
+      message: 'Database connection failed',
+      database: 'disconnected',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
-// Error handling middleware
-app.use((err: Error & { status?: number }, req: Request, res: Response, _next: NextFunction) => {
-  logger.error('Unhandled error', 'ErrorMiddleware', {
-    error: err.message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-    path: req.path,
-    method: req.method
-  });
-  res.status(err.status || 500).json({
-    error: err.message || 'Internal server error'
-  });
-});
+// Use centralized error handling middleware
+app.use(errorHandler);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {
