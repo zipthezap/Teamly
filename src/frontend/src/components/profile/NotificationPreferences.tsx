@@ -48,7 +48,7 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
   return (
     <Paper sx={{ p: 4 }}>
       <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-        Email Notification Preferences
+        {t('notifications.emailNotificationPreferences')}
       </Typography>
       
       <Box sx={{ mb: 3 }}>
@@ -63,10 +63,10 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
           label={
             <Box>
               <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                Mute All Notifications
+                {t('notifications.muteAllNotifications')}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Stop receiving all email notifications
+                {t('notifications.stopReceivingEmails')}
               </Typography>
             </Box>
           }
@@ -77,7 +77,7 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
 
       <Box sx={{ opacity: allNotificationsMuted ? 0.5 : 1, pointerEvents: allNotificationsMuted ? 'none' : 'auto' }}>
         <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
-          Notification Types
+          {t('notifications.notificationTypes')}
         </Typography>
         <FormGroup>
           <FormControlLabel
@@ -88,7 +88,7 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
                 disabled={allNotificationsMuted}
               />
             }
-            label={t('notificationPreferences.eventInvites')}
+            label={t('common.notificationPreferences.eventInvites')}
           />
           <FormControlLabel
             control={
@@ -98,7 +98,7 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
                 disabled={allNotificationsMuted}
               />
             }
-            label={t('notificationPreferences.eventReminders')}
+            label={t('common.notificationPreferences.eventReminders')}
           />
           <FormControlLabel
             control={
@@ -108,7 +108,7 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
                 disabled={allNotificationsMuted}
               />
             }
-            label={t('notificationPreferences.eventUpdates')}
+            label={t('common.notificationPreferences.eventUpdates')}
           />
           <FormControlLabel
             control={
@@ -118,7 +118,7 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
                 disabled={allNotificationsMuted}
               />
             }
-            label={t('notificationPreferences.eventCancellations')}
+            label={t('common.notificationPreferences.eventCancellations')}
           />
           <FormControlLabel
             control={
@@ -128,7 +128,7 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
                 disabled={allNotificationsMuted}
               />
             }
-            label={t('notificationPreferences.groupInvites')}
+            label={t('common.notificationPreferences.groupInvites')}
           />
           <FormControlLabel
             control={
@@ -138,7 +138,7 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
                 disabled={allNotificationsMuted}
               />
             }
-            label={t('notificationPreferences.commentMentions')}
+            label={t('common.notificationPreferences.commentMentions')}
           />
         </FormGroup>
       </Box>

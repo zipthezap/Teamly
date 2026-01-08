@@ -32,8 +32,6 @@
     "joined": "Joined",
     "open": "Open",
     "past": "Past",
-    "prev": "Previous",
-    "next": "Next",
     "retry": "Retry",
     "errorLoadingEvents": "Failed to load events",
     "notificationPreferences": {
@@ -45,6 +43,34 @@
       "groupInvites": "Group Invitations",
       "commentMentions": "Comment Mentions (@mentions)"
     }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark all read",
+    "viewAll": "View All",
+    "noNotifications": "No notifications",
+    "events": "Events",
+    "groups": "Groups",
+    "unread": "Unread",
+    "all": "All",
+    "searchPlaceholder": "Search notifications...",
+    "allTypes": "All Types",
+    "type": "Type",
+    "new": "New",
+    "justNow": "Just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago",
+    "showing": "Showing {{count}} of {{total}} notifications",
+    "loadMore": "Load More",
+    "loading": "Loading...",
+    "noNotificationsFound": "No notifications found",
+    "eventNotifications": "Event Notifications",
+    "groupNotifications": "Group Notifications",
+    "emailNotificationPreferences": "Email Notification Preferences",
+    "muteAllNotifications": "Mute All Notifications",
+    "stopReceivingEmails": "Stop receiving all email notifications",
+    "notificationTypes": "Notification Types"
   },
   "auth": {
     "loginTitle": "Sign in to Teamly",
@@ -296,6 +322,7 @@
     }
   },
   "groupDetails": {
+    "joinRequests": "Join Requests",
     "inviteLinkCopied": "Invite link copied to clipboard!",
     "memberInvited": "Member invited successfully",
     "failedToInvite": "Failed to invite member",
@@ -375,14 +402,6 @@
     "failedToUpdatePassword": "Failed to update password",
     "passwordMinLength": "Password must be at least 6 characters",
     "infoTitle": "Profile Information",
-    "notificationPreferences": "Notification Preferences",
-    "muteAllNotifications": "Mute all email notifications",
-    "eventInvites": "Event Invites",
-    "eventReminders": "Event Reminders",
-    "eventUpdates": "Event Updates",
-    "eventCancellations": "Event Cancellations",
-    "groupInvites": "Group Invites",
-    "commentMentions": "Comment Mentions",
     "preferencesUpdated": "Preferences updated successfully",
     "failedToUpdatePreferences": "Failed to update preferences"
   },
