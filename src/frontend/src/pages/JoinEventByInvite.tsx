@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { eventsAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import { 
   Container, 
   Paper, 
@@ -11,18 +12,28 @@ import {
   Alert,
   CircularProgress,
   Chip,
-  Grid
+  Grid,
+  Card,
+  CardContent,
+  Divider,
+  Avatar,
+  AvatarGroup
 } from '@mui/material';
 import { 
   CalendarToday, 
   LocationOn, 
   People,
-  SportsSoccer 
+  SportsSoccer,
+  CheckCircle,
+  Group,
+  Person,
+  AccessTime
 } from '@mui/icons-material';
 
 const JoinEventByInvite = () => {
   const { token } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
@@ -70,6 +81,24 @@ const JoinEventByInvite = () => {
     }
   };
 
+  const handleAuthenticatedJoin = async () => {
+    setJoining(true);
+    setError('');
+    
+    try {
+      // Join as authenticated user
+      await eventsAPI.join(event.id);
+      setSuccess('Successfully joined the event! Redirecting to event details...');
+      // Redirect to event details after a short delay
+      setTimeout(() => {
+        navigate(`/events/${event.id}`);
+      }, 1500);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to join event. You may need to be a group member.');
+      setJoining(false);
+    }
+  };
+
   if (loading) {
     return (
       <Container maxWidth="md" sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
@@ -103,139 +132,274 @@ const JoinEventByInvite = () => {
 
   const isFull = event.maxPlayers && totalParticipants >= event.maxPlayers;
 
+  // Check if user is already a participant
+  const isAlreadyParticipant = user && event.participants?.some((p: any) => p.userId === user.id);
+
+  const getInitials = (name?: string) => {
+    if (!name) return '?';
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          You're Invited to Join
-        </Typography>
-        
-        <Typography variant="h5" color="primary" sx={{ mb: 3 }}>
-          {event.title}
-        </Typography>
+      {/* Hero Section */}
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          p: 4,
+          mb: 3,
+          borderRadius: 2
+        }}
+      >
+        <Box sx={{ textAlign: 'center' }}>
+          <SportsSoccer sx={{ fontSize: 60, mb: 2, opacity: 0.9 }} />
+          <Typography variant="h4" gutterBottom fontWeight="bold">
+            You're Invited! 🎉
+          </Typography>
+          <Typography variant="h5" sx={{ mb: 1 }}>
+            {event.title}
+          </Typography>
+          <Chip 
+            icon={<Group />} 
+            label={event.group?.name || 'Group Event'} 
+            sx={{ 
+              bgcolor: 'rgba(255,255,255,0.2)', 
+              color: 'white',
+              fontWeight: 'bold'
+            }} 
+          />
+        </Box>
+      </Paper>
 
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <SportsSoccer sx={{ mr: 1, color: 'text.secondary' }} />
-              <Typography variant="body1">
-                <strong>Type:</strong> {event.eventType}
-              </Typography>
-            </Box>
-          </Grid>
-          
-          <Grid item xs={12}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <CalendarToday sx={{ mr: 1, color: 'text.secondary' }} />
-              <Typography variant="body1">
-                <strong>Start:</strong> {new Date(event.startTime).toLocaleString()}
-              </Typography>
-            </Box>
-          </Grid>
+      {/* Event Details Card */}
+      <Card elevation={3} sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <CalendarToday color="primary" />
+            Event Details
+          </Typography>
 
-          {event.endTime && (
-            <Grid item xs={12}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <CalendarToday sx={{ mr: 1, color: 'text.secondary' }} />
-                <Typography variant="body1">
-                  <strong>End:</strong> {new Date(event.endTime).toLocaleString()}
-                </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <SportsSoccer color="action" />
+                <Box>
+                  <Typography variant="caption" color="text.secondary">Sport</Typography>
+                  <Typography variant="body1" fontWeight="bold">
+                    {event.eventType}
+                  </Typography>
+                </Box>
               </Box>
             </Grid>
-          )}
 
-          {event.location && (
-            <Grid item xs={12}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <LocationOn sx={{ mr: 1, color: 'text.secondary' }} />
-                <Typography variant="body1">
-                  <strong>Location:</strong> {event.location}
-                </Typography>
+            <Grid item xs={12} sm={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <AccessTime color="action" />
+                <Box>
+                  <Typography variant="caption" color="text.secondary">Date & Time</Typography>
+                  <Typography variant="body1" fontWeight="bold">
+                    {new Date(event.startTime).toLocaleString([], { 
+                      dateStyle: 'medium', 
+                      timeStyle: 'short' 
+                    })}
+                  </Typography>
+                </Box>
               </Box>
             </Grid>
-          )}
 
-          <Grid item xs={12}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <People sx={{ mr: 1, color: 'text.secondary' }} />
-              <Typography variant="body1">
-                <strong>Participants:</strong> {totalParticipants}
-                {event.maxPlayers && ` / ${event.maxPlayers}`}
+            {event.location && (
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                  <LocationOn color="action" />
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Location</Typography>
+                    <Typography variant="body1" fontWeight="bold">
+                      {event.location}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Grid>
+            )}
+
+            {event.description && (
+              <Grid item xs={12}>
+                <Divider sx={{ my: 1 }} />
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                  {event.description}
+                </Typography>
+              </Grid>
+            )}
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* Participants Card */}
+      <Card elevation={3} sx={{ mb: 3 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <People color="primary" />
+              Participants
+            </Typography>
+            <Chip 
+              label={event.maxPlayers ? `${totalParticipants}/${event.maxPlayers}` : totalParticipants}
+              color={isFull ? 'error' : 'success'}
+              size="small"
+            />
+          </Box>
+
+          {/* Show participant avatars */}
+          {totalParticipants > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <AvatarGroup max={8} sx={{ justifyContent: 'flex-start' }}>
+                {event.participants?.filter((p: any) => p.status === 'confirmed').map((p: any, idx: number) => (
+                  <Avatar key={idx} sx={{ bgcolor: 'primary.main' }}>
+                    {getInitials(p.user?.name)}
+                  </Avatar>
+                ))}
+                {event.guestParticipants?.filter((g: any) => g.status === 'confirmed').map((g: any, idx: number) => (
+                  <Avatar key={`guest-${idx}`} sx={{ bgcolor: 'secondary.main' }}>
+                    {getInitials(g.name)}
+                  </Avatar>
+                ))}
+              </AvatarGroup>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                {totalParticipants} {totalParticipants === 1 ? 'person has' : 'people have'} joined
               </Typography>
             </Box>
-          </Grid>
-
-          {event.description && (
-            <Grid item xs={12}>
-              <Typography variant="body1" sx={{ mt: 2 }}>
-                <strong>Description:</strong>
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {event.description}
-              </Typography>
-            </Grid>
           )}
-        </Grid>
 
-        {isFull ? (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            This event is currently full.
-          </Alert>
-        ) : (
-          <>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Join this event
+          {event.maxPlayers && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="caption" color="text.secondary" gutterBottom>
+                Capacity
+              </Typography>
+              <Box sx={{ 
+                width: '100%', 
+                height: 8, 
+                bgcolor: 'grey.300', 
+                borderRadius: 1,
+                overflow: 'hidden'
+              }}>
+                <Box sx={{ 
+                  width: `${(totalParticipants / event.maxPlayers) * 100}%`,
+                  height: '100%',
+                  bgcolor: isFull ? 'error.main' : 'success.main',
+                  transition: 'width 0.3s ease'
+                }} />
+              </Box>
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Join Section */}
+      {isFull ? (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          This event is currently full.
+        </Alert>
+      ) : isAlreadyParticipant ? (
+        <Alert severity="info" icon={<CheckCircle />}>
+          You're already participating in this event! 
+          <Button 
+            size="small" 
+            onClick={() => navigate(`/events/${event.id}`)}
+            sx={{ ml: 2 }}
+          >
+            View Event
+          </Button>
+        </Alert>
+      ) : (
+        <Card elevation={3}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Person color="primary" />
+              Join this Event
             </Typography>
 
-            <form onSubmit={handleJoin}>
-              <TextField
-                fullWidth
-                label="Your Name"
-                value={guestName}
-                onChange={(e) => setGuestName(e.target.value)}
-                placeholder="Enter your name"
-                required
-                disabled={joining}
-                sx={{ mb: 2 }}
-              />
-
-              <Box sx={{ display: 'flex', gap: 2 }}>
+            {user ? (
+              // Authenticated user - one-click join
+              <Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Welcome back, <strong>{user.name}</strong>! Click below to join this event.
+                </Typography>
                 <Button
-                  type="submit"
                   variant="contained"
-                  color="primary"
-                  disabled={joining || !guestName.trim()}
+                  size="large"
+                  onClick={handleAuthenticatedJoin}
+                  disabled={joining}
                   fullWidth
+                  sx={{ py: 1.5 }}
                 >
-                  {joining ? <CircularProgress size={24} /> : 'Join Event'}
+                  {joining ? <CircularProgress size={24} /> : 'Join Event Now'}
                 </Button>
               </Box>
-            </form>
+            ) : (
+              // Guest user
+              <Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Enter your name to join as a guest, or{' '}
+                  <Button 
+                    size="small" 
+                    onClick={() => navigate('/login')}
+                    sx={{ textTransform: 'none', p: 0, minWidth: 'auto' }}
+                  >
+                    sign in
+                  </Button>
+                  {' '}for full features.
+                </Typography>
 
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              Note: You're joining as a guest. To get full access to features, 
-              <Button 
-                size="small" 
-                onClick={() => navigate('/register')}
-                sx={{ textTransform: 'none', ml: 0.5 }}
-              >
-                create an account
-              </Button>
-            </Typography>
-          </>
-        )}
+                <form onSubmit={handleJoin}>
+                  <TextField
+                    fullWidth
+                    label="Your Name"
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    placeholder="Enter your name"
+                    required
+                    disabled={joining}
+                    sx={{ mb: 2 }}
+                  />
 
-        {event.group && (
-          <Box sx={{ mt: 3, pt: 2, borderTop: 1, borderColor: 'divider' }}>
-            <Typography variant="caption" color="text.secondary">
-              Organized by: {event.group.name}
-            </Typography>
-          </Box>
-        )}
-      </Paper>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    size="large"
+                    disabled={joining || !guestName.trim()}
+                    fullWidth
+                    sx={{ py: 1.5 }}
+                  >
+                    {joining ? <CircularProgress size={24} /> : 'Join as Guest'}
+                  </Button>
+                </form>
+
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block', textAlign: 'center' }}>
+                  💡 Create an account to manage your events and get notifications
+                </Typography>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Organizer Info */}
+      {event.creator && (
+        <Box sx={{ mt: 3, textAlign: 'center' }}>
+          <Typography variant="caption" color="text.secondary">
+            Organized by <strong>{event.creator.name}</strong>
+          </Typography>
+        </Box>
+      )}
     </Container>
   );
 };
