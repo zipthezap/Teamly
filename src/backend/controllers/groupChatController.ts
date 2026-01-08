@@ -123,17 +123,19 @@ export const markLate = async (req: Request, res: Response) => {
       select: { title: true }
     });
 
-    await prisma.eventNotification.create({
-      data: {
-        eventId,
-        userId,
-        type: 'late',
-        params: {
-          name: req.user.name,
-          eventTitle: eventDetails?.title || 'event'
+    if (eventDetails) {
+      await prisma.eventNotification.create({
+        data: {
+          eventId,
+          userId,
+          type: 'late',
+          params: {
+            name: req.user.name,
+            eventTitle: eventDetails.title
+          }
         }
-      }
-    });
+      });
+    }
 
     res.json(attendance);
   } catch (e) {

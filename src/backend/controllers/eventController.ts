@@ -611,17 +611,19 @@ export const leaveEvent = async (req: Request, res: Response) => {
       select: { title: true }
     });
 
-    await prisma.eventNotification.create({
-      data: {
-        eventId: id,
-        userId: req.user.id,
-        type: 'leave',
-        params: {
-          name: req.user.name,
-          eventTitle: leftEvent?.title || 'event'
+    if (leftEvent) {
+      await prisma.eventNotification.create({
+        data: {
+          eventId: id,
+          userId: req.user.id,
+          type: 'leave',
+          params: {
+            name: req.user.name,
+            eventTitle: leftEvent.title
+          }
         }
-      }
-    });
+      });
+    }
 
     res.json({ message: 'Left event successfully' });
   } catch (error) {
@@ -658,24 +660,28 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
       data: { status }
     });
 
-    // Log activity for the user who updated their status
-    // Get the event details
-    const statusEvent = await prisma.event.findUnique({
-      where: { id },
-      select: { title: true }
-    });
+    // Log activity for the user who updated their status (only for confirmed/declined)
+    if (status === 'confirmed' || status === 'declined') {
+      // Get the event details
+      const statusEvent = await prisma.event.findUnique({
+        where: { id },
+        select: { title: true }
+      });
 
-    await prisma.eventNotification.create({
-      data: {
-        eventId: id,
-        userId: req.user.id,
-        type: status, // 'confirmed' or 'declined'
-        params: {
-          name: req.user.name,
-          eventTitle: statusEvent?.title || 'event'
-        }
+      if (statusEvent) {
+        await prisma.eventNotification.create({
+          data: {
+            eventId: id,
+            userId: req.user.id,
+            type: status,
+            params: {
+              name: req.user.name,
+              eventTitle: statusEvent.title
+            }
+          }
+        });
       }
-    });
+    }
 
     res.json(updatedParticipant);
   } catch (error) {
