@@ -9,6 +9,8 @@ import {
   getUserNotifications,
   markNotificationsAsRead,
   getNotificationStats,
+  deleteNotifications,
+  deleteAllReadNotifications,
 } from '../services/notificationService';
 
 /**
@@ -22,6 +24,7 @@ import {
  *  - notificationType: 'event' | 'group'
  *  - startDate: ISO date string
  *  - endDate: ISO date string
+ *  - searchQuery: string (searches in title and message)
  */
 export const getNotifications = async (req: Request, res: Response) => {
   try {
@@ -34,6 +37,7 @@ export const getNotifications = async (req: Request, res: Response) => {
       notificationType,
       startDate,
       endDate,
+      searchQuery,
     } = req.query;
 
     // Parse and validate parameters
@@ -61,6 +65,10 @@ export const getNotifications = async (req: Request, res: Response) => {
 
     if (endDate) {
       options.endDate = new Date(endDate as string);
+    }
+
+    if (searchQuery) {
+      options.searchQuery = searchQuery as string;
     }
 
     const result = await getUserNotifications(userId, options);
@@ -130,5 +138,50 @@ export const getUnreadCount = async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Failed to fetch unread count', 'NotificationController', { error });
     res.status(500).json({ error: 'Failed to fetch unread count' });
+  }
+};
+
+/**
+ * Delete specific notifications
+ * DELETE /api/notifications
+ * Body: { notificationIds: string[] }
+ */
+export const deleteNotificationsEndpoint = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.id;
+    const { notificationIds } = req.body;
+
+    if (!notificationIds || !Array.isArray(notificationIds) || notificationIds.length === 0) {
+      return res.status(400).json({ error: 'notificationIds array is required' });
+    }
+
+    const result = await deleteNotifications(userId, notificationIds);
+
+    res.json({
+      message: 'Notifications deleted successfully',
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    logger.error('Failed to delete notifications', 'NotificationController', { error });
+    res.status(500).json({ error: 'Failed to delete notifications' });
+  }
+};
+
+/**
+ * Delete all read notifications
+ * DELETE /api/notifications/read
+ */
+export const deleteAllReadNotificationsEndpoint = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.id;
+    const result = await deleteAllReadNotifications(userId);
+
+    res.json({
+      message: 'All read notifications deleted successfully',
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    logger.error('Failed to delete all read notifications', 'NotificationController', { error });
+    res.status(500).json({ error: 'Failed to delete all read notifications' });
   }
 };
