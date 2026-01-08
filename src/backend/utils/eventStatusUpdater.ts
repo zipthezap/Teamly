@@ -4,6 +4,7 @@
  */
 
 import prisma from '../config/database';
+import { logger } from './logger';
 
 /**
  * Configuration constants for event status management
@@ -80,7 +81,10 @@ export const updateEventStatuses = async (): Promise<{
           });
           updated++;
         } catch (error) {
-          console.error(`Failed to update event ${event.id}:`, error);
+          logger.error('Failed to update event status', 'EventStatusUpdater', { 
+            eventId: event.id, 
+            error 
+          });
           errors++;
         }
       }
@@ -88,7 +92,7 @@ export const updateEventStatuses = async (): Promise<{
 
     return { updated, errors };
   } catch (error) {
-    console.error('Error in updateEventStatuses:', error);
+    logger.error('Error in updateEventStatuses', 'EventStatusUpdater', { error });
     throw error;
   }
 };
@@ -123,7 +127,7 @@ export const archiveOldEvents = async (daysOld: number = EVENT_CONFIG.DEFAULT_AR
     archived = result.count;
     return { archived, errors };
   } catch (error) {
-    console.error('Error in archiveOldEvents:', error);
+    logger.error('Error in archiveOldEvents', 'EventStatusUpdater', { error });
     errors++;
     return { archived, errors };
   }
@@ -156,7 +160,7 @@ export const expireOldEventRequests = async (): Promise<{
     expired = result.count;
     return { expired, errors };
   } catch (error) {
-    console.error('Error in expireOldEventRequests:', error);
+    logger.error('Error in expireOldEventRequests', 'EventStatusUpdater', { error });
     errors++;
     return { expired, errors };
   }
@@ -171,7 +175,7 @@ export const runEventMaintenance = async (): Promise<{
   requestsExpired: number;
   errors: number;
 }> => {
-  console.log('Starting event maintenance...');
+  logger.info('Starting event maintenance', 'EventStatusUpdater');
   
   const statusResult = await updateEventStatuses();
   const archiveResult = await archiveOldEvents(EVENT_CONFIG.DEFAULT_ARCHIVE_DAYS);
@@ -184,6 +188,6 @@ export const runEventMaintenance = async (): Promise<{
     errors: statusResult.errors + archiveResult.errors + expireResult.errors
   };
 
-  console.log('Event maintenance complete:', summary);
+  logger.info('Event maintenance complete', 'EventStatusUpdater', summary);
   return summary;
 };

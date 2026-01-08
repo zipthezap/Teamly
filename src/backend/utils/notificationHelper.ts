@@ -1,4 +1,5 @@
 import prisma from '../config/database';
+import { logger } from './logger';
 
 /**
  * Check if a user should receive a specific type of email notification
@@ -32,7 +33,11 @@ export const shouldSendEmailNotification = async (userId: string, notificationTy
     // Check the specific notification type
     return (preferences as any)[notificationType] !== false;
   } catch (error) {
-    console.error('Error checking email notification preference:', error);
+    logger.error('Error checking email notification preference', 'NotificationHelper', { 
+      userId, 
+      notificationType, 
+      error 
+    });
     return false;
   }
 };
@@ -82,7 +87,11 @@ export const batchShouldSendEmailNotification = async (userIds: string[], notifi
 
     return result;
   } catch (error) {
-    console.error('Error batch checking email notification preferences:', error);
+    logger.error('Error batch checking email notification preferences', 'NotificationHelper', { 
+      notificationType, 
+      userCount: userIds.length, 
+      error 
+    });
     return new Map();
   }
 };

@@ -276,8 +276,15 @@ This project follows best practices for code quality and maintainability:
 - **Environment Validation**: Automatic validation of required environment variables on startup
 - **Security Best Practices**: 
   - Environment-based JWT secrets (never hardcoded)
-  - Input sanitization and validation
-  - Rate limiting on API endpoints
+  - Input sanitization and XSS prevention
+  - Rate limiting on API endpoints (5 auth requests, 300 general per 15min)
+  - Security headers via Helmet (CSP, HSTS, etc.)
+  - Password strength requirements (8+ chars, mixed case, numbers, special chars)
+  - Account lockout after failed login attempts (5 attempts, 15min lockout)
+  - Password reset via secure email tokens
+  - Request body size limits (10MB) to prevent DoS
+
+For complete security documentation, see [docs/SECURITY.md](docs/SECURITY.md).
 
 ### Database Management
 
@@ -366,6 +373,7 @@ The test scripts will:
 - **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** - Detailed API reference
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guides
 - **[QUICK_START.md](QUICK_START.md)** - Quick setup instructions
+- **[docs/SECURITY.md](docs/SECURITY.md)** - Security features and best practices
 - **[docs/guides/FEATURES.md](docs/guides/FEATURES.md)** - Complete guide for new features (Email, Recurring Events, Comments)
 - **[docs/guides/WINDOWS_SETUP.md](docs/guides/WINDOWS_SETUP.md)** - Comprehensive Windows development guide
 - **[docs/guides/FEATURE_ROADMAP.md](docs/guides/FEATURE_ROADMAP.md)** - Planned features and expansion ideas

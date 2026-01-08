@@ -27,6 +27,7 @@ import prisma from '../config/database';
 import { sendEmail } from '../utils/emailService';
 import { shouldSendEmailNotification } from '../utils/notificationHelper';
 import { logger } from '../utils/logger';
+import { sanitizeString } from '../utils/validation';
 import { Request, Response } from 'express';
 
 export const createGroup = async (req: Request, res: Response) => {
@@ -37,16 +38,23 @@ export const createGroup = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Group name is required' });
     }
 
+    // Sanitize text inputs
+    const sanitizedName = sanitizeString(name);
+    const sanitizedDescription = description ? sanitizeString(description) : null;
+    const sanitizedLocationName = locationName ? sanitizeString(locationName) : null;
+    const sanitizedCity = city ? sanitizeString(city) : null;
+    const sanitizedCountry = country ? sanitizeString(country) : null;
+
     const group = await prisma.group.create({
       data: {
-        name,
-        description,
+        name: sanitizedName,
+        description: sanitizedDescription,
         isPublic: isPublic || false,
         latitude: latitude ? parseFloat(latitude) : null,
         longitude: longitude ? parseFloat(longitude) : null,
-        locationName,
-        city,
-        country,
+        locationName: sanitizedLocationName,
+        city: sanitizedCity,
+        country: sanitizedCountry,
         creatorId: req.user.id,
         members: {
           create: {

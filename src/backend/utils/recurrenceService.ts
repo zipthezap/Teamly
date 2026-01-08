@@ -1,4 +1,5 @@
 import { rrulestr } from 'rrule';
+import { logger } from './logger';
 
 // Constants
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000; // Milliseconds in one year
@@ -55,7 +56,7 @@ export const generateRecurrenceInstances = (
     // Limit results
     return filteredDates.slice(0, limit);
   } catch (error) {
-    console.error('Error generating recurrence instances:', error);
+    logger.error('Error generating recurrence instances', 'RecurrenceService', { error });
     throw new Error('Failed to generate recurrence instances');
   }
 };
