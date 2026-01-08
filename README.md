@@ -274,17 +274,21 @@ This project follows best practices for code quality and maintainability:
 - **Type Safety**: TypeScript with enabled compiler checks for unused locals/parameters and consistent casing
 - **Input Validation**: Validation utilities in `src/backend/utils/validation.ts` for consistent data validation
 - **Environment Validation**: Automatic validation of required environment variables on startup
+- **Backend Improvements**: Enhanced error handling, request tracking, and performance monitoring (see [docs/BACKEND_IMPROVEMENTS.md](docs/BACKEND_IMPROVEMENTS.md))
 - **Security Best Practices**: 
   - Environment-based JWT secrets (never hardcoded)
-  - Input sanitization and XSS prevention
+  - Automatic input sanitization and XSS prevention
   - Rate limiting on API endpoints (5 auth requests, 300 general per 15min)
   - Security headers via Helmet (CSP, HSTS, etc.)
   - Password strength requirements (8+ chars, mixed case, numbers, special chars)
   - Account lockout after failed login attempts (5 attempts, 15min lockout)
   - Password reset via secure email tokens
   - Request body size limits (10MB) to prevent DoS
+  - Graceful shutdown and error handling
 
 For complete security documentation, see [docs/SECURITY.md](docs/SECURITY.md).
+
+For backend architecture and improvements, see [docs/BACKEND_IMPROVEMENTS.md](docs/BACKEND_IMPROVEMENTS.md).
 
 ### Database Management
 
