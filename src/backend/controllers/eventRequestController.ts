@@ -1,4 +1,5 @@
 import prisma from '../config/database';
+import { logger } from '../utils/logger';
 import { validateVoteThreshold, validateVoteDeadline } from '../services/eventValidation';
 import { Request, Response } from 'express';
 
@@ -97,7 +98,7 @@ export const createEventRequest = async (req: Request, res: Response) => {
 
     res.status(201).json(eventRequest);
   } catch (error) {
-    console.error('Create event request error:', error);
+    logger.error('Create event request error:', 'eventRequestControllerController', { error });
     res.status(500).json({ error: 'Failed to create event request' });
   }
 };
@@ -144,7 +145,7 @@ export const getEventRequests = async (req: Request, res: Response) => {
 
     res.json(eventRequests);
   } catch (error) {
-    console.error('Get event requests error:', error);
+    logger.error('Get event requests error:', 'eventRequestControllerController', { error });
     res.status(500).json({ error: 'Failed to get event requests' });
   }
 };
@@ -194,7 +195,7 @@ export const getEventRequest = async (req: Request, res: Response) => {
 
     res.json(eventRequest);
   } catch (error) {
-    console.error('Get event request error:', error);
+    logger.error('Get event request error:', 'eventRequestControllerController', { error });
     res.status(500).json({ error: 'Failed to get event request' });
   }
 };
@@ -281,7 +282,7 @@ export const voteOnEventRequest = async (req: Request, res: Response) => {
 
     res.status(201).json({ message: 'Vote recorded', vote: newVote });
   } catch (error) {
-    console.error('Vote on event request error:', error);
+    logger.error('Vote on event request error:', 'eventRequestControllerController', { error });
     res.status(500).json({ error: 'Failed to vote on event request' });
   }
 };
@@ -412,7 +413,7 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
       requiredYesVotes
     });
   } catch (error) {
-    console.error('Finalize event request error:', error);
+    logger.error('Finalize event request error:', 'eventRequestControllerController', { error });
     res.status(500).json({ error: 'Failed to finalize event request' });
   }
 };
@@ -455,7 +456,7 @@ export const cancelEventRequest = async (req: Request, res: Response) => {
 
     res.json({ message: 'Event request cancelled' });
   } catch (error) {
-    console.error('Cancel event request error:', error);
+    logger.error('Cancel event request error:', 'eventRequestControllerController', { error });
     res.status(500).json({ error: 'Failed to cancel event request' });
   }
 };
@@ -557,7 +558,7 @@ export const getEventRequestStatistics = async (req: Request, res: Response) => 
 
     res.json(statistics);
   } catch (error) {
-    console.error('Get event request statistics error:', error);
+    logger.error('Get event request statistics error:', 'eventRequestControllerController', { error });
     res.status(500).json({ error: 'Failed to get statistics' });
   }
 };

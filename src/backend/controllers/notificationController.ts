@@ -4,6 +4,7 @@
  */
 
 import { Request, Response } from 'express';
+import { logger } from '../utils/logger';
 import {
   getUserNotifications,
   markNotificationsAsRead,
@@ -72,7 +73,7 @@ export const getNotifications = async (req: Request, res: Response) => {
       hasMore: result.total > parsedOffset + parsedLimit,
     });
   } catch (error) {
-    console.error('Get notifications error:', error);
+    logger.error('Failed to fetch notifications', 'NotificationController', { error });
     res.status(500).json({ error: 'Failed to fetch notifications' });
   }
 };
@@ -91,7 +92,7 @@ export const markAsRead = async (req: Request, res: Response) => {
 
     res.json({ message: 'Notifications marked as read' });
   } catch (error) {
-    console.error('Mark as read error:', error);
+    logger.error('Failed to mark notifications as read', 'NotificationController', { error });
     res.status(500).json({ error: 'Failed to mark notifications as read' });
   }
 };
@@ -107,7 +108,7 @@ export const getStats = async (req: Request, res: Response) => {
 
     res.json(stats);
   } catch (error) {
-    console.error('Get notification stats error:', error);
+    logger.error('Failed to fetch notification statistics', 'NotificationController', { error });
     res.status(500).json({ error: 'Failed to fetch notification statistics' });
   }
 };
@@ -127,7 +128,7 @@ export const getUnreadCount = async (req: Request, res: Response) => {
       groupCount: stats.unreadGroup,
     });
   } catch (error) {
-    console.error('Get unread count error:', error);
+    logger.error('Failed to fetch unread count', 'NotificationController', { error });
     res.status(500).json({ error: 'Failed to fetch unread count' });
   }
 };
