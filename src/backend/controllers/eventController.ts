@@ -6,12 +6,13 @@ import { getEventActivity } from '../services/eventNotification';
 import { validateEventStatus } from '../services/eventValidation';
 import { logger } from '../utils/logger';
 import { Request, Response } from 'express';
+import { createInviteToken } from '../utils/inviteToken';
 
 export const createEvent = async (req: Request, res: Response) => {
   try {
     const { 
       groupId, title, description, eventType, location, startTime, endTime, maxPlayers,
-      isRecurring, recurrenceRule, recurrenceEnd
+      isRecurring, recurrenceRule, recurrenceEnd, isPublic
     } = req.body;
 
     if (!groupId || !title || !eventType || !startTime) {
@@ -89,6 +90,9 @@ export const createEvent = async (req: Request, res: Response) => {
       }
     });
 
+    // Generate invite token if event is public
+    const inviteToken = isPublic ? createInviteToken() : null;
+
     const event = await prisma.event.create({
       data: {
         groupId,
@@ -104,6 +108,8 @@ export const createEvent = async (req: Request, res: Response) => {
         recurrenceRule: isRecurring ? recurrenceRule : null,
         recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : null,
         status: eventStatus,
+        isPublic: isPublic || false,
+        inviteToken,
         participants: {
           create: {
             userId: req.user.id,
@@ -291,6 +297,14 @@ export const getEvent = async (req: Request, res: Response) => {
             }
           }
         },
+        guestParticipants: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            joinedAt: true
+          }
+        },
         eventAttendances: {
           select: {
             id: true,
@@ -330,7 +344,7 @@ export const getEvent = async (req: Request, res: Response) => {
 export const updateEvent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { title, description, eventType, location, startTime, endTime, maxPlayers } = req.body;
+    const { title, description, eventType, location, startTime, endTime, maxPlayers, isPublic } = req.body;
 
     // Validate that events are single-day only if both times are provided
     if (startTime && endTime) {
@@ -378,7 +392,8 @@ export const updateEvent = async (req: Request, res: Response) => {
         ...(location !== undefined && { location }),
         ...(startTime && { startTime: new Date(startTime) }),
         ...(endTime !== undefined && { endTime: endTime ? new Date(endTime) : null }),
-        ...(maxPlayers !== undefined && { maxPlayers: maxPlayers ? parseInt(maxPlayers) : null })
+        ...(maxPlayers !== undefined && { maxPlayers: maxPlayers ? parseInt(maxPlayers) : null }),
+        ...(isPublic !== undefined && { isPublic })
       },
       include: {
         creator: {
@@ -1103,3 +1118,140 @@ export const getEventActivityFeed = async (req: Request, res: Response) => {
   }
 };
 
+// Get event by invite token (no authentication required)
+export const getEventByInviteToken = async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params;
+
+    const event = await prisma.event.findFirst({
+      where: {
+        inviteToken: token,
+        isPublic: true
+      },
+      include: {
+        creator: {
+          select: { id: true, name: true }
+        },
+        group: {
+          select: { id: true, name: true }
+        },
+        participants: {
+          select: {
+            id: true,
+            status: true,
+            user: {
+              select: { name: true }
+            }
+          }
+        },
+        guestParticipants: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            joinedAt: true
+          }
+        }
+      }
+    });
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found or invite link is invalid' });
+    }
+
+    res.json(event);
+  } catch (error) {
+    logger.error('Get event by invite token error', 'EventController', { error });
+    res.status(500).json({ error: 'Failed to get event' });
+  }
+};
+
+// Generate or regenerate invite token for an event
+export const generateInviteToken = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Check if user is the creator of the event
+    const event = await prisma.event.findUnique({
+      where: { id }
+    });
+
+    if (!event || event.creatorId !== req.user.id) {
+      return res.status(403).json({ error: 'Only the event creator can generate invite links' });
+    }
+
+    // Generate new token
+    const inviteToken = createInviteToken();
+
+    const updatedEvent = await prisma.event.update({
+      where: { id },
+      data: { 
+        inviteToken,
+        isPublic: true // Automatically make event public when generating invite link
+      }
+    });
+
+    res.json({ 
+      inviteToken: updatedEvent.inviteToken,
+      inviteUrl: `/events/join/${updatedEvent.inviteToken}`
+    });
+  } catch (error) {
+    logger.error('Generate invite token error', 'EventController', { error });
+    res.status(500).json({ error: 'Failed to generate invite token' });
+  }
+};
+
+// Join event as guest (no authentication required)
+export const joinEventAsGuest = async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params;
+    const { name } = req.body;
+
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+
+    // Find event by invite token
+    const event = await prisma.event.findFirst({
+      where: {
+        inviteToken: token,
+        isPublic: true
+      },
+      include: {
+        participants: true,
+        guestParticipants: true
+      }
+    });
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found or invite link is invalid' });
+    }
+
+    // Check max players
+    if (event.maxPlayers) {
+      const totalParticipants = 
+        event.participants.filter(p => p.status === 'confirmed').length +
+        event.guestParticipants.filter(g => g.status === 'confirmed').length;
+      
+      if (totalParticipants >= event.maxPlayers) {
+        return res.status(400).json({ error: 'Event is full' });
+      }
+    }
+
+    const guestParticipant = await prisma.guestParticipant.create({
+      data: {
+        eventId: event.id,
+        name: name.trim(),
+        status: 'confirmed'
+      }
+    });
+
+    res.status(201).json({ 
+      message: 'Successfully joined event',
+      participant: guestParticipant
+    });
+  } catch (error) {
+    logger.error('Join event as guest error', 'EventController', { error });
+    res.status(500).json({ error: 'Failed to join event' });
+  }
+};

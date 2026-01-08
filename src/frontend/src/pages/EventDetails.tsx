@@ -16,6 +16,7 @@ const EventDetails = () => {
   const [lateSuccess, setLateSuccess] = useState('');
   const [lateError, setLateError] = useState('');
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
+  const [copySuccess, setCopySuccess] = useState('');
 
   const fetchEvent = useCallback(async () => {
     try {
@@ -106,6 +107,30 @@ const EventDetails = () => {
     }
   };
 
+  const handleGenerateInviteLink = async () => {
+    setError('');
+    setCopySuccess('');
+    try {
+      const response = await eventsAPI.generateInviteToken(id);
+      const inviteUrl = `${window.location.origin}/events/join/${response.data.inviteToken}`;
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopySuccess('Invite link copied to clipboard!');
+      // Refresh event to show updated inviteToken
+      fetchEvent();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to generate invite link');
+    }
+  };
+
+  const handleCopyInviteLink = async () => {
+    if (event?.inviteToken) {
+      const inviteUrl = `${window.location.origin}/events/join/${event.inviteToken}`;
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopySuccess('Invite link copied to clipboard!');
+      setTimeout(() => setCopySuccess(''), 3000);
+    }
+  };
+
   const getInitials = (name?: string) => {
     if (!name) return '?';
     return name
@@ -119,6 +144,9 @@ const EventDetails = () => {
   const isParticipant = event?.participants?.find((p: any) => p.userId === user?.id);
   const isCreator = event?.creatorId === user?.id;
   const isFull = event?.maxPlayers && event?.participants?.length >= event?.maxPlayers;
+  const totalParticipants = 
+    (event.participants?.filter((p: any) => p.status === 'confirmed').length || 0) +
+    (event.guestParticipants?.filter((g: any) => g.status === 'confirmed').length || 0);
 
   if (loading) {
     return (
@@ -136,10 +164,10 @@ const EventDetails = () => {
     );
   }
 
-  const participantCount = event.participants?.length || 0;
+  const participantCount = totalParticipants;
   const confirmedCount = event.participants?.filter((p: any) => p.status === 'confirmed').length || 0;
   const declinedCount = event.participants?.filter((p: any) => p.status === 'declined').length || 0;
-  const pendingCount = participantCount - confirmedCount - declinedCount;
+  const pendingCount = (event.participants?.length || 0) - confirmedCount - declinedCount;
   const fillPercentage = event.maxPlayers ? (participantCount / event.maxPlayers) * 100 : 0;
 
   return (
@@ -149,6 +177,7 @@ const EventDetails = () => {
       {success && <div className="bg-green-900/50 text-green-300 p-3 rounded mb-4 border border-green-700">{success}</div>}
       {lateSuccess && <div className="bg-green-900/50 text-green-300 p-3 rounded mb-4 border border-green-700">{lateSuccess}</div>}
       {lateError && <div className="bg-red-900/50 text-red-300 p-3 rounded mb-4 border border-red-700">{lateError}</div>}
+      {copySuccess && <div className="bg-blue-900/50 text-blue-300 p-3 rounded mb-4 border border-blue-700">{copySuccess}</div>}
 
       <div className="relative bg-[#232946] rounded-xl shadow-md p-6 mb-8">
         {/* Admin icon buttons in top right */}
@@ -166,6 +195,11 @@ const EventDetails = () => {
         {/* Event Information Section */}
         <div className="mb-6">
           <h2 className="text-2xl font-bold mb-3 pr-24">{event.title}</h2>
+          {event.isPublic && (
+            <div className="inline-block bg-green-600/20 text-green-400 px-3 py-1 rounded-full text-xs font-semibold mb-2">
+              🌐 Public Event
+            </div>
+          )}
           <div className="text-base text-[#a1a6b4] mb-3 font-medium">{event.eventType}</div>
           <div className="text-sm text-[#d4d8e1] mb-4 leading-relaxed">{event.description || t('common.noDescription')}</div>
           
@@ -254,6 +288,45 @@ const EventDetails = () => {
                 )}
               </div>
             </div>
+            
+            {/* Invite Link Section - Only for creator */}
+            {isCreator && (
+              <div className="bg-[#1a2233] rounded-lg p-5">
+                <div className="font-semibold mb-3 text-lg">Share Event</div>
+                {event.isPublic ? (
+                  <div className="flex flex-col gap-2">
+                    {event.inviteToken ? (
+                      <>
+                        <button 
+                          onClick={handleCopyInviteLink} 
+                          className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full flex items-center justify-center gap-2"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                          Copy Invite Link
+                        </button>
+                        <p className="text-xs text-[#a1a6b4] text-center">Anyone with this link can join, even without an account</p>
+                      </>
+                    ) : (
+                      <>
+                        <button 
+                          onClick={handleGenerateInviteLink} 
+                          className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full"
+                        >
+                          Generate Invite Link
+                        </button>
+                        <p className="text-xs text-[#a1a6b4] text-center">Create a shareable link for this event</p>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-sm text-[#a1a6b4]">
+                    This is a private event. Make it public to generate an invite link that anyone can use.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           
           {/* Right Column: Activity Feed - Fixed Height */}

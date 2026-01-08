@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Box, Button, MenuItem, Paper, TextField, Typography, Alert, Container } from '@mui/material';
+import { Box, Button, MenuItem, Paper, TextField, Typography, Alert, Container, FormControlLabel, Switch } from '@mui/material';
 
 export interface EventFormData {
   groupId?: string;
@@ -16,6 +16,7 @@ export interface EventFormData {
   maxPlayers?: string;
   startTime?: string;
   endTime?: string;
+  isPublic?: boolean;
 }
 
 export interface EventFormProps {
@@ -65,6 +66,7 @@ const EventForm: React.FC<EventFormProps> = ({
     endHour: initialData.endHour || '',
     endMinute: initialData.endMinute || '00',
     maxPlayers: initialData.maxPlayers || '',
+    isPublic: initialData.isPublic || false,
   });
 
   useEffect(() => {
@@ -74,6 +76,10 @@ const EventForm: React.FC<EventFormProps> = ({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+  };
+
+  const handleSwitchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, isPublic: e.target.checked });
   };
 
   const handleHourChange = (name: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -233,6 +239,29 @@ const EventForm: React.FC<EventFormProps> = ({
         onChange={handleChange}
         inputProps={{ min: 1 }}
       />
+      <Box sx={{ mt: 2, mb: 2 }}>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={formData.isPublic}
+              onChange={handleSwitchChange}
+              color="primary"
+            />
+          }
+          label={
+            <Box>
+              <Typography variant="body1">
+                {formData.isPublic ? 'Public Event' : 'Private Event'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {formData.isPublic 
+                  ? 'Anyone with the invite link can join, even without an account'
+                  : 'Only group members can join this event'}
+              </Typography>
+            </Box>
+          }
+        />
+      </Box>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
