@@ -4,18 +4,31 @@ import prisma from '../config/database';
 import { generateToken } from '../utils/jwt';
 import { validate2FAToken } from './twoFactorController';
 import { logger } from '../utils/logger';
+import { validateEmail, validatePassword, isRequired, ValidationError, sanitizeString } from '../utils/validation';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, name } = req.body;
 
-    if (!email || !password || !name) {
-      res.status(400).json({ error: 'Email, password, and name are required' });
-      return;
+    // Validate and sanitize inputs
+    try {
+      isRequired(name, 'Name');
+      validateEmail(email, 'Email');
+      validatePassword(password, 6);
+    } catch (validationError) {
+      if (validationError instanceof ValidationError) {
+        res.status(400).json({ error: validationError.message });
+        return;
+      }
+      throw validationError;
     }
 
+    // Sanitize string inputs
+    const sanitizedEmail = sanitizeString(email).toLowerCase();
+    const sanitizedName = sanitizeString(name);
+
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { email: sanitizedEmail }
     });
 
     if (existingUser) {
@@ -27,9 +40,9 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     const user = await prisma.user.create({
       data: {
-        email,
+        email: sanitizedEmail,
         password: hashedPassword,
-        name
+        name: sanitizedName
       },
       select: {
         id: true,
@@ -52,13 +65,23 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, twoFactorToken } = req.body;
 
-    if (!email || !password) {
-      res.status(400).json({ error: 'Email and password are required' });
-      return;
+    // Validate inputs
+    try {
+      validateEmail(email, 'Email');
+      isRequired(password, 'Password');
+    } catch (validationError) {
+      if (validationError instanceof ValidationError) {
+        res.status(400).json({ error: validationError.message });
+        return;
+      }
+      throw validationError;
     }
 
+    // Sanitize email
+    const sanitizedEmail = sanitizeString(email).toLowerCase();
+
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: sanitizedEmail },
       select: {
         id: true,
         email: true,

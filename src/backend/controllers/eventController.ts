@@ -4,6 +4,7 @@ import { sendEmail } from '../utils/emailService';
 import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
 import { getEventActivity } from '../services/eventNotification';
 import { validateEventStatus } from '../services/eventValidation';
+import { logger } from '../utils/logger';
 import { Request, Response } from 'express';
 
 export const createEvent = async (req: Request, res: Response) => {
@@ -146,7 +147,7 @@ export const createEvent = async (req: Request, res: Response) => {
 
     res.status(201).json(event);
   } catch (error) {
-    console.error('Create event error:', error);
+    logger.error('Create event error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to create event' });
   }
 };
@@ -247,7 +248,7 @@ export const getEvents = async (req: Request, res: Response) => {
 
     res.json(events);
   } catch (error) {
-    console.error('Get events error:', error);
+    logger.error('Get events error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to get events' });
   }
 };
@@ -316,7 +317,7 @@ export const getEvent = async (req: Request, res: Response) => {
 
     res.json(event);
   } catch (error) {
-    console.error('Get event error:', error);
+    logger.error('Get event error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to get event' });
   }
 };
@@ -424,7 +425,7 @@ export const updateEvent = async (req: Request, res: Response) => {
 
     res.json(updatedEvent);
   } catch (error) {
-    console.error('Update event error:', error);
+    logger.error('Failed to update event', 'EventController', { error });
     res.status(500).json({ error: 'Failed to update event' });
   }
 };
@@ -487,7 +488,7 @@ export const deleteEvent = async (req: Request, res: Response) => {
 
     res.json({ message: 'Event deleted successfully' });
   } catch (error) {
-    console.error('Delete event error:', error);
+    logger.error('Delete event error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to delete event' });
   }
 };
@@ -550,7 +551,7 @@ export const joinEvent = async (req: Request, res: Response) => {
 
     res.status(201).json(participant);
   } catch (error) {
-    console.error('Join event error:', error);
+    logger.error('Join event error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to join event' });
   }
 };
@@ -605,7 +606,7 @@ export const leaveEvent = async (req: Request, res: Response) => {
 
     res.json({ message: 'Left event successfully' });
   } catch (error) {
-    console.error('Leave event error:', error);
+    logger.error('Failed to leave event', 'EventController', { error });
     res.status(500).json({ error: 'Failed to leave event' });
   }
 };
@@ -649,7 +650,7 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
 
     res.json(updatedParticipant);
   } catch (error) {
-    console.error('Update participation status error:', error);
+    logger.error('Update participation status error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to update participation status' });
   }
 };
@@ -730,7 +731,7 @@ export const getRecurringEventInstances = async (req: Request, res: Response) =>
 
     res.json(eventInstances);
   } catch (error) {
-    console.error('Get recurring event instances error:', error);
+    logger.error('Failed to get recurring event instances', 'EventController', { error });
     res.status(500).json({ error: 'Failed to get recurring event instances' });
   }
 };
@@ -758,7 +759,7 @@ export const addRecurringEventException = async (req: Request, res: Response) =>
       return res.status(400).json({ error: 'Event is not recurring' });
     }
   } catch (error) {
-    console.error('Add recurring event exception error:', error);
+    logger.error('Add recurring event exception error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to add exception' });
   }
 };
@@ -801,7 +802,7 @@ export const removeRecurringEventException = async (req: Request, res: Response)
 
     res.json(updatedEvent);
   } catch (error) {
-    console.error('Remove recurring event exception error:', error);
+    logger.error('Failed to remove recurring event exception', 'EventController', { error });
     res.status(500).json({ error: 'Failed to remove exception' });
   }
 };
@@ -893,7 +894,7 @@ export const getUserStatistics = async (req: Request, res: Response) => {
 
     res.json(statistics);
   } catch (error) {
-    console.error('Get user statistics error:', error);
+    logger.error('Get user statistics error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to get statistics' });
   }
 };
@@ -919,7 +920,7 @@ export const archiveEvent = async (req: Request, res: Response) => {
 
     res.json({ message: 'Event archived successfully', event: updatedEvent });
   } catch (error) {
-    console.error('Archive event error:', error);
+    logger.error('Archive event error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to archive event' });
   }
 };
@@ -945,7 +946,7 @@ export const unarchiveEvent = async (req: Request, res: Response) => {
 
     res.json({ message: 'Event unarchived successfully', event: updatedEvent });
   } catch (error) {
-    console.error('Unarchive event error:', error);
+    logger.error('Unarchive event error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to unarchive event' });
   }
 };
@@ -1003,7 +1004,7 @@ export const updateEventStatus = async (req: Request, res: Response) => {
 
     res.json({ message: 'Event status updated successfully', event: updatedEvent });
   } catch (error) {
-    console.error('Update event status error:', error);
+    logger.error('Update event status error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to update event status' });
   }
 };
@@ -1056,7 +1057,7 @@ export const getEventActivityFeed = async (req: Request, res: Response) => {
       activity
     });
   } catch (error) {
-    console.error('Get event activity error:', error);
+    logger.error('Failed to get event activity', 'EventController', { error });
     res.status(500).json({ error: 'Failed to get event activity' });
   }
 };

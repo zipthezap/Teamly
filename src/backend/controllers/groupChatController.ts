@@ -15,11 +15,12 @@ export const getNotifications = async (req: Request, res: Response) => {
     ]);
     res.json({ eventNotifications, groupNotifications });
   } catch (e) {
-    console.error('Get notifications error:', e);
+    logger.error('Get notifications error:', 'groupChatControllerController', { error: e });
     res.status(500).json({ error: 'Failed to fetch notifications' });
   }
 };
 import prisma from '../config/database';
+import { logger } from '../utils/logger';
 import { Request, Response } from 'express';
 
 // Undo Event Attendance (late)
@@ -59,7 +60,7 @@ export const unmarkLate = async (req: Request, res: Response) => {
 
     res.json(updated);
   } catch (e) {
-    console.error('Unmark late error:', e);
+    logger.error('Unmark late error:', 'groupChatControllerController', { error: e });
     res.status(500).json({ error: 'Failed to unmark late' });
   }
 };
@@ -126,7 +127,7 @@ export const markLate = async (req: Request, res: Response) => {
 
     res.json(attendance);
   } catch (e) {
-    console.error('Mark late error:', e);
+    logger.error('Mark late error:', 'groupChatControllerController', { error: e });
     res.status(500).json({ error: 'Failed to mark as late' });
   }
 };
@@ -161,7 +162,7 @@ export const markNotificationsRead = async (req: Request, res: Response) => {
     
     res.json({ message: 'Notifications marked as read' });
   } catch (e) {
-    console.error('Mark notifications read error:', e);
+    logger.error('Mark notifications read error:', 'groupChatControllerController', { error: e });
     res.status(500).json({ error: 'Failed to mark notifications as read' });
   }
 };

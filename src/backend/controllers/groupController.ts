@@ -19,13 +19,14 @@ export const deleteGroup = async (req: Request, res: Response) => {
     });
     res.json({ message: 'Group deleted successfully' });
   } catch (error) {
-    console.error('Delete group error:', error);
+    logger.error('Failed to delete group', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to delete group' });
   }
 };
 import prisma from '../config/database';
 import { sendEmail } from '../utils/emailService';
 import { shouldSendEmailNotification } from '../utils/notificationHelper';
+import { logger } from '../utils/logger';
 import { Request, Response } from 'express';
 
 export const createGroup = async (req: Request, res: Response) => {
@@ -102,7 +103,7 @@ export const createGroup = async (req: Request, res: Response) => {
     }
     res.status(201).json(group);
   } catch (error) {
-    console.error('Create group error:', error);
+    logger.error('Failed to create group', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to create group' });
   }
 };
@@ -138,7 +139,7 @@ export const getGroups = async (req: Request, res: Response) => {
 
     res.json(groups);
   } catch (error) {
-    console.error('Get groups error:', error);
+    logger.error('Failed to get groups', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to get groups' });
   }
 };
@@ -185,7 +186,7 @@ export const getGroup = async (req: Request, res: Response) => {
 
     res.json(group);
   } catch (error) {
-    console.error('Get group error:', error);
+    logger.error('Failed to get group', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to get group' });
   }
 };
@@ -236,7 +237,7 @@ export const updateGroup = async (req: Request, res: Response) => {
 
     res.json(group);
   } catch (error) {
-    console.error('Update group error:', error);
+    logger.error('Failed to update group', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to update group' });
   }
 };
@@ -320,7 +321,7 @@ export const inviteMember = async (req: Request, res: Response) => {
 
     res.status(201).json(newMember);
   } catch (error) {
-    console.error('Invite member error:', error);
+    logger.error('Failed to invite member', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to invite member' });
   }
 };
@@ -348,7 +349,7 @@ export const removeMember = async (req: Request, res: Response) => {
 
     res.json({ message: 'Member removed successfully' });
   } catch (error) {
-    console.error('Remove member error:', error);
+    logger.error('Failed to remove member', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to remove member' });
   }
 };
@@ -422,7 +423,7 @@ export const updateMemberRole = async (req: Request, res: Response) => {
 
     res.json(result);
   } catch (error: any) {
-    console.error('Update member role error:', error);
+    logger.error('Failed to update member role', 'GroupController', { error });
     
     if (error.message === 'FORBIDDEN') {
       return res.status(403).json({ error: 'Only admins can update member roles' });
@@ -458,7 +459,7 @@ export const getPublicGroups = async (_req: Request, res: Response) => {
 
     res.json(groups);
   } catch (error) {
-    console.error('Get public groups error:', error);
+    logger.error('Failed to get public groups', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to get public groups' });
   }
 };
@@ -540,7 +541,7 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
 
     res.status(201).json(joinRequest);
   } catch (error) {
-    console.error('Request join group error:', error);
+    logger.error('Failed to request join group', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to request join group' });
   }
 };
@@ -578,7 +579,7 @@ export const getJoinRequests = async (req: Request, res: Response) => {
 
     res.json(joinRequests);
   } catch (error) {
-    console.error('Get join requests error:', error);
+    logger.error('Failed to get join requests', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to get join requests' });
   }
 };
@@ -654,7 +655,7 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
       request: updatedRequest
     });
   } catch (error) {
-    console.error('Handle join request error:', error);
+    logger.error('Failed to handle join request', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to handle join request' });
   }
 };
@@ -676,7 +677,7 @@ export const joinGroupByInvite = async (req: Request, res: Response) => {
     });
     res.status(201).json({ message: 'Joined group successfully' });
   } catch (error) {
-    console.error('Join group by invite error:', error);
+    logger.error('Failed to join group by invite', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to join group' });
   }
 };
@@ -720,7 +721,7 @@ export const leaveGroup = async (req: Request, res: Response) => {
 
     res.json({ message: 'Left group successfully' });
   } catch (error) {
-    console.error('Leave group error:', error);
+    logger.error('Failed to leave group', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to leave group' });
   }
 };
@@ -745,7 +746,7 @@ export const getInviteLink = async (req: Request, res: Response) => {
     // Return the group ID which can be used to construct the invite link on the frontend
     res.json({ groupId: id });
   } catch (error) {
-    console.error('Get invite link error:', error);
+    logger.error('Failed to get invite link', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to get invite link' });
   }
 };

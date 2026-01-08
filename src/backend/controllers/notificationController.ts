@@ -4,10 +4,13 @@
  */
 
 import { Request, Response } from 'express';
+import { logger } from '../utils/logger';
 import {
   getUserNotifications,
   markNotificationsAsRead,
   getNotificationStats,
+  deleteNotifications,
+  deleteAllReadNotifications,
 } from '../services/notificationService';
 
 /**
@@ -21,6 +24,7 @@ import {
  *  - notificationType: 'event' | 'group'
  *  - startDate: ISO date string
  *  - endDate: ISO date string
+ *  - searchQuery: string (searches in title and message)
  */
 export const getNotifications = async (req: Request, res: Response) => {
   try {
@@ -33,6 +37,7 @@ export const getNotifications = async (req: Request, res: Response) => {
       notificationType,
       startDate,
       endDate,
+      searchQuery,
     } = req.query;
 
     // Parse and validate parameters
@@ -62,6 +67,10 @@ export const getNotifications = async (req: Request, res: Response) => {
       options.endDate = new Date(endDate as string);
     }
 
+    if (searchQuery) {
+      options.searchQuery = searchQuery as string;
+    }
+
     const result = await getUserNotifications(userId, options);
 
     res.json({
@@ -72,7 +81,7 @@ export const getNotifications = async (req: Request, res: Response) => {
       hasMore: result.total > parsedOffset + parsedLimit,
     });
   } catch (error) {
-    console.error('Get notifications error:', error);
+    logger.error('Failed to fetch notifications', 'NotificationController', { error });
     res.status(500).json({ error: 'Failed to fetch notifications' });
   }
 };
@@ -91,7 +100,7 @@ export const markAsRead = async (req: Request, res: Response) => {
 
     res.json({ message: 'Notifications marked as read' });
   } catch (error) {
-    console.error('Mark as read error:', error);
+    logger.error('Failed to mark notifications as read', 'NotificationController', { error });
     res.status(500).json({ error: 'Failed to mark notifications as read' });
   }
 };
@@ -107,7 +116,7 @@ export const getStats = async (req: Request, res: Response) => {
 
     res.json(stats);
   } catch (error) {
-    console.error('Get notification stats error:', error);
+    logger.error('Failed to fetch notification statistics', 'NotificationController', { error });
     res.status(500).json({ error: 'Failed to fetch notification statistics' });
   }
 };
@@ -127,7 +136,52 @@ export const getUnreadCount = async (req: Request, res: Response) => {
       groupCount: stats.unreadGroup,
     });
   } catch (error) {
-    console.error('Get unread count error:', error);
+    logger.error('Failed to fetch unread count', 'NotificationController', { error });
     res.status(500).json({ error: 'Failed to fetch unread count' });
+  }
+};
+
+/**
+ * Delete specific notifications
+ * DELETE /api/notifications
+ * Body: { notificationIds: string[] }
+ */
+export const deleteNotificationsEndpoint = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.id;
+    const { notificationIds } = req.body;
+
+    if (!notificationIds || !Array.isArray(notificationIds) || notificationIds.length === 0) {
+      return res.status(400).json({ error: 'notificationIds array is required' });
+    }
+
+    const result = await deleteNotifications(userId, notificationIds);
+
+    res.json({
+      message: 'Notifications deleted successfully',
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    logger.error('Failed to delete notifications', 'NotificationController', { error });
+    res.status(500).json({ error: 'Failed to delete notifications' });
+  }
+};
+
+/**
+ * Delete all read notifications
+ * DELETE /api/notifications/read
+ */
+export const deleteAllReadNotificationsEndpoint = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.id;
+    const result = await deleteAllReadNotifications(userId);
+
+    res.json({
+      message: 'All read notifications deleted successfully',
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    logger.error('Failed to delete all read notifications', 'NotificationController', { error });
+    res.status(500).json({ error: 'Failed to delete all read notifications' });
   }
 };
