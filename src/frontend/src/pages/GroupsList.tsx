@@ -1,9 +1,30 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  Container,
+  Typography,
+  Box,
+  Card,
+  CardContent,
+  CardActions,
+  Button,
+  TextField,
+  Chip,
+  InputAdornment,
+  ToggleButton,
+  ToggleButtonGroup,
+  Avatar,
+  AvatarGroup,
+  Stack,
+} from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import GroupIcon from '@mui/icons-material/Group';
+import EventIcon from '@mui/icons-material/Event';
+import AddIcon from '@mui/icons-material/Add';
 import { groupsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { LoadingSpinner, EmptyState } from '../components/common';
 
 const GroupsList = () => {
   const [groups, setGroups] = useState([]);
@@ -75,155 +96,234 @@ const GroupsList = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[80vh]">
-        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+    return <LoadingSpinner message={t('groups.loadingGroups')} />;
   }
 
   return (
-    <div className="max-w-6xl mx-auto mt-8 mb-8 px-2">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold mb-1">{t('groups.myGroups')}</h1>
-          <div className="text-sm text-[#a1a6b4]">{t('groups.groupsFound', { count: filteredGroups.length })}</div>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => navigate('/public-groups')} className="border border-blue-600 text-blue-600 hover:bg-blue-900/30 font-medium rounded-md px-3 py-1.5 text-sm transition">{t('groups.discoverGroups')}</button>
-          <button onClick={() => navigate('/groups/new')} className="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md px-3 py-1.5 text-sm shadow transition">{t('groups.createGroup')}</button>
-        </div>
-      </div>
+    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Box>
+          <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 0.5 }}>
+            {t('groups.myGroups')}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {t('groups.groupsFound', { count: filteredGroups.length })}
+          </Typography>
+        </Box>
+        <Box display="flex" gap={1}>
+          <Button
+            variant="outlined"
+            startIcon={<SearchIcon />}
+            onClick={() => navigate('/public-groups')}
+          >
+            {t('groups.discoverGroups')}
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => navigate('/groups/new')}
+          >
+            {t('groups.createGroup')}
+          </Button>
+        </Box>
+      </Box>
       
       {/* Statistics Overview */}
       {groups.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg p-4 shadow-lg">
-            <div className="text-3xl font-bold text-white">{groups.length}</div>
-            <div className="text-sm text-blue-100 mt-1">{t('groups.allGroups')}</div>
-          </div>
-          <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-lg p-4 shadow-lg">
-            <div className="text-3xl font-bold text-white">{groups.filter(g => g.isPublic).length}</div>
-            <div className="text-sm text-green-100 mt-1">{t('groups.public')}</div>
-          </div>
-          <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg p-4 shadow-lg">
-            <div className="text-3xl font-bold text-white">{groups.filter(g => !g.isPublic).length}</div>
-            <div className="text-sm text-purple-100 mt-1">{t('groups.private')}</div>
-          </div>
-          <div className="bg-gradient-to-br from-orange-600 to-orange-700 rounded-lg p-4 shadow-lg">
-            <div className="text-3xl font-bold text-white">{groups.filter(g => g.members?.some(m => m.userId === user?.id && m.role === 'admin')).length}</div>
-            <div className="text-sm text-orange-100 mt-1">{t('groups.admin')}</div>
-          </div>
-        </div>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
+          <Card sx={{ background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)' }}>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
+                {groups.length}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
+                {t('groups.allGroups')}
+              </Typography>
+            </CardContent>
+          </Card>
+          <Card sx={{ background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)' }}>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
+                {groups.filter(g => g.isPublic).length}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
+                {t('groups.public')}
+              </Typography>
+            </CardContent>
+          </Card>
+          <Card sx={{ background: 'linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%)' }}>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
+                {groups.filter(g => !g.isPublic).length}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
+                {t('groups.private')}
+              </Typography>
+            </CardContent>
+          </Card>
+          <Card sx={{ background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)' }}>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
+                {groups.filter(g => g.members?.some(m => m.userId === user?.id && m.role === 'admin')).length}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
+                {t('groups.admin')}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Box>
       )}
       
       {/* Search and Filters */}
-      <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <div className="relative">
-            <input
-              type="text"
-              className="w-full pl-10 pr-3 py-2 rounded-lg bg-[#232946] text-white border border-[#3a3f4b] focus:outline-none focus:border-blue-500 text-sm"
-              placeholder={t('groups.searchGroups')}
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
-            <span className="absolute left-3 top-2.5 text-[#a1a6b4]">
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-            </span>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          {['all', 'public', 'private', 'admin'].map(f => (
-            <button
-              key={f}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium border transition ${filter === f ? 'bg-blue-600 text-white border-blue-600' : 'bg-[#232946] text-[#a1a6b4] border-[#3a3f4b] hover:bg-[#2d3748] hover:text-blue-400'}`}
-              onClick={() => setFilter(f)}
-            >
-              {f === 'all' && t('groups.allGroups')}
-              {f === 'public' && t('groups.public')}
-              {f === 'private' && t('groups.private')}
-              {f === 'admin' && t('groups.admin')}
-            </button>
-          ))}
-        </div>
-      </div>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 2, mb: 3 }}>
+        <TextField
+          fullWidth
+          placeholder={t('groups.searchGroups')}
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+        />
+        <ToggleButtonGroup
+          value={filter}
+          exclusive
+          onChange={(e, newFilter) => newFilter && setFilter(newFilter)}
+          fullWidth
+          size="medium"
+        >
+          <ToggleButton value="all">
+            {t('groups.allGroups')}
+          </ToggleButton>
+          <ToggleButton value="public">
+            {t('groups.public')}
+          </ToggleButton>
+          <ToggleButton value="private">
+            {t('groups.private')}
+          </ToggleButton>
+          <ToggleButton value="admin">
+            {t('groups.admin')}
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
       {filteredGroups.length === 0 ? (
-        <div className="flex flex-col items-center justify-center min-h-[40vh] gap-6">
-          <div className="flex flex-col items-center">
-            <div className="rounded-full bg-gradient-to-br from-blue-600 to-purple-600 p-6 mb-4 shadow-lg">
-              <svg width="48" height="48" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-              </svg>
-            </div>
-            <div className="text-2xl font-bold text-white mb-2">
-              {searchTerm || filter !== 'all' ? t('groups.noGroupsMatch') : t('groups.noGroupsYet')}
-            </div>
-            {!searchTerm && filter === 'all' && (
-              <>
-                <div className="text-[#a1a6b4] mb-4 text-center max-w-md">{t('groups.createFirstGroupDesc')}</div>
-                <button onClick={() => navigate('/groups/new')} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg px-6 py-3 text-base shadow-lg transition transform hover:scale-105">{t('groups.createFirstGroup')}</button>
-              </>
-            )}
-            {(searchTerm || filter !== 'all') && (
-              <button onClick={() => { setSearchTerm(''); setFilter('all'); }} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg px-5 py-2 text-base shadow transition mt-2">{t('groups.allGroups')}</button>
-            )}
-          </div>
-        </div>
+        <EmptyState
+          icon={<GroupIcon />}
+          title={searchTerm || filter !== 'all' ? t('groups.noGroupsMatch') : t('groups.noGroupsYet')}
+          description={!searchTerm && filter === 'all' ? t('groups.createFirstGroupDesc') : ''}
+          actionLabel={!searchTerm && filter === 'all' ? t('groups.createFirstGroup') : (searchTerm || filter !== 'all' ? t('groups.allGroups') : '')}
+          onAction={() => {
+            if (!searchTerm && filter === 'all') {
+              navigate('/groups/new');
+            } else {
+              setSearchTerm('');
+              setFilter('all');
+            }
+          }}
+          gradient="linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(156, 39, 176, 0.05) 100%)"
+        />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
           {filteredGroups.map((group) => {
             const role = getUserRole(group);
             const memberCount = group.members?.length || 0;
             const eventCount = group.events?.length || 0;
             const recentMembers = group.members?.slice(0, 4) || [];
             return (
-              <div key={group.id} className="relative bg-gradient-to-br from-[#1a202c] to-[#2d3748] rounded-xl shadow-lg border border-gray-700 p-5 flex flex-col h-full transition-all duration-300 hover:shadow-2xl hover:scale-105 hover:border-blue-500">
-                <div className="absolute top-4 right-4 flex gap-1 z-10">
-                  {group.isPublic ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-900/50 text-blue-300 border border-blue-700">{t('groups.public')}</span>
-                  ) : (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gray-700 text-gray-300 border border-gray-600">{t('groups.private')}</span>
-                  )}
-                  {role === 'admin' && <span className="ml-2 text-xs bg-gradient-to-r from-blue-600 to-purple-600 text-white px-2 py-0.5 rounded border border-blue-800">{t('groups.admin')}</span>}
-                </div>
-                <div className="flex-1 flex flex-col gap-2">
-                  <h2 className="text-lg font-bold flex-1 truncate text-gray-100 mb-1">{group.name}</h2>
-                  <div className="text-sm text-gray-400 min-h-[48px] line-clamp-3">{group.description || t('groups.noDescriptionProvided')}</div>
-                  <div className="flex items-center gap-3 mt-2">
-                    <span className="flex items-center gap-1 text-xs text-gray-400">
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-                        <circle cx="9" cy="7" r="4" />
-                        <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-                      </svg>
-                      {t('groups.membersCount', { count: memberCount })}
-                    </span>
-                    <span className="flex items-center gap-1 text-xs text-gray-400">
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
-                      {t('groups.eventsCount', { count: eventCount })}
-                    </span>
-                  </div>
-                  {/* Recent members avatars (initials) */}
-                  {recentMembers.length > 0 && (
-                    <div className="flex -space-x-2 mt-2">
-                      {recentMembers.map((member, idx) => (
-                        <div key={idx} className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 text-white flex items-center justify-center text-xs font-bold border-2 border-white shadow-md" title={member.user?.name}>
-                          {getInitials(member.user?.name)}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <button onClick={() => navigate(`/groups/${group.id}`)} className="mt-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg px-4 py-2 text-base shadow-lg transition transform hover:scale-105">{t('common.viewDetails')}</button>
-              </div>
+              <Card 
+                key={group.id}
+                sx={{ 
+                  height: '100%', 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  transition: 'all 0.3s',
+                  '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: 6,
+                    }
+                  }}
+                >
+                  <CardContent sx={{ flexGrow: 1, p: 3 }}>
+                    <Box display="flex" justifyContent="space-between" alignItems="start" mb={1.5}>
+                      <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, pr: 1 }}>
+                        {group.name}
+                      </Typography>
+                      <Box display="flex" gap={0.5} flexShrink={0}>
+                        {group.isPublic ? (
+                          <Chip label={t('groups.public')} size="small" color="primary" />
+                        ) : (
+                          <Chip label={t('groups.private')} size="small" />
+                        )}
+                        {role === 'admin' && (
+                          <Chip label={t('groups.admin')} size="small" color="secondary" />
+                        )}
+                      </Box>
+                    </Box>
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary" 
+                      sx={{ 
+                        mb: 2, 
+                        minHeight: 40,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {group.description || t('groups.noDescriptionProvided')}
+                    </Typography>
+                    <Box display="flex" alignItems="center" gap={2} mb={2}>
+                      <Box display="flex" alignItems="center" gap={0.5}>
+                        <GroupIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                        <Typography variant="caption" color="text.secondary">
+                          {t('groups.membersCount', { count: memberCount })}
+                        </Typography>
+                      </Box>
+                      <Box display="flex" alignItems="center" gap={0.5}>
+                        <EventIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                        <Typography variant="caption" color="text.secondary">
+                          {t('groups.eventsCount', { count: eventCount })}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    {recentMembers.length > 0 && (
+                      <AvatarGroup max={4} sx={{ justifyContent: 'flex-start' }}>
+                        {recentMembers.map((member, idx) => (
+                          <Avatar 
+                            key={idx}
+                            sx={{ 
+                              width: 32, 
+                              height: 32,
+                              fontSize: '0.75rem',
+                              bgcolor: 'primary.main'
+                            }}
+                          >
+                            {getInitials(member.user?.name)}
+                          </Avatar>
+                        ))}
+                      </AvatarGroup>
+                    )}
+                  </CardContent>
+                  <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
+                    <Button 
+                      variant="contained"
+                      fullWidth
+                      onClick={() => navigate(`/groups/${group.id}`)}
+                    >
+                      {t('common.viewDetails')}
+                    </Button>
+                  </CardActions>
+                </Card>
             );
           })}
-        </div>
+        </Box>
       )}
-    </div>
+    </Container>
   );
 };
 
