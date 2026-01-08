@@ -38,9 +38,11 @@ import EventIcon from '@mui/icons-material/Event';
 import GroupIcon from '@mui/icons-material/Group';
 import { useNavigate } from 'react-router-dom';
 import { useEnhancedNotifications } from '../hooks/useEnhancedNotifications';
+import { useTranslation } from 'react-i18next';
 
 const NotificationsCenter: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [tabValue, setTabValue] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -120,10 +122,10 @@ const NotificationsCenter: React.FC = () => {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffMins < 1) return t('notifications.justNow');
+    if (diffMins < 60) return t('notifications.minutesAgo', { count: diffMins });
+    if (diffHours < 24) return t('notifications.hoursAgo', { count: diffHours });
+    if (diffDays < 7) return t('notifications.daysAgo', { count: diffDays });
 
     return date.toLocaleDateString('en-US', {
       month: 'short',
@@ -139,7 +141,7 @@ const NotificationsCenter: React.FC = () => {
         <Box display="flex" alignItems="center" gap={2}>
           <NotificationsIcon fontSize="large" color="primary" />
           <Typography variant="h4" fontWeight="bold">
-            Notifications
+            {t('notifications.title')}
           </Typography>
         </Box>
         <Stack direction="row" spacing={1}>
@@ -152,7 +154,7 @@ const NotificationsCenter: React.FC = () => {
             onClick={() => markAsRead()}
             disabled={!notifications.length || filters.includeRead}
           >
-            Mark All Read
+            {t('notifications.markAllRead')}
           </Button>
         </Stack>
       </Box>
@@ -168,7 +170,7 @@ const NotificationsCenter: React.FC = () => {
                   <Box>
                     <Typography variant="h4">{stats.unread}</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Unread
+                      {t('notifications.unread')}
                     </Typography>
                   </Box>
                 </Box>
@@ -183,7 +185,7 @@ const NotificationsCenter: React.FC = () => {
                   <Box>
                     <Typography variant="h4">{stats.totalEvent}</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Event Notifications
+                      {t('notifications.eventNotifications')}
                     </Typography>
                   </Box>
                 </Box>
@@ -198,7 +200,7 @@ const NotificationsCenter: React.FC = () => {
                   <Box>
                     <Typography variant="h4">{stats.totalGroup}</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Group Notifications
+                      {t('notifications.groupNotifications')}
                     </Typography>
                   </Box>
                 </Box>
@@ -212,10 +214,10 @@ const NotificationsCenter: React.FC = () => {
       <Paper>
         {/* Tabs */}
         <Tabs value={tabValue} onChange={handleTabChange} variant="fullWidth">
-          <Tab label={`Unread (${stats?.unread || 0})`} />
-          <Tab label={`Events (${stats?.unreadEvent || 0})`} />
-          <Tab label={`Groups (${stats?.unreadGroup || 0})`} />
-          <Tab label="All" />
+          <Tab label={`${t('notifications.unread')} (${stats?.unread || 0})`} />
+          <Tab label={`${t('notifications.events')} (${stats?.unreadEvent || 0})`} />
+          <Tab label={`${t('notifications.groups')} (${stats?.unreadGroup || 0})`} />
+          <Tab label={t('notifications.all')} />
         </Tabs>
 
         <Box p={2}>
@@ -223,7 +225,7 @@ const NotificationsCenter: React.FC = () => {
           <Stack direction="row" spacing={2} mb={2}>
             <TextField
               fullWidth
-              placeholder="Search notifications..."
+              placeholder={t('notifications.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               InputProps={{
@@ -246,13 +248,13 @@ const NotificationsCenter: React.FC = () => {
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
                   <FormControl fullWidth size="small">
-                    <InputLabel>Type</InputLabel>
+                    <InputLabel>{t('notifications.type')}</InputLabel>
                     <Select
                       value={selectedType}
-                      label="Type"
+                      label={t('notifications.type')}
                       onChange={(e) => setSelectedType(e.target.value)}
                     >
-                      <MenuItem value="all">All Types</MenuItem>
+                      <MenuItem value="all">{t('notifications.allTypes')}</MenuItem>
                       {notificationTypes.map((type) => (
                         <MenuItem key={type} value={type}>
                           {type}
@@ -273,7 +275,7 @@ const NotificationsCenter: React.FC = () => {
           ) : filteredNotifications.length === 0 ? (
             <Box textAlign="center" py={4}>
               <Typography variant="body1" color="text.secondary">
-                No notifications found
+                {t('notifications.noNotificationsFound')}
               </Typography>
             </Box>
           ) : (
@@ -307,7 +309,7 @@ const NotificationsCenter: React.FC = () => {
                                   {notif.title}
                                 </Typography>
                                 {!notif.read && (
-                                  <Chip label="New" size="small" color="primary" sx={{ height: 20 }} />
+                                  <Chip label={t('notifications.new')} size="small" color="primary" sx={{ height: 20 }} />
                                 )}
                                 {notif.metadata?.priority && notif.metadata.priority !== 'low' && (
                                   <Chip
@@ -355,7 +357,7 @@ const NotificationsCenter: React.FC = () => {
               {hasMore && (
                 <Box display="flex" justifyContent="center" mt={2}>
                   <Button onClick={loadMore} disabled={loading} variant="outlined">
-                    {loading ? 'Loading...' : 'Load More'}
+                    {loading ? t('notifications.loading') : t('notifications.loadMore')}
                   </Button>
                 </Box>
               )}
@@ -363,7 +365,7 @@ const NotificationsCenter: React.FC = () => {
               {/* Total count */}
               <Box textAlign="center" mt={2}>
                 <Typography variant="body2" color="text.secondary">
-                  Showing {filteredNotifications.length} of {total} notifications
+                  {t('notifications.showing', { count: filteredNotifications.length, total })}
                 </Typography>
               </Box>
             </>

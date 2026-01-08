@@ -20,6 +20,7 @@ import NotificationsOffIcon from '@mui/icons-material/NotificationsOff';
 import { useEnhancedNotifications } from '../hooks/useEnhancedNotifications';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const NotificationsPopover: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
@@ -29,6 +30,7 @@ const NotificationsPopover: React.FC = () => {
   });
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const open = Boolean(anchorEl);
   const id = open ? 'notifications-popover' : undefined;
 
@@ -112,15 +114,15 @@ const NotificationsPopover: React.FC = () => {
       >
         <Paper sx={{ p: 2, background: 'transparent', boxShadow: 'none' }}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-            <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: 0.5 }}>Notifications</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: 0.5 }}>{t('notifications.title')}</Typography>
             <Stack direction="row" spacing={1}>
               {notifications.length > 0 && (
                 <Button size="small" onClick={handleMarkAllRead} sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 500, color: 'primary.main', px: 1.5, py: 0.5, '&:hover': { bgcolor: 'primary.light', color: 'white' } }}>
-                  Mark all read
+                  {t('notifications.markAllRead')}
                 </Button>
               )}
               <Button size="small" onClick={handleViewAll} sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 500, color: 'secondary.main', px: 1.5, py: 0.5, '&:hover': { bgcolor: 'secondary.light', color: 'white' } }}>
-                View All
+                {t('notifications.viewAll')}
               </Button>
             </Stack>
           </Box>
@@ -129,14 +131,14 @@ const NotificationsPopover: React.FC = () => {
           {stats && (
             <Stack direction="row" spacing={1} mb={2}>
               <Chip
-                label={`${stats.unreadEvent} Events`}
+                label={`${stats.unreadEvent} ${t('notifications.events')}`}
                 size="small"
                 color="primary"
                 variant="filled"
                 sx={{ borderRadius: 1, fontWeight: 500, bgcolor: 'primary.dark', color: 'white' }}
               />
               <Chip
-                label={`${stats.unreadGroup} Groups`}
+                label={`${stats.unreadGroup} ${t('notifications.groups')}`}
                 size="small"
                 color="secondary"
                 variant="filled"
@@ -152,7 +154,7 @@ const NotificationsPopover: React.FC = () => {
           ) : notifications.length === 0 ? (
             <Box textAlign="center" py={3}>
               <Typography variant="body2" color="text.secondary">
-                No notifications
+                {t('notifications.noNotifications')}
               </Typography>
             </Box>
           ) : (
