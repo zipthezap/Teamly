@@ -382,6 +382,23 @@ const EventDetails = () => {
               </div>
             </div>
           ))}
+          {event.guestParticipants?.map((g, idx) => (
+            <div key={g.id || `guest-${idx}`} className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3 border border-purple-500/30">
+              <div className="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">{getInitials(g.name)}</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-white truncate">{g.name}</div>
+                <div className="text-xs text-purple-400 truncate">Guest</div>
+                <div className="text-xs">
+                  <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mt-1 ${
+                    g.status === 'confirmed' ? 'bg-green-900/50 text-green-300' :
+                    'bg-red-900/50 text-red-300'
+                  }`}>
+                    {t(`eventDetails.status.${g.status}`)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
