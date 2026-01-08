@@ -141,6 +141,11 @@ export const createEvent = async (req: Request, res: Response) => {
           groupId: group.id,
           userId,
           type: 'eventCreated',
+          params: {
+            eventTitle: event.title,
+            name: req.user.name,
+            groupName: group.name
+          }
         }
       })
     ));
@@ -545,7 +550,11 @@ export const joinEvent = async (req: Request, res: Response) => {
       data: {
         eventId: id,
         userId: req.user.id,
-        type: 'join'
+        type: 'join',
+        params: {
+          name: req.user.name,
+          eventTitle: event.title
+        }
       }
     });
 
@@ -596,11 +605,21 @@ export const leaveEvent = async (req: Request, res: Response) => {
     ]);
 
     // Log activity for the user who left
+    // First get the event details
+    const leftEvent = await prisma.event.findUnique({
+      where: { id },
+      select: { title: true }
+    });
+
     await prisma.eventNotification.create({
       data: {
         eventId: id,
         userId: req.user.id,
-        type: 'leave'
+        type: 'leave',
+        params: {
+          name: req.user.name,
+          eventTitle: leftEvent?.title || 'event'
+        }
       }
     });
 
@@ -640,11 +659,21 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
     });
 
     // Log activity for the user who updated their status
+    // Get the event details
+    const statusEvent = await prisma.event.findUnique({
+      where: { id },
+      select: { title: true }
+    });
+
     await prisma.eventNotification.create({
       data: {
         eventId: id,
         userId: req.user.id,
-        type: status // 'confirmed' or 'declined'
+        type: status, // 'confirmed' or 'declined'
+        params: {
+          name: req.user.name,
+          eventTitle: statusEvent?.title || 'event'
+        }
       }
     });
 
@@ -997,6 +1026,12 @@ export const updateEventStatus = async (req: Request, res: Response) => {
           eventId: id,
           userId,
           type: 'status_change',
+          params: {
+            name: req.user.name,
+            eventTitle: event.title,
+            newStatus: status,
+            oldStatus: event.status
+          },
           metadata: { newStatus: status, oldStatus: event.status }
         }
       })

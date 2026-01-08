@@ -121,7 +121,8 @@ export const createEventNotifications = async (
   userIds: string[],
   type: string,
   prisma: any,
-  metadata?: any
+  metadata?: any,
+  params?: any
 ): Promise<void> => {
   await Promise.all(
     userIds.map(userId =>
@@ -131,6 +132,7 @@ export const createEventNotifications = async (
           userId,
           type,
           metadata: metadata || undefined,
+          params: params || undefined,
         }
       })
     )
@@ -145,7 +147,8 @@ export const createActivityNotification = async (
   userId: string,
   type: string,
   metadata: any,
-  prisma: any
+  prisma: any,
+  params?: any
 ): Promise<void> => {
   await prisma.eventNotification.create({
     data: {
@@ -153,6 +156,7 @@ export const createActivityNotification = async (
       userId,
       type,
       metadata,
+      params: params || undefined,
     }
   });
 };
