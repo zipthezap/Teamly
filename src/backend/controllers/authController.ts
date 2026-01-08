@@ -4,7 +4,7 @@ import prisma from '../config/database';
 import { generateToken } from '../utils/jwt';
 import { validate2FAToken } from './twoFactorController';
 import { logger } from '../utils/logger';
-import { validateEmail, validatePassword, isRequired, ValidationError, sanitizeString } from '../utils/validation';
+import { validateEmail, validateStrongPassword, isRequired, ValidationError, sanitizeString } from '../utils/validation';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -14,7 +14,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     try {
       isRequired(name, 'Name');
       validateEmail(email, 'Email');
-      validatePassword(password, 6);
+      validateStrongPassword(password);
     } catch (validationError) {
       if (validationError instanceof ValidationError) {
         res.status(400).json({ error: validationError.message });
@@ -378,7 +378,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     // Validate inputs
     try {
       isRequired(token, 'Reset token');
-      validatePassword(newPassword, 8);
+      validateStrongPassword(newPassword);
     } catch (validationError) {
       if (validationError instanceof ValidationError) {
         res.status(400).json({ error: validationError.message });

@@ -102,7 +102,7 @@ export function validateStrongPassword(password: string): void {
   }
   
   // Check for special character
-  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+  if (!/[!@#$%^&*()_+=\[\]{};':"\\|,.<>\/?-]/.test(password)) {
     throw new ValidationError(
       'Password must contain at least one special character',
       'password',
