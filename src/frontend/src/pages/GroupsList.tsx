@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
-  Grid,
   Typography,
   Box,
   Card,
@@ -16,6 +15,7 @@ import {
   ToggleButtonGroup,
   Avatar,
   AvatarGroup,
+  Stack,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import GroupIcon from '@mui/icons-material/Group';
@@ -130,98 +130,86 @@ const GroupsList = () => {
       
       {/* Statistics Overview */}
       {groups.length > 0 && (
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={6} sm={3}>
-            <Card sx={{ background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)' }}>
-              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
-                  {groups.length}
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
-                  {t('groups.allGroups')}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <Card sx={{ background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)' }}>
-              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
-                  {groups.filter(g => g.isPublic).length}
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
-                  {t('groups.public')}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <Card sx={{ background: 'linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%)' }}>
-              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
-                  {groups.filter(g => !g.isPublic).length}
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
-                  {t('groups.private')}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <Card sx={{ background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)' }}>
-              <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
-                  {groups.filter(g => g.members?.some(m => m.userId === user?.id && m.role === 'admin')).length}
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
-                  {t('groups.admin')}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
+          <Card sx={{ background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)' }}>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
+                {groups.length}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
+                {t('groups.allGroups')}
+              </Typography>
+            </CardContent>
+          </Card>
+          <Card sx={{ background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)' }}>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
+                {groups.filter(g => g.isPublic).length}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
+                {t('groups.public')}
+              </Typography>
+            </CardContent>
+          </Card>
+          <Card sx={{ background: 'linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%)' }}>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
+                {groups.filter(g => !g.isPublic).length}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
+                {t('groups.private')}
+              </Typography>
+            </CardContent>
+          </Card>
+          <Card sx={{ background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)' }}>
+            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
+                {groups.filter(g => g.members?.some(m => m.userId === user?.id && m.role === 'admin')).length}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
+                {t('groups.admin')}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Box>
       )}
       
       {/* Search and Filters */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={8}>
-          <TextField
-            fullWidth
-            placeholder={t('groups.searchGroups')}
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-          />
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <ToggleButtonGroup
-            value={filter}
-            exclusive
-            onChange={(e, newFilter) => newFilter && setFilter(newFilter)}
-            fullWidth
-            size="medium"
-          >
-            <ToggleButton value="all">
-              {t('groups.allGroups')}
-            </ToggleButton>
-            <ToggleButton value="public">
-              {t('groups.public')}
-            </ToggleButton>
-            <ToggleButton value="private">
-              {t('groups.private')}
-            </ToggleButton>
-            <ToggleButton value="admin">
-              {t('groups.admin')}
-            </ToggleButton>
-          </ToggleButtonGroup>
-        </Grid>
-      </Grid>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 2, mb: 3 }}>
+        <TextField
+          fullWidth
+          placeholder={t('groups.searchGroups')}
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+        />
+        <ToggleButtonGroup
+          value={filter}
+          exclusive
+          onChange={(e, newFilter) => newFilter && setFilter(newFilter)}
+          fullWidth
+          size="medium"
+        >
+          <ToggleButton value="all">
+            {t('groups.allGroups')}
+          </ToggleButton>
+          <ToggleButton value="public">
+            {t('groups.public')}
+          </ToggleButton>
+          <ToggleButton value="private">
+            {t('groups.private')}
+          </ToggleButton>
+          <ToggleButton value="admin">
+            {t('groups.admin')}
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
       {filteredGroups.length === 0 ? (
         <EmptyState
           icon={<GroupIcon />}
@@ -239,21 +227,21 @@ const GroupsList = () => {
           gradient="linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(156, 39, 176, 0.05) 100%)"
         />
       ) : (
-        <Grid container spacing={3}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
           {filteredGroups.map((group) => {
             const role = getUserRole(group);
             const memberCount = group.members?.length || 0;
             const eventCount = group.events?.length || 0;
             const recentMembers = group.members?.slice(0, 4) || [];
             return (
-              <Grid item xs={12} sm={6} md={4} key={group.id}>
-                <Card 
-                  sx={{ 
-                    height: '100%', 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    transition: 'all 0.3s',
-                    '&:hover': {
+              <Card 
+                key={group.id}
+                sx={{ 
+                  height: '100%', 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  transition: 'all 0.3s',
+                  '&:hover': {
                       transform: 'translateY(-4px)',
                       boxShadow: 6,
                     }
@@ -331,10 +319,9 @@ const GroupsList = () => {
                     </Button>
                   </CardActions>
                 </Card>
-              </Grid>
             );
           })}
-        </Grid>
+        </Box>
       )}
     </Container>
   );

@@ -2,7 +2,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Container,
-  Grid,
   Typography,
   Box,
   Card,
@@ -208,7 +207,7 @@ const EventsList = () => {
           gradient="linear-gradient(135deg, rgba(245, 0, 87, 0.05) 0%, rgba(245, 0, 87, 0.02) 100%)"
         />
       ) : (
-        <Grid container spacing={3}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
           {events.map((event: any, idx: number) => {
             const status = getEventStatus(event);
             const participantCount = event.participants?.length || 0;
@@ -216,14 +215,14 @@ const EventsList = () => {
             const isJoined = event.participants?.some((p: any) => p.userId === user?.id);
             const isAdmin = event.organizerId === user?.id;
             return (
-              <Grid item xs={12} sm={6} md={4} key={event.id}>
-                <Card 
-                  sx={{ 
-                    height: '100%', 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    transition: 'all 0.3s',
-                    '&:hover': {
+              <Card 
+                key={event.id}
+                sx={{ 
+                  height: '100%', 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  transition: 'all 0.3s',
+                  '&:hover': {
                       transform: 'translateY(-4px)',
                       boxShadow: 6,
                     }
@@ -333,10 +332,9 @@ const EventsList = () => {
                     )}
                   </CardActions>
                 </Card>
-              </Grid>
             );
           })}
-        </Grid>
+        </Box>
       )}
 
       {/* Delete confirmation dialog */}
