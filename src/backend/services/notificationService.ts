@@ -171,6 +171,9 @@ export const getUserNotifications = async (
   );
 
   // Apply search filter if provided
+  // Note: Search is applied in-memory after fetching from database.
+  // For better performance with large datasets, consider implementing
+  // database-level full-text search or moving search to WHERE clause.
   if (searchQuery && searchQuery.trim()) {
     const query = searchQuery.toLowerCase().trim();
     allNotifications = allNotifications.filter(
