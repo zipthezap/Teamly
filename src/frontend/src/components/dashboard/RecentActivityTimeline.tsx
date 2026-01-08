@@ -174,6 +174,13 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
     return then.toLocaleDateString();
   };
 
+  const getRelatedEntityTypeLabel = (type: string) => {
+    if (type === 'Public' || type === 'Private') {
+      return t(`groups.${type.toLowerCase()}`, type);
+    }
+    return t(`event.type.${type.toLowerCase()}`, type);
+  };
+
   const activities = generateActivities();
   const filteredActivities = filterActivitiesByType(filterActivitiesByTime(activities));
   const visibleActivities = filteredActivities.slice(0, visibleCount);
@@ -313,7 +320,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
                         </>
                       )}
                       {activity.relatedEntityType && (
-                        <span className="px-2 py-0.5 rounded border border-blue-500 text-blue-400 text-xs font-semibold">{activity.relatedEntityType}</span>
+                        <span className="px-2 py-0.5 rounded border border-blue-500 text-blue-400 text-xs font-semibold">{getRelatedEntityTypeLabel(activity.relatedEntityType)}</span>
                       )}
                     </div>
                   </div>

@@ -20,8 +20,7 @@ export interface UnifiedNotification {
   userId: string;
   type: string;
   notificationType: 'event' | 'group';
-  title: string;
-  message: string;
+  params?: Record<string, any>; // parameters for translation
   read: boolean;
   createdAt: Date;
   metadata?: NotificationMetadata;
@@ -139,8 +138,11 @@ export const getUserNotifications = async (
       userId: n.userId,
       type: n.type,
       notificationType: 'event' as const,
-      title: generateNotificationTitle('event', n.type, n.event, n.user),
-      message: generateNotificationMessage('event', n.type, n.event, n.user),
+      params: n.params || {
+        name: n.user?.name,
+        eventTitle: n.event?.title,
+        // add more as needed
+      },
       read: n.read,
       createdAt: n.createdAt,
       metadata,
@@ -156,8 +158,10 @@ export const getUserNotifications = async (
       userId: n.userId,
       type: n.type,
       notificationType: 'group' as const,
-      title: generateNotificationTitle('group', n.type, null, null, n.group),
-      message: generateNotificationMessage('group', n.type, null, null, n.group),
+      params: n.params || {
+        groupName: n.group?.name,
+        // add more as needed
+      },
       read: n.read,
       createdAt: n.createdAt,
       metadata,
@@ -178,8 +182,8 @@ export const getUserNotifications = async (
     const query = searchQuery.toLowerCase().trim();
     allNotifications = allNotifications.filter(
       (n) =>
-        n.title.toLowerCase().includes(query) ||
-        n.message.toLowerCase().includes(query)
+        (n.type && n.type.toLowerCase().includes(query)) ||
+        (n.params && Object.values(n.params).some(v => typeof v === 'string' && v.toLowerCase().includes(query)))
     );
   }
 
@@ -232,100 +236,6 @@ function enrichNotificationMetadata(
   }
 
   return metadata;
-}
-
-/**
- * Generate notification title
- */
-function generateNotificationTitle(
-  notificationType: 'event' | 'group',
-  type: string,
-  event?: any,
-  user?: any,
-  group?: any
-): string {
-  const userName = user?.name || 'Someone';
-  const eventTitle = event?.title || 'event';
-  const groupName = group?.name || 'group';
-
-  if (notificationType === 'event') {
-    switch (type) {
-      case 'created':
-        return `New Event: ${eventTitle}`;
-      case 'reminder':
-        return `Reminder: ${eventTitle}`;
-      case 'join':
-        return `${userName} joined your event`;
-      case 'leave':
-        return `${userName} left your event`;
-      case 'late':
-        return `${userName} will be late`;
-      case 'confirmed':
-        return `${userName} confirmed attendance`;
-      case 'declined':
-        return `${userName} declined`;
-      default:
-        return `Event Update: ${eventTitle}`;
-    }
-  } else {
-    switch (type) {
-      case 'join_request':
-        return 'New Join Request';
-      case 'accepted':
-        return 'Join Request Accepted';
-      case 'nearby_created':
-        return 'New Group Near You';
-      default:
-        return `Group Update: ${groupName}`;
-    }
-  }
-}
-
-/**
- * Generate notification message
- */
-function generateNotificationMessage(
-  notificationType: 'event' | 'group',
-  type: string,
-  event?: any,
-  user?: any,
-  group?: any
-): string {
-  const userName = user?.name || 'Someone';
-  const eventTitle = event?.title || 'your event';
-  const groupName = group?.name || 'group';
-
-  if (notificationType === 'event') {
-    switch (type) {
-      case 'created':
-        return 'A new event has been created. Check it out!';
-      case 'reminder':
-        return "Don't forget to attend!";
-      case 'join':
-        return `${userName} has joined "${eventTitle}"`;
-      case 'leave':
-        return `${userName} has left "${eventTitle}"`;
-      case 'late':
-        return `${userName} marked themselves as late for "${eventTitle}"`;
-      case 'confirmed':
-        return `${userName} confirmed attendance for "${eventTitle}"`;
-      case 'declined':
-        return `${userName} declined "${eventTitle}"`;
-      default:
-        return `There's an update to "${eventTitle}"`;
-    }
-  } else {
-    switch (type) {
-      case 'join_request':
-        return `Someone wants to join "${groupName}"`;
-      case 'accepted':
-        return `Welcome to "${groupName}"! Your join request was accepted.`;
-      case 'nearby_created':
-        return `New group "${groupName}" created near you`;
-      default:
-        return `There's an update to "${groupName}"`;
-    }
-  }
 }
 
 /**

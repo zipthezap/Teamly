@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { notificationsAPI } from '../services/api';
+import { useTranslation } from 'react-i18next';
 
 export interface NotificationMetadata {
   actionUrl?: string;
@@ -72,6 +73,8 @@ export const useEnhancedNotifications = (options: UseEnhancedNotificationsOption
     initialFilters = { includeRead: false },
   } = options;
 
+  const { t } = useTranslation();
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [stats, setStats] = useState<NotificationStats | null>(null);
   const [loading, setLoading] = useState(false);
@@ -89,7 +92,6 @@ export const useEnhancedNotifications = (options: UseEnhancedNotificationsOption
     async (resetOffset = false) => {
       setLoading(true);
       setError(null);
-
       try {
         const currentOffset = resetOffset ? 0 : offset;
         const response = await notificationsAPI.getAll({
@@ -97,16 +99,19 @@ export const useEnhancedNotifications = (options: UseEnhancedNotificationsOption
           limit,
           offset: currentOffset,
         });
-
+        // Map notifications to add translated message
+        const mappedNotifications = response.data.notifications.map((notif: Notification) => ({
+          ...notif,
+          message: t(`notifications.${notif.type}`, notif.metadata || {}),
+        }));
         if (resetOffset) {
-          setNotifications(response.data.notifications);
+          setNotifications(mappedNotifications);
           setOffset(0);
         } else {
           setNotifications((prev) =>
-            currentOffset === 0 ? response.data.notifications : [...prev, ...response.data.notifications]
+            currentOffset === 0 ? mappedNotifications : [...prev, ...mappedNotifications]
           );
         }
-
         setHasMore(response.data.hasMore);
         setTotal(response.data.total);
       } catch (err: any) {
@@ -116,7 +121,7 @@ export const useEnhancedNotifications = (options: UseEnhancedNotificationsOption
         setLoading(false);
       }
     },
-    [filters, offset]
+    [filters, offset, t]
   );
 
   // Fetch stats

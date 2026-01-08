@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Paper,
   Typography,
@@ -21,27 +22,26 @@ interface EventActivityFeedProps {
   onCloseDialog: () => void;
 }
 
-const getActivityMessage = (notif: any) => {
-  const userName = notif.user?.name || 'Someone';
+const getActivityMessage = (notif: any, t: any) => {
+  const userName = notif.user?.name || t('activityFeed.someone', 'Someone');
   const metadata = notif.metadata || {};
-  
   switch (notif.type) {
     case 'join':
-      return `${userName} joined the event`;
+      return t('activityFeed.join', { userName });
     case 'leave':
-      return `${userName} left the event`;
+      return t('activityFeed.leave', { userName });
     case 'late':
-      return `${userName} will be late`;
+      return t('activityFeed.late', { userName });
     case 'confirmed':
-      return `${userName} confirmed attendance`;
+      return t('activityFeed.confirmed', { userName });
     case 'declined':
-      return `${userName} declined`;
+      return t('activityFeed.declined', { userName });
     case 'status_change':
-      return `Event status changed to ${metadata.newStatus || 'updated'}`;
+      return t('activityFeed.statusChange', { newStatus: metadata.newStatus || t('activityFeed.updated', 'updated') });
     case 'comment':
-      return `${userName} commented on the event`;
+      return t('activityFeed.commented', { userName });
     default:
-      return `${userName} ${notif.type}`;
+      return t('activityFeed.default', { userName, type: notif.type });
   }
 };
 
@@ -66,12 +66,14 @@ const getActivityIcon = (type: string) => {
   }
 };
 
+
 const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
   event,
   activityDialogOpen,
   onOpenDialog,
   onCloseDialog,
 }) => {
+  const { t } = useTranslation();
   const recentActivity = event.eventNotifications?.slice(0, 3) || [];
   const recentParticipants = event.participants?.slice(-3) || [];
 
@@ -80,7 +82,7 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
       <Paper sx={{ p: 2, bgcolor: 'rgba(76, 175, 80, 0.03)' }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
           <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            Recent Activity
+            {t('activityFeed.recentActivity', 'Recent Activity')}
           </Typography>
           {event.eventNotifications && event.eventNotifications.length > 3 && (
             <Button
@@ -88,7 +90,7 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
               startIcon={<HistoryIcon />}
               onClick={onOpenDialog}
             >
-              View All
+              {t('activityFeed.viewAll', 'View All')}
             </Button>
           )}
         </Box>
@@ -126,7 +128,7 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
                   </Typography>
                   <Box flexGrow={1}>
                     <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.95rem' }} noWrap>
-                      {getActivityMessage(notif)}
+                      {getActivityMessage(notif, t)}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {new Date(notif.createdAt).toLocaleString('en-US', {
@@ -158,7 +160,7 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
                   </Typography>
                   <Box flexGrow={1}>
                     <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.95rem' }} noWrap>
-                      {p.user?.name} joined the event
+                      {t('activityFeed.join', { userName: p.user?.name })}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {new Date(p.joinedAt).toLocaleString('en-US', {
@@ -174,7 +176,7 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
             ) : (
               <Box textAlign="center" py={1}>
                 <Typography variant="body2" color="text.secondary">
-                  No activity yet
+                  {t('activityFeed.noActivityYet', 'No activity yet')}
                 </Typography>
               </Box>
             )}
@@ -193,7 +195,7 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
           <Box display="flex" justifyContent="space-between" alignItems="center">
             <Box display="flex" alignItems="center" gap={1}>
               <HistoryIcon />
-              <Typography variant="h6">Complete Activity History</Typography>
+              <Typography variant="h6">{t('activityFeed.completeHistory', 'Complete Activity History')}</Typography>
             </Box>
             <IconButton onClick={onCloseDialog} size="small">
               <CloseIcon />
@@ -223,7 +225,7 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
                     </Typography>
                     <Box flexGrow={1}>
                       <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                        {getActivityMessage(notif)}
+                        {getActivityMessage(notif, t)}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {new Date(notif.createdAt).toLocaleString('en-US', {
@@ -240,7 +242,7 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
             ) : (
               <Box textAlign="center" py={4}>
                 <Typography variant="body2" color="text.secondary">
-                  No activity recorded yet
+                  {t('activityFeed.noActivityRecorded', 'No activity recorded yet')}
                 </Typography>
               </Box>
             )}
@@ -248,7 +250,7 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
         </DialogContent>
         <DialogActions>
           <Button onClick={onCloseDialog}>
-            Close
+            {t('activityFeed.close', 'Close')}
           </Button>
         </DialogActions>
       </Dialog>

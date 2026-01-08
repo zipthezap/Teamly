@@ -18,6 +18,8 @@ interface UpcomingEventsCalendarProps {
 }
 
 const UpcomingEventsCalendar: React.FC<UpcomingEventsCalendarProps> = ({ events, onEventClick }) => {
+  const { t } = useTranslation();
+
   const getEventColor = (eventType: string) => {
     const colors: Record<string, string> = {
       Football: '#4CAF50',
@@ -32,7 +34,10 @@ const UpcomingEventsCalendar: React.FC<UpcomingEventsCalendarProps> = ({ events,
     return colors[eventType] || colors.Other;
   };
 
-  const { t } = useTranslation();
+  const getEventTypeLabel = (eventType: string) => {
+    return t(`event.type.${eventType.toLowerCase()}`, eventType);
+  };
+
   const getDayInfo = (dateString: string) => {
     const date = new Date(dateString);
     const today = new Date();
@@ -100,7 +105,7 @@ const UpcomingEventsCalendar: React.FC<UpcomingEventsCalendarProps> = ({ events,
                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
                     <span>{eventDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
                     <span className="mx-1">•</span>
-                    <span className="px-2 py-0.5 rounded text-xs font-semibold" style={{ background: getEventColor(event.eventType), color: 'white' }}>{event.eventType}</span>
+                    <span className="px-2 py-0.5 rounded text-xs font-semibold" style={{ background: getEventColor(event.eventType), color: 'white' }}>{getEventTypeLabel(event.eventType)}</span>
                   </div>
                   {event.location && (
                     <div className="flex items-center gap-1 text-xs text-gray-400">

@@ -37,6 +37,7 @@ model EventNotification {
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   type      String   // join, leave, late, confirmed, declined, status_change, comment
+  params    Json?    // Parameters for frontend translation (e.g., { name, eventTitle })
   metadata  Json?    // Additional data for the notification
   createdAt DateTime @default(now())
   read      Boolean  @default(false)
@@ -48,7 +49,8 @@ model GroupNotification {
   group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  type      String   // accepted, invited
+  type      String   // accepted, invited, join_request, etc.
+  params    Json?    // Parameters for frontend translation (e.g., { groupName })
   createdAt DateTime @default(now())
   read      Boolean  @default(false)
 }

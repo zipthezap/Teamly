@@ -46,6 +46,10 @@ const UserStatistics: React.FC = () => {
     }
   };
 
+  const getEventTypeLabel = (eventType: string) => {
+    return t(`event.type.${eventType.toLowerCase()}`, eventType);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-8">

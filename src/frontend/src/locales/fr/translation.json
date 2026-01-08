@@ -70,7 +70,39 @@
     "emailNotificationPreferences": "Préférences de notification par email",
     "muteAllNotifications": "Désactiver toutes les notifications",
     "stopReceivingEmails": "Arrêter de recevoir toutes les notifications par email",
-    "notificationTypes": "Types de notifications"
+    "notificationTypes": "Types de notifications",
+    "newEvent": "Nouvel événement : {{eventTitle}}",
+    "reminder": "Rappel : {{eventTitle}}",
+    "activityJoin": "{{name}} a rejoint votre événement",
+    "activityLeave": "{{name}} a quitté votre événement",
+    "activityLate": "{{name}} sera en retard",
+    "activityConfirmed": "{{name}} a confirmé sa présence",
+    "activityDeclined": "{{name}} a refusé",
+    "eventUpdate": "Mise à jour de l'événement : {{eventTitle}}",
+    "newJoinRequest": "Nouvelle demande d'adhésion",
+    "joinRequestAccepted": "Demande d'adhésion acceptée",
+    "newGroupNearYou": "Nouveau groupe près de chez vous",
+    "groupUpdate": "Mise à jour du groupe : {{groupName}}",
+    "eventCreated": "Un nouvel événement a été créé. Découvrez-le !",
+    "reminderMessage": "N'oubliez pas d'y assister !",
+    "activityJoinMessage": "{{name}} a rejoint \"{{eventTitle}}\"",
+    "activityLeaveMessage": "{{name}} a quitté \"{{eventTitle}}\"",
+    "activityLateMessage": "{{name}} s'est signalé en retard pour \"{{eventTitle}}\"",
+    "activityConfirmedMessage": "{{name}} a confirmé sa présence pour \"{{eventTitle}}\"",
+    "activityDeclinedMessage": "{{name}} a refusé \"{{eventTitle}}\"",
+    "eventUpdateMessage": "Il y a une mise à jour pour \"{{eventTitle}}\"",
+    "joinRequestMessage": "Quelqu'un souhaite rejoindre \"{{groupName}}\"",
+    "joinAcceptedMessage": "Bienvenue dans \"{{groupName}}\" ! Votre demande d'adhésion a été acceptée.",
+    "newGroupCreatedMessage": "Nouveau groupe \"{{groupName}}\" créé près de chez vous",
+    "groupUpdateMessage": "Il y a une mise à jour pour \"{{groupName}}\"",
+    "someone": "Quelqu'un",
+    "event": "événement",
+    "group": "groupe",
+    "confirmedMessage": "{{name}} a confirmé sa présence pour \"{{eventTitle}}\"",
+    "declinedMessage": "{{name}} a refusé la présence pour \"{{eventTitle}}\"",
+    "lateMessage": "{{name}} sera en retard pour \"{{eventTitle}}\"",
+    "joinedMessage": "{{name}} a rejoint l'événement \"{{eventTitle}}\"",
+    "leftMessage": "{{name}} a quitté l'événement \"{{eventTitle}}\""
   },
   "auth": {
     "loginTitle": "Se connecter à Teamly",
@@ -112,14 +144,20 @@
     "createFirstEvent": "Créez votre premier événement",
     "noGroupsYet": "Aucun groupe pour le moment",
     "noGroupsYetDesc": "Vous n'avez pas encore rejoint de groupe. Créez-en un pour commencer et connectez-vous avec d'autres passionnés de sport !",
-    "createFirstGroup": "Créez votre premier groupe"
-    ,
+    "createFirstGroup": "Créez votre premier groupe",
     "yourActivity": "Votre activité",
     "eventsJoined": "Événements rejoints",
     "confirmed": "Confirmé(s)",
-    "pastEvents": "Événements passés"
-    ,
+    "pastEvents": "Événements passés",
     "recentActivity": "Activité récente",
+    "upcomingSchedule": "Programme à venir",
+    "quickLinks": "Liens rapides",
+    "myGroups": "Mes groupes",
+    "allEvents": "Tous les événements",
+    "discoverGroups": "Découvrir des groupes",
+    "myProfile": "Mon profil",
+    "loadMore": "Charger plus",
+    "noUpcomingEvents": "Aucun événement à venir prévu",
     "activity": {
       "activity": "activité",
       "activities": "activités",
@@ -135,15 +173,21 @@
       "tryAdjustingFilters": "Essayez d'ajuster vos filtres",
       "more": "de plus",
       "showLess": "Afficher moins"
-    }
-    ,
-    "tomorrow": "Demain"
+    },
+    "tomorrow": "Demain",
+    "timeRange": "Plage de temps",
+    "allTime": "Tout le temps",
+    "today": "Aujourd'hui",
+    "thisWeek": "Cette semaine",
+    "thisMonth": "Ce mois-ci",
+    "activityType": "Type d'activité",
+    "allTypes": "Tous les types"
   },
   "events": {
     "allEvents": "Tous les événements",
     "eventFound": "événement trouvé",
     "eventsFound": "événements trouvés",
-    "upcoming": "À venir",
+    "upcomingEvents": "Événements à venir",
     "pastEvents": "Événements passés",
     "spotsLeft": "{{count}} place restante",
     "spotsLeft_plural": "{{count}} places restantes",
@@ -266,7 +310,10 @@
       "confirmed": "Confirmé",
       "declined": "Refusé",
       "pending": "En attente"
-    }
+    },
+    "activityConfirmed": "a confirmé sa présence",
+    "activityDeclined": "a refusé",
+    "activityLate": "sera en retard"
   },
   "groups": {
     "groupName": "Nom du groupe",
@@ -412,8 +459,7 @@
     "totalEvents": "Événements totaux",
     "upcomingEvents": "Événements à venir",
     "pastEvents": "Événements passés",
-    "recentActivity": "Activité récente"
-    ,
+    "recentActivity": "Activité récente",
     "activities": "activités",
     "timeRange": "Plage de temps",
     "allTime": "Tout le temps",
@@ -429,8 +475,7 @@
     "discoverGroups": "Découvrir des groupes",
     "loadMore": "Charger plus",
     "events": "Événements",
-    "groups": "Groupes"
-    ,
+    "groups": "Groupes",
     "activities": "activités",
     "timeRange": "Plage de temps",
     "allTime": "Tout le temps",
@@ -443,8 +488,7 @@
     "quickLinks": "Liens rapides",
     "myGroups": "Mes groupes",
     "allEvents": "Tous les événements",
-    "discoverGroups": "Découvrir des groupes"
-    ,
+    "discoverGroups": "Découvrir des groupes",
     "myProfile": "Mon profil"
   },
   "profile": {
@@ -499,5 +543,23 @@
     "coordinatesSet": "Coordonnées : {{lat}}, {{lng}}",
     "geolocationNotSupported": "La géolocalisation n'est pas prise en charge par votre navigateur",
     "unableToRetrieveLocation": "Impossible de récupérer votre position : {{error}}"
+  },
+  "activityFeed": {
+    "recentActivity": "Activité récente",
+    "viewAll": "Voir tout",
+    "completeHistory": "Historique complet des activités",
+    "noActivityYet": "Aucune activité pour le moment",
+    "noActivityRecorded": "Aucune activité enregistrée pour le moment",
+    "close": "Fermer",
+    "someone": "Quelqu'un",
+    "join": "{{userName}} a rejoint l'événement",
+    "leave": "{{userName}} a quitté l'événement",
+    "late": "{{userName}} sera en retard",
+    "confirmed": "{{userName}} a confirmé sa présence",
+    "declined": "{{userName}} a refusé",
+    "statusChange": "Statut de l'événement changé en {{newStatus}}",
+    "updated": "mis à jour",
+    "commented": "{{userName}} a commenté l'événement",
+    "default": "{{userName}} {{type}}"
   }
 }

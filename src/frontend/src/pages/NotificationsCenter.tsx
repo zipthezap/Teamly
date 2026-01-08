@@ -306,7 +306,7 @@ const NotificationsCenter: React.FC = () => {
                             <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
                               <Box display="flex" alignItems="center" gap={1}>
                                 <Typography variant="body1" fontWeight={!notif.read ? 600 : 400}>
-                                  {notif.title}
+                                  {t(`notifications.${notif.type}`, notif.params || {})}
                                 </Typography>
                                 {!notif.read && (
                                   <Chip label={t('notifications.new')} size="small" color="primary" sx={{ height: 20 }} />
@@ -328,7 +328,7 @@ const NotificationsCenter: React.FC = () => {
                           secondary={
                             <Box>
                               <Typography variant="body2" color="text.secondary" mb={0.5}>
-                                {notif.message}
+                                {t(`notifications.${notif.type}Message`, notif.params || {})}
                               </Typography>
                               <Stack direction="row" spacing={1}>
                                 <Chip
