@@ -1,4 +1,5 @@
 import prisma from '../config/database';
+import { logger } from '../utils/logger';
 import crypto from 'crypto';
 import { sendEmail } from '../utils/emailService';
 import { Request, Response } from 'express';
@@ -19,7 +20,7 @@ export const getEmailPreferences = async (req: Request, res: Response) => {
 
     res.json(preferences);
   } catch (error) {
-    console.error('Get email preferences error:', error);
+    logger.error('Get email preferences error:', 'emailControllerController', { error });
     res.status(500).json({ error: 'Failed to get email preferences' });
   }
 };
@@ -59,7 +60,7 @@ export const updateEmailPreferences = async (req: Request, res: Response) => {
 
     res.json(preferences);
   } catch (error) {
-    console.error('Update email preferences error:', error);
+    logger.error('Update email preferences error:', 'emailControllerController', { error });
     res.status(500).json({ error: 'Failed to update email preferences' });
   }
 };
@@ -90,7 +91,7 @@ export const sendVerificationEmail = async (req: Request, res: Response) => {
 
     res.json({ message: 'Verification email sent' });
   } catch (error) {
-    console.error('Send verification email error:', error);
+    logger.error('Send verification email error:', 'emailControllerController', { error });
     res.status(500).json({ error: 'Failed to send verification email' });
   }
 };
@@ -118,7 +119,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
 
     res.json({ message: 'Email verified successfully' });
   } catch (error) {
-    console.error('Verify email error:', error);
+    logger.error('Verify email error:', 'emailControllerController', { error });
     res.status(500).json({ error: 'Failed to verify email' });
   }
 };
@@ -135,7 +136,7 @@ export const toggleEmailNotifications = async (req: Request, res: Response) => {
 
     res.json({ emailNotifications: user.emailNotifications });
   } catch (error) {
-    console.error('Toggle email notifications error:', error);
+    logger.error('Toggle email notifications error:', 'emailControllerController', { error });
     res.status(500).json({ error: 'Failed to toggle email notifications' });
   }
 };

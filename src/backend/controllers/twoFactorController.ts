@@ -1,4 +1,5 @@
 import prisma from '../config/database';
+import { logger } from '../utils/logger';
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 import crypto from 'crypto';
@@ -50,7 +51,7 @@ export const setup2FA = async (req: Request, res: Response) => {
       backupCodes: backupCodes
     });
   } catch (error) {
-    console.error('Setup 2FA error:', error);
+    logger.error('Setup 2FA error:', 'twoFactorControllerController', { error });
     res.status(500).json({ error: 'Failed to setup 2FA' });
   }
 };
@@ -98,7 +99,7 @@ export const verify2FA = async (req: Request, res: Response) => {
 
     res.json({ message: '2FA enabled successfully' });
   } catch (error) {
-    console.error('Verify 2FA error:', error);
+    logger.error('Verify 2FA error:', 'twoFactorControllerController', { error });
     res.status(500).json({ error: 'Failed to verify 2FA' });
   }
 };
@@ -140,7 +141,7 @@ export const disable2FA = async (req: Request, res: Response) => {
 
     res.json({ message: '2FA disabled successfully' });
   } catch (error) {
-    console.error('Disable 2FA error:', error);
+    logger.error('Disable 2FA error:', 'twoFactorControllerController', { error });
     res.status(500).json({ error: 'Failed to disable 2FA' });
   }
 };
@@ -180,7 +181,7 @@ export const validate2FAToken = async (userId: string, token: string): Promise<a
 
     return { valid: verified };
   } catch (error) {
-    console.error('Validate 2FA token error:', error);
+    logger.error('Validate 2FA token error:', 'twoFactorControllerController', { error });
     return { valid: false, error: 'Validation failed' };
   }
 };
@@ -203,7 +204,7 @@ export const get2FAStatus = async (req: Request, res: Response) => {
       backupCodesRemaining: user.twoFactorBackupCodes.length
     });
   } catch (error) {
-    console.error('Get 2FA status error:', error);
+    logger.error('Get 2FA status error:', 'twoFactorControllerController', { error });
     res.status(500).json({ error: 'Failed to get 2FA status' });
   }
 };

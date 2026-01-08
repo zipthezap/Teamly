@@ -10,6 +10,8 @@ import {
   markAsRead,
   getStats,
   getUnreadCount,
+  deleteNotificationsEndpoint,
+  deleteAllReadNotificationsEndpoint,
 } from '../controllers/notificationController';
 
 const router = express.Router();
@@ -28,5 +30,11 @@ router.get('/stats', getStats);
 
 // Get unread notification count
 router.get('/unread-count', getUnreadCount);
+
+// Delete specific notifications
+router.delete('/', deleteNotificationsEndpoint);
+
+// Delete all read notifications
+router.delete('/read', deleteAllReadNotificationsEndpoint);
 
 export default router;

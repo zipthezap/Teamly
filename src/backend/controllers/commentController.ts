@@ -1,4 +1,5 @@
 import prisma from '../config/database';
+import { logger } from '../utils/logger';
 import { sendEmail } from '../utils/emailService';
 import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
 import { Request, Response } from 'express';
@@ -135,7 +136,7 @@ export const createComment = async (req: Request, res: Response) => {
 
     res.status(201).json(comment);
   } catch (error) {
-    console.error('Create comment error:', error);
+    logger.error('Create comment error:', 'commentControllerController', { error });
     res.status(500).json({ error: 'Failed to create comment' });
   }
 };
@@ -201,7 +202,7 @@ export const getEventComments = async (req: Request, res: Response) => {
 
     res.json(comments);
   } catch (error) {
-    console.error('Get event comments error:', error);
+    logger.error('Get event comments error:', 'commentControllerController', { error });
     res.status(500).json({ error: 'Failed to get comments' });
   }
 };
@@ -241,7 +242,7 @@ export const updateComment = async (req: Request, res: Response) => {
 
     res.json(comment);
   } catch (error) {
-    console.error('Update comment error:', error);
+    logger.error('Update comment error:', 'commentControllerController', { error });
     res.status(500).json({ error: 'Failed to update comment' });
   }
 };
@@ -270,7 +271,7 @@ export const deleteComment = async (req: Request, res: Response) => {
 
     res.json({ message: 'Comment deleted successfully' });
   } catch (error) {
-    console.error('Delete comment error:', error);
+    logger.error('Delete comment error:', 'commentControllerController', { error });
     res.status(500).json({ error: 'Failed to delete comment' });
   }
 };

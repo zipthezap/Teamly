@@ -52,6 +52,7 @@ export const getUserNotifications = async (
     notificationType?: 'event' | 'group';
     startDate?: Date;
     endDate?: Date;
+    searchQuery?: string;
   } = {}
 ): Promise<{ notifications: UnifiedNotification[]; total: number }> => {
   const {
@@ -62,6 +63,7 @@ export const getUserNotifications = async (
     notificationType,
     startDate,
     endDate,
+    searchQuery,
   } = options;
 
   // Build where clause for event notifications
@@ -164,13 +166,26 @@ export const getUserNotifications = async (
   });
 
   // Merge and sort all notifications
-  const allNotifications = [...enrichedEventNotifications, ...enrichedGroupNotifications].sort(
+  let allNotifications = [...enrichedEventNotifications, ...enrichedGroupNotifications].sort(
     (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
   );
 
+  // Apply search filter if provided
+  // Note: Search is applied in-memory after fetching from database.
+  // For better performance with large datasets, consider implementing
+  // database-level full-text search or moving search to WHERE clause.
+  if (searchQuery && searchQuery.trim()) {
+    const query = searchQuery.toLowerCase().trim();
+    allNotifications = allNotifications.filter(
+      (n) =>
+        n.title.toLowerCase().includes(query) ||
+        n.message.toLowerCase().includes(query)
+    );
+  }
+
   return {
     notifications: allNotifications.slice(0, limit),
-    total: eventCount + groupCount,
+    total: searchQuery ? allNotifications.length : eventCount + groupCount,
   };
 };
 
@@ -381,4 +396,45 @@ export const getNotificationStats = async (userId: string) => {
     last7Days: recentActivity.length,
     typeCounts,
   };
+};
+
+/**
+ * Delete specific notifications
+ */
+export const deleteNotifications = async (
+  userId: string,
+  notificationIds: string[]
+): Promise<{ deletedCount: number }> => {
+  if (!notificationIds || notificationIds.length === 0) {
+    return { deletedCount: 0 };
+  }
+
+  const [eventDeleted, groupDeleted] = await Promise.all([
+    prisma.eventNotification.deleteMany({
+      where: { id: { in: notificationIds }, userId },
+    }),
+    prisma.groupNotification.deleteMany({
+      where: { id: { in: notificationIds }, userId },
+    }),
+  ]);
+
+  return { deletedCount: eventDeleted.count + groupDeleted.count };
+};
+
+/**
+ * Delete all read notifications for a user
+ */
+export const deleteAllReadNotifications = async (
+  userId: string
+): Promise<{ deletedCount: number }> => {
+  const [eventDeleted, groupDeleted] = await Promise.all([
+    prisma.eventNotification.deleteMany({
+      where: { userId, read: true },
+    }),
+    prisma.groupNotification.deleteMany({
+      where: { userId, read: true },
+    }),
+  ]);
+
+  return { deletedCount: eventDeleted.count + groupDeleted.count };
 };

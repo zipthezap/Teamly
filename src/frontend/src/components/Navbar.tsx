@@ -65,10 +65,6 @@ const Navbar = () => {
             <div className="flex items-center gap-4">
               <LanguageSwitcher />
               <NotificationsPopover />
-              <Link to="/2fa-setup" className="p-2 rounded hover:bg-white/10 transition">
-                {/* Security SVG */}
-                <svg className="w-5 h-5 text-blue-200" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 2l7 4v6c0 5.25-3.5 10-7 10s-7-4.75-7-10V6l7-4z" /></svg>
-              </Link>
               <Link to="/profile" className="flex items-center gap-2 px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-white transition no-underline">
                 <span className="w-8 h-8 rounded-full flex items-center justify-center font-bold bg-blue-400 text-white text-base">
                   {getInitials(user.name)}
