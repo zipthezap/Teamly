@@ -4,7 +4,10 @@
 # This script tests the new event invite link and guest participation functionality
 
 API_URL="${API_URL:-http://localhost:3000/api}"
-echo "Testing Event Invite Links feature against: $API_URL"
+FRONTEND_URL="${FRONTEND_URL:-http://localhost:3001}"
+echo "Testing Event Invite Links feature"
+echo "API: $API_URL"
+echo "Frontend: $FRONTEND_URL"
 echo "================================================"
 
 # Colors for output
@@ -190,10 +193,10 @@ echo ""
 echo "Summary:"
 echo "- Public event created with ID: $EVENT_ID"
 echo "- Invite token: $INVITE_TOKEN"
-echo "- Invite URL: http://localhost:3001/events/join/$INVITE_TOKEN"
+echo "- Invite URL: $FRONTEND_URL/events/join/$INVITE_TOKEN"
 echo "- Guest successfully joined as 'Guest Player'"
 echo ""
 echo "You can test the frontend by:"
 echo "1. Starting the frontend (cd src/frontend && npm start)"
-echo "2. Visiting: http://localhost:3001/events/join/$INVITE_TOKEN"
+echo "2. Visiting: $FRONTEND_URL/events/join/$INVITE_TOKEN"
 echo "3. Entering a name and clicking 'Join Event'"

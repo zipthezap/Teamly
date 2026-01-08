@@ -6,7 +6,7 @@ import { getEventActivity } from '../services/eventNotification';
 import { validateEventStatus } from '../services/eventValidation';
 import { logger } from '../utils/logger';
 import { Request, Response } from 'express';
-import crypto from 'crypto';
+import { createInviteToken } from '../utils/inviteToken';
 
 export const createEvent = async (req: Request, res: Response) => {
   try {
@@ -91,7 +91,7 @@ export const createEvent = async (req: Request, res: Response) => {
     });
 
     // Generate invite token if event is public
-    const inviteToken = isPublic ? crypto.randomBytes(32).toString('hex') : null;
+    const inviteToken = isPublic ? createInviteToken() : null;
 
     const event = await prisma.event.create({
       data: {
@@ -1181,7 +1181,7 @@ export const generateInviteToken = async (req: Request, res: Response) => {
     }
 
     // Generate new token
-    const inviteToken = crypto.randomBytes(32).toString('hex');
+    const inviteToken = createInviteToken();
 
     const updatedEvent = await prisma.event.update({
       where: { id },
