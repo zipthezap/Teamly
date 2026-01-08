@@ -344,7 +344,7 @@ export const getEvent = async (req: Request, res: Response) => {
 export const updateEvent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { title, description, eventType, location, startTime, endTime, maxPlayers } = req.body;
+    const { title, description, eventType, location, startTime, endTime, maxPlayers, isPublic } = req.body;
 
     // Validate that events are single-day only if both times are provided
     if (startTime && endTime) {
@@ -392,7 +392,8 @@ export const updateEvent = async (req: Request, res: Response) => {
         ...(location !== undefined && { location }),
         ...(startTime && { startTime: new Date(startTime) }),
         ...(endTime !== undefined && { endTime: endTime ? new Date(endTime) : null }),
-        ...(maxPlayers !== undefined && { maxPlayers: maxPlayers ? parseInt(maxPlayers) : null })
+        ...(maxPlayers !== undefined && { maxPlayers: maxPlayers ? parseInt(maxPlayers) : null }),
+        ...(isPublic !== undefined && { isPublic })
       },
       include: {
         creator: {
