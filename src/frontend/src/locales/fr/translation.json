@@ -32,8 +32,6 @@
     "joined": "Inscrit",
     "open": "Ouvert",
     "past": "Passé",
-    "prev": "Précédent",
-    "next": "Suivant",
     "retry": "Réessayer",
     "errorLoadingEvents": "Échec du chargement des événements",
     "notificationPreferences": {
@@ -324,6 +322,7 @@
     }
   },
   "groupDetails": {
+    "joinRequests": "Demandes d'adhésion",
     "inviteLinkCopied": "Lien d'invitation copié dans le presse-papiers !",
     "memberInvited": "Membre invité avec succès",
     "failedToInvite": "Échec de l'invitation du membre",

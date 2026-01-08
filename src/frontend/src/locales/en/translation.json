@@ -32,8 +32,6 @@
     "joined": "Joined",
     "open": "Open",
     "past": "Past",
-    "prev": "Previous",
-    "next": "Next",
     "retry": "Retry",
     "errorLoadingEvents": "Failed to load events",
     "notificationPreferences": {
@@ -324,6 +322,7 @@
     }
   },
   "groupDetails": {
+    "joinRequests": "Join Requests",
     "inviteLinkCopied": "Invite link copied to clipboard!",
     "memberInvited": "Member invited successfully",
     "failedToInvite": "Failed to invite member",
