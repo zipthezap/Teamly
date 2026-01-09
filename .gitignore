@@ -74,6 +74,10 @@ temp/
 *.bak
 *.backup
 
+# Uploads
+uploads/
+!uploads/.gitkeep
+
 # Build outputs
 dist/
 build/

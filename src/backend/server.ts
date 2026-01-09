@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express, { Request, Response, Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import path from 'path';
 
 import authRoutes from './routes/authRoutes';
 import groupRoutes from './routes/groupRoutes';
@@ -23,6 +24,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { checkDatabaseHealth, setupGracefulShutdown } from './utils/databaseHealth';
 import { startEmailQueueProcessor, stopEmailQueueProcessor } from './services/emailQueueService';
 import { startScheduledJobs, stopScheduledJobs } from './services/scheduledJobs';
+import { ensureUploadDirectories } from './utils/imageProcessor';
 
 // Validate environment variables before starting the server
 try {
@@ -78,6 +80,23 @@ app.use(express.urlencoded({ extended: true, limit: config.requestBodySizeLimit 
 // Sanitize all incoming data to prevent XSS
 app.use(sanitizeInput);
 
+// Serve static files from uploads directory with security headers
+app.use('/uploads', express.static(path.join(__dirname, '../../uploads'), {
+  maxAge: '1d', // Cache for 1 day
+  setHeaders: (res, filePath) => {
+    // Only serve image files
+    const ext = path.extname(filePath).toLowerCase();
+    if (['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) {
+      res.setHeader('Content-Type', `image/${ext.substring(1)}`);
+      // Prevent execution of any scripts
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+    } else {
+      // Deny access to non-image files
+      res.status(403).end();
+    }
+  }
+}));
+
 // Apply rate limiting to all API routes
 app.use('/api/', apiLimiter);
 
@@ -124,6 +143,16 @@ app.use((_req: Request, res: Response) => {
 
 // Start background services
 let emailQueueInterval: NodeJS.Timeout | null = null;
+
+// Initialize upload directories before starting server
+ensureUploadDirectories()
+  .then(() => {
+    logger.info('Upload directories initialized', 'Server');
+  })
+  .catch((error) => {
+    logger.error('Failed to initialize upload directories', 'Server', { error });
+    process.exit(1);
+  });
 
 const server = app.listen(PORT, () => {
   logger.info(`Server is running on port ${PORT}`, 'Server');

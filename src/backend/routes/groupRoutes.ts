@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import * as groupController from '../controllers/groupController';
 import authMiddleware from '../middleware/auth';
-import { authenticatedLimiter } from '../middleware/rateLimiter';
+import { authenticatedLimiter, uploadLimiter } from '../middleware/rateLimiter';
+import { uploadGroupPicture, handleUploadError } from '../middleware/upload';
 
 const router = Router();
 
@@ -26,6 +27,16 @@ router.delete('/:id/members/:memberId', groupController.removeMember);
 router.put('/:id/members/:memberId/role', groupController.updateMemberRole);
 router.delete('/:id/leave', groupController.leaveGroup);
 router.get('/:id/invite-link', groupController.getInviteLink);
+
+// Group picture management (admin only)
+router.post(
+  '/:id/picture',
+  uploadLimiter,
+  uploadGroupPicture,
+  handleUploadError,
+  groupController.uploadGroupPicture
+);
+router.delete('/:id/picture', groupController.deleteGroupPicture);
 
 // Join request routes
 router.post('/:id/join-request', groupController.requestJoinGroup);

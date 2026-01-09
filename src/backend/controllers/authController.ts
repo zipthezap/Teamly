@@ -8,6 +8,15 @@ import { logger } from '../utils/logger';
 import { validateEmail, validateStrongPassword, isRequired, ValidationError, sanitizeString } from '../utils/validation';
 import crypto from 'crypto';
 import { sendEmail } from '../utils/emailService';
+import path from 'path';
+import { 
+  validateImage, 
+  processImage, 
+  deleteFile, 
+  deleteOldPicture,
+  generateUniqueFilename 
+} from '../utils/imageProcessor';
+import { UPLOAD_CONFIG } from '../config/upload';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -662,5 +671,146 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
   } catch (error) {
     logger.error('Failed to get sessions', 'AuthController', { error });
     res.status(500).json({ error: 'Failed to get sessions' });
+  }
+};
+
+/**
+ * Upload or update profile picture
+ */
+export const uploadProfilePicture = async (req: Request, res: Response): Promise<void> => {
+  let tempFilePath: string | undefined;
+  let finalFilePath: string | undefined;
+
+  try {
+    // Check if file was uploaded
+    if (!req.file) {
+      res.status(400).json({ error: 'No file uploaded' });
+      return;
+    }
+
+    tempFilePath = req.file.path;
+
+    // Validate the image
+    const validation = await validateImage(tempFilePath);
+    if (!validation.valid) {
+      await deleteFile(tempFilePath);
+      res.status(400).json({ error: validation.error });
+      return;
+    }
+
+    // Generate unique filename for the processed image
+    const filename = generateUniqueFilename(req.file.originalname, 'profile_');
+    finalFilePath = path.join(UPLOAD_CONFIG.UPLOAD_DIR.PROFILES, filename);
+
+    // Process the image (resize, optimize, strip EXIF)
+    await processImage(tempFilePath, finalFilePath, {
+      width: UPLOAD_CONFIG.IMAGE.PROFILE_WIDTH,
+      height: UPLOAD_CONFIG.IMAGE.PROFILE_HEIGHT,
+      fit: 'cover',
+      quality: UPLOAD_CONFIG.IMAGE.JPEG_QUALITY,
+      format: 'jpeg',
+    });
+
+    // Delete temp file
+    await deleteFile(tempFilePath);
+    tempFilePath = undefined;
+
+    // Get current user to check for existing profile picture
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { profilePicture: true },
+    });
+
+    // Delete old profile picture if it exists
+    if (currentUser?.profilePicture) {
+      await deleteOldPicture(currentUser.profilePicture);
+    }
+
+    // Generate the URL for the picture
+    const pictureUrl = `/uploads/profiles/${filename}`;
+
+    // Update user's profile picture in database
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { profilePicture: pictureUrl },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        profilePicture: true,
+        city: true,
+        country: true,
+        createdAt: true,
+      },
+    });
+
+    logger.info('Profile picture uploaded successfully', 'AuthController', { 
+      userId: req.user!.id 
+    });
+
+    res.json({ 
+      user: updatedUser,
+      message: 'Profile picture uploaded successfully' 
+    });
+  } catch (error) {
+    logger.error('Failed to upload profile picture', 'AuthController', { error });
+
+    // Clean up files on error
+    if (tempFilePath) {
+      await deleteFile(tempFilePath);
+    }
+    if (finalFilePath) {
+      await deleteFile(finalFilePath);
+    }
+
+    res.status(500).json({ error: 'Failed to upload profile picture' });
+  }
+};
+
+/**
+ * Delete profile picture
+ */
+export const deleteProfilePicture = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Get current user to check for existing profile picture
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { profilePicture: true },
+    });
+
+    if (!currentUser?.profilePicture) {
+      res.status(404).json({ error: 'No profile picture to delete' });
+      return;
+    }
+
+    // Delete the file
+    await deleteOldPicture(currentUser.profilePicture);
+
+    // Update user's profile picture in database
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { profilePicture: null },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        profilePicture: true,
+        city: true,
+        country: true,
+        createdAt: true,
+      },
+    });
+
+    logger.info('Profile picture deleted successfully', 'AuthController', { 
+      userId: req.user!.id 
+    });
+
+    res.json({ 
+      user: updatedUser,
+      message: 'Profile picture deleted successfully' 
+    });
+  } catch (error) {
+    logger.error('Failed to delete profile picture', 'AuthController', { error });
+    res.status(500).json({ error: 'Failed to delete profile picture' });
   }
 };
