@@ -79,11 +79,10 @@ npm start
 
 ## 📚 Documentation
 
-- `README.md` - Main documentation
-- `src/frontend/README.md` - Frontend architecture
-- `IMPLEMENTATION_SUMMARY.md` - Detailed implementation notes
+- `../README.md` - Main documentation
+- `../src/frontend/README.md` - Frontend architecture
 - `API_DOCUMENTATION.md` - API reference
-- `FEATURE_ROADMAP.md` - Future features
+- `guides/FEATURE_ROADMAP.md` - Future features
 
 ---
 

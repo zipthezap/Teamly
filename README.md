@@ -33,7 +33,7 @@ A sports event organization app that allows individuals to set and organize smal
 
 For detailed documentation on these features, see:
 - [docs/guides/FEATURES.md](docs/guides/FEATURES.md) - Core features
-- [docs/ENHANCED_NOTIFICATIONS.md](docs/ENHANCED_NOTIFICATIONS.md) - Enhanced notification system
+- [docs/features/ENHANCED_NOTIFICATIONS.md](docs/features/ENHANCED_NOTIFICATIONS.md) - Enhanced notification system
 
 ## Architecture
 
@@ -274,7 +274,7 @@ This project follows best practices for code quality and maintainability:
 - **Type Safety**: TypeScript with enabled compiler checks for unused locals/parameters and consistent casing
 - **Input Validation**: Validation utilities in `src/backend/utils/validation.ts` for consistent data validation
 - **Environment Validation**: Automatic validation of required environment variables on startup
-- **Backend Improvements**: Enhanced error handling, request tracking, and performance monitoring (see [docs/BACKEND_IMPROVEMENTS.md](docs/BACKEND_IMPROVEMENTS.md))
+- **Backend Improvements**: Enhanced error handling, request tracking, and performance monitoring (see archived documentation)
 - **Security Best Practices**: 
   - Environment-based JWT secrets (never hardcoded)
   - Automatic input sanitization and XSS prevention
@@ -287,8 +287,6 @@ This project follows best practices for code quality and maintainability:
   - Graceful shutdown and error handling
 
 For complete security documentation, see [docs/SECURITY.md](docs/SECURITY.md).
-
-For backend architecture and improvements, see [docs/BACKEND_IMPROVEMENTS.md](docs/BACKEND_IMPROVEMENTS.md).
 
 ### Database Management
 
