@@ -35,7 +35,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
   return (
     <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 mb-8">
       <img
-        src={getImageUrl(group.picture, DEFAULT_COVER)!}
+        src={getImageUrl(group.picture, DEFAULT_COVER) || DEFAULT_COVER}
         alt="Group Cover"
         className="w-24 h-24 rounded-lg object-cover shadow-lg border-4 border-slate-700"
       />

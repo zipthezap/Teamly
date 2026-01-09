@@ -15,7 +15,13 @@ export const getImageUrl = (picture?: string, fallback?: string | null): string 
   }
   
   // If picture is a relative path, construct full URL
-  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  const apiBaseUrl = import.meta.env.VITE_API_URL;
+  if (!apiBaseUrl) {
+    console.warn('VITE_API_URL is not set. Image URLs may not work correctly.');
+    // In production, images should be served from the same origin
+    return picture;
+  }
+  
   // Remove /api from the end if it exists
   const baseUrl = apiBaseUrl.replace(/\/api$/, '');
   return `${baseUrl}${picture}`;
