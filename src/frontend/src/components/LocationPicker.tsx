@@ -12,6 +12,7 @@ import MyLocationIcon from '@mui/icons-material/MyLocation';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import { useTranslation } from 'react-i18next';
 import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
+import { parseAddressComponents } from '../utils/addressHelpers';
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 const libraries: ("places")[] = ["places"];
@@ -103,19 +104,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
             
             if (data.status === 'OK' && data.results && data.results.length > 0) {
               const result = data.results[0];
-              const addressComponents = result.address_components;
-              
-              // Extract city and country from address components
-              let city = '';
-              let country = '';
-              
-              for (const component of addressComponents) {
-                if (component.types.includes('locality')) {
-                  city = component.long_name;
-                } else if (component.types.includes('country')) {
-                  country = component.long_name;
-                }
-              }
+              const { city, country } = parseAddressComponents(result.address_components);
               
               const newLocation = {
                 latitude: lat,
@@ -197,18 +186,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
         .then(data => {
           if (data.status === 'OK' && data.results && data.results.length > 0) {
             const result = data.results[0];
-            const addressComponents = result.address_components;
-            
-            let city = '';
-            let country = '';
-            
-            for (const component of addressComponents) {
-              if (component.types.includes('locality')) {
-                city = component.long_name;
-              } else if (component.types.includes('country')) {
-                country = component.long_name;
-              }
-            }
+            const { city, country } = parseAddressComponents(result.address_components);
             
             const newLocation = {
               latitude: lat,
@@ -255,6 +233,12 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
     }
   }, [location, onChange]);
 
+  const handleMarkerDragEnd = useCallback((e: google.maps.MapMouseEvent) => {
+    if (!e.latLng) return;
+    // Reuse the same logic as handleMapClick
+    handleMapClick(e);
+  }, [handleMapClick]);
+
   const onAutocompleteLoad = (autocomplete: google.maps.places.Autocomplete) => {
     autocompleteRef.current = autocomplete;
   };
@@ -271,18 +255,9 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
       const lat = place.geometry.location.lat();
       const lng = place.geometry.location.lng();
       
-      let city = '';
-      let country = '';
-      
-      if (place.address_components) {
-        for (const component of place.address_components) {
-          if (component.types.includes('locality')) {
-            city = component.long_name;
-          } else if (component.types.includes('country')) {
-            country = component.long_name;
-          }
-        }
-      }
+      const { city, country } = place.address_components 
+        ? parseAddressComponents(place.address_components)
+        : { city: '', country: '' };
       
       const newLocation = {
         latitude: lat,
@@ -368,7 +343,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
                 <Marker
                   position={mapCenter}
                   draggable={true}
-                  onDragEnd={handleMapClick}
+                  onDragEnd={handleMarkerDragEnd}
                 />
               )}
             </GoogleMap>

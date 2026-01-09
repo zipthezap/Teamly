@@ -224,7 +224,7 @@ const PublicGroups = () => {
     return <LoadingSpinner message={t('groups.publicGroups.loading')} />;
   }
 
-  return (
+  const renderContent = () => (
     <div className="max-w-6xl mx-auto mt-8 mb-8 px-4">
       <div className="flex items-center mb-6">
         {/* Globe SVG icon */}
@@ -263,9 +263,9 @@ const PublicGroups = () => {
 
         {/* Google Maps Integration */}
         {GOOGLE_MAPS_API_KEY ? (
-          <div className="mb-3">
-            <div className="text-xs text-gray-400 mb-1">{t('groups.publicGroups.clickMapToSetLocation')}</div>
-            <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries}>
+          <>
+            <div className="mb-3">
+              <div className="text-xs text-gray-400 mb-1">{t('groups.publicGroups.clickMapToSetLocation')}</div>
               <GoogleMap
                 mapContainerStyle={mapContainerStyle}
                 center={mapCenter || { lat: 0, lng: 0 }}
@@ -300,19 +300,10 @@ const PublicGroups = () => {
                   ) : null
                 )}
               </GoogleMap>
-            </LoadScript>
-          </div>
-        ) : (
-          <div className="mb-3 p-2 bg-yellow-100 text-yellow-900 rounded border border-yellow-300">
-            <strong>{t('groups.publicGroups.apiKeyNotConfigured')}</strong> <span className="font-mono">VITE_GOOGLE_MAPS_API_KEY</span> {t('groups.publicGroups.apiKeyRequired')}<br />
-            {t('groups.publicGroups.locationFilteringWithoutMap')}
-          </div>
-        )}
+            </div>
 
-        {/* Address Search with Autocomplete */}
-        {GOOGLE_MAPS_API_KEY ? (
-          <div className="mb-2">
-            <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries}>
+            {/* Address Search with Autocomplete */}
+            <div className="mb-2">
               <Autocomplete onLoad={onAutocompleteLoad} onPlaceChanged={onPlaceChanged}>
                 <input
                   className="w-full px-3 py-2 border border-gray-700 rounded bg-[#181c24] text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
@@ -322,19 +313,25 @@ const PublicGroups = () => {
                   type="text"
                 />
               </Autocomplete>
-            </LoadScript>
-          </div>
+            </div>
+          </>
         ) : (
-          <div className="mb-2">
-            <input
-              className="w-full px-3 py-2 border border-gray-700 rounded bg-[#181c24] text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              placeholder={t('groups.searchByAddress')}
-              value={searchAddress}
-              onChange={(e) => setSearchAddress(e.target.value)}
-              type="text"
-              disabled
-            />
-          </div>
+          <>
+            <div className="mb-3 p-2 bg-yellow-100 text-yellow-900 rounded border border-yellow-300">
+              <strong>{t('groups.publicGroups.apiKeyNotConfigured')}</strong> <span className="font-mono">VITE_GOOGLE_MAPS_API_KEY</span> {t('groups.publicGroups.apiKeyRequired')}<br />
+              {t('groups.publicGroups.locationFilteringWithoutMap')}
+            </div>
+            <div className="mb-2">
+              <input
+                className="w-full px-3 py-2 border border-gray-700 rounded bg-[#181c24] text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                placeholder={t('groups.searchByAddress')}
+                value={searchAddress}
+                onChange={(e) => setSearchAddress(e.target.value)}
+                type="text"
+                disabled
+              />
+            </div>
+          </>
         )}
 
         {(locationEnabled && (userLocation || customSearchLocation)) && (
@@ -424,6 +421,14 @@ const PublicGroups = () => {
         </div>
       )}
     </div>
+  );
+
+  return GOOGLE_MAPS_API_KEY ? (
+    <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries}>
+      {renderContent()}
+    </LoadScript>
+  ) : (
+    renderContent()
   );
 };
 
