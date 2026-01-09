@@ -7,7 +7,10 @@ import JoinRequestsPopover from "./JoinRequestsPopover";
 interface GroupHeaderProps {
   group: Group;
   onEdit?: () => void;
+  onDelete?: () => void;
+  onLeave?: () => void;
   onInvite?: () => void;
+  onCopyLink?: () => void;
   isAdmin?: boolean;
   joinRequests?: Array<{ id: string; name: string; email: string }>;
   onAcceptJoin?: (id: string) => void;
@@ -15,7 +18,18 @@ interface GroupHeaderProps {
 }
 
 const DEFAULT_COVER = "/default-group-cover.jpg";
-const GroupHeader: React.FC<GroupHeaderProps> = ({ group, onEdit, onInvite, isAdmin, joinRequests = [], onAcceptJoin, onDeclineJoin }) => {
+const GroupHeader: React.FC<GroupHeaderProps> = ({ 
+  group, 
+  onEdit, 
+  onDelete, 
+  onLeave, 
+  onInvite, 
+  onCopyLink, 
+  isAdmin, 
+  joinRequests = [], 
+  onAcceptJoin, 
+  onDeclineJoin 
+}) => {
   const { t } = useTranslation();
   
   return (
@@ -44,12 +58,23 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({ group, onEdit, onInvite, isAd
           <span>{t('groupDetails.created')}: {group.createdAt}</span>
         </div>
       </div>
-      {isAdmin && (
-        <div className="flex gap-2 mt-4 md:mt-0">
-          {onEdit && <Button color="primary" onClick={onEdit}>{t('common.edit')}</Button>}
-          {onInvite && <Button color="success" onClick={onInvite}>{t('groupDetails.invite')}</Button>}
-        </div>
-      )}
+      <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
+        {isAdmin && onEdit && (
+          <Button color="primary" onClick={onEdit}>{t('groupDetails.editGroup')}</Button>
+        )}
+        {isAdmin && onDelete && (
+          <Button color="danger" onClick={onDelete}>{t('groupDetails.deleteGroup')}</Button>
+        )}
+        {onLeave && (
+          <Button color="secondary" onClick={onLeave}>{t('groupDetails.leave')}</Button>
+        )}
+        {onInvite && (
+          <Button color="success" onClick={onInvite}>{t('groupDetails.invite')}</Button>
+        )}
+        {onCopyLink && (
+          <Button color="info" onClick={onCopyLink}>{t('groupDetails.copyLink')}</Button>
+        )}
+      </div>
     </div>
   );
 };

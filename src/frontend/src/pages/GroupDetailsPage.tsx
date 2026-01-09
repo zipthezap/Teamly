@@ -181,6 +181,10 @@ export default function GroupDetailsPage() {
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showConfirm, setShowConfirm] = useState<{ open: boolean; email: string | null }>({ open: false, email: null });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
   // Fetch join requests from API
   const { data: joinRequests = [], refetch: refetchJoinRequests } = useQuery({
     queryKey: ["groupJoinRequests", groupId],
@@ -250,6 +254,95 @@ export default function GroupDetailsPage() {
     }
   };
 
+  // Delete group handler
+  const deleteGroupMutation = useMutation({
+    mutationFn: async () => {
+      await groupsAPI.delete(groupId!);
+    },
+    onSuccess: () => {
+      setToast({ message: t('groupDetails.groupDeleted'), type: "success" });
+      setTimeout(() => {
+        navigate('/groups');
+      }, 1000);
+    },
+    onError: (err: any) => {
+      setToast({ message: err?.response?.data?.error || t('groupDetails.failedToDelete'), type: "error" });
+    },
+  });
+
+  const handleDeleteGroup = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteGroup = () => {
+    deleteGroupMutation.mutate();
+    setShowDeleteConfirm(false);
+  };
+
+  // Leave group handler
+  const leaveGroupMutation = useMutation({
+    mutationFn: async () => {
+      await groupsAPI.leave(groupId!);
+    },
+    onSuccess: () => {
+      setToast({ message: t('groupDetails.leftGroup'), type: "success" });
+      setTimeout(() => {
+        navigate('/groups');
+      }, 1000);
+    },
+    onError: (err: any) => {
+      setToast({ message: err?.response?.data?.error || t('groupDetails.failedToLeave'), type: "error" });
+    },
+  });
+
+  const handleLeaveGroup = () => {
+    setShowLeaveConfirm(true);
+  };
+
+  const confirmLeaveGroup = () => {
+    leaveGroupMutation.mutate();
+    setShowLeaveConfirm(false);
+  };
+
+  // Invite member handler
+  const inviteMemberMutation = useMutation({
+    mutationFn: async (email: string) => {
+      await groupsAPI.invite(groupId!, email);
+    },
+    onSuccess: () => {
+      setToast({ message: t('groupDetails.memberInvited'), type: "success" });
+      setShowInviteModal(false);
+      setInviteEmail("");
+      queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
+    },
+    onError: (err: any) => {
+      setToast({ message: err?.response?.data?.error || t('groupDetails.failedToInvite'), type: "error" });
+    },
+  });
+
+  const handleInviteMember = () => {
+    setShowInviteModal(true);
+  };
+
+  const handleInviteSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (inviteEmail.trim()) {
+      inviteMemberMutation.mutate(inviteEmail);
+    }
+  };
+
+  // Copy invite link handler
+  const handleCopyLink = async () => {
+    try {
+      const res = await groupsAPI.getInviteLink(groupId!);
+      const inviteLink = `${window.location.origin}/join-group/${res.data.groupId}`;
+      await navigator.clipboard.writeText(inviteLink);
+      setToast({ message: t('groupDetails.inviteLinkCopied'), type: "success" });
+    } catch (err: any) {
+      setToast({ message: err?.response?.data?.error || t('groupDetails.failedToGetInviteLink'), type: "error" });
+    }
+  };
+
   if (groupLoading || eventsLoading || chatLoading) return <div className="text-center text-slate-300 mt-10">{t('groupDetails.loadingGroupDetails')}</div>;
   if (groupError || !group) return <div className="text-center text-red-400 mt-10">{t('groupDetails.failedToLoad')}</div>;
 
@@ -261,6 +354,10 @@ export default function GroupDetailsPage() {
       <GroupHeader
         group={group}
         onEdit={isAdmin ? () => setSettingsOpen(true) : undefined}
+        onDelete={isAdmin ? handleDeleteGroup : undefined}
+        onLeave={handleLeaveGroup}
+        onInvite={handleInviteMember}
+        onCopyLink={handleCopyLink}
         isAdmin={isAdmin}
         joinRequests={joinRequests}
         onAcceptJoin={handleAcceptJoin}
@@ -347,6 +444,60 @@ export default function GroupDetailsPage() {
           </div>
         </div>
       )}
+      {/* Delete Group Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+          <div className="bg-slate-800 p-6 rounded shadow-lg w-96 text-center">
+            <div className="mb-4 text-lg font-bold">{t('groupDetails.deleteGroup')}?</div>
+            <div className="mb-6 text-slate-400">
+              {t('groupDetails.confirmDelete')}
+            </div>
+            <div className="flex gap-4 justify-center">
+              <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded" onClick={confirmDeleteGroup} disabled={deleteGroupMutation.isPending}>{t('common.delete')}</button>
+              <button className="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded" onClick={() => setShowDeleteConfirm(false)}>{t('common.cancel')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Leave Group Confirmation Dialog */}
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+          <div className="bg-slate-800 p-6 rounded shadow-lg w-96 text-center">
+            <div className="mb-4 text-lg font-bold">{t('groupDetails.leave')}?</div>
+            <div className="mb-6 text-slate-400">
+              {t('groupDetails.confirmLeave')}
+            </div>
+            <div className="flex gap-4 justify-center">
+              <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded" onClick={confirmLeaveGroup} disabled={leaveGroupMutation.isPending}>{t('groupDetails.leave')}</button>
+              <button className="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded" onClick={() => setShowLeaveConfirm(false)}>{t('common.cancel')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Invite Member Modal */}
+      <Dialog open={showInviteModal} onClose={() => setShowInviteModal(false)} maxWidth="sm" fullWidth>
+        <form onSubmit={handleInviteSubmit}>
+          <DialogTitle>{t('groupDetails.inviteMember')}</DialogTitle>
+          <DialogContent>
+            <TextField
+              label={t('common.email')}
+              type="email"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              required
+              fullWidth
+              margin="normal"
+              autoFocus
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowInviteModal(false)} color="secondary">{t('common.cancel')}</Button>
+            <Button type="submit" variant="contained" color="primary" disabled={inviteMemberMutation.isPending}>
+              {t('groupDetails.invite')}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
     </div>
   );
 }
