@@ -54,9 +54,14 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
               {t('groupDetails.viewAll', 'View All')}
             </a>
           {isAdmin && onCreate && (
-            <Button color="primary" size="sm" onClick={onCreate} className="rounded-full p-2 min-w-0 w-10 h-10 flex items-center justify-center" aria-label={t('groupDetails.createEvent', 'Create Event')}>
+            <button
+              onClick={onCreate}
+              className="ml-2 flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded transition text-base font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              aria-label={t('groupDetails.createEvent', 'Create Event')}
+              style={{ boxShadow: 'none', borderRadius: '0.5rem', minWidth: 0 }}
+            >
               <PlusIcon className="w-5 h-5" />
-            </Button>
+            </button>
           )}
         </div>
       </div>
