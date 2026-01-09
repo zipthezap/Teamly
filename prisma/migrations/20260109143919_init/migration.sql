@@ -250,6 +250,63 @@ CREATE TABLE "GuestParticipant" (
     CONSTRAINT "GuestParticipant_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "RefreshToken" (
+    "id" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "RefreshToken_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "RevokedToken" (
+    "id" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "revokedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "reason" TEXT,
+
+    CONSTRAINT "RevokedToken_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "UserSession" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "deviceInfo" TEXT,
+    "ipAddress" TEXT,
+    "lastActive" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "UserSession_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "EmailQueue" (
+    "id" TEXT NOT NULL,
+    "recipient" TEXT NOT NULL,
+    "subject" TEXT NOT NULL,
+    "htmlContent" TEXT NOT NULL,
+    "textContent" TEXT,
+    "templateType" TEXT,
+    "templateData" JSONB,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "attempts" INTEGER NOT NULL DEFAULT 0,
+    "maxAttempts" INTEGER NOT NULL DEFAULT 3,
+    "lastError" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "scheduledAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "sentAt" TIMESTAMP(3),
+
+    CONSTRAINT "EmailQueue_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "EventAttendance_eventId_userId_key" ON "EventAttendance"("eventId", "userId");
 
@@ -279,6 +336,48 @@ CREATE UNIQUE INDEX "CommentMention_commentId_userId_key" ON "CommentMention"("c
 
 -- CreateIndex
 CREATE INDEX "GuestParticipant_eventId_idx" ON "GuestParticipant"("eventId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "RefreshToken_token_key" ON "RefreshToken"("token");
+
+-- CreateIndex
+CREATE INDEX "RefreshToken_userId_idx" ON "RefreshToken"("userId");
+
+-- CreateIndex
+CREATE INDEX "RefreshToken_token_idx" ON "RefreshToken"("token");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "RevokedToken_token_key" ON "RevokedToken"("token");
+
+-- CreateIndex
+CREATE INDEX "RevokedToken_token_idx" ON "RevokedToken"("token");
+
+-- CreateIndex
+CREATE INDEX "RevokedToken_userId_idx" ON "RevokedToken"("userId");
+
+-- CreateIndex
+CREATE INDEX "RevokedToken_expiresAt_idx" ON "RevokedToken"("expiresAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "UserSession_token_key" ON "UserSession"("token");
+
+-- CreateIndex
+CREATE INDEX "UserSession_userId_idx" ON "UserSession"("userId");
+
+-- CreateIndex
+CREATE INDEX "UserSession_token_idx" ON "UserSession"("token");
+
+-- CreateIndex
+CREATE INDEX "UserSession_expiresAt_idx" ON "UserSession"("expiresAt");
+
+-- CreateIndex
+CREATE INDEX "EmailQueue_status_idx" ON "EmailQueue"("status");
+
+-- CreateIndex
+CREATE INDEX "EmailQueue_scheduledAt_idx" ON "EmailQueue"("scheduledAt");
+
+-- CreateIndex
+CREATE INDEX "EmailQueue_recipient_idx" ON "EmailQueue"("recipient");
 
 -- AddForeignKey
 ALTER TABLE "GroupMessage" ADD CONSTRAINT "GroupMessage_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -372,3 +471,12 @@ ALTER TABLE "CommentMention" ADD CONSTRAINT "CommentMention_userId_fkey" FOREIGN
 
 -- AddForeignKey
 ALTER TABLE "GuestParticipant" ADD CONSTRAINT "GuestParticipant_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RefreshToken" ADD CONSTRAINT "RefreshToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "RevokedToken" ADD CONSTRAINT "RevokedToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "UserSession" ADD CONSTRAINT "UserSession_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -30,6 +30,7 @@ async function main() {
       email: 'alice@example.com',
       password: hashedPassword, // In production, hash passwords!
       name: 'Alice',
+      emailVerified: true,
     },
   });
   const user2 = await prisma.user.upsert({
@@ -39,6 +40,7 @@ async function main() {
       email: 'bob@example.com',
       password: hashedPassword,
       name: 'Bob',
+      emailVerified: true,
     },
   });
   const user3 = await prisma.user.upsert({
@@ -48,6 +50,7 @@ async function main() {
       email: 'charlie@example.com',
       password: hashedPassword,
       name: 'Charlie',
+      emailVerified: true,
     },
   });
   const user4 = await prisma.user.upsert({
@@ -57,6 +60,7 @@ async function main() {
       email: 'diana@example.com',
       password: hashedPassword,
       name: 'Diana',
+      emailVerified: true,
     },
   });
   console.log('Seeded users:', user1.email, user2.email, user3.email, user4.email);
