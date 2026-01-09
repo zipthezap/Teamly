@@ -24,7 +24,7 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/teamly?schema=public
       PORT: 3000
-      NODE_ENV: production
+      NODE_ENV: development
       # SECURITY: Set a strong JWT secret via environment variable in production
       # Generate with: openssl rand -base64 32
       JWT_SECRET: ${JWT_SECRET:-please-change-this-in-production-to-a-random-secure-value}

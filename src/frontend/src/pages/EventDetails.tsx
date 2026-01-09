@@ -144,10 +144,10 @@ const EventDetails = () => {
 
   const isParticipant = event?.participants?.find((p: any) => p.userId === user?.id);
   const isCreator = event?.creatorId === user?.id;
-  const isFull = event?.maxPlayers && event?.participants?.length >= event?.maxPlayers;
+  const isFull = event?.maxPlayers && (event?.participants?.length || 0) >= event?.maxPlayers;
   const totalParticipants = 
-    (event.participants?.filter((p: any) => p.status === 'confirmed').length || 0) +
-    (event.guestParticipants?.filter((g: any) => g.status === 'confirmed').length || 0);
+    ((event?.participants?.filter((p: any) => p.status === 'confirmed').length) || 0) +
+    ((event?.guestParticipants?.filter((g: any) => g.status === 'confirmed').length) || 0);
 
   if (loading) {
     return (
@@ -166,10 +166,10 @@ const EventDetails = () => {
   }
 
   const participantCount = totalParticipants;
-  const confirmedCount = event.participants?.filter((p: any) => p.status === 'confirmed').length || 0;
-  const declinedCount = event.participants?.filter((p: any) => p.status === 'declined').length || 0;
-  const pendingCount = (event.participants?.length || 0) - confirmedCount - declinedCount;
-  const fillPercentage = event.maxPlayers ? (participantCount / event.maxPlayers) * 100 : 0;
+  const confirmedCount = event?.participants?.filter((p: any) => p.status === 'confirmed').length || 0;
+  const declinedCount = event?.participants?.filter((p: any) => p.status === 'declined').length || 0;
+  const pendingCount = (event?.participants?.length || 0) - confirmedCount - declinedCount;
+  const fillPercentage = event?.maxPlayers ? (participantCount / event.maxPlayers) * 100 : 0;
 
   return (
     <div className="max-w-5xl mx-auto mt-8 mb-8 px-2">
@@ -364,7 +364,7 @@ const EventDetails = () => {
       <div className="bg-[#232946] rounded-xl shadow-md p-6 mt-8">
         <div className="font-semibold mb-4 text-xl">{t('eventDetails.participantsList', { count: participantCount })}</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {event.participants?.map((p, idx) => (
+          {event?.participants?.map((p, idx) => (
             <div key={p.id || idx} className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3">
               <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">{getInitials(p.user?.name)}</div>
               <div className="flex-1 min-w-0">

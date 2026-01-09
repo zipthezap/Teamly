@@ -46,6 +46,9 @@
   },
   "notifications": {
     "title": "Notifications",
+    "declinedMessage": "{{name}} a refusé \"{{eventTitle}}\"",
+    "confirmedMessage": "{{name}} a confirmé sa présence à \"{{eventTitle}}\"",
+    "joinMessage": "{{name}} a rejoint l'événement \"{{eventTitle}}\"",
     "markAllRead": "Marquer tout comme lu",
     "viewAll": "Voir tout",
     "noNotifications": "Aucune notification",
@@ -297,7 +300,8 @@
     },
     "activityConfirmed": "a confirmé sa présence",
     "activityDeclined": "a refusé",
-    "activityLate": "sera en retard"
+    "activityLate": "sera en retard",
+    "activityJoin": "a rejoint l'événement"
   },
   "groups": {
     "groupName": "Nom du groupe",

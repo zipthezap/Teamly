@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem } from '@mui/material';
 import GroupHeader from "../components/GroupDetails/GroupHeader";
@@ -237,8 +237,9 @@ export default function GroupDetailsPage() {
   };
 
   // Event card click handler
+  const navigate = useNavigate();
   const handleEventClick = (eventId: number) => {
-    alert(`${t('common.viewDetails')} ${eventId}`);
+    navigate(`/events/${eventId}`);
   };
 
   // Chat send handler

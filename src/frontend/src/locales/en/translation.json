@@ -46,6 +46,9 @@
   },
   "notifications": {
     "title": "Notifications",
+    "declinedMessage": "{{name}} declined \"{{eventTitle}}\"",
+    "confirmedMessage": "{{name}} confirmed attendance for \"{{eventTitle}}\"",
+    "joinMessage": "{{name}} joined the event \"{{eventTitle}}\"",
     "markAllRead": "Mark all read",
     "viewAll": "View All",
     "noNotifications": "No notifications",
@@ -297,7 +300,8 @@
     },
     "activityConfirmed": "confirmed attendance",
     "activityDeclined": "declined",
-    "activityLate": "will be late"
+    "activityLate": "will be late",
+    "activityJoin": "joined the event"
   },
   "groups": {
     "groupName": "Group Name",

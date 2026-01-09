@@ -37,6 +37,8 @@ CREATE TABLE "EventNotification" (
     "eventId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "type" TEXT NOT NULL,
+    "params" JSONB,
+    "metadata" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "read" BOOLEAN NOT NULL DEFAULT false,
 
@@ -49,6 +51,7 @@ CREATE TABLE "GroupNotification" (
     "groupId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "type" TEXT NOT NULL,
+    "params" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "read" BOOLEAN NOT NULL DEFAULT false,
 
@@ -69,6 +72,10 @@ CREATE TABLE "User" (
     "emailNotifications" BOOLEAN NOT NULL DEFAULT true,
     "emailVerified" BOOLEAN NOT NULL DEFAULT false,
     "emailVerificationToken" TEXT,
+    "passwordResetToken" TEXT,
+    "passwordResetExpires" TIMESTAMP(3),
+    "failedLoginAttempts" INTEGER NOT NULL DEFAULT 0,
+    "accountLockedUntil" TIMESTAMP(3),
     "city" TEXT,
     "country" TEXT,
 
@@ -127,6 +134,10 @@ CREATE TABLE "Event" (
     "maxPlayers" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "archived" BOOLEAN NOT NULL DEFAULT false,
+    "status" TEXT NOT NULL DEFAULT 'upcoming',
+    "isPublic" BOOLEAN NOT NULL DEFAULT false,
+    "inviteToken" TEXT,
     "isRecurring" BOOLEAN NOT NULL DEFAULT false,
     "recurrenceRule" TEXT,
     "recurrenceEnd" TIMESTAMP(3),
@@ -161,6 +172,8 @@ CREATE TABLE "EventRequest" (
     "maxPlayers" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "status" TEXT NOT NULL DEFAULT 'voting',
+    "voteDeadline" TIMESTAMP(3),
+    "voteThreshold" DOUBLE PRECISION DEFAULT 0.5,
     "creatorId" TEXT NOT NULL,
     "groupId" TEXT NOT NULL,
     "finalizedEventId" TEXT,
@@ -226,6 +239,17 @@ CREATE TABLE "CommentMention" (
     CONSTRAINT "CommentMention_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "GuestParticipant" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'confirmed',
+    "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "eventId" TEXT NOT NULL,
+
+    CONSTRAINT "GuestParticipant_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "EventAttendance_eventId_userId_key" ON "EventAttendance"("eventId", "userId");
 
@@ -234,6 +258,9 @@ CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "GroupMember_userId_groupId_key" ON "GroupMember"("userId", "groupId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Event_inviteToken_key" ON "Event"("inviteToken");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "EventParticipant_eventId_userId_key" ON "EventParticipant"("eventId", "userId");
@@ -249,6 +276,9 @@ CREATE UNIQUE INDEX "EmailPreference_userId_key" ON "EmailPreference"("userId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "CommentMention_commentId_userId_key" ON "CommentMention"("commentId", "userId");
+
+-- CreateIndex
+CREATE INDEX "GuestParticipant_eventId_idx" ON "GuestParticipant"("eventId");
 
 -- AddForeignKey
 ALTER TABLE "GroupMessage" ADD CONSTRAINT "GroupMessage_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -339,3 +369,6 @@ ALTER TABLE "CommentMention" ADD CONSTRAINT "CommentMention_commentId_fkey" FORE
 
 -- AddForeignKey
 ALTER TABLE "CommentMention" ADD CONSTRAINT "CommentMention_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "GuestParticipant" ADD CONSTRAINT "GuestParticipant_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id") ON DELETE CASCADE ON UPDATE CASCADE;
