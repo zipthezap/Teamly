@@ -107,8 +107,9 @@ export async function processImage(
     const { width, height, fit = 'cover', quality = 85, format = 'jpeg' } = options;
     
     let pipeline = sharp(inputPath)
-      // Remove all metadata including EXIF data
-      .rotate() // Auto-rotate based on EXIF orientation, then remove EXIF
+      // Auto-rotate based on EXIF orientation
+      // Note: Sharp automatically removes EXIF data during processing
+      .rotate()
       .resize(width, height, {
         fit,
         withoutEnlargement: true,

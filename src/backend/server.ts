@@ -87,7 +87,14 @@ app.use('/uploads', express.static(path.join(__dirname, '../../uploads'), {
     // Only serve image files
     const ext = path.extname(filePath).toLowerCase();
     if (['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) {
-      res.setHeader('Content-Type', `image/${ext.substring(1)}`);
+      // Set proper Content-Type for each format
+      const mimeTypes: Record<string, string> = {
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.webp': 'image/webp',
+      };
+      res.setHeader('Content-Type', mimeTypes[ext]);
       // Prevent execution of any scripts
       res.setHeader('X-Content-Type-Options', 'nosniff');
     } else {
@@ -148,50 +155,51 @@ let emailQueueInterval: NodeJS.Timeout | null = null;
 ensureUploadDirectories()
   .then(() => {
     logger.info('Upload directories initialized', 'Server');
+    
+    // Start server after upload directories are ready
+    const server = app.listen(PORT, () => {
+      logger.info(`Server is running on port ${PORT}`, 'Server');
+      logger.info(`API available at http://localhost:${PORT}`, 'Server');
+      
+      // Start email queue processor
+      emailQueueInterval = startEmailQueueProcessor();
+      
+      // Start scheduled cleanup jobs
+      startScheduledJobs();
+      
+      logger.info('Background services started', 'Server');
+    });
+
+    // Enhanced graceful shutdown
+    const gracefulShutdown = () => {
+      logger.info('Shutting down gracefully...', 'Server');
+      
+      // Stop accepting new connections
+      server.close(() => {
+        logger.info('Server closed', 'Server');
+        
+        // Stop background services
+        if (emailQueueInterval) {
+          stopEmailQueueProcessor(emailQueueInterval);
+        }
+        stopScheduledJobs();
+        
+        process.exit(0);
+      });
+      
+      // Force shutdown after 30 seconds
+      setTimeout(() => {
+        logger.error('Forcing shutdown after timeout', 'Server');
+        process.exit(1);
+      }, 30000);
+    };
+
+    process.on('SIGTERM', gracefulShutdown);
+    process.on('SIGINT', gracefulShutdown);
   })
   .catch((error) => {
     logger.error('Failed to initialize upload directories', 'Server', { error });
     process.exit(1);
   });
-
-const server = app.listen(PORT, () => {
-  logger.info(`Server is running on port ${PORT}`, 'Server');
-  logger.info(`API available at http://localhost:${PORT}`, 'Server');
-  
-  // Start email queue processor
-  emailQueueInterval = startEmailQueueProcessor();
-  
-  // Start scheduled cleanup jobs
-  startScheduledJobs();
-  
-  logger.info('Background services started', 'Server');
-});
-
-// Enhanced graceful shutdown
-const gracefulShutdown = () => {
-  logger.info('Shutting down gracefully...', 'Server');
-  
-  // Stop accepting new connections
-  server.close(() => {
-    logger.info('Server closed', 'Server');
-    
-    // Stop background services
-    if (emailQueueInterval) {
-      stopEmailQueueProcessor(emailQueueInterval);
-    }
-    stopScheduledJobs();
-    
-    process.exit(0);
-  });
-  
-  // Force shutdown after 30 seconds
-  setTimeout(() => {
-    logger.error('Forcing shutdown after timeout', 'Server');
-    process.exit(1);
-  }, 30000);
-};
-
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
 
 export default app;

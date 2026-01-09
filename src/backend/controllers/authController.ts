@@ -682,6 +682,12 @@ export const uploadProfilePicture = async (req: Request, res: Response): Promise
   let finalFilePath: string | undefined;
 
   try {
+    // Safety check for user authentication
+    if (!req.user?.id) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     // Check if file was uploaded
     if (!req.file) {
       res.status(400).json({ error: 'No file uploaded' });
@@ -717,7 +723,7 @@ export const uploadProfilePicture = async (req: Request, res: Response): Promise
 
     // Get current user to check for existing profile picture
     const currentUser = await prisma.user.findUnique({
-      where: { id: req.user!.id },
+      where: { id: req.user.id },
       select: { profilePicture: true },
     });
 
@@ -731,7 +737,7 @@ export const uploadProfilePicture = async (req: Request, res: Response): Promise
 
     // Update user's profile picture in database
     const updatedUser = await prisma.user.update({
-      where: { id: req.user!.id },
+      where: { id: req.user.id },
       data: { profilePicture: pictureUrl },
       select: {
         id: true,
@@ -745,7 +751,7 @@ export const uploadProfilePicture = async (req: Request, res: Response): Promise
     });
 
     logger.info('Profile picture uploaded successfully', 'AuthController', { 
-      userId: req.user!.id 
+      userId: req.user.id 
     });
 
     res.json({ 
@@ -772,9 +778,15 @@ export const uploadProfilePicture = async (req: Request, res: Response): Promise
  */
 export const deleteProfilePicture = async (req: Request, res: Response): Promise<void> => {
   try {
+    // Safety check for user authentication
+    if (!req.user?.id) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     // Get current user to check for existing profile picture
     const currentUser = await prisma.user.findUnique({
-      where: { id: req.user!.id },
+      where: { id: req.user.id },
       select: { profilePicture: true },
     });
 
@@ -788,7 +800,7 @@ export const deleteProfilePicture = async (req: Request, res: Response): Promise
 
     // Update user's profile picture in database
     const updatedUser = await prisma.user.update({
-      where: { id: req.user!.id },
+      where: { id: req.user.id },
       data: { profilePicture: null },
       select: {
         id: true,
@@ -802,7 +814,7 @@ export const deleteProfilePicture = async (req: Request, res: Response): Promise
     });
 
     logger.info('Profile picture deleted successfully', 'AuthController', { 
-      userId: req.user!.id 
+      userId: req.user.id 
     });
 
     res.json({ 
