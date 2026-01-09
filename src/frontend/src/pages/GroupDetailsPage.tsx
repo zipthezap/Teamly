@@ -479,7 +479,6 @@ export default function GroupDetailsPage() {
               required
               fullWidth
               margin="normal"
-              autoFocus
             />
           </DialogContent>
           <DialogActions>

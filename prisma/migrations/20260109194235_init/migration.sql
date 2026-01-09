@@ -78,6 +78,7 @@ CREATE TABLE "User" (
     "accountLockedUntil" TIMESTAMP(3),
     "city" TEXT,
     "country" TEXT,
+    "profilePicture" TEXT,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -95,6 +96,7 @@ CREATE TABLE "Group" (
     "locationName" TEXT,
     "city" TEXT,
     "country" TEXT,
+    "picture" TEXT,
     "creatorId" TEXT NOT NULL,
 
     CONSTRAINT "Group_pkey" PRIMARY KEY ("id")
