@@ -26,3 +26,18 @@ export const getImageUrl = (picture?: string, fallback?: string | null): string 
   const baseUrl = apiBaseUrl.replace(/\/api$/, '');
   return `${baseUrl}${picture}`;
 };
+
+/**
+ * Generates initials from a name (up to 2 characters)
+ * @param name - The name to generate initials from
+ * @returns Initials (1-2 characters) or '?' if name is empty
+ */
+export const getInitials = (name?: string): string => {
+  if (!name) return '?';
+  return name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+};

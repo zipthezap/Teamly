@@ -358,7 +358,7 @@ export default function GroupDetailsPage() {
   const handleDeletePicture = async () => {
     try {
       const response = await groupsAPI.deleteGroupPicture(groupId!);
-      setGroupPicture(response.data.group.picture);
+      setGroupPicture(response.data.group.picture ?? undefined);
       setToast({ message: t('groupDetails.groupPictureDeleted') || 'Group picture deleted successfully', type: "success" });
       queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
     } catch (err: any) {

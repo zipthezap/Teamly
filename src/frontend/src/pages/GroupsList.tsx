@@ -25,7 +25,7 @@ import { groupsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { LoadingSpinner, EmptyState } from '../components/common';
-import { getImageUrl } from '../utils/imageUtils';
+import { getImageUrl, getInitials } from '../utils/imageUtils';
 
 const GroupsList = () => {
   const [groups, setGroups] = useState([]);
@@ -79,16 +79,6 @@ const GroupsList = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getInitials = (name) => {
-    if (!name) return '?';
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
   };
 
   const getUserRole = (group) => {
