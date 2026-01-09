@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   TextField,
@@ -11,6 +11,17 @@ import {
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import { useTranslation } from 'react-i18next';
+import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
+import { parseAddressComponents } from '../utils/addressHelpers';
+
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+const libraries: ("places")[] = ["places"];
+
+const mapContainerStyle = {
+  width: '100%',
+  height: '300px',
+  borderRadius: '8px',
+};
 
 interface LocationValue {
   latitude?: number | string;
@@ -36,6 +47,9 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
     city: value.city || '',
     country: value.country || '',
   });
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null);
+  const [searchAddress, setSearchAddress] = useState('');
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   useEffect(() => {
     if (value.latitude || value.longitude || value.locationName || value.city || value.country) {
@@ -46,6 +60,14 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
         city: value.city || '',
         country: value.country || '',
       });
+      
+      // Update map center if coordinates exist
+      if (value.latitude && value.longitude) {
+        setMapCenter({
+          lat: Number(value.latitude),
+          lng: Number(value.longitude),
+        });
+      }
     }
   }, [value]);
 
@@ -68,14 +90,52 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
     }
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        
+        // Try to get address from coordinates using reverse geocoding
+        if (GOOGLE_MAPS_API_KEY) {
+          try {
+            const response = await fetch(
+              `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`
+            );
+            const data = await response.json();
+            
+            if (data.status === 'OK' && data.results && data.results.length > 0) {
+              const result = data.results[0];
+              const { city, country } = parseAddressComponents(result.address_components);
+              
+              const newLocation = {
+                latitude: lat,
+                longitude: lng,
+                locationName: result.formatted_address,
+                city: city || location.city,
+                country: country || location.country,
+              };
+              
+              setLocation(newLocation);
+              setMapCenter({ lat, lng });
+              if (onChange) {
+                onChange(newLocation);
+              }
+              setLoading(false);
+              return;
+            }
+          } catch (err) {
+            console.error('Reverse geocoding error:', err);
+          }
+        }
+        
+        // Fallback if geocoding fails or no API key
         const newLocation = {
-          ...location, // Preserve existing city and country
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          locationName: location.locationName || `Location: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`,
+          ...location,
+          latitude: lat,
+          longitude: lng,
+          locationName: location.locationName || `Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
         };
         setLocation(newLocation);
+        setMapCenter({ lat, lng });
         if (onChange) {
           onChange(newLocation);
         }
@@ -102,8 +162,118 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
       country: '',
     };
     setLocation(emptyLocation);
+    setMapCenter(null);
+    setSearchAddress('');
     if (onChange) {
       onChange(emptyLocation);
+    }
+  };
+
+  const handleMapClick = useCallback((e: google.maps.MapMouseEvent) => {
+    if (!e.latLng) return;
+    
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+    
+    setLoading(true);
+    
+    // Use reverse geocoding to get address
+    if (GOOGLE_MAPS_API_KEY) {
+      fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`
+      )
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'OK' && data.results && data.results.length > 0) {
+            const result = data.results[0];
+            const { city, country } = parseAddressComponents(result.address_components);
+            
+            const newLocation = {
+              latitude: lat,
+              longitude: lng,
+              locationName: result.formatted_address,
+              city: city || location.city,
+              country: country || location.country,
+            };
+            
+            setLocation(newLocation);
+            setMapCenter({ lat, lng });
+            if (onChange) {
+              onChange(newLocation);
+            }
+          }
+        })
+        .catch(err => {
+          console.error('Reverse geocoding error:', err);
+          // Fallback without address
+          const newLocation = {
+            ...location,
+            latitude: lat,
+            longitude: lng,
+          };
+          setLocation(newLocation);
+          setMapCenter({ lat, lng });
+          if (onChange) {
+            onChange(newLocation);
+          }
+        })
+        .finally(() => setLoading(false));
+    } else {
+      const newLocation = {
+        ...location,
+        latitude: lat,
+        longitude: lng,
+      };
+      setLocation(newLocation);
+      setMapCenter({ lat, lng });
+      if (onChange) {
+        onChange(newLocation);
+      }
+      setLoading(false);
+    }
+  }, [location, onChange]);
+
+  const handleMarkerDragEnd = useCallback((e: google.maps.MapMouseEvent) => {
+    if (!e.latLng) return;
+    // Reuse the same logic as handleMapClick
+    handleMapClick(e);
+  }, [handleMapClick]);
+
+  const onAutocompleteLoad = (autocomplete: google.maps.places.Autocomplete) => {
+    autocompleteRef.current = autocomplete;
+  };
+
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      
+      if (!place.geometry || !place.geometry.location) {
+        setError(t('locationPicker.addressSearchFailed'));
+        return;
+      }
+      
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+      
+      const { city, country } = place.address_components 
+        ? parseAddressComponents(place.address_components)
+        : { city: '', country: '' };
+      
+      const newLocation = {
+        latitude: lat,
+        longitude: lng,
+        locationName: place.formatted_address || place.name || '',
+        city: city,
+        country: country,
+      };
+      
+      setLocation(newLocation);
+      setMapCenter({ lat, lng });
+      setSearchAddress(place.formatted_address || place.name || '');
+      
+      if (onChange) {
+        onChange(newLocation);
+      }
     }
   };
 
@@ -137,6 +307,53 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
           {error}
+        </Alert>
+      )}
+
+      {/* Google Maps with Autocomplete */}
+      {GOOGLE_MAPS_API_KEY ? (
+        <Box sx={{ mb: 2 }}>
+          <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries}>
+            {/* Address Search with Autocomplete */}
+            <Box sx={{ mb: 1 }}>
+              <Autocomplete onLoad={onAutocompleteLoad} onPlaceChanged={onPlaceChanged}>
+                <TextField
+                  fullWidth
+                  label={t('locationPicker.searchAddress')}
+                  placeholder={t('locationPicker.searchAddressPlaceholder')}
+                  value={searchAddress}
+                  onChange={(e) => setSearchAddress(e.target.value)}
+                  size="small"
+                  helperText={t('locationPicker.searchAddressHelper')}
+                />
+              </Autocomplete>
+            </Box>
+            
+            {/* Map */}
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+              {t('locationPicker.clickMapToSetLocation')}
+            </Typography>
+            <GoogleMap
+              mapContainerStyle={mapContainerStyle}
+              center={mapCenter || { lat: 0, lng: 0 }}
+              zoom={mapCenter ? 13 : 2}
+              onClick={handleMapClick}
+            >
+              {mapCenter && (
+                <Marker
+                  position={mapCenter}
+                  draggable={true}
+                  onDragEnd={handleMarkerDragEnd}
+                />
+              )}
+            </GoogleMap>
+          </LoadScript>
+        </Box>
+      ) : (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Typography variant="body2">
+            <strong>{t('locationPicker.apiKeyNotConfigured')}</strong> {t('locationPicker.apiKeyRequired')}
+          </Typography>
         </Alert>
       )}
 
