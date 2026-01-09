@@ -28,6 +28,8 @@ services:
       # SECURITY: Set a strong JWT secret via environment variable in production
       # Generate with: openssl rand -base64 32
       JWT_SECRET: ${JWT_SECRET:-please-change-this-in-production-to-a-random-secure-value}
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -38,13 +40,14 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        REACT_APP_API_URL: http://localhost:3000/api
+        VITE_API_URL: http://localhost:3000/api
     ports:
       - "80:80"
     depends_on:
       - backend
     environment:
-      REACT_APP_API_URL: http://localhost:3000/api
+      VITE_API_URL: http://localhost:3000/api
 
 volumes:
   postgres_data:
+  uploads_data:

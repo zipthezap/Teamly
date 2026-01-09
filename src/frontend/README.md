@@ -96,16 +96,17 @@ npm install
 Create a `.env` file in the frontend directory:
 
 ```bash
-REACT_APP_API_URL=http://localhost:3000/api
+VITE_API_URL=http://localhost:3000/api
+VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key-here
 ```
 
 ### Running Development Server
 
 ```bash
-npm start
+npm run dev
 ```
 
-Opens at http://localhost:3000 (or next available port)
+Opens at http://localhost:3001
 
 ### Building for Production
 

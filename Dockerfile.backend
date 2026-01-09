@@ -22,6 +22,9 @@ RUN npm run prisma:generate
 # Build backend TypeScript
 RUN npm run build
 
+# Create uploads directories
+RUN mkdir -p /app/uploads/profiles /app/uploads/groups /app/uploads/temp
+
 # Expose port
 EXPOSE 3000
 
