@@ -10,7 +10,7 @@ console.log('=========================================\n');
 // Test 1: Verify notification service exists and exports correctly
 console.log('Test 1: Checking notification service...');
 try {
-  const notificationService = require('./dist/backend/services/notificationService');
+  const notificationService = require('../../dist/backend/services/notificationService');
   console.log('✓ Notification service loaded successfully');
   console.log('  Exports:', Object.keys(notificationService).join(', '));
 } catch (error) {
@@ -20,7 +20,7 @@ try {
 // Test 2: Verify notification controller exists
 console.log('\nTest 2: Checking notification controller...');
 try {
-  const notificationController = require('./dist/backend/controllers/notificationController');
+  const notificationController = require('../../dist/backend/controllers/notificationController');
   console.log('✓ Notification controller loaded successfully');
   console.log('  Exports:', Object.keys(notificationController).join(', '));
 } catch (error) {
@@ -30,7 +30,7 @@ try {
 // Test 3: Verify notification routes exist
 console.log('\nTest 3: Checking notification routes...');
 try {
-  const notificationRoutes = require('./dist/backend/routes/notificationRoutes');
+  const notificationRoutes = require('../../dist/backend/routes/notificationRoutes');
   console.log('✓ Notification routes loaded successfully');
 } catch (error) {
   console.log('✗ Failed to load notification routes:', error.message);
@@ -40,7 +40,7 @@ try {
 console.log('\nTest 4: Checking server configuration...');
 try {
   const fs = require('fs');
-  const serverPath = './dist/backend/server.js';
+  const serverPath = '../../dist/backend/server.js';
   const serverContent = fs.readFileSync(serverPath, 'utf8');
   
   if (serverContent.includes('notificationRoutes')) {
