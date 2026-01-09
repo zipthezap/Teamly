@@ -58,6 +58,10 @@ export const groupsAPI = {
   getJoinRequests: (groupId: string | number) => api.get(`/groups/${groupId}/join-requests`),
   handleJoinRequest: (groupId: string | number, requestId: string | number, action: string) => 
     api.post(`/groups/${groupId}/join-requests/${requestId}`, { action }),
+  acceptJoinRequest: (groupId: string | number, requestId: string | number) =>
+    api.post(`/groups/${groupId}/join-requests/${requestId}`, { action: 'approve' }),
+  declineJoinRequest: (groupId: string | number, requestId: string | number) =>
+    api.post(`/groups/${groupId}/join-requests/${requestId}`, { action: 'reject' }),
 };
 
 // Events API
