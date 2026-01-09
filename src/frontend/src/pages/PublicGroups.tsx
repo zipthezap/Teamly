@@ -6,6 +6,7 @@ import EmptyState from '../components/common/EmptyState';
 import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
 import { groupsAPI } from '../services/api';
 import { useTranslation } from 'react-i18next';
+import { getImageUrl } from '../utils/imageUtils';
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 const libraries: ("places")[] = ["places"];
@@ -374,8 +375,25 @@ const PublicGroups = () => {
                 <div className="absolute top-4 right-4 flex gap-1 z-10">
                   <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-900/50 text-blue-300 border border-blue-700">{t('groups.public')}</span>
                 </div>
+                <div className="flex gap-3 mb-3">
+                  {group.picture ? (
+                    <img 
+                      src={getImageUrl(group.picture) || '/default-group-cover.jpg'} 
+                      alt={group.name}
+                      className="w-16 h-16 rounded-lg object-cover flex-shrink-0 border border-gray-700"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center flex-shrink-0 border border-gray-700">
+                      <span className="text-white text-xl font-bold">
+                        {group.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-lg font-bold truncate text-gray-100 mb-1">{group.name}</h2>
+                  </div>
+                </div>
                 <div className="flex-1 flex flex-col gap-2">
-                  <h2 className="text-lg font-bold flex-1 truncate text-gray-100 mb-1">{group.name}</h2>
                   <div className="text-sm text-gray-400 min-h-[48px] line-clamp-3">{group.description || t('groups.publicGroups.noDescriptionAvailable')}</div>
                   {(group.city || group.country || group.locationName) && (
                     <div className="flex items-center gap-1 text-xs text-gray-400 mb-1">

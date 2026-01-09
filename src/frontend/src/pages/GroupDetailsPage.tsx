@@ -2,13 +2,14 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem, Box } from '@mui/material';
 import GroupHeader from "../components/GroupDetails/GroupHeader";
 import GroupStats from "../components/GroupDetails/GroupStats";
 import MemberList from "../components/GroupDetails/MemberList";
 import EventList from "../components/GroupDetails/EventList";
 import EventFormModal from "../components/event/EventFormModal";
 import ChatBox from "../components/GroupDetails/ChatBox";
+import ImageUpload from "../components/ImageUpload";
 import { Group, Member, ChatMessage } from "../types/group";
 import { groupsAPI, eventsAPI, groupChatAPI } from "../services/api";
 
@@ -40,6 +41,7 @@ export default function GroupDetailsPage() {
     description: '',
     privacy: 'public',
   });
+  const [groupPicture, setGroupPicture] = useState<string | undefined>();
 
   // Fetch group details
   const { data: group, isLoading: groupLoading, error: groupError } = useQuery({
@@ -98,6 +100,7 @@ export default function GroupDetailsPage() {
         description: group.description || '',
         privacy: group.privacy || 'public',
       });
+      setGroupPicture(group.picture);
     }
   }, [group]);
 
@@ -338,6 +341,32 @@ export default function GroupDetailsPage() {
     }
   };
 
+  // Picture upload handler
+  const handlePictureUpload = async (file: File) => {
+    try {
+      const response = await groupsAPI.uploadGroupPicture(groupId!, file);
+      setGroupPicture(response.data.group.picture);
+      setToast({ message: t('groupDetails.groupPictureUpdated') || 'Group picture updated successfully', type: "success" });
+      queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
+    } catch (err: any) {
+      setToast({ message: err?.response?.data?.error || t('groupDetails.failedToUploadPicture') || 'Failed to upload group picture', type: "error" });
+      throw err;
+    }
+  };
+
+  // Picture delete handler
+  const handleDeletePicture = async () => {
+    try {
+      const response = await groupsAPI.deleteGroupPicture(groupId!);
+      setGroupPicture(response.data.group.picture ?? undefined);
+      setToast({ message: t('groupDetails.groupPictureDeleted') || 'Group picture deleted successfully', type: "success" });
+      queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
+    } catch (err: any) {
+      setToast({ message: err?.response?.data?.error || t('groupDetails.failedToDeletePicture') || 'Failed to delete group picture', type: "error" });
+      throw err;
+    }
+  };
+
   if (groupLoading || eventsLoading || chatLoading) return <div className="text-center text-slate-300 mt-10">{t('groupDetails.loadingGroupDetails')}</div>;
   if (groupError || !group) return <div className="text-center text-red-400 mt-10">{t('groupDetails.failedToLoad')}</div>;
 
@@ -362,6 +391,16 @@ export default function GroupDetailsPage() {
         <form onSubmit={handleSettingsSubmit}>
           <DialogTitle>{t('groupDetails.editGroupSettings')}</DialogTitle>
           <DialogContent>
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3, mt: 2 }}>
+              <ImageUpload
+                currentImage={groupPicture}
+                onUpload={handlePictureUpload}
+                onDelete={handleDeletePicture}
+                label={t('groups.groupPicture') || 'Group Picture'}
+                shape="square"
+                size={150}
+              />
+            </Box>
             <TextField
               label={t('groupDetails.groupName')}
               name="name"

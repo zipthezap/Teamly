@@ -25,7 +25,7 @@ import { groupsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { LoadingSpinner, EmptyState } from '../components/common';
-import { getImageUrl } from '../utils/imageUtils';
+import { getImageUrl, getInitials } from '../utils/imageUtils';
 
 const GroupsList = () => {
   const [groups, setGroups] = useState([]);
@@ -79,16 +79,6 @@ const GroupsList = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getInitials = (name) => {
-    if (!name) return '?';
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
   };
 
   const getUserRole = (group) => {
@@ -249,19 +239,35 @@ const GroupsList = () => {
                   }}
                 >
                   <CardContent sx={{ flexGrow: 1, p: 3 }}>
-                    <Box display="flex" justifyContent="space-between" alignItems="start" mb={1.5}>
-                      <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, pr: 1 }}>
-                        {group.name}
-                      </Typography>
-                      <Box display="flex" gap={0.5} flexShrink={0}>
-                        {group.isPublic ? (
-                          <Chip label={t('groups.public')} size="small" color="primary" />
-                        ) : (
-                          <Chip label={t('groups.private')} size="small" />
-                        )}
-                        {role === 'admin' && (
-                          <Chip label={t('groups.admin')} size="small" color="secondary" />
-                        )}
+                    <Box display="flex" gap={2} mb={1.5}>
+                      <Avatar
+                        src={getImageUrl(group.picture) || undefined}
+                        sx={{ 
+                          width: 60, 
+                          height: 60,
+                          borderRadius: '8px',
+                          bgcolor: 'primary.main'
+                        }}
+                        variant="rounded"
+                      >
+                        {!group.picture && getInitials(group.name)}
+                      </Avatar>
+                      <Box flexGrow={1} minWidth={0}>
+                        <Box display="flex" justifyContent="space-between" alignItems="start" mb={0.5}>
+                          <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, pr: 1 }}>
+                            {group.name}
+                          </Typography>
+                          <Box display="flex" gap={0.5} flexShrink={0}>
+                            {group.isPublic ? (
+                              <Chip label={t('groups.public')} size="small" color="primary" />
+                            ) : (
+                              <Chip label={t('groups.private')} size="small" />
+                            )}
+                            {role === 'admin' && (
+                              <Chip label={t('groups.admin')} size="small" color="secondary" />
+                            )}
+                          </Box>
+                        </Box>
                       </Box>
                     </Box>
                     <Typography 

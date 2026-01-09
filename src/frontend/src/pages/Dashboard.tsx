@@ -12,6 +12,7 @@ import {
   Button,
   Chip,
   Stack,
+  Avatar,
 } from '@mui/material';
 import { groupsAPI, eventsAPI } from '../services/api';
 import { LoadingSpinner, EmptyState, StatusBadge } from '../components/common';
@@ -22,6 +23,7 @@ import QuickLinks from '../components/dashboard/QuickLinks';
 import GroupIcon from '@mui/icons-material/Group';
 import EventIcon from '@mui/icons-material/Event';
 import { useAuth } from '../contexts/AuthContext';
+import { getImageUrl, getInitials } from '../utils/imageUtils';
 
 const Dashboard = () => {
   const [groups, setGroups] = useState([]);
@@ -204,13 +206,29 @@ const Dashboard = () => {
                 <Grid item xs={12} sm={6} md={4} key={group.id}>
                   <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                     <CardContent sx={{ flexGrow: 1, p: 2 }}>
-                      <Box display="flex" justifyContent="space-between" alignItems="start" mb={1.5}>
-                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 0 }}>
-                          {group.name}
-                        </Typography>
-                        {group.isPublic && (
-                          <Chip label={t('common.public')} size="small" color="primary" />
-                        )}
+                      <Box display="flex" gap={1.5} mb={1.5}>
+                        <Avatar
+                          src={getImageUrl(group.picture) || undefined}
+                          sx={{ 
+                            width: 48, 
+                            height: 48,
+                            borderRadius: '8px',
+                            bgcolor: 'primary.main'
+                          }}
+                          variant="rounded"
+                        >
+                          {!group.picture && getInitials(group.name)}
+                        </Avatar>
+                        <Box flexGrow={1} minWidth={0}>
+                          <Box display="flex" justifyContent="space-between" alignItems="start" mb={0.5}>
+                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 0 }}>
+                              {group.name}
+                            </Typography>
+                            {group.isPublic && (
+                              <Chip label={t('common.public')} size="small" color="primary" />
+                            )}
+                          </Box>
+                        </Box>
                       </Box>
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, minHeight: 40 }}>
                         {group.description || t('common.noDescription')}
