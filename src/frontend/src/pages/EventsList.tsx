@@ -45,6 +45,7 @@ const EventsList = () => {
   const [eventToDelete, setEventToDelete] = useState<any>(null);
   const [visibleCount, setVisibleCount] = useState(12);
   const [events, setEvents] = useState<any[]>([]);
+  const [groups, setGroups] = useState<Array<{ id: string; name: string }>>([]);
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
   const [isLoading, setIsLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
@@ -54,6 +55,19 @@ const EventsList = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Fetch all groups on mount
+  useEffect(() => {
+    async function fetchGroups() {
+      try {
+        const response = await (await import('../services/api')).groupsAPI.getAll();
+        setGroups(response.data);
+      } catch (err) {
+        // Optionally handle error
+      }
+    }
+    fetchGroups();
+  }, []);
 
   // Fetch events
   const fetchEvents = useCallback(async (isInitialLoad = false) => {
@@ -386,7 +400,7 @@ const EventsList = () => {
         onClose={() => setModalOpen(false)}
         onSuccess={() => fetchEvents()}
         initialData={editEvent}
-        groupId={editEvent && editEvent.groupId ? editEvent.groupId : (events.length > 0 && events[0].groupId ? events[0].groupId : '')}
+        groups={groups}
       />
 
       {/* Pagination controls */}

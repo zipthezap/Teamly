@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useContext } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "../ui/Button";
 import { getImageUrl } from "../../utils/imageUtils";
+// Import AuthContext if available
+// import { AuthContext } from "../../contexts/AuthContext";
 
 interface MemberListProps {
   members: any[];
@@ -16,10 +18,12 @@ const getInitials = (name: string | undefined | null) => {
 const MemberList: React.FC<MemberListProps> = ({ members, onRemove }) => {
   const { t } = useTranslation();
   
-  // Assume current user email is available globally (replace with your actual logic)
-  // Support both user id and email for robust self-check
-  const currentUserEmail = window.currentUserEmail || '';
-  const currentUserId = window.currentUserId || '';
+  // Try to get current user from AuthContext if available, fallback to window
+  // const { user: authUser } = useContext(AuthContext) || {};
+  const authUser = null; // Replace with actual context if available
+  const currentUserEmail = (authUser && authUser.email) || window.currentUserEmail || '';
+  const currentUserId = (authUser && authUser.id) || window.currentUserId || '';
+  console.log('[MemberList] Current user:', { currentUserEmail, currentUserId });
   return (
     <section className="bg-slate-800 rounded-lg p-4 shadow">
       <h2 className="text-xl font-semibold mb-2">{t('groupDetails.members', { count: members.length })}</h2>
@@ -32,7 +36,11 @@ const MemberList: React.FC<MemberListProps> = ({ members, onRemove }) => {
           const profilePictureUrl = getImageUrl(memberProfilePicture);
           const isOnline = m.user?.online ?? m.online ?? false;
           const memberId = m.user?.id || m.id || '';
-          const isSelfAdmin = memberRole?.toLowerCase() === 'admin' && (memberEmail === currentUserEmail || memberId === currentUserId);
+          const isSelfAdmin = memberRole?.toLowerCase() === 'admin' && (
+            (memberEmail && currentUserEmail && memberEmail.toLowerCase() === currentUserEmail.toLowerCase()) ||
+            (memberId && currentUserId && String(memberId) === String(currentUserId))
+          );
+          console.log('[MemberList] Member:', { memberName, memberEmail, memberId, memberRole, isSelfAdmin });
           return (
             <li key={memberEmail} className="flex items-center gap-3 mb-2">
               <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-lg font-bold overflow-hidden">
@@ -45,7 +53,12 @@ const MemberList: React.FC<MemberListProps> = ({ members, onRemove }) => {
               <div className="flex-1 min-w-0">
                 <span className="font-medium">{memberName}</span>
                 {(memberRole?.toLowerCase() === "admin") && (
-                  <span className="ml-2 text-xs bg-blue-700 px-2 py-0.5 rounded">{t('groupDetails.admin')}</span>
+                  <span
+                    className="ml-2 text-xs border border-blue-400 text-blue-400 bg-blue-900/10 px-2 py-0.5 rounded-full font-semibold tracking-wide shadow-sm"
+                    style={{ letterSpacing: '0.04em' }}
+                  >
+                    {t('groupDetails.admin')}
+                  </span>
                 )}
                 <div className="text-xs text-slate-400">{memberEmail}</div>
               </div>

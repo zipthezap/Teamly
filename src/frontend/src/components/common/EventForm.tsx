@@ -93,6 +93,15 @@ const EventForm: React.FC<EventFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Require groupId
+    let groupId = formData.groupId;
+    if ((!groupId || groupId === '') && groups && groups.length > 0) {
+      groupId = groups[0].id;
+    }
+    if (!groupId) {
+      setLocalError('Please select a group.');
+      return;
+    }
     // Require date field
     if (!formData.startDate) {
       setLocalError('Event date is required.');
@@ -110,7 +119,7 @@ const EventForm: React.FC<EventFormProps> = ({
       return;
     }
     setLocalError('');
-    onSubmit(formData);
+    onSubmit({ ...formData, groupId });
   };
 
   return (
@@ -125,7 +134,8 @@ const EventForm: React.FC<EventFormProps> = ({
           value={formData.groupId}
           onChange={handleChange}
           required
-          disabled={typeof initialData.groupId === 'string' && initialData.groupId.length > 0}
+          // Only disable if we are in a group context (editing/creating from a group page)
+          disabled={!!initialData.groupId && groups.length === 1}
         >
           {groups.map((group) => (
             <MenuItem key={group.id} value={group.id}>
