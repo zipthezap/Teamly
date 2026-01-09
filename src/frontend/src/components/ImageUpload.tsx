@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import { PhotoCamera, Delete } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
+import { getImageUrl } from '../utils/imageUtils';
 
 interface ImageUploadProps {
   currentImage?: string;
@@ -97,20 +98,6 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
 
   const handleButtonClick = () => {
     fileInputRef.current?.click();
-  };
-
-  // Construct full image URL if picture exists and is a relative path
-  const getImageUrl = (picture?: string) => {
-    if (!picture) return null;
-    // If picture is already a full URL, return it as is
-    if (picture.startsWith('http://') || picture.startsWith('https://')) {
-      return picture;
-    }
-    // If picture is a relative path, construct full URL
-    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-    // Remove /api from the end if it exists
-    const baseUrl = apiBaseUrl.replace(/\/api$/, '');
-    return `${baseUrl}${picture}`;
   };
 
   const displayImage = preview || getImageUrl(currentImage);
