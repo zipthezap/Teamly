@@ -120,7 +120,7 @@ export const createEvent = async (req: Request, res: Response) => {
       },
       include: {
         creator: {
-          select: { id: true, name: true, email: true }
+          select: { id: true, name: true, email: true, profilePicture: true }
         },
         group: {
           select: { id: true, name: true }
@@ -230,7 +230,7 @@ export const getEvents = async (req: Request, res: Response) => {
       where,
       include: {
         creator: {
-          select: { id: true, name: true, email: true }
+          select: { id: true, name: true, email: true, profilePicture: true }
         },
         group: {
           select: { id: true, name: true }
@@ -282,7 +282,7 @@ export const getEvent = async (req: Request, res: Response) => {
       },
       include: {
         creator: {
-          select: { id: true, name: true, email: true }
+          select: { id: true, name: true, email: true, profilePicture: true }
         },
         group: {
           select: { id: true, name: true }
@@ -294,7 +294,7 @@ export const getEvent = async (req: Request, res: Response) => {
             status: true,
             joinedAt: true,
             user: {
-              select: { name: true, email: true }
+              select: { name: true, email: true, profilePicture: true }
             }
           }
         },
@@ -373,7 +373,7 @@ export const updateEvent = async (req: Request, res: Response) => {
         participants: {
           include: {
             user: {
-              select: { id: true, name: true, email: true }
+              select: { id: true, name: true, email: true, profilePicture: true }
             }
           }
         }
@@ -398,7 +398,7 @@ export const updateEvent = async (req: Request, res: Response) => {
       },
       include: {
         creator: {
-          select: { id: true, name: true, email: true }
+          select: { id: true, name: true, email: true, profilePicture: true }
         },
         group: {
           select: { id: true, name: true }
@@ -1069,7 +1069,7 @@ export const updateEventStatus = async (req: Request, res: Response) => {
         participants: {
           include: {
             user: {
-              select: { id: true, name: true, email: true }
+              select: { id: true, name: true, email: true, profilePicture: true }
             }
           }
         }

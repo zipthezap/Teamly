@@ -496,7 +496,7 @@ export const getPublicGroups = async (_req: Request, res: Response) => {
       },
       include: {
         creator: {
-          select: { id: true, name: true, email: true }
+          select: { id: true, name: true, email: true, profilePicture: true }
         },
         _count: {
           select: { members: true, events: true }
