@@ -2,7 +2,7 @@ import { Router } from 'express';
 import * as authController from '../controllers/authController';
 import authMiddleware from '../middleware/auth';
 import { authLimiter, uploadLimiter } from '../middleware/rateLimiter';
-import { uploadProfilePicture, handleUploadError } from '../middleware/upload';
+import { uploadProfilePicture } from '../middleware/upload';
 
 const router = Router();
 
@@ -28,7 +28,6 @@ router.post(
   authMiddleware,
   uploadLimiter,
   uploadProfilePicture,
-  handleUploadError,
   authController.uploadProfilePicture
 );
 router.delete('/profile/picture', authMiddleware, authController.deleteProfilePicture);

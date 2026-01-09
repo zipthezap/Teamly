@@ -75,47 +75,51 @@ const upload = multer({
 });
 
 /**
- * Middleware for uploading profile picture
+ * Wrapper for handling multer errors properly
  */
-export const uploadProfilePicture = upload.single('profilePicture');
-
-/**
- * Middleware for uploading group picture
- */
-export const uploadGroupPicture = upload.single('groupPicture');
-
-/**
- * Error handler for multer errors
- */
-export const handleUploadError = (error: any, req: Request, res: any, next: any) => {
-  if (error instanceof multer.MulterError) {
-    logger.warn('Multer error', 'UploadMiddleware', { 
-      error: error.message, 
-      code: error.code,
-      userId: (req as any).user?.id 
+const multerErrorHandler = (uploadMiddleware: any) => {
+  return (req: Request, res: any, next: any) => {
+    uploadMiddleware(req, res, (error: any) => {
+      if (error instanceof multer.MulterError) {
+        logger.warn('Multer error', 'UploadMiddleware', { 
+          error: error.message, 
+          code: error.code,
+          userId: (req as any).user?.id 
+        });
+        
+        if (error.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ 
+            error: `File too large. Maximum size is ${UPLOAD_CONFIG.MAX_FILE_SIZE / (1024 * 1024)}MB.` 
+          });
+        }
+        
+        if (error.code === 'LIMIT_FILE_COUNT') {
+          return res.status(400).json({ error: 'Too many files. Only one file allowed.' });
+        }
+        
+        if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+          return res.status(400).json({ error: 'Unexpected field name.' });
+        }
+        
+        return res.status(400).json({ error: 'File upload error.' });
+      }
+      
+      if (error) {
+        logger.error('Upload error', 'UploadMiddleware', { error, userId: (req as any).user?.id });
+        return res.status(400).json({ error: error.message || 'File upload failed.' });
+      }
+      
+      next();
     });
-    
-    if (error.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ 
-        error: `File too large. Maximum size is ${UPLOAD_CONFIG.MAX_FILE_SIZE / (1024 * 1024)}MB.` 
-      });
-    }
-    
-    if (error.code === 'LIMIT_FILE_COUNT') {
-      return res.status(400).json({ error: 'Too many files. Only one file allowed.' });
-    }
-    
-    if (error.code === 'LIMIT_UNEXPECTED_FILE') {
-      return res.status(400).json({ error: 'Unexpected field name.' });
-    }
-    
-    return res.status(400).json({ error: 'File upload error.' });
-  }
-  
-  if (error) {
-    logger.error('Upload error', 'UploadMiddleware', { error, userId: (req as any).user?.id });
-    return res.status(400).json({ error: error.message || 'File upload failed.' });
-  }
-  
-  next();
+  };
 };
+
+/**
+ * Middleware for uploading profile picture with error handling
+ */
+export const uploadProfilePicture = multerErrorHandler(upload.single('profilePicture'));
+
+/**
+ * Middleware for uploading group picture with error handling
+ */
+export const uploadGroupPicture = multerErrorHandler(upload.single('groupPicture'));
