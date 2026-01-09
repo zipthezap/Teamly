@@ -2,7 +2,7 @@ import { Router } from 'express';
 import * as groupController from '../controllers/groupController';
 import authMiddleware from '../middleware/auth';
 import { authenticatedLimiter, uploadLimiter } from '../middleware/rateLimiter';
-import { uploadGroupPicture, handleUploadError } from '../middleware/upload';
+import { uploadGroupPicture } from '../middleware/upload';
 
 const router = Router();
 
@@ -33,7 +33,6 @@ router.post(
   '/:id/picture',
   uploadLimiter,
   uploadGroupPicture,
-  handleUploadError,
   groupController.uploadGroupPicture
 );
 router.delete('/:id/picture', groupController.deleteGroupPicture);

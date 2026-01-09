@@ -5,7 +5,7 @@
 
 import multer from 'multer';
 import path from 'path';
-import { Request } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { UPLOAD_CONFIG } from '../config/upload';
 import { generateUniqueFilename } from '../utils/imageProcessor';
 import { logger } from '../utils/logger';
@@ -30,7 +30,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
     if (!UPLOAD_CONFIG.ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       logger.warn('Invalid file MIME type', 'UploadMiddleware', { 
         mimetype: file.mimetype,
-        userId: (req as any).user?.id 
+        userId: req.user?.id 
       });
       return cb(new Error('Invalid file type. Only JPEG, PNG, and WebP images are allowed.'));
     }
@@ -40,7 +40,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
     if (!UPLOAD_CONFIG.ALLOWED_EXTENSIONS.includes(ext)) {
       logger.warn('Invalid file extension', 'UploadMiddleware', { 
         extension: ext,
-        userId: (req as any).user?.id 
+        userId: req.user?.id 
       });
       return cb(new Error('Invalid file extension. Only .jpg, .jpeg, .png, and .webp are allowed.'));
     }
@@ -50,7 +50,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
     if (sanitizedOriginalName !== file.originalname) {
       logger.warn('Attempted path traversal in filename', 'UploadMiddleware', { 
         originalname: file.originalname,
-        userId: (req as any).user?.id 
+        userId: req.user?.id 
       });
       return cb(new Error('Invalid filename.'));
     }
@@ -75,47 +75,51 @@ const upload = multer({
 });
 
 /**
- * Middleware for uploading profile picture
+ * Wrapper for handling multer errors properly
  */
-export const uploadProfilePicture = upload.single('profilePicture');
-
-/**
- * Middleware for uploading group picture
- */
-export const uploadGroupPicture = upload.single('groupPicture');
-
-/**
- * Error handler for multer errors
- */
-export const handleUploadError = (error: any, req: Request, res: any, next: any) => {
-  if (error instanceof multer.MulterError) {
-    logger.warn('Multer error', 'UploadMiddleware', { 
-      error: error.message, 
-      code: error.code,
-      userId: (req as any).user?.id 
+const multerErrorHandler = (uploadMiddleware: RequestHandler): RequestHandler => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    uploadMiddleware(req, res, (error: any) => {
+      if (error instanceof multer.MulterError) {
+        logger.warn('Multer error', 'UploadMiddleware', { 
+          error: error.message, 
+          code: error.code,
+          userId: req.user?.id 
+        });
+        
+        if (error.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ 
+            error: `File too large. Maximum size is ${UPLOAD_CONFIG.MAX_FILE_SIZE / (1024 * 1024)}MB.` 
+          });
+        }
+        
+        if (error.code === 'LIMIT_FILE_COUNT') {
+          return res.status(400).json({ error: 'Too many files. Only one file allowed.' });
+        }
+        
+        if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+          return res.status(400).json({ error: 'Unexpected field name.' });
+        }
+        
+        return res.status(400).json({ error: 'File upload error.' });
+      }
+      
+      if (error) {
+        logger.error('Upload error', 'UploadMiddleware', { error, userId: req.user?.id });
+        return res.status(400).json({ error: error.message || 'File upload failed.' });
+      }
+      
+      next();
     });
-    
-    if (error.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ 
-        error: `File too large. Maximum size is ${UPLOAD_CONFIG.MAX_FILE_SIZE / (1024 * 1024)}MB.` 
-      });
-    }
-    
-    if (error.code === 'LIMIT_FILE_COUNT') {
-      return res.status(400).json({ error: 'Too many files. Only one file allowed.' });
-    }
-    
-    if (error.code === 'LIMIT_UNEXPECTED_FILE') {
-      return res.status(400).json({ error: 'Unexpected field name.' });
-    }
-    
-    return res.status(400).json({ error: 'File upload error.' });
-  }
-  
-  if (error) {
-    logger.error('Upload error', 'UploadMiddleware', { error, userId: (req as any).user?.id });
-    return res.status(400).json({ error: error.message || 'File upload failed.' });
-  }
-  
-  next();
+  };
 };
+
+/**
+ * Middleware for uploading profile picture with error handling
+ */
+export const uploadProfilePicture = multerErrorHandler(upload.single('profilePicture'));
+
+/**
+ * Middleware for uploading group picture with error handling
+ */
+export const uploadGroupPicture = multerErrorHandler(upload.single('groupPicture'));

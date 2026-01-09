@@ -56,6 +56,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:"],
+      formAction: ["'self'"], // Allow form submissions to same origin
     },
   },
   hsts: {
@@ -63,6 +64,7 @@ app.use(helmet({
     includeSubDomains: true,
     preload: true,
   },
+  crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin requests for uploads
 }));
 
 // Middleware - CORS configuration
