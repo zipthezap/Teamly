@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Paper,
@@ -16,12 +16,34 @@ import { useTranslation } from 'react-i18next';
 const JoinGroup = () => {
   const { groupId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [hasAttemptedJoin, setHasAttemptedJoin] = useState(false);
+  const [groupInfo, setGroupInfo] = useState<any>(null);
+
+  // Fetch group info (for display purposes)
+  useEffect(() => {
+    const fetchGroupInfo = async () => {
+      try {
+        // Try to get public group info without auth
+        const res = await groupsAPI.getPublic();
+        const foundGroup = res.data.find((g: any) => g.id === groupId);
+        if (foundGroup) {
+          setGroupInfo(foundGroup);
+        }
+      } catch (err) {
+        // Silently fail - group info is optional
+      }
+    };
+    
+    if (groupId) {
+      fetchGroupInfo();
+    }
+  }, [groupId]);
 
   const handleJoinGroup = useCallback(async () => {
     if (!user) {
@@ -38,12 +60,12 @@ const JoinGroup = () => {
       setTimeout(() => {
         navigate(`/groups/${groupId}`);
       }, 1500);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.error || t('joinGroup.failedToJoin'));
     } finally {
       setLoading(false);
     }
-  }, [user, groupId, navigate]);
+  }, [user, groupId, navigate, t]);
 
   useEffect(() => {
     // Auto-join if user is logged in and hasn't attempted yet
@@ -60,19 +82,31 @@ const JoinGroup = () => {
           <Typography variant="h5" gutterBottom>
             {t('joinGroup.title')}
           </Typography>
+          {groupInfo && (
+            <Box sx={{ mb: 3, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+              <Typography variant="h6" gutterBottom>
+                {groupInfo.name}
+              </Typography>
+              {groupInfo.description && (
+                <Typography variant="body2" color="text.secondary">
+                  {groupInfo.description}
+                </Typography>
+              )}
+            </Box>
+          )}
           <Typography variant="body1" paragraph>
             {t('joinGroup.loginToJoin')}
           </Typography>
           <Box display="flex" gap={2}>
             <Button
               variant="contained"
-              onClick={() => navigate('/login', { state: { returnTo: `/groups/join/${groupId}` } })}
+              onClick={() => navigate('/login', { state: { returnTo: `/join-group/${groupId}` } })}
             >
               {t('joinGroup.login')}
             </Button>
             <Button
               variant="outlined"
-              onClick={() => navigate('/register', { state: { returnTo: `/groups/join/${groupId}` } })}
+              onClick={() => navigate('/register', { state: { returnTo: `/join-group/${groupId}` } })}
             >
               {t('joinGroup.signup')}
             </Button>
@@ -88,6 +122,19 @@ const JoinGroup = () => {
         <Typography variant="h5" gutterBottom>
           {t('joinGroup.title')}
         </Typography>
+        
+        {groupInfo && (
+          <Box sx={{ mb: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
+            <Typography variant="h6">
+              {groupInfo.name}
+            </Typography>
+            {groupInfo.description && (
+              <Typography variant="body2" color="text.secondary">
+                {groupInfo.description}
+              </Typography>
+            )}
+          </Box>
+        )}
         
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
