@@ -1119,14 +1119,18 @@ export const getEventActivityFeed = async (req: Request, res: Response) => {
 };
 
 // Get event by invite token (no authentication required)
+// Note: This endpoint allows access to both public AND private events via invite token.
+// This is intentional - private events with invite tokens are shared privately via the link,
+// which provides controlled access without making the event publicly discoverable.
 export const getEventByInviteToken = async (req: Request, res: Response) => {
   try {
     const { token } = req.params;
 
     const event = await prisma.event.findFirst({
       where: {
-        inviteToken: token,
-        isPublic: true
+        inviteToken: token
+        // Both public and private events can be accessed via valid invite token
+        // Private events remain unlisted but accessible to those with the link
       },
       include: {
         creator: {
@@ -1183,17 +1187,19 @@ export const generateInviteToken = async (req: Request, res: Response) => {
     // Generate new token
     const inviteToken = createInviteToken();
 
+    // For private events, keep them private but allow invite link access
+    // For public events, ensure they stay public
     const updatedEvent = await prisma.event.update({
       where: { id },
       data: { 
-        inviteToken,
-        isPublic: true // Automatically make event public when generating invite link
+        inviteToken
       }
     });
 
     res.json({ 
       inviteToken: updatedEvent.inviteToken,
-      inviteUrl: `/events/join/${updatedEvent.inviteToken}`
+      inviteUrl: `/events/join/${updatedEvent.inviteToken}`,
+      isPublic: updatedEvent.isPublic
     });
   } catch (error) {
     logger.error('Generate invite token error', 'EventController', { error });
@@ -1211,11 +1217,10 @@ export const joinEventAsGuest = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Name is required' });
     }
 
-    // Find event by invite token
+    // Find event by invite token (works for both public and private events)
     const event = await prisma.event.findFirst({
       where: {
-        inviteToken: token,
-        isPublic: true
+        inviteToken: token
       },
       include: {
         participants: true,

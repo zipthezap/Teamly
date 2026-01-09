@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import InviteLinkCard from '../components/InviteLinkCard';
 
 const EventDetails = () => {
   const { id } = useParams();
@@ -290,43 +291,19 @@ const EventDetails = () => {
             </div>
             
             {/* Invite Link Section - Only for creator */}
-            {isCreator && (
-              <div className="bg-[#1a2233] rounded-lg p-5">
-                <div className="font-semibold mb-3 text-lg">Share Event</div>
-                {event.isPublic ? (
-                  <div className="flex flex-col gap-2">
-                    {event.inviteToken ? (
-                      <>
-                        <button 
-                          onClick={handleCopyInviteLink} 
-                          className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full flex items-center justify-center gap-2"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                            <path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                          </svg>
-                          Copy Invite Link
-                        </button>
-                        <p className="text-xs text-[#a1a6b4] text-center">Anyone with this link can join, even without an account</p>
-                      </>
-                    ) : (
-                      <>
-                        <button 
-                          onClick={handleGenerateInviteLink} 
-                          className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full"
-                        >
-                          Generate Invite Link
-                        </button>
-                        <p className="text-xs text-[#a1a6b4] text-center">Create a shareable link for this event</p>
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-sm text-[#a1a6b4]">
-                    This is a private event. Make it public to generate an invite link that anyone can use.
-                  </div>
-                )}
-              </div>
-            )}
+            <InviteLinkCard
+              inviteToken={event.inviteToken}
+              eventTitle={event.title}
+              eventDate={new Date(event.startTime).toLocaleDateString('en-US', { 
+                weekday: 'short', 
+                month: 'short', 
+                day: 'numeric',
+                year: 'numeric'
+              })}
+              isCreator={isCreator}
+              onGenerateLink={handleGenerateInviteLink}
+              isPublic={event.isPublic}
+            />
           </div>
           
           {/* Right Column: Activity Feed - Fixed Height */}
@@ -400,6 +377,23 @@ const EventDetails = () => {
                     'bg-yellow-900/50 text-yellow-300'
                   }`}>
                     {t(`eventDetails.status.${p.status}`)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+          {event.guestParticipants?.map((g, idx) => (
+            <div key={g.id || `guest-${idx}`} className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3 border border-purple-500/30">
+              <div className="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">{getInitials(g.name)}</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-white truncate">{g.name}</div>
+                <div className="text-xs text-purple-400 truncate">Guest</div>
+                <div className="text-xs">
+                  <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mt-1 ${
+                    g.status === 'confirmed' ? 'bg-green-900/50 text-green-300' :
+                    'bg-red-900/50 text-red-300'
+                  }`}>
+                    {t(`eventDetails.status.${g.status}`)}
                   </span>
                 </div>
               </div>
