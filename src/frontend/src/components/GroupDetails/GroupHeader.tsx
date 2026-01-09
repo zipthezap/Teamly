@@ -31,8 +31,6 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
 }) => {
   const { t } = useTranslation();
   
-  // Debug output (in console, not UI)
-  console.log('[GroupHeader] isAdmin:', isAdmin, 'group.id:', group.id, 'group:', group);
   return (
     <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 mb-8">
       <img

@@ -81,11 +81,7 @@ export default function GroupDetailsPage() {
       userEmail = null;
     }
   }
-  if (group) {
-    console.log('[GroupDetailsPage] userEmail from localStorage:', userEmail);
-    console.log('[GroupDetailsPage] group.members:', group.members?.map(m => ({ email: m.email, role: m.role })));
-    console.log('[GroupDetailsPage] group object:', group);
-  }
+
   // Fallback: if member emails are missing, check if user is group creator
   let isAdmin = false;
   if (group?.members?.some((m: Member) => m.role && m.role.toLowerCase() === "admin" && m.email === userEmail)) {
