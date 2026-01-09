@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../utils/jwt';
+import { verifyToken, isTokenRevoked } from '../utils/jwt';
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
 
@@ -14,6 +14,7 @@ declare global {
         city: string | null;
         country: string | null;
       };
+      token?: string; // Store token for potential revocation
     }
   }
 }
@@ -28,6 +29,14 @@ const authMiddleware = async (req: Request, res: Response, next: NextFunction): 
     }
 
     const token = authHeader.substring(7);
+    
+    // Check if token is revoked
+    const revoked = await isTokenRevoked(token);
+    if (revoked) {
+      res.status(401).json({ error: 'Token has been revoked' });
+      return;
+    }
+    
     const decoded = verifyToken(token);
 
     if (!decoded) {
@@ -46,6 +55,7 @@ const authMiddleware = async (req: Request, res: Response, next: NextFunction): 
     }
 
     req.user = user;
+    req.token = token; // Store for potential logout/revocation
     next();
   } catch (error) {
     logger.error('Authentication failed', 'AuthMiddleware', { error });
