@@ -2,10 +2,12 @@ import bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
 import prisma from '../config/database';
 import { ACCOUNT_LOCKOUT, PASSWORD_RESET } from '../config/security';
-import { generateToken } from '../utils/jwt';
+import { generateTokenPair, revokeToken, revokeAllUserTokens, refreshAccessToken } from '../utils/jwt';
 import { validate2FAToken } from './twoFactorController';
 import { logger } from '../utils/logger';
 import { validateEmail, validateStrongPassword, isRequired, ValidationError, sanitizeString } from '../utils/validation';
+import crypto from 'crypto';
+import { sendEmail } from '../utils/emailService';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -39,23 +41,52 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Generate email verification token
+    const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+
     const user = await prisma.user.create({
       data: {
         email: sanitizedEmail,
         password: hashedPassword,
-        name: sanitizedName
+        name: sanitizedName,
+        emailVerificationToken
       },
       select: {
         id: true,
         email: true,
         name: true,
-        createdAt: true
+        createdAt: true,
+        emailVerified: true
       }
     });
 
-    const token = generateToken(user.id);
+    // Send verification email
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    const verificationUrl = `${frontendUrl}/verify-email?token=${emailVerificationToken}`;
+    
+    await sendEmail(
+      user.email,
+      'Verify Your Email Address',
+      `
+        <h2>Welcome to Teamly!</h2>
+        <p>Hi ${user.name},</p>
+        <p>Thank you for registering. Please verify your email address by clicking the link below:</p>
+        <p><a href="${verificationUrl}">${verificationUrl}</a></p>
+        <p>This link will expire in 24 hours.</p>
+        <p>If you didn't register for Teamly, please ignore this email.</p>
+      `
+    );
 
-    res.status(201).json({ user, token });
+    // Generate tokens
+    const deviceInfo = req.headers['user-agent'];
+    const ipAddress = req.ip;
+    const tokens = await generateTokenPair(user.id, deviceInfo, ipAddress);
+
+    res.status(201).json({ 
+      user, 
+      ...tokens,
+      message: 'Registration successful. Please check your email to verify your account.' 
+    });
   } catch (error) {
     logger.error('User registration failed', 'AuthController', { error });
     res.status(500).json({ error: 'Failed to register user' });
@@ -172,7 +203,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    const token = generateToken(user.id);
+    // Generate token pair with session tracking
+    const deviceInfo = req.headers['user-agent'];
+    const ipAddress = req.ip;
+    const tokens = await generateTokenPair(user.id, deviceInfo, ipAddress);
 
     res.json({
       user: {
@@ -180,7 +214,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         email: user.email,
         name: user.name
       },
-      token
+      ...tokens
     });
   } catch (error) {
     logger.error('User login failed', 'AuthController', { error });
@@ -252,9 +286,15 @@ export const updatePassword = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    if (newPassword.length < 6) {
-      res.status(400).json({ error: 'New password must be at least 6 characters' });
-      return;
+    // Validate strong password
+    try {
+      validateStrongPassword(newPassword);
+    } catch (validationError) {
+      if (validationError instanceof ValidationError) {
+        res.status(400).json({ error: validationError.message });
+        return;
+      }
+      throw validationError;
     }
 
     // Get user with password
@@ -284,7 +324,11 @@ export const updatePassword = async (req: Request, res: Response): Promise<void>
       data: { password: hashedPassword }
     });
 
-    res.json({ message: 'Password updated successfully' });
+    // Revoke all existing tokens for security (except current one for convenience)
+    await revokeAllUserTokens(req.user!.id, 'password_change');
+
+    logger.info('Password changed', 'AuthController', { userId: req.user!.id });
+    res.json({ message: 'Password updated successfully. You have been logged out from other devices for security.' });
   } catch (error) {
     logger.error('Failed to update password', 'AuthController', { error });
     res.status(500).json({ error: 'Failed to update password' });
@@ -420,9 +464,203 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     });
 
     logger.info('Password reset successful', 'AuthController', { userId: user.id });
-    res.json({ message: 'Password has been reset successfully' });
+    
+    // Revoke all existing tokens for security
+    await revokeAllUserTokens(user.id, 'password_reset');
+    
+    res.json({ message: 'Password has been reset successfully. Please login with your new password.' });
   } catch (error) {
     logger.error('Failed to reset password', 'AuthController', { error });
     res.status(500).json({ error: 'Failed to reset password' });
+  }
+};
+
+/**
+ * Verify email with token
+ */
+export const verifyEmail = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      res.status(400).json({ error: 'Verification token is required' });
+      return;
+    }
+
+    const user = await prisma.user.findFirst({
+      where: {
+        emailVerificationToken: token,
+        emailVerified: false
+      }
+    });
+
+    if (!user) {
+      res.status(400).json({ error: 'Invalid or expired verification token' });
+      return;
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        emailVerificationToken: null
+      }
+    });
+
+    logger.info('Email verified', 'AuthController', { userId: user.id });
+    res.json({ message: 'Email verified successfully' });
+  } catch (error) {
+    logger.error('Failed to verify email', 'AuthController', { error });
+    res.status(500).json({ error: 'Failed to verify email' });
+  }
+};
+
+/**
+ * Resend email verification
+ */
+export const resendVerificationEmail = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      res.status(400).json({ error: 'Email is required' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+      select: { id: true, email: true, name: true, emailVerified: true }
+    });
+
+    if (!user) {
+      // Don't reveal if user exists
+      res.json({ message: 'If an account exists, a verification email has been sent.' });
+      return;
+    }
+
+    if (user.emailVerified) {
+      res.status(400).json({ error: 'Email is already verified' });
+      return;
+    }
+
+    // Generate new verification token
+    const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+    
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { emailVerificationToken }
+    });
+
+    // Send verification email
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    const verificationUrl = `${frontendUrl}/verify-email?token=${emailVerificationToken}`;
+    
+    await sendEmail(
+      user.email,
+      'Verify Your Email Address',
+      `
+        <h2>Email Verification</h2>
+        <p>Hi ${user.name},</p>
+        <p>Please verify your email address by clicking the link below:</p>
+        <p><a href="${verificationUrl}">${verificationUrl}</a></p>
+        <p>This link will expire in 24 hours.</p>
+      `
+    );
+
+    res.json({ message: 'Verification email sent' });
+  } catch (error) {
+    logger.error('Failed to resend verification email', 'AuthController', { error });
+    res.status(500).json({ error: 'Failed to resend verification email' });
+  }
+};
+
+/**
+ * Refresh access token using refresh token
+ */
+export const refreshToken = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { refreshToken: token } = req.body;
+
+    if (!token) {
+      res.status(400).json({ error: 'Refresh token is required' });
+      return;
+    }
+
+    const result = await refreshAccessToken(token);
+
+    if (!result) {
+      res.status(401).json({ error: 'Invalid or expired refresh token' });
+      return;
+    }
+
+    res.json(result);
+  } catch (error) {
+    logger.error('Failed to refresh token', 'AuthController', { error });
+    res.status(500).json({ error: 'Failed to refresh token' });
+  }
+};
+
+/**
+ * Logout - revoke current token
+ */
+export const logout = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (req.token && req.user) {
+      await revokeToken(req.token, req.user.id, 'logout');
+    }
+
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    logger.error('Failed to logout', 'AuthController', { error });
+    res.status(500).json({ error: 'Failed to logout' });
+  }
+};
+
+/**
+ * Logout from all devices - revoke all tokens
+ */
+export const logoutAll = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (req.user) {
+      await revokeAllUserTokens(req.user.id, 'logout_all');
+    }
+
+    res.json({ message: 'Logged out from all devices successfully' });
+  } catch (error) {
+    logger.error('Failed to logout from all devices', 'AuthController', { error });
+    res.status(500).json({ error: 'Failed to logout from all devices' });
+  }
+};
+
+/**
+ * Get active sessions for current user
+ */
+export const getSessions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+
+    const sessions = await prisma.userSession.findMany({
+      where: { 
+        userId: req.user.id,
+        expiresAt: { gt: new Date() }
+      },
+      select: {
+        id: true,
+        deviceInfo: true,
+        ipAddress: true,
+        lastActive: true,
+        createdAt: true,
+        expiresAt: true
+      },
+      orderBy: { lastActive: 'desc' }
+    });
+
+    res.json({ sessions });
+  } catch (error) {
+    logger.error('Failed to get sessions', 'AuthController', { error });
+    res.status(500).json({ error: 'Failed to get sessions' });
   }
 };
