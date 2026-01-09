@@ -28,6 +28,8 @@ services:
       # SECURITY: Set a strong JWT secret via environment variable in production
       # Generate with: openssl rand -base64 32
       JWT_SECRET: ${JWT_SECRET:-please-change-this-in-production-to-a-random-secure-value}
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -48,3 +50,4 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:

@@ -143,16 +143,21 @@ cd src/frontend
 npm install
 ```
 
-3. Configure the API URL (optional):
+3. Configure the API URL (create a .env file in src/frontend):
 ```bash
-# Create .env file
-echo "REACT_APP_API_URL=http://localhost:3000/api" > .env
+cd src/frontend
+echo "VITE_API_URL=http://localhost:3000/api" > .env
+echo "VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key-here" >> .env
+cd ../..
 ```
 
 4. Start the frontend development server:
 ```bash
-npm start
+cd src/frontend
+npm run dev
 ```
+
+The frontend will start on `http://localhost:3001`.
 
 The frontend will start on `http://localhost:3001` (or another available port).
 
