@@ -5,7 +5,7 @@
 
 import multer from 'multer';
 import path from 'path';
-import { Request } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { UPLOAD_CONFIG } from '../config/upload';
 import { generateUniqueFilename } from '../utils/imageProcessor';
 import { logger } from '../utils/logger';
@@ -30,7 +30,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
     if (!UPLOAD_CONFIG.ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       logger.warn('Invalid file MIME type', 'UploadMiddleware', { 
         mimetype: file.mimetype,
-        userId: (req as any).user?.id 
+        userId: req.user?.id 
       });
       return cb(new Error('Invalid file type. Only JPEG, PNG, and WebP images are allowed.'));
     }
@@ -40,7 +40,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
     if (!UPLOAD_CONFIG.ALLOWED_EXTENSIONS.includes(ext)) {
       logger.warn('Invalid file extension', 'UploadMiddleware', { 
         extension: ext,
-        userId: (req as any).user?.id 
+        userId: req.user?.id 
       });
       return cb(new Error('Invalid file extension. Only .jpg, .jpeg, .png, and .webp are allowed.'));
     }
@@ -50,7 +50,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
     if (sanitizedOriginalName !== file.originalname) {
       logger.warn('Attempted path traversal in filename', 'UploadMiddleware', { 
         originalname: file.originalname,
-        userId: (req as any).user?.id 
+        userId: req.user?.id 
       });
       return cb(new Error('Invalid filename.'));
     }
@@ -77,14 +77,14 @@ const upload = multer({
 /**
  * Wrapper for handling multer errors properly
  */
-const multerErrorHandler = (uploadMiddleware: any) => {
-  return (req: Request, res: any, next: any) => {
+const multerErrorHandler = (uploadMiddleware: RequestHandler): RequestHandler => {
+  return (req: Request, res: Response, next: NextFunction) => {
     uploadMiddleware(req, res, (error: any) => {
       if (error instanceof multer.MulterError) {
         logger.warn('Multer error', 'UploadMiddleware', { 
           error: error.message, 
           code: error.code,
-          userId: (req as any).user?.id 
+          userId: req.user?.id 
         });
         
         if (error.code === 'LIMIT_FILE_SIZE') {
@@ -105,7 +105,7 @@ const multerErrorHandler = (uploadMiddleware: any) => {
       }
       
       if (error) {
-        logger.error('Upload error', 'UploadMiddleware', { error, userId: (req as any).user?.id });
+        logger.error('Upload error', 'UploadMiddleware', { error, userId: req.user?.id });
         return res.status(400).json({ error: error.message || 'File upload failed.' });
       }
       
