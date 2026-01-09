@@ -41,6 +41,12 @@ model EventNotification {
   metadata  Json?    // Additional data for the notification
   createdAt DateTime @default(now())
   read      Boolean  @default(false)
+  
+  @@index([userId]) // For user notifications queries
+  @@index([eventId]) // For event notifications
+  @@index([read]) // For unread filtering
+  @@index([userId, read]) // Composite for unread user notifications
+  @@index([createdAt]) // For chronological sorting
 }
 
 model GroupNotification {
@@ -53,6 +59,12 @@ model GroupNotification {
   params    Json?    // Parameters for frontend translation (e.g., { groupName })
   createdAt DateTime @default(now())
   read      Boolean  @default(false)
+  
+  @@index([userId]) // For user notifications queries
+  @@index([groupId]) // For group notifications
+  @@index([read]) // For unread filtering
+  @@index([userId, read]) // Composite for unread user notifications
+  @@index([createdAt]) // For chronological sorting
 }
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
@@ -118,6 +130,11 @@ model User {
   refreshTokens     RefreshToken[]
   revokedTokens     RevokedToken[]
   activeSessions    UserSession[]
+  
+  @@index([email]) // For faster email lookups
+  @@index([emailVerificationToken]) // For email verification
+  @@index([passwordResetToken]) // For password reset lookups
+  @@index([city, country]) // For location-based queries
 }
 
 model Group {
@@ -168,6 +185,9 @@ model GroupMember {
   group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   @@unique([userId, groupId])
+  @@index([userId]) // For user's groups queries
+  @@index([groupId]) // For group members queries
+  @@index([role]) // For admin/member filtering
 }
 
 model Event {
@@ -208,6 +228,16 @@ model Event {
   eventAttendances EventAttendance[]
   eventNotifications EventNotification[]
   comments Comment[]
+  
+  @@index([groupId]) // For group events queries
+  @@index([creatorId]) // For user's created events
+  @@index([startTime]) // For date-based queries
+  @@index([status]) // For status filtering
+  @@index([eventType]) // For type filtering
+  @@index([inviteToken]) // For invite link lookups
+  @@index([archived]) // For archived events filtering
+  @@index([groupId, startTime]) // Composite for group events by date
+  @@index([creatorId, startTime]) // Composite for user events by date
 }
 
 model EventParticipant {
@@ -221,6 +251,10 @@ model EventParticipant {
   user    User   @relation("EventParticipant", fields: [userId], references: [id])
 
   @@unique([eventId, userId])
+  @@index([eventId]) // For event participants queries
+  @@index([userId]) // For user's events queries
+  @@index([status]) // For filtering by status
+  @@index([eventId, status]) // Composite for event participants by status
 }
 
 model EventRequest {
