@@ -186,27 +186,6 @@ export default function GroupDetailsPage() {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  // Fetch join requests from API
-  const { data: joinRequests = [], refetch: refetchJoinRequests } = useQuery({
-    queryKey: ["groupJoinRequests", groupId],
-    queryFn: async () => {
-      if (!groupId) return [];
-      const res = await groupsAPI.getJoinRequests(groupId);
-      return res.data;
-    },
-    enabled: !!groupId,
-  });
-
-  const handleAcceptJoin = async (id: string) => {
-    await groupsAPI.acceptJoinRequest(groupId, id);
-    setToast({ message: t('groupDetails.joinAccepted'), type: "success" });
-    refetchJoinRequests();
-  };
-  const handleDeclineJoin = async (id: string) => {
-    await groupsAPI.declineJoinRequest(groupId, id);
-    setToast({ message: t('groupDetails.joinDeclined'), type: "error" });
-    refetchJoinRequests();
-  };
 
   // Handle settings form change
   const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -360,13 +339,6 @@ export default function GroupDetailsPage() {
         onInvite={handleInviteMember}
         onCopyLink={handleCopyLink}
         isAdmin={isAdmin}
-        joinRequests={joinRequests.map((req: any) => ({
-          id: req.id,
-          name: req.user.name,
-          email: req.user.email
-        }))}
-        onAcceptJoin={handleAcceptJoin}
-        onDeclineJoin={handleDeclineJoin}
       />
       {/* Group Statistics */}
       <GroupStats memberCount={group.members?.length || 0} events={events || []} />
