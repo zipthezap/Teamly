@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { getImageUrl } from "../../utils/imageUtils";
 
 interface ChatBoxProps {
   chat: any[];
@@ -74,11 +75,16 @@ const ChatBox: React.FC<ChatBoxProps> = ({ chat, message, setMessage, onSend, is
             const senderName = msg.user?.name || msg.sender || 'Unknown';
             const messageTime = msg.createdAt || msg.time;
             const messageContent = msg.content || msg.text;
+            const profilePictureUrl = getImageUrl(msg.user?.profilePicture);
             
             return (
               <div key={idx} className="flex items-start gap-3 animate-fadein">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white shadow-lg flex-shrink-0 ring-2 ring-slate-700">
-                  {getInitials(senderName)}
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white shadow-lg flex-shrink-0 ring-2 ring-slate-700 overflow-hidden">
+                  {profilePictureUrl ? (
+                    <img src={profilePictureUrl} alt={senderName} className="w-full h-full object-cover" />
+                  ) : (
+                    getInitials(senderName)
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2 mb-1">

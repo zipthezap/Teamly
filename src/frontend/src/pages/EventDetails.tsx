@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import InviteLinkCard from '../components/InviteLinkCard';
+import { getImageUrl } from '../utils/imageUtils';
 
 const EventDetails = () => {
   const { id } = useParams();
@@ -224,7 +225,13 @@ const EventDetails = () => {
           
           {/* Organizer Info */}
           <div className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3 mb-4">
-            <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center text-lg font-bold flex-shrink-0">{getInitials(event.creator?.name)}</div>
+            <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center text-lg font-bold flex-shrink-0 overflow-hidden">
+              {getImageUrl(event.creator?.profilePicture) ? (
+                <img src={getImageUrl(event.creator?.profilePicture)!} alt={event.creator?.name} className="w-full h-full object-cover" />
+              ) : (
+                getInitials(event.creator?.name)
+              )}
+            </div>
             <div>
               <div className="text-xs text-[#a1a6b4] mb-0.5">{t('eventDetails.organizedBy')}</div>
               <div className="text-base font-semibold text-white">{event.creator?.name}</div>
@@ -342,8 +349,12 @@ const EventDetails = () => {
                   return (
                     <div key={idx} className="mb-3 pb-3 border-b border-[#232946] last:border-b-0">
                       <div className="flex items-start gap-2">
-                        <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
-                          {getInitials(n.user?.name || t('eventDetails.user'))}
+                        <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden">
+                          {getImageUrl(n.user?.profilePicture) ? (
+                            <img src={getImageUrl(n.user?.profilePicture)!} alt={n.user?.name} className="w-full h-full object-cover" />
+                          ) : (
+                            getInitials(n.user?.name || t('eventDetails.user'))
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-white font-medium text-sm mb-0.5">{n.user?.name || t('eventDetails.user')}</div>
@@ -366,7 +377,13 @@ const EventDetails = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {event?.participants?.map((p, idx) => (
             <div key={p.id || idx} className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3">
-              <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">{getInitials(p.user?.name)}</div>
+              <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden">
+                {getImageUrl(p.user?.profilePicture) ? (
+                  <img src={getImageUrl(p.user?.profilePicture)!} alt={p.user?.name} className="w-full h-full object-cover" />
+                ) : (
+                  getInitials(p.user?.name)
+                )}
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold text-white truncate">{p.user?.name}</div>
                 <div className="text-xs text-[#a1a6b4] truncate">{p.user?.email}</div>

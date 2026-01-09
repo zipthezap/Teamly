@@ -1,6 +1,7 @@
 import React from 'react';
 // All MUI imports removed; using Tailwind and SVGs only
 import { getAvatarColor } from '../../utils/colors';
+import { getImageUrl } from '../../utils/imageUtils';
 
 interface ParticipantsListProps {
   event: any;
@@ -62,8 +63,12 @@ const ParticipantsList: React.FC<ParticipantsListProps> = ({ event, participantC
             return (
               <li key={participant.id} className="flex items-center py-3 gap-4 hover:bg-gray-50 dark:hover:bg-white/5 rounded-lg transition">
                 {/* Avatar */}
-                <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-white" style={{ background: getAvatarColor(idx) }}>
-                  {getInitials(participant.user?.name)}
+                <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-white overflow-hidden" style={{ background: getAvatarColor(idx) }}>
+                  {getImageUrl(participant.user?.profilePicture) ? (
+                    <img src={getImageUrl(participant.user?.profilePicture)!} alt={participant.user?.name} className="w-full h-full object-cover" />
+                  ) : (
+                    getInitials(participant.user?.name)
+                  )}
                 </div>
                 {/* Name, badges, email */}
                 <div className="flex-1 min-w-0">

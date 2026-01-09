@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 // All MUI icon imports removed; using inline SVGs
 import NotificationsPopover from './NotificationsPopover';
 import LanguageSwitcher from './LanguageSwitcher';
+import { getImageUrl } from '../utils/imageUtils';
 
 
 // NavLink helper for nav items
@@ -66,8 +67,12 @@ const Navbar = () => {
               <LanguageSwitcher />
               <NotificationsPopover />
               <Link to="/profile" className="flex items-center gap-2 px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-white transition no-underline">
-                <span className="w-8 h-8 rounded-full flex items-center justify-center font-bold bg-blue-400 text-white text-base">
-                  {getInitials(user.name)}
+                <span className="w-8 h-8 rounded-full flex items-center justify-center font-bold bg-blue-400 text-white text-base overflow-hidden">
+                  {getImageUrl(user.profilePicture) ? (
+                    <img src={getImageUrl(user.profilePicture)!} alt={user.name} className="w-full h-full object-cover" />
+                  ) : (
+                    getInitials(user.name)
+                  )}
                 </span>
                 <span className="font-medium text-white text-sm">{user.name}</span>
               </Link>

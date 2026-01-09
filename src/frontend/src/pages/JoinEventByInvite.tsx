@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { eventsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { getImageUrl } from '../utils/imageUtils';
 import { 
   Container, 
   Paper, 
@@ -270,11 +271,14 @@ const JoinEventByInvite = () => {
           {totalParticipants > 0 && (
             <Box sx={{ mb: 2 }}>
               <AvatarGroup max={8} sx={{ justifyContent: 'flex-start' }}>
-                {event.participants?.filter((p: any) => p.status === 'confirmed').map((p: any, idx: number) => (
-                  <Avatar key={idx} sx={{ bgcolor: 'primary.main' }}>
-                    {getInitials(p.user?.name)}
-                  </Avatar>
-                ))}
+                {event.participants?.filter((p: any) => p.status === 'confirmed').map((p: any, idx: number) => {
+                  const profilePictureUrl = getImageUrl(p.user?.profilePicture);
+                  return (
+                    <Avatar key={idx} sx={{ bgcolor: 'primary.main' }} src={profilePictureUrl || undefined}>
+                      {!profilePictureUrl && getInitials(p.user?.name)}
+                    </Avatar>
+                  );
+                })}
                 {event.guestParticipants?.filter((g: any) => g.status === 'confirmed').map((g: any, idx: number) => (
                   <Avatar key={`guest-${idx}`} sx={{ bgcolor: 'secondary.main' }}>
                     {getInitials(g.name)}
