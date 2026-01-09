@@ -1,6 +1,6 @@
 # Teamly Deployment Guide
 
-> **💡 Windows Users:** For detailed Windows-specific setup and troubleshooting, see [WINDOWS_SETUP.md](WINDOWS_SETUP.md)
+> **💡 Windows Users:** For detailed Windows-specific setup and troubleshooting, see [guides/WINDOWS_SETUP.md](guides/WINDOWS_SETUP.md)
 
 ## Local Development Setup
 
@@ -343,7 +343,7 @@ This opens a web interface at `http://localhost:5555`
 
 ### Windows-Specific Issues
 
-**See [WINDOWS_SETUP.md](WINDOWS_SETUP.md) for detailed Windows troubleshooting, including:**
+**See [guides/WINDOWS_SETUP.md](guides/WINDOWS_SETUP.md) for detailed Windows troubleshooting, including:**
 - PostgreSQL connection problems on Windows
 - Port conflicts and how to resolve them
 - Path and environment variable issues
@@ -371,8 +371,8 @@ This opens a web interface at `http://localhost:5555`
    ```
 
 3. **Can't run .sh scripts:**
-   - Use Git Bash: `bash test-api.sh`
-   - Or use Windows version: `test-api.bat`
+   - Use Git Bash: `bash scripts/tests/test-api.sh`
+   - Or use Windows version: `scripts\tests\test-api.bat`
 
 ### Getting Help
 

@@ -420,8 +420,8 @@ The backend is complete. Frontend implementation should include:
 ## Support and Contribution
 
 For issues or questions, please refer to:
-- API Documentation: `API_DOCUMENTATION.md`
-- Main README: `README.md`
+- API Documentation: `../API_DOCUMENTATION.md`
+- Main README: `../../README.md`
 - Feature Roadmap: `FEATURE_ROADMAP.md`
 # New Features Implementation Guide
 

@@ -158,7 +158,7 @@ The server will be available at http://localhost:3000
 We provide a Windows batch script for testing:
 
 ```cmd
-test-api.bat
+scripts\tests\test-api.bat
 ```
 
 ### Using the Bash Script (in Git Bash)
@@ -166,7 +166,7 @@ test-api.bat
 If you have Git for Windows installed, you can use Git Bash:
 
 ```bash
-./test-api.sh
+./scripts/tests/test-api.sh
 ```
 
 ### Using curl (PowerShell)
@@ -190,7 +190,7 @@ For a better API testing experience on Windows:
 1. **Postman**: Download from https://www.postman.com/downloads/
 2. **Insomnia**: Download from https://insomnia.rest/download
 
-Import the API endpoints from `API_DOCUMENTATION.md` to test them.
+Import the API endpoints from `../API_DOCUMENTATION.md` to test them.
 
 ## Common Windows-Specific Issues
 
@@ -369,7 +369,7 @@ Git Bash provides a Unix-like environment on Windows:
 
 ```bash
 # Run the regular test script
-./test-api.sh
+./scripts/tests/test-api.sh
 
 # Use Unix-style commands
 ls -la
@@ -456,17 +456,17 @@ docker-compose logs -f app
 
 After setting up the development environment:
 
-1. Read `README.md` for general usage
-2. Check `API_DOCUMENTATION.md` for API details
-3. Review `PROJECT_SUMMARY.md` for project architecture
-4. See `DEPLOYMENT.md` for production deployment
+1. Read `../../README.md` for general usage
+2. Check `../API_DOCUMENTATION.md` for API details
+3. Review project documentation for architecture details
+4. See `../DEPLOYMENT.md` for production deployment
 
 ## Getting Help
 
 If you encounter issues not covered here:
 
-1. Check the main README.md troubleshooting section
-2. Review DEPLOYMENT.md for additional context
+1. Check the main `../../README.md` troubleshooting section
+2. Review `../DEPLOYMENT.md` for additional context
 3. Check GitHub Issues for similar problems
 4. Ensure all prerequisites are correctly installed
 
@@ -494,7 +494,7 @@ npm start
 npm run prisma:studio
 
 # Run tests (Windows batch script)
-test-api.bat
+scripts\tests\test-api.bat
 ```
 
 ### Default Ports

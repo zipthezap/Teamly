@@ -355,12 +355,12 @@ Teamly/
 
 **Unix/Linux/Mac/Git Bash:**
 ```bash
-./test-api.sh
+./scripts/tests/test-api.sh
 ```
 
 **Windows (Command Prompt/PowerShell):**
 ```cmd
-test-api.bat
+scripts\tests\test-api.bat
 ```
 
 The test scripts will:
@@ -370,19 +370,36 @@ The test scripts will:
 - Test various API endpoints
 - Verify error handling
 
-## Additional Documentation
+## Documentation
 
-### Active Documentation
+### Core Documentation
 
-- **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** - Detailed API reference
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guides
-- **[QUICK_START.md](QUICK_START.md)** - Quick setup instructions
+- **[docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)** - Detailed API reference
+- **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Production deployment guides
+- **[docs/QUICK_START.md](docs/QUICK_START.md)** - Quick setup instructions
 - **[docs/SECURITY.md](docs/SECURITY.md)** - Security features and best practices
+
+### Features
+
+- **[docs/features/ENHANCED_NOTIFICATIONS.md](docs/features/ENHANCED_NOTIFICATIONS.md)** - Enhanced notification system
 - **[docs/guides/FEATURES.md](docs/guides/FEATURES.md)** - Complete guide for new features (Email, Recurring Events, Comments)
+
+### Guides
+
 - **[docs/guides/WINDOWS_SETUP.md](docs/guides/WINDOWS_SETUP.md)** - Comprehensive Windows development guide
-- **[docs/guides/FEATURE_ROADMAP.md](docs/guides/FEATURE_ROADMAP.md)** - Planned features and expansion ideas
 - **[docs/guides/FRONTEND_GUIDE.md](docs/guides/FRONTEND_GUIDE.md)** - Frontend implementation details
+- **[docs/guides/FEATURE_ROADMAP.md](docs/guides/FEATURE_ROADMAP.md)** - Planned features and expansion ideas
 - **[docs/guides/SOCIAL_LOGIN_GUIDE.md](docs/guides/SOCIAL_LOGIN_GUIDE.md)** - Social authentication setup
+- **[docs/guides/AUTH_SECURITY_GUIDE.md](docs/guides/AUTH_SECURITY_GUIDE.md)** - Enhanced authentication & security features
+
+### Setup Guides
+
+- **[docs/guides/setup/GOOGLE_MAPS_SETUP.md](docs/guides/setup/GOOGLE_MAPS_SETUP.md)** - Google Maps integration
+- **[docs/guides/setup/TRANSLATIONS.md](docs/guides/setup/TRANSLATIONS.md)** - Translation system guide
+
+### Historical Documentation
+
+- **[docs/archive/](docs/archive/)** - Historical feature implementation documentation and reports
 
 ## Contributing Ideas
 
