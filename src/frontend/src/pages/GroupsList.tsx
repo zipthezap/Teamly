@@ -249,19 +249,35 @@ const GroupsList = () => {
                   }}
                 >
                   <CardContent sx={{ flexGrow: 1, p: 3 }}>
-                    <Box display="flex" justifyContent="space-between" alignItems="start" mb={1.5}>
-                      <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, pr: 1 }}>
-                        {group.name}
-                      </Typography>
-                      <Box display="flex" gap={0.5} flexShrink={0}>
-                        {group.isPublic ? (
-                          <Chip label={t('groups.public')} size="small" color="primary" />
-                        ) : (
-                          <Chip label={t('groups.private')} size="small" />
-                        )}
-                        {role === 'admin' && (
-                          <Chip label={t('groups.admin')} size="small" color="secondary" />
-                        )}
+                    <Box display="flex" gap={2} mb={1.5}>
+                      <Avatar
+                        src={getImageUrl(group.picture) || undefined}
+                        sx={{ 
+                          width: 60, 
+                          height: 60,
+                          borderRadius: '8px',
+                          bgcolor: 'primary.main'
+                        }}
+                        variant="rounded"
+                      >
+                        {!group.picture && getInitials(group.name)}
+                      </Avatar>
+                      <Box flexGrow={1} minWidth={0}>
+                        <Box display="flex" justifyContent="space-between" alignItems="start" mb={0.5}>
+                          <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, pr: 1 }}>
+                            {group.name}
+                          </Typography>
+                          <Box display="flex" gap={0.5} flexShrink={0}>
+                            {group.isPublic ? (
+                              <Chip label={t('groups.public')} size="small" color="primary" />
+                            ) : (
+                              <Chip label={t('groups.private')} size="small" />
+                            )}
+                            {role === 'admin' && (
+                              <Chip label={t('groups.admin')} size="small" color="secondary" />
+                            )}
+                          </Box>
+                        </Box>
                       </Box>
                     </Box>
                     <Typography 
