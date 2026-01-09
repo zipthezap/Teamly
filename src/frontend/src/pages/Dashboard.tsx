@@ -238,10 +238,10 @@ const Dashboard = () => {
                           minHeight: 40,
                           maxHeight: 40,
                           overflow: 'hidden',
-                          textOverflow: 'ellipsis',
                           display: '-webkit-box',
                           WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical'
+                          WebkitBoxOrient: 'vertical',
+                          lineClamp: 2
                         }}
                       >
                         {group.description || t('common.noDescription')}
