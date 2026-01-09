@@ -1,9 +1,8 @@
-import React, { useContext } from "react";
+import React from "react";
 import { useTranslation } from "react-i18next";
 import Button from "../ui/Button";
 import { getImageUrl } from "../../utils/imageUtils";
-// Import AuthContext if available
-// import { AuthContext } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface MemberListProps {
   members: any[];
@@ -18,11 +17,17 @@ const getInitials = (name: string | undefined | null) => {
 const MemberList: React.FC<MemberListProps> = ({ members, onRemove }) => {
   const { t } = useTranslation();
   
-  // Try to get current user from AuthContext if available, fallback to window
-  // const { user: authUser } = useContext(AuthContext) || {};
-  const authUser = null; // Replace with actual context if available
-  const currentUserEmail = (authUser && authUser.email) || window.currentUserEmail || '';
-  const currentUserId = (authUser && authUser.id) || window.currentUserId || '';
+  // Use useAuth to get current user, fallback to window if needed
+  let currentUserEmail = '';
+  let currentUserId = '';
+  try {
+    const { user } = useAuth();
+    currentUserEmail = user?.email || '';
+    currentUserId = user?.id || '';
+  } catch {
+    currentUserEmail = window.currentUserEmail || '';
+    currentUserId = window.currentUserId || '';
+  }
   console.log('[MemberList] Current user:', { currentUserEmail, currentUserId });
   return (
     <section className="bg-slate-800 rounded-lg p-4 shadow">
