@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem, Box } from '@mui/material';
+import { useAuth } from "../contexts/AuthContext";
 import GroupHeader from "../components/GroupDetails/GroupHeader";
 import GroupStats from "../components/GroupDetails/GroupStats";
 import MemberList from "../components/GroupDetails/MemberList";
@@ -26,6 +27,7 @@ function Toast({ message, type, onClose }: { message: string; type: "success" | 
 
 export default function GroupDetailsPage() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<any>(null);
   const { id: groupId } = useParams();
@@ -73,16 +75,8 @@ export default function GroupDetailsPage() {
     enabled: !!groupId,
   });
 
-  // Improved admin check: get user email from stored user object
-  let userEmail = null;
-  const storedUser = localStorage.getItem('user');
-  if (storedUser) {
-    try {
-      userEmail = JSON.parse(storedUser).email;
-    } catch (e) {
-      userEmail = null;
-    }
-  }
+  // Improved admin check: use AuthContext for user email
+  const userEmail = user?.email || null;
 
   // Fallback: if member emails are missing, check if user is group creator
   let isAdmin = false;
@@ -457,6 +451,7 @@ export default function GroupDetailsPage() {
       <EventFormModal
         open={eventModalOpen}
         onClose={() => setEventModalOpen(false)}
+        onSuccess={() => refetchEvents()}
         initialData={editEvent}
         groupId={groupId}
       />
