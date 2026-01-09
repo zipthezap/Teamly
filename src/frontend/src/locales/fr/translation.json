@@ -510,7 +510,14 @@
     "locationSet": "Localisation : {{location}}",
     "coordinatesSet": "Coordonnées : {{lat}}, {{lng}}",
     "geolocationNotSupported": "La géolocalisation n'est pas prise en charge par votre navigateur",
-    "unableToRetrieveLocation": "Impossible de récupérer votre position : {{error}}"
+    "unableToRetrieveLocation": "Impossible de récupérer votre position : {{error}}",
+    "searchAddress": "Rechercher une adresse",
+    "searchAddressPlaceholder": "Commencez à taper une adresse...",
+    "searchAddressHelper": "Utilisez Google Places pour trouver et définir votre emplacement",
+    "clickMapToSetLocation": "Cliquez sur la carte pour définir ou faites glisser le marqueur pour ajuster l'emplacement",
+    "addressSearchFailed": "Impossible de trouver l'adresse. Veuillez essayer une autre recherche.",
+    "apiKeyNotConfigured": "Clé API Google Maps non configurée.",
+    "apiKeyRequired": "Définissez VITE_GOOGLE_MAPS_API_KEY pour activer les fonctionnalités de carte."
   },
   "activityFeed": {
     "recentActivity": "Activité récente",

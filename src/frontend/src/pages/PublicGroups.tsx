@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/common/Button';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
-import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
+import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
 import { groupsAPI } from '../services/api';
 import { useTranslation } from 'react-i18next';
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+const libraries: ("places")[] = ["places"];
 
 const mapContainerStyle = {
   width: '100%',
@@ -27,6 +28,7 @@ const PublicGroups = () => {
   const [mapCenter, setMapCenter] = useState(null);
   const [customSearchLocation, setCustomSearchLocation] = useState(null);
   const [searchAddress, setSearchAddress] = useState('');
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -155,59 +157,40 @@ const PublicGroups = () => {
     });
   };
 
-  const handleSearchAddress = async () => {
-    if (!searchAddress.trim()) return;
-    
-    if (!GOOGLE_MAPS_API_KEY) {
-      setSnackbar({
-        open: true,
-        message: t('groups.publicGroups.addressSearchRequiresApi'),
-        severity: 'info',
-      });
-      return;
-    }
+  const onAutocompleteLoad = (autocomplete: google.maps.places.Autocomplete) => {
+    autocompleteRef.current = autocomplete;
+  };
 
-    try {
-      setLoading(true);
-      // Use Google Geocoding API to search for the address
-      const response = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(searchAddress)}&key=${GOOGLE_MAPS_API_KEY}`
-      );
-      const data = await response.json();
-
-      if (data.status === 'OK' && data.results && data.results.length > 0) {
-        const result = data.results[0];
-        const { lat, lng } = result.geometry.location;
-        
-        const searchLocation = {
-          latitude: lat,
-          longitude: lng,
-        };
-        
-        setCustomSearchLocation(searchLocation);
-        setMapCenter(searchLocation);
-        setLocationEnabled(true);
-        setSnackbar({
-          open: true,
-          message: t('groups.publicGroups.addressSearchSuccess'),
-          severity: 'success',
-        });
-      } else {
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      
+      if (!place.geometry || !place.geometry.location) {
         setSnackbar({
           open: true,
           message: t('groups.publicGroups.addressSearchFailed'),
           severity: 'error',
         });
+        return;
       }
-    } catch (error) {
-      console.error('Geocoding error:', error);
+      
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+      
+      const searchLocation = {
+        latitude: lat,
+        longitude: lng,
+      };
+      
+      setCustomSearchLocation(searchLocation);
+      setMapCenter(searchLocation);
+      setLocationEnabled(true);
+      setSearchAddress(place.formatted_address || place.name || '');
       setSnackbar({
         open: true,
-        message: t('groups.publicGroups.addressSearchFailed'),
-        severity: 'error',
+        message: t('groups.publicGroups.addressSearchSuccess'),
+        severity: 'success',
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -278,11 +261,11 @@ const PublicGroups = () => {
           )}
         </div>
 
-        {/* Google Maps Integration (unchanged, keep as is) */}
+        {/* Google Maps Integration */}
         {GOOGLE_MAPS_API_KEY ? (
           <div className="mb-3">
             <div className="text-xs text-gray-400 mb-1">{t('groups.publicGroups.clickMapToSetLocation')}</div>
-            <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+            <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries}>
               <GoogleMap
                 mapContainerStyle={mapContainerStyle}
                 center={mapCenter || { lat: 0, lng: 0 }}
@@ -326,25 +309,33 @@ const PublicGroups = () => {
           </div>
         )}
 
-        {/* Address Search */}
-        <div className="flex gap-2 mb-2">
-          <input
-            className="flex-1 px-2 py-2 border border-gray-700 rounded bg-[#181c24] text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            placeholder={t('groups.searchByAddress')}
-            value={searchAddress}
-            onChange={(e) => setSearchAddress(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearchAddress()}
-            type="text"
-          />
-          <button
-            className="p-2 rounded bg-blue-600 hover:bg-blue-700 text-white shadow"
-            onClick={handleSearchAddress}
-            aria-label="Search"
-          >
-            {/* Search SVG */}
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2" /><path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
-          </button>
-        </div>
+        {/* Address Search with Autocomplete */}
+        {GOOGLE_MAPS_API_KEY ? (
+          <div className="mb-2">
+            <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries}>
+              <Autocomplete onLoad={onAutocompleteLoad} onPlaceChanged={onPlaceChanged}>
+                <input
+                  className="w-full px-3 py-2 border border-gray-700 rounded bg-[#181c24] text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  placeholder={t('groups.searchByAddress')}
+                  value={searchAddress}
+                  onChange={(e) => setSearchAddress(e.target.value)}
+                  type="text"
+                />
+              </Autocomplete>
+            </LoadScript>
+          </div>
+        ) : (
+          <div className="mb-2">
+            <input
+              className="w-full px-3 py-2 border border-gray-700 rounded bg-[#181c24] text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              placeholder={t('groups.searchByAddress')}
+              value={searchAddress}
+              onChange={(e) => setSearchAddress(e.target.value)}
+              type="text"
+              disabled
+            />
+          </div>
+        )}
 
         {(locationEnabled && (userLocation || customSearchLocation)) && (
           <div>

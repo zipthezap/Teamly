@@ -511,7 +511,14 @@
     "locationSet": "Location: {{location}}",
     "coordinatesSet": "Coordinates: {{lat}}, {{lng}}",
     "geolocationNotSupported": "Geolocation is not supported by your browser",
-    "unableToRetrieveLocation": "Unable to retrieve your location: {{error}}"
+    "unableToRetrieveLocation": "Unable to retrieve your location: {{error}}",
+    "searchAddress": "Search for an address",
+    "searchAddressPlaceholder": "Start typing an address...",
+    "searchAddressHelper": "Use Google Places to find and set your location",
+    "clickMapToSetLocation": "Click on the map to set or drag the marker to adjust location",
+    "addressSearchFailed": "Could not find the address. Please try a different search.",
+    "apiKeyNotConfigured": "Google Maps API key not configured.",
+    "apiKeyRequired": "Set VITE_GOOGLE_MAPS_API_KEY to enable map features."
   },
   "activityFeed": {
     "recentActivity": "Recent Activity",
