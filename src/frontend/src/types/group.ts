@@ -3,7 +3,7 @@ export interface Member {
   name: string;
   email: string;
   role: string;
-  avatar?: string;
+  profilePicture?: string;
   online: boolean;
 }
 
@@ -26,7 +26,7 @@ export interface Group {
   id: string | number;
   name: string;
   description: string;
-  coverImage: string;
+  picture?: string;
   privacy: string;
   createdAt: string;
   members: Member[];

@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import { PhotoCamera, Delete } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
+import { getImageUrl } from '../utils/imageUtils';
 
 interface ImageUploadProps {
   currentImage?: string;
@@ -99,7 +100,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     fileInputRef.current?.click();
   };
 
-  const displayImage = preview || currentImage;
+  const displayImage = preview || getImageUrl(currentImage);
   const isLoading = uploading || deleting;
 
   return (
