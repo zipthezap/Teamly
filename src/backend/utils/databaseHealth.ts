@@ -62,14 +62,18 @@ export const performHealthCheck = async (): Promise<HealthCheckResult> => {
   const usedMemory = memoryUsage.heapUsed;
   const memoryPercentage = Math.round((usedMemory / totalMemory) * 100);
   
+  // Configurable thresholds
+  const slowDbThreshold = parseInt(process.env.HEALTH_CHECK_DB_SLOW_MS || '1000', 10);
+  const memoryThreshold = parseInt(process.env.HEALTH_CHECK_MEMORY_THRESHOLD || '90', 10);
+  
   // Determine overall status
   let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
   
   if (!database.connected) {
     status = 'unhealthy';
-  } else if (database.responseTime && database.responseTime > 1000) {
+  } else if (database.responseTime && database.responseTime > slowDbThreshold) {
     status = 'degraded'; // Slow database response
-  } else if (memoryPercentage > 90) {
+  } else if (memoryPercentage > memoryThreshold) {
     status = 'degraded'; // High memory usage
   }
   

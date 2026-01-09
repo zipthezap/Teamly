@@ -7,8 +7,8 @@ import { logger } from '../utils/logger';
  * This prevents abuse through multiple IPs by the same user
  */
 const authAwareKeyGenerator = (req: Request): string => {
-  // For authenticated requests, use user ID
-  if (req.user?.id) {
+  // For authenticated requests, use user ID (ensure it's a valid non-empty value)
+  if (req.user?.id && typeof req.user.id === 'string' && req.user.id.length > 0) {
     return `user:${req.user.id}`;
   }
   // For unauthenticated requests, use IP
