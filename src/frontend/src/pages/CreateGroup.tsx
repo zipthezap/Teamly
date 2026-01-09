@@ -65,7 +65,7 @@ const CreateGroup = () => {
       }
       
       navigate(`/groups/${groupId}`);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to create group');
     } finally {
       setLoading(false);

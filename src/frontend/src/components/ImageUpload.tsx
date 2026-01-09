@@ -6,6 +6,7 @@ import {
   IconButton,
   Typography,
   CircularProgress,
+  Alert,
 } from '@mui/material';
 import { PhotoCamera, Delete } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +19,9 @@ interface ImageUploadProps {
   shape?: 'circle' | 'square';
   size?: number;
 }
+
+const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 const ImageUpload: React.FC<ImageUploadProps> = ({
   currentImage,
@@ -32,19 +36,22 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [error, setError] = useState<string>('');
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      setError('');
+      
       // Validate file type
-      if (!file.type.startsWith('image/')) {
-        alert(t('common.invalidFileType') || 'Please select an image file');
+      if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+        setError(t('common.invalidFileType') || 'Please select an image file');
         return;
       }
 
-      // Validate file size (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert(t('common.fileTooLarge') || 'File size must be less than 5MB');
+      // Validate file size
+      if (file.size > MAX_FILE_SIZE) {
+        setError(t('common.fileTooLarge') || 'File size must be less than 5MB');
         return;
       }
 
@@ -64,6 +71,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     setUploading(true);
     try {
       await onUpload(file);
+      setError('');
     } catch (error) {
       console.error('Upload failed:', error);
       setPreview(null);
@@ -76,6 +84,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     if (!onDelete) return;
     
     setDeleting(true);
+    setError('');
     try {
       await onDelete();
       setPreview(null);
@@ -130,10 +139,16 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/jpg,image/png,image/webp"
+        accept={ALLOWED_FILE_TYPES.join(',')}
         onChange={handleFileSelect}
         style={{ display: 'none' }}
       />
+
+      {error && (
+        <Alert severity="error" sx={{ width: '100%', maxWidth: 300 }}>
+          {error}
+        </Alert>
+      )}
 
       <Box sx={{ display: 'flex', gap: 1 }}>
         <Button
