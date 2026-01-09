@@ -14,13 +14,14 @@ import {
   Alert,
   Tooltip,
 } from '@mui/material';
-import NotificationsIcon from '@mui/icons-material/Notifications';
+import GroupAddIcon from './icons/GroupAddIcon';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import { useJoinRequests } from '../hooks/useJoinRequests';
 
 interface JoinRequestsPopoverProps {
   groupId?: string | number | null;
+  showOnlyIfPending?: boolean;
 }
 
 interface Feedback {
@@ -28,7 +29,7 @@ interface Feedback {
   message: string;
 }
 
-const JoinRequestsPopover: React.FC<JoinRequestsPopoverProps> = ({ groupId = null }) => {
+const JoinRequestsPopover: React.FC<JoinRequestsPopoverProps> = ({ groupId = null, showOnlyIfPending = false }) => {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [actionLoading, setActionLoading] = useState<Record<string | number, boolean>>({});
   const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -80,6 +81,10 @@ const JoinRequestsPopover: React.FC<JoinRequestsPopoverProps> = ({ groupId = nul
   const id = open ? 'join-requests-popover' : undefined;
   const requestCount = joinRequests.length;
 
+  // Only show if not restricting to pending, or if there are requests
+  if (showOnlyIfPending && requestCount === 0) {
+    return null;
+  }
   return (
     <>
       <IconButton
@@ -92,8 +97,8 @@ const JoinRequestsPopover: React.FC<JoinRequestsPopoverProps> = ({ groupId = nul
           }
         }}
       >
-        <Badge badgeContent={requestCount} color="error">
-          <NotificationsIcon />
+        <Badge badgeContent={requestCount} color="error" showZero>
+          <GroupAddIcon />
         </Badge>
       </IconButton>
 

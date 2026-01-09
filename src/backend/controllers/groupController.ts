@@ -149,7 +149,19 @@ export const getGroups = async (req: Request, res: Response) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    res.json(groups);
+    // Map each group to flatten member user fields
+    const mappedGroups = groups.map((group: any) => ({
+      ...group,
+      members: group.members.map((member: any) => ({
+        id: member.user.id,
+        name: member.user.name,
+        email: member.user.email,
+        role: member.role,
+        // add other member fields if needed
+      }))
+    }));
+
+    res.json(mappedGroups);
   } catch (error) {
     logger.error('Failed to get groups', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to get groups' });
@@ -196,7 +208,19 @@ export const getGroup = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Group not found' });
     }
 
-    res.json(group);
+    // Map members to flatten user fields
+    const mappedGroup = {
+      ...group,
+      members: group.members.map((member: any) => ({
+        id: member.user.id,
+        name: member.user.name,
+        email: member.user.email,
+        role: member.role,
+        // add other member fields if needed
+      }))
+    };
+
+    res.json(mappedGroup);
   } catch (error) {
     logger.error('Failed to get group', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to get group' });

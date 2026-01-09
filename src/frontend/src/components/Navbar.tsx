@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 // All MUI icon imports removed; using inline SVGs
 import NotificationsPopover from './NotificationsPopover';
-import JoinRequestsPopover from './JoinRequestsPopover';
 import LanguageSwitcher from './LanguageSwitcher';
 
 
@@ -66,7 +65,6 @@ const Navbar = () => {
             <div className="flex items-center gap-4">
               <LanguageSwitcher />
               <NotificationsPopover />
-              <JoinRequestsPopover />
               <Link to="/profile" className="flex items-center gap-2 px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-white transition no-underline">
                 <span className="w-8 h-8 rounded-full flex items-center justify-center font-bold bg-blue-400 text-white text-base">
                   {getInitials(user.name)}

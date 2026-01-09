@@ -71,9 +71,28 @@ export default function GroupDetailsPage() {
     enabled: !!groupId,
   });
 
-  // Improved admin check: user is admin if their email matches any admin member
-  const userEmail = localStorage.getItem("userEmail");
-  const isAdmin = group?.members?.some((m: Member) => m.role === "Admin" && m.email === userEmail);
+  // Improved admin check: get user email from stored user object
+  let userEmail = null;
+  const storedUser = localStorage.getItem('user');
+  if (storedUser) {
+    try {
+      userEmail = JSON.parse(storedUser).email;
+    } catch (e) {
+      userEmail = null;
+    }
+  }
+  if (group) {
+    console.log('[GroupDetailsPage] userEmail from localStorage:', userEmail);
+    console.log('[GroupDetailsPage] group.members:', group.members?.map(m => ({ email: m.email, role: m.role })));
+    console.log('[GroupDetailsPage] group object:', group);
+  }
+  // Fallback: if member emails are missing, check if user is group creator
+  let isAdmin = false;
+  if (group?.members?.some((m: Member) => m.role && m.role.toLowerCase() === "admin" && m.email === userEmail)) {
+    isAdmin = true;
+  } else if ((!group?.members || group.members.every((m: Member) => !m.email)) && group?.creator?.email && userEmail) {
+    isAdmin = group.creator.email === userEmail;
+  }
 
   // Update group settings when group data loads
   React.useEffect(() => {

@@ -183,6 +183,7 @@
     "spotsLeft": "{{count}} place restante",
     "spotsLeft_plural": "{{count}} places restantes",
     "createEvent": "Créer un événement",
+    "noEventsAvailable": "Aucun événement disponible.",
     "noEventsMatch": "Aucun événement ne correspond à vos filtres",
     "createFirstEvent": "Créez votre premier événement",
     "eventTitle": "Titre de l'événement",

@@ -2,6 +2,11 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { Group } from "../../types/group";
 import Button from "../ui/Button";
+import EditIcon from "../icons/EditIcon";
+import TrashIcon from "../icons/TrashIcon";
+import UserPlusIcon from "../icons/UserPlusIcon";
+import LinkIcon from "../icons/LinkIcon";
+import ArrowRightIcon from "../icons/ArrowRightIcon";
 import JoinRequestsPopover from "../JoinRequestsPopover";
 
 interface GroupHeaderProps {
@@ -26,6 +31,8 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
 }) => {
   const { t } = useTranslation();
   
+  // Debug output (in console, not UI)
+  console.log('[GroupHeader] isAdmin:', isAdmin, 'group.id:', group.id, 'group:', group);
   return (
     <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 mb-8">
       <img
@@ -37,7 +44,8 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
         <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
           {group.name}
           {isAdmin && (
-            <JoinRequestsPopover groupId={group.id} />
+            // Only show JoinRequestsPopover if there are pending requests
+            <JoinRequestsPopover groupId={group.id} showOnlyIfPending />
           )}
           <span className="ml-2 px-2 py-0.5 text-xs bg-slate-700 rounded-full uppercase tracking-wide">
             {group.privacy}
@@ -50,19 +58,29 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
       </div>
       <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
         {isAdmin && onEdit && (
-          <Button color="primary" onClick={onEdit}>{t('groupDetails.editGroup')}</Button>
+          <Button color="primary" onClick={onEdit} className="rounded-full p-4 min-w-0 w-16 h-16 flex items-center justify-center" aria-label={t('groupDetails.editGroup')}>
+            <EditIcon className="w-8 h-8" />
+          </Button>
         )}
         {isAdmin && onDelete && (
-          <Button color="danger" onClick={onDelete}>{t('groupDetails.deleteGroup')}</Button>
-        )}
-        {onLeave && (
-          <Button color="secondary" onClick={onLeave}>{t('groupDetails.leave')}</Button>
-        )}
-        {onInvite && (
-          <Button color="success" onClick={onInvite}>{t('groupDetails.invite')}</Button>
+          <Button color="danger" onClick={onDelete} className="rounded-full p-4 min-w-0 w-16 h-16 flex items-center justify-center" aria-label={t('groupDetails.deleteGroup')}>
+            <TrashIcon className="w-8 h-8" />
+          </Button>
         )}
         {onCopyLink && (
-          <Button color="info" onClick={onCopyLink}>{t('groupDetails.copyLink')}</Button>
+          <Button color="info" onClick={onCopyLink} className="rounded-full p-4 min-w-0 w-16 h-16 flex items-center justify-center" aria-label={t('groupDetails.copyLink')}>
+            <LinkIcon className="w-8 h-8" />
+          </Button>
+        )}
+        {onInvite && (
+          <Button color="success" onClick={onInvite} className="rounded-full p-4 min-w-0 w-16 h-16 flex items-center justify-center" aria-label={t('groupDetails.invite')}>
+            <UserPlusIcon className="w-8 h-8" />
+          </Button>
+        )}
+        {onLeave && (
+          <Button color="secondary" onClick={onLeave} className="rounded-full p-4 min-w-0 w-16 h-16 flex items-center justify-center" aria-label={t('groupDetails.leave')}>
+            <ArrowRightIcon className="w-8 h-8" />
+          </Button>
         )}
       </div>
     </div>

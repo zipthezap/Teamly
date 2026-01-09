@@ -1,17 +1,23 @@
+
 import * as React from "react";
 
+// Material Design 'link' icon SVG
 const LinkIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
-    viewBox="0 0 20 20"
-    fill="currentColor"
-    aria-hidden="true"
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
     {...props}
   >
-    <path
-      fillRule="evenodd"
-      d="M12.293 7.293a1 1 0 011.414 0l2 2a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414l5-5zm-1.586 1.586l-5 5a3 3 0 104.242 4.242l5-5a3 3 0 10-4.242-4.242z"
-      clipRule="evenodd"
-    />
+    <path d="M3.9 12a5 5 0 0 1 5-5h3" />
+    <path d="M14.1 12a5 5 0 0 0-5 5h-3" />
+    <line x1="8" y1="12" x2="16" y2="12" />
   </svg>
 );
 

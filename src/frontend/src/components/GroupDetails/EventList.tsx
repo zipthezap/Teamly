@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "../ui/Button";
+import PlusIcon from "../icons/PlusIcon";
 
 interface EventListProps {
   events: any[];
@@ -53,7 +54,9 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
               {t('groupDetails.viewAll', 'View All')}
             </a>
           {isAdmin && onCreate && (
-            <Button color="primary" size="sm" onClick={onCreate}>{t('groupDetails.createEvent', 'Create Event')}</Button>
+            <Button color="primary" size="sm" onClick={onCreate} className="rounded-full p-2 min-w-0 w-10 h-10 flex items-center justify-center" aria-label={t('groupDetails.createEvent', 'Create Event')}>
+              <PlusIcon className="w-5 h-5" />
+            </Button>
           )}
         </div>
       </div>
@@ -86,12 +89,7 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
                   <div className="text-xs text-slate-400">{eventType} • {formatEventDate(eventDate)}</div>
                   <div className="text-xs text-slate-500">{t('groupDetails.organizer')}: {organizerName}</div>
                 </div>
-                {isAdmin && (
-                  <div className="flex gap-2 ml-auto" onClick={(ev) => ev.stopPropagation()}>
-                    {onEdit && <Button color="secondary" size="xs" onClick={() => onEdit(event)}>{t('groupDetails.editEvent')}</Button>}
-                    {onDelete && <Button color="danger" size="xs" onClick={() => handleDeleteClick(event)}>{t('groupDetails.deleteEvent')}</Button>}
-                  </div>
-                )}
+                {/* Removed Edit and Delete buttons for events as requested */}
                 {!isAdmin && <Button color="secondary" size="xs" className="ml-auto">{t('groupDetails.rsvp')}</Button>}
               </li>
             );
