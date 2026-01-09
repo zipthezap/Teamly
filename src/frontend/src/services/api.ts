@@ -38,6 +38,14 @@ export const authAPI = {
   getProfile: () => api.get('/auth/profile'),
   updateProfile: (data: any) => api.put('/auth/profile', data),
   updatePassword: (data: any) => api.put('/auth/password', data),
+  uploadProfilePicture: (file: File) => {
+    const formData = new FormData();
+    formData.append('profilePicture', file);
+    return api.post('/auth/profile/picture', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  deleteProfilePicture: () => api.delete('/auth/profile/picture'),
 };
 
 // Groups API
@@ -62,6 +70,14 @@ export const groupsAPI = {
     api.post(`/groups/${groupId}/join-requests/${requestId}`, { action: 'approve' }),
   declineJoinRequest: (groupId: string | number, requestId: string | number) =>
     api.post(`/groups/${groupId}/join-requests/${requestId}`, { action: 'reject' }),
+  uploadGroupPicture: (groupId: string | number, file: File) => {
+    const formData = new FormData();
+    formData.append('groupPicture', file);
+    return api.post(`/groups/${groupId}/picture`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  deleteGroupPicture: (groupId: string | number) => api.delete(`/groups/${groupId}/picture`),
 };
 
 // Events API

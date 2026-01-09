@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import { groupsAPI } from '../services/api';
 import LocationPicker from '../components/LocationPicker';
+import ImageUpload from '../components/ImageUpload';
 
 interface LocationValue {
   latitude?: number | string;
@@ -28,6 +29,7 @@ const CreateGroup = () => {
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
   const [location, setLocation] = useState<LocationValue>({});
+  const [groupPicture, setGroupPicture] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -50,12 +52,28 @@ const CreateGroup = () => {
         ...(location.country && { country: location.country }),
       };
       const response = await groupsAPI.create(groupData);
-      navigate(`/groups/${response.data.id}`);
+      const groupId = response.data.id;
+      
+      // Upload group picture if one was selected
+      if (groupPicture) {
+        try {
+          await groupsAPI.uploadGroupPicture(groupId, groupPicture);
+        } catch (uploadErr) {
+          console.error('Failed to upload group picture:', uploadErr);
+          // Continue navigation even if picture upload fails
+        }
+      }
+      
+      navigate(`/groups/${groupId}`);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create group');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePictureUpload = async (file: File) => {
+    setGroupPicture(file);
   };
 
   return (
@@ -72,6 +90,15 @@ const CreateGroup = () => {
         )}
 
         <form onSubmit={handleSubmit}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+            <ImageUpload
+              onUpload={handlePictureUpload}
+              label={t('groups.groupPicture') || 'Group Picture'}
+              shape="square"
+              size={150}
+            />
+          </Box>
+
           <TextField
             label={t('groups.groupName')}
             fullWidth

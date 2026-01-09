@@ -9,6 +9,7 @@ import {
   Grid,
   Stack,
 } from '@mui/material';
+import ImageUpload from '../ImageUpload';
 
 interface ProfileFormProps {
   formData: {
@@ -17,16 +18,22 @@ interface ProfileFormProps {
     city: string;
     country: string;
   };
+  profilePicture?: string;
   loading: boolean;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
+  onUploadPicture: (file: File) => Promise<void>;
+  onDeletePicture?: () => Promise<void>;
 }
 
 const ProfileForm: React.FC<ProfileFormProps> = ({
   formData,
+  profilePicture,
   loading,
   onChange,
   onSubmit,
+  onUploadPicture,
+  onDeletePicture,
 }) => {
   const { t } = useTranslation();
   return (
@@ -34,6 +41,18 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
       <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
         {t('profile.infoTitle')}
       </Typography>
+      
+      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+        <ImageUpload
+          currentImage={profilePicture}
+          onUpload={onUploadPicture}
+          onDelete={onDeletePicture}
+          label={t('profile.profilePicture') || 'Profile Picture'}
+          shape="circle"
+          size={120}
+        />
+      </Box>
+
       <form onSubmit={onSubmit}>
         <Grid container spacing={3}>
           <Grid item xs={12} sm={6}>

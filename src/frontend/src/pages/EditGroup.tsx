@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import { groupsAPI } from '../services/api';
 import LocationPicker from '../components/LocationPicker';
+import ImageUpload from '../components/ImageUpload';
 import { useTranslation } from 'react-i18next';
 
 interface LocationValue {
@@ -33,6 +34,7 @@ const EditGroup = () => {
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
   const [location, setLocation] = useState<LocationValue>({});
+  const [groupPicture, setGroupPicture] = useState<string | undefined>();
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -48,6 +50,7 @@ const EditGroup = () => {
       setName(group.name || '');
       setDescription(group.description || '');
       setIsPublic(group.isPublic || false);
+      setGroupPicture(group.picture);
       setLocation({
         latitude: group.latitude,
         longitude: group.longitude,
@@ -88,6 +91,28 @@ const EditGroup = () => {
     }
   };
 
+  const handlePictureUpload = async (file: File) => {
+    setError('');
+    try {
+      const response = await groupsAPI.uploadGroupPicture(id!, file);
+      setGroupPicture(response.data.group.picture);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to upload group picture');
+      throw err;
+    }
+  };
+
+  const handleDeletePicture = async () => {
+    setError('');
+    try {
+      const response = await groupsAPI.deleteGroupPicture(id!);
+      setGroupPicture(response.data.group.picture);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to delete group picture');
+      throw err;
+    }
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
@@ -110,6 +135,17 @@ const EditGroup = () => {
         )}
 
         <form onSubmit={handleSubmit}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+            <ImageUpload
+              currentImage={groupPicture}
+              onUpload={handlePictureUpload}
+              onDelete={handleDeletePicture}
+              label={t('groups.groupPicture') || 'Group Picture'}
+              shape="square"
+              size={150}
+            />
+          </Box>
+
           <TextField
             label={t('groups.groupName')}
             fullWidth

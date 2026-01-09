@@ -170,6 +170,38 @@ const Profile = () => {
     }
   };
 
+  const handleUploadProfilePicture = async (file: File) => {
+    setError('');
+    setSuccess('');
+    
+    try {
+      const response = await authAPI.uploadProfilePicture(file);
+      const updatedUser = response.data.user;
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setSuccess('Profile picture updated successfully');
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to upload profile picture');
+      throw err;
+    }
+  };
+
+  const handleDeleteProfilePicture = async () => {
+    setError('');
+    setSuccess('');
+    
+    try {
+      const response = await authAPI.deleteProfilePicture();
+      const updatedUser = response.data.user;
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setSuccess('Profile picture removed successfully');
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to delete profile picture');
+      throw err;
+    }
+  };
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       {!user ? (
@@ -200,9 +232,12 @@ const Profile = () => {
               <Grid item xs={12} md={6}>
                 <ProfileForm
                   formData={formData}
+                  profilePicture={user.profilePicture}
                   loading={loading}
                   onChange={handleChange}
                   onSubmit={handleUpdateProfile}
+                  onUploadPicture={handleUploadProfilePicture}
+                  onDeletePicture={handleDeleteProfilePicture}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
