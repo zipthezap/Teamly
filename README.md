@@ -159,8 +159,6 @@ npm run dev
 
 The frontend will start on `http://localhost:3001`.
 
-The frontend will start on `http://localhost:3001` (or another available port).
-
 5. Build for production:
 ```bash
 npm run build
