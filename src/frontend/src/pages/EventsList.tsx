@@ -163,6 +163,7 @@ const EventsList = () => {
   }
 
   // Filter events by tab
+  // Filter events by tab
   const now = new Date();
   const filteredEvents = events.filter(event => {
     const eventDate = new Date(event.startTime);
@@ -206,6 +207,7 @@ const EventsList = () => {
         </Button>
       </Box>
 
+      {/* Removed tabs for Upcoming/Past */}
       {/* Tabs for Upcoming/Past */}
       <Box mb={2}>
         <Tabs value={tab} onChange={(e, v) => setTab(v)} aria-label="event tabs">
@@ -384,7 +386,7 @@ const EventsList = () => {
         onClose={() => setModalOpen(false)}
         onSuccess={() => fetchEvents()}
         initialData={editEvent}
-        groupId={events.length > 0 ? events[0].groupId : undefined}
+        groupId={editEvent && editEvent.groupId ? editEvent.groupId : (events.length > 0 && events[0].groupId ? events[0].groupId : '')}
       />
 
       {/* Pagination controls */}

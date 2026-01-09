@@ -39,28 +39,34 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
     setEventToDelete(null);
   };
 
-  const filteredEvents = events;
+  // Hide past events: only show events whose startTime is within the last hour or in the future
+  const now = new Date();
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+  const filteredEvents = events.filter(event => {
+    const eventDate = new Date(event.startTime || event.date);
+    return eventDate >= oneHourAgo;
+  });
 
   return (
     <section className="bg-slate-800 rounded-lg p-4 shadow">
       <div className="flex justify-between items-center mb-2">
         <h2 className="text-xl font-semibold">{t('groupDetails.events', 'Events')}</h2>
-        <div className="flex gap-2">
-            <a
-              href="/events"
-              className="text-pink-400 hover:underline text-sm font-medium"
-              onClick={(e) => { e.preventDefault(); window.location.href = '/events'; }}
-            >
-              {t('groupDetails.viewAll', 'View All')}
-            </a>
+        <div className="flex gap-2 items-center">
+          <button
+            onClick={() => window.location.href = '/events'}
+            className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-pink-400 rounded text-sm font-medium transition shadow-none focus:outline-none"
+            style={{ minWidth: 0 }}
+          >
+            {t('groupDetails.viewAll', 'View All')}
+          </button>
           {isAdmin && onCreate && (
             <button
               onClick={onCreate}
-              className="ml-2 flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded transition text-base font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="ml-2 flex items-center justify-center text-blue-500 hover:text-blue-700 transition focus:outline-none"
               aria-label={t('groupDetails.createEvent', 'Create Event')}
-              style={{ boxShadow: 'none', borderRadius: '0.5rem', minWidth: 0 }}
+              style={{ width: 40, height: 40, minWidth: 0, background: 'none', borderRadius: '0.5rem' }}
             >
-              <PlusIcon className="w-5 h-5" />
+              <PlusIcon className="w-6 h-6" />
             </button>
           )}
         </div>

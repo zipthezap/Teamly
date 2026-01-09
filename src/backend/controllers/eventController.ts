@@ -43,23 +43,27 @@ export const createEvent = async (req: Request, res: Response) => {
       }
     }
 
-    // Check if user is member of the group
+    // Check if user is admin of the group
     const membership = await prisma.groupMember.findFirst({
       where: {
         groupId,
-        userId: req.user.id
+        userId: req.user.id,
+        role: 'admin'
       }
     });
 
     if (!membership) {
-      return res.status(403).json({ error: 'Only group members can create events' });
+      return res.status(403).json({ error: 'Only group admins can create events for this group' });
     }
 
-    // Determine event status based on start and end time
+    // Validate event date is in the future
     const now = new Date();
     const eventStartTime = new Date(startTime);
     const eventEndTime = endTime ? new Date(endTime) : null;
-    
+    if (eventStartTime <= now) {
+      return res.status(400).json({ error: 'Event date and time must be in the future.' });
+    }
+
     let eventStatus = 'upcoming';
     if (eventEndTime && eventEndTime < now) {
       // Event has ended

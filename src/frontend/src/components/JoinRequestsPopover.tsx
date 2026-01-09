@@ -81,30 +81,33 @@ const JoinRequestsPopover: React.FC<JoinRequestsPopoverProps> = ({ groupId = nul
   const id = open ? 'join-requests-popover' : undefined;
   const requestCount = joinRequests.length;
 
-  // Only show if not restricting to pending, or if there are requests
-  if (showOnlyIfPending && requestCount === 0) {
-    return null;
-  }
+  // Always show the icon, but only show popover if there are requests
   return (
     <>
       <IconButton
         aria-describedby={id}
-        onClick={handleClick}
+        onClick={requestCount > 0 ? handleClick : undefined}
         sx={{
           color: 'inherit',
           '&:hover': {
             backgroundColor: 'rgba(255, 255, 255, 0.1)',
-          }
+          },
+          cursor: requestCount > 0 ? 'pointer' : 'default',
         }}
+        disabled={requestCount === 0}
       >
-        <Badge badgeContent={requestCount} color="error" showZero>
+        {requestCount > 0 ? (
+          <Badge badgeContent={requestCount} color="error">
+            <GroupAddIcon />
+          </Badge>
+        ) : (
           <GroupAddIcon />
-        </Badge>
+        )}
       </IconButton>
 
       <Popover
         id={id}
-        open={open}
+        open={open && requestCount > 0}
         anchorEl={anchorEl}
         onClose={handleClose}
         anchorOrigin={{

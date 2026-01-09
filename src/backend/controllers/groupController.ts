@@ -391,6 +391,14 @@ export const removeMember = async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Only admins can remove members' });
     }
 
+    // Prevent admin from removing itself
+    const memberToRemove = await prisma.groupMember.findUnique({
+      where: { id: memberId }
+    });
+    if (memberToRemove && memberToRemove.userId === req.user.id && memberToRemove.role === 'admin') {
+      return res.status(403).json({ error: 'Admins cannot remove themselves from the group.' });
+    }
+
     await prisma.groupMember.delete({
       where: { id: memberId }
     });

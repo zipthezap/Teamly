@@ -69,6 +69,8 @@ const EventForm: React.FC<EventFormProps> = ({
     isPublic: initialData.isPublic || false,
   });
 
+  const [localError, setLocalError] = useState<string>('');
+
   useEffect(() => {
     setFormData((prev) => ({ ...prev, ...initialData }));
   }, [initialData]);
@@ -91,12 +93,29 @@ const EventForm: React.FC<EventFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Require date field
+    if (!formData.startDate) {
+      setLocalError('Event date is required.');
+      return;
+    }
+    // Require time field
+    if (!formData.startHour || !formData.startMinute) {
+      setLocalError('Event start time is required.');
+      return;
+    }
+    // Validate start time is in the future
+    const startDateTime = new Date(`${formData.startDate}T${formData.startHour.padStart(2, '0')}:${formData.startMinute}`);
+    if (startDateTime <= new Date()) {
+      setLocalError('Event start time must be in the future.');
+      return;
+    }
+    setLocalError('');
     onSubmit(formData);
   };
 
   return (
     <form onSubmit={handleSubmit}>
-      {showGroupSelect && (
+      {groups && groups.length > 0 && (
         <TextField
           select
           label={t('events.group')}
@@ -106,6 +125,7 @@ const EventForm: React.FC<EventFormProps> = ({
           value={formData.groupId}
           onChange={handleChange}
           required
+          disabled={typeof initialData.groupId === 'string' && initialData.groupId.length > 0}
         >
           {groups.map((group) => (
             <MenuItem key={group.id} value={group.id}>
@@ -262,9 +282,9 @@ const EventForm: React.FC<EventFormProps> = ({
           }
         />
       </Box>
-      {error && (
+      {(error || localError) && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
+          {localError || error}
         </Alert>
       )}
       <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>

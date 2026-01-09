@@ -43,7 +43,6 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
         <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
           {group.name}
           {isAdmin && (
-            // Only show JoinRequestsPopover if there are pending requests
             <JoinRequestsPopover groupId={group.id} showOnlyIfPending />
           )}
           <span className="ml-2 px-2 py-0.5 text-xs bg-slate-700 rounded-full uppercase tracking-wide">
