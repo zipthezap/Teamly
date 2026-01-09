@@ -23,7 +23,7 @@ import { config, logConfig } from './config/appConfig';
 import { requestContext, performanceMonitor } from './middleware/requestContext';
 import { sanitizeInput } from './middleware/sanitizeInput';
 import { errorHandler } from './middleware/errorHandler';
-import { checkDatabaseHealth, setupGracefulShutdown } from './utils/databaseHealth';
+import { setupGracefulShutdown, performHealthCheck } from './utils/databaseHealth';
 import { startEmailQueueProcessor, stopEmailQueueProcessor } from './services/emailQueueService';
 import { startScheduledJobs, stopScheduledJobs } from './services/scheduledJobs';
 import { ensureUploadDirectories } from './utils/imageProcessor';
@@ -144,23 +144,30 @@ app.use('/api/chat', groupChatRoutes);
 app.use('/api/notification-preferences', notificationPreferenceRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-// Health check with database connectivity check
+// Enhanced health check with detailed metrics
 app.get('/health', async (_req: Request, res: Response) => {
-  const dbHealthy = await checkDatabaseHealth();
-  
-  if (dbHealthy) {
-    res.json({ 
-      status: 'ok', 
-      message: 'Teamly API is running',
-      database: 'connected',
-      timestamp: new Date().toISOString()
+  try {
+    const healthCheck = await performHealthCheck();
+    
+    const statusCode = healthCheck.status === 'healthy' ? 200 
+                     : healthCheck.status === 'degraded' ? 200 
+                     : 503;
+    
+    res.status(statusCode).json({
+      status: healthCheck.status,
+      message: healthCheck.status === 'healthy' 
+        ? 'Teamly API is running smoothly' 
+        : healthCheck.status === 'degraded'
+        ? 'Teamly API is running with degraded performance'
+        : 'Teamly API is experiencing issues',
+      ...healthCheck,
     });
-  } else {
-    res.status(503).json({ 
-      status: 'error', 
-      message: 'Database connection failed',
-      database: 'disconnected',
-      timestamp: new Date().toISOString()
+  } catch (error) {
+    logger.error('Health check failed', 'Server', { error });
+    res.status(503).json({
+      status: 'unhealthy',
+      message: 'Health check failed',
+      timestamp: new Date().toISOString(),
     });
   }
 });
