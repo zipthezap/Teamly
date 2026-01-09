@@ -45,9 +45,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return { requires2FA: true };
     }
     
-    const { user, token } = response.data;
+    const { user, accessToken } = response.data;
     
-    localStorage.setItem('token', token);
+    localStorage.setItem('token', accessToken);
     localStorage.setItem('user', JSON.stringify(user));
     setUser(user);
     
@@ -56,9 +56,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const register = async (userData: any) => {
     const response = await authAPI.register(userData);
-    const { user, token } = response.data;
+    const { user, accessToken } = response.data;
     
-    localStorage.setItem('token', token);
+    localStorage.setItem('token', accessToken);
     localStorage.setItem('user', JSON.stringify(user));
     setUser(user);
     
