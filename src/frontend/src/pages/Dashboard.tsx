@@ -175,8 +175,10 @@ const Dashboard = () => {
                     icon={<EventIcon />}
                     title={t('dashboard.noUpcomingEvents')}
                     description={t('dashboard.noUpcomingEventsDesc')}
-                    actionLabel={t('dashboard.createFirstEvent')}
-                    onAction={() => navigate('/events/new')}
+                    actions={[ 
+                      { label: t('dashboard.createFirstEvent'), onClick: () => navigate('/events/new') },
+                      { label: t('dashboard.findEvents'), onClick: () => navigate('/events') }
+                    ]}
                     gradient="linear-gradient(135deg, rgba(245, 0, 87, 0.05) 0%, rgba(245, 0, 87, 0.02) 100%)"
                   />
                 </Grid>
@@ -239,8 +241,10 @@ const Dashboard = () => {
                     icon={<GroupIcon />}
                     title={t('dashboard.noGroupsYet')}
                     description={t('dashboard.noGroupsYetDesc')}
-                    actionLabel={t('dashboard.createFirstGroup')}
-                    onAction={() => navigate('/groups/new')}
+                    actions={[ 
+                      { label: t('dashboard.createFirstGroup'), onClick: () => navigate('/groups/new') },
+                      { label: t('dashboard.discoverGroups'), onClick: () => navigate('/groups') }
+                    ]}
                     gradient="linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(33, 150, 243, 0.02) 100%)"
                   />
                 </Grid>
