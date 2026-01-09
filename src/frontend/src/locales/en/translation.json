@@ -36,6 +36,10 @@
     "past": "Past",
     "retry": "Retry",
     "errorLoadingEvents": "Failed to load events",
+    "upload": "Upload",
+    "change": "Change",
+    "invalidFileType": "Please select an image file",
+    "fileTooLarge": "File size must be less than 5MB",
     "notificationPreferences": {
       "title": "Notification Preferences",
       "eventInvites": "Event Invitations",
@@ -310,6 +314,7 @@
   "groups": {
     "groupName": "Group Name",
     "description": "Description",
+    "groupPicture": "Group Picture",
     "createNewGroup": "Create New Group",
     "makePublic": "Make this group public (anyone can discover and request to join)",
     "creating": "Creating...",
@@ -475,6 +480,7 @@
     "failedToUpdatePassword": "Failed to update password",
     "passwordMinLength": "Password must be at least 6 characters",
     "infoTitle": "Profile Information",
+    "profilePicture": "Profile Picture",
     "preferencesUpdated": "Preferences updated successfully",
     "failedToUpdatePreferences": "Failed to update preferences"
   },

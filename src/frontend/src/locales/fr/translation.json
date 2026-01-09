@@ -36,6 +36,10 @@
     "past": "Passé",
     "retry": "Réessayer",
     "errorLoadingEvents": "Échec du chargement des événements",
+    "upload": "Télécharger",
+    "change": "Changer",
+    "invalidFileType": "Veuillez sélectionner un fichier image",
+    "fileTooLarge": "La taille du fichier doit être inférieure à 5 Mo",
     "notificationPreferences": {
       "title": "Préférences de notification",
       "eventInvites": "Invitations aux événements",
@@ -310,6 +314,7 @@
   "groups": {
     "groupName": "Nom du groupe",
     "description": "Description du groupe",
+    "groupPicture": "Photo du groupe",
     "createNewGroup": "Créer un nouveau groupe",
     "makePublic": "Rendre ce groupe public (tout le monde peut le découvrir et demander à le rejoindre)",
     "creating": "Création...",
@@ -474,6 +479,7 @@
     "failedToUpdatePassword": "Échec de la mise à jour du mot de passe",
     "passwordMinLength": "Le mot de passe doit contenir au moins 6 caractères",
     "infoTitle": "Informations du profil",
+    "profilePicture": "Photo de profil",
     "preferencesUpdated": "Préférences mises à jour avec succès",
     "failedToUpdatePreferences": "Échec de la mise à jour des préférences"
   },
