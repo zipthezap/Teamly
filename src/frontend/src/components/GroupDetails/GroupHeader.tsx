@@ -31,10 +31,24 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
 }) => {
   const { t } = useTranslation();
   
+  // Construct full image URL if picture exists and is a relative path
+  const getImageUrl = (picture?: string) => {
+    if (!picture) return DEFAULT_COVER;
+    // If picture is already a full URL, return it as is
+    if (picture.startsWith('http://') || picture.startsWith('https://')) {
+      return picture;
+    }
+    // If picture is a relative path, construct full URL
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    // Remove /api from the end if it exists
+    const baseUrl = apiBaseUrl.replace(/\/api$/, '');
+    return `${baseUrl}${picture}`;
+  };
+  
   return (
     <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 mb-8">
       <img
-        src={group.coverImage || DEFAULT_COVER}
+        src={getImageUrl(group.picture)}
         alt="Group Cover"
         className="w-24 h-24 rounded-lg object-cover shadow-lg border-4 border-slate-700"
       />

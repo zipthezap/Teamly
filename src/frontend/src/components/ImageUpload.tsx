@@ -99,7 +99,21 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     fileInputRef.current?.click();
   };
 
-  const displayImage = preview || currentImage;
+  // Construct full image URL if picture exists and is a relative path
+  const getImageUrl = (picture?: string) => {
+    if (!picture) return null;
+    // If picture is already a full URL, return it as is
+    if (picture.startsWith('http://') || picture.startsWith('https://')) {
+      return picture;
+    }
+    // If picture is a relative path, construct full URL
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    // Remove /api from the end if it exists
+    const baseUrl = apiBaseUrl.replace(/\/api$/, '');
+    return `${baseUrl}${picture}`;
+  };
+
+  const displayImage = preview || getImageUrl(currentImage);
   const isLoading = uploading || deleting;
 
   return (

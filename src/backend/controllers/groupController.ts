@@ -142,12 +142,12 @@ export const getGroups = async (req: Request, res: Response) => {
       },
       include: {
         creator: {
-          select: { id: true, name: true, email: true }
+          select: { id: true, name: true, email: true, profilePicture: true }
         },
         members: {
           include: {
             user: {
-              select: { id: true, name: true, email: true }
+              select: { id: true, name: true, email: true, profilePicture: true }
             }
           }
         },
@@ -166,6 +166,7 @@ export const getGroups = async (req: Request, res: Response) => {
         id: member.user.id,
         name: member.user.name,
         email: member.user.email,
+        profilePicture: member.user.profilePicture,
         role: member.role,
         // add other member fields if needed
       }))
@@ -193,12 +194,12 @@ export const getGroup = async (req: Request, res: Response) => {
       },
       include: {
         creator: {
-          select: { id: true, name: true, email: true }
+          select: { id: true, name: true, email: true, profilePicture: true }
         },
         members: {
           include: {
             user: {
-              select: { id: true, name: true, email: true }
+              select: { id: true, name: true, email: true, profilePicture: true }
             }
           }
         },
@@ -225,6 +226,7 @@ export const getGroup = async (req: Request, res: Response) => {
         id: member.user.id,
         name: member.user.name,
         email: member.user.email,
+        profilePicture: member.user.profilePicture,
         role: member.role,
         // add other member fields if needed
       }))
@@ -269,12 +271,12 @@ export const updateGroup = async (req: Request, res: Response) => {
       },
       include: {
         creator: {
-          select: { id: true, name: true, email: true }
+          select: { id: true, name: true, email: true, profilePicture: true }
         },
         members: {
           include: {
             user: {
-              select: { id: true, name: true, email: true }
+              select: { id: true, name: true, email: true, profilePicture: true }
             }
           }
         }
@@ -887,12 +889,12 @@ export const uploadGroupPicture = async (req: Request, res: Response) => {
       data: { picture: pictureUrl },
       include: {
         creator: {
-          select: { id: true, name: true, email: true }
+          select: { id: true, name: true, email: true, profilePicture: true }
         },
         members: {
           include: {
             user: {
-              select: { id: true, name: true, email: true }
+              select: { id: true, name: true, email: true, profilePicture: true }
             }
           }
         }
@@ -962,12 +964,12 @@ export const deleteGroupPicture = async (req: Request, res: Response) => {
       data: { picture: null },
       include: {
         creator: {
-          select: { id: true, name: true, email: true }
+          select: { id: true, name: true, email: true, profilePicture: true }
         },
         members: {
           include: {
             user: {
-              select: { id: true, name: true, email: true }
+              select: { id: true, name: true, email: true, profilePicture: true }
             }
           }
         }
