@@ -2,7 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { Group } from "../../types/group";
 import Button from "../ui/Button";
-import JoinRequestsPopover from "./JoinRequestsPopover";
+import JoinRequestsPopover from "../JoinRequestsPopover";
 
 interface GroupHeaderProps {
   group: Group;
@@ -12,9 +12,6 @@ interface GroupHeaderProps {
   onInvite?: () => void;
   onCopyLink?: () => void;
   isAdmin?: boolean;
-  joinRequests?: Array<{ id: string; name: string; email: string }>;
-  onAcceptJoin?: (id: string) => void;
-  onDeclineJoin?: (id: string) => void;
 }
 
 const DEFAULT_COVER = "/default-group-cover.jpg";
@@ -25,20 +22,10 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
   onLeave, 
   onInvite, 
   onCopyLink, 
-  isAdmin, 
-  joinRequests = [], 
-  onAcceptJoin, 
-  onDeclineJoin 
+  isAdmin
 }) => {
   const { t } = useTranslation();
   
-  // Debug log for join requests icon visibility
-  console.log('GroupHeader debug:', {
-    isAdmin,
-    joinRequests,
-    onAcceptJoinExists: !!onAcceptJoin,
-    onDeclineJoinExists: !!onDeclineJoin
-  });
   return (
     <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 mb-8">
       <img
@@ -49,12 +36,8 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
       <div className="flex-1 w-full">
         <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
           {group.name}
-          {isAdmin && joinRequests && joinRequests.length > 0 && onAcceptJoin && onDeclineJoin && (
-            <JoinRequestsPopover
-              requests={joinRequests}
-              onAccept={onAcceptJoin}
-              onDecline={onDeclineJoin}
-            />
+          {isAdmin && (
+            <JoinRequestsPopover groupId={group.id} />
           )}
           <span className="ml-2 px-2 py-0.5 text-xs bg-slate-700 rounded-full uppercase tracking-wide">
             {group.privacy}
