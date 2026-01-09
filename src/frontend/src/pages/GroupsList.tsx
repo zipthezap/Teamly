@@ -25,6 +25,7 @@ import { groupsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { LoadingSpinner, EmptyState } from '../components/common';
+import { getImageUrl } from '../utils/imageUtils';
 
 const GroupsList = () => {
   const [groups, setGroups] = useState([]);
@@ -293,19 +294,23 @@ const GroupsList = () => {
                     </Box>
                     {recentMembers.length > 0 && (
                       <AvatarGroup max={4} sx={{ justifyContent: 'flex-start' }}>
-                        {recentMembers.map((member, idx) => (
-                          <Avatar 
-                            key={idx}
-                            sx={{ 
-                              width: 32, 
-                              height: 32,
-                              fontSize: '0.75rem',
-                              bgcolor: 'primary.main'
-                            }}
-                          >
-                            {getInitials(member.user?.name)}
-                          </Avatar>
-                        ))}
+                        {recentMembers.map((member, idx) => {
+                          const profilePictureUrl = getImageUrl(member.user?.profilePicture);
+                          return (
+                            <Avatar 
+                              key={idx}
+                              src={profilePictureUrl || undefined}
+                              sx={{ 
+                                width: 32, 
+                                height: 32,
+                                fontSize: '0.75rem',
+                                bgcolor: 'primary.main'
+                              }}
+                            >
+                              {!profilePictureUrl && getInitials(member.user?.name)}
+                            </Avatar>
+                          );
+                        })}
                       </AvatarGroup>
                     )}
                   </CardContent>
