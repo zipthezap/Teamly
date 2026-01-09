@@ -517,65 +517,113 @@ export const joinEvent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // Check if user is member of the group
-    const event = await prisma.event.findFirst({
-      where: {
-        id,
-        group: {
-          members: {
-            some: {
-              userId: req.user.id
+    // Use a transaction with serializable isolation to prevent race conditions
+    const result = await prisma.$transaction(async (tx) => {
+      // Lock the event row for update to prevent concurrent modifications
+      const event = await tx.event.findFirst({
+        where: {
+          id,
+          group: {
+            members: {
+              some: {
+                userId: req.user.id
+              }
             }
           }
+        },
+        include: {
+          participants: {
+            where: { status: 'confirmed' }
+          }
         }
-      },
-      include: {
-        participants: true
+      });
+
+      if (!event) {
+        throw new Error('EVENT_NOT_FOUND');
       }
+
+      // Check if already joined (database constraint will also catch this)
+      const existingParticipant = await tx.eventParticipant.findUnique({
+        where: {
+          eventId_userId: {
+            eventId: id,
+            userId: req.user.id
+          }
+        }
+      });
+
+      if (existingParticipant) {
+        throw new Error('ALREADY_JOINED');
+      }
+
+      // Check max players with accurate count
+      if (event.maxPlayers) {
+        const confirmedCount = event.participants.length;
+        
+        // Also count confirmed guest participants
+        const guestCount = await tx.guestParticipant.count({
+          where: {
+            eventId: id,
+            status: 'confirmed'
+          }
+        });
+
+        const totalConfirmed = confirmedCount + guestCount;
+        
+        if (totalConfirmed >= event.maxPlayers) {
+          throw new Error('EVENT_FULL');
+        }
+      }
+
+      // Create participant
+      const participant = await tx.eventParticipant.create({
+        data: {
+          eventId: id,
+          userId: req.user.id,
+          status: 'confirmed'
+        }
+      });
+
+      // Log activity for the user who joined
+      await tx.eventNotification.create({
+        data: {
+          eventId: id,
+          userId: req.user.id,
+          type: 'join',
+          params: {
+            name: req.user.name,
+            eventTitle: event.title
+          }
+        }
+      });
+
+      return { participant, eventTitle: event.title };
+    }, {
+      isolationLevel: 'Serializable', // Highest isolation level to prevent race conditions
+      maxWait: 5000, // Wait up to 5 seconds for lock
+      timeout: 10000 // Transaction timeout
     });
 
-    if (!event) {
+    res.status(201).json(result.participant);
+  } catch (error: any) {
+    logger.error('Join event error', 'EventController', { error });
+    
+    // Handle specific error cases
+    if (error.message === 'EVENT_NOT_FOUND') {
       return res.status(404).json({ error: 'Event not found' });
     }
-
-    // Check if already joined
-    const existingParticipant = event.participants.find(p => p.userId === req.user.id);
-    if (existingParticipant) {
+    if (error.message === 'ALREADY_JOINED') {
       return res.status(400).json({ error: 'Already joined this event' });
     }
-
-    // Check max players
-    if (event.maxPlayers) {
-      const confirmedCount = event.participants.filter(p => p.status === 'confirmed').length;
-      if (confirmedCount >= event.maxPlayers) {
-        return res.status(400).json({ error: 'Event is full' });
-      }
+    if (error.message === 'EVENT_FULL') {
+      return res.status(400).json({ error: 'Event is full' });
     }
-
-    const participant = await prisma.eventParticipant.create({
-      data: {
-        eventId: id,
-        userId: req.user.id,
-        status: 'confirmed'
-      }
-    });
-
-    // Log activity for the user who joined
-    await prisma.eventNotification.create({
-      data: {
-        eventId: id,
-        userId: req.user.id,
-        type: 'join',
-        params: {
-          name: req.user.name,
-          eventTitle: event.title
-        }
-      }
-    });
-
-    res.status(201).json(participant);
-  } catch (error) {
-    logger.error('Join event error', 'EventController', { error });
+    
+    // Handle unique constraint violations
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: 'Already joined this event' });
+    }
+    
     res.status(500).json({ error: 'Failed to join event' });
   }
 };
@@ -1217,46 +1265,73 @@ export const joinEventAsGuest = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Name is required' });
     }
 
-    // Find event by invite token (works for both public and private events)
-    const event = await prisma.event.findFirst({
-      where: {
-        inviteToken: token
-      },
-      include: {
-        participants: true,
-        guestParticipants: true
-      }
-    });
+    // Use a transaction with serializable isolation to prevent race conditions
+    const result = await prisma.$transaction(async (tx) => {
+      // Find event by invite token
+      const event = await tx.event.findFirst({
+        where: {
+          inviteToken: token
+        }
+      });
 
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found or invite link is invalid' });
-    }
-
-    // Check max players
-    if (event.maxPlayers) {
-      const totalParticipants = 
-        event.participants.filter(p => p.status === 'confirmed').length +
-        event.guestParticipants.filter(g => g.status === 'confirmed').length;
-      
-      if (totalParticipants >= event.maxPlayers) {
-        return res.status(400).json({ error: 'Event is full' });
+      if (!event) {
+        throw new Error('EVENT_NOT_FOUND');
       }
-    }
 
-    const guestParticipant = await prisma.guestParticipant.create({
-      data: {
-        eventId: event.id,
-        name: name.trim(),
-        status: 'confirmed'
+      // Check max players with accurate count within transaction
+      if (event.maxPlayers) {
+        const confirmedParticipants = await tx.eventParticipant.count({
+          where: {
+            eventId: event.id,
+            status: 'confirmed'
+          }
+        });
+
+        const confirmedGuests = await tx.guestParticipant.count({
+          where: {
+            eventId: event.id,
+            status: 'confirmed'
+          }
+        });
+
+        const totalConfirmed = confirmedParticipants + confirmedGuests;
+        
+        if (totalConfirmed >= event.maxPlayers) {
+          throw new Error('EVENT_FULL');
+        }
       }
+
+      // Create guest participant
+      const guestParticipant = await tx.guestParticipant.create({
+        data: {
+          eventId: event.id,
+          name: name.trim(),
+          status: 'confirmed'
+        }
+      });
+
+      return guestParticipant;
+    }, {
+      isolationLevel: 'Serializable', // Highest isolation level to prevent race conditions
+      maxWait: 5000, // Wait up to 5 seconds for lock
+      timeout: 10000 // Transaction timeout
     });
 
     res.status(201).json({ 
       message: 'Successfully joined event',
-      participant: guestParticipant
+      participant: result
     });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Join event as guest error', 'EventController', { error });
+    
+    // Handle specific error cases
+    if (error.message === 'EVENT_NOT_FOUND') {
+      return res.status(404).json({ error: 'Event not found or invite link is invalid' });
+    }
+    if (error.message === 'EVENT_FULL') {
+      return res.status(400).json({ error: 'Event is full' });
+    }
+    
     res.status(500).json({ error: 'Failed to join event' });
   }
 };

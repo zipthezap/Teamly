@@ -21,6 +21,8 @@ import { requestContext, performanceMonitor } from './middleware/requestContext'
 import { sanitizeInput } from './middleware/sanitizeInput';
 import { errorHandler } from './middleware/errorHandler';
 import { checkDatabaseHealth, setupGracefulShutdown } from './utils/databaseHealth';
+import { startEmailQueueProcessor, stopEmailQueueProcessor } from './services/emailQueueService';
+import { startScheduledJobs, stopScheduledJobs } from './services/scheduledJobs';
 
 // Validate environment variables before starting the server
 try {
@@ -120,9 +122,47 @@ app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-app.listen(PORT, () => {
+// Start background services
+let emailQueueInterval: NodeJS.Timeout | null = null;
+
+const server = app.listen(PORT, () => {
   logger.info(`Server is running on port ${PORT}`, 'Server');
   logger.info(`API available at http://localhost:${PORT}`, 'Server');
+  
+  // Start email queue processor
+  emailQueueInterval = startEmailQueueProcessor();
+  
+  // Start scheduled cleanup jobs
+  startScheduledJobs();
+  
+  logger.info('Background services started', 'Server');
 });
+
+// Enhanced graceful shutdown
+const gracefulShutdown = () => {
+  logger.info('Shutting down gracefully...', 'Server');
+  
+  // Stop accepting new connections
+  server.close(() => {
+    logger.info('Server closed', 'Server');
+    
+    // Stop background services
+    if (emailQueueInterval) {
+      stopEmailQueueProcessor(emailQueueInterval);
+    }
+    stopScheduledJobs();
+    
+    process.exit(0);
+  });
+  
+  // Force shutdown after 30 seconds
+  setTimeout(() => {
+    logger.error('Forcing shutdown after timeout', 'Server');
+    process.exit(1);
+  }, 30000);
+};
+
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
 
 export default app;
