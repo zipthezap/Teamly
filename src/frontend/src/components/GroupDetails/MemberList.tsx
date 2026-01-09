@@ -1,7 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import Button from "../ui/Button";
-import { getImageUrl } from "../../utils/imageUtils";
+import { getImageUrl, getInitials } from "../../utils/imageUtils";
 import { useAuth } from "../../contexts/AuthContext";
 
 interface MemberListProps {
@@ -9,26 +9,13 @@ interface MemberListProps {
   onRemove?: (email: string) => void;
 }
 
-const getInitials = (name: string | undefined | null) => {
-  if (!name || typeof name !== 'string' || name.trim().length === 0) return '';
-  return name.split(' ').map((n) => n[0]).join('').toUpperCase();
-};
-
 const MemberList: React.FC<MemberListProps> = ({ members, onRemove }) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   
-  // Use useAuth to get current user, fallback to window if needed
-  let currentUserEmail = '';
-  let currentUserId = '';
-  try {
-    const { user } = useAuth();
-    currentUserEmail = user?.email || '';
-    currentUserId = user?.id || '';
-  } catch {
-    currentUserEmail = window.currentUserEmail || '';
-    currentUserId = window.currentUserId || '';
-  }
-  console.log('[MemberList] Current user:', { currentUserEmail, currentUserId });
+  const currentUserEmail = user?.email || '';
+  const currentUserId = user?.id || '';
+  
   return (
     <section className="bg-slate-800 rounded-lg p-4 shadow">
       <h2 className="text-xl font-semibold mb-2">{t('groupDetails.members', { count: members.length })}</h2>
@@ -45,7 +32,7 @@ const MemberList: React.FC<MemberListProps> = ({ members, onRemove }) => {
             (memberEmail && currentUserEmail && memberEmail.toLowerCase() === currentUserEmail.toLowerCase()) ||
             (memberId && currentUserId && String(memberId) === String(currentUserId))
           );
-          console.log('[MemberList] Member:', { memberName, memberEmail, memberId, memberRole, isSelfAdmin });
+          
           return (
             <li key={memberEmail} className="flex items-center gap-3 mb-2">
               <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-lg font-bold overflow-hidden">

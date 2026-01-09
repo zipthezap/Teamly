@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { eventsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { getImageUrl } from '../utils/imageUtils';
+import { getImageUrl, getInitials } from '../utils/imageUtils';
 import { 
   Container, 
   Paper, 
@@ -143,16 +143,6 @@ const JoinEventByInvite = () => {
 
   // Check if user is already a participant (done efficiently with some())
   const isAlreadyParticipant = user && event.participants?.some((p: any) => p.userId === user.id);
-
-  const getInitials = (name?: string) => {
-    if (!name) return '?';
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
 
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
