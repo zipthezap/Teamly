@@ -471,7 +471,7 @@ npm start
 
 ## API Integration
 
-All features use RESTful API endpoints documented in `API_DOCUMENTATION.md`.
+All features use RESTful API endpoints documented in `../API_DOCUMENTATION.md`.
 
 ### Key Endpoints
 
@@ -631,7 +631,7 @@ All backend endpoints have proper:
 ## Support
 
 For issues or questions:
-- **Documentation**: See `README.md` and `API_DOCUMENTATION.md`
+- **Documentation**: See `../../README.md` and `../API_DOCUMENTATION.md`
 - **Issues**: Create a GitHub issue
 - **Email**: Contact repository owner
 
