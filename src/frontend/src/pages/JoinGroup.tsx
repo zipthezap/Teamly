@@ -60,8 +60,13 @@ const JoinGroup = () => {
       setTimeout(() => {
         navigate(`/groups/${groupId}`);
       }, 1500);
-    } catch (err: any) {
-      setError(err.response?.data?.error || t('joinGroup.failedToJoin'));
+    } catch (err: unknown) {
+      const errorMessage = err && typeof err === 'object' && 'response' in err && 
+        err.response && typeof err.response === 'object' && 'data' in err.response &&
+        err.response.data && typeof err.response.data === 'object' && 'error' in err.response.data
+        ? String(err.response.data.error)
+        : t('joinGroup.failedToJoin');
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
