@@ -230,7 +230,20 @@ const Dashboard = () => {
                           </Box>
                         </Box>
                       </Box>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5, minHeight: 40 }}>
+                      <Typography 
+                        variant="body2" 
+                        color="text.secondary" 
+                        sx={{ 
+                          mb: 1.5, 
+                          minHeight: 40,
+                          maxHeight: 40,
+                          overflow: 'hidden',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          lineClamp: 2
+                        }}
+                      >
                         {group.description || t('common.noDescription')}
                       </Typography>
                       <Box display="flex" alignItems="center" gap={1}>
