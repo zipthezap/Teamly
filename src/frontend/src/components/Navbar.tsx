@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 // All MUI icon imports removed; using inline SVGs
 import NotificationsPopover from './NotificationsPopover';
 import LanguageSwitcher from './LanguageSwitcher';
-import { getImageUrl } from '../utils/imageUtils';
+import { getImageUrl, getInitials } from '../utils/imageUtils';
 
 
 // NavLink helper for nav items
@@ -29,16 +29,6 @@ const Navbar = () => {
   const handleLogout = () => {
     logout();
     navigate('/login');
-  };
-
-  const getInitials = (name: string): string => {
-    if (!name) return '?';
-    return name
-      .split(' ')
-      .map((n: string) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
   };
 
   return (

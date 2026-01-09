@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import InviteLinkCard from '../components/InviteLinkCard';
-import { getImageUrl } from '../utils/imageUtils';
+import { getImageUrl, getInitials } from '../utils/imageUtils';
 
 const EventDetails = () => {
   const { id } = useParams();
@@ -131,16 +131,6 @@ const EventDetails = () => {
       setCopySuccess('Invite link copied to clipboard!');
       setTimeout(() => setCopySuccess(''), 3000);
     }
-  };
-
-  const getInitials = (name?: string) => {
-    if (!name) return '?';
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
   };
 
   const isParticipant = event?.participants?.find((p: any) => p.userId === user?.id);

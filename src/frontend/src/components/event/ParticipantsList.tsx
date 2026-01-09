@@ -1,22 +1,12 @@
 import React from 'react';
 // All MUI imports removed; using Tailwind and SVGs only
 import { getAvatarColor } from '../../utils/colors';
-import { getImageUrl } from '../../utils/imageUtils';
+import { getImageUrl, getInitials } from '../../utils/imageUtils';
 
 interface ParticipantsListProps {
   event: any;
   participantCount: number;
 }
-
-const getInitials = (name: string) => {
-  if (!name) return '?';
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-};
 
 const getStatusIcon = (status: string) => {
   switch (status) {

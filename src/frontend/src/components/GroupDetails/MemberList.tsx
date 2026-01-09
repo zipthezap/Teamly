@@ -1,18 +1,13 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import Button from "../ui/Button";
-import { getImageUrl } from "../../utils/imageUtils";
+import { getImageUrl, getInitials } from "../../utils/imageUtils";
 import { useAuth } from "../../contexts/AuthContext";
 
 interface MemberListProps {
   members: any[];
   onRemove?: (email: string) => void;
 }
-
-const getInitials = (name: string | undefined | null) => {
-  if (!name || typeof name !== 'string' || name.trim().length === 0) return '';
-  return name.split(' ').map((n) => n[0]).join('').toUpperCase();
-};
 
 const MemberList: React.FC<MemberListProps> = ({ members, onRemove }) => {
   const { t } = useTranslation();

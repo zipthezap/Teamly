@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { getImageUrl } from "../../utils/imageUtils";
+import { getImageUrl, getInitials } from "../../utils/imageUtils";
 
 interface ChatBoxProps {
   chat: any[];
@@ -9,11 +9,6 @@ interface ChatBoxProps {
   onSend: () => void;
   isTyping: boolean;
 }
-
-const getInitials = (name: string) => {
-  if (!name) return '?';
-  return name.split(" ").map((n) => n[0]).join("").toUpperCase();
-};
 
 const formatTime = (timeString: string) => {
   try {

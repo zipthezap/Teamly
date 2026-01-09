@@ -11,6 +11,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   setUser: (user: User | null) => void;
+  updateUser: (userData: Partial<User>) => void;
   login: (credentials: any) => Promise<any>;
   register: (userData: any) => Promise<User>;
   logout: () => void;
@@ -65,6 +66,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return user;
   };
 
+  const updateUser = (userData: Partial<User>) => {
+    if (!user) return;
+    
+    const updatedUser = { ...user, ...userData };
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -72,7 +81,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, setUser, updateUser, login, register, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

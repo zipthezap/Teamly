@@ -18,7 +18,7 @@ import {
 } from '../components/profile';
 
 const Profile = () => {
-  const { user, setUser } = useAuth();
+  const { user, updateUser } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -91,8 +91,7 @@ const Profile = () => {
     try {
       const response = await authAPI.updateProfile(formData);
       const updatedUser = response.data.user;
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      updateUser(updatedUser);
       setSuccess('Profile updated successfully');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to update profile');
@@ -143,9 +142,7 @@ const Profile = () => {
     try {
       await emailAPI.toggleNotifications(!muted);
       setSuccess(muted ? 'All notifications muted' : 'Notifications unmuted');
-      const updatedUser = { ...user, emailNotifications: !muted };
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      updateUser({ emailNotifications: !muted });
     } catch (err) {
       setError('Failed to update notification settings');
       setAllNotificationsMuted(!muted);
@@ -177,8 +174,7 @@ const Profile = () => {
     try {
       const response = await authAPI.uploadProfilePicture(file);
       const updatedUser = response.data.user;
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      updateUser(updatedUser);
       setSuccess('Profile picture updated successfully');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to upload profile picture');
@@ -193,8 +189,7 @@ const Profile = () => {
     try {
       const response = await authAPI.deleteProfilePicture();
       const updatedUser = response.data.user;
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      updateUser(updatedUser);
       setSuccess('Profile picture removed successfully');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to delete profile picture');
