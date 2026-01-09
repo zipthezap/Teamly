@@ -76,10 +76,10 @@ const EventFormModal: React.FC<EventFormModalProps> = ({
         return;
       }
       
-      const startTime = `${formData.startHour.padStart(2, '0')}:${formData.startMinute}`;
+      const startTime = `${formData.startHour.padStart(2, '0')}:${(formData.startMinute || '00')}`;
       let endTime = null;
       if (formData.endHour) {
-        endTime = `${formData.endHour.padStart(2, '0')}:${formData.endMinute}`;
+        endTime = `${formData.endHour.padStart(2, '0')}:${(formData.endMinute || '00')}`;
       }
       
       const startDateTime = new Date(`${formData.startDate}T${startTime}`);
@@ -93,19 +93,18 @@ const EventFormModal: React.FC<EventFormModalProps> = ({
         }
       }
       
+      // Build the API data object with only required fields
       const data = {
-        ...formData,
+        groupId: formData.groupId,
+        title: formData.title,
+        description: formData.description,
+        eventType: formData.eventType,
+        location: formData.location,
         startTime: startDateTime.toISOString(),
         endTime: endDateTime ? endDateTime.toISOString() : null,
         maxPlayers: formData.maxPlayers ? parseInt(formData.maxPlayers) : null,
+        isPublic: formData.isPublic,
       };
-      
-      // Remove fields that shouldn't be sent to API
-      delete data.startDate;
-      delete data.startHour;
-      delete data.startMinute;
-      delete data.endHour;
-      delete data.endMinute;
       
       // Create or update event
       if (initialData && initialData.id) {
