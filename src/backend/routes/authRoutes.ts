@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import * as authController from '../controllers/authController';
 import authMiddleware from '../middleware/auth';
-import { authLimiter } from '../middleware/rateLimiter';
+import { authLimiter, uploadLimiter } from '../middleware/rateLimiter';
+import { uploadProfilePicture, handleUploadError } from '../middleware/upload';
 
 const router = Router();
 
@@ -20,6 +21,17 @@ router.post('/resend-verification', authLimiter, authController.resendVerificati
 router.get('/profile', authMiddleware, authController.getProfile);
 router.put('/profile', authMiddleware, authController.updateProfile);
 router.put('/password', authMiddleware, authController.updatePassword);
+
+// Profile picture management
+router.post(
+  '/profile/picture',
+  authMiddleware,
+  uploadLimiter,
+  uploadProfilePicture,
+  handleUploadError,
+  authController.uploadProfilePicture
+);
+router.delete('/profile/picture', authMiddleware, authController.deleteProfilePicture);
 
 // Session management
 router.get('/sessions', authMiddleware, authController.getSessions);

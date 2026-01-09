@@ -96,6 +96,9 @@ model User {
   // Location fields
   city              String?
   country           String?
+  
+  // Profile picture
+  profilePicture    String?
 
   groupMemberships  GroupMember[]
   createdGroups     Group[]             @relation("GroupCreator")
@@ -129,6 +132,9 @@ model Group {
   locationName String?
   city        String?
   country     String?
+  
+  // Group picture
+  picture     String?
 
   creatorId String
   creator   User   @relation("GroupCreator", fields: [creatorId], references: [id])

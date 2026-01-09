@@ -14,6 +14,7 @@ A sports event organization app that allows individuals to set and organize smal
 
 ### 🆕 New Features
 
+- **📸 Picture Uploads**: Secure profile and group picture uploads with comprehensive security
 - **📧 Email Notifications**: Receive notifications for event invitations, updates, cancellations, and group invites
 - **🔄 Recurring Events**: Create events that repeat on daily, weekly, or monthly schedules
 - **💬 Event Comments**: Discuss events with threaded comments and @mentions
@@ -34,6 +35,7 @@ A sports event organization app that allows individuals to set and organize smal
 For detailed documentation on these features, see:
 - [docs/guides/FEATURES.md](docs/guides/FEATURES.md) - Core features
 - [docs/features/ENHANCED_NOTIFICATIONS.md](docs/features/ENHANCED_NOTIFICATIONS.md) - Enhanced notification system
+- [docs/PICTURE_UPLOAD.md](docs/PICTURE_UPLOAD.md) - Secure picture upload feature
 
 ## Architecture
 

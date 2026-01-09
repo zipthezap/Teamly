@@ -26,3 +26,12 @@ export const authenticatedLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Stricter limiter for file uploads to prevent abuse
+export const uploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // Limit each IP to 10 uploads per hour
+  message: { error: 'Too many upload attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
