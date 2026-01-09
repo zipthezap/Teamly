@@ -132,7 +132,6 @@
     "noUpcomingEvents": "No upcoming events",
     "noUpcomingEventsDesc": "No upcoming events scheduled. Create an event to start organizing your sports activities!",
     "createFirstEvent": "Create Your First Event",
-    "createFirstEventDesc": "No events available. Create your first event to get started!",
     "noGroupsYet": "No groups yet",
     "noGroupsYetDesc": "You haven't joined any groups yet. Create one to get started and connect with other sports enthusiasts!",
     "createFirstGroup": "Create Your First Group",
@@ -175,6 +174,7 @@
     "allTypes": "All Types"
   },
   "events": {
+    "createFirstEventDesc": "No events available.",
     "allEvents": "All Events",
     "leaveEvent": "Leave Event",
     "joinEvent": "Join Event",

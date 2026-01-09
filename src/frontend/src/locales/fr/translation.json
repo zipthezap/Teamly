@@ -132,7 +132,6 @@
     "noUpcomingEvents": "Aucun événement à venir prévu",
     "noUpcomingEventsDesc": "Aucun événement à venir prévu. Créez un événement pour commencer à organiser vos activités sportives !",
     "createFirstEvent": "Créez votre premier événement",
-    "createFirstEventDesc": "Aucun événement disponible. Créez votre premier événement pour commencer !",
     "noGroupsYet": "Aucun groupe pour le moment",
     "noGroupsYetDesc": "Vous n'avez pas encore rejoint de groupe. Créez-en un pour commencer et connectez-vous avec d'autres passionnés de sport !",
     "createFirstGroup": "Créez votre premier groupe",
@@ -175,6 +174,7 @@
     "allTypes": "Tous les types"
   },
   "events": {
+    "createFirstEventDesc": "Aucun événement disponible.",
     "allEvents": "Tous les événements",
     "eventFound": "événement trouvé",
     "eventsFound": "événements trouvés",
@@ -184,7 +184,6 @@
     "spotsLeft_plural": "{{count}} places restantes",
     "createEvent": "Créer un événement",
     "noEventsMatch": "Aucun événement ne correspond à vos filtres",
-    "noEventsAvailable": "Aucun événement disponible",
     "createFirstEvent": "Créez votre premier événement",
     "eventTitle": "Titre de l'événement",
     "description": "Description de l'événement",

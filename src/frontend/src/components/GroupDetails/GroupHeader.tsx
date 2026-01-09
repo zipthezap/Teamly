@@ -32,6 +32,13 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
 }) => {
   const { t } = useTranslation();
   
+  // Debug log for join requests icon visibility
+  console.log('GroupHeader debug:', {
+    isAdmin,
+    joinRequests,
+    onAcceptJoinExists: !!onAcceptJoin,
+    onDeclineJoinExists: !!onDeclineJoin
+  });
   return (
     <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 mb-8">
       <img

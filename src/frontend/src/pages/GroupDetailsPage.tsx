@@ -71,8 +71,9 @@ export default function GroupDetailsPage() {
     enabled: !!groupId,
   });
 
-  // Assume user role is available (replace with real user/role logic)
-  const isAdmin = group?.members?.find((m: Member) => m.role === "Admin")?.email === localStorage.getItem("userEmail");
+  // Improved admin check: user is admin if their email matches any admin member
+  const userEmail = localStorage.getItem("userEmail");
+  const isAdmin = group?.members?.some((m: Member) => m.role === "Admin" && m.email === userEmail);
 
   // Update group settings when group data loads
   React.useEffect(() => {
