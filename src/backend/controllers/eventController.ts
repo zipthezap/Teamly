@@ -7,6 +7,7 @@ import { validateEventStatus } from '../services/eventValidation';
 import { logger } from '../utils/logger';
 import { Request, Response } from 'express';
 import { createInviteToken } from '../utils/inviteToken';
+import { TRANSACTION } from '../config/security';
 
 export const createEvent = async (req: Request, res: Response) => {
   try {
@@ -600,8 +601,8 @@ export const joinEvent = async (req: Request, res: Response) => {
       return { participant, eventTitle: event.title };
     }, {
       isolationLevel: 'Serializable', // Highest isolation level to prevent race conditions
-      maxWait: 5000, // Wait up to 5 seconds for lock
-      timeout: 10000 // Transaction timeout
+      maxWait: TRANSACTION.MAX_WAIT_MS,
+      timeout: TRANSACTION.TIMEOUT_MS
     });
 
     res.status(201).json(result.participant);
@@ -1313,8 +1314,8 @@ export const joinEventAsGuest = async (req: Request, res: Response) => {
       return guestParticipant;
     }, {
       isolationLevel: 'Serializable', // Highest isolation level to prevent race conditions
-      maxWait: 5000, // Wait up to 5 seconds for lock
-      timeout: 10000 // Transaction timeout
+      maxWait: TRANSACTION.MAX_WAIT_MS,
+      timeout: TRANSACTION.TIMEOUT_MS
     });
 
     res.status(201).json({ 

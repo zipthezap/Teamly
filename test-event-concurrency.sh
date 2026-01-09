@@ -109,6 +109,7 @@ echo ""
 
 # Step 4: Create an event with limited capacity
 echo "Step 4: Creating event with maxPlayers=$MAX_PLAYERS..."
+# Date command with fallback for GNU date (Linux) vs BSD date (macOS)
 START_TIME=$(date -u -d "+1 day" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u -v+1d +"%Y-%m-%dT%H:%M:%SZ")
 EVENT_RESPONSE=$(curl -s -X POST "$BASE_URL/api/events" \
     -H "Authorization: Bearer $FIRST_TOKEN" \

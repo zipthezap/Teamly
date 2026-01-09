@@ -5,7 +5,25 @@ import prisma from '../config/database';
 import { logger } from './logger';
 
 const SECRET_KEY = process.env.JWT_SECRET || 'your-secret-key-here';
-const REFRESH_SECRET_KEY = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'your-refresh-secret-key-here';
+
+// Require separate refresh secret in production for security
+const REFRESH_SECRET_KEY = (() => {
+  if (process.env.JWT_REFRESH_SECRET) {
+    return process.env.JWT_REFRESH_SECRET;
+  }
+  
+  // In production, require a separate refresh secret
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_REFRESH_SECRET must be set in production for security');
+  }
+  
+  // In development, allow fallback but log warning
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('WARNING: Using JWT_SECRET for refresh tokens. Set JWT_REFRESH_SECRET in production.');
+  }
+  
+  return process.env.JWT_SECRET || 'your-refresh-secret-key-here';
+})();
 
 interface TokenPayload {
   userId: string;

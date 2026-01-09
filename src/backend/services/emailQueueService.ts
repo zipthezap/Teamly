@@ -1,6 +1,7 @@
 import prisma from '../config/database';
 import { sendEmail as sendEmailDirect } from '../utils/emailService';
 import { logger } from '../utils/logger';
+import { EMAIL_RETRY } from '../config/security';
 
 /**
  * Email Queue Service
@@ -140,9 +141,8 @@ export const processEmail = async (emailId: string): Promise<boolean> => {
 
       return true;
     } catch (sendError: any) {
-      // Calculate next retry time with exponential backoff
-      const baseDelay = 5 * 60 * 1000; // 5 minutes
-      const delay = baseDelay * Math.pow(2, email.attempts); // Exponential backoff
+      // Calculate next retry time with exponential backoff using configured values
+      const delay = EMAIL_RETRY.BASE_DELAY_MS * Math.pow(EMAIL_RETRY.BACKOFF_MULTIPLIER, email.attempts);
       const nextScheduledAt = new Date(Date.now() + delay);
 
       const newStatus = email.attempts + 1 >= email.maxAttempts ? 'failed' : 'retry';
