@@ -65,7 +65,7 @@ const ParticipantsList: React.FC<ParticipantsListProps> = ({ event, participantC
                 {/* Avatar */}
                 <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-white overflow-hidden" style={{ background: getAvatarColor(idx) }}>
                   {getImageUrl(participant.user?.profilePicture) ? (
-                    <img src={getImageUrl(participant.user?.profilePicture)!} alt={participant.user?.name} className="w-full h-full object-cover" />
+                    <img src={getImageUrl(participant.user?.profilePicture)} alt={participant.user?.name} className="w-full h-full object-cover" />
                   ) : (
                     getInitials(participant.user?.name)
                   )}

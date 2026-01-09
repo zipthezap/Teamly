@@ -227,7 +227,7 @@ const EventDetails = () => {
           <div className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3 mb-4">
             <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center text-lg font-bold flex-shrink-0 overflow-hidden">
               {getImageUrl(event.creator?.profilePicture) ? (
-                <img src={getImageUrl(event.creator?.profilePicture)!} alt={event.creator?.name} className="w-full h-full object-cover" />
+                <img src={getImageUrl(event.creator?.profilePicture)} alt={event.creator?.name} className="w-full h-full object-cover" />
               ) : (
                 getInitials(event.creator?.name)
               )}
@@ -351,7 +351,7 @@ const EventDetails = () => {
                       <div className="flex items-start gap-2">
                         <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden">
                           {getImageUrl(n.user?.profilePicture) ? (
-                            <img src={getImageUrl(n.user?.profilePicture)!} alt={n.user?.name} className="w-full h-full object-cover" />
+                            <img src={getImageUrl(n.user?.profilePicture)} alt={n.user?.name} className="w-full h-full object-cover" />
                           ) : (
                             getInitials(n.user?.name || t('eventDetails.user'))
                           )}
@@ -379,7 +379,7 @@ const EventDetails = () => {
             <div key={p.id || idx} className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3">
               <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden">
                 {getImageUrl(p.user?.profilePicture) ? (
-                  <img src={getImageUrl(p.user?.profilePicture)!} alt={p.user?.name} className="w-full h-full object-cover" />
+                  <img src={getImageUrl(p.user?.profilePicture)} alt={p.user?.name} className="w-full h-full object-cover" />
                 ) : (
                   getInitials(p.user?.name)
                 )}
