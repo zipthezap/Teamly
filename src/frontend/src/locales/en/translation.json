@@ -22,6 +22,8 @@
     "create": "Create",
     "back": "Back",
     "submit": "Submit",
+    "accept": "Accept",
+    "decline": "Decline",
     "viewAll": "View All",
     "viewDetails": "View Details",
     "participants": "participants",
@@ -385,6 +387,7 @@
   },
   "groupDetails": {
     "joinRequests": "Join Requests",
+    "noJoinRequests": "No pending join requests",
     "inviteLinkCopied": "Invite link copied to clipboard!",
     "memberInvited": "Member invited successfully",
     "failedToInvite": "Failed to invite member",

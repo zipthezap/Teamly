@@ -359,7 +359,11 @@ export default function GroupDetailsPage() {
         onInvite={handleInviteMember}
         onCopyLink={handleCopyLink}
         isAdmin={isAdmin}
-        joinRequests={joinRequests}
+        joinRequests={joinRequests.map((req: any) => ({
+          id: req.id,
+          name: req.user.name,
+          email: req.user.email
+        }))}
         onAcceptJoin={handleAcceptJoin}
         onDeclineJoin={handleDeclineJoin}
       />

@@ -22,6 +22,8 @@
     "create": "Créer",
     "back": "Retour",
     "submit": "Soumettre",
+    "accept": "Accepter",
+    "decline": "Refuser",
     "viewAll": "Voir tout",
     "viewDetails": "Voir les détails",
     "participants": "participant(s)",
@@ -385,6 +387,7 @@
   },
   "groupDetails": {
     "joinRequests": "Demandes d'adhésion",
+    "noJoinRequests": "Aucune demande d'adhésion en attente",
     "inviteLinkCopied": "Lien d'invitation copié dans le presse-papiers !",
     "memberInvited": "Membre invité avec succès",
     "failedToInvite": "Échec de l'invitation du membre",

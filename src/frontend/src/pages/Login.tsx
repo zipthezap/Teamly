@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import {
@@ -24,6 +24,7 @@ const Login = () => {
   
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
 
   const handleSubmit = async (e) => {
@@ -44,7 +45,9 @@ const Login = () => {
         setRequires2FA(true);
         setError('');
       } else {
-        navigate('/dashboard');
+        // Navigate to returnTo location if provided, otherwise dashboard
+        const returnTo = location.state?.returnTo || '/dashboard';
+        navigate(returnTo);
       }
     } catch (err) {
       setError(err.response?.data?.error || t('auth.loginFailed'));

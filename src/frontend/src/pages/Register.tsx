@@ -46,19 +46,26 @@ const Register = () => {
 
     try {
       const newUser = await register({ name, email, password });
-      // Check for invite param
-      const params = new URLSearchParams(location.search);
-      const inviteGroupId = params.get('invite');
-      if (inviteGroupId && newUser?.id) {
-        // Call backend to join group
-        try {
-          await groupsAPI.joinByInvite(newUser.id, inviteGroupId);
-        } catch (err) {
-          // Optionally handle join error
-        }
-        navigate(`/groups/${inviteGroupId}`);
+      
+      // Check for returnTo in location state (from invite link)
+      const returnTo = location.state?.returnTo;
+      if (returnTo) {
+        navigate(returnTo);
       } else {
-        navigate('/dashboard');
+        // Check for invite param (legacy)
+        const params = new URLSearchParams(location.search);
+        const inviteGroupId = params.get('invite');
+        if (inviteGroupId && newUser?.id) {
+          // Call backend to join group
+          try {
+            await groupsAPI.joinByInvite(newUser.id, inviteGroupId);
+          } catch (err) {
+            // Optionally handle join error
+          }
+          navigate(`/groups/${inviteGroupId}`);
+        } else {
+          navigate('/dashboard');
+        }
       }
     } catch (err) {
       setError(err.response?.data?.error || t('auth.registerFailed'));
