@@ -18,6 +18,10 @@ import {
   Alert,
   Pagination,
   IconButton,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -29,6 +33,10 @@ import PeopleIcon from '@mui/icons-material/People';
 import PublicIcon from '@mui/icons-material/Public';
 import LockIcon from '@mui/icons-material/Lock';
 import GroupIcon from '@mui/icons-material/Group';
+import DownloadIcon from '@mui/icons-material/Download';
+import DescriptionIcon from '@mui/icons-material/Description';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import DataObjectIcon from '@mui/icons-material/DataObject';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { eventsAPI } from '../services/api';
@@ -55,6 +63,8 @@ const EventsList = () => {
   const [error, setError] = useState<any>(null);
   const [page, setPage] = useState(1);
   const [useInfiniteScroll, setUseInfiniteScroll] = useState(true);
+  const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -127,6 +137,59 @@ const EventsList = () => {
       fetchEvents();
     } catch (err: any) {
       setToast({ message: err?.response?.data?.message || t('events.failedToLeaveEvent'), type: 'error' });
+    }
+  };
+
+  // Export events
+  const handleExportEvents = async (format: 'csv' | 'ical' | 'json') => {
+    try {
+      setIsExporting(true);
+      setExportMenuAnchor(null);
+      
+      const response = await eventsAPI.export(format);
+      
+      // Create a blob from the response data
+      const blob = new Blob([response.data], { 
+        type: response.headers['content-type'] || 'application/octet-stream' 
+      });
+      
+      // Get filename from Content-Disposition header or create default
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `teamly-events-${new Date().toISOString().split('T')[0]}`;
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      } else {
+        // Add extension based on format
+        const extensions: Record<string, string> = { csv: 'csv', ical: 'ics', json: 'json' };
+        filename += `.${extensions[format] || 'txt'}`;
+      }
+      
+      // Create download link and trigger download
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      setToast({ 
+        message: t('events.exportSuccess', { format: format.toUpperCase() }) || `Events exported successfully as ${format.toUpperCase()}`, 
+        type: 'success' 
+      });
+    } catch (err: any) {
+      console.error('Export error:', err);
+      setToast({ 
+        message: t('events.exportError') || 'Failed to export events', 
+        type: 'error' 
+      });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -266,15 +329,61 @@ const EventsList = () => {
             {events.length} {events.length !== 1 ? t('events.eventsFound') : t('events.eventFound')}
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          color="secondary"
-          startIcon={<AddIcon />}
-          onClick={() => { setEditEvent(null); setModalOpen(true); }}
-        >
-          {t('events.createEvent')}
-        </Button>
+        <Box display="flex" gap={2}>
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<DownloadIcon />}
+            onClick={(e) => setExportMenuAnchor(e.currentTarget)}
+            disabled={isExporting || events.length === 0}
+          >
+            {isExporting ? t('events.exporting', 'Exporting...') : t('events.export', 'Export')}
+          </Button>
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<AddIcon />}
+            onClick={() => { setEditEvent(null); setModalOpen(true); }}
+          >
+            {t('events.createEvent')}
+          </Button>
+        </Box>
       </Box>
+
+      {/* Export Menu */}
+      <Menu
+        anchorEl={exportMenuAnchor}
+        open={Boolean(exportMenuAnchor)}
+        onClose={() => setExportMenuAnchor(null)}
+      >
+        <MenuItem onClick={() => handleExportEvents('csv')}>
+          <ListItemIcon>
+            <DescriptionIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText 
+            primary={t('events.exportCSV', 'Export as CSV')} 
+            secondary={t('events.exportCSVDesc', 'Spreadsheet format')}
+          />
+        </MenuItem>
+        <MenuItem onClick={() => handleExportEvents('ical')}>
+          <ListItemIcon>
+            <CalendarTodayIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText 
+            primary={t('events.exportICalendar', 'Export as iCalendar')} 
+            secondary={t('events.exportICalendarDesc', 'For Google Calendar, Outlook')}
+          />
+        </MenuItem>
+        <MenuItem onClick={() => handleExportEvents('json')}>
+          <ListItemIcon>
+            <DataObjectIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText 
+            primary={t('events.exportJSON', 'Export as JSON')} 
+            secondary={t('events.exportJSONDesc', 'Developer format')}
+          />
+        </MenuItem>
+      </Menu>
 
       {/* Removed tabs for Upcoming/Past */}
       {/* Tabs for My/Upcoming/Past */}

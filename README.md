@@ -19,6 +19,7 @@ A sports event organization app that allows individuals to set and organize smal
 - **🔄 Recurring Events**: Create events that repeat on daily, weekly, or monthly schedules
 - **💬 Event Comments**: Discuss events with threaded comments and @mentions
 - **⚙️ Customizable Preferences**: Control which email notifications you receive
+- **📥 Event Data Export**: Export your event history in CSV, iCalendar (.ics), or JSON formats
 
 ### ⭐ Recently Enhanced
 
@@ -35,6 +36,7 @@ A sports event organization app that allows individuals to set and organize smal
 For detailed documentation on these features, see:
 - [docs/guides/FEATURES.md](docs/guides/FEATURES.md) - Core features
 - [docs/features/ENHANCED_NOTIFICATIONS.md](docs/features/ENHANCED_NOTIFICATIONS.md) - Enhanced notification system
+- [docs/features/EVENT_EXPORT.md](docs/features/EVENT_EXPORT.md) - Event data export feature
 - [docs/PICTURE_UPLOAD.md](docs/PICTURE_UPLOAD.md) - Secure picture upload feature
 
 ## Architecture
