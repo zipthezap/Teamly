@@ -2,7 +2,6 @@ import EventIcon from '@mui/icons-material/Event';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  import { useAuth } from '../contexts/AuthContext';
   Card,
   CardContent,
   CardActions,
@@ -14,6 +13,7 @@ import {
   Grid
 } from '@mui/material';
 import GroupIcon from '@mui/icons-material/Group';
+import { useAuth } from '../contexts/AuthContext';
 import { getInitials } from '../utils/imageUtils';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
