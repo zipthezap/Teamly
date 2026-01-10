@@ -311,7 +311,7 @@ const EventsList = () => {
                       <Box display="flex" alignItems="center" gap={1}>
                         <GroupIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                         <Typography variant="body2" color="text.secondary">
-                          {event.group?.name}
+                          {event.group?.name || 'N/A'}
                         </Typography>
                       </Box>
                       <Box display="flex" alignItems="center" gap={1}>

@@ -156,11 +156,14 @@ export const getEvents = async (req: Request, res: Response) => {
     // 3. Other events (not joined)
     const userId = req.user.id;
     
-    // Pre-compute joined status for efficiency
-    const eventsWithJoinStatus = events.map(event => ({
-      event,
-      isJoined: event.participants.some(p => p.userId === userId)
-    }));
+    // Pre-compute joined status for efficiency using Set for O(1) lookups
+    const eventsWithJoinStatus = events.map(event => {
+      const participantIds = new Set(event.participants.map(p => p.userId));
+      return {
+        event,
+        isJoined: participantIds.has(userId)
+      };
+    });
     
     const sortedEvents = eventsWithJoinStatus.sort((a, b) => {
       // Calculate priority (lower number = higher priority)
