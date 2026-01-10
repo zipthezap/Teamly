@@ -313,7 +313,6 @@ export const updateEvent = async (req: Request, res: Response) => {
       req.user.id,
       'eventUpdates',
       'eventUpdate',
-      req.user.name,
       updatedEvent.title,
       event.group.name
     );
@@ -361,7 +360,6 @@ export const deleteEvent = async (req: Request, res: Response) => {
       req.user.id,
       'eventCancellations',
       'eventCancellation',
-      req.user.name,
       event.title,
       event.group.name
     );

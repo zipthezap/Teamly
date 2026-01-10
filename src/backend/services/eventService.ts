@@ -341,7 +341,6 @@ export const sendEventEmailNotifications = async (
   senderId: string,
   notificationType: 'eventUpdates' | 'eventCancellations',
   emailType: 'eventUpdate' | 'eventCancellation',
-  recipientName: string,
   eventTitle: string,
   groupName: string
 ) => {
@@ -353,13 +352,13 @@ export const sendEventEmailNotifications = async (
   const userIds = recipients.map(r => r.id);
   const notificationMap = await batchShouldSendEmailNotification(userIds, notificationType);
   
-  // Send emails
+  // Send emails (each recipient gets their own personalized email)
   for (const recipient of recipients) {
     if (notificationMap.get(recipient.id)) {
       await sendEmail(
         recipient.email,
         emailType,
-        recipientName,
+        recipient.name,  // Use recipient's name for personalization
         eventTitle,
         groupName
       ).catch(error => {
