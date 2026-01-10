@@ -20,6 +20,7 @@ interface NotificationPreferencesProps {
     eventCancellations: boolean;
     groupInvites: boolean;
     commentMentions: boolean;
+    nearbyTeamUps: boolean;
   };
   loading: boolean;
   onMuteToggle: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -139,6 +140,16 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
               />
             }
             label={t('common.notificationPreferences.commentMentions')}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={emailPreferences.nearbyTeamUps}
+                onChange={onPreferenceChange('nearbyTeamUps')}
+                disabled={allNotificationsMuted}
+              />
+            }
+            label={t('common.notificationPreferences.nearbyTeamUps') || 'Nearby TeamUp Opportunities'}
           />
         </FormGroup>
       </Box>

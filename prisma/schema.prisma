@@ -127,6 +127,9 @@ model User {
   // Location fields
   city              String?
   country           String?
+  address           String?
+  postalCode        String?
+  discoveryRadius   Int?     @default(25) // km - default radius for location-based discovery
   
   // Profile picture
   profilePicture    String?
@@ -331,6 +334,7 @@ model EmailPreference {
   eventCancellations Boolean @default(true)
   groupInvites    Boolean  @default(true)
   commentMentions Boolean  @default(true)
+  nearbyTeamUps   Boolean  @default(true)
 
   muteEventInvites    Boolean  @default(false)
   muteEventReminders  Boolean  @default(false)
@@ -340,6 +344,7 @@ model EmailPreference {
   muteGroupRequests   Boolean  @default(false)
   muteNearbyGroups    Boolean  @default(false)
   muteEventCreated    Boolean  @default(false)
+  muteNearbyTeamUps   Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }

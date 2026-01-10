@@ -3,6 +3,7 @@ import { logger } from '../utils/logger';
 import { Request, Response } from 'express';
 import * as teamUpService from '../services/teamUpService';
 import * as locationService from '../services/locationService';
+import * as teamUpNotificationService from '../services/teamUpNotificationService';
 
 // Create a TeamUp request
 export const createTeamUpRequest = async (req: Request, res: Response) => {
@@ -101,6 +102,22 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
     });
 
     const enrichedRequest = locationService.enrichWithLocationInfo(teamUpRequest);
+
+    // Notify users about the new TeamUp request in their area (async, don't wait)
+    teamUpNotificationService.notifyUsersAboutNewTeamUp({
+      id: teamUpRequest.id,
+      title: teamUpRequest.title,
+      sportType: teamUpRequest.sportType,
+      location: teamUpRequest.location,
+      latitude: teamUpRequest.latitude,
+      longitude: teamUpRequest.longitude,
+      city: teamUpRequest.city,
+      country: teamUpRequest.country,
+      dateTime: teamUpRequest.dateTime,
+      creatorId: teamUpRequest.creatorId,
+    }).catch(error => {
+      logger.error('Failed to send TeamUp notifications (non-blocking)', 'teamUpController', { error });
+    });
 
     res.status(201).json(enrichedRequest);
   } catch (error) {

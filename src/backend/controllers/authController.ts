@@ -234,7 +234,7 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
 
 export const updateProfile = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, email, city, country } = req.body;
+    const { name, email, city, country, address, postalCode, discoveryRadius } = req.body;
 
     if (!name || !email) {
       res.status(400).json({ error: 'Name and email are required' });
@@ -253,13 +253,25 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       }
     }
 
+    // Validate discoveryRadius if provided
+    if (discoveryRadius !== undefined) {
+      const radius = parseInt(discoveryRadius);
+      if (isNaN(radius) || radius < 1 || radius > 200) {
+        res.status(400).json({ error: 'Discovery radius must be between 1 and 200 km' });
+        return;
+      }
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: req.user!.id },
       data: { 
         name, 
         email,
         city: city || null,
-        country: country || null
+        country: country || null,
+        address: address || null,
+        postalCode: postalCode || null,
+        discoveryRadius: discoveryRadius !== undefined ? parseInt(discoveryRadius) : undefined
       },
       select: {
         id: true,
@@ -267,6 +279,9 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
         name: true,
         city: true,
         country: true,
+        address: true,
+        postalCode: true,
+        discoveryRadius: true,
         createdAt: true
       }
     });
@@ -738,6 +753,9 @@ export const uploadProfilePicture = async (req: Request, res: Response): Promise
         profilePicture: true,
         city: true,
         country: true,
+        address: true,
+        postalCode: true,
+        discoveryRadius: true,
         createdAt: true,
       },
     });
@@ -801,6 +819,9 @@ export const deleteProfilePicture = async (req: Request, res: Response): Promise
         profilePicture: true,
         city: true,
         country: true,
+        address: true,
+        postalCode: true,
+        discoveryRadius: true,
         createdAt: true,
       },
     });
