@@ -15,6 +15,7 @@ router.use(authenticatedLimiter);
 
 router.post('/', eventController.createEvent);
 router.get('/', eventController.getEvents);
+router.get('/nearby', eventController.getNearbyEvents);
 router.get('/statistics', eventController.getUserStatistics);
 router.get('/:id', eventController.getEvent);
 router.get('/:id/activity', eventController.getEventActivityFeed);

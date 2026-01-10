@@ -8,12 +8,14 @@ import { createInviteToken } from '../utils/inviteToken';
 import { TRANSACTION } from '../config/security';
 import * as eventService from '../services/eventService';
 import * as groupService from '../services/groupService';
+import * as locationService from '../services/locationService';
 
 export const createEvent = async (req: Request, res: Response) => {
   try {
     const { 
       groupId, title, description, eventType, location, startTime, endTime, maxPlayers,
-      isRecurring, recurrenceRule, recurrenceEnd, isPublic
+      isRecurring, recurrenceRule, recurrenceEnd, isPublic,
+      latitude, longitude, locationName, city, country
     } = req.body;
 
     if (!groupId || !title || !eventType || !startTime) {
@@ -31,6 +33,14 @@ export const createEvent = async (req: Request, res: Response) => {
     // Validate sanitized required fields are not empty
     if (!sanitized.title || !sanitized.eventType) {
       return res.status(400).json({ error: 'Title and event type cannot be empty or whitespace-only' });
+    }
+
+    // Validate coordinates if provided
+    if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
+      const coordValidation = locationService.validateCoordinates(parseFloat(latitude), parseFloat(longitude));
+      if (!coordValidation.valid) {
+        return res.status(400).json({ error: coordValidation.error });
+      }
     }
 
     // Validate event times
@@ -68,6 +78,11 @@ export const createEvent = async (req: Request, res: Response) => {
         description: sanitized.description,
         eventType: sanitized.eventType!,
         location: sanitized.location,
+        latitude: latitude ? parseFloat(latitude) : null,
+        longitude: longitude ? parseFloat(longitude) : null,
+        locationName: locationName || null,
+        city: city || null,
+        country: country || null,
         startTime: new Date(startTime),
         endTime: endTime ? new Date(endTime) : null,
         maxPlayers: maxPlayers ? parseInt(maxPlayers) : null,
@@ -105,11 +120,14 @@ export const createEvent = async (req: Request, res: Response) => {
       }
     });
 
+    // Enrich event with location info if coordinates are available
+    const enrichedEvent = locationService.enrichWithLocationInfo(event);
+
     // Send global notification to group members (except creator)
     const memberIds = group.members.map(m => m.user.id).filter(uid => uid !== req.user.id);
     await eventService.createEventNotifications(group.id, event.title, req.user.name, group.name, memberIds);
 
-    res.status(201).json(event);
+    res.status(201).json(enrichedEvent);
   } catch (error) {
     logger.error('Create event error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to create event' });
@@ -285,7 +303,8 @@ export const getEvent = async (req: Request, res: Response) => {
 export const updateEvent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { title, description, eventType, location, startTime, endTime, maxPlayers, isPublic } = req.body;
+    const { title, description, eventType, location, startTime, endTime, maxPlayers, isPublic,
+            latitude, longitude, locationName, city, country } = req.body;
 
     // Sanitize text inputs
     const sanitized = eventService.sanitizeEventData({
@@ -294,6 +313,14 @@ export const updateEvent = async (req: Request, res: Response) => {
       eventType,
       location
     });
+
+    // Validate coordinates if provided
+    if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
+      const coordValidation = locationService.validateCoordinates(parseFloat(latitude), parseFloat(longitude));
+      if (!coordValidation.valid) {
+        return res.status(400).json({ error: coordValidation.error });
+      }
+    }
 
     // Validate that events are single-day only if both times are provided
     if (startTime && endTime) {
@@ -331,6 +358,11 @@ export const updateEvent = async (req: Request, res: Response) => {
         ...(sanitized.description !== undefined && { description: sanitized.description }),
         ...(sanitized.eventType && { eventType: sanitized.eventType }),
         ...(sanitized.location !== undefined && { location: sanitized.location }),
+        ...(latitude !== undefined && { latitude: latitude ? parseFloat(latitude) : null }),
+        ...(longitude !== undefined && { longitude: longitude ? parseFloat(longitude) : null }),
+        ...(locationName !== undefined && { locationName: locationName || null }),
+        ...(city !== undefined && { city: city || null }),
+        ...(country !== undefined && { country: country || null }),
         ...(startTime && { startTime: new Date(startTime) }),
         ...(endTime !== undefined && { endTime: endTime ? new Date(endTime) : null }),
         ...(maxPlayers !== undefined && { maxPlayers: maxPlayers ? parseInt(maxPlayers) : null }),
@@ -362,6 +394,9 @@ export const updateEvent = async (req: Request, res: Response) => {
       }
     });
 
+    // Enrich event with location info if coordinates are available
+    const enrichedEvent = locationService.enrichWithLocationInfo(updatedEvent);
+
     // Send email notifications to participants
     await eventService.sendEventEmailNotifications(
       updatedEvent.participants,
@@ -372,7 +407,7 @@ export const updateEvent = async (req: Request, res: Response) => {
       event.group.name
     );
 
-    res.json(updatedEvent);
+    res.json(enrichedEvent);
   } catch (error) {
     logger.error('Failed to update event', 'EventController', { error });
     res.status(500).json({ error: 'Failed to update event' });
@@ -1250,5 +1285,79 @@ export const joinEventAsGuest = async (req: Request, res: Response) => {
     }
     
     res.status(500).json({ error: 'Failed to join event' });
+  }
+};
+
+// Get nearby events based on location and radius
+export const getNearbyEvents = async (req: Request, res: Response) => {
+  try {
+    const { latitude, longitude, radius = 10, limit = 50 } = req.query;
+
+    if (!latitude || !longitude) {
+      return res.status(400).json({ error: 'Latitude and longitude are required' });
+    }
+
+    const lat = parseFloat(latitude as string);
+    const lon = parseFloat(longitude as string);
+    const radiusKm = parseFloat(radius as string);
+
+    // Validate coordinates
+    const coordValidation = locationService.validateCoordinates(lat, lon);
+    if (!coordValidation.valid) {
+      return res.status(400).json({ error: coordValidation.error });
+    }
+
+    // Get all events with location data
+    const events = await prisma.event.findMany({
+      where: {
+        latitude: { not: null },
+        longitude: { not: null },
+        status: 'upcoming', // Only show upcoming events
+        archived: false
+      },
+      include: {
+        creator: {
+          select: { id: true, name: true, email: true, profilePicture: true }
+        },
+        group: {
+          select: { id: true, name: true }
+        },
+        participants: {
+          select: {
+            id: true,
+            userId: true,
+            status: true
+          }
+        },
+        _count: {
+          select: { participants: true }
+        }
+      },
+      orderBy: { startTime: 'asc' },
+      take: parseInt(limit as string) * 2 // Get more than needed for filtering
+    });
+
+    // Filter by location and add distance
+    const nearbyEvents = locationService.filterByLocation(
+      events,
+      lat,
+      lon,
+      radiusKm
+    ).slice(0, parseInt(limit as string)); // Limit after filtering
+
+    // Enrich with location info
+    const enrichedEvents = nearbyEvents.map(event => 
+      locationService.enrichWithLocationInfo(event)
+    );
+
+    res.json({
+      results: enrichedEvents,
+      total: enrichedEvents.length,
+      center: { latitude: lat, longitude: lon },
+      radius: radiusKm
+    });
+  } catch (error) {
+    logger.error('Get nearby events error', 'EventController', { error });
+    res.status(500).json({ error: 'Failed to get nearby events' });
   }
 };

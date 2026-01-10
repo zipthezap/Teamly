@@ -17,6 +17,7 @@ router.use(authenticatedLimiter);
 
 router.post('/', groupController.createGroup);
 router.get('/', groupController.getGroups);
+router.get('/nearby', groupController.getNearbyGroups);
 router.get('/:id', groupController.getGroup);
 
 // Delete group (admin only)
