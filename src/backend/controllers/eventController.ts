@@ -1,13 +1,13 @@
 import prisma from '../config/database';
-import { validateRecurrenceRule, generateRecurrenceInstances, calculateDuration, applyDuration } from '../utils/recurrenceService';
-import { sendEmail } from '../utils/emailService';
-import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
+import { generateRecurrenceInstances, calculateDuration, applyDuration } from '../utils/recurrenceService';
 import { getEventActivity } from '../services/eventNotification';
 import { validateEventStatus } from '../services/eventValidation';
 import { logger } from '../utils/logger';
 import { Request, Response } from 'express';
 import { createInviteToken } from '../utils/inviteToken';
 import { TRANSACTION } from '../config/security';
+import * as eventService from '../services/eventService';
+import * as groupService from '../services/groupService';
 
 export const createEvent = async (req: Request, res: Response) => {
   try {
@@ -20,80 +20,29 @@ export const createEvent = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Group ID, title, event type, and start time are required' });
     }
 
-    // Validate that events are single-day only
-    if (endTime) {
-      const startDate = new Date(startTime);
-      const endDate = new Date(endTime);
-      
-      // Check if they're on the same day
-      if (startDate.toDateString() !== endDate.toDateString()) {
-        return res.status(400).json({ error: 'Events must be single-day only. Start and end times must be on the same day.' });
-      }
-      
-      // Check that end time is after start time
-      if (endDate <= startDate) {
-        return res.status(400).json({ error: 'End time must be after start time.' });
-      }
+    // Validate event times
+    const timeValidation = eventService.validateEventTimes(startTime, endTime);
+    if (!timeValidation.valid) {
+      return res.status(400).json({ error: timeValidation.error });
     }
 
     // Validate recurrence rule if provided
-    if (isRecurring && recurrenceRule) {
-      if (!validateRecurrenceRule(recurrenceRule)) {
-        return res.status(400).json({ error: 'Invalid recurrence rule format' });
-      }
+    const recurrenceValidation = eventService.validateRecurrence(isRecurring, recurrenceRule);
+    if (!recurrenceValidation.valid) {
+      return res.status(400).json({ error: recurrenceValidation.error });
     }
 
     // Check if user is admin of the group
-    const membership = await prisma.groupMember.findFirst({
-      where: {
-        groupId,
-        userId: req.user.id,
-        role: 'admin'
-      }
-    });
-
-    if (!membership) {
+    const isAdmin = await groupService.checkGroupAdmin(groupId, req.user.id);
+    if (!isAdmin) {
       return res.status(403).json({ error: 'Only group admins can create events for this group' });
     }
 
-    // Validate event date is in the future
-    const now = new Date();
-    const eventStartTime = new Date(startTime);
-    const eventEndTime = endTime ? new Date(endTime) : null;
-    if (eventStartTime <= now) {
-      return res.status(400).json({ error: 'Event date and time must be in the future.' });
-    }
-
-    let eventStatus = 'upcoming';
-    if (eventEndTime && eventEndTime < now) {
-      // Event has ended
-      eventStatus = 'completed';
-    } else if (eventStartTime <= now && (!eventEndTime || eventEndTime >= now)) {
-      // Event is currently happening
-      eventStatus = 'ongoing';
-    } else if (eventStartTime > now) {
-      // Event hasn't started yet
-      eventStatus = 'upcoming';
-    }
+    // Determine event status
+    const eventStatus = eventService.determineEventStatus(startTime, endTime);
 
     // Get group members for notifications
-    const group = await prisma.group.findUnique({
-      where: { id: groupId },
-      include: {
-        members: {
-          include: {
-            user: {
-              select: { 
-                id: true, 
-                name: true, 
-                email: true,
-                emailNotifications: true
-              }
-            }
-          }
-        }
-      }
-    });
+    const group = await eventService.getGroupWithMembers(groupId);
 
     // Generate invite token if event is public
     const inviteToken = isPublic ? createInviteToken() : null;
@@ -143,23 +92,9 @@ export const createEvent = async (req: Request, res: Response) => {
       }
     });
 
-    // Do not log event creation notifications in the event's recent activity
     // Send global notification to group members (except creator)
     const memberIds = group.members.map(m => m.user.id).filter(uid => uid !== req.user.id);
-    await Promise.all(memberIds.map(userId =>
-      prisma.groupNotification.create({
-        data: {
-          groupId: group.id,
-          userId,
-          type: 'eventCreated',
-          params: {
-            eventTitle: event.title,
-            name: req.user.name,
-            groupName: group.name
-          }
-        }
-      })
-    ));
+    await eventService.createEventNotifications(group.id, event.title, req.user.name, group.name, memberIds);
 
     res.status(201).json(event);
   } catch (error) {
@@ -172,63 +107,17 @@ export const getEvents = async (req: Request, res: Response) => {
   try {
     const { groupId, search, eventType, startDate, endDate, location, status, archived } = req.query;
 
-    // Build where filter
-    const where: any = {};
-    
-    if (groupId) {
-      where.groupId = groupId;
-    }
-    
-    // Only show events from groups the user is a member of
-    where.group = {
-      members: {
-        some: {
-          userId: req.user.id
-        }
-      }
-    };
-
-    // Search filter - search in title and description
-    if (search && typeof search === 'string') {
-      where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-
-    // Event type filter
-    if (eventType && typeof eventType === 'string') {
-      where.eventType = { contains: eventType, mode: 'insensitive' };
-    }
-
-    // Location filter
-    if (location && typeof location === 'string') {
-      where.location = { contains: location, mode: 'insensitive' };
-    }
-
-    // Status filter
-    if (status && typeof status === 'string') {
-      where.status = status;
-    }
-
-    // Archived filter
-    if (archived !== undefined) {
-      where.archived = archived === 'true';
-    } else {
-      // By default, exclude archived events
-      where.archived = false;
-    }
-
-    // Date range filters
-    if (startDate || endDate) {
-      where.startTime = {};
-      if (startDate) {
-        where.startTime.gte = new Date(startDate as string);
-      }
-      if (endDate) {
-        where.startTime.lte = new Date(endDate as string);
-      }
-    }
+    // Build where filter using service
+    const where = eventService.buildEventFilters(req.user.id, {
+      groupId: groupId as string,
+      search: search as string,
+      eventType: eventType as string,
+      startDate: startDate as string,
+      endDate: endDate as string,
+      location: location as string,
+      status: status as string,
+      archived: archived as string
+    });
 
     const events = await prisma.event.findMany({
       where,
@@ -353,17 +242,9 @@ export const updateEvent = async (req: Request, res: Response) => {
 
     // Validate that events are single-day only if both times are provided
     if (startTime && endTime) {
-      const startDate = new Date(startTime);
-      const endDate = new Date(endTime);
-      
-      // Check if they're on the same day
-      if (startDate.toDateString() !== endDate.toDateString()) {
-        return res.status(400).json({ error: 'Events must be single-day only. Start and end times must be on the same day.' });
-      }
-      
-      // Check that end time is after start time
-      if (endDate <= startDate) {
-        return res.status(400).json({ error: 'End time must be after start time.' });
+      const timeValidation = eventService.validateEventTimes(startTime, endTime);
+      if (!timeValidation.valid) {
+        return res.status(400).json({ error: timeValidation.error });
       }
     }
 
@@ -427,26 +308,14 @@ export const updateEvent = async (req: Request, res: Response) => {
     });
 
     // Send email notifications to participants
-    const recipients = updatedEvent.participants
-      .filter(p => p.user.id !== req.user.id)
-      .map(p => p.user);
-    
-    // Check which users should receive notifications
-    const userIds = recipients.map(r => r.id);
-    const notificationMap = await batchShouldSendEmailNotification(userIds, 'eventUpdates');
-    
-    // Send emails
-    for (const recipient of recipients) {
-      if (notificationMap.get(recipient.id)) {
-        await sendEmail(
-          recipient.email,
-          'eventUpdate',
-          recipient.name,
-          updatedEvent.title,
-          event.group.name
-        );
-      }
-    }
+    await eventService.sendEventEmailNotifications(
+      updatedEvent.participants,
+      req.user.id,
+      'eventUpdates',
+      'eventUpdate',
+      updatedEvent.title,
+      event.group.name
+    );
 
     res.json(updatedEvent);
   } catch (error) {
@@ -486,26 +355,14 @@ export const deleteEvent = async (req: Request, res: Response) => {
     }
 
     // Send email notifications to participants
-    const recipients = event.participants
-      .filter(p => p.user.id !== req.user.id)
-      .map(p => p.user);
-    
-    // Check which users should receive notifications
-    const userIds = recipients.map(r => r.id);
-    const notificationMap = await batchShouldSendEmailNotification(userIds, 'eventCancellations');
-    
-    // Send emails
-    for (const recipient of recipients) {
-      if (notificationMap.get(recipient.id)) {
-        await sendEmail(
-          recipient.email,
-          'eventCancellation',
-          recipient.name,
-          event.title,
-          event.group.name
-        );
-      }
-    }
+    await eventService.sendEventEmailNotifications(
+      event.participants,
+      req.user.id,
+      'eventCancellations',
+      'eventCancellation',
+      event.title,
+      event.group.name
+    );
 
     await prisma.event.delete({
       where: { id }
