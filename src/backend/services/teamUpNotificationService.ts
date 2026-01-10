@@ -8,6 +8,7 @@
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import { shouldSendEmailNotification } from '../utils/notificationHelper';
+import { TeamUpNotificationType } from '../../shared/types/event.types';
 
 interface TeamUpRequest {
   id: string;
@@ -139,7 +140,7 @@ export async function notifyUsersAboutNewTeamUp(
     const notifications = usersToNotify.map(userId => ({
       userId,
       teamUpRequestId: teamUpRequest.id,
-      type: 'teamup_nearby',
+      type: TeamUpNotificationType.teamup_nearby,
       params: {
         title: teamUpRequest.title,
         sportType: teamUpRequest.sportType,

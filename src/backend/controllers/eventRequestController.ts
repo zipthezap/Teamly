@@ -3,6 +3,7 @@ import { logger } from '../utils/logger';
 import { validateVoteThreshold, validateVoteDeadline } from '../services/eventValidation';
 import { Request, Response } from 'express';
 import * as eventService from '../services/eventService';
+import { SportType } from '../../shared/types/event.types';
 
 // Create event request (admin only)
 export const createEventRequest = async (req: Request, res: Response) => {
@@ -393,7 +394,7 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
         creatorId: eventRequest.creatorId,
         title: eventRequest.title,
         description: eventRequest.description,
-        eventType: eventRequest.eventType,
+        eventType: eventRequest.eventType as SportType,
         location: eventRequest.location,
         startTime: eventRequest.startTime,
         endTime: eventRequest.endTime,

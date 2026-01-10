@@ -5,5 +5,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3001,
+    fs: {
+      // Allow serving files from parent directory (for shared types)
+      allow: ['..'],
+    },
   },
 });
