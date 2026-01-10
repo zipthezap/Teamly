@@ -126,6 +126,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       }
     });
 
+    // Prevent timing attacks: Always perform password comparison even if user doesn't exist
+    // This ensures response time is constant regardless of whether email is valid
+    const dummyHash = '$2a$10$XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'; // Valid bcrypt format
+    const passwordToCompare = user ? user.password : dummyHash;
+    const isValidPassword = await bcrypt.compare(password, passwordToCompare);
+
     if (!user) {
       res.status(401).json({ error: 'Invalid credentials' });
       return;
@@ -139,8 +145,6 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       });
       return;
     }
-
-    const isValidPassword = await bcrypt.compare(password, user.password);
 
     if (!isValidPassword) {
       // Increment failed login attempts
