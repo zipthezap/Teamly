@@ -206,7 +206,7 @@ export const buildEventFilters = (
 
   // Event type filter
   if (filters.eventType) {
-    where.eventType = filters.eventType;
+    where.eventType = { contains: filters.eventType, mode: 'insensitive' };
   }
 
   // Date range filter
@@ -230,11 +230,9 @@ export const buildEventFilters = (
     where.status = filters.status;
   }
 
-  // Archived filter
-  if (filters.archived === 'true') {
-    where.archived = true;
-  } else {
-    where.archived = false;
+  // Archived filter - only apply if explicitly provided
+  if (filters.archived !== undefined) {
+    where.archived = filters.archived === 'true';
   }
 
   return where;
