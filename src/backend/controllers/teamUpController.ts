@@ -471,14 +471,21 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
 
     // Create notification for the request creator
     try {
-      await prisma.notification.create({
+      await prisma.teamUpNotification.create({
         data: {
           userId: teamUpRequest.creatorId,
+          teamUpRequestId: id,
           type: 'teamup_response',
-          title: 'New TeamUp Response',
-          message: `${req.user.name} responded to your TeamUp request "${teamUpRequest.title}"`,
-          relatedEntityId: id,
-          relatedEntityType: 'teamup_request'
+          params: {
+            name: req.user.name,
+            title: teamUpRequest.title,
+            sportType: teamUpRequest.sportType
+          },
+          metadata: {
+            responseId: response.id,
+            responderId: req.user.id,
+            responderName: req.user.name
+          }
         }
       });
 
@@ -587,16 +594,21 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
 
     // Create notification for the responder
     try {
-      await prisma.notification.create({
+      await prisma.teamUpNotification.create({
         data: {
           userId: response.userId,
+          teamUpRequestId: id,
           type: action === 'accept' ? 'teamup_accepted' : 'teamup_declined',
-          title: action === 'accept' ? 'Response Accepted' : 'Response Declined',
-          message: action === 'accept' 
-            ? `Your response to "${teamUpRequest.title}" was accepted!`
-            : `Your response to "${teamUpRequest.title}" was declined.`,
-          relatedEntityId: id,
-          relatedEntityType: 'teamup_request'
+          params: {
+            title: teamUpRequest.title,
+            sportType: teamUpRequest.sportType
+          },
+          metadata: {
+            responseId: responseId,
+            action: action,
+            location: teamUpRequest.location,
+            dateTime: teamUpRequest.dateTime
+          }
         }
       });
 
