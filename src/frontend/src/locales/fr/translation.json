@@ -61,6 +61,7 @@
     "noNotifications": "Aucune notification",
     "events": "Événements",
     "groups": "Groupes",
+    "teamup": "TeamUp",
     "unread": "Non lus",
     "all": "Tous",
     "searchPlaceholder": "Rechercher des notifications...",
@@ -77,6 +78,7 @@
     "noNotificationsFound": "Aucune notification trouvée",
     "eventNotifications": "Notifications d'événements",
     "groupNotifications": "Notifications de groupes",
+    "teamupNotifications": "Notifications TeamUp",
     "emailNotificationPreferences": "Préférences de notification par email",
     "muteAllNotifications": "Désactiver toutes les notifications",
     "stopReceivingEmails": "Arrêter de recevoir toutes les notifications par email",
@@ -97,7 +99,10 @@
     "join_request": "{{name}} souhaite rejoindre \"{{groupName}}\"",
     "accepted": "Bienvenue dans \"{{groupName}}\" ! Votre demande d'adhésion a été acceptée.",
     "nearby_created": "Nouveau groupe \"{{groupName}}\" créé près de chez vous",
-    "status_change": "Statut de l'événement changé"
+    "status_change": "Statut de l'événement changé",
+    "teamup_response": "{{name}} a postulé à votre demande TeamUp \"{{title}}\"",
+    "teamup_accepted": "Votre réponse à \"{{title}}\" a été acceptée ! Préparez-vous pour {{sportType}}",
+    "teamup_declined": "Votre réponse à \"{{title}}\" n'a pas été acceptée"
   },
   "auth": {
     "loginTitle": "Se connecter à Teamly",

@@ -8,7 +8,7 @@ import prisma from '../config/database';
 export interface NotificationMetadata {
   actionUrl?: string;
   actionText?: string;
-  category?: 'event' | 'group' | 'system' | 'social';
+  category?: 'event' | 'group' | 'teamup' | 'system' | 'social';
   priority?: 'low' | 'medium' | 'high';
   imageUrl?: string;
   relatedUserId?: string;
@@ -19,7 +19,7 @@ export interface UnifiedNotification {
   id: string;
   userId: string;
   type: string;
-  notificationType: 'event' | 'group';
+  notificationType: 'event' | 'group' | 'teamup';
   params?: Record<string, any>; // parameters for translation
   read: boolean;
   createdAt: Date;
@@ -31,6 +31,10 @@ export interface UnifiedNotification {
   group?: {
     id: string;
     name: string;
+  };
+  teamUpRequest?: {
+    id: string;
+    title: string;
   };
   user?: {
     id: string;
@@ -48,7 +52,7 @@ export const getUserNotifications = async (
     limit?: number;
     offset?: number;
     type?: string;
-    notificationType?: 'event' | 'group';
+    notificationType?: 'event' | 'group' | 'teamup';
     startDate?: Date;
     endDate?: Date;
     searchQuery?: string;
@@ -96,8 +100,10 @@ export const getUserNotifications = async (
   // Fetch notifications based on filter
   let eventNotifications: any[] = [];
   let groupNotifications: any[] = [];
+  let teamUpNotifications: any[] = [];
   let eventCount = 0;
   let groupCount = 0;
+  let teamUpCount = 0;
 
   if (!notificationType || notificationType === 'event') {
     [eventNotifications, eventCount] = await Promise.all([
@@ -127,6 +133,34 @@ export const getUserNotifications = async (
         skip: offset,
       }),
       prisma.groupNotification.count({ where: groupWhere }),
+    ]);
+  }
+
+  if (!notificationType || notificationType === 'teamup') {
+    const teamUpWhere: any = { userId };
+    if (!includeRead) {
+      teamUpWhere.read = false;
+    }
+    if (type) {
+      teamUpWhere.type = type;
+    }
+    if (startDate || endDate) {
+      teamUpWhere.createdAt = {};
+      if (startDate) teamUpWhere.createdAt.gte = startDate;
+      if (endDate) teamUpWhere.createdAt.lte = endDate;
+    }
+
+    [teamUpNotifications, teamUpCount] = await Promise.all([
+      prisma.teamUpNotification.findMany({
+        where: teamUpWhere,
+        include: {
+          teamUpRequest: { select: { id: true, title: true, sportType: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.teamUpNotification.count({ where: teamUpWhere }),
     ]);
   }
 
@@ -169,8 +203,27 @@ export const getUserNotifications = async (
     };
   });
 
+  const enrichedTeamUpNotifications: UnifiedNotification[] = teamUpNotifications.map((n) => {
+    const metadata = enrichNotificationMetadata('teamup', n.type, null, null, null, n.teamUpRequest);
+    return {
+      id: n.id,
+      userId: n.userId,
+      type: n.type,
+      notificationType: 'teamup' as const,
+      params: n.params || {
+        title: n.teamUpRequest?.title,
+        sportType: n.teamUpRequest?.sportType,
+        // add more as needed
+      },
+      read: n.read,
+      createdAt: n.createdAt,
+      metadata,
+      teamUpRequest: n.teamUpRequest,
+    };
+  });
+
   // Merge and sort all notifications
-  let allNotifications = [...enrichedEventNotifications, ...enrichedGroupNotifications].sort(
+  let allNotifications = [...enrichedEventNotifications, ...enrichedGroupNotifications, ...enrichedTeamUpNotifications].sort(
     (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
   );
 
@@ -189,7 +242,7 @@ export const getUserNotifications = async (
 
   return {
     notifications: allNotifications.slice(0, limit),
-    total: searchQuery ? allNotifications.length : eventCount + groupCount,
+    total: searchQuery ? allNotifications.length : eventCount + groupCount + teamUpCount,
   };
 };
 
@@ -197,20 +250,21 @@ export const getUserNotifications = async (
  * Enrich notification with metadata for enhanced UI
  */
 function enrichNotificationMetadata(
-  notificationType: 'event' | 'group',
+  notificationType: 'event' | 'group' | 'teamup',
   type: string,
   event?: any,
   user?: any,
-  group?: any
+  group?: any,
+  teamUpRequest?: any
 ): NotificationMetadata {
   const metadata: NotificationMetadata = {
     category: notificationType,
   };
 
   // Set priority based on type
-  if (['late', 'declined', 'cancelled'].includes(type)) {
+  if (['late', 'declined', 'cancelled', 'teamup_declined'].includes(type)) {
     metadata.priority = 'high';
-  } else if (['join', 'accepted', 'created'].includes(type)) {
+  } else if (['join', 'accepted', 'created', 'teamup_accepted', 'teamup_response'].includes(type)) {
     metadata.priority = 'medium';
   } else {
     metadata.priority = 'low';
@@ -226,6 +280,13 @@ function enrichNotificationMetadata(
       metadata.actionText = 'Review Request';
     } else {
       metadata.actionText = 'View Group';
+    }
+  } else if (notificationType === 'teamup' && teamUpRequest?.id) {
+    metadata.actionUrl = `/teamup/${teamUpRequest.id}`;
+    if (type === 'teamup_response') {
+      metadata.actionText = 'Review Response';
+    } else {
+      metadata.actionText = 'View Request';
     }
   }
 
@@ -256,6 +317,10 @@ export const markNotificationsAsRead = async (
         where: { id: { in: notificationIds }, userId },
         data: { read: true },
       }),
+      prisma.teamUpNotification.updateMany({
+        where: { id: { in: notificationIds }, userId },
+        data: { read: true },
+      }),
     ]);
   } else {
     // Mark all as read
@@ -268,6 +333,10 @@ export const markNotificationsAsRead = async (
         where: { userId, read: false },
         data: { read: true },
       }),
+      prisma.teamUpNotification.updateMany({
+        where: { userId, read: false },
+        data: { read: true },
+      }),
     ]);
   }
 };
@@ -276,11 +345,13 @@ export const markNotificationsAsRead = async (
  * Get notification statistics for a user
  */
 export const getNotificationStats = async (userId: string) => {
-  const [unreadEvent, unreadGroup, totalEvent, totalGroup, recentActivity] = await Promise.all([
+  const [unreadEvent, unreadGroup, unreadTeamUp, totalEvent, totalGroup, totalTeamUp, recentActivity] = await Promise.all([
     prisma.eventNotification.count({ where: { userId, read: false } }),
     prisma.groupNotification.count({ where: { userId, read: false } }),
+    prisma.teamUpNotification.count({ where: { userId, read: false } }),
     prisma.eventNotification.count({ where: { userId } }),
     prisma.groupNotification.count({ where: { userId } }),
+    prisma.teamUpNotification.count({ where: { userId } }),
     prisma.eventNotification.findMany({
       where: {
         userId,
@@ -297,12 +368,14 @@ export const getNotificationStats = async (userId: string) => {
   });
 
   return {
-    unread: unreadEvent + unreadGroup,
+    unread: unreadEvent + unreadGroup + unreadTeamUp,
     unreadEvent,
     unreadGroup,
-    total: totalEvent + totalGroup,
+    unreadTeamUp,
+    total: totalEvent + totalGroup + totalTeamUp,
     totalEvent,
     totalGroup,
+    totalTeamUp,
     last7Days: recentActivity.length,
     typeCounts,
   };
@@ -319,16 +392,19 @@ export const deleteNotifications = async (
     return { deletedCount: 0 };
   }
 
-  const [eventDeleted, groupDeleted] = await Promise.all([
+  const [eventDeleted, groupDeleted, teamUpDeleted] = await Promise.all([
     prisma.eventNotification.deleteMany({
       where: { id: { in: notificationIds }, userId },
     }),
     prisma.groupNotification.deleteMany({
       where: { id: { in: notificationIds }, userId },
     }),
+    prisma.teamUpNotification.deleteMany({
+      where: { id: { in: notificationIds }, userId },
+    }),
   ]);
 
-  return { deletedCount: eventDeleted.count + groupDeleted.count };
+  return { deletedCount: eventDeleted.count + groupDeleted.count + teamUpDeleted.count };
 };
 
 /**
@@ -337,14 +413,17 @@ export const deleteNotifications = async (
 export const deleteAllReadNotifications = async (
   userId: string
 ): Promise<{ deletedCount: number }> => {
-  const [eventDeleted, groupDeleted] = await Promise.all([
+  const [eventDeleted, groupDeleted, teamUpDeleted] = await Promise.all([
     prisma.eventNotification.deleteMany({
       where: { userId, read: true },
     }),
     prisma.groupNotification.deleteMany({
       where: { userId, read: true },
     }),
+    prisma.teamUpNotification.deleteMany({
+      where: { userId, read: true },
+    }),
   ]);
 
-  return { deletedCount: eventDeleted.count + groupDeleted.count };
+  return { deletedCount: eventDeleted.count + groupDeleted.count + teamUpDeleted.count };
 };

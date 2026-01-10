@@ -66,6 +66,25 @@ model GroupNotification {
   @@index([userId, read]) // Composite for unread user notifications
   @@index([createdAt]) // For chronological sorting
 }
+
+model TeamUpNotification {
+  id              String   @id @default(uuid())
+  teamUpRequestId String
+  teamUpRequest   TeamUpRequest @relation(fields: [teamUpRequestId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  type            String   // teamup_response (someone applied), teamup_accepted (someone joined), teamup_declined (someone left)
+  params          Json?    // Parameters for frontend translation (e.g., { name, title, sportType })
+  metadata        Json?    // Additional data for the notification
+  createdAt       DateTime @default(now())
+  read            Boolean  @default(false)
+  
+  @@index([userId]) // For user notifications queries
+  @@index([teamUpRequestId]) // For teamup request notifications
+  @@index([read]) // For unread filtering
+  @@index([userId, read]) // Composite for unread user notifications
+  @@index([createdAt]) // For chronological sorting
+}
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -121,6 +140,7 @@ model User {
   eventAttendances  EventAttendance[]
   eventNotifications EventNotification[]
   groupNotifications GroupNotification[]
+  teamUpNotifications TeamUpNotification[]
   groupJoinRequests GroupJoinRequest[]
   createdEventRequests EventRequest[]   @relation("EventRequestCreator")
   eventVotes        EventVote[]
@@ -449,7 +469,8 @@ model TeamUpRequest {
   creatorId   String
   creator     User     @relation("TeamUpRequestCreator", fields: [creatorId], references: [id])
   
-  responses   TeamUpResponse[]
+  responses      TeamUpResponse[]
+  notifications  TeamUpNotification[]
   
   @@index([creatorId])
   @@index([dateTime])
