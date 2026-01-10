@@ -220,12 +220,12 @@ const Dashboard = () => {
                           {!group.picture && getInitials(group.name)}
                         </Avatar>
                         <Box flexGrow={1} minWidth={0}>
-                          <Box display="flex" justifyContent="space-between" alignItems="start" mb={0.5}>
-                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 0 }}>
+                          <Box display="flex" justifyContent="space-between" alignItems="start" mb={0.5} minHeight={32}>
+                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 0, lineHeight: 1.4 }}>
                               {group.name}
                             </Typography>
                             {group.isPublic && (
-                              <Chip label={t('common.public')} size="small" color="primary" />
+                              <Chip label={t('common.public')} size="small" color="primary" sx={{ flexShrink: 0 }} />
                             )}
                           </Box>
                         </Box>
