@@ -73,7 +73,7 @@ model TeamUpNotification {
   teamUpRequest   TeamUpRequest @relation(fields: [teamUpRequestId], references: [id], onDelete: Cascade)
   userId          String
   user            User     @relation(fields: [userId], references: [id])
-  type            String   // teamup_response (someone applied), teamup_accepted (someone joined), teamup_declined (someone left)
+  type            String   // teamup_response (someone applied), teamup_accepted (someone joined), teamup_declined (someone left), teamup_nearby (new opportunity in area)
   params          Json?    // Parameters for frontend translation (e.g., { name, title, sportType })
   metadata        Json?    // Additional data for the notification
   createdAt       DateTime @default(now())
