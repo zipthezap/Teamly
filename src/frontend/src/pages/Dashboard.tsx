@@ -1,20 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import {
-  Container,
-  Grid,
-  Typography,
-  Box,
-  Card,
-  CardContent,
-  CardActions,
-  Button,
-  Chip,
-  Stack,
-  Avatar,
-  AvatarGroup,
-} from '@mui/material';
+import Container from '@mui/material/Container';
+import Grid from '@mui/material/Grid';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import CardActions from '@mui/material/CardActions';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import Stack from '@mui/material/Stack';
+import Avatar from '@mui/material/Avatar';
+import AvatarGroup from '@mui/material/AvatarGroup';
 import { groupsAPI, eventsAPI } from '../services/api';
 import { LoadingSpinner, EmptyState } from '../components/common';
 import UserStatistics from '../components/dashboard/UserStatistics';
@@ -169,7 +167,7 @@ const Dashboard = () => {
                 const isParticipating = event.participants?.some(p => p.userId === user?.id);
                 const isFull = event.maxPlayers && event.participants?.length >= event.maxPlayers;
                 return (
-                  <Grid item xs={12} sm={6} md={4} key={event.id}>
+                  <Grid item={true} xs={12} sm={6} md={4} key={event.id}>
                     <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'all 0.3s', background: 'rgba(51,65,85,0.98)', borderRadius: 2, boxShadow: 2, border: '1.5px solid #2d3a53', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6, borderColor: 'primary.main' } }}>
                       <CardContent sx={{ flexGrow: 1, p: 3 }}>
                         <Box display="flex" gap={2} mb={1.5}>
@@ -239,7 +237,7 @@ const Dashboard = () => {
                 );
               })}
               {upcomingEvents.length === 0 && (
-                <Grid item xs={12}>
+                <Grid item={true} xs={12}>
                   <EmptyState
                     icon={<EventIcon />}
                     title={t('dashboard.noUpcomingEvents')}

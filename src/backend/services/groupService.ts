@@ -122,7 +122,7 @@ export const createJoinRequestNotification = async (
       data: {
         groupId,
         userId: adminId,
-        type: 'joinRequest',
+        type: 'join_request',
         params: {
           requesterId,
           requesterName,
@@ -148,7 +148,7 @@ export const createInvitationNotification = async (
     data: {
       groupId,
       userId: invitedUserId,
-      type: 'groupInvite',
+      type: 'invited',
       params: {
         groupName,
         inviterName
@@ -180,7 +180,7 @@ export const createMemberAddedNotification = async (
       data: {
         groupId,
         userId: memberId,
-        type: 'memberAdded',
+        type: 'accepted',
         params: {
           memberName: newMember.name,
           groupName

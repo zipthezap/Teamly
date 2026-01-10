@@ -13,7 +13,7 @@ import EventList from "../components/GroupDetails/EventList";
 import EventFormModal from "../components/event/EventFormModal";
 import ChatBox from "../components/GroupDetails/ChatBox";
 import ImageUpload from "../components/ImageUpload";
-import { Group, Member, ChatMessage } from "../types/group";
+import { GroupWithDetails, GroupMember, ChatMessage } from "../types/group";
 import { groupsAPI, eventsAPI, groupChatAPI } from "../services/api";
 import { EventWithDetails, GroupMessage, UpdateGroupData } from "../../../shared/types";
 import { AxiosError } from "axios";
@@ -54,7 +54,7 @@ export default function GroupDetailsPage() {
     queryKey: ["groupDetails", groupId],
     queryFn: async () => {
       const res = await groupsAPI.getById(groupId!);
-      return res.data;
+      return res.data as GroupWithDetails;
     },
     enabled: !!groupId,
   });
@@ -84,9 +84,9 @@ export default function GroupDetailsPage() {
 
   // Fallback: if member emails are missing, check if user is group creator
   let isAdmin = false;
-  if (group?.members?.some((m: Member) => m.role && m.role.toLowerCase() === "admin" && m.email === userEmail)) {
+  if (group?.members?.some((m: GroupMember) => m.role && user && m.userId === user.id && m.role === "admin")) {
     isAdmin = true;
-  } else if ((!group?.members || group.members.every((m: Member) => !m.email)) && group?.creator?.email && userEmail) {
+  } else if ((!group?.members || group.members.length === 0) && group?.creator?.email && userEmail) {
     isAdmin = group.creator.email === userEmail;
   }
 
@@ -138,19 +138,19 @@ export default function GroupDetailsPage() {
   // Remove member mutation (optimistic UI)
   const removeMemberMutation = useMutation({
     mutationFn: async (email: string) => {
-      const member = group?.members.find((m: Member) => m.email === email);
+      const member = group?.members.find((m: GroupMember) => m.userId === email);
       if (!member) throw new Error("Member not found");
-      await groupsAPI.removeMember(groupId!, member.email);
+      await groupsAPI.removeMember(groupId!, member.userId);
       return email;
     },
     onMutate: async (email) => {
       // Optimistically update group members
       await queryClient.cancelQueries({ queryKey: ["groupDetails", groupId] });
       const prevGroup = queryClient.getQueryData(["groupDetails", groupId]);
-      if (prevGroup && (prevGroup as Group).members) {
+      if (prevGroup && (prevGroup as GroupWithDetails).members) {
         queryClient.setQueryData(["groupDetails", groupId], {
-          ...(prevGroup as Group),
-          members: (prevGroup as Group).members.filter((m: Member) => m.email !== email),
+          ...(prevGroup as GroupWithDetails),
+          members: (prevGroup as GroupWithDetails).members.filter((m: GroupMember) => m.userId !== email),
         });
       }
       return { prevGroup };
@@ -299,7 +299,7 @@ export default function GroupDetailsPage() {
 
   // Admin leave logic: require transfer
   const handleLeaveGroup = () => {
-    if (isAdmin && group?.members?.filter((m: Member) => m.role !== "admin").length > 0) {
+    if (isAdmin && group?.members?.filter((m: GroupMember) => m.role !== "admin").length > 0) {
       setShowAdminTransfer(true);
     } else {
       setShowLeaveConfirm(true);
@@ -441,7 +441,7 @@ export default function GroupDetailsPage() {
         t={t}
       />
       <div className={`grid ${gridCols} gap-6`}>
-        <MemberList members={group.members} onRemove={isAdmin ? handleRemoveMember : undefined} />
+        <MemberList members={group.members as GroupMember[]} onRemove={isAdmin ? handleRemoveMember : undefined} />
         <EventList
           events={events || []}
           onEventClick={handleEventClick}
@@ -493,7 +493,7 @@ export default function GroupDetailsPage() {
       {/* Admin Transfer Dialog */}
       <AdminTransferDialog
         open={showAdminTransfer}
-        members={group?.members || []}
+        members={group?.members as GroupMember[] || []}
         selectedNewAdmin={selectedNewAdmin}
         onSelect={setSelectedNewAdmin}
         onConfirm={confirmAdminTransfer}

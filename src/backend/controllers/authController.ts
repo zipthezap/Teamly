@@ -727,7 +727,7 @@ export const uploadProfilePicture = async (req: Request, res: Response): Promise
       data: { isCurrent: false, updatedBy: req.user.id, updatedAt: new Date() },
     });
     // Insert new picture record
-    const newPic = await prisma.userProfilePicture.create({
+    await prisma.userProfilePicture.create({
       data: {
         userId: req.user.id,
         url: pictureUrl,

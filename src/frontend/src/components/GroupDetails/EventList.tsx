@@ -47,18 +47,18 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
   const filteredEvents = events
     .filter(event => {
-      const eventDate = new Date(event.startTime || event.date);
+      const eventDate = new Date(event.startTime);
       return eventDate >= oneHourAgo;
     })
-    .sort((a, b) => new Date(a.startTime || a.date).getTime() - new Date(b.startTime || b.date).getTime());
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
   // All upcoming events for modal, sorted soonest first
   const allUpcomingEvents = events
     .filter(event => {
-      const eventDate = new Date(event.startTime || event.date);
+      const eventDate = new Date(event.startTime);
       return eventDate >= oneHourAgo;
     })
-    .sort((a, b) => new Date(a.startTime || a.date).getTime() - new Date(b.startTime || b.date).getTime());
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
   return (
     <section className="bg-slate-800 rounded-lg p-4 shadow">
@@ -97,9 +97,9 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
       ) : (
         <ul>
           {filteredEvents.map((event) => {
-            const eventDate = event.startTime || event.date;
-            const eventType = event.eventType || event.type;
-            const organizerName = event.creator?.name || event.organizer || 'Unknown';
+            const eventDate = event.startTime;
+            const eventType = event.eventType;
+            const organizerName = event.creator?.name || 'Unknown';
             return (
               <li
                 key={event.id}
