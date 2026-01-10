@@ -7,14 +7,25 @@ export interface ApiSuccessResponse<T = any> {
   success: true;
   data: T;
   message?: string;
+  meta?: {
+    timestamp: string;
+    requestId?: string;
+    pagination?: PaginationMeta;
+  };
 }
 
 // Generic API Error Response
 export interface ApiErrorResponse {
   success: false;
-  error: string;
-  message?: string;
-  details?: any;
+  error: {
+    code: string;
+    message: string;
+    details?: any;
+  };
+  meta?: {
+    timestamp: string;
+    requestId?: string;
+  };
 }
 
 // API Response type (can be success or error)
@@ -22,18 +33,13 @@ export type ApiResponse<T = any> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 // Pagination metadata
 export interface PaginationMeta {
-  total: number;
   page: number;
   perPage: number;
+  total: number;
   totalPages: number;
   hasNextPage: boolean;
-  hasPreviousPage: boolean;
-}
-
-// Paginated response
-export interface PaginatedResponse<T> {
-  data: T[];
-  pagination: PaginationMeta;
+  hasPrevPage?: boolean;
+  hasPreviousPage?: boolean;
 }
 
 // Pagination query params
