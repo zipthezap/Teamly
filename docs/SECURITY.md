@@ -35,6 +35,20 @@ curl -X POST http://localhost:3000/api/auth/reset-password \
 
 ### 2. Account Protection
 
+#### Timing Attack Protection
+- **Constant-time response**: Login endpoint performs password comparison even when user doesn't exist
+- Prevents user enumeration via timing analysis
+- Response times are consistent regardless of whether an email is registered
+- Protects user privacy and prevents targeted attacks
+
+Implementation:
+```typescript
+// Always perform bcrypt comparison to prevent timing attacks
+const dummyHash = '$2a$10$XXXX...'; // Valid bcrypt format
+const passwordToCompare = user ? user.password : dummyHash;
+const isValidPassword = await bcrypt.compare(password, passwordToCompare);
+```
+
 #### Failed Login Attempts
 - Tracks failed login attempts per user
 - After 5 failed attempts, account is locked for 15 minutes
@@ -175,6 +189,8 @@ res.status(401).json({ error: 'Invalid credentials' });
 // ❌ Bad - reveals if email exists
 res.status(401).json({ error: 'Email not found' });
 ```
+
+**Important**: Combined with timing attack protection, error messages should never reveal whether a user account exists. Always use generic "Invalid credentials" messages for failed authentication attempts.
 
 ### 4. Logging
 Use the logger utility, not console.log:
