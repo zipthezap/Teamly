@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { logger } from './logger';
+import { escapeHtml } from './validation';
 
 // Create email transporter
 const createTransporter = () => {
@@ -39,14 +40,14 @@ const createTransporter = () => {
   }
 };
 
-// Email templates
+// Email templates with HTML escaping for security
 export const emailTemplates = {
   eventInvitation: (userName, eventTitle, eventDate, groupName) => ({
     subject: `You're invited to ${eventTitle}`,
     html: `
-      <h2>Hi ${userName},</h2>
-      <p>You've been invited to join an event in ${groupName}:</p>
-      <h3>${eventTitle}</h3>
+      <h2>Hi ${escapeHtml(userName)},</h2>
+      <p>You've been invited to join an event in ${escapeHtml(groupName)}:</p>
+      <h3>${escapeHtml(eventTitle)}</h3>
       <p><strong>Date:</strong> ${new Date(eventDate).toLocaleString()}</p>
       <p>Log in to Teamly to confirm your participation.</p>
     `
@@ -55,9 +56,9 @@ export const emailTemplates = {
   eventUpdate: (userName, eventTitle, groupName) => ({
     subject: `Event Updated: ${eventTitle}`,
     html: `
-      <h2>Hi ${userName},</h2>
-      <p>An event in ${groupName} has been updated:</p>
-      <h3>${eventTitle}</h3>
+      <h2>Hi ${escapeHtml(userName)},</h2>
+      <p>An event in ${escapeHtml(groupName)} has been updated:</p>
+      <h3>${escapeHtml(eventTitle)}</h3>
       <p>Log in to Teamly to view the latest details.</p>
     `
   }),
@@ -65,9 +66,9 @@ export const emailTemplates = {
   eventCancellation: (userName, eventTitle, groupName) => ({
     subject: `Event Cancelled: ${eventTitle}`,
     html: `
-      <h2>Hi ${userName},</h2>
-      <p>Unfortunately, an event in ${groupName} has been cancelled:</p>
-      <h3>${eventTitle}</h3>
+      <h2>Hi ${escapeHtml(userName)},</h2>
+      <p>Unfortunately, an event in ${escapeHtml(groupName)} has been cancelled:</p>
+      <h3>${escapeHtml(eventTitle)}</h3>
       <p>Please check Teamly for more information.</p>
     `
   }),
@@ -75,11 +76,11 @@ export const emailTemplates = {
   eventReminder: (userName, eventTitle, eventDate, location) => ({
     subject: `Reminder: ${eventTitle} is coming up soon`,
     html: `
-      <h2>Hi ${userName},</h2>
+      <h2>Hi ${escapeHtml(userName)},</h2>
       <p>This is a reminder that you have an event coming up:</p>
-      <h3>${eventTitle}</h3>
+      <h3>${escapeHtml(eventTitle)}</h3>
       <p><strong>Date:</strong> ${new Date(eventDate).toLocaleString()}</p>
-      ${location ? `<p><strong>Location:</strong> ${location}</p>` : ''}
+      ${location ? `<p><strong>Location:</strong> ${escapeHtml(location)}</p>` : ''}
       <p>See you there!</p>
     `
   }),
@@ -87,9 +88,9 @@ export const emailTemplates = {
   groupInvitation: (userName, groupName, inviterName) => ({
     subject: `You've been invited to join ${groupName}`,
     html: `
-      <h2>Hi ${userName},</h2>
-      <p>${inviterName} has invited you to join their group:</p>
-      <h3>${groupName}</h3>
+      <h2>Hi ${escapeHtml(userName)},</h2>
+      <p>${escapeHtml(inviterName)} has invited you to join their group:</p>
+      <h3>${escapeHtml(groupName)}</h3>
       <p>Log in to Teamly to accept the invitation.</p>
     `
   }),
@@ -97,9 +98,9 @@ export const emailTemplates = {
   commentMention: (userName, commenterName, eventTitle, commentContent) => ({
     subject: `${commenterName} mentioned you in a comment`,
     html: `
-      <h2>Hi ${userName},</h2>
-      <p>${commenterName} mentioned you in a comment on <strong>${eventTitle}</strong>:</p>
-      <blockquote>${commentContent}</blockquote>
+      <h2>Hi ${escapeHtml(userName)},</h2>
+      <p>${escapeHtml(commenterName)} mentioned you in a comment on <strong>${escapeHtml(eventTitle)}</strong>:</p>
+      <blockquote>${escapeHtml(commentContent)}</blockquote>
       <p>Log in to Teamly to view and reply.</p>
     `
   }),
@@ -107,7 +108,7 @@ export const emailTemplates = {
   emailVerification: (userName, verificationUrl) => ({
     subject: 'Verify your email address',
     html: `
-      <h2>Hi ${userName},</h2>
+      <h2>Hi ${escapeHtml(userName)},</h2>
       <p>Please verify your email address by clicking the link below:</p>
       <a href="${verificationUrl}">Verify Email</a>
       <p>If you didn't create a Teamly account, you can safely ignore this email.</p>

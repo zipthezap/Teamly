@@ -45,9 +45,7 @@ export const sanitizeInput = (req: Request, _res: Response, next: NextFunction):
   }
 
   if (req.query) {
-    const sanitizedQuery = sanitizeObject(req.query);
-    Object.keys(req.query).forEach(key => { delete (req.query as any)[key]; });
-    Object.assign(req.query, sanitizedQuery);
+    req.query = sanitizeObject(req.query);
   }
 
   if (req.params) {

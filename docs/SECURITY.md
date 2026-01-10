@@ -57,6 +57,8 @@ All user-generated content is sanitized by trimming whitespace:
 
 **Important**: XSS protection is handled by React in the frontend, which automatically escapes values when rendering JSX. The backend stores raw text data and only trims whitespace.
 
+⚠️ **Warning**: If data is used outside of React components (e.g., in server-side email templates or third-party integrations), ensure proper escaping is applied at the output layer to prevent XSS vulnerabilities.
+
 The `sanitizeUserInput()` function trims whitespace from inputs. HTML escaping is handled by the React framework when rendering content in the UI.
 
 #### Validation Functions
