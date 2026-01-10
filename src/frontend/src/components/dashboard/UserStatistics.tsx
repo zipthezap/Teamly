@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { eventsAPI } from '../../services/api';
+import { AxiosError } from 'axios';
 
 interface Statistics {
   totalEventsJoined: number;
@@ -38,7 +39,7 @@ const UserStatistics: React.FC = () => {
     try {
       const response = await eventsAPI.getStatistics();
       setStatistics(response.data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching statistics:', err);
       setError(t('common.error') + ': ' + t('dashboard.loadingDashboard'));
     } finally {
@@ -67,7 +68,7 @@ const UserStatistics: React.FC = () => {
     return null;
   }
 
-  const StatCard = ({ title, value, icon, color }: any) => (
+  const StatCard = ({ title, value, icon, color }: { title: string; value: number | string; icon: React.ReactNode; color: string }) => (
     <div className={`bg-[#1a2233] rounded-xl shadow-md p-5 flex flex-col h-full justify-between`}>
       <div className="flex items-center justify-between mb-2">
         <div>

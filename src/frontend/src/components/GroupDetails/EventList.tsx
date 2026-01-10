@@ -3,13 +3,14 @@ import GroupEventsModal from "./GroupEventsModal";
 import { useTranslation } from "react-i18next";
 import Button from "../ui/Button";
 import PlusIcon from "../icons/PlusIcon";
+import { EventWithDetails } from "../../../../shared/types";
 
 interface EventListProps {
-  events: any[];
+  events: EventWithDetails[];
   onEventClick: (eventId: number) => void;
   onCreate?: () => void;
-  onEdit?: (event: any) => void;
-  onDelete?: (event: any) => void;
+  onEdit?: (event: EventWithDetails) => void;
+  onDelete?: (event: EventWithDetails) => void;
   isAdmin?: boolean;
 }
 
@@ -28,10 +29,10 @@ const formatEventDate = (dateString: string) => {
 const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, onEdit, onDelete, isAdmin }) => {
   const { t } = useTranslation();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
+  const [eventToDelete, setEventToDelete] = useState<EventWithDetails | null>(null);
   const [viewAllOpen, setViewAllOpen] = useState(false);
 
-  const handleDeleteClick = (event: any) => {
+  const handleDeleteClick = (event: EventWithDetails) => {
     setEventToDelete(event);
     setDeleteDialogOpen(true);
   };
