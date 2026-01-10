@@ -20,8 +20,7 @@ import {
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { teamUpAPI } from '../../services/api';
-import { LoadingSpinner, EmptyState } from '../common';
-import LocationPicker from '../LocationPicker';
+import { LoadingSpinner } from '../common';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -131,18 +130,6 @@ const SubmitRequestTab = () => {
     setSuccess('');
   };
 
-  const handleLocationSelect = (locationData: any) => {
-    setFormData({
-      ...formData,
-      location: locationData.address || '',
-      latitude: locationData.lat,
-      longitude: locationData.lng,
-      locationName: locationData.name || '',
-      city: locationData.city || formData.city,
-      country: locationData.country || formData.country,
-    });
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -222,10 +209,11 @@ const SubmitRequestTab = () => {
       </Box>
 
       {myRequests.length === 0 ? (
-        <EmptyState
-          title={t('teamup.noRequestsYet')}
-          subtitle=""
-        />
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <Typography variant="h6" color="text.secondary">
+            {t('teamup.noRequestsYet')}
+          </Typography>
+        </Box>
       ) : (
         <Grid container spacing={3}>
           {myRequests.map((request) => (
@@ -380,19 +368,13 @@ const SubmitRequestTab = () => {
                   </MenuItem>
                 ))}
               </TextField>
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                  {t('teamup.location')}
-                </Typography>
-                <LocationPicker
-                  onLocationSelect={handleLocationSelect}
-                  initialLocation={
-                    formData.latitude && formData.longitude
-                      ? { lat: formData.latitude, lng: formData.longitude }
-                      : undefined
-                  }
-                />
-              </Box>
+              <TextField
+                fullWidth
+                label={t('teamup.location')}
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                placeholder="Enter location"
+              />
             </Stack>
           </DialogContent>
           <DialogActions>

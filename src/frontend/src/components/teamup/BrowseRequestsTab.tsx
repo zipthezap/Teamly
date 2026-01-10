@@ -19,7 +19,7 @@ import {
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { teamUpAPI } from '../../services/api';
-import { LoadingSpinner, EmptyState } from '../common';
+import { LoadingSpinner } from '../common';
 import { useAuth } from '../../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
 
@@ -161,10 +161,11 @@ const BrowseRequestsTab = () => {
       </Box>
 
       {requests.length === 0 ? (
-        <EmptyState
-          title={t('teamup.noRequestsFound')}
-          subtitle=""
-        />
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <Typography variant="h6" color="text.secondary">
+            {t('teamup.noRequestsFound')}
+          </Typography>
+        </Box>
       ) : (
         <Grid container spacing={3}>
           {requests.map((request) => {
