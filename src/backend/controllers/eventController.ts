@@ -179,6 +179,9 @@ export const getEvents = async (req: Request, res: Response) => {
             updatedAt: true
           }
         }
+      },
+      orderBy: {
+        startTime: 'asc' // Sort by soonest first
       }
     });
 
