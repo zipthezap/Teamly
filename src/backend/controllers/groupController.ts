@@ -3,14 +3,8 @@ export const deleteGroup = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     // Check if user is admin of the group
-    const membership = await prisma.groupMember.findFirst({
-      where: {
-        groupId: id,
-        userId: req.user.id,
-        role: 'admin'
-      }
-    });
-    if (!membership) {
+    const isAdmin = await groupService.checkGroupAdmin(id, req.user.id);
+    if (!isAdmin) {
       return res.status(403).json({ error: 'Only admins can delete the group' });
     }
     // Delete group and cascade related data (members, events, etc.)
@@ -27,7 +21,6 @@ import prisma from '../config/database';
 import { sendEmail } from '../utils/emailService';
 import { shouldSendEmailNotification } from '../utils/notificationHelper';
 import { logger } from '../utils/logger';
-import { sanitizeString } from '../utils/validation';
 import { Request, Response } from 'express';
 import path from 'path';
 import { 
@@ -38,6 +31,7 @@ import {
   generateUniqueFilename 
 } from '../utils/imageProcessor';
 import { UPLOAD_CONFIG } from '../config/upload';
+import * as groupService from '../services/groupService';
 
 
 export const createGroup = async (req: Request, res: Response) => {
@@ -49,22 +43,24 @@ export const createGroup = async (req: Request, res: Response) => {
     }
 
     // Sanitize text inputs
-    const sanitizedName = sanitizeString(name);
-    const sanitizedDescription = description ? sanitizeString(description) : null;
-    const sanitizedLocationName = locationName ? sanitizeString(locationName) : null;
-    const sanitizedCity = city ? sanitizeString(city) : null;
-    const sanitizedCountry = country ? sanitizeString(country) : null;
+    const sanitized = groupService.sanitizeGroupData({
+      name,
+      description,
+      locationName,
+      city,
+      country
+    });
 
     const group = await prisma.group.create({
       data: {
-        name: sanitizedName,
-        description: sanitizedDescription,
+        name: sanitized.name,
+        description: sanitized.description,
         isPublic: isPublic || false,
         latitude: latitude ? parseFloat(latitude) : null,
         longitude: longitude ? parseFloat(longitude) : null,
-        locationName: sanitizedLocationName,
-        city: sanitizedCity,
-        country: sanitizedCountry,
+        locationName: sanitized.locationName,
+        city: sanitized.city,
+        country: sanitized.country,
         creatorId: req.user.id,
         members: {
           create: {
@@ -245,15 +241,8 @@ export const updateGroup = async (req: Request, res: Response) => {
     const { name, description, isPublic, latitude, longitude, locationName, city, country } = req.body;
 
     // Check if user is admin of the group
-    const membership = await prisma.groupMember.findFirst({
-      where: {
-        groupId: id,
-        userId: req.user.id,
-        role: 'admin'
-      }
-    });
-
-    if (!membership) {
+    const isAdmin = await groupService.checkGroupAdmin(id, req.user.id);
+    if (!isAdmin) {
       return res.status(403).json({ error: 'Only admins can update the group' });
     }
 
@@ -379,15 +368,8 @@ export const removeMember = async (req: Request, res: Response) => {
     const { id, memberId } = req.params;
 
     // Check if user is admin of the group
-    const membership = await prisma.groupMember.findFirst({
-      where: {
-        groupId: id,
-        userId: req.user.id,
-        role: 'admin'
-      }
-    });
-
-    if (!membership) {
+    const isAdmin = await groupService.checkGroupAdmin(id, req.user.id);
+    if (!isAdmin) {
       return res.status(403).json({ error: 'Only admins can remove members' });
     }
 
@@ -417,8 +399,7 @@ export const updateMemberRole = async (req: Request, res: Response) => {
     const { role } = req.body;
 
     // Validate role with explicit type check
-    const validRoles = ['admin', 'member'] as const;
-    if (!role || !validRoles.includes(role as typeof validRoles[number])) {
+    if (!role || !groupService.isValidRole(role)) {
       return res.status(400).json({ error: 'Invalid role. Must be "admin" or "member"' });
     }
 
