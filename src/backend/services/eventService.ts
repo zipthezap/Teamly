@@ -230,9 +230,12 @@ export const buildEventFilters = (
     where.status = filters.status;
   }
 
-  // Archived filter - only apply if explicitly provided
+  // Archived filter - exclude archived events by default
   if (filters.archived !== undefined) {
     where.archived = filters.archived === 'true';
+  } else {
+    // By default, exclude archived events
+    where.archived = false;
   }
 
   return where;
