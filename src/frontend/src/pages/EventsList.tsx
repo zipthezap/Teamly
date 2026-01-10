@@ -301,7 +301,7 @@ const EventsList = () => {
                       <Chip label={event.eventType} size="small" color="secondary" />
                       <Chip 
                         icon={event.isPublic ? <PublicIcon /> : <LockIcon />}
-                        label={event.isPublic ? t('events.public') || 'Public' : t('events.private') || 'Private'}
+                        label={event.isPublic ? t('events.public') : t('events.private')}
                         size="small"
                         color={event.isPublic ? 'info' : 'default'}
                         sx={{ ml: 0.5 }}
@@ -311,7 +311,7 @@ const EventsList = () => {
                       <Box display="flex" alignItems="center" gap={1}>
                         <GroupIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                         <Typography variant="body2" color="text.secondary">
-                          {event.group?.name || t('common.unknownGroup') || 'Unknown Group'}
+                          {event.group?.name || t('common.unknownGroup')}
                         </Typography>
                       </Box>
                       <Box display="flex" alignItems="center" gap={1}>
