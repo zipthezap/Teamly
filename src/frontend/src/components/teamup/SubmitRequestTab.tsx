@@ -25,6 +25,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useAuth } from '../../contexts/AuthContext';
+import { TeamUpRequest, CreateTeamUpRequestData, UpdateTeamUpRequestData } from '../../types/teamup';
 
 const SPORT_TYPES = [
   'Football/Soccer',
@@ -47,12 +48,12 @@ const SKILL_LEVELS = ['any', 'beginner', 'intermediate', 'advanced'];
 const SubmitRequestTab = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const [myRequests, setMyRequests] = useState<any[]>([]);
+  const [myRequests, setMyRequests] = useState<TeamUpRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
-  const [editingRequest, setEditingRequest] = useState<any>(null);
+  const [editingRequest, setEditingRequest] = useState<TeamUpRequest | null>(null);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -86,7 +87,7 @@ const SubmitRequestTab = () => {
     }
   };
 
-  const handleOpenDialog = (request?: any) => {
+  const handleOpenDialog = (request?: TeamUpRequest) => {
     if (request) {
       setEditingRequest(request);
       setFormData({

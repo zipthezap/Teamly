@@ -22,6 +22,7 @@ import { teamUpAPI } from '../../services/api';
 import { LoadingSpinner } from '../common';
 import { useAuth } from '../../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
+import { TeamUpRequest, TeamUpRequestFilters } from '../../types/teamup';
 
 const SPORT_TYPES = [
   'Football/Soccer',
@@ -42,15 +43,15 @@ const SPORT_TYPES = [
 const BrowseRequestsTab = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const [requests, setRequests] = useState<any[]>([]);
+  const [requests, setRequests] = useState<TeamUpRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [selectedRequest, setSelectedRequest] = useState<TeamUpRequest | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [responseMessage, setResponseMessage] = useState('');
   
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<TeamUpRequestFilters>({
     sportType: '',
     city: user?.city || '',
     country: user?.country || '',
@@ -63,7 +64,7 @@ const BrowseRequestsTab = () => {
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const params: any = { status: 'open' };
+      const params: TeamUpRequestFilters = { status: 'open' };
       if (filters.sportType) params.sportType = filters.sportType;
       if (filters.city) params.city = filters.city;
       if (filters.country) params.country = filters.country;
@@ -78,7 +79,7 @@ const BrowseRequestsTab = () => {
     }
   };
 
-  const handleOpenDialog = (request: any) => {
+  const handleOpenDialog = (request: TeamUpRequest) => {
     setSelectedRequest(request);
     setResponseMessage('');
     setOpenDialog(true);
@@ -105,12 +106,12 @@ const BrowseRequestsTab = () => {
     }
   };
 
-  const isOwnRequest = (request: any) => {
+  const isOwnRequest = (request: TeamUpRequest) => {
     return request.creator?.id === user?.id;
   };
 
-  const hasResponded = (request: any) => {
-    return request.responses?.some((r: any) => r.userId === user?.id);
+  const hasResponded = (request: TeamUpRequest) => {
+    return request.responses?.some((r) => r.userId === user?.id);
   };
 
   if (loading) {
