@@ -1,7 +1,5 @@
 import prisma from '../config/database';
 import { generateRecurrenceInstances, calculateDuration, applyDuration } from '../utils/recurrenceService';
-import { sendEmail } from '../utils/emailService';
-import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
 import { getEventActivity } from '../services/eventNotification';
 import { validateEventStatus } from '../services/eventValidation';
 import { logger } from '../utils/logger';
@@ -309,26 +307,15 @@ export const updateEvent = async (req: Request, res: Response) => {
     });
 
     // Send email notifications to participants
-    const recipients = updatedEvent.participants
-      .filter(p => p.user.id !== req.user.id)
-      .map(p => p.user);
-    
-    // Check which users should receive notifications
-    const userIds = recipients.map(r => r.id);
-    const notificationMap = await batchShouldSendEmailNotification(userIds, 'eventUpdates');
-    
-    // Send emails
-    for (const recipient of recipients) {
-      if (notificationMap.get(recipient.id)) {
-        await sendEmail(
-          recipient.email,
-          'eventUpdate',
-          recipient.name,
-          updatedEvent.title,
-          event.group.name
-        );
-      }
-    }
+    await eventService.sendEventEmailNotifications(
+      updatedEvent.participants,
+      req.user.id,
+      'eventUpdates',
+      'eventUpdate',
+      req.user.name,
+      updatedEvent.title,
+      event.group.name
+    );
 
     res.json(updatedEvent);
   } catch (error) {
@@ -368,26 +355,15 @@ export const deleteEvent = async (req: Request, res: Response) => {
     }
 
     // Send email notifications to participants
-    const recipients = event.participants
-      .filter(p => p.user.id !== req.user.id)
-      .map(p => p.user);
-    
-    // Check which users should receive notifications
-    const userIds = recipients.map(r => r.id);
-    const notificationMap = await batchShouldSendEmailNotification(userIds, 'eventCancellations');
-    
-    // Send emails
-    for (const recipient of recipients) {
-      if (notificationMap.get(recipient.id)) {
-        await sendEmail(
-          recipient.email,
-          'eventCancellation',
-          recipient.name,
-          event.title,
-          event.group.name
-        );
-      }
-    }
+    await eventService.sendEventEmailNotifications(
+      event.participants,
+      req.user.id,
+      'eventCancellations',
+      'eventCancellation',
+      req.user.name,
+      event.title,
+      event.group.name
+    );
 
     await prisma.event.delete({
       where: { id }

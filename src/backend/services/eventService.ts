@@ -1,6 +1,8 @@
 import prisma from '../config/database';
 import { validateRecurrenceRule } from '../utils/recurrenceService';
 import { logger } from '../utils/logger';
+import { sendEmail } from '../utils/emailService';
+import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
 
 /**
  * Validates event time constraints
@@ -343,4 +345,40 @@ export const isEventFull = async (eventId: string, maxPlayers: number | null) =>
   });
 
   return confirmedCount >= maxPlayers;
+};
+
+/**
+ * Sends email notifications to event participants (excluding sender)
+ */
+export const sendEventEmailNotifications = async (
+  participants: any[],
+  senderId: string,
+  notificationType: 'eventUpdates' | 'eventCancellations',
+  emailType: 'eventUpdate' | 'eventCancellation',
+  recipientName: string,
+  eventTitle: string,
+  groupName: string
+) => {
+  const recipients = participants
+    .filter(p => p.user.id !== senderId)
+    .map(p => p.user);
+  
+  // Check which users should receive notifications
+  const userIds = recipients.map(r => r.id);
+  const notificationMap = await batchShouldSendEmailNotification(userIds, notificationType);
+  
+  // Send emails
+  for (const recipient of recipients) {
+    if (notificationMap.get(recipient.id)) {
+      await sendEmail(
+        recipient.email,
+        emailType,
+        recipientName,
+        eventTitle,
+        groupName
+      ).catch(error => {
+        logger.error('Failed to send email notification', 'EventService', { error, recipient });
+      });
+    }
+  }
 };
