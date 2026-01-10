@@ -110,7 +110,7 @@ export const emailTemplates = {
     html: `
       <h2>Hi ${escapeHtml(userName)},</h2>
       <p>Please verify your email address by clicking the link below:</p>
-      <a href="${verificationUrl}">Verify Email</a>
+      <a href="${escapeHtml(verificationUrl)}">Verify Email</a>
       <p>If you didn't create a Teamly account, you can safely ignore this email.</p>
     `
   })
