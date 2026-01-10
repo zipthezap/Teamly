@@ -17,47 +17,39 @@ import {
   generateUniqueFilename 
 } from '../utils/imageProcessor';
 import { UPLOAD_CONFIG } from '../config/upload';
+import * as authService from '../services/authService';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, name } = req.body;
 
     // Validate and sanitize inputs
-    try {
-      isRequired(name, 'Name');
-      validateEmail(email, 'Email');
-      validateStrongPassword(password);
-    } catch (validationError) {
-      if (validationError instanceof ValidationError) {
-        res.status(400).json({ error: validationError.message });
-        return;
-      }
-      throw validationError;
+    const validation = authService.validateRegistrationInputs(email, password, name);
+    if (!validation.valid) {
+      res.status(400).json({ error: validation.error });
+      return;
     }
 
     // Sanitize string inputs
-    const sanitizedEmail = sanitizeString(email).toLowerCase();
-    const sanitizedName = sanitizeString(name);
+    const sanitized = authService.sanitizeUserInputs(email, name);
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email: sanitizedEmail }
-    });
+    const existingUser = await authService.findUserByEmail(sanitized.email);
 
     if (existingUser) {
       res.status(400).json({ error: 'User already exists' });
       return;
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await authService.hashPassword(password);
 
     // Generate email verification token
-    const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+    const emailVerificationToken = authService.generateEmailVerificationToken();
 
     const user = await prisma.user.create({
       data: {
-        email: sanitizedEmail,
+        email: sanitized.email,
         password: hashedPassword,
-        name: sanitizedName,
+        name: sanitized.name,
         emailVerificationToken
       },
       select: {
