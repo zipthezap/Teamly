@@ -151,23 +151,27 @@ export const getEvents = async (req: Request, res: Response) => {
     });
 
     // Sort events by priority:
-    // 1. Events joined + private + from user's group
-    // 2. Events joined + public
-    // 3. Other events
+    // 1. Events user joined + private (from groups user is in)
+    // 2. Events user joined + public
+    // 3. Other events (not joined)
     const userId = req.user.id;
-    const sortedEvents = events.sort((a, b) => {
-      const aJoined = a.participants.some(p => p.userId === userId);
-      const bJoined = b.participants.some(p => p.userId === userId);
-      
+    
+    // Pre-compute joined status for efficiency
+    const eventsWithJoinStatus = events.map(event => ({
+      event,
+      isJoined: event.participants.some(p => p.userId === userId)
+    }));
+    
+    const sortedEvents = eventsWithJoinStatus.sort((a, b) => {
       // Calculate priority (lower number = higher priority)
-      const getPriority = (event: any, isJoined: boolean) => {
-        if (isJoined && !event.isPublic) return 1; // Joined + Private
-        if (isJoined && event.isPublic) return 2;  // Joined + Public
-        return 3; // Other events
+      const getPriority = (isJoined: boolean, isPublic: boolean) => {
+        if (isJoined && !isPublic) return 1; // Joined + Private
+        if (isJoined && isPublic) return 2;  // Joined + Public
+        return 3; // Other events (not joined)
       };
       
-      const aPriority = getPriority(a, aJoined);
-      const bPriority = getPriority(b, bJoined);
+      const aPriority = getPriority(a.isJoined, a.event.isPublic);
+      const bPriority = getPriority(b.isJoined, b.event.isPublic);
       
       // First sort by priority
       if (aPriority !== bPriority) {
@@ -175,8 +179,8 @@ export const getEvents = async (req: Request, res: Response) => {
       }
       
       // Within same priority, sort by start time
-      return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
-    });
+      return new Date(a.event.startTime).getTime() - new Date(b.event.startTime).getTime();
+    }).map(item => item.event);
 
     res.json(sortedEvents);
   } catch (error) {
