@@ -87,7 +87,7 @@ const Dashboard = () => {
       {/* Main Content and Sidebar Row */}
       <Grid container spacing={3} alignItems="flex-start">
         {/* Main Content - Left Side */}
-        <Grid item xs={12} lg={9}>
+        <Grid item xs={12} md={8} lg={9}>
           {/* Statistics Section */}
           <Box sx={{ mb: 3 }}>
             <UserStatistics />
@@ -310,13 +310,14 @@ const Dashboard = () => {
         <Grid 
           item 
           xs={12} 
+          md={4}
           lg={3} 
           sx={{ 
-            position: { lg: 'sticky' }, 
-            top: { lg: 80 }, 
-            alignSelf: { lg: 'flex-start' },
-            maxHeight: { lg: 'calc(100vh - 100px)' },
-            overflowY: { lg: 'auto' },
+            position: { md: 'sticky' }, 
+            top: { md: 80 }, 
+            alignSelf: { md: 'flex-start' },
+            maxHeight: { md: 'calc(100vh - 100px)' },
+            overflowY: { md: 'auto' },
             '&::-webkit-scrollbar': {
               width: '6px',
             },
