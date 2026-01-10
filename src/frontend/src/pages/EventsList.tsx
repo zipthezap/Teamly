@@ -377,7 +377,7 @@ const EventsList = () => {
             const participantCount = event.participants?.length || 0;
             const spotsLeft = event.maxPlayers ? event.maxPlayers - participantCount : null;
             const isJoined = event.participants?.some((p: any) => p.userId === user?.id);
-            const isAdmin = event.organizerId === user?.id;
+            const isAdmin = event.creatorId === user?.id;
             return (
               <Card 
                 key={event.id}
