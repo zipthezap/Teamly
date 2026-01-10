@@ -39,6 +39,7 @@ import GroupIcon from '@mui/icons-material/Group';
 import { useNavigate } from 'react-router-dom';
 import { useEnhancedNotifications } from '../hooks/useEnhancedNotifications';
 import { useTranslation } from 'react-i18next';
+import { Notification } from '../../../shared/types';
 
 const NotificationsCenter: React.FC = () => {
   const navigate = useNavigate();
@@ -70,14 +71,14 @@ const NotificationsCenter: React.FC = () => {
   };
 
   // Handle notification click
-  const handleNotificationClick = async (notif: any) => {
+  const handleNotificationClick = async (notif: Notification) => {
     try {
       await markAsRead([notif.id]);
     } catch (err) {
       console.error('Failed to mark notification as read:', err);
     }
 
-    if (notif.metadata?.actionUrl) {
+    if ('metadata' in notif && notif.metadata?.actionUrl) {
       navigate(notif.metadata.actionUrl);
     } else if (notif.notificationType === 'event' && notif.event?.id) {
       navigate(`/events/${notif.event.id}`);

@@ -12,6 +12,7 @@ import {
 import { groupsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { Group } from '../../../shared/types';
 
 const JoinGroup = () => {
   const { groupId } = useParams();
@@ -23,7 +24,7 @@ const JoinGroup = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [hasAttemptedJoin, setHasAttemptedJoin] = useState(false);
-  const [groupInfo, setGroupInfo] = useState<any>(null);
+  const [groupInfo, setGroupInfo] = useState<Group | null>(null);
 
   // Fetch group info (for display purposes)
   useEffect(() => {
@@ -31,7 +32,7 @@ const JoinGroup = () => {
       try {
         // Try to get public group info without auth
         const res = await groupsAPI.getPublic();
-        const foundGroup = res.data.find((g: any) => g.id === groupId);
+        const foundGroup = res.data.find((g: Group) => g.id === groupId);
         if (foundGroup) {
           setGroupInfo(foundGroup);
         }

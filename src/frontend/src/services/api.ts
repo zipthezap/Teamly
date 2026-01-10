@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig, AxiosError } from 'axios';
 import { 
   CreateTeamUpRequestData, 
   UpdateTeamUpRequestData, 
@@ -38,8 +38,8 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 // Handle auth errors
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
-  (error: any) => {
-    if (error.response?.status === 401) {
+  (error: unknown) => {
+    if (error instanceof AxiosError && error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';

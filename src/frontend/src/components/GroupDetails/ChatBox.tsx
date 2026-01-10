@@ -1,9 +1,10 @@
 import React, { useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getImageUrl, getInitials } from "../../utils/imageUtils";
+import { GroupMessage } from "../../../../shared/types";
 
 interface ChatBoxProps {
-  chat: any[];
+  chat: GroupMessage[];
   message: string;
   setMessage: (msg: string) => void;
   onSend: () => void;

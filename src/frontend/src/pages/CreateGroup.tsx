@@ -15,6 +15,7 @@ import {
 import { groupsAPI } from '../services/api';
 import LocationPicker from '../components/LocationPicker';
 import ImageUpload from '../components/ImageUpload';
+import { AxiosError } from 'axios';
 
 interface LocationValue {
   latitude?: number | string;
@@ -65,8 +66,11 @@ const CreateGroup = () => {
       }
       
       navigate(`/groups/${groupId}`);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to create group');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || 'Failed to create group'
+        : 'Failed to create group';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

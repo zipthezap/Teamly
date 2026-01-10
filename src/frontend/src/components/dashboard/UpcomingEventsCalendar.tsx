@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { EventParticipant } from '../../../../shared/types';
 // Removed all MUI imports; using Tailwind and SVGs
 
 interface Event {
@@ -8,7 +9,7 @@ interface Event {
   eventType: string;
   startTime: string;
   location?: string;
-  participants?: any[];
+  participants?: EventParticipant[];
   maxPlayers?: number;
   creatorId?: string;
 }

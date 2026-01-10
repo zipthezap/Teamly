@@ -30,12 +30,14 @@ import {
   Person,
   AccessTime
 } from '@mui/icons-material';
+import { EventWithDetails, EventParticipant, GuestParticipant } from '../../../shared/types';
+import { AxiosError } from 'axios';
 
 const JoinEventByInvite = () => {
   const { token } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [event, setEvent] = useState<any>(null);
+  const [event, setEvent] = useState<EventWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState('');
@@ -47,8 +49,11 @@ const JoinEventByInvite = () => {
       try {
         const response = await eventsAPI.getByInviteToken(token);
         setEvent(response.data);
-      } catch (err: any) {
-        setError(err.response?.data?.error || 'Failed to load event. The invite link may be invalid or expired.');
+      } catch (err: unknown) {
+        const errorMessage = err instanceof AxiosError 
+          ? err.response?.data?.error || 'Failed to load event. The invite link may be invalid or expired.'
+          : 'Failed to load event. The invite link may be invalid or expired.';
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -75,8 +80,11 @@ const JoinEventByInvite = () => {
       // Refresh event data to show updated participant count
       const response = await eventsAPI.getByInviteToken(token);
       setEvent(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to join event. Please try again.');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || 'Failed to join event. Please try again.'
+        : 'Failed to join event. Please try again.';
+      setError(errorMessage);
     } finally {
       setJoining(false);
     }
@@ -88,14 +96,16 @@ const JoinEventByInvite = () => {
     
     try {
       // Join as authenticated user
-      await eventsAPI.join(event.id);
+      await eventsAPI.join(event!.id);
       setSuccess('Successfully joined the event! Redirecting to event details...');
       // Redirect to event details after a short delay
       setTimeout(() => {
-        navigate(`/events/${event.id}`);
+        navigate(`/events/${event!.id}`);
       }, 1500);
-    } catch (err: any) {
-      const errorMsg = err.response?.data?.error || 'Failed to join event';
+    } catch (err: unknown) {
+      const errorMsg = err instanceof AxiosError 
+        ? err.response?.data?.error || 'Failed to join event'
+        : 'Failed to join event';
       // Provide specific error messages
       if (errorMsg.includes('full')) {
         setError('This event is currently full. Please check back later.');
@@ -136,13 +146,13 @@ const JoinEventByInvite = () => {
   }
 
   const totalParticipants = 
-    (event.participants?.filter((p: any) => p.status === 'confirmed').length || 0) +
-    (event.guestParticipants?.filter((g: any) => g.status === 'confirmed').length || 0);
+    (event.participants?.filter((p: EventParticipant) => p.status === 'confirmed').length || 0) +
+    (event.guestParticipants?.filter((g: GuestParticipant) => g.status === 'confirmed').length || 0);
 
   const isFull = event.maxPlayers && totalParticipants >= event.maxPlayers;
 
   // Check if user is already a participant (done efficiently with some())
-  const isAlreadyParticipant = user && event.participants?.some((p: any) => p.userId === user.id);
+  const isAlreadyParticipant = user && event.participants?.some((p: EventParticipant) => p.userId === user.id);
 
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
@@ -261,7 +271,7 @@ const JoinEventByInvite = () => {
           {totalParticipants > 0 && (
             <Box sx={{ mb: 2 }}>
               <AvatarGroup max={8} sx={{ justifyContent: 'flex-start' }}>
-                {event.participants?.filter((p: any) => p.status === 'confirmed').map((p: any, idx: number) => {
+                {event.participants?.filter((p: EventParticipant) => p.status === 'confirmed').map((p: EventParticipant, idx: number) => {
                   const profilePictureUrl = getImageUrl(p.user?.profilePicture);
                   return (
                     <Avatar key={idx} sx={{ bgcolor: 'primary.main' }} src={profilePictureUrl || undefined}>
@@ -269,7 +279,7 @@ const JoinEventByInvite = () => {
                     </Avatar>
                   );
                 })}
-                {event.guestParticipants?.filter((g: any) => g.status === 'confirmed').map((g: any, idx: number) => (
+                {event.guestParticipants?.filter((g: GuestParticipant) => g.status === 'confirmed').map((g: GuestParticipant, idx: number) => (
                   <Avatar key={`guest-${idx}`} sx={{ bgcolor: 'secondary.main' }}>
                     {getInitials(g.name)}
                   </Avatar>
