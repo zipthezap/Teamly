@@ -16,6 +16,7 @@ import {
   NotificationPreferences,
   TwoFactorSection,
 } from '../components/profile';
+import { AxiosError } from 'axios';
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
@@ -100,8 +101,11 @@ const Profile = () => {
       const updatedUser = response.data.user;
       updateUser(updatedUser);
       setSuccess('Profile updated successfully');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to update profile');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || 'Failed to update profile'
+        : 'Failed to update profile';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -135,8 +139,11 @@ const Profile = () => {
         newPassword: '',
         confirmPassword: '',
       });
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to update password');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || 'Failed to update password'
+        : 'Failed to update password';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -183,8 +190,11 @@ const Profile = () => {
       const updatedUser = response.data.user;
       updateUser(updatedUser);
       setSuccess('Profile picture updated successfully');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to upload profile picture');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || 'Failed to upload profile picture'
+        : 'Failed to upload profile picture';
+      setError(errorMessage);
       throw err;
     }
   };
@@ -198,8 +208,11 @@ const Profile = () => {
       const updatedUser = response.data.user;
       updateUser(updatedUser);
       setSuccess('Profile picture removed successfully');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to delete profile picture');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || 'Failed to delete profile picture'
+        : 'Failed to delete profile picture';
+      setError(errorMessage);
       throw err;
     }
   };

@@ -16,6 +16,7 @@ import { groupsAPI } from '../services/api';
 import LocationPicker from '../components/LocationPicker';
 import ImageUpload from '../components/ImageUpload';
 import { useTranslation } from 'react-i18next';
+import { AxiosError } from 'axios';
 
 interface LocationValue {
   latitude?: number | string;
@@ -84,8 +85,11 @@ const EditGroup = () => {
       };
       await groupsAPI.update(id, groupData);
       navigate(`/groups/${id}`);
-    } catch (err) {
-      setError(err.response?.data?.error || t('groups.failedToUpdate'));
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || t('groups.failedToUpdate')
+        : t('groups.failedToUpdate');
+      setError(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -96,8 +100,11 @@ const EditGroup = () => {
     try {
       const response = await groupsAPI.uploadGroupPicture(id!, file);
       setGroupPicture(response.data.group.picture);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to upload group picture');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || 'Failed to upload group picture'
+        : 'Failed to upload group picture';
+      setError(errorMessage);
       throw err;
     }
   };
@@ -107,8 +114,11 @@ const EditGroup = () => {
     try {
       const response = await groupsAPI.deleteGroupPicture(id!);
       setGroupPicture(response.data.group.picture);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to delete group picture');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || 'Failed to delete group picture'
+        : 'Failed to delete group picture';
+      setError(errorMessage);
       throw err;
     }
   };
