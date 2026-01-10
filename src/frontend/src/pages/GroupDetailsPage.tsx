@@ -14,6 +14,8 @@ import ChatBox from "../components/GroupDetails/ChatBox";
 import ImageUpload from "../components/ImageUpload";
 import { Group, Member, ChatMessage } from "../types/group";
 import { groupsAPI, eventsAPI, groupChatAPI } from "../services/api";
+import { EventWithDetails, GroupMessage, UpdateGroupData } from "../../../shared/types";
+import { AxiosError } from "axios";
 
 // Simple toast system
 function Toast({ message, type, onClose }: { message: string; type: "success" | "error"; onClose: () => void }) {
@@ -30,7 +32,7 @@ export default function GroupDetailsPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [eventModalOpen, setEventModalOpen] = useState(false);
-  const [editEvent, setEditEvent] = useState<any>(null);
+  const [editEvent, setEditEvent] = useState<EventWithDetails | null>(null);
   const { id: groupId } = useParams();
   const queryClient = useQueryClient();
 
@@ -101,7 +103,7 @@ export default function GroupDetailsPage() {
 
   // Update group mutation
   const updateGroupMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: UpdateGroupData) => {
       await groupsAPI.update(groupId!, data);
       return data;
     },
@@ -110,8 +112,9 @@ export default function GroupDetailsPage() {
       queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
       setSettingsOpen(false);
     },
-    onError: (err: any) => {
-      setToast({ message: err?.message || t('groupDetails.failedToUpdateGroup'), type: "error" });
+    onError: (err: unknown) => {
+      const errorMessage = err instanceof Error ? err.message : t('groupDetails.failedToUpdateGroup');
+      setToast({ message: errorMessage, type: "error" });
     },
   });
 
@@ -125,8 +128,9 @@ export default function GroupDetailsPage() {
       setToast({ message: t('groupDetails.eventDeleted'), type: "success" });
       queryClient.invalidateQueries({ queryKey: ["groupEvents", groupId] });
     },
-    onError: (err: any) => {
-      setToast({ message: err?.message || t('groupDetails.failedToDeleteEvent'), type: "error" });
+    onError: (err: unknown) => {
+      const errorMessage = err instanceof Error ? err.message : t('groupDetails.failedToDeleteEvent');
+      setToast({ message: errorMessage, type: "error" });
     },
   });
 
@@ -142,16 +146,17 @@ export default function GroupDetailsPage() {
       // Optimistically update group members
       await queryClient.cancelQueries({ queryKey: ["groupDetails", groupId] });
       const prevGroup = queryClient.getQueryData(["groupDetails", groupId]);
-      if (prevGroup && (prevGroup as any).members) {
+      if (prevGroup && (prevGroup as Group).members) {
         queryClient.setQueryData(["groupDetails", groupId], {
-          ...(prevGroup as any),
-          members: (prevGroup as any).members.filter((m: Member) => m.email !== email),
+          ...(prevGroup as Group),
+          members: (prevGroup as Group).members.filter((m: Member) => m.email !== email),
         });
       }
       return { prevGroup };
     },
-    onError: (err: any, _email, context: any) => {
-      setToast({ message: err?.message || t('groupDetails.failedToRemove'), type: "error" });
+    onError: (err: unknown, _email, context: { prevGroup?: unknown } | undefined) => {
+      const errorMessage = err instanceof Error ? err.message : t('groupDetails.failedToRemove');
+      setToast({ message: errorMessage, type: "error" });
       if (context?.prevGroup) {
         queryClient.setQueryData(["groupDetails", groupId], context.prevGroup);
       }
@@ -179,8 +184,9 @@ export default function GroupDetailsPage() {
       }
       return { prevChat };
     },
-    onError: (err: any, _content, context: any) => {
-      setToast({ message: err?.message || t('groupDetails.failedToSendMessage'), type: "error" });
+    onError: (err: unknown, _content, context: { prevChat?: unknown } | undefined) => {
+      const errorMessage = err instanceof Error ? err.message : t('groupDetails.failedToSendMessage');
+      setToast({ message: errorMessage, type: "error" });
       if (context?.prevChat) {
         queryClient.setQueryData(["groupChat", groupId], context.prevChat);
       }
@@ -260,8 +266,11 @@ export default function GroupDetailsPage() {
         navigate('/groups');
       }, 1000);
     },
-    onError: (err: any) => {
-      setToast({ message: err?.response?.data?.error || t('groupDetails.failedToDelete'), type: "error" });
+    onError: (err: unknown) => {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || t('groupDetails.failedToDelete')
+        : t('groupDetails.failedToDelete');
+      setToast({ message: errorMessage, type: "error" });
     },
   });
 
@@ -285,8 +294,11 @@ export default function GroupDetailsPage() {
         navigate('/groups');
       }, 1000);
     },
-    onError: (err: any) => {
-      setToast({ message: err?.response?.data?.error || t('groupDetails.failedToLeave'), type: "error" });
+    onError: (err: unknown) => {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || t('groupDetails.failedToLeave')
+        : t('groupDetails.failedToLeave');
+      setToast({ message: errorMessage, type: "error" });
     },
   });
 
@@ -310,8 +322,11 @@ export default function GroupDetailsPage() {
       setTimeout(() => {
         navigate('/groups');
       }, 1000);
-    } catch (err: any) {
-      setToast({ message: err?.response?.data?.error || t('groupDetails.failedToLeave'), type: "error" });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || t('groupDetails.failedToLeave')
+        : t('groupDetails.failedToLeave');
+      setToast({ message: errorMessage, type: "error" });
     }
   };
 
@@ -332,8 +347,11 @@ export default function GroupDetailsPage() {
       setInviteEmail("");
       queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
     },
-    onError: (err: any) => {
-      setToast({ message: err?.response?.data?.error || t('groupDetails.failedToInvite'), type: "error" });
+    onError: (err: unknown) => {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || t('groupDetails.failedToInvite')
+        : t('groupDetails.failedToInvite');
+      setToast({ message: errorMessage, type: "error" });
     },
   });
 
@@ -355,8 +373,11 @@ export default function GroupDetailsPage() {
       const inviteLink = `${window.location.origin}/join-group/${res.data.groupId}`;
       await navigator.clipboard.writeText(inviteLink);
       setToast({ message: `${t('groupDetails.inviteLinkCopied')}\n${t('groupDetails.inviteLinkInstructions')}` , type: "success" });
-    } catch (err: any) {
-      setToast({ message: err?.response?.data?.error || t('groupDetails.failedToGetInviteLink'), type: "error" });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || t('groupDetails.failedToGetInviteLink')
+        : t('groupDetails.failedToGetInviteLink');
+      setToast({ message: errorMessage, type: "error" });
     }
   };
 
@@ -367,8 +388,11 @@ export default function GroupDetailsPage() {
       setGroupPicture(response.data.group.picture);
       setToast({ message: t('groupDetails.groupPictureUpdated') || 'Group picture updated successfully', type: "success" });
       queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
-    } catch (err: any) {
-      setToast({ message: err?.response?.data?.error || t('groupDetails.failedToUploadPicture') || 'Failed to upload group picture', type: "error" });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || t('groupDetails.failedToUploadPicture') || 'Failed to upload group picture'
+        : t('groupDetails.failedToUploadPicture') || 'Failed to upload group picture';
+      setToast({ message: errorMessage, type: "error" });
       throw err;
     }
   };
@@ -380,8 +404,11 @@ export default function GroupDetailsPage() {
       setGroupPicture(response.data.group.picture ?? undefined);
       setToast({ message: t('groupDetails.groupPictureDeleted') || 'Group picture deleted successfully', type: "success" });
       queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
-    } catch (err: any) {
-      setToast({ message: err?.response?.data?.error || t('groupDetails.failedToDeletePicture') || 'Failed to delete group picture', type: "error" });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || t('groupDetails.failedToDeletePicture') || 'Failed to delete group picture'
+        : t('groupDetails.failedToDeletePicture') || 'Failed to delete group picture';
+      setToast({ message: errorMessage, type: "error" });
       throw err;
     }
   };

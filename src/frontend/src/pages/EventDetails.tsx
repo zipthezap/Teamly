@@ -5,13 +5,15 @@ import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import InviteLinkCard from '../components/InviteLinkCard';
 import { getImageUrl, getInitials } from '../utils/imageUtils';
+import { EventWithDetails, EventParticipant, GuestParticipant } from '../../../shared/types';
+import { AxiosError } from 'axios';
 
 const EventDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useTranslation();
-  const [event, setEvent] = useState(null);
+  const [event, setEvent] = useState<EventWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -43,8 +45,11 @@ const EventDetails = () => {
       await eventsAPI.join(id);
       setSuccess(t('eventDetails.joined'));
       fetchEvent();
-    } catch (err: any) {
-      setError(err.response?.data?.error || t('eventDetails.failedToJoin'));
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || t('eventDetails.failedToJoin')
+        : t('eventDetails.failedToJoin');
+      setError(errorMessage);
     }
   };
 
@@ -57,8 +62,11 @@ const EventDetails = () => {
       await eventsAPI.leave(id);
       setSuccess(t('eventDetails.left'));
       fetchEvent();
-    } catch (err: any) {
-      setError(err.response?.data?.error || t('eventDetails.failedToLeave'));
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || t('eventDetails.failedToLeave')
+        : t('eventDetails.failedToLeave');
+      setError(errorMessage);
     }
   };
 
@@ -69,8 +77,11 @@ const EventDetails = () => {
       await eventsAPI.updateStatus(id, status);
       setSuccess(t('eventDetails.statusUpdated', { status }));
       fetchEvent();
-    } catch (err: any) {
-      setError(err.response?.data?.error || t('eventDetails.failedToUpdateStatus'));
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || t('eventDetails.failedToUpdateStatus')
+        : t('eventDetails.failedToUpdateStatus');
+      setError(errorMessage);
     }
   };
 
@@ -80,8 +91,11 @@ const EventDetails = () => {
     try {
       await eventsAPI.delete(id);
       navigate('/events');
-    } catch (err: any) {
-      setError(err.response?.data?.error || t('eventDetails.failedToDelete'));
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || t('eventDetails.failedToDelete')
+        : t('eventDetails.failedToDelete');
+      setError(errorMessage);
     }
   };
 
@@ -119,8 +133,11 @@ const EventDetails = () => {
       setCopySuccess('Invite link copied to clipboard!');
       // Refresh event to show updated inviteToken
       fetchEvent();
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to generate invite link');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.error || 'Failed to generate invite link'
+        : 'Failed to generate invite link';
+      setError(errorMessage);
     }
   };
 
@@ -133,12 +150,12 @@ const EventDetails = () => {
     }
   };
 
-  const isParticipant = event?.participants?.find((p: any) => p.userId === user?.id);
+  const isParticipant = event?.participants?.find((p: EventParticipant) => p.userId === user?.id);
   const isCreator = event?.creatorId === user?.id;
   const isFull = event?.maxPlayers && (event?.participants?.length || 0) >= event?.maxPlayers;
   const totalParticipants = 
-    ((event?.participants?.filter((p: any) => p.status === 'confirmed').length) || 0) +
-    ((event?.guestParticipants?.filter((g: any) => g.status === 'confirmed').length) || 0);
+    ((event?.participants?.filter((p: EventParticipant) => p.status === 'confirmed').length) || 0) +
+    ((event?.guestParticipants?.filter((g: GuestParticipant) => g.status === 'confirmed').length) || 0);
 
   if (loading) {
     return (
@@ -157,8 +174,8 @@ const EventDetails = () => {
   }
 
   const participantCount = totalParticipants;
-  const confirmedCount = event?.participants?.filter((p: any) => p.status === 'confirmed').length || 0;
-  const declinedCount = event?.participants?.filter((p: any) => p.status === 'declined').length || 0;
+  const confirmedCount = event?.participants?.filter((p: EventParticipant) => p.status === 'confirmed').length || 0;
+  const declinedCount = event?.participants?.filter((p: EventParticipant) => p.status === 'declined').length || 0;
   const pendingCount = (event?.participants?.length || 0) - confirmedCount - declinedCount;
   const fillPercentage = event?.maxPlayers ? (participantCount / event.maxPlayers) * 100 : 0;
 

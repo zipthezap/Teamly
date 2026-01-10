@@ -44,23 +44,25 @@ import EventFormModal from '../components/event/EventFormModal';
 import { useAuth } from '../contexts/AuthContext';
 import EventSearchFilters from '../components/event/EventSearchFilters';
 import { LoadingSpinner, EmptyState, StatusBadge, StatusType } from '../components/common';
+import { EventWithDetails, EventSearchParams, GroupWithDetails, EventParticipant, GroupMember } from '../../../shared/types';
+import { AxiosError } from 'axios';
 
 
 const EventsList = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [searchFilters, setSearchFilters] = useState({});
+  const [searchFilters, setSearchFilters] = useState<EventSearchParams>({});
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editEvent, setEditEvent] = useState<any>(null);
+  const [editEvent, setEditEvent] = useState<EventWithDetails | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [eventToDelete, setEventToDelete] = useState<any>(null);
+  const [eventToDelete, setEventToDelete] = useState<EventWithDetails | null>(null);
   const [visibleCount, setVisibleCount] = useState(12);
-  const [events, setEvents] = useState<any[]>([]);
-  const [groups, setGroups] = useState<Array<{ id: string; name: string }>>([]);
+  const [events, setEvents] = useState<EventWithDetails[]>([]);
+  const [groups, setGroups] = useState<GroupWithDetails[]>([]);
   const [tab, setTab] = useState<'my' | 'upcoming' | 'past'>('my');
   const [isLoading, setIsLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
-  const [error, setError] = useState<any>(null);
+  const [error, setError] = useState<Error | null>(null);
   const [page, setPage] = useState(1);
   const [useInfiniteScroll, setUseInfiniteScroll] = useState(true);
   const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
@@ -92,7 +94,7 @@ const EventsList = () => {
       }
       setIsLoading(true);
       const offset = (page - 1) * visibleCount;
-      const params = { ...searchFilters, offset, limit: visibleCount } as import('../services/api').EventSearchParams;
+      const params: EventSearchParams = { ...searchFilters, offset, limit: visibleCount };
       const response = await eventsAPI.getAll(params);
       setEvents(response.data);
     } finally {
@@ -113,8 +115,11 @@ const EventsList = () => {
       setDeleteDialogOpen(false);
       setEventToDelete(null);
       fetchEvents();
-    } catch (err: any) {
-      setToast({ message: err?.response?.data?.message || t('events.errorDeletingEvent'), type: 'error' });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.message || t('events.errorDeletingEvent')
+        : t('events.errorDeletingEvent');
+      setToast({ message: errorMessage, type: 'error' });
     }
   };
 
@@ -124,8 +129,11 @@ const EventsList = () => {
       await eventsAPI.join(eventId);
       setToast({ message: t('events.eventJoined'), type: 'success' });
       fetchEvents();
-    } catch (err: any) {
-      setToast({ message: err?.response?.data?.message || t('events.errorJoiningEvent'), type: 'error' });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.message || t('events.errorJoiningEvent')
+        : t('events.errorJoiningEvent');
+      setToast({ message: errorMessage, type: 'error' });
     }
   };
 
@@ -135,8 +143,11 @@ const EventsList = () => {
       await eventsAPI.leave(eventId);
       setToast({ message: t('events.leftEvent'), type: 'success' });
       fetchEvents();
-    } catch (err: any) {
-      setToast({ message: err?.response?.data?.message || t('events.failedToLeaveEvent'), type: 'error' });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof AxiosError 
+        ? err.response?.data?.message || t('events.failedToLeaveEvent')
+        : t('events.failedToLeaveEvent');
+      setToast({ message: errorMessage, type: 'error' });
     }
   };
 
@@ -182,7 +193,7 @@ const EventsList = () => {
         message: t('events.exportSuccess', { format: format.toUpperCase() }) || `Events exported successfully as ${format.toUpperCase()}`, 
         type: 'success' 
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Export error:', err);
       setToast({ 
         message: t('events.exportError') || 'Failed to export events', 
@@ -194,7 +205,7 @@ const EventsList = () => {
   };
 
   // Handle search/filter
-  const handleSearch = (filters: any) => {
+  const handleSearch = (filters: EventSearchParams) => {
     setSearchFilters(filters);
     setPage(1);
     setSearchParams({ ...filters, page: '1' }, { replace: false });
@@ -206,11 +217,11 @@ const EventsList = () => {
   };
 
   // Get event status
-  const getEventStatus = (event: any): { label: string; status: StatusType } => {
+  const getEventStatus = (event: EventWithDetails): { label: string; status: StatusType } => {
     const now = new Date();
     const eventDate = new Date(event.startTime);
-    const isFull = event.maxPlayers && event.participants?.length >= event.maxPlayers;
-    const isJoined = event.participants?.some((p: any) => p.userId === user?.id);
+    const isFull = event.maxPlayers && event.participants && event.participants.length >= event.maxPlayers;
+    const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user?.id);
     if (eventDate < now) return { label: t('common.past'), status: 'default' };
     if (isFull) return { label: t('common.full'), status: 'warning' };
     if (isJoined) return { label: t('common.joined'), status: 'success' };
@@ -244,13 +255,13 @@ const EventsList = () => {
 
   // Filter events by tab
   const now = new Date();
-  let filteredEvents: any[] = [];
+  let filteredEvents: EventWithDetails[] = [];
   if (tab === 'my') {
     // 0. Events I'm organizing
     // 1. Private events of groups I'm in and participating
     // 2. Public events of groups I'm in and participating
     const userGroupIds = groups
-      .filter(g => g.members?.some((m: any) => m.userId === user?.id))
+      .filter(g => g.members?.some((m: GroupMember) => m.userId === user?.id))
       .map(g => g.id);
     const organizedEvents = events.filter(event => {
       const eventDate = new Date(event.startTime);
@@ -259,13 +270,13 @@ const EventsList = () => {
     const privateInGroups = events.filter(event => {
       const eventDate = new Date(event.startTime);
       const isUserGroup = event.group && userGroupIds.includes(event.group.id);
-      const isJoined = event.participants?.some((p: any) => p.userId === user?.id);
+      const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user?.id);
       return eventDate >= now && !event.isPublic && isUserGroup && isJoined && event.organizerId !== user?.id;
     });
     const publicInGroups = events.filter(event => {
       const eventDate = new Date(event.startTime);
       const isUserGroup = event.group && userGroupIds.includes(event.group.id);
-      const isJoined = event.participants?.some((p: any) => p.userId === user?.id);
+      const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user?.id);
       return eventDate >= now && event.isPublic && isUserGroup && isJoined && event.organizerId !== user?.id;
     });
     filteredEvents = [...organizedEvents, ...privateInGroups, ...publicInGroups];
@@ -275,7 +286,7 @@ const EventsList = () => {
     // 2. Public events of groups I'm in
     // 3. Public events of groups I'm not in
     const userGroupIds = groups
-      .filter(g => g.members?.some((m: any) => m.userId === user?.id))
+      .filter(g => g.members?.some((m: GroupMember) => m.userId === user?.id))
       .map(g => g.id);
     const organizedEvents = events.filter(event => {
       const eventDate = new Date(event.startTime);
@@ -300,7 +311,7 @@ const EventsList = () => {
   } else {
     filteredEvents = events.filter(event => {
       const eventDate = new Date(event.startTime);
-      const isJoined = event.participants?.some((p: any) => p.userId === user?.id);
+      const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user?.id);
       const isOrganizer = event.organizerId === user?.id;
       return eventDate < now && (isJoined || isOrganizer);
     });
@@ -409,11 +420,11 @@ const EventsList = () => {
         />
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
-          {filteredEvents.map((event: any, idx: number) => {
+          {filteredEvents.map((event: EventWithDetails, idx: number) => {
             const status = getEventStatus(event);
             const participantCount = event.participants?.length || 0;
             const spotsLeft = event.maxPlayers ? event.maxPlayers - participantCount : null;
-            const isJoined = event.participants?.some((p: any) => p.userId === user?.id);
+            const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user?.id);
             const isAdmin = event.organizerId === user?.id;
             return (
               <Card 
