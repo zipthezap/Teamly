@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as groupController from '../controllers/groupController';
-import authMiddleware from '../middleware/auth';
+import authMiddleware, { optionalAuthMiddleware } from '../middleware/auth';
 import { authenticatedLimiter, uploadLimiter } from '../middleware/rateLimiter';
 import { uploadGroupPicture } from '../middleware/upload';
 
@@ -9,8 +9,8 @@ const router = Router();
 // Public join via invite link (no auth)
 router.post('/join', groupController.joinGroupByInvite);
 
-// Public route to get all public groups
-router.get('/public', groupController.getPublicGroups);
+// Public route to get all public groups (with optional auth to filter out user's groups)
+router.get('/public', optionalAuthMiddleware, groupController.getPublicGroups);
 
 router.use(authMiddleware);
 router.use(authenticatedLimiter);

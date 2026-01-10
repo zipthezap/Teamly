@@ -385,9 +385,7 @@ const PublicGroups = () => {
             {t('groups.publicGroups.showingGroups', { count: filteredGroups.length, total: groups.length })}
           </div>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
-            {filteredGroups
-              .filter(group => !group.members?.some(m => m.userId === user?.id))
-              .map((group) => {
+            {filteredGroups.map((group) => {
               const memberCount = group._count?.members ?? group.memberCount ?? group.members?.length ?? 0;
               const eventCount = group._count?.events ?? group.eventCount ?? group.events?.length ?? 0;
               // Don't show member avatars in public groups page since user hasn't joined
