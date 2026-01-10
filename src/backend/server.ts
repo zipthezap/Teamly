@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express, { Request, Response, Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 import path from 'path';
 
 import authRoutes from './routes/authRoutes';
@@ -15,16 +16,18 @@ import groupChatRoutes from './routes/groupChatRoutes';
 import notificationPreferenceRoutes from './routes/notificationPreferenceRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import { apiLimiter } from './middleware/rateLimiter';
+import { requestTimeout } from './middleware/requestTimeout';
 import { logger } from './utils/logger';
 import { validateEnvironmentOrThrow } from './utils/envValidator';
 import { config, logConfig } from './config/appConfig';
 import { requestContext, performanceMonitor } from './middleware/requestContext';
 import { sanitizeInput } from './middleware/sanitizeInput';
 import { errorHandler } from './middleware/errorHandler';
-import { checkDatabaseHealth, setupGracefulShutdown } from './utils/databaseHealth';
+import { setupGracefulShutdown, performHealthCheck } from './utils/databaseHealth';
 import { startEmailQueueProcessor, stopEmailQueueProcessor } from './services/emailQueueService';
 import { startScheduledJobs, stopScheduledJobs } from './services/scheduledJobs';
 import { ensureUploadDirectories } from './utils/imageProcessor';
+import { closeDatabaseConnections } from './config/database';
 
 // Validate environment variables before starting the server
 try {
@@ -47,6 +50,23 @@ const PORT = config.port;
 // Add request context and performance monitoring
 app.use(requestContext);
 app.use(performanceMonitor(config.slowRequestThresholdMs));
+
+// Enable gzip compression for responses
+app.use(compression({
+  // Only compress responses larger than 1kb
+  threshold: 1024,
+  // Compression level (0-9, where 6 is default balance of speed/compression)
+  level: 6,
+  // Filter function to determine what to compress
+  filter: (req, res) => {
+    // Don't compress if explicitly requested not to
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    // Use compression's default filter
+    return compression.filter(req, res);
+  }
+}));
 
 // Security: Add helmet for security headers
 app.use(helmet({
@@ -81,6 +101,9 @@ app.use(express.urlencoded({ extended: true, limit: config.requestBodySizeLimit 
 
 // Sanitize all incoming data to prevent XSS
 app.use(sanitizeInput);
+
+// Add request timeout (30 seconds by default)
+app.use(requestTimeout(30000));
 
 // Serve static files from uploads directory with security headers
 app.use('/uploads', express.static(path.join(__dirname, '../../uploads'), {
@@ -121,23 +144,30 @@ app.use('/api/chat', groupChatRoutes);
 app.use('/api/notification-preferences', notificationPreferenceRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-// Health check with database connectivity check
+// Enhanced health check with detailed metrics
 app.get('/health', async (_req: Request, res: Response) => {
-  const dbHealthy = await checkDatabaseHealth();
-  
-  if (dbHealthy) {
-    res.json({ 
-      status: 'ok', 
-      message: 'Teamly API is running',
-      database: 'connected',
-      timestamp: new Date().toISOString()
+  try {
+    const healthCheck = await performHealthCheck();
+    
+    const statusCode = healthCheck.status === 'healthy' ? 200 
+                     : healthCheck.status === 'degraded' ? 200 
+                     : 503;
+    
+    res.status(statusCode).json({
+      status: healthCheck.status,
+      message: healthCheck.status === 'healthy' 
+        ? 'Teamly API is running smoothly' 
+        : healthCheck.status === 'degraded'
+        ? 'Teamly API is running with degraded performance'
+        : 'Teamly API is experiencing issues',
+      ...healthCheck,
     });
-  } else {
-    res.status(503).json({ 
-      status: 'error', 
-      message: 'Database connection failed',
-      database: 'disconnected',
-      timestamp: new Date().toISOString()
+  } catch (error) {
+    logger.error('Health check failed', 'Server', { error });
+    res.status(503).json({
+      status: 'unhealthy',
+      message: 'Health check failed',
+      timestamp: new Date().toISOString(),
     });
   }
 });
@@ -173,11 +203,11 @@ ensureUploadDirectories()
     });
 
     // Enhanced graceful shutdown
-    const gracefulShutdown = () => {
+    const gracefulShutdown = async () => {
       logger.info('Shutting down gracefully...', 'Server');
       
       // Stop accepting new connections
-      server.close(() => {
+      server.close(async () => {
         logger.info('Server closed', 'Server');
         
         // Stop background services
@@ -185,6 +215,13 @@ ensureUploadDirectories()
           stopEmailQueueProcessor(emailQueueInterval);
         }
         stopScheduledJobs();
+        
+        // Close database connections
+        try {
+          await closeDatabaseConnections();
+        } catch (error) {
+          logger.error('Error during database shutdown', 'Server', { error });
+        }
         
         process.exit(0);
       });

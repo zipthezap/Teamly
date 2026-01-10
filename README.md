@@ -279,11 +279,21 @@ This project follows best practices for code quality and maintainability:
 - **Type Safety**: TypeScript with enabled compiler checks for unused locals/parameters and consistent casing
 - **Input Validation**: Validation utilities in `src/backend/utils/validation.ts` for consistent data validation
 - **Environment Validation**: Automatic validation of required environment variables on startup
-- **Backend Improvements**: Enhanced error handling, request tracking, and performance monitoring (see archived documentation)
+- **Backend Improvements**: 
+  - **Database Connection Pooling**: Configurable pool sizes, timeouts, and query limits
+  - **Response Compression**: Automatic gzip compression for responses
+  - **Enhanced Rate Limiting**: User-aware rate limiting with endpoint-specific limits
+  - **Request Timeouts**: Configurable timeouts to prevent hanging requests
+  - **Performance Indexes**: Comprehensive database indexes for faster queries
+  - **Health Monitoring**: Detailed health checks with database and memory metrics
+  - **Standardized API Responses**: Consistent response format with error codes
+  - See [docs/BACKEND_IMPROVEMENTS.md](docs/BACKEND_IMPROVEMENTS.md) for details
 - **Security Best Practices**: 
   - Environment-based JWT secrets (never hardcoded)
   - Automatic input sanitization and XSS prevention
-  - Rate limiting on API endpoints (5 auth requests, 300 general per 15min)
+  - Enhanced rate limiting (10 auth requests, 500 authenticated requests per 15min)
+  - Password reset protection (3 requests/hour)
+  - Email verification limits (5 requests/hour)
   - Security headers via Helmet (CSP, HSTS, etc.)
   - Password strength requirements (8+ chars, mixed case, numbers, special chars)
   - Account lockout after failed login attempts (5 attempts, 15min lockout)
@@ -292,6 +302,7 @@ This project follows best practices for code quality and maintainability:
   - Graceful shutdown and error handling
 
 For complete security documentation, see [docs/SECURITY.md](docs/SECURITY.md).
+For backend improvements details, see [docs/BACKEND_IMPROVEMENTS.md](docs/BACKEND_IMPROVEMENTS.md).
 
 ### Database Management
 

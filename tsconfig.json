@@ -5,14 +5,15 @@
     "lib": ["ES2020"],
     "outDir": "./dist",
     "rootDir": "./src",
+    // Strict mode gradually enabled - full strict mode requires extensive refactoring
     "strict": false,
-    "noImplicitAny": false,
+    "noImplicitAny": false, // TODO: Enable after fixing all implicit any types
     "strictNullChecks": false,
     "strictFunctionTypes": false,
     "strictPropertyInitialization": false,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noImplicitReturns": false,
+    "noImplicitReturns": false, // TODO: Enable after fixing all missing return statements
     "noFallthroughCasesInSwitch": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
