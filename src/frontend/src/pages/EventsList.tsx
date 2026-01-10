@@ -254,19 +254,19 @@ const EventsList = () => {
       .map(g => g.id);
     const organizedEvents = events.filter(event => {
       const eventDate = new Date(event.startTime);
-      return eventDate >= now && event.organizerId === user?.id;
+      return eventDate >= now && event.creatorId === user?.id;
     });
     const privateInGroups = events.filter(event => {
       const eventDate = new Date(event.startTime);
       const isUserGroup = event.group && userGroupIds.includes(event.group.id);
       const isJoined = event.participants?.some((p: any) => p.userId === user?.id);
-      return eventDate >= now && !event.isPublic && isUserGroup && isJoined && event.organizerId !== user?.id;
+      return eventDate >= now && !event.isPublic && isUserGroup && isJoined && event.creatorId !== user?.id;
     });
     const publicInGroups = events.filter(event => {
       const eventDate = new Date(event.startTime);
       const isUserGroup = event.group && userGroupIds.includes(event.group.id);
       const isJoined = event.participants?.some((p: any) => p.userId === user?.id);
-      return eventDate >= now && event.isPublic && isUserGroup && isJoined && event.organizerId !== user?.id;
+      return eventDate >= now && event.isPublic && isUserGroup && isJoined && event.creatorId !== user?.id;
     });
     filteredEvents = [...organizedEvents, ...privateInGroups, ...publicInGroups];
   } else if (tab === 'upcoming') {
@@ -279,29 +279,29 @@ const EventsList = () => {
       .map(g => g.id);
     const organizedEvents = events.filter(event => {
       const eventDate = new Date(event.startTime);
-      return eventDate >= now && event.organizerId === user?.id;
+      return eventDate >= now && event.creatorId === user?.id;
     });
     const privateInGroups = events.filter(event => {
       const eventDate = new Date(event.startTime);
       const isUserGroup = event.group && userGroupIds.includes(event.group.id);
-      return eventDate >= now && !event.isPublic && isUserGroup && event.organizerId !== user?.id;
+      return eventDate >= now && !event.isPublic && isUserGroup && event.creatorId !== user?.id;
     });
     const publicInGroups = events.filter(event => {
       const eventDate = new Date(event.startTime);
       const isUserGroup = event.group && userGroupIds.includes(event.group.id);
-      return eventDate >= now && event.isPublic && isUserGroup && event.organizerId !== user?.id;
+      return eventDate >= now && event.isPublic && isUserGroup && event.creatorId !== user?.id;
     });
     const publicNotInGroups = events.filter(event => {
       const eventDate = new Date(event.startTime);
       const isUserGroup = event.group && userGroupIds.includes(event.group.id);
-      return eventDate >= now && event.isPublic && !isUserGroup && event.organizerId !== user?.id;
+      return eventDate >= now && event.isPublic && !isUserGroup && event.creatorId !== user?.id;
     });
     filteredEvents = [...organizedEvents, ...privateInGroups, ...publicInGroups, ...publicNotInGroups];
   } else {
     filteredEvents = events.filter(event => {
       const eventDate = new Date(event.startTime);
       const isJoined = event.participants?.some((p: any) => p.userId === user?.id);
-      const isOrganizer = event.organizerId === user?.id;
+      const isOrganizer = event.creatorId === user?.id;
       return eventDate < now && (isJoined || isOrganizer);
     });
   }
@@ -414,7 +414,7 @@ const EventsList = () => {
             const participantCount = event.participants?.length || 0;
             const spotsLeft = event.maxPlayers ? event.maxPlayers - participantCount : null;
             const isJoined = event.participants?.some((p: any) => p.userId === user?.id);
-            const isAdmin = event.organizerId === user?.id;
+            const isAdmin = event.creatorId === user?.id;
             return (
               <Card 
                 key={event.id}
