@@ -2,18 +2,13 @@ import { Request, Response, NextFunction } from 'express';
 import { verifyToken, isTokenRevoked } from '../utils/jwt';
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
+import { PublicUser } from '../../shared/types';
 
 // Extend Express Request type to include user property
 declare global {
   namespace Express {
     interface Request {
-      user?: {
-        id: string;
-        email: string;
-        name: string;
-        city: string | null;
-        country: string | null;
-      };
+      user?: PublicUser;
       token?: string; // Store token for potential revocation
     }
   }

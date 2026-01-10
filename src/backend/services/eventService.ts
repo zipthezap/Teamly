@@ -4,6 +4,7 @@ import { logger } from '../utils/logger';
 import { sendEmail } from '../utils/emailService';
 import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
 import { sanitizeString } from '../utils/validation';
+import { ValidationResult } from '../../shared/types';
 
 /**
  * Sanitizes event data inputs
@@ -25,7 +26,7 @@ export const sanitizeEventData = (data: {
 /**
  * Validates event time constraints
  */
-export const validateEventTimes = (startTime: string, endTime?: string) => {
+export const validateEventTimes = (startTime: string, endTime?: string): ValidationResult => {
   const startDate = new Date(startTime);
   const now = new Date();
   
@@ -53,7 +54,7 @@ export const validateEventTimes = (startTime: string, endTime?: string) => {
 /**
  * Validates recurrence settings
  */
-export const validateRecurrence = (isRecurring: boolean, recurrenceRule?: string) => {
+export const validateRecurrence = (isRecurring: boolean, recurrenceRule?: string): ValidationResult => {
   if (isRecurring && recurrenceRule) {
     if (!validateRecurrenceRule(recurrenceRule)) {
       return { valid: false, error: 'Invalid recurrence rule format' };
