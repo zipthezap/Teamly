@@ -55,6 +55,7 @@ const BrowseRequestsTab = () => {
     sportType: '',
     city: user?.city || '',
     country: user?.country || '',
+    skillLevel: '',
   });
 
   useEffect(() => {
@@ -68,6 +69,7 @@ const BrowseRequestsTab = () => {
       if (filters.sportType) params.sportType = filters.sportType;
       if (filters.city) params.city = filters.city;
       if (filters.country) params.country = filters.country;
+      if (filters.skillLevel) params.skillLevel = filters.skillLevel;
       
       const response = await teamUpAPI.getAll(params);
       setRequests(response.data);
@@ -157,6 +159,20 @@ const BrowseRequestsTab = () => {
               onChange={(e) => setFilters({ ...filters, city: e.target.value })}
               placeholder="City"
             />
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              select
+              label={t('teamup.filterBySkillLevel')}
+              value={filters.skillLevel}
+              onChange={(e) => setFilters({ ...filters, skillLevel: e.target.value })}
+            >
+              <MenuItem value="">{t('teamup.skillLevels.any')}</MenuItem>
+              <MenuItem value="beginner">{t('teamup.skillLevels.beginner')}</MenuItem>
+              <MenuItem value="intermediate">{t('teamup.skillLevels.intermediate')}</MenuItem>
+              <MenuItem value="advanced">{t('teamup.skillLevels.advanced')}</MenuItem>
+            </TextField>
           </Grid>
         </Grid>
       </Box>

@@ -411,7 +411,7 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
 
     const teamUpRequest = await prisma.teamUpRequest.findUnique({
       where: { id },
-      select: { status: true, creatorId: true }
+      select: { status: true, creatorId: true, title: true }
     });
 
     if (!teamUpRequest) {
@@ -457,6 +457,23 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
       }
     });
 
+    // Create notification for the request creator
+    try {
+      await prisma.notification.create({
+        data: {
+          userId: teamUpRequest.creatorId,
+          type: 'teamup_response',
+          title: 'New TeamUp Response',
+          message: `${req.user.name} responded to your TeamUp request "${teamUpRequest.title}"`,
+          relatedEntityId: id,
+          relatedEntityType: 'teamup_request'
+        }
+      });
+    } catch (notifError) {
+      logger.error('Failed to create TeamUp response notification:', 'teamUpController', { error: notifError });
+      // Don't fail the response if notification fails
+    }
+
     res.status(201).json({ message: 'Response submitted', response });
   } catch (error) {
     logger.error('Respond to TeamUp request error:', 'teamUpController', { error });
@@ -476,7 +493,7 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
 
     const teamUpRequest = await prisma.teamUpRequest.findUnique({
       where: { id },
-      select: { creatorId: true }
+      select: { creatorId: true, playersNeeded: true, title: true }
     });
 
     if (!teamUpRequest) {
@@ -488,7 +505,17 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
     }
 
     const response = await prisma.teamUpResponse.findUnique({
-      where: { id: responseId }
+      where: { id: responseId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            profilePicture: true
+          }
+        }
+      }
     });
 
     if (!response) {
@@ -513,6 +540,43 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
         }
       }
     });
+
+    // Create notification for the responder
+    try {
+      await prisma.notification.create({
+        data: {
+          userId: response.userId,
+          type: action === 'accept' ? 'teamup_accepted' : 'teamup_declined',
+          title: action === 'accept' ? 'Response Accepted' : 'Response Declined',
+          message: action === 'accept' 
+            ? `Your response to "${teamUpRequest.title}" was accepted!`
+            : `Your response to "${teamUpRequest.title}" was declined.`,
+          relatedEntityId: id,
+          relatedEntityType: 'teamup_request'
+        }
+      });
+    } catch (notifError) {
+      logger.error('Failed to create TeamUp action notification:', 'teamUpController', { error: notifError });
+      // Don't fail the response if notification fails
+    }
+
+    // Check if request should be auto-filled
+    if (action === 'accept') {
+      const acceptedCount = await prisma.teamUpResponse.count({
+        where: {
+          teamUpRequestId: id,
+          status: 'accepted'
+        }
+      });
+
+      // Auto-update status to 'filled' if enough players have been accepted
+      if (acceptedCount >= teamUpRequest.playersNeeded) {
+        await prisma.teamUpRequest.update({
+          where: { id },
+          data: { status: 'filled' }
+        });
+      }
+    }
 
     res.json({ message: `Response ${action}ed`, response: updated });
   } catch (error) {
