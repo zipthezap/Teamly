@@ -7,6 +7,7 @@ import { Request, Response } from 'express';
 import { createInviteToken } from '../utils/inviteToken';
 import { TRANSACTION } from '../config/security';
 import * as eventService from '../services/eventService';
+import * as groupService from '../services/groupService';
 
 export const createEvent = async (req: Request, res: Response) => {
   try {
@@ -32,7 +33,7 @@ export const createEvent = async (req: Request, res: Response) => {
     }
 
     // Check if user is admin of the group
-    const isAdmin = await eventService.checkGroupAdmin(groupId, req.user.id);
+    const isAdmin = await groupService.checkGroupAdmin(groupId, req.user.id);
     if (!isAdmin) {
       return res.status(403).json({ error: 'Only group admins can create events for this group' });
     }

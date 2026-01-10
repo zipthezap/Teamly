@@ -63,20 +63,6 @@ export const determineEventStatus = (startTime: string, endTime?: string) => {
 };
 
 /**
- * Checks if user is admin of a group
- */
-export const checkGroupAdmin = async (groupId: string, userId: string) => {
-  const membership = await prisma.groupMember.findFirst({
-    where: {
-      groupId,
-      userId,
-      role: 'admin'
-    }
-  });
-  return !!membership;
-};
-
-/**
  * Gets group with members for notifications
  */
 export const getGroupWithMembers = async (groupId: string) => {
@@ -246,9 +232,9 @@ export const buildEventFilters = (
 
   // Archived filter
   if (filters.archived === 'true') {
-    where.archivedAt = { not: null };
+    where.archived = true;
   } else {
-    where.archivedAt = null;
+    where.archived = false;
   }
 
   return where;
