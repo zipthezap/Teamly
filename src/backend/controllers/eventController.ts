@@ -147,11 +147,38 @@ export const getEvents = async (req: Request, res: Response) => {
             updatedAt: true
           }
         }
-      },
-      orderBy: { startTime: 'asc' }
+      }
     });
 
-    res.json(events);
+    // Sort events by priority:
+    // 1. Events joined + private + from user's group
+    // 2. Events joined + public
+    // 3. Other events
+    const userId = req.user.id;
+    const sortedEvents = events.sort((a, b) => {
+      const aJoined = a.participants.some(p => p.userId === userId);
+      const bJoined = b.participants.some(p => p.userId === userId);
+      
+      // Calculate priority (lower number = higher priority)
+      const getPriority = (event: any, isJoined: boolean) => {
+        if (isJoined && !event.isPublic) return 1; // Joined + Private
+        if (isJoined && event.isPublic) return 2;  // Joined + Public
+        return 3; // Other events
+      };
+      
+      const aPriority = getPriority(a, aJoined);
+      const bPriority = getPriority(b, bJoined);
+      
+      // First sort by priority
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority;
+      }
+      
+      // Within same priority, sort by start time
+      return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+    });
+
+    res.json(sortedEvents);
   } catch (error) {
     logger.error('Get events error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to get events' });
