@@ -9,6 +9,7 @@ import { TRANSACTION } from '../config/security';
 import * as eventService from '../services/eventService';
 import * as groupService from '../services/groupService';
 import * as locationService from '../services/locationService';
+import { exportToCSV, exportToICalendar, exportToJSON } from '../services/exportService';
 
 export const createEvent = async (req: Request, res: Response) => {
   try {
@@ -1366,5 +1367,127 @@ export const getNearbyEvents = async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Get nearby events error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to get nearby events' });
+  }
+};
+
+/**
+ * Export user's events to various formats
+ */
+export const exportEvents = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.id;
+    const format = (req.query.format as string)?.toLowerCase() || 'csv';
+    
+    // Validate format
+    if (!['csv', 'ical', 'json'].includes(format)) {
+      return res.status(400).json({ 
+        error: 'Invalid format. Supported formats: csv, ical, json' 
+      });
+    }
+
+    logger.info('Exporting events', 'EventController', { userId, format });
+
+    // Fetch all events user is participating in
+    const events = await prisma.event.findMany({
+      where: {
+        participants: {
+          some: {
+            userId: userId
+          }
+        }
+      },
+      include: {
+        participants: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          }
+        },
+        group: {
+          select: {
+            name: true
+          }
+        },
+        creator: {
+          select: {
+            name: true,
+            email: true
+          }
+        }
+      },
+      orderBy: {
+        startTime: 'desc'
+      }
+    });
+
+    // Transform events to export format
+    const exportData = events.map(event => {
+      const userParticipant = event.participants.find(p => p.userId === userId);
+      
+      return {
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        eventType: event.eventType,
+        location: event.location,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        status: event.status,
+        participantStatus: userParticipant?.status || 'unknown',
+        groupName: event.group.name,
+        creatorName: event.creator.name,
+        participantCount: event.participants.length,
+        maxPlayers: event.maxPlayers
+      };
+    });
+
+    // Generate export content based on format
+    let content: string;
+    let filename: string;
+    let contentType: string;
+
+    switch (format) {
+      case 'csv':
+        content = exportToCSV(exportData);
+        filename = `teamly-events-${new Date().toISOString().split('T')[0]}.csv`;
+        contentType = 'text/csv';
+        break;
+      
+      case 'ical':
+        content = exportToICalendar(exportData);
+        filename = `teamly-events-${new Date().toISOString().split('T')[0]}.ics`;
+        contentType = 'text/calendar';
+        break;
+      
+      case 'json':
+        content = exportToJSON(exportData);
+        filename = `teamly-events-${new Date().toISOString().split('T')[0]}.json`;
+        contentType = 'application/json';
+        break;
+      
+      default:
+        return res.status(400).json({ error: 'Invalid format' });
+    }
+
+    // Set headers for file download
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', Buffer.byteLength(content));
+    
+    logger.info('Events exported successfully', 'EventController', { 
+      userId, 
+      format, 
+      eventCount: events.length 
+    });
+
+    res.send(content);
+  } catch (error) {
+    logger.error('Export events error', 'EventController', { error });
+    res.status(500).json({ error: 'Failed to export events' });
   }
 };

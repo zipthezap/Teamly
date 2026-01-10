@@ -107,6 +107,10 @@ export const eventsAPI = {
   generateInviteToken: (id: string | number) => api.post(`/events/${id}/generate-invite`),
   getByInviteToken: (token: string) => axios.get(`${API_BASE_URL}/events/invite/${token}`),
   joinAsGuest: (token: string, name: string) => axios.post(`${API_BASE_URL}/events/invite/${token}/join`, { name }),
+  export: (format: 'csv' | 'ical' | 'json') => api.get('/events/export', { 
+    params: { format },
+    responseType: 'blob'
+  }),
 };
 
 // Two-Factor Authentication API
