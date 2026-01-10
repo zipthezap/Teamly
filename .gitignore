@@ -74,6 +74,10 @@ temp/
 *.bak
 *.backup
 
+# Test files
+test-*.js
+test-*.ts
+
 # Uploads
 uploads/
 !uploads/.gitkeep
