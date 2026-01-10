@@ -3,9 +3,10 @@ import { useTranslation } from "react-i18next";
 import Button from "../ui/Button";
 import { getImageUrl, getInitials } from "../../utils/imageUtils";
 import { useAuth } from "../../contexts/AuthContext";
+import { GroupMember } from "../../../../shared/types";
 
 interface MemberListProps {
-  members: any[];
+  members: GroupMember[];
   onRemove?: (email: string) => void;
 }
 

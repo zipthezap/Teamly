@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { EventWithDetails, GroupWithDetails, EventParticipant, GroupMember } from '../../../../shared/types';
 // Removed all MUI imports; using Tailwind and SVGs
 
 interface Activity {
@@ -12,8 +13,8 @@ interface Activity {
 }
 
 interface RecentActivityTimelineProps {
-  events: any[];
-  groups: any[];
+  events: EventWithDetails[];
+  groups: GroupWithDetails[];
   userId?: string;
   onActivityClick?: (id: string, type: string) => void;
 }
@@ -54,7 +55,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
       }
 
       // Event joins
-      const userParticipation = event.participants?.find((p: any) => p.userId === userId);
+      const userParticipation = event.participants?.find((p: EventParticipant) => p.userId === userId);
       if (userParticipation && event.creatorId !== userId) {
         activities.push({
           id: event.id,
@@ -69,7 +70,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
 
     // Add group-related activities (simplified - in real scenario, we'd need group join/create timestamps)
     groups.slice(0, 3).forEach(group => {
-      const isCreator = group.members?.find((m: any) => m.userId === userId && m.role === 'admin');
+      const isCreator = group.members?.find((m: GroupMember) => m.userId === userId && m.role === 'admin');
       if (isCreator) {
         activities.push({
           id: group.id,
