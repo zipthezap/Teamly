@@ -147,11 +147,45 @@ export const getEvents = async (req: Request, res: Response) => {
             updatedAt: true
           }
         }
-      },
-      orderBy: { startTime: 'asc' }
+      }
     });
 
-    res.json(events);
+    // Sort events by priority:
+    // 1. Events user joined + private (from groups user is in)
+    // 2. Events user joined + public
+    // 3. Other events (not joined)
+    const userId = req.user.id;
+    
+    // Pre-compute joined status for efficiency using Set for O(1) lookups
+    const eventsWithJoinStatus = events.map(event => {
+      const participantIds = new Set(event.participants.map(p => p.userId));
+      return {
+        event,
+        isJoined: participantIds.has(userId)
+      };
+    });
+    
+    const sortedEvents = eventsWithJoinStatus.sort((a, b) => {
+      // Calculate priority (lower number = higher priority)
+      const getPriority = (isJoined: boolean, isPublic: boolean) => {
+        if (isJoined && !isPublic) return 1; // Joined + Private
+        if (isJoined && isPublic) return 2;  // Joined + Public
+        return 3; // Other events (not joined)
+      };
+      
+      const aPriority = getPriority(a.isJoined, a.event.isPublic);
+      const bPriority = getPriority(b.isJoined, b.event.isPublic);
+      
+      // First sort by priority
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority;
+      }
+      
+      // Within same priority, sort by start time
+      return new Date(a.event.startTime).getTime() - new Date(b.event.startTime).getTime();
+    }).map(item => item.event);
+
+    res.json(sortedEvents);
   } catch (error) {
     logger.error('Get events error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to get events' });

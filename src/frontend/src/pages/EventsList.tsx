@@ -26,6 +26,9 @@ import EventIcon from '@mui/icons-material/Event';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import PeopleIcon from '@mui/icons-material/People';
+import PublicIcon from '@mui/icons-material/Public';
+import LockIcon from '@mui/icons-material/Lock';
+import GroupIcon from '@mui/icons-material/Group';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { eventsAPI } from '../services/api';
@@ -296,8 +299,21 @@ const EventsList = () => {
                     </Box>
                     <Box mb={1.5}>
                       <Chip label={event.eventType} size="small" color="secondary" />
+                      <Chip 
+                        icon={event.isPublic ? <PublicIcon /> : <LockIcon />}
+                        label={event.isPublic ? t('common.public') : t('groups.private')}
+                        size="small"
+                        color={event.isPublic ? 'info' : 'default'}
+                        sx={{ ml: 0.5 }}
+                      />
                     </Box>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <GroupIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                        <Typography variant="body2" color="text.secondary">
+                          {event.group?.name || 'N/A'}
+                        </Typography>
+                      </Box>
                       <Box display="flex" alignItems="center" gap={1}>
                         <EventIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                         <Typography variant="body2" color="text.secondary">
