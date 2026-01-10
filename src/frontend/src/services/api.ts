@@ -158,4 +158,26 @@ export const notificationsAPI = {
   getUnreadCount: () => api.get('/notifications/unread-count'),
 };
 
+// TeamUp API
+export const teamUpAPI = {
+  create: (data: any) => api.post('/teamup', data),
+  getAll: (params?: {
+    sportType?: string;
+    city?: string;
+    country?: string;
+    skillLevel?: string;
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }) => api.get('/teamup', { params }),
+  getMyRequests: (status?: string) => api.get('/teamup/my-requests', { params: { status } }),
+  getMyResponses: () => api.get('/teamup/my-responses'),
+  getById: (id: string | number) => api.get(`/teamup/${id}`),
+  update: (id: string | number, data: any) => api.put(`/teamup/${id}`, data),
+  delete: (id: string | number) => api.delete(`/teamup/${id}`),
+  respond: (id: string | number, message?: string) => api.post(`/teamup/${id}/respond`, { message }),
+  handleResponse: (id: string | number, responseId: string | number, action: 'accept' | 'decline') => 
+    api.post(`/teamup/${id}/responses/${responseId}`, { action }),
+};
+
 export default api;

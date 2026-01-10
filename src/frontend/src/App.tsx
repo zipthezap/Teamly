@@ -21,6 +21,7 @@ import JoinGroup from './pages/JoinGroup';
 import JoinEventByInvite from './pages/JoinEventByInvite';
 import Profile from './pages/Profile';
 import NotificationsCenter from './pages/NotificationsCenter';
+import TeamUp from './pages/TeamUp';
 
 function App() {
   return (
@@ -135,6 +136,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <EditEvent />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/teamup"
+              element={
+                <PrivateRoute>
+                  <TeamUp />
                 </PrivateRoute>
               }
             />

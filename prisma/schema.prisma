@@ -130,6 +130,8 @@ model User {
   refreshTokens     RefreshToken[]
   revokedTokens     RevokedToken[]
   activeSessions    UserSession[]
+  teamUpRequests    TeamUpRequest[]  @relation("TeamUpRequestCreator")
+  teamUpResponses   TeamUpResponse[]
   
   @@index([email]) // For faster email lookups
   @@index([emailVerificationToken]) // For email verification
@@ -422,4 +424,55 @@ model EmailQueue {
   @@index([status])
   @@index([scheduledAt])
   @@index([recipient])
+}
+
+// TeamUp functionality for finding substitute/replacement players
+model TeamUpRequest {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  sportType   String   // e.g., "football", "basketball", "tennis", etc.
+  location    String?
+  latitude    Float?
+  longitude   Float?
+  locationName String?
+  city        String?
+  country     String?
+  dateTime    DateTime // When the sub/replacement is needed
+  playersNeeded Int    @default(1) // Number of players needed
+  skillLevel  String?  // beginner, intermediate, advanced, any
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  status      String   @default("open") // open, filled, cancelled, expired
+  expiresAt   DateTime? // Auto-expire after a certain time
+  
+  creatorId   String
+  creator     User     @relation("TeamUpRequestCreator", fields: [creatorId], references: [id])
+  
+  responses   TeamUpResponse[]
+  
+  @@index([creatorId])
+  @@index([dateTime])
+  @@index([status])
+  @@index([sportType])
+  @@index([city, country])
+  @@index([status, dateTime]) // For finding open requests by date
+}
+
+// Responses to TeamUp requests (people interested in filling the spots)
+model TeamUpResponse {
+  id        String   @id @default(uuid())
+  message   String?  // Optional message from the responder
+  status    String   @default("pending") // pending, accepted, declined
+  createdAt DateTime @default(now())
+  
+  teamUpRequestId String
+  teamUpRequest   TeamUpRequest @relation(fields: [teamUpRequestId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  
+  @@unique([teamUpRequestId, userId])
+  @@index([teamUpRequestId])
+  @@index([userId])
+  @@index([status])
 }
