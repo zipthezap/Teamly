@@ -24,6 +24,9 @@ const Profile = () => {
     email: '',
     city: '',
     country: '',
+    address: '',
+    postalCode: '',
+    discoveryRadius: 25,
   });
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -37,6 +40,7 @@ const Profile = () => {
     eventCancellations: true,
     groupInvites: true,
     commentMentions: true,
+    nearbyTeamUps: true,
   });
   const [allNotificationsMuted, setAllNotificationsMuted] = useState(false);
   const [error, setError] = useState('');
@@ -51,6 +55,9 @@ const Profile = () => {
         email: user.email || '',
         city: user.city || '',
         country: user.country || '',
+        address: user.address || '',
+        postalCode: user.postalCode || '',
+        discoveryRadius: user.discoveryRadius || 25,
       });
       setAllNotificationsMuted(!user.emailNotifications);
     }

@@ -17,6 +17,9 @@ interface ProfileFormProps {
     email: string;
     city: string;
     country: string;
+    address: string;
+    postalCode: string;
+    discoveryRadius: number;
   };
   profilePicture?: string;
   loading: boolean;
@@ -76,6 +79,16 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
               required
             />
           </Grid>
+          <Grid item xs={12}>
+            <TextField
+              label={t('profile.address') || 'Address'}
+              name="address"
+              value={formData.address}
+              onChange={onChange}
+              fullWidth
+              helperText={t('profile.addressHelp') || 'Enter your address to receive notifications about nearby TeamUp opportunities'}
+            />
+          </Grid>
           <Grid item xs={12} sm={6}>
             <TextField
               label={t('profile.city')}
@@ -87,11 +100,32 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
           </Grid>
           <Grid item xs={12} sm={6}>
             <TextField
+              label={t('profile.postalCode') || 'Postal Code'}
+              name="postalCode"
+              value={formData.postalCode}
+              onChange={onChange}
+              fullWidth
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
               label={t('profile.country')}
               name="country"
               value={formData.country}
               onChange={onChange}
               fullWidth
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label={t('profile.discoveryRadius') || 'Discovery Radius (km)'}
+              name="discoveryRadius"
+              type="number"
+              value={formData.discoveryRadius}
+              onChange={onChange}
+              fullWidth
+              inputProps={{ min: 1, max: 200 }}
+              helperText={t('profile.discoveryRadiusHelp') || 'Radius for discovering nearby groups and TeamUp opportunities (1-200 km)'}
             />
           </Grid>
         </Grid>
