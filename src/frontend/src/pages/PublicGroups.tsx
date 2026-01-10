@@ -2,19 +2,18 @@ import EventIcon from '@mui/icons-material/Event';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  import { useAuth } from '../contexts/AuthContext';
   Card,
   CardContent,
   CardActions,
   Button,
   Chip,
   Avatar,
-  AvatarGroup,
   Typography,
   Box,
   Grid
 } from '@mui/material';
 import GroupIcon from '@mui/icons-material/Group';
+import { useAuth } from '../contexts/AuthContext';
 import { getInitials } from '../utils/imageUtils';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
@@ -391,7 +390,8 @@ const PublicGroups = () => {
               .map((group) => {
               const memberCount = group._count?.members ?? group.memberCount ?? group.members?.length ?? 0;
               const eventCount = group._count?.events ?? group.eventCount ?? group.events?.length ?? 0;
-              const recentMembers = group.members?.slice(0, 4) || [];
+              // Don't show member avatars in public groups page since user hasn't joined
+              const recentMembers = [];
               return (
                 <Card key={group.id} sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'all 0.3s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 } }}>
                   <CardContent sx={{ flexGrow: 1, p: 3 }}>
@@ -431,22 +431,6 @@ const PublicGroups = () => {
                         </Typography>
                       </Box>
                     </Box>
-                    {recentMembers.length > 0 && (
-                      <AvatarGroup max={4} sx={{ justifyContent: 'flex-start' }}>
-                        {recentMembers.map((member, idx) => {
-                          const profilePictureUrl = getImageUrl(member.user?.profilePicture);
-                          return (
-                            <Avatar 
-                              key={idx}
-                              src={profilePictureUrl || undefined}
-                              sx={{ width: 32, height: 32, fontSize: '0.75rem', bgcolor: 'primary.main' }}
-                            >
-                              {!profilePictureUrl && getInitials(member.user?.name)}
-                            </Avatar>
-                          );
-                        })}
-                      </AvatarGroup>
-                    )}
                   </CardContent>
                   <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
                     <Button 
