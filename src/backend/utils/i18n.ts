@@ -67,7 +67,7 @@ const translations: Record<string, Record<string, string>> = {
     groupUpdateMessage: "Il y a une mise à jour pour \"{{groupName}}\"",
     teamupResponse: "{{name}} a postulé à votre demande TeamUp",
     teamupAccepted: "Votre réponse à \"{{title}}\" a été acceptée",
-    teamupDeclined: "Votre réponse à \"{{title}}\" a été refusée",
+    teamupDeclined: "Votre réponse à \"{{title}}\" n'a pas été acceptée",
     teamupResponseMessage: "{{name}} a postulé à votre demande TeamUp \"{{title}}\"",
     teamupAcceptedMessage: "Bonne nouvelle ! Votre réponse à \"{{title}}\" a été acceptée. Préparez-vous pour {{sportType}} !",
     teamupDeclinedMessage: "Votre réponse à \"{{title}}\" n'a pas été acceptée. Continuez à chercher d'autres opportunités !",
