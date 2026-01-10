@@ -72,6 +72,7 @@ import {
 } from '../utils/imageProcessor';
 import { UPLOAD_CONFIG } from '../config/upload';
 import * as groupService from '../services/groupService';
+import * as locationService from '../services/locationService';
 
 
 export const createGroup = async (req: Request, res: Response) => {
@@ -208,7 +209,12 @@ export const getGroups = async (req: Request, res: Response) => {
       }))
     }));
 
-    res.json(mappedGroups);
+    // Enrich with location info
+    const enrichedGroups = mappedGroups.map(group => 
+      locationService.enrichWithLocationInfo(group)
+    );
+
+    res.json(enrichedGroups);
   } catch (error) {
     logger.error('Failed to get groups', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to get groups' });
@@ -268,7 +274,9 @@ export const getGroup = async (req: Request, res: Response) => {
       }))
     };
 
-    res.json(mappedGroup);
+    const enrichedGroup = locationService.enrichWithLocationInfo(mappedGroup);
+
+    res.json(enrichedGroup);
   } catch (error) {
     logger.error('Failed to get group', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to get group' });
@@ -543,7 +551,12 @@ export const getPublicGroups = async (_req: Request, res: Response) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    res.json(groups);
+    // Enrich with location info
+    const enrichedGroups = groups.map(group => 
+      locationService.enrichWithLocationInfo(group)
+    );
+
+    res.json(enrichedGroups);
   } catch (error) {
     logger.error('Failed to get public groups', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to get public groups' });
@@ -1029,3 +1042,69 @@ export const deleteGroupPicture = async (req: Request, res: Response) => {
   }
 };
 
+
+// Get nearby groups based on location and radius
+export const getNearbyGroups = async (req: Request, res: Response) => {
+  try {
+    const { latitude, longitude, radius = 10, limit = 50 } = req.query;
+
+    if (!latitude || !longitude) {
+      return res.status(400).json({ error: 'Latitude and longitude are required' });
+    }
+
+    const lat = parseFloat(latitude as string);
+    const lon = parseFloat(longitude as string);
+    const radiusKm = parseFloat(radius as string);
+
+    // Validate coordinates
+    const coordValidation = locationService.validateCoordinates(lat, lon);
+    if (!coordValidation.valid) {
+      return res.status(400).json({ error: coordValidation.error });
+    }
+
+    // Get all public groups with location data
+    const groups = await prisma.group.findMany({
+      where: {
+        latitude: { not: null },
+        longitude: { not: null },
+        isPublic: true
+      },
+      include: {
+        creator: {
+          select: { id: true, name: true, email: true, profilePicture: true }
+        },
+        _count: {
+          select: { 
+            members: true,
+            events: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: parseInt(limit as string) * 2 // Get more than needed for filtering
+    });
+
+    // Filter by location and add distance
+    const nearbyGroups = locationService.filterByLocation(
+      groups,
+      lat,
+      lon,
+      radiusKm
+    ).slice(0, parseInt(limit as string)); // Limit after filtering
+
+    // Enrich with location info
+    const enrichedGroups = nearbyGroups.map(group => 
+      locationService.enrichWithLocationInfo(group)
+    );
+
+    res.json({
+      results: enrichedGroups,
+      total: enrichedGroups.length,
+      center: { latitude: lat, longitude: lon },
+      radius: radiusKm
+    });
+  } catch (error) {
+    logger.error('Get nearby groups error', 'GroupController', { error });
+    res.status(500).json({ error: 'Failed to get nearby groups' });
+  }
+};

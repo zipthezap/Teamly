@@ -218,6 +218,11 @@ model Event {
   description String?
   eventType   String   // e.g., "football", "basketball", "tennis", etc.
   location    String?
+  latitude    Float?
+  longitude   Float?
+  locationName String?
+  city        String?
+  country     String?
   startTime   DateTime
   endTime     DateTime?
   maxPlayers  Int?
@@ -260,6 +265,7 @@ model Event {
   @@index([archived]) // For archived events filtering
   @@index([groupId, startTime]) // Composite for group events by date
   @@index([creatorId, startTime]) // Composite for user events by date
+  @@index([city, country]) // For location-based queries
 }
 
 model EventParticipant {

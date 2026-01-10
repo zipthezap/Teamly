@@ -2,6 +2,7 @@ import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import { Request, Response } from 'express';
 import * as teamUpService from '../services/teamUpService';
+import * as locationService from '../services/locationService';
 
 // Create a TeamUp request
 export const createTeamUpRequest = async (req: Request, res: Response) => {
@@ -99,7 +100,9 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
       }
     });
 
-    res.status(201).json(teamUpRequest);
+    const enrichedRequest = locationService.enrichWithLocationInfo(teamUpRequest);
+
+    res.status(201).json(enrichedRequest);
   } catch (error) {
     logger.error('Create TeamUp request error:', 'teamUpController', { error });
     res.status(500).json({ error: 'Failed to create TeamUp request' });
@@ -180,7 +183,12 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
       skip: parseInt(offset as string)
     });
 
-    res.json(teamUpRequests);
+    // Enrich with location info
+    const enrichedRequests = teamUpRequests.map(request => 
+      locationService.enrichWithLocationInfo(request)
+    );
+
+    res.json(enrichedRequests);
   } catch (error) {
     logger.error('Get TeamUp requests error:', 'teamUpController', { error });
     res.status(500).json({ error: 'Failed to get TeamUp requests' });
@@ -232,7 +240,12 @@ export const getMyTeamUpRequests = async (req: Request, res: Response) => {
       orderBy: { dateTime: 'asc' }
     });
 
-    res.json(teamUpRequests);
+    // Enrich with location info
+    const enrichedRequests = teamUpRequests.map(request => 
+      locationService.enrichWithLocationInfo(request)
+    );
+
+    res.json(enrichedRequests);
   } catch (error) {
     logger.error('Get my TeamUp requests error:', 'teamUpController', { error });
     res.status(500).json({ error: 'Failed to get TeamUp requests' });
@@ -279,7 +292,9 @@ export const getTeamUpRequest = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'TeamUp request not found' });
     }
 
-    res.json(teamUpRequest);
+    const enrichedRequest = locationService.enrichWithLocationInfo(teamUpRequest);
+
+    res.json(enrichedRequest);
   } catch (error) {
     logger.error('Get TeamUp request error:', 'teamUpController', { error });
     res.status(500).json({ error: 'Failed to get TeamUp request' });
@@ -747,5 +762,92 @@ export const getMyTeamUpResponses = async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Get my TeamUp responses error:', 'teamUpController', { error });
     res.status(500).json({ error: 'Failed to get responses' });
+  }
+};
+
+// Get nearby TeamUp requests based on location and radius
+export const getNearbyTeamUpRequests = async (req: Request, res: Response) => {
+  try {
+    const { latitude, longitude, radius = 10, limit = 50 } = req.query;
+
+    if (!latitude || !longitude) {
+      return res.status(400).json({ error: 'Latitude and longitude are required' });
+    }
+
+    const lat = parseFloat(latitude as string);
+    const lon = parseFloat(longitude as string);
+    const radiusKm = parseFloat(radius as string);
+
+    // Validate coordinates
+    const coordValidation = locationService.validateCoordinates(lat, lon);
+    if (!coordValidation.valid) {
+      return res.status(400).json({ error: coordValidation.error });
+    }
+
+    // Get all open TeamUp requests with location data
+    const requests = await prisma.teamUpRequest.findMany({
+      where: {
+        latitude: { not: null },
+        longitude: { not: null },
+        status: 'open',
+        dateTime: {
+          gte: new Date() // Only show future requests
+        }
+      },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            city: true,
+            country: true,
+            profilePicture: true
+          }
+        },
+        responses: {
+          where: {
+            status: 'accepted'
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                profilePicture: true
+              }
+            }
+          }
+        },
+        _count: {
+          select: { responses: true }
+        }
+      },
+      orderBy: { dateTime: 'asc' },
+      take: parseInt(limit as string) * 2 // Get more than needed for filtering
+    });
+
+    // Filter by location and add distance
+    const nearbyRequests = locationService.filterByLocation(
+      requests,
+      lat,
+      lon,
+      radiusKm
+    ).slice(0, parseInt(limit as string)); // Limit after filtering
+
+    // Enrich with location info
+    const enrichedRequests = nearbyRequests.map(request => 
+      locationService.enrichWithLocationInfo(request)
+    );
+
+    res.json({
+      results: enrichedRequests,
+      total: enrichedRequests.length,
+      center: { latitude: lat, longitude: lon },
+      radius: radiusKm
+    });
+  } catch (error) {
+    logger.error('Get nearby TeamUp requests error', 'teamUpController', { error });
+    res.status(500).json({ error: 'Failed to get nearby TeamUp requests' });
   }
 };

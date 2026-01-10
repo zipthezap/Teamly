@@ -15,6 +15,9 @@ router.post('/', teamUpController.createTeamUpRequest);
 // Get all TeamUp requests (browse with filters)
 router.get('/', teamUpController.getTeamUpRequests);
 
+// Get nearby TeamUp requests
+router.get('/nearby', teamUpController.getNearbyTeamUpRequests);
+
 // Get user's own TeamUp requests
 router.get('/my-requests', teamUpController.getMyTeamUpRequests);
 
