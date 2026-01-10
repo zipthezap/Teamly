@@ -168,7 +168,7 @@ export const validate2FAToken = async (userId: string, token: string): Promise<a
 
     return { valid: verified };
   } catch (error) {
-    logger.error('Validate 2FA token error:', 'twoFactorControllerController', { error });
+    logger.error('Validate 2FA token error:', 'twoFactorController', { error });
     return { valid: false, error: 'Validation failed' };
   }
 };
