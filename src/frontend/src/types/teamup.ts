@@ -46,6 +46,12 @@ export interface TeamUpResponse {
     email: string;
     profilePicture?: string;
   };
+  teamUpRequest?: {
+    id: string;
+    title: string;
+    sportType: string;
+    dateTime: Date | string;
+  };
 }
 
 export interface CreateTeamUpRequestData {

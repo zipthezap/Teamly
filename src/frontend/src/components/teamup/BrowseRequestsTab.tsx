@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  LinearProgress,
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { teamUpAPI } from '../../services/api';
@@ -55,6 +56,7 @@ const BrowseRequestsTab = () => {
     sportType: '',
     city: user?.city || '',
     country: user?.country || '',
+    skillLevel: '',
   });
 
   useEffect(() => {
@@ -68,9 +70,28 @@ const BrowseRequestsTab = () => {
       if (filters.sportType) params.sportType = filters.sportType;
       if (filters.city) params.city = filters.city;
       if (filters.country) params.country = filters.country;
+      if (filters.skillLevel) params.skillLevel = filters.skillLevel;
       
       const response = await teamUpAPI.getAll(params);
-      setRequests(response.data);
+      
+      // Sort by urgency: soonest events first, then by spots left
+      const sortedRequests = response.data.sort((a: TeamUpRequest, b: TeamUpRequest) => {
+        const aDate = new Date(a.dateTime).getTime();
+        const bDate = new Date(b.dateTime).getTime();
+        const now = Date.now();
+        
+        // Prioritize events happening soon (within 48 hours)
+        const aUrgent = (aDate - now) < (48 * 60 * 60 * 1000);
+        const bUrgent = (bDate - now) < (48 * 60 * 60 * 1000);
+        
+        if (aUrgent && !bUrgent) return -1;
+        if (!aUrgent && bUrgent) return 1;
+        
+        // Then sort by date
+        return aDate - bDate;
+      });
+      
+      setRequests(sortedRequests);
     } catch (err) {
       console.error('Error fetching requests:', err);
       setError(t('teamup.loadingRequests'));
@@ -158,6 +179,20 @@ const BrowseRequestsTab = () => {
               placeholder="City"
             />
           </Grid>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              select
+              label={t('teamup.filterBySkillLevel')}
+              value={filters.skillLevel}
+              onChange={(e) => setFilters({ ...filters, skillLevel: e.target.value })}
+            >
+              <MenuItem value="">{t('teamup.skillLevels.any')}</MenuItem>
+              <MenuItem value="beginner">{t('teamup.skillLevels.beginner')}</MenuItem>
+              <MenuItem value="intermediate">{t('teamup.skillLevels.intermediate')}</MenuItem>
+              <MenuItem value="advanced">{t('teamup.skillLevels.advanced')}</MenuItem>
+            </TextField>
+          </Grid>
         </Grid>
       </Box>
 
@@ -176,21 +211,43 @@ const BrowseRequestsTab = () => {
               (r: any) => r.status === 'accepted'
             ).length || 0;
             const spotsLeft = request.playersNeeded - acceptedResponses;
+            
+            // Check if urgent (within 48 hours)
+            const eventDate = new Date(request.dateTime).getTime();
+            const now = Date.now();
+            const hoursUntil = (eventDate - now) / (1000 * 60 * 60);
+            const isUrgent = hoursUntil <= 48 && hoursUntil > 0;
 
             return (
               <Grid item xs={12} md={6} lg={4} key={request.id}>
-                <Card>
+                <Card sx={{ 
+                  position: 'relative',
+                  ...(isUrgent && {
+                    borderLeft: 4,
+                    borderColor: 'warning.main'
+                  })
+                }}>
                   <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="h6" component="div">
                         {request.title}
                       </Typography>
-                      <Chip
-                        label={request.sportType}
-                        color="primary"
-                        size="small"
-                        variant="outlined"
-                      />
+                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        {isUrgent && (
+                          <Chip
+                            label="Urgent"
+                            color="warning"
+                            size="small"
+                            sx={{ fontWeight: 'bold' }}
+                          />
+                        )}
+                        <Chip
+                          label={request.sportType}
+                          color="primary"
+                          size="small"
+                          variant="outlined"
+                        />
+                      </Box>
                     </Box>
                     {request.description && (
                       <Typography variant="body2" sx={{ mb: 1 }}>
@@ -211,8 +268,22 @@ const BrowseRequestsTab = () => {
                       </Typography>
                     )}
                     <Typography variant="body2" color="text.secondary">
-                      👥 {spotsLeft} {t('teamup.fillersNeeded', { count: spotsLeft })}
+                      👥 {acceptedResponses}/{request.playersNeeded} spots filled
                     </Typography>
+                    <Box sx={{ mt: 1, mb: 1 }}>
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={(acceptedResponses / request.playersNeeded) * 100}
+                        sx={{ 
+                          height: 8, 
+                          borderRadius: 1,
+                          backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                          '& .MuiLinearProgress-bar': {
+                            backgroundColor: spotsLeft === 0 ? '#4caf50' : '#2196f3'
+                          }
+                        }}
+                      />
+                    </Box>
                     {request.skillLevel && request.skillLevel !== 'any' && (
                       <Chip
                         label={t(`teamup.skillLevels.${request.skillLevel}`)}

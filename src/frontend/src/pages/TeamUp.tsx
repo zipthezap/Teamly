@@ -3,6 +3,8 @@ import { Container, Box, Typography, Tabs, Tab } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import SubmitRequestTab from '../components/teamup/SubmitRequestTab';
 import BrowseRequestsTab from '../components/teamup/BrowseRequestsTab';
+import MyResponsesTab from '../components/teamup/MyResponsesTab';
+import ManageResponsesTab from '../components/teamup/ManageResponsesTab';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -50,9 +52,13 @@ const TeamUp = () => {
           value={tabValue} 
           onChange={handleTabChange}
           aria-label="teamup tabs"
+          variant="scrollable"
+          scrollButtons="auto"
         >
           <Tab label={t('teamup.submitTab')} id="teamup-tab-0" />
           <Tab label={t('teamup.browseTab')} id="teamup-tab-1" />
+          <Tab label={t('teamup.myResponsesTab')} id="teamup-tab-2" />
+          <Tab label={t('teamup.manageResponsesTab')} id="teamup-tab-3" />
         </Tabs>
       </Box>
 
@@ -62,6 +68,14 @@ const TeamUp = () => {
 
       <TabPanel value={tabValue} index={1}>
         <BrowseRequestsTab />
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={2}>
+        <MyResponsesTab />
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={3}>
+        <ManageResponsesTab />
       </TabPanel>
     </Container>
   );
