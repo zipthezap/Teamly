@@ -7,7 +7,6 @@
 
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
-import { calculateDistance } from './locationService';
 import { shouldSendEmailNotification } from '../utils/notificationHelper';
 
 interface TeamUpRequest {
