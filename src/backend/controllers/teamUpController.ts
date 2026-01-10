@@ -411,7 +411,19 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
 
     const teamUpRequest = await prisma.teamUpRequest.findUnique({
       where: { id },
-      select: { status: true, creatorId: true, title: true }
+      select: { 
+        status: true, 
+        creatorId: true, 
+        title: true,
+        sportType: true,
+        dateTime: true,
+        creator: {
+          select: {
+            email: true,
+            name: true
+          }
+        }
+      }
     });
 
     if (!teamUpRequest) {
@@ -469,6 +481,31 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
           relatedEntityType: 'teamup_request'
         }
       });
+
+      // Send email notification
+      const emailHtml = `
+        <h2>New Response to Your TeamUp Request</h2>
+        <p>Hi ${teamUpRequest.creator.name},</p>
+        <p><strong>${req.user.name}</strong> has responded to your TeamUp request:</p>
+        <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0;">
+          <h3 style="margin-top: 0;">${teamUpRequest.title}</h3>
+          <p><strong>Sport:</strong> ${teamUpRequest.sportType}</p>
+          <p><strong>Date:</strong> ${new Date(teamUpRequest.dateTime).toLocaleString()}</p>
+          ${message ? `<p><strong>Message:</strong> ${message}</p>` : ''}
+        </div>
+        <p>Log in to your account to accept or decline this response.</p>
+      `;
+
+      await prisma.emailQueue.create({
+        data: {
+          recipient: teamUpRequest.creator.email,
+          subject: `New Response to "${teamUpRequest.title}"`,
+          htmlContent: emailHtml,
+          templateType: 'teamup_response',
+          status: 'pending',
+          scheduledAt: new Date()
+        }
+      });
     } catch (notifError) {
       logger.error('Failed to create TeamUp response notification:', 'teamUpController', { error: notifError });
       // Don't fail the response if notification fails
@@ -493,7 +530,14 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
 
     const teamUpRequest = await prisma.teamUpRequest.findUnique({
       where: { id },
-      select: { creatorId: true, playersNeeded: true, title: true }
+      select: { 
+        creatorId: true, 
+        playersNeeded: true, 
+        title: true,
+        sportType: true,
+        dateTime: true,
+        location: true
+      }
     });
 
     if (!teamUpRequest) {
@@ -553,6 +597,45 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
             : `Your response to "${teamUpRequest.title}" was declined.`,
           relatedEntityId: id,
           relatedEntityType: 'teamup_request'
+        }
+      });
+
+      // Send email notification
+      const emailHtml = action === 'accept' 
+        ? `
+          <h2>Your Response Was Accepted! 🎉</h2>
+          <p>Hi ${response.user.name},</p>
+          <p>Great news! Your response to the following TeamUp request has been accepted:</p>
+          <div style="background: #f0f9ff; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #3b82f6;">
+            <h3 style="margin-top: 0; color: #1e40af;">${teamUpRequest.title}</h3>
+            <p><strong>Sport:</strong> ${teamUpRequest.sportType}</p>
+            <p><strong>Date:</strong> ${new Date(teamUpRequest.dateTime).toLocaleString()}</p>
+            ${teamUpRequest.location ? `<p><strong>Location:</strong> ${teamUpRequest.location}</p>` : ''}
+          </div>
+          <p>Get ready for the game! Make sure to arrive on time.</p>
+        `
+        : `
+          <h2>Response Status Update</h2>
+          <p>Hi ${response.user.name},</p>
+          <p>Thank you for your interest. Unfortunately, your response to the following TeamUp request was not accepted:</p>
+          <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0;">
+            <h3 style="margin-top: 0;">${teamUpRequest.title}</h3>
+            <p><strong>Sport:</strong> ${teamUpRequest.sportType}</p>
+            <p><strong>Date:</strong> ${new Date(teamUpRequest.dateTime).toLocaleString()}</p>
+          </div>
+          <p>Keep looking for other opportunities on TeamUp!</p>
+        `;
+
+      await prisma.emailQueue.create({
+        data: {
+          recipient: response.user.email,
+          subject: action === 'accept' 
+            ? `You're In! Response Accepted for "${teamUpRequest.title}"`
+            : `Response Update for "${teamUpRequest.title}"`,
+          htmlContent: emailHtml,
+          templateType: action === 'accept' ? 'teamup_accepted' : 'teamup_declined',
+          status: 'pending',
+          scheduledAt: new Date()
         }
       });
     } catch (notifError) {

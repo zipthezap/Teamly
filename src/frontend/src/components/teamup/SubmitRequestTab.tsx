@@ -17,6 +17,7 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
+  Badge,
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { teamUpAPI } from '../../services/api';
@@ -24,6 +25,7 @@ import { LoadingSpinner } from '../common';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import PeopleIcon from '@mui/icons-material/People';
 import { useAuth } from '../../contexts/AuthContext';
 import { TeamUpRequest, CreateTeamUpRequestData, UpdateTeamUpRequestData } from '../../types/teamup';
 
@@ -257,9 +259,22 @@ const SubmitRequestTab = () => {
                     👥 {t('teamup.fillersNeeded', { count: request.playersNeeded })}
                   </Typography>
                   {request._count?.responses > 0 && (
-                    <Typography variant="body2" color="primary" sx={{ mt: 1 }}>
-                      {request._count.responses} {t('teamup.responses')}
-                    </Typography>
+                    <Box sx={{ mt: 1 }}>
+                      <Badge 
+                        badgeContent={request._count.responses} 
+                        color="primary"
+                        sx={{ width: '100%' }}
+                      >
+                        <Chip 
+                          icon={<PeopleIcon />}
+                          label={t('teamup.responses')}
+                          color="primary"
+                          variant="outlined"
+                          size="small"
+                          sx={{ width: '100%' }}
+                        />
+                      </Badge>
+                    </Box>
                   )}
                 </CardContent>
                 <CardActions>
