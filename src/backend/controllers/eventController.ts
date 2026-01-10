@@ -28,6 +28,11 @@ export const createEvent = async (req: Request, res: Response) => {
       location
     });
 
+    // Validate sanitized required fields are not empty
+    if (!sanitized.title || !sanitized.eventType) {
+      return res.status(400).json({ error: 'Title and event type cannot be empty or whitespace-only' });
+    }
+
     // Validate event times
     const timeValidation = eventService.validateEventTimes(startTime, endTime);
     if (!timeValidation.valid) {

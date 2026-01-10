@@ -39,6 +39,11 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
       skillLevel
     });
 
+    // Validate sanitized required fields are not empty
+    if (!sanitized.title || !sanitized.sportType) {
+      return res.status(400).json({ error: 'Title and sport type cannot be empty or whitespace-only' });
+    }
+
     // Validate dateTime
     const eventDate = new Date(dateTime);
     if (isNaN(eventDate.getTime())) {
