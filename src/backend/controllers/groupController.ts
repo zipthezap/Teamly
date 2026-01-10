@@ -209,7 +209,12 @@ export const getGroups = async (req: Request, res: Response) => {
       }))
     }));
 
-    res.json(mappedGroups);
+    // Enrich with location info
+    const enrichedGroups = mappedGroups.map(group => 
+      locationService.enrichWithLocationInfo(group)
+    );
+
+    res.json(enrichedGroups);
   } catch (error) {
     logger.error('Failed to get groups', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to get groups' });
@@ -269,7 +274,9 @@ export const getGroup = async (req: Request, res: Response) => {
       }))
     };
 
-    res.json(mappedGroup);
+    const enrichedGroup = locationService.enrichWithLocationInfo(mappedGroup);
+
+    res.json(enrichedGroup);
   } catch (error) {
     logger.error('Failed to get group', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to get group' });

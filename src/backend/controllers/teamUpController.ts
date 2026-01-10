@@ -183,7 +183,12 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
       skip: parseInt(offset as string)
     });
 
-    res.json(teamUpRequests);
+    // Enrich with location info
+    const enrichedRequests = teamUpRequests.map(request => 
+      locationService.enrichWithLocationInfo(request)
+    );
+
+    res.json(enrichedRequests);
   } catch (error) {
     logger.error('Get TeamUp requests error:', 'teamUpController', { error });
     res.status(500).json({ error: 'Failed to get TeamUp requests' });
@@ -235,7 +240,12 @@ export const getMyTeamUpRequests = async (req: Request, res: Response) => {
       orderBy: { dateTime: 'asc' }
     });
 
-    res.json(teamUpRequests);
+    // Enrich with location info
+    const enrichedRequests = teamUpRequests.map(request => 
+      locationService.enrichWithLocationInfo(request)
+    );
+
+    res.json(enrichedRequests);
   } catch (error) {
     logger.error('Get my TeamUp requests error:', 'teamUpController', { error });
     res.status(500).json({ error: 'Failed to get TeamUp requests' });
@@ -282,7 +292,9 @@ export const getTeamUpRequest = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'TeamUp request not found' });
     }
 
-    res.json(teamUpRequest);
+    const enrichedRequest = locationService.enrichWithLocationInfo(teamUpRequest);
+
+    res.json(enrichedRequest);
   } catch (error) {
     logger.error('Get TeamUp request error:', 'teamUpController', { error });
     res.status(500).json({ error: 'Failed to get TeamUp request' });

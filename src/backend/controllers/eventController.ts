@@ -216,7 +216,12 @@ export const getEvents = async (req: Request, res: Response) => {
       return new Date(a.event.startTime).getTime() - new Date(b.event.startTime).getTime();
     }).map(item => item.event);
 
-    res.json(sortedEvents);
+    // Enrich with location info
+    const enrichedEvents = sortedEvents.map(event => 
+      locationService.enrichWithLocationInfo(event)
+    );
+
+    res.json(enrichedEvents);
   } catch (error) {
     logger.error('Get events error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to get events' });
@@ -293,7 +298,9 @@ export const getEvent = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    res.json(event);
+    const enrichedEvent = locationService.enrichWithLocationInfo(event);
+
+    res.json(enrichedEvent);
   } catch (error) {
     logger.error('Get event error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to get event' });
