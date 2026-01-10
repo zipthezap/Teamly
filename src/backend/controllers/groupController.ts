@@ -534,12 +534,26 @@ export const updateMemberRole = async (req: Request, res: Response) => {
 };
 
 // Get all public groups (for discovery)
-export const getPublicGroups = async (_req: Request, res: Response) => {
+export const getPublicGroups = async (req: Request, res: Response) => {
   try {
+    const userId = req.user?.id;
+    
+    // Build where clause to exclude groups user is already a member of
+    const whereClause: any = {
+      isPublic: true
+    };
+    
+    // If user is authenticated, exclude groups they're already a member of
+    if (userId) {
+      whereClause.members = {
+        none: {
+          userId: userId
+        }
+      };
+    }
+    
     const groups = await prisma.group.findMany({
-      where: {
-        isPublic: true
-      },
+      where: whereClause,
       include: {
         creator: {
           select: { id: true, name: true, email: true, profilePicture: true }
