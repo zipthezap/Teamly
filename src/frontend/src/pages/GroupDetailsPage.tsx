@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import AdminTransferDialog from "../components/GroupDetails/AdminTransferDialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -196,6 +197,8 @@ export default function GroupDetailsPage() {
   const [showConfirm, setShowConfirm] = useState<{ open: boolean; email: string | null }>({ open: false, email: null });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showAdminTransfer, setShowAdminTransfer] = useState(false);
+  const [selectedNewAdmin, setSelectedNewAdmin] = useState<string>("");
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
 
@@ -287,10 +290,32 @@ export default function GroupDetailsPage() {
     },
   });
 
+  // Admin leave logic: require transfer
   const handleLeaveGroup = () => {
-    setShowLeaveConfirm(true);
+    if (isAdmin && group?.members?.filter((m: Member) => m.role !== "admin").length > 0) {
+      setShowAdminTransfer(true);
+    } else {
+      setShowLeaveConfirm(true);
+    }
   };
 
+  // Transfer admin and leave group
+  const confirmAdminTransfer = async () => {
+    if (!selectedNewAdmin) return;
+    try {
+      await groupsAPI.transferAdmin(groupId!, selectedNewAdmin); // Assumes backend API exists
+      await groupsAPI.leave(groupId!);
+      setToast({ message: t('groupDetails.leftGroup'), type: "success" });
+      setShowAdminTransfer(false);
+      setTimeout(() => {
+        navigate('/groups');
+      }, 1000);
+    } catch (err: any) {
+      setToast({ message: err?.response?.data?.error || t('groupDetails.failedToLeave'), type: "error" });
+    }
+  };
+
+  // Regular leave for non-admins or if no other members
   const confirmLeaveGroup = () => {
     leaveGroupMutation.mutate();
     setShowLeaveConfirm(false);
@@ -323,13 +348,13 @@ export default function GroupDetailsPage() {
     }
   };
 
-  // Copy invite link handler
+  // Copy invite link handler (direct join, no pending request)
   const handleCopyLink = async () => {
     try {
       const res = await groupsAPI.getInviteLink(groupId!);
       const inviteLink = `${window.location.origin}/join-group/${res.data.groupId}`;
       await navigator.clipboard.writeText(inviteLink);
-      setToast({ message: t('groupDetails.inviteLinkCopied'), type: "success" });
+      setToast({ message: `${t('groupDetails.inviteLinkCopied')}\n${t('groupDetails.inviteLinkInstructions')}` , type: "success" });
     } catch (err: any) {
       setToast({ message: err?.response?.data?.error || t('groupDetails.failedToGetInviteLink'), type: "error" });
     }
@@ -485,6 +510,16 @@ export default function GroupDetailsPage() {
           </div>
         </div>
       )}
+      {/* Admin Transfer Dialog */}
+      <AdminTransferDialog
+        open={showAdminTransfer}
+        members={group?.members || []}
+        selectedNewAdmin={selectedNewAdmin}
+        onSelect={setSelectedNewAdmin}
+        onConfirm={confirmAdminTransfer}
+        onCancel={() => setShowAdminTransfer(false)}
+        confirmDisabled={false}
+      />
       {/* Leave Group Confirmation Dialog */}
       {showLeaveConfirm && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">

@@ -252,40 +252,47 @@ const EventDetails = () => {
               </div>
             </div>
             
-            {/* Attendance Actions */}
-            <div className="bg-[#1a2233] rounded-lg p-5">
-              <div className="font-semibold mb-3 text-lg">{t('eventDetails.yourAttendance')}</div>
-              <div className="flex flex-col gap-2">
-                {!isParticipant && !isFull && (
-                  <button onClick={handleJoin} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
-                    {t('eventDetails.join')}
-                  </button>
-                )}
-                {isParticipant && (
-                  <>
-                    <button onClick={() => handleUpdateStatus('confirmed')} className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
-                      ✓ {t('eventDetails.confirmAttendance')}
+            {/* Attendance/Activity Actions: disabled for past events */}
+            {new Date(event.startTime) >= new Date() ? (
+              <div className="bg-[#1a2233] rounded-lg p-5">
+                <div className="font-semibold mb-3 text-lg">{t('eventDetails.yourAttendance')}</div>
+                <div className="flex flex-col gap-2">
+                  {!isParticipant && !isFull && (
+                    <button onClick={handleJoin} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
+                      {t('eventDetails.join')}
                     </button>
-                    <button onClick={() => handleUpdateStatus('declined')} className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
-                      ✗ {t('eventDetails.decline')}
-                    </button>
-                    <div className="grid grid-cols-2 gap-2 mt-1">
-                      <button onClick={handleMarkLate} className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs font-medium transition-colors">
-                        ⏰ {t('eventDetails.markLate')}
+                  )}
+                  {isParticipant && (
+                    <>
+                      <button onClick={() => handleUpdateStatus('confirmed')} className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
+                        ✓ {t('eventDetails.confirmAttendance')}
                       </button>
-                      <button onClick={handleUnmarkLate} className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs font-medium transition-colors">
-                        ↩ {t('eventDetails.undoLate')}
+                      <button onClick={() => handleUpdateStatus('declined')} className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
+                        ✗ {t('eventDetails.decline')}
                       </button>
-                    </div>
-                    {!isCreator && (
-                      <button onClick={handleLeave} className="bg-pink-600 hover:bg-pink-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full mt-2">
-                        {t('eventDetails.leave')}
-                      </button>
-                    )}
-                  </>
-                )}
+                      <div className="grid grid-cols-2 gap-2 mt-1">
+                        <button onClick={handleMarkLate} className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs font-medium transition-colors">
+                          ⏰ {t('eventDetails.markLate')}
+                        </button>
+                        <button onClick={handleUnmarkLate} className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs font-medium transition-colors">
+                          ↩ {t('eventDetails.undoLate')}
+                        </button>
+                      </div>
+                      {!isCreator && (
+                        <button onClick={handleLeave} className="bg-pink-600 hover:bg-pink-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full mt-2">
+                          {t('eventDetails.leave')}
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-[#1a2233] rounded-lg p-5 opacity-50 pointer-events-none select-none">
+                <div className="font-semibold mb-3 text-lg">{t('eventDetails.activityDisabled')}</div>
+                <div className="text-sm text-[#a1a6b4]">{t('eventDetails.pastEventNoActions')}</div>
+              </div>
+            )}
             
             {/* Invite Link Section - Only for creator */}
             <InviteLinkCard
@@ -300,6 +307,7 @@ const EventDetails = () => {
               isCreator={isCreator}
               onGenerateLink={handleGenerateInviteLink}
               isPublic={event.isPublic}
+              isPast={new Date(event.startTime) < new Date()}
             />
           </div>
           

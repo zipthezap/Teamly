@@ -49,7 +49,7 @@ const EventsList = () => {
   const [visibleCount, setVisibleCount] = useState(12);
   const [events, setEvents] = useState<any[]>([]);
   const [groups, setGroups] = useState<Array<{ id: string; name: string }>>([]);
-  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [tab, setTab] = useState<'my' | 'upcoming' | 'past'>('my');
   const [isLoading, setIsLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState<any>(null);
@@ -180,16 +180,68 @@ const EventsList = () => {
   }
 
   // Filter events by tab
-  // Filter events by tab
   const now = new Date();
-  const filteredEvents = events.filter(event => {
-    const eventDate = new Date(event.startTime);
-    if (tab === 'upcoming') {
-      return eventDate >= now;
-    } else {
-      return eventDate < now;
-    }
-  });
+  let filteredEvents: any[] = [];
+  if (tab === 'my') {
+    // 0. Events I'm organizing
+    // 1. Private events of groups I'm in and participating
+    // 2. Public events of groups I'm in and participating
+    const userGroupIds = groups
+      .filter(g => g.members?.some((m: any) => m.userId === user?.id))
+      .map(g => g.id);
+    const organizedEvents = events.filter(event => {
+      const eventDate = new Date(event.startTime);
+      return eventDate >= now && event.organizerId === user?.id;
+    });
+    const privateInGroups = events.filter(event => {
+      const eventDate = new Date(event.startTime);
+      const isUserGroup = event.group && userGroupIds.includes(event.group.id);
+      const isJoined = event.participants?.some((p: any) => p.userId === user?.id);
+      return eventDate >= now && !event.isPublic && isUserGroup && isJoined && event.organizerId !== user?.id;
+    });
+    const publicInGroups = events.filter(event => {
+      const eventDate = new Date(event.startTime);
+      const isUserGroup = event.group && userGroupIds.includes(event.group.id);
+      const isJoined = event.participants?.some((p: any) => p.userId === user?.id);
+      return eventDate >= now && event.isPublic && isUserGroup && isJoined && event.organizerId !== user?.id;
+    });
+    filteredEvents = [...organizedEvents, ...privateInGroups, ...publicInGroups];
+  } else if (tab === 'upcoming') {
+    // 0. Events I'm organizing
+    // 1. Private events of groups I'm in
+    // 2. Public events of groups I'm in
+    // 3. Public events of groups I'm not in
+    const userGroupIds = groups
+      .filter(g => g.members?.some((m: any) => m.userId === user?.id))
+      .map(g => g.id);
+    const organizedEvents = events.filter(event => {
+      const eventDate = new Date(event.startTime);
+      return eventDate >= now && event.organizerId === user?.id;
+    });
+    const privateInGroups = events.filter(event => {
+      const eventDate = new Date(event.startTime);
+      const isUserGroup = event.group && userGroupIds.includes(event.group.id);
+      return eventDate >= now && !event.isPublic && isUserGroup && event.organizerId !== user?.id;
+    });
+    const publicInGroups = events.filter(event => {
+      const eventDate = new Date(event.startTime);
+      const isUserGroup = event.group && userGroupIds.includes(event.group.id);
+      return eventDate >= now && event.isPublic && isUserGroup && event.organizerId !== user?.id;
+    });
+    const publicNotInGroups = events.filter(event => {
+      const eventDate = new Date(event.startTime);
+      const isUserGroup = event.group && userGroupIds.includes(event.group.id);
+      return eventDate >= now && event.isPublic && !isUserGroup && event.organizerId !== user?.id;
+    });
+    filteredEvents = [...organizedEvents, ...privateInGroups, ...publicInGroups, ...publicNotInGroups];
+  } else {
+    filteredEvents = events.filter(event => {
+      const eventDate = new Date(event.startTime);
+      const isJoined = event.participants?.some((p: any) => p.userId === user?.id);
+      const isOrganizer = event.organizerId === user?.id;
+      return eventDate < now && (isJoined || isOrganizer);
+    });
+  }
 
   // Main render
   return (
@@ -225,9 +277,10 @@ const EventsList = () => {
       </Box>
 
       {/* Removed tabs for Upcoming/Past */}
-      {/* Tabs for Upcoming/Past */}
+      {/* Tabs for My/Upcoming/Past */}
       <Box mb={2}>
         <Tabs value={tab} onChange={(e, v) => setTab(v)} aria-label="event tabs">
+          <Tab value="my" label={t('events.myEvents') || 'My Events'} />
           <Tab value="upcoming" label={t('events.upcomingEvents') || 'Upcoming Events'} />
           <Tab value="past" label={t('events.pastEvents') || 'Past Events'} />
         </Tabs>

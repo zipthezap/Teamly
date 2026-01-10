@@ -55,6 +55,7 @@
     "declinedMessage": "{{name}} a refusé \"{{eventTitle}}\"",
     "confirmedMessage": "{{name}} a confirmé sa présence à \"{{eventTitle}}\"",
     "joinMessage": "{{name}} a rejoint l'événement \"{{eventTitle}}\"",
+    "leaveMessage": "{{name}} a quitté l'événement \"{{eventTitle}}\"",
     "markAllRead": "Marquer tout comme lu",
     "viewAll": "Voir tout",
     "noNotifications": "Aucune notification",
@@ -91,9 +92,11 @@
     "join": "{{name}} a rejoint l'événement \"{{eventTitle}}\"",
     "leave": "{{name}} a quitté l'événement \"{{eventTitle}}\"",
     "late": "{{name}} sera en retard pour \"{{eventTitle}}\"",
+    "lateMessage": "{{name}} a indiqué qu'il/elle sera en retard pour \"{{eventTitle}}\".",
     "confirmed": "{{name}} a confirmé sa présence pour \"{{eventTitle}}\"",
     "declined": "{{name}} a refusé \"{{eventTitle}}\"",
     "join_request": "{{name}} souhaite rejoindre \"{{groupName}}\"",
+    "join_requestMessage": "{{name}} a demandé à rejoindre le groupe \"{{groupName}}\".",
     "accepted": "Bienvenue dans \"{{groupName}}\" ! Votre demande d'adhésion a été acceptée.",
     "nearby_created": "Nouveau groupe \"{{groupName}}\" créé près de chez vous",
     "status_change": "Statut de l'événement changé"
@@ -178,6 +181,7 @@
     "allTypes": "Tous les types"
   },
   "events": {
+    "myEvents": "Mes événements",
     "createFirstEventDesc": "Aucun événement disponible.",
     "allEvents": "Tous les événements",
     "eventFound": "événement trouvé",
@@ -294,6 +298,8 @@
     "yourAttendance": "Votre présence",
     "join": "Rejoindre l'événement",
     "confirmAttendance": "Confirmer la présence",
+    "activityDisabled": "L'activité est désactivée pour les événements passés.",
+    "pastEventNoActions": "Aucune action ne peut être effectuée sur cet événement, sauf la suppression par un administrateur.",
     "decline": "Refuser",
     "markLate": "Marquer en retard",
     "undoLate": "Annuler le retard",
@@ -394,9 +400,14 @@
     }
   },
   "groupDetails": {
+    "transferAdminTitle": "Sélectionner un nouvel admin",
+    "transferAdminDesc": "Vous devez choisir un nouvel admin avant de quitter le groupe.",
+    "selectMember": "Sélectionner un membre",
+    "transferAndLeave": "Transférer et quitter",
     "joinRequests": "Demandes d'adhésion",
     "noJoinRequests": "Aucune demande d'adhésion en attente",
     "inviteLinkCopied": "Lien d'invitation copié dans le presse-papiers !",
+    "inviteLinkInstructions": "Partagez ce lien. Si le destinataire est connecté, il rejoindra le groupe immédiatement. Sinon, il sera invité à se connecter ou à s'inscrire d'abord.",
     "memberInvited": "Membre invité avec succès",
     "failedToInvite": "Échec de l'invitation du membre",
     "confirmRemoveMember": "Êtes-vous sûr de vouloir retirer ce membre ?",

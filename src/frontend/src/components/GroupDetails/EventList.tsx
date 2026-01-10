@@ -87,8 +87,19 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
                 tabIndex={0}
                 aria-label={`${t('common.viewDetails')} ${event.title}`}
               >
-                <div className="w-10 h-10 bg-slate-600 rounded flex items-center justify-center text-2xl">
-                  {eventType === "Football" ? "⚽" : eventType === "Tennis" ? "🎾" : "📅"}
+                <div className="w-10 h-10 bg-slate-600 rounded flex items-center justify-center">
+                  {/* Custom date icon: show month and day */}
+                  {(() => {
+                    const dateObj = new Date(eventDate);
+                    const month = dateObj.toLocaleString('en-US', { month: 'short' });
+                    const day = dateObj.getDate();
+                    return (
+                      <div className="flex flex-col items-center justify-center w-full h-full">
+                        <span className="text-xs font-bold text-blue-300 leading-none">{month}</span>
+                        <span className="text-lg font-extrabold text-white leading-none">{day}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="flex-1">
                   <div className="font-medium flex items-center gap-2">

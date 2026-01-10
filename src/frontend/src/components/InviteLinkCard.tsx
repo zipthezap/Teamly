@@ -30,6 +30,7 @@ interface InviteLinkCardProps {
   isCreator: boolean;
   onGenerateLink: () => Promise<void>;
   isPublic: boolean;
+  isPast?: boolean;
 }
 
 const InviteLinkCard: React.FC<InviteLinkCardProps> = ({
@@ -38,7 +39,8 @@ const InviteLinkCard: React.FC<InviteLinkCardProps> = ({
   eventDate,
   isCreator,
   onGenerateLink,
-  isPublic
+  isPublic,
+  isPast = false
 }) => {
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -102,7 +104,7 @@ const InviteLinkCard: React.FC<InviteLinkCardProps> = ({
     window.location.href = `mailto:?subject=${encodeURIComponent(`Join ${eventTitle}`)}&body=${encodeURIComponent(shareText)}`;
   };
 
-  if (!isCreator) {
+  if (!isCreator || isPast) {
     return null;
   }
 

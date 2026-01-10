@@ -78,6 +78,7 @@ export const groupsAPI = {
     });
   },
   deleteGroupPicture: (groupId: string | number) => api.delete(`/groups/${groupId}/picture`),
+  transferAdmin: (groupId: string | number, newAdminEmail: string) => api.post(`/groups/${groupId}/transfer-admin`, { newAdminEmail }),
 };
 
 // Events API

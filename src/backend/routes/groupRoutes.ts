@@ -26,6 +26,8 @@ router.post('/:id/invite', groupController.inviteMember);
 router.delete('/:id/members/:memberId', groupController.removeMember);
 router.put('/:id/members/:memberId/role', groupController.updateMemberRole);
 router.delete('/:id/leave', groupController.leaveGroup);
+// Transfer admin before leaving
+router.post('/:id/transfer-admin', groupController.transferAdmin);
 router.get('/:id/invite-link', groupController.getInviteLink);
 
 // Group picture management (admin only)

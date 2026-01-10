@@ -4,8 +4,8 @@ import { Group } from "../../types/group";
 import Button from "../ui/Button";
 import EditIcon from "../icons/EditIcon";
 import TrashIcon from "../icons/TrashIcon";
-import UserPlusIcon from "../icons/UserPlusIcon";
 import LinkIcon from "../icons/LinkIcon";
+import GroupAddIcon from "../icons/GroupAddIcon";
 import ArrowRightIcon from "../icons/ArrowRightIcon";
 import JoinRequestsPopover from "../JoinRequestsPopover";
 import { getImageUrl } from "../../utils/imageUtils";
@@ -56,27 +56,27 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
       </div>
       <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
         {isAdmin && onEdit && (
-          <Button color="primary" onClick={onEdit} className="rounded-full p-4 min-w-0 w-16 h-16 flex items-center justify-center" aria-label={t('groupDetails.editGroup')}>
+          <Button color="primary" onClick={onEdit} className="rounded-full p-2 min-w-0 w-14 h-14 flex items-center justify-center" aria-label={t('groupDetails.editGroup')}>
             <EditIcon className="w-8 h-8" />
           </Button>
         )}
         {isAdmin && onDelete && (
-          <Button color="danger" onClick={onDelete} className="rounded-full p-4 min-w-0 w-16 h-16 flex items-center justify-center" aria-label={t('groupDetails.deleteGroup')}>
+          <Button color="danger" onClick={onDelete} className="rounded-full p-2 min-w-0 w-14 h-14 flex items-center justify-center" aria-label={t('groupDetails.deleteGroup')}>
             <TrashIcon className="w-8 h-8" />
           </Button>
         )}
         {onCopyLink && (
-          <Button color="info" onClick={onCopyLink} className="rounded-full p-4 min-w-0 w-16 h-16 flex items-center justify-center" aria-label={t('groupDetails.copyLink')}>
+          <Button color="info" onClick={onCopyLink} className="rounded-full p-2 min-w-0 w-14 h-14 flex items-center justify-center" aria-label={t('groupDetails.copyLink')}>
             <LinkIcon className="w-8 h-8" />
           </Button>
         )}
         {onInvite && (
-          <Button color="success" onClick={onInvite} className="rounded-full p-4 min-w-0 w-16 h-16 flex items-center justify-center" aria-label={t('groupDetails.invite')}>
-            <UserPlusIcon className="w-8 h-8" />
+          <Button color="success" onClick={onInvite} className="rounded-full p-2 min-w-0 w-14 h-14 flex items-center justify-center" aria-label={t('groupDetails.invite')}>
+            <GroupAddIcon className="w-8 h-8" />
           </Button>
         )}
         {onLeave && (
-          <Button color="secondary" onClick={onLeave} className="rounded-full p-4 min-w-0 w-16 h-16 flex items-center justify-center" aria-label={t('groupDetails.leave')}>
+          <Button color="secondary" onClick={onLeave} className="rounded-full p-2 min-w-0 w-14 h-14 flex items-center justify-center" aria-label={t('groupDetails.leave')}>
             <ArrowRightIcon className="w-8 h-8" />
           </Button>
         )}

@@ -1,3 +1,43 @@
+// Transfer admin rights to another member
+export const transferAdmin = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { newAdminEmail } = req.body;
+    // Check if user is current admin
+    const currentAdmin = await prisma.groupMember.findFirst({
+      where: { groupId: id, userId: req.user.id, role: 'admin' }
+    });
+    if (!currentAdmin) {
+      return res.status(403).json({ error: 'Only current admin can transfer admin rights.' });
+    }
+    // Find new admin member
+    const newAdminUser = await prisma.user.findUnique({ where: { email: newAdminEmail } });
+    if (!newAdminUser) {
+      return res.status(404).json({ error: 'Selected user not found.' });
+    }
+    const newAdminMembership = await prisma.groupMember.findFirst({
+      where: { groupId: id, userId: newAdminUser.id }
+    });
+    if (!newAdminMembership) {
+      return res.status(404).json({ error: 'Selected user is not a member of the group.' });
+    }
+    // Use transaction to update roles
+    await prisma.$transaction([
+      prisma.groupMember.update({
+        where: { id: newAdminMembership.id },
+        data: { role: 'admin' }
+      }),
+      prisma.groupMember.update({
+        where: { id: currentAdmin.id },
+        data: { role: 'member' }
+      })
+    ]);
+    res.json({ message: 'Admin rights transferred successfully.' });
+  } catch (error) {
+    logger.error('Failed to transfer admin rights', 'GroupController', { error });
+    res.status(500).json({ error: 'Failed to transfer admin rights.' });
+  }
+};
 // Delete a group (admin only)
 export const deleteGroup = async (req: Request, res: Response) => {
   try {

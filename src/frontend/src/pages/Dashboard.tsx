@@ -13,6 +13,7 @@ import {
   Chip,
   Stack,
   Avatar,
+  AvatarGroup,
 } from '@mui/material';
 import { groupsAPI, eventsAPI } from '../services/api';
 import { LoadingSpinner, EmptyState, StatusBadge } from '../components/common';
@@ -201,73 +202,85 @@ const Dashboard = () => {
                 {t('common.viewAll')}
               </Button>
             </Box>
-            <Grid container spacing={2}>
-              {groups.slice(0, 3).map((group) => (
-                <Grid item xs={12} sm={6} md={4} key={group.id}>
-                  <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                    <CardContent sx={{ flexGrow: 1, p: 2 }}>
-                      <Box display="flex" gap={1.5} mb={1.5}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
+              {groups.slice(0, 3).map((group) => {
+                const memberCount = group._count?.members ?? group.memberCount ?? group.members?.length ?? 0;
+                const eventCount = group._count?.events ?? group.eventCount ?? group.events?.length ?? 0;
+                const recentMembers = group.members?.slice(0, 4) || [];
+                return (
+                  <Card key={group.id} sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'all 0.3s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 } }}>
+                    <CardContent sx={{ flexGrow: 1, p: 3 }}>
+                      <Box display="flex" gap={2} mb={1.5}>
                         <Avatar
                           src={getImageUrl(group.picture) || undefined}
-                          sx={{ 
-                            width: 48, 
-                            height: 48,
-                            borderRadius: '8px',
-                            bgcolor: 'primary.main'
-                          }}
+                          sx={{ width: 60, height: 60, borderRadius: '8px', bgcolor: 'primary.main' }}
                           variant="rounded"
                         >
                           {!group.picture && getInitials(group.name)}
                         </Avatar>
                         <Box flexGrow={1} minWidth={0}>
-                          <Box display="flex" justifyContent="space-between" alignItems="start" mb={0.5} minHeight={32}>
-                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 0, lineHeight: 1.4 }}>
+                          <Box display="flex" justifyContent="space-between" alignItems="start" mb={0.5}>
+                            <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, pr: 1 }}>
                               {group.name}
                             </Typography>
-                            {group.isPublic && (
-                              <Chip label={t('common.public')} size="small" color="primary" sx={{ flexShrink: 0 }} />
-                            )}
+                            <Box display="flex" gap={0.5} flexShrink={0}>
+                              {group.isPublic ? (
+                                <Chip label={t('groups.public')} size="small" color="primary" />
+                              ) : (
+                                <Chip label={t('groups.private')} size="small" />
+                              )}
+                            </Box>
                           </Box>
                         </Box>
                       </Box>
-                      <Typography 
-                        variant="body2" 
-                        color="text.secondary" 
-                        sx={{ 
-                          mb: 1.5, 
-                          minHeight: 40,
-                          maxHeight: 40,
-                          overflow: 'hidden',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          lineClamp: 2
-                        }}
-                      >
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2, minHeight: 40, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {group.description || t('common.noDescription')}
                       </Typography>
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <GroupIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
-                          {group.members?.length || 0} {t('common.members')}
-                        </Typography>
+                      <Box display="flex" alignItems="center" gap={2} mb={2}>
+                        <Box display="flex" alignItems="center" gap={0.5}>
+                          <GroupIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                          <Typography variant="caption" color="text.secondary">
+                            {t('groups.membersCount', { count: memberCount })}
+                          </Typography>
+                        </Box>
+                        <Box display="flex" alignItems="center" gap={0.5}>
+                          <EventIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                          <Typography variant="caption" color="text.secondary">
+                            {t('groups.eventsCount', { count: eventCount })}
+                          </Typography>
+                        </Box>
                       </Box>
+                      {recentMembers.length > 0 && (
+                        <AvatarGroup max={4} sx={{ justifyContent: 'flex-start' }}>
+                          {recentMembers.map((member, idx) => {
+                            const profilePictureUrl = getImageUrl(member.user?.profilePicture);
+                            return (
+                              <Avatar 
+                                key={idx}
+                                src={profilePictureUrl || undefined}
+                                sx={{ width: 32, height: 32, fontSize: '0.75rem', bgcolor: 'primary.main' }}
+                              >
+                                {!profilePictureUrl && getInitials(member.user?.name)}
+                              </Avatar>
+                            );
+                          })}
+                        </AvatarGroup>
+                      )}
                     </CardContent>
-                    <CardActions sx={{ px: 2, pb: 2, pt: 0 }}>
+                    <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
                       <Button 
-                        size="small" 
                         variant="contained"
-                        onClick={() => navigate(`/groups/${group.id}`)}
                         fullWidth
+                        onClick={() => navigate(`/groups/${group.id}`)}
                       >
                         {t('common.viewDetails')}
                       </Button>
                     </CardActions>
                   </Card>
-                </Grid>
-              ))}
+                );
+              })}
               {groups.length === 0 && (
-                <Grid item xs={12}>
+                <Box>
                   <EmptyState
                     icon={<GroupIcon />}
                     title={t('dashboard.noGroupsYet')}
@@ -278,9 +291,9 @@ const Dashboard = () => {
                     ]}
                     gradient="linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(33, 150, 243, 0.02) 100%)"
                   />
-                </Grid>
+                </Box>
               )}
-            </Grid>
+            </Box>
           </Box>
         </Grid>
 

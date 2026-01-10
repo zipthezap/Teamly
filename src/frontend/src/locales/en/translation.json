@@ -55,6 +55,7 @@
     "declinedMessage": "{{name}} declined \"{{eventTitle}}\"",
     "confirmedMessage": "{{name}} confirmed attendance for \"{{eventTitle}}\"",
     "joinMessage": "{{name}} joined the event \"{{eventTitle}}\"",
+    "leaveMessage": "{{name}} left the event \"{{eventTitle}}\"",
     "markAllRead": "Mark all read",
     "viewAll": "View All",
     "noNotifications": "No notifications",
@@ -91,9 +92,11 @@
     "join": "{{name}} joined the event \"{{eventTitle}}\"",
     "leave": "{{name}} left the event \"{{eventTitle}}\"",
     "late": "{{name}} will be late for \"{{eventTitle}}\"",
+    "lateMessage": "{{name}} has indicated they will be late for \"{{eventTitle}}\".",
     "confirmed": "{{name}} confirmed attendance for \"{{eventTitle}}\"",
     "declined": "{{name}} declined \"{{eventTitle}}\"",
     "join_request": "{{name}} wants to join \"{{groupName}}\"",
+    "join_requestMessage": "{{name}} has requested to join the group \"{{groupName}}\".",
     "accepted": "Welcome to \"{{groupName}}\"! Your join request was accepted.",
     "nearby_created": "New group \"{{groupName}}\" created near you",
     "status_change": "Event status changed"
@@ -178,6 +181,7 @@
     "allTypes": "All Types"
   },
   "events": {
+    "myEvents": "My Events",
     "createFirstEventDesc": "No events available.",
     "allEvents": "All Events",
     "leaveEvent": "Leave Event",
@@ -294,6 +298,8 @@
     "yourAttendance": "Your Attendance",
     "join": "Join Event",
     "confirmAttendance": "Confirm Attendance",
+    "activityDisabled": "Activity is disabled for past events.",
+    "pastEventNoActions": "No actions can be performed on this event except deletion by an admin.",
     "decline": "Decline",
     "markLate": "Mark Late",
     "undoLate": "Undo Late",
@@ -394,9 +400,14 @@
     }
   },
   "groupDetails": {
+    "transferAdminTitle": "Select New Admin",
+    "transferAdminDesc": "You must select a new admin before leaving the group.",
+    "selectMember": "Select member",
+    "transferAndLeave": "Transfer & Leave",
     "joinRequests": "Join Requests",
     "noJoinRequests": "No pending join requests",
     "inviteLinkCopied": "Invite link copied to clipboard!",
+    "inviteLinkInstructions": "Share this link. If the recipient is logged in, they will join the group immediately. If not, they will be prompted to log in or sign up first.",
     "memberInvited": "Member invited successfully",
     "failedToInvite": "Failed to invite member",
     "confirmRemoveMember": "Are you sure you want to remove this member?",

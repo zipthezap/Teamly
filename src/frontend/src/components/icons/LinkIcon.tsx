@@ -1,7 +1,7 @@
 
 import * as React from "react";
 
-// Material Design 'link' icon SVG
+// Chain link icon (copy link style)
 const LinkIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -15,9 +15,8 @@ const LinkIcon = (props: React.SVGProps<SVGSVGElement>) => (
     strokeLinejoin="round"
     {...props}
   >
-    <path d="M3.9 12a5 5 0 0 1 5-5h3" />
-    <path d="M14.1 12a5 5 0 0 0-5 5h-3" />
-    <line x1="8" y1="12" x2="16" y2="12" />
+    <path d="M10 14a5 5 0 0 1 0-7l2-2a5 5 0 0 1 7 7l-2 2" />
+    <path d="M14 10a5 5 0 0 1 0 7l-2 2a5 5 0 0 1-7-7l2-2" />
   </svg>
 );
 
