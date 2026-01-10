@@ -20,6 +20,19 @@ export const createEvent = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Group ID, title, event type, and start time are required' });
     }
 
+    // Sanitize text inputs
+    const sanitized = eventService.sanitizeEventData({
+      title,
+      description,
+      eventType,
+      location
+    });
+
+    // Validate sanitized required fields are not empty
+    if (!sanitized.title || !sanitized.eventType) {
+      return res.status(400).json({ error: 'Title and event type cannot be empty or whitespace-only' });
+    }
+
     // Validate event times
     const timeValidation = eventService.validateEventTimes(startTime, endTime);
     if (!timeValidation.valid) {
@@ -51,10 +64,10 @@ export const createEvent = async (req: Request, res: Response) => {
       data: {
         groupId,
         creatorId: req.user.id,
-        title,
-        description,
-        eventType,
-        location,
+        title: sanitized.title!,
+        description: sanitized.description,
+        eventType: sanitized.eventType!,
+        location: sanitized.location,
         startTime: new Date(startTime),
         endTime: endTime ? new Date(endTime) : null,
         maxPlayers: maxPlayers ? parseInt(maxPlayers) : null,
@@ -274,6 +287,14 @@ export const updateEvent = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { title, description, eventType, location, startTime, endTime, maxPlayers, isPublic } = req.body;
 
+    // Sanitize text inputs
+    const sanitized = eventService.sanitizeEventData({
+      title,
+      description,
+      eventType,
+      location
+    });
+
     // Validate that events are single-day only if both times are provided
     if (startTime && endTime) {
       const timeValidation = eventService.validateEventTimes(startTime, endTime);
@@ -306,10 +327,10 @@ export const updateEvent = async (req: Request, res: Response) => {
     const updatedEvent = await prisma.event.update({
       where: { id },
       data: {
-        ...(title && { title }),
-        ...(description !== undefined && { description }),
-        ...(eventType && { eventType }),
-        ...(location !== undefined && { location }),
+        ...(sanitized.title && { title: sanitized.title }),
+        ...(sanitized.description !== undefined && { description: sanitized.description }),
+        ...(sanitized.eventType && { eventType: sanitized.eventType }),
+        ...(sanitized.location !== undefined && { location: sanitized.location }),
         ...(startTime && { startTime: new Date(startTime) }),
         ...(endTime !== undefined && { endTime: endTime ? new Date(endTime) : null }),
         ...(maxPlayers !== undefined && { maxPlayers: maxPlayers ? parseInt(maxPlayers) : null }),

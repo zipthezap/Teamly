@@ -1,6 +1,7 @@
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import { Request, Response } from 'express';
+import * as teamUpService from '../services/teamUpService';
 
 // Create a TeamUp request
 export const createTeamUpRequest = async (req: Request, res: Response) => {
@@ -26,6 +27,23 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
       });
     }
 
+    // Sanitize text inputs
+    const sanitized = teamUpService.sanitizeTeamUpData({
+      title,
+      description,
+      sportType,
+      location,
+      locationName,
+      city,
+      country,
+      skillLevel
+    });
+
+    // Validate sanitized required fields are not empty
+    if (!sanitized.title || !sanitized.sportType) {
+      return res.status(400).json({ error: 'Title and sport type cannot be empty or whitespace-only' });
+    }
+
     // Validate dateTime
     const eventDate = new Date(dateTime);
     if (isNaN(eventDate.getTime())) {
@@ -49,18 +67,18 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
     const teamUpRequest = await prisma.teamUpRequest.create({
       data: {
         creatorId: req.user.id,
-        title,
-        description,
-        sportType,
-        location,
+        title: sanitized.title!,
+        description: sanitized.description,
+        sportType: sanitized.sportType!,
+        location: sanitized.location,
         latitude: latitude ? parseFloat(latitude) : null,
         longitude: longitude ? parseFloat(longitude) : null,
-        locationName,
-        city,
-        country,
+        locationName: sanitized.locationName,
+        city: sanitized.city,
+        country: sanitized.country,
         dateTime: eventDate,
         playersNeeded: players,
-        skillLevel,
+        skillLevel: sanitized.skillLevel,
         status: 'open',
         expiresAt
       },
@@ -301,18 +319,30 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Only the creator can update this request' });
     }
 
+    // Sanitize text inputs
+    const sanitized = teamUpService.sanitizeTeamUpData({
+      title,
+      description,
+      sportType,
+      location,
+      locationName,
+      city,
+      country,
+      skillLevel
+    });
+
     const updateData: any = {};
 
-    if (title !== undefined) updateData.title = title;
-    if (description !== undefined) updateData.description = description;
-    if (sportType !== undefined) updateData.sportType = sportType;
-    if (location !== undefined) updateData.location = location;
+    if (sanitized.title !== undefined) updateData.title = sanitized.title;
+    if (sanitized.description !== undefined) updateData.description = sanitized.description;
+    if (sanitized.sportType !== undefined) updateData.sportType = sanitized.sportType;
+    if (sanitized.location !== undefined) updateData.location = sanitized.location;
     if (latitude !== undefined) updateData.latitude = parseFloat(latitude);
     if (longitude !== undefined) updateData.longitude = parseFloat(longitude);
-    if (locationName !== undefined) updateData.locationName = locationName;
-    if (city !== undefined) updateData.city = city;
-    if (country !== undefined) updateData.country = country;
-    if (skillLevel !== undefined) updateData.skillLevel = skillLevel;
+    if (sanitized.locationName !== undefined) updateData.locationName = sanitized.locationName;
+    if (sanitized.city !== undefined) updateData.city = sanitized.city;
+    if (sanitized.country !== undefined) updateData.country = sanitized.country;
+    if (sanitized.skillLevel !== undefined) updateData.skillLevel = sanitized.skillLevel;
     if (status !== undefined) updateData.status = status;
 
     if (dateTime !== undefined) {
@@ -409,6 +439,9 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { message } = req.body;
 
+    // Sanitize the message
+    const sanitized = teamUpService.sanitizeTeamUpData({ message });
+
     const teamUpRequest = await prisma.teamUpRequest.findUnique({
       where: { id },
       select: { 
@@ -454,7 +487,7 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
       data: {
         teamUpRequestId: id,
         userId: req.user.id,
-        message,
+        message: sanitized.message,
         status: 'pending'
       },
       include: {

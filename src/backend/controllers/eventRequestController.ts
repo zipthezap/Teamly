@@ -2,6 +2,7 @@ import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import { validateVoteThreshold, validateVoteDeadline } from '../services/eventValidation';
 import { Request, Response } from 'express';
+import * as eventService from '../services/eventService';
 
 // Create event request (admin only)
 export const createEventRequest = async (req: Request, res: Response) => {
@@ -15,6 +16,19 @@ export const createEventRequest = async (req: Request, res: Response) => {
       return res.status(400).json({ 
         error: 'groupId, title, eventType, and startTime are required' 
       });
+    }
+
+    // Sanitize text inputs
+    const sanitized = eventService.sanitizeEventData({
+      title,
+      description,
+      eventType,
+      location
+    });
+
+    // Validate sanitized required fields are not empty
+    if (!sanitized.title || !sanitized.eventType) {
+      return res.status(400).json({ error: 'Title and event type cannot be empty or whitespace-only' });
     }
 
     // Validate dates
@@ -71,10 +85,10 @@ export const createEventRequest = async (req: Request, res: Response) => {
       data: {
         groupId,
         creatorId: req.user.id,
-        title,
-        description,
-        eventType,
-        location,
+        title: sanitized.title!,
+        description: sanitized.description,
+        eventType: sanitized.eventType!,
+        location: sanitized.location,
         startTime: startDate,
         endTime: endDate,
         maxPlayers,
