@@ -3,6 +3,24 @@ import { validateRecurrenceRule } from '../utils/recurrenceService';
 import { logger } from '../utils/logger';
 import { sendEmail } from '../utils/emailService';
 import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
+import { sanitizeString } from '../utils/validation';
+
+/**
+ * Sanitizes event data inputs
+ */
+export const sanitizeEventData = (data: {
+  title?: string;
+  description?: string;
+  eventType?: string;
+  location?: string;
+}) => {
+  return {
+    title: data.title ? sanitizeString(data.title) : undefined,
+    description: data.description ? sanitizeString(data.description) : undefined,
+    eventType: data.eventType ? sanitizeString(data.eventType) : undefined,
+    location: data.location ? sanitizeString(data.location) : undefined
+  };
+};
 
 /**
  * Validates event time constraints

@@ -286,17 +286,26 @@ export const updateGroup = async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Only admins can update the group' });
     }
 
+    // Sanitize text inputs
+    const sanitized = groupService.sanitizeGroupData({
+      name,
+      description,
+      locationName,
+      city,
+      country
+    });
+
     const group = await prisma.group.update({
       where: { id },
       data: {
-        ...(name && { name }),
-        ...(description !== undefined && { description }),
+        ...(sanitized.name && { name: sanitized.name }),
+        ...(sanitized.description !== undefined && { description: sanitized.description }),
         ...(isPublic !== undefined && { isPublic }),
         ...(latitude !== undefined && { latitude: latitude ? parseFloat(latitude) : null }),
         ...(longitude !== undefined && { longitude: longitude ? parseFloat(longitude) : null }),
-        ...(locationName !== undefined && { locationName }),
-        ...(city !== undefined && { city }),
-        ...(country !== undefined && { country })
+        ...(sanitized.locationName !== undefined && { locationName: sanitized.locationName }),
+        ...(sanitized.city !== undefined && { city: sanitized.city }),
+        ...(sanitized.country !== undefined && { country: sanitized.country })
       },
       include: {
         creator: {
