@@ -6,12 +6,16 @@ export enum EventNotificationType {
   declined = 'declined',
   status_change = 'status_change',
   comment = 'comment',
+  event_updated = 'event_updated',
+  event_cancelled = 'event_cancelled',
 }
 
 export enum GroupNotificationType {
   accepted = 'accepted',
   invited = 'invited',
   join_request = 'join_request',
+  event_created = 'event_created',
+  nearby_created = 'nearby_created',
 }
 
 export enum TeamUpNotificationType {
@@ -87,39 +91,11 @@ export interface Event {
   groupId: string;
 }
 
-// Event with relations
-export interface EventNotification {
-  id: string;
-  userId: string;
-  type: EventNotificationType;
-  createdAt: Date | string;
-  user?: PublicUser;
-}
-
-export interface GroupNotification {
-  id: string;
-  groupId: string;
-  userId: string;
-  type: GroupNotificationType;
-  createdAt: Date | string;
-  user?: PublicUser;
-}
-
-export interface TeamUpNotification {
-  id: string;
-  teamUpRequestId: string;
-  userId: string;
-  type: TeamUpNotificationType;
-  createdAt: Date | string;
-  user?: PublicUser;
-}
-
 export interface EventWithDetails extends Event {
   creator?: PublicUser;
   group?: Group;
   participants?: EventParticipant[];
   guestParticipants?: GuestParticipant[];
-  eventNotifications?: EventNotification[];
   _count?: {
     participants: number;
     guestParticipants: number;

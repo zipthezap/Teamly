@@ -1,5 +1,5 @@
 import prisma from '../config/database';
-import { EventParticipantStatus } from '../../shared/types/event.types';
+import { EventParticipantStatus, GroupNotificationType, EventNotificationType } from '../../shared/types/event.types';
 import { validateRecurrenceRule } from '../utils/recurrenceService';
 import { logger } from '../utils/logger';
 import { sendEmail } from '../utils/emailService';
@@ -120,7 +120,7 @@ export const createEventNotifications = async (
       data: {
         groupId,
         userId,
-        type: 'eventCreated',
+        type: GroupNotificationType.event_created,
         params: {
           eventTitle,
           name: creatorName,
@@ -147,7 +147,7 @@ export const createEventUpdateNotifications = async (
       data: {
         eventId,
         userId,
-        type: 'eventUpdated',
+        type: EventNotificationType.event_updated,
         params: {
           eventTitle,
           name: updaterName
@@ -173,7 +173,7 @@ export const createEventDeletionNotifications = async (
       data: {
         eventId,
         userId,
-        type: 'eventCancelled',
+        type: EventNotificationType.event_cancelled,
         params: {
           eventTitle,
           name: deleterName

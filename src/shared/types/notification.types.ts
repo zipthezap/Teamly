@@ -27,7 +27,7 @@ export interface EventNotification extends BaseNotification {
 
 export interface GroupNotification extends BaseNotification {
   groupId: string;
-  type: 'accepted' | 'invited' | 'join_request' | 'member_joined' | 'member_left' | 'role_changed';
+  type: 'accepted' | 'invited' | 'join_request' | 'event_created' | 'nearby_created';
 }
 
 export interface TeamUpNotification extends BaseNotification {

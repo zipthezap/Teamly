@@ -73,6 +73,7 @@ import {
 import { UPLOAD_CONFIG } from '../config/upload';
 import * as groupService from '../services/groupService';
 import * as locationService from '../services/locationService';
+import { GroupNotificationType } from '../../shared/types/event.types';
 
 
 export const createGroup = async (req: Request, res: Response) => {
@@ -151,7 +152,7 @@ export const createGroup = async (req: Request, res: Response) => {
           data: {
             groupId: group.id,
             userId,
-            type: 'nearby_created',
+            type: GroupNotificationType.nearby_created,
             params: {
               groupName: group.name,
               name: req.user.name

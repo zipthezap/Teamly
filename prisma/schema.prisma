@@ -20,12 +20,16 @@ enum EventNotificationType {
   declined
   status_change
   comment
+  event_updated
+  event_cancelled
 }
 
 enum GroupNotificationType {
   accepted
   invited
   join_request
+  event_created
+  nearby_created
 }
 
 enum TeamUpNotificationType {

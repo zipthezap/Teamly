@@ -7,7 +7,7 @@ import { Request, Response } from 'express';
 import { createInviteToken } from '../utils/inviteToken';
 import { TRANSACTION } from '../config/security';
 import * as eventService from '../services/eventService';
-import { EventParticipantStatus, GuestParticipantStatus } from '../../shared/types/event.types';
+import { EventParticipantStatus, GuestParticipantStatus, SportType } from '../../shared/types/event.types';
 import * as groupService from '../services/groupService';
 import * as locationService from '../services/locationService';
 import { exportToCSV, exportToICalendar, exportToJSON } from '../services/exportService';
@@ -78,7 +78,7 @@ export const createEvent = async (req: Request, res: Response) => {
         creatorId: req.user.id,
         title: sanitized.title!,
         description: sanitized.description,
-        eventType: sanitized.eventType!,
+        eventType: sanitized.eventType! as SportType,
         location: sanitized.location,
         latitude: latitude ? parseFloat(latitude) : null,
         longitude: longitude ? parseFloat(longitude) : null,
@@ -365,7 +365,7 @@ export const updateEvent = async (req: Request, res: Response) => {
       data: {
         ...(sanitized.title && { title: sanitized.title }),
         ...(sanitized.description !== undefined && { description: sanitized.description }),
-        ...(sanitized.eventType && { eventType: sanitized.eventType }),
+        ...(sanitized.eventType && { eventType: sanitized.eventType as SportType }),
         ...(sanitized.location !== undefined && { location: sanitized.location }),
         ...(latitude !== undefined && { latitude: latitude ? parseFloat(latitude) : null }),
         ...(longitude !== undefined && { longitude: longitude ? parseFloat(longitude) : null }),
@@ -409,7 +409,7 @@ export const updateEvent = async (req: Request, res: Response) => {
 
     // Send email notifications to participants
     await eventService.sendEventEmailNotifications(
-      updatedEvent.participants,
+      (updatedEvent as any).participants,
       req.user.id,
       'eventUpdates',
       'eventUpdate',
