@@ -62,11 +62,17 @@ const Dashboard = () => {
   }
 
   // Calculate statistics
-  // Only show soon-to-happen events the user is NOT confirmed on yet
+  // Only show upcoming events the user is confirmed on or organizing
   const upcomingEvents = events.filter(e => {
     const isSoon = new Date(e.startTime) > new Date();
+    if (!isSoon) return false;
+    
+    // Show if user is the organizer
+    if (e.creatorId === user?.id) return true;
+    
+    // Show if user is a confirmed participant
     const isConfirmed = e.participants?.some(p => p.userId === user?.id && p.status === 'confirmed');
-    return isSoon && !isConfirmed;
+    return isConfirmed;
   });
   const myEvents = events.filter(e => 
     e.participants?.some(p => p.userId === user?.id)
@@ -351,6 +357,7 @@ const Dashboard = () => {
             <UpcomingEventsCalendar 
               events={events} 
               onEventClick={(eventId) => navigate(`/events/${eventId}`)}
+              userId={user?.id}
             />
 
             {/* Quick Links */}
