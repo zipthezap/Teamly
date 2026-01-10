@@ -49,19 +49,17 @@ curl -X POST http://localhost:3000/api/auth/reset-password \
 ### 3. Input Validation and Sanitization
 
 #### XSS Prevention
-All user-generated content is sanitized to prevent Cross-Site Scripting (XSS) attacks:
+All user-generated content is sanitized by trimming whitespace:
 - Comments
 - Group chat messages
 - Group names and descriptions
 - Event details
 
-The `sanitizeUserInput()` function escapes HTML special characters:
-- `&` → `&amp;`
-- `<` → `&lt;`
-- `>` → `&gt;`
-- `"` → `&quot;`
-- `'` → `&#x27;`
-- `/` → `&#x2F;`
+**Important**: XSS protection is handled by React in the frontend, which automatically escapes values when rendering JSX. The backend stores raw text data and only trims whitespace.
+
+⚠️ **Warning**: If data is used outside of React components (e.g., in server-side email templates or third-party integrations), ensure proper escaping is applied at the output layer to prevent XSS vulnerabilities.
+
+The `sanitizeUserInput()` function trims whitespace from inputs. HTML escaping is handled by the React framework when rendering content in the UI.
 
 #### Validation Functions
 - `validateEmail()` - Email format validation
@@ -69,7 +67,7 @@ The `sanitizeUserInput()` function escapes HTML special characters:
 - `validateStrongPassword()` - Enforces strong password requirements
 - `validateUUID()` - UUID format validation
 - `sanitizeString()` - Trims whitespace
-- `sanitizeUserInput()` - Sanitizes and escapes HTML
+- `sanitizeUserInput()` - Sanitizes by trimming whitespace (XSS protection is in React)
 
 ### 4. Security Headers (Helmet)
 
@@ -149,12 +147,14 @@ Always validate and sanitize user input:
 ```typescript
 import { sanitizeUserInput, validateEmail } from '../utils/validation';
 
-// Sanitize text content
+// Sanitize text content (trims whitespace)
 const cleanContent = sanitizeUserInput(userContent);
 
 // Validate email
 validateEmail(email, 'Email');
 ```
+
+**Note**: XSS protection is handled by React in the frontend. The backend only needs to trim whitespace from inputs.
 
 ### 2. Password Handling
 Never log or expose passwords:
