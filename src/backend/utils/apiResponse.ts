@@ -4,39 +4,9 @@
  */
 
 import { Response } from 'express';
+import { ApiSuccessResponse, ApiErrorResponse, PaginationMeta } from '../../shared/types';
 
-export interface ApiSuccessResponse<T = any> {
-  success: true;
-  data: T;
-  message?: string;
-  meta?: {
-    timestamp: string;
-    requestId?: string;
-    pagination?: PaginationMeta;
-  };
-}
-
-export interface ApiErrorResponse {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-    details?: any;
-  };
-  meta?: {
-    timestamp: string;
-    requestId?: string;
-  };
-}
-
-export interface PaginationMeta {
-  page: number;
-  perPage: number;
-  total: number;
-  totalPages: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-}
+export { ApiSuccessResponse, ApiErrorResponse, PaginationMeta };
 
 /**
  * Send a standardized success response

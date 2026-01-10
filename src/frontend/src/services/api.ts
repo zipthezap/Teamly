@@ -1,5 +1,21 @@
 import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
-import { CreateTeamUpRequestData, UpdateTeamUpRequestData, TeamUpRequestFilters } from '../types/teamup';
+import { 
+  CreateTeamUpRequestData, 
+  UpdateTeamUpRequestData, 
+  TeamUpRequestFilters,
+  UserRegistrationData,
+  UserLoginData,
+  UserUpdateData,
+  PasswordUpdateData,
+  CreateGroupData,
+  UpdateGroupData,
+  CreateEventData,
+  UpdateEventData,
+  EventSearchParams,
+  CreateEventRequestData,
+  UpdateEmailPreferenceData,
+  NotificationQueryParams
+} from '../../../shared/types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -34,11 +50,11 @@ api.interceptors.response.use(
 
 // Auth API
 export const authAPI = {
-  register: (data: any) => api.post('/auth/register', data),
-  login: (data: any) => api.post('/auth/login', data),
+  register: (data: UserRegistrationData) => api.post('/auth/register', data),
+  login: (data: UserLoginData) => api.post('/auth/login', data),
   getProfile: () => api.get('/auth/profile'),
-  updateProfile: (data: any) => api.put('/auth/profile', data),
-  updatePassword: (data: any) => api.put('/auth/password', data),
+  updateProfile: (data: UserUpdateData) => api.put('/auth/profile', data),
+  updatePassword: (data: PasswordUpdateData) => api.put('/auth/password', data),
   uploadProfilePicture: (file: File) => {
     const formData = new FormData();
     formData.append('profilePicture', file);
@@ -51,10 +67,10 @@ export const authAPI = {
 
 // Groups API
 export const groupsAPI = {
-  create: (data: any) => api.post('/groups', data),
+  create: (data: CreateGroupData) => api.post('/groups', data),
   getAll: () => api.get('/groups'),
   getById: (id: string | number) => api.get(`/groups/${id}`),
-  update: (id: string | number, data: any) => api.put(`/groups/${id}`, data),
+  update: (id: string | number, data: UpdateGroupData) => api.put(`/groups/${id}`, data),
   delete: (id: string | number) => api.delete(`/groups/${id}`),
   invite: (id: string | number, email: string) => api.post(`/groups/${id}/invite`, { email }),
   removeMember: (groupId: string | number, memberId: string | number) => api.delete(`/groups/${groupId}/members/${memberId}`),
@@ -83,23 +99,12 @@ export const groupsAPI = {
 };
 
 // Events API
-export interface EventSearchParams {
-  groupId?: string | number;
-  search?: string;
-  eventType?: string;
-  startDate?: string;
-  endDate?: string;
-  location?: string;
-  offset?: number;
-  limit?: number;
-}
-
 export const eventsAPI = {
-  create: (data: any) => api.post('/events', data),
+  create: (data: CreateEventData) => api.post('/events', data),
   getAll: (params?: EventSearchParams) => api.get('/events', { params }),
   getStatistics: () => api.get('/events/statistics'),
   getById: (id: string | number) => api.get(`/events/${id}`),
-  update: (id: string | number, data: any) => api.put(`/events/${id}`, data),
+  update: (id: string | number, data: UpdateEventData) => api.put(`/events/${id}`, data),
   delete: (id: string | number) => api.delete(`/events/${id}`),
   join: (id: string | number) => api.post(`/events/${id}/join`),
   leave: (id: string | number) => api.delete(`/events/${id}/leave`),
@@ -123,10 +128,10 @@ export const twoFactorAPI = {
 
 // Event Requests API
 export const eventRequestsAPI = {
-  create: (data: any) => api.post('/event-requests', data),
+  create: (data: CreateEventRequestData) => api.post('/event-requests', data),
   getByGroup: (groupId: string | number) => api.get(`/event-requests/group/${groupId}`),
   getById: (id: string | number) => api.get(`/event-requests/${id}`),
-  vote: (id: string | number, vote: any) => api.post(`/event-requests/${id}/vote`, { vote }),
+  vote: (id: string | number, vote: 'yes' | 'no') => api.post(`/event-requests/${id}/vote`, { vote }),
   finalize: (id: string | number) => api.post(`/event-requests/${id}/finalize`),
   cancel: (id: string | number) => api.post(`/event-requests/${id}/cancel`),
 };
@@ -134,7 +139,7 @@ export const eventRequestsAPI = {
 // Email Preferences API
 export const emailAPI = {
   getPreferences: () => api.get('/email/preferences'),
-  updatePreferences: (data: any) => api.put('/email/preferences', data),
+  updatePreferences: (data: UpdateEmailPreferenceData) => api.put('/email/preferences', data),
   toggleNotifications: (enabled: boolean) => api.put('/email/notifications/toggle', { enabled }),
 };
 
@@ -150,15 +155,7 @@ export const groupChatAPI = {
 
 // Enhanced Notifications API
 export const notificationsAPI = {
-  getAll: (params?: {
-    includeRead?: boolean;
-    limit?: number;
-    offset?: number;
-    type?: string;
-    notificationType?: 'event' | 'group';
-    startDate?: string;
-    endDate?: string;
-  }) => api.get('/notifications', { params }),
+  getAll: (params?: NotificationQueryParams) => api.get('/notifications', { params }),
   markAsRead: (notificationIds?: string[]) => api.put('/notifications/read', { notificationIds }),
   getStats: () => api.get('/notifications/stats'),
   getUnreadCount: () => api.get('/notifications/unread-count'),
