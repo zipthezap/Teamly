@@ -10,14 +10,16 @@ interface Event {
   location?: string;
   participants?: any[];
   maxPlayers?: number;
+  creatorId?: string;
 }
 
 interface UpcomingEventsCalendarProps {
   events: Event[];
   onEventClick: (eventId: string) => void;
+  userId?: string;
 }
 
-const UpcomingEventsCalendar: React.FC<UpcomingEventsCalendarProps> = ({ events, onEventClick }) => {
+const UpcomingEventsCalendar: React.FC<UpcomingEventsCalendarProps> = ({ events, onEventClick, userId }) => {
   const { t } = useTranslation();
 
   const getEventColor = (eventType: string) => {
@@ -58,7 +60,17 @@ const UpcomingEventsCalendar: React.FC<UpcomingEventsCalendarProps> = ({ events,
   };
 
   const upcomingEvents = events
-    .filter(e => new Date(e.startTime) > new Date())
+    .filter(e => {
+      const isFuture = new Date(e.startTime) > new Date();
+      if (!isFuture) return false;
+      
+      // Show if user is the organizer
+      if (e.creatorId === userId) return true;
+      
+      // Show if user is a confirmed participant
+      const isConfirmed = e.participants?.some(p => p.userId === userId && p.status === 'confirmed');
+      return isConfirmed;
+    })
     .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
     .slice(0, 5);
 
