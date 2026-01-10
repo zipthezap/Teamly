@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Box, Button, MenuItem, Paper, TextField, Typography, Alert, Container, FormControlLabel, Switch } from '@mui/material';
 import LocationAutocomplete from './LocationAutocomplete';
-import { SportType } from '../../../shared/types/event.types';
+import { SportType } from '../../../../shared/types/event.types';
 
 export interface EventFormData {
   groupId?: string;

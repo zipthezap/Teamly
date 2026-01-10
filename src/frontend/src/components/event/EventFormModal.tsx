@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
 import { eventsAPI } from '../../services/api';
 import EventForm, { EventFormData } from '../common/EventForm';
-import { SportType } from '../../../shared/types/event.types';
+import { SportType } from '../../../../shared/types/event.types';
 
 interface EventFormModalProps {
   open: boolean;
