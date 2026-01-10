@@ -194,6 +194,7 @@
     "description": "Description de l'événement",
     "eventType": "Type d'événement",
     "location": "Lieu",
+    "locationAutocompleteHelper": "Commencez à taper pour rechercher une adresse",
     "eventDate": "Date de l'événement",
     "hour": "Heure",
     "minute": "Minutes",

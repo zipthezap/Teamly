@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Box, Button, MenuItem, Paper, TextField, Typography, Alert, Container, FormControlLabel, Switch } from '@mui/material';
+import LocationAutocomplete from './LocationAutocomplete';
 
 export interface EventFormData {
   groupId?: string;
@@ -179,13 +180,10 @@ const EventForm: React.FC<EventFormProps> = ({
           </MenuItem>
         ))}
       </TextField>
-      <TextField
-        label={t('events.location')}
-        name="location"
-        fullWidth
-        margin="normal"
+      <LocationAutocomplete
         value={formData.location}
-        onChange={handleChange}
+        onChange={(value) => handleChange({ target: { name: 'location', value } } as any)}
+        label={t('events.location')}
       />
       <TextField
         label={t('events.eventDate')}

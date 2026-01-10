@@ -93,6 +93,13 @@ const EventFormModal: React.FC<EventFormModalProps> = ({
         }
       }
       
+      // Validate groupId is provided
+      if (!formData.groupId) {
+        setError('Please select a group for this event.');
+        setLoading(false);
+        return;
+      }
+      
       // Build the API data object with only required fields
       const data = {
         groupId: formData.groupId,
