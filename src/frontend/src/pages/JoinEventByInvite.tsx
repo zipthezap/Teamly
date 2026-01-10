@@ -272,7 +272,9 @@ const JoinEventByInvite = () => {
             <Box sx={{ mb: 2 }}>
               <AvatarGroup max={8} sx={{ justifyContent: 'flex-start' }}>
                 {event.participants?.filter((p: EventParticipant) => p.status === 'confirmed').map((p: EventParticipant, idx: number) => {
-                  const profilePictureUrl = getImageUrl(p.user?.profilePicture);
+                  // Prefer current profile picture from history if available
+                  const currentPic = p.user?.profilePictures?.find((pic: any) => pic.isCurrent && !pic.deletedAt);
+                  const profilePictureUrl = getImageUrl(currentPic?.url || p.user?.profilePicture);
                   return (
                     <Avatar key={idx} sx={{ bgcolor: 'primary.main' }} src={profilePictureUrl || undefined}>
                       {!profilePictureUrl && getInitials(p.user?.name)}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Box, Button, MenuItem, Paper, TextField, Typography, Alert, Container, FormControlLabel, Switch } from '@mui/material';
 import LocationAutocomplete from './LocationAutocomplete';
+import { SportType } from '../../../shared/types/event.types';
 
 export interface EventFormData {
   groupId?: string;
@@ -31,18 +32,7 @@ export interface EventFormProps {
   showGroupSelect?: boolean;
 }
 
-const EVENT_TYPES = [
-  'football',
-  'basketball',
-  'tennis',
-  'volleyball',
-  'badminton',
-  'cricket',
-  'rugby',
-  'hockey',
-  'baseball',
-  'other',
-];
+const EVENT_TYPES = Object.values(SportType);
 
 const EventForm: React.FC<EventFormProps> = ({
   groups = [],

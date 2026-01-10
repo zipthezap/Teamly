@@ -68,7 +68,7 @@ export const createMessage = asyncHandler(async (req: Request, res: Response) =>
   
   const message = await prisma.groupMessage.create({
     data: { groupId, userId, content: sanitizedContent },
-    include: { user: { select: { id: true, name: true } } }
+    include: { user: { select: { id: true, name: true, profilePicture: true, email: true } } }
   });
   res.status(201).json(message);
 });
@@ -78,7 +78,7 @@ export const getMessages = asyncHandler(async (req: Request, res: Response) => {
   const messages = await prisma.groupMessage.findMany({
     where: { groupId },
     orderBy: { createdAt: 'asc' },
-    include: { user: { select: { id: true, name: true } } }
+    include: { user: { select: { id: true, name: true, profilePicture: true, email: true } } }
   });
   res.json(messages);
 });

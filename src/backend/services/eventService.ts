@@ -1,4 +1,5 @@
 import prisma from '../config/database';
+import { EventParticipantStatus } from '../../shared/types/event.types';
 import { validateRecurrenceRule } from '../utils/recurrenceService';
 import { logger } from '../utils/logger';
 import { sendEmail } from '../utils/emailService';
@@ -276,7 +277,18 @@ export const getEventById = async (eventId: string) => {
     where: { id: eventId },
     include: {
       creator: {
-        select: { id: true, name: true, email: true, profilePicture: true }
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          profilePicture: true,
+          profilePictures: true,
+          createdAt: true,
+          updatedAt: true,
+          deletedAt: true,
+          createdBy: true,
+          updatedBy: true
+        }
       },
       group: {
         select: { 
@@ -294,11 +306,17 @@ export const getEventById = async (eventId: string) => {
       participants: {
         include: {
           user: {
-            select: { 
-              id: true, 
-              name: true, 
-              email: true, 
-              profilePicture: true 
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              profilePicture: true,
+              profilePictures: true,
+              createdAt: true,
+              updatedAt: true,
+              deletedAt: true,
+              createdBy: true,
+              updatedBy: true
             }
           }
         }
@@ -354,7 +372,7 @@ export const isEventFull = async (eventId: string, maxPlayers: number | null) =>
   const confirmedCount = await prisma.eventParticipant.count({
     where: {
       eventId,
-      status: 'confirmed'
+      status: EventParticipantStatus.confirmed
     }
   });
 

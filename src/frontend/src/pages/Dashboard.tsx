@@ -122,7 +122,7 @@ const Dashboard = () => {
             <RecentActivityTimeline
               events={events}
               groups={groups}
-              userId={user?.id}
+              userId={typeof user?.id === 'string' ? user.id : String(user?.id)}
               onActivityClick={(id, type) => {
                 if (type === 'event') {
                   navigate(`/events/${id}`);
@@ -136,7 +136,7 @@ const Dashboard = () => {
             <UpcomingEventsCalendar
               events={events}
               onEventClick={(eventId) => navigate(`/events/${eventId}`)}
-              userId={user?.id}
+              userId={typeof user?.id === 'string' ? user.id : String(user?.id)}
             />
 
             {/* Quick Links */}
@@ -271,7 +271,17 @@ const Dashboard = () => {
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
               {groups.slice(0, 3).map((group) => {
                 const memberCount = group._count?.members ?? group.memberCount ?? group.members?.length ?? 0;
-                const eventCount = group._count?.events ?? group.eventCount ?? group.events?.length ?? 0;
+                // Only count future events for this group
+                const now = new Date();
+                let eventCount = 0;
+                if (Array.isArray(group.events)) {
+                  eventCount = group.events.filter(e => new Date(e.startTime) > now).length;
+                } else if (typeof group._count?.events === 'number') {
+                  // If only a count is available, fallback to it (may include past events)
+                  eventCount = group._count.events;
+                } else if (typeof group.eventCount === 'number') {
+                  eventCount = group.eventCount;
+                }
                 const hasJoined = group.members?.some(m => m.userId === user?.id);
                 const recentMembers = hasJoined ? (group.members?.slice(0, 4) || []) : [];
                 return (
@@ -320,7 +330,8 @@ const Dashboard = () => {
                       {recentMembers.length > 0 && (
                         <AvatarGroup max={4} sx={{ justifyContent: 'flex-start' }}>
                           {recentMembers.map((member, idx) => {
-                            const profilePictureUrl = getImageUrl(member.user?.profilePicture);
+                            const currentPic = member.user?.profilePictures?.find((p: any) => p.isCurrent && !p.deletedAt);
+                            const profilePictureUrl = getImageUrl(currentPic?.url || member.user?.profilePicture);
                             return (
                               <Avatar
                                 key={idx}

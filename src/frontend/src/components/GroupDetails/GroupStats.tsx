@@ -10,9 +10,9 @@ interface GroupStatsProps {
 const GroupStats: React.FC<GroupStatsProps> = ({ memberCount, events }) => {
   const { t } = useTranslation();
   
-  const upcomingEvents = events.filter(e => new Date(e.date) >= new Date()).length;
-  const pastEvents = events.filter(e => new Date(e.date) < new Date()).length;
-  const totalEvents = events.length;
+  const now = new Date();
+  const upcomingEvents = events.filter(e => new Date(e.date) >= now).length;
+  const pastEvents = events.filter(e => new Date(e.date) < now).length;
 
   return (
     <section className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 shadow-lg mb-6">
@@ -22,14 +22,10 @@ const GroupStats: React.FC<GroupStatsProps> = ({ memberCount, events }) => {
         </svg>
         {t('groupDetails.groupStats')}
       </h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-600">
           <div className="text-3xl font-bold text-blue-400">{memberCount}</div>
           <div className="text-sm text-slate-400 mt-1">{t('groupDetails.totalMembers')}</div>
-        </div>
-        <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-600">
-          <div className="text-3xl font-bold text-green-400">{totalEvents}</div>
-          <div className="text-sm text-slate-400 mt-1">{t('groupDetails.totalEvents')}</div>
         </div>
         <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-600">
           <div className="text-3xl font-bold text-purple-400">{upcomingEvents}</div>

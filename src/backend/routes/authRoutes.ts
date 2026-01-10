@@ -23,6 +23,8 @@ router.put('/profile', authMiddleware, authController.updateProfile);
 router.put('/password', authMiddleware, authController.updatePassword);
 
 // Profile picture management
+
+// Profile picture management (history, soft delete, restore, hard delete)
 router.post(
   '/profile/picture',
   authMiddleware,
@@ -31,6 +33,9 @@ router.post(
   authController.uploadProfilePicture
 );
 router.delete('/profile/picture', authMiddleware, authController.deleteProfilePicture);
+router.get('/profile/pictures', authMiddleware, authController.listProfilePictures);
+router.post('/profile/picture/restore', authMiddleware, authController.restoreProfilePicture);
+router.post('/profile/picture/hard-delete', authMiddleware, authController.hardDeleteProfilePicture);
 
 // Session management
 router.get('/sessions', authMiddleware, authController.getSessions);

@@ -8,10 +8,13 @@ COPY package*.json ./
 # Install all dependencies
 RUN npm install
 
+
 # Copy backend source files
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 COPY src/backend ./src/backend
+# Copy shared types for backend imports
+COPY src/shared ./src/shared
 # Copy tsconfig.json for TypeScript build
 COPY tsconfig.json ./
 

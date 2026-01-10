@@ -1,3 +1,14 @@
+export interface UserProfilePicture {
+  id: string;
+  userId: string;
+  url: string;
+  createdAt: Date | string;
+  isCurrent: boolean;
+  deletedAt?: Date | string | null;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  updatedAt: Date | string;
+}
 /**
  * User-related TypeScript interfaces based on Prisma schema
  */
@@ -10,34 +21,32 @@ export interface User {
   name: string;
   createdAt: Date | string;
   updatedAt: Date | string;
-  
+  deletedAt?: Date | string | null;
+  createdBy?: string | null;
+  updatedBy?: string | null;
   // Two-Factor Authentication
   twoFactorEnabled: boolean;
   twoFactorSecret?: string | null;
   twoFactorBackupCodes: string[];
-  
   // Email notification fields
   emailNotifications: boolean;
   emailVerified: boolean;
   emailVerificationToken?: string | null;
-  
   // Password reset fields
   passwordResetToken?: string | null;
   passwordResetExpires?: Date | string | null;
-  
   // Security fields
   failedLoginAttempts: number;
   accountLockedUntil?: Date | string | null;
-  
   // Location fields
   city?: string | null;
   country?: string | null;
   address?: string | null;
   postalCode?: string | null;
   discoveryRadius?: number | null;
-  
   // Profile picture
   profilePicture?: string | null;
+  profilePictures?: UserProfilePicture[];
 }
 
 // User data without sensitive fields (for public-facing APIs)
@@ -48,6 +57,7 @@ export interface PublicUser {
   city?: string | null;
   country?: string | null;
   profilePicture?: string | null;
+  profilePictures?: UserProfilePicture[];
 }
 
 // User data for profile responses

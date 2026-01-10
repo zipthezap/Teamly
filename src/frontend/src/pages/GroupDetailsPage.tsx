@@ -3,7 +3,8 @@ import AdminTransferDialog from "../components/GroupDetails/AdminTransferDialog"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem, Box } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem, Box, FormControlLabel, Checkbox } from '@mui/material';
+import GroupSettingsModal from "../components/common/GroupSettingsModal";
 import { useAuth } from "../contexts/AuthContext";
 import GroupHeader from "../components/GroupDetails/GroupHeader";
 import GroupStats from "../components/GroupDetails/GroupStats";
@@ -426,61 +427,19 @@ export default function GroupDetailsPage() {
       />
       {/* Group Statistics */}
       <GroupStats memberCount={group.members?.length || 0} events={events || []} />
-      {/* Group Settings Modal */}
-      <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} maxWidth="sm" fullWidth>
-        <form onSubmit={handleSettingsSubmit}>
-          <DialogTitle>{t('groupDetails.editGroupSettings')}</DialogTitle>
-          <DialogContent>
-            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3, mt: 2 }}>
-              <ImageUpload
-                currentImage={groupPicture}
-                onUpload={handlePictureUpload}
-                onDelete={handleDeletePicture}
-                label={t('groups.groupPicture') || 'Group Picture'}
-                shape="square"
-                size={150}
-              />
-            </Box>
-            <TextField
-              label={t('groupDetails.groupName')}
-              name="name"
-              value={settingsForm.name}
-              onChange={handleSettingsChange}
-              required
-              fullWidth
-              margin="normal"
-            />
-            <TextField
-              label={t('groupDetails.description')}
-              name="description"
-              value={settingsForm.description}
-              onChange={handleSettingsChange}
-              fullWidth
-              margin="normal"
-              multiline
-              rows={3}
-            />
-            <TextField
-              select
-              label={t('groupDetails.privacy')}
-              name="privacy"
-              value={settingsForm.privacy}
-              onChange={handleSettingsChange}
-              fullWidth
-              margin="normal"
-            >
-              <MenuItem value="public">{t('groups.public')}</MenuItem>
-              <MenuItem value="private">{t('groups.private')}</MenuItem>
-            </TextField>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setSettingsOpen(false)} color="secondary">{t('common.cancel')}</Button>
-            <Button type="submit" variant="contained" color="primary" disabled={updateGroupMutation.isPending}>
-              {t('groupDetails.saveChanges')}
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
+      {/* Group Settings Modal (shared component) */}
+      <GroupSettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onSubmit={() => updateGroupMutation.mutate(settingsForm)}
+        form={settingsForm}
+        setForm={setSettingsForm}
+        groupPicture={groupPicture}
+        onPictureUpload={handlePictureUpload}
+        onPictureDelete={handleDeletePicture}
+        isSubmitting={updateGroupMutation.isPending}
+        t={t}
+      />
       <div className={`grid ${gridCols} gap-6`}>
         <MemberList members={group.members} onRemove={isAdmin ? handleRemoveMember : undefined} />
         <EventList

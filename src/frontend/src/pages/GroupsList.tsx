@@ -222,7 +222,11 @@ const GroupsList = () => {
           {filteredGroups.map((group) => {
             const role = getUserRole(group);
             const memberCount = group.members?.length || 0;
-            const eventCount = group.events?.length || 0;
+            // Only count future events
+            const now = new Date();
+            const eventCount = Array.isArray(group.events)
+              ? group.events.filter(e => new Date(e.startTime) >= now).length
+              : 0;
             const hasJoined = group.members?.some(m => m.userId === user?.id);
             const recentMembers = hasJoined ? (group.members?.slice(0, 4) || []) : [];
             return (
@@ -302,7 +306,9 @@ const GroupsList = () => {
                     {recentMembers.length > 0 && (
                       <AvatarGroup max={4} sx={{ justifyContent: 'flex-start' }}>
                         {recentMembers.map((member, idx) => {
-                          const profilePictureUrl = getImageUrl(member.user?.profilePicture);
+                          // Prefer current profile picture from history if available
+                          const currentPic = member.user?.profilePictures?.find((p: any) => p.isCurrent && !p.deletedAt);
+                          const profilePictureUrl = getImageUrl(currentPic?.url || member.user?.profilePicture);
                           return (
                             <Avatar 
                               key={idx}

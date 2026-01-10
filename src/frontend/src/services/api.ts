@@ -63,6 +63,10 @@ export const authAPI = {
     });
   },
   deleteProfilePicture: () => api.delete('/auth/profile/picture'),
+  // Profile picture history endpoints
+  listProfilePictures: () => api.get('/auth/profile/pictures'),
+  restoreProfilePicture: (pictureId: string) => api.post('/auth/profile/picture/restore', { pictureId }),
+  hardDeleteProfilePicture: (pictureId: string) => api.post('/auth/profile/picture/hard-delete', { pictureId }),
 };
 
 // Groups API

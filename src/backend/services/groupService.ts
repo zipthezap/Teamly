@@ -37,12 +37,34 @@ export const getGroupById = async (groupId: string) => {
     where: { id: groupId },
     include: {
       creator: {
-        select: { id: true, name: true, email: true, profilePicture: true }
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          profilePicture: true,
+          profilePictures: true,
+          createdAt: true,
+          updatedAt: true,
+          deletedAt: true,
+          createdBy: true,
+          updatedBy: true
+        }
       },
       members: {
         include: {
           user: {
-            select: { id: true, name: true, email: true, profilePicture: true }
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              profilePicture: true,
+              profilePictures: true,
+              createdAt: true,
+              updatedAt: true,
+              deletedAt: true,
+              createdBy: true,
+              updatedBy: true
+            }
           }
         }
       },

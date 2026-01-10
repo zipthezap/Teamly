@@ -43,8 +43,10 @@ import { eventsAPI } from '../services/api';
 import EventFormModal from '../components/event/EventFormModal';
 import { useAuth } from '../contexts/AuthContext';
 import EventSearchFilters from '../components/event/EventSearchFilters';
-import { LoadingSpinner, EmptyState, StatusBadge, StatusType } from '../components/common';
+import { LoadingSpinner, EmptyState } from '../components/common';
+import { StatusBadge, StatusType } from '../components/common/StatusBadge';
 import { EventWithDetails, EventSearchParams, GroupWithDetails, EventParticipant, GroupMember } from '../../../shared/types';
+import { SportType } from '../../../shared/types/event.types';
 import { AxiosError } from 'axios';
 
 
@@ -208,7 +210,10 @@ const EventsList = () => {
   const handleSearch = (filters: EventSearchParams) => {
     setSearchFilters(filters);
     setPage(1);
-    setSearchParams({ ...filters, page: '1' }, { replace: false });
+    const paramsObj = Object.entries({ ...filters, page: '1' })
+      .filter(([_, v]) => v !== undefined && v !== null)
+      .reduce((acc, [k, v]) => { acc[k] = String(v); return acc; }, {} as Record<string, string>);
+    setSearchParams(paramsObj, { replace: false });
   };
 
   // Handle page change
@@ -245,19 +250,23 @@ const EventsList = () => {
           icon={<EventIcon />}
           title={t('common.errorLoadingEvents')}
           description=""
-          actionLabel={t('common.retry')}
-          onAction={() => fetchEvents()}
+          actions={[{ label: t('common.retry'), onClick: () => fetchEvents() }]}
           gradient="linear-gradient(135deg, rgba(244, 67, 54, 0.05) 0%, rgba(244, 67, 54, 0.02) 100%)"
         />
       </Container>
     );
   }
 
-  // Filter events by tab (fix: use creatorId, and only filter by date and participation/ownership)
+  // Enhanced event filtering and sorting logic
   const now = new Date();
   let filteredEvents: EventWithDetails[] = [];
+  // Get group IDs where user is a member
+  const userGroupIds = groups
+    .filter(g => g.members?.some((m: GroupMember) => m.userId === user?.id))
+    .map(g => g.id);
+
   if (tab === 'my') {
-    // Show all upcoming events where user is a participant or creator
+    // All upcoming events where user is a participant or creator (as before)
     filteredEvents = events.filter(event => {
       const eventDate = new Date(event.startTime);
       const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user?.id);
@@ -265,13 +274,26 @@ const EventsList = () => {
       return eventDate >= now && (isJoined || isCreator);
     });
   } else if (tab === 'upcoming') {
-    // Show all upcoming events
+    // All upcoming events:
+    // - If event is in a group the user is a member of, show it even if not joined (public or private)
+    // - Otherwise, show public events
     filteredEvents = events.filter(event => {
       const eventDate = new Date(event.startTime);
-      return eventDate >= now;
+      const isUserGroup = event.group && userGroupIds.includes(event.group.id);
+      const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user?.id);
+      // Show if:
+      // - Upcoming
+      // - (User is group member and not joined) OR (public event and not joined)
+      return (
+        eventDate >= now &&
+        (
+          (isUserGroup && !isJoined) ||
+          (!isUserGroup && event.isPublic && !isJoined)
+        )
+      );
     });
   } else {
-    // Show all past events where user is a participant or creator
+    // Past events where user is a participant or creator
     filteredEvents = events.filter(event => {
       const eventDate = new Date(event.startTime);
       const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user?.id);
@@ -279,6 +301,12 @@ const EventsList = () => {
       return eventDate < now && (isJoined || isCreator);
     });
   }
+
+  // All group members should see all group events in the list (not just joined)
+  // (Handled above for upcoming tab; for other tabs, user must be participant or creator)
+
+  // Sort all tabs by soonest event
+  filteredEvents = filteredEvents.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
   // Main render
   return (
@@ -377,8 +405,9 @@ const EventsList = () => {
           icon={<EventIcon />}
           title={Object.keys(searchFilters).length > 0 ? t('events.noEventsMatch') : t('events.noEventsAvailable')}
           description={Object.keys(searchFilters).length === 0 ? t('events.createFirstEventDesc') : ''}
-          actionLabel={Object.keys(searchFilters).length === 0 ? t('events.createFirstEvent') : ''}
-          onAction={Object.keys(searchFilters).length === 0 ? () => { setEditEvent(null); setModalOpen(true); } : undefined}
+          actions={Object.keys(searchFilters).length === 0 ? [
+            { label: t('events.createFirstEvent'), onClick: () => { setEditEvent(null); setModalOpen(true); } }
+          ] : []}
           gradient="linear-gradient(135deg, rgba(245, 0, 87, 0.05) 0%, rgba(245, 0, 87, 0.02) 100%)"
         />
       ) : (
@@ -459,7 +488,7 @@ const EventsList = () => {
                       <Box display="flex" alignItems="center" gap={1}>
                         <AccessTimeIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                         <Typography variant="body2" color="text.secondary">
-                          {formatEventTime(event.startTime)}
+                          {formatEventTime(typeof event.startTime === 'string' ? event.startTime : event.startTime.toISOString())}
                         </Typography>
                       </Box>
                       {event.location && (

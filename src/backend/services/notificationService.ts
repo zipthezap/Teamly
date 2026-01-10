@@ -4,6 +4,7 @@
  */
 
 import prisma from '../config/database';
+import { EventNotificationType, GroupNotificationType, TeamUpNotificationType } from '../../shared/types/event.types';
 
 export interface NotificationMetadata {
   actionUrl?: string;
@@ -75,7 +76,7 @@ export const getUserNotifications = async (
     eventWhere.read = false;
   }
   if (type) {
-    eventWhere.type = type;
+    eventWhere.type = type as EventNotificationType;
   }
   if (startDate || endDate) {
     eventWhere.createdAt = {};
@@ -89,7 +90,7 @@ export const getUserNotifications = async (
     groupWhere.read = false;
   }
   if (type) {
-    groupWhere.type = type;
+    groupWhere.type = type as GroupNotificationType;
   }
   if (startDate || endDate) {
     groupWhere.createdAt = {};
@@ -142,7 +143,7 @@ export const getUserNotifications = async (
       teamUpWhere.read = false;
     }
     if (type) {
-      teamUpWhere.type = type;
+      teamUpWhere.type = type as TeamUpNotificationType;
     }
     if (startDate || endDate) {
       teamUpWhere.createdAt = {};
@@ -170,7 +171,7 @@ export const getUserNotifications = async (
     return {
       id: n.id,
       userId: n.userId,
-      type: n.type,
+      type: n.type as EventNotificationType,
       notificationType: 'event' as const,
       params: n.params || {
         name: n.user?.name,
@@ -190,7 +191,7 @@ export const getUserNotifications = async (
     return {
       id: n.id,
       userId: n.userId,
-      type: n.type,
+      type: n.type as GroupNotificationType,
       notificationType: 'group' as const,
       params: n.params || {
         groupName: n.group?.name,
@@ -208,7 +209,7 @@ export const getUserNotifications = async (
     return {
       id: n.id,
       userId: n.userId,
-      type: n.type,
+      type: n.type as TeamUpNotificationType,
       notificationType: 'teamup' as const,
       params: n.params || {
         title: n.teamUpRequest?.title,

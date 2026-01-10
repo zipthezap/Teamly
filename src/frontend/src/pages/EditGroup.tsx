@@ -3,15 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Container,
   Paper,
-  TextField,
   Button,
   Typography,
   Box,
   Alert,
-  FormControlLabel,
-  Checkbox,
   CircularProgress,
 } from '@mui/material';
+import GroupFormFields from '../components/common/GroupFormFields';
 import { groupsAPI } from '../services/api';
 import LocationPicker from '../components/LocationPicker';
 import ImageUpload from '../components/ImageUpload';
@@ -156,35 +154,16 @@ const EditGroup = () => {
             />
           </Box>
 
-          <TextField
-            label={t('groups.groupName')}
-            fullWidth
-            margin="normal"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
+          <GroupFormFields
+            name={name}
+            setName={setName}
+            description={description}
+            setDescription={setDescription}
+            isPublic={isPublic}
+            setIsPublic={setIsPublic}
+            t={t}
           />
-          <TextField
-            label={t('groups.description')}
-            fullWidth
-            multiline
-            rows={4}
-            margin="normal"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={isPublic}
-                onChange={(e) => setIsPublic(e.target.checked)}
-                color="primary"
-              />
-            }
-            label={t('groups.makePublic')}
-            sx={{ mt: 2 }}
-          />
-          
+
           {isPublic && (
             <LocationPicker
               value={location}

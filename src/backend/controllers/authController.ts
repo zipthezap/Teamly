@@ -688,38 +688,29 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
 /**
  * Upload or update profile picture
  */
+
+// Upload or update profile picture with history, soft delete, and audit fields
 export const uploadProfilePicture = async (req: Request, res: Response): Promise<void> => {
   let tempFilePath: string | undefined;
   let finalFilePath: string | undefined;
-
   try {
-    // Safety check for user authentication
     if (!req.user?.id) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
-
-    // Check if file was uploaded
     if (!req.file) {
       res.status(400).json({ error: 'No file uploaded' });
       return;
     }
-
     tempFilePath = req.file.path;
-
-    // Validate the image
     const validation = await validateImage(tempFilePath);
     if (!validation.valid) {
       await deleteFile(tempFilePath);
       res.status(400).json({ error: validation.error });
       return;
     }
-
-    // Generate unique filename for the processed image
     const filename = generateUniqueFilename(req.file.originalname, 'profile_');
     finalFilePath = path.join(UPLOAD_CONFIG.UPLOAD_DIR.PROFILES, filename);
-
-    // Process the image (resize, optimize, strip EXIF)
     await processImage(tempFilePath, finalFilePath, {
       width: UPLOAD_CONFIG.IMAGE.PROFILE_WIDTH,
       height: UPLOAD_CONFIG.IMAGE.PROFILE_HEIGHT,
@@ -727,26 +718,25 @@ export const uploadProfilePicture = async (req: Request, res: Response): Promise
       quality: UPLOAD_CONFIG.IMAGE.JPEG_QUALITY,
       format: 'jpeg',
     });
-
-    // Delete temp file
     await deleteFile(tempFilePath);
     tempFilePath = undefined;
-
-    // Get current user to check for existing profile picture
-    const currentUser = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      select: { profilePicture: true },
-    });
-
-    // Delete old profile picture if it exists
-    if (currentUser?.profilePicture) {
-      await deleteOldPicture(currentUser.profilePicture);
-    }
-
-    // Generate the URL for the picture
     const pictureUrl = `/uploads/profiles/${filename}`;
-
-    // Update user's profile picture in database
+    // Mark all previous pictures as not current
+    await prisma.userProfilePicture.updateMany({
+      where: { userId: req.user.id, isCurrent: true, deletedAt: null },
+      data: { isCurrent: false, updatedBy: req.user.id, updatedAt: new Date() },
+    });
+    // Insert new picture record
+    const newPic = await prisma.userProfilePicture.create({
+      data: {
+        userId: req.user.id,
+        url: pictureUrl,
+        isCurrent: true,
+        createdBy: req.user.id,
+        updatedBy: req.user.id,
+      },
+    });
+    // Update User.profilePicture
     const updatedUser = await prisma.user.update({
       where: { id: req.user.id },
       data: { profilePicture: pictureUrl },
@@ -763,26 +753,12 @@ export const uploadProfilePicture = async (req: Request, res: Response): Promise
         createdAt: true,
       },
     });
-
-    logger.info('Profile picture uploaded successfully', 'AuthController', { 
-      userId: req.user.id 
-    });
-
-    res.json({ 
-      user: updatedUser,
-      message: 'Profile picture uploaded successfully' 
-    });
+    logger.info('Profile picture uploaded (history/audit)', 'AuthController', { userId: req.user.id });
+    res.json({ user: updatedUser, message: 'Profile picture uploaded successfully' });
   } catch (error) {
     logger.error('Failed to upload profile picture', 'AuthController', { error });
-
-    // Clean up files on error
-    if (tempFilePath) {
-      await deleteFile(tempFilePath);
-    }
-    if (finalFilePath) {
-      await deleteFile(finalFilePath);
-    }
-
+    if (tempFilePath) await deleteFile(tempFilePath);
+    if (finalFilePath) await deleteFile(finalFilePath);
     res.status(500).json({ error: 'Failed to upload profile picture' });
   }
 };
@@ -790,32 +766,37 @@ export const uploadProfilePicture = async (req: Request, res: Response): Promise
 /**
  * Delete profile picture
  */
+
+// Soft delete current profile picture, update User.profilePicture to previous (if any)
 export const deleteProfilePicture = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Safety check for user authentication
     if (!req.user?.id) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
-
-    // Get current user to check for existing profile picture
-    const currentUser = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      select: { profilePicture: true },
+    // Find current profile picture
+    const currentPic = await prisma.userProfilePicture.findFirst({
+      where: { userId: req.user.id, isCurrent: true, deletedAt: null },
+      orderBy: { createdAt: 'desc' },
     });
-
-    if (!currentUser?.profilePicture) {
+    if (!currentPic) {
       res.status(404).json({ error: 'No profile picture to delete' });
       return;
     }
-
-    // Delete the file
-    await deleteOldPicture(currentUser.profilePicture);
-
-    // Update user's profile picture in database
+    // Soft delete current
+    await prisma.userProfilePicture.update({
+      where: { id: currentPic.id },
+      data: { deletedAt: new Date(), isCurrent: false, updatedBy: req.user.id, updatedAt: new Date() },
+    });
+    // Find previous (not deleted) picture
+    const prevPic = await prisma.userProfilePicture.findFirst({
+      where: { userId: req.user.id, deletedAt: null, isCurrent: false },
+      orderBy: { createdAt: 'desc' },
+    });
+    // Update User.profilePicture
     const updatedUser = await prisma.user.update({
       where: { id: req.user.id },
-      data: { profilePicture: null },
+      data: { profilePicture: prevPic ? prevPic.url : null },
       select: {
         id: true,
         email: true,
@@ -829,17 +810,92 @@ export const deleteProfilePicture = async (req: Request, res: Response): Promise
         createdAt: true,
       },
     });
-
-    logger.info('Profile picture deleted successfully', 'AuthController', { 
-      userId: req.user.id 
-    });
-
-    res.json({ 
-      user: updatedUser,
-      message: 'Profile picture deleted successfully' 
-    });
+    logger.info('Profile picture soft-deleted (history/audit)', 'AuthController', { userId: req.user.id });
+    res.json({ user: updatedUser, message: 'Profile picture deleted successfully' });
   } catch (error) {
     logger.error('Failed to delete profile picture', 'AuthController', { error });
     res.status(500).json({ error: 'Failed to delete profile picture' });
+  }
+};
+
+// List all profile pictures (history, including soft-deleted)
+export const listProfilePictures = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user?.id) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const pictures = await prisma.userProfilePicture.findMany({
+      where: { userId: req.user.id },
+      orderBy: [{ createdAt: 'desc' }],
+    });
+    res.json({ pictures });
+  } catch (error) {
+    logger.error('Failed to list profile pictures', 'AuthController', { error });
+    res.status(500).json({ error: 'Failed to list profile pictures' });
+  }
+};
+
+// Restore a soft-deleted profile picture and set as current
+export const restoreProfilePicture = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user?.id) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const { pictureId } = req.body;
+    // Find the picture
+    const pic = await prisma.userProfilePicture.findFirst({
+      where: { id: pictureId, userId: req.user.id },
+    });
+    if (!pic || !pic.deletedAt) {
+      res.status(404).json({ error: 'Picture not found or not deleted' });
+      return;
+    }
+    // Mark all other as not current
+    await prisma.userProfilePicture.updateMany({
+      where: { userId: req.user.id, isCurrent: true },
+      data: { isCurrent: false, updatedBy: req.user.id, updatedAt: new Date() },
+    });
+    // Restore this picture
+    await prisma.userProfilePicture.update({
+      where: { id: pictureId },
+      data: { deletedAt: null, isCurrent: true, updatedBy: req.user.id, updatedAt: new Date() },
+    });
+    // Update User.profilePicture
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { profilePicture: pic.url },
+    });
+    res.json({ message: 'Profile picture restored and set as current' });
+  } catch (error) {
+    logger.error('Failed to restore profile picture', 'AuthController', { error });
+    res.status(500).json({ error: 'Failed to restore profile picture' });
+  }
+};
+
+// Permanently delete a profile picture (hard delete)
+export const hardDeleteProfilePicture = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user?.id) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const { pictureId } = req.body;
+    const pic = await prisma.userProfilePicture.findFirst({
+      where: { id: pictureId, userId: req.user.id },
+    });
+    if (!pic) {
+      res.status(404).json({ error: 'Picture not found' });
+      return;
+    }
+    // Remove file from disk
+    await deleteOldPicture(pic.url);
+    // Delete from DB
+    await prisma.userProfilePicture.delete({ where: { id: pictureId } });
+    res.json({ message: 'Profile picture permanently deleted' });
+  } catch (error) {
+    logger.error('Failed to hard delete profile picture', 'AuthController', { error });
+    res.status(500).json({ error: 'Failed to permanently delete profile picture' });
   }
 };

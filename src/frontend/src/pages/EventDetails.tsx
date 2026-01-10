@@ -5,7 +5,7 @@ import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import InviteLinkCard from '../components/InviteLinkCard';
 import { getImageUrl, getInitials } from '../utils/imageUtils';
-import { EventWithDetails, EventParticipant, GuestParticipant } from '../../../shared/types';
+import { EventWithDetails, EventParticipant, GuestParticipant, EventParticipantStatus, GuestParticipantStatus } from '../../../shared/types/event.types';
 import { AxiosError } from 'axios';
 
 const EventDetails = () => {
@@ -154,8 +154,8 @@ const EventDetails = () => {
   const isCreator = event?.creatorId === user?.id;
   const isFull = event?.maxPlayers && (event?.participants?.length || 0) >= event?.maxPlayers;
   const totalParticipants = 
-    ((event?.participants?.filter((p: EventParticipant) => p.status === 'confirmed').length) || 0) +
-    ((event?.guestParticipants?.filter((g: GuestParticipant) => g.status === 'confirmed').length) || 0);
+    ((event?.participants?.filter((p: EventParticipant) => p.status === EventParticipantStatus.confirmed).length) || 0) +
+    ((event?.guestParticipants?.filter((g: GuestParticipant) => g.status === GuestParticipantStatus.confirmed).length) || 0);
 
   if (loading) {
     return (
@@ -174,8 +174,8 @@ const EventDetails = () => {
   }
 
   const participantCount = totalParticipants;
-  const confirmedCount = event?.participants?.filter((p: EventParticipant) => p.status === 'confirmed').length || 0;
-  const declinedCount = event?.participants?.filter((p: EventParticipant) => p.status === 'declined').length || 0;
+  const confirmedCount = event?.participants?.filter((p: EventParticipant) => p.status === EventParticipantStatus.confirmed).length || 0;
+  const declinedCount = event?.participants?.filter((p: EventParticipant) => p.status === EventParticipantStatus.declined).length || 0;
   const pendingCount = (event?.participants?.length || 0) - confirmedCount - declinedCount;
   const fillPercentage = event?.maxPlayers ? (participantCount / event.maxPlayers) * 100 : 0;
 
@@ -233,11 +233,15 @@ const EventDetails = () => {
           {/* Organizer Info */}
           <div className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3 mb-4">
             <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center text-lg font-bold flex-shrink-0 overflow-hidden">
-              {getImageUrl(event.creator?.profilePicture) ? (
-                <img src={getImageUrl(event.creator?.profilePicture)} alt={event.creator?.name} className="w-full h-full object-cover" />
-              ) : (
-                getInitials(event.creator?.name)
-              )}
+              {(() => {
+                const currentPic = event.creator?.profilePictures?.find((p: any) => p.isCurrent && !p.deletedAt);
+                const url = getImageUrl(currentPic?.url || event.creator?.profilePicture);
+                return url ? (
+                  <img src={url} alt={event.creator?.name} className="w-full h-full object-cover" />
+                ) : (
+                  getInitials(event.creator?.name)
+                );
+              })()}
             </div>
             <div>
               <div className="text-xs text-[#a1a6b4] mb-0.5">{t('eventDetails.organizedBy')}</div>
@@ -281,10 +285,10 @@ const EventDetails = () => {
                   )}
                   {isParticipant && (
                     <>
-                      <button onClick={() => handleUpdateStatus('confirmed')} className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
+                      <button onClick={() => handleUpdateStatus(EventParticipantStatus.confirmed)} className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
                         ✓ {t('eventDetails.confirmAttendance')}
                       </button>
-                      <button onClick={() => handleUpdateStatus('declined')} className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
+                      <button onClick={() => handleUpdateStatus(EventParticipantStatus.declined)} className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
                         ✗ {t('eventDetails.decline')}
                       </button>
                       <div className="grid grid-cols-2 gap-2 mt-1">
@@ -359,17 +363,21 @@ const EventDetails = () => {
                       action = t('eventDetails.activityLate', { name: n.user?.name || t('eventDetails.user') });
                       break;
                     default:
-                      action = n.message || n.type;
+                      action = n.type;
                   }
                   return (
                     <div key={idx} className="mb-3 pb-3 border-b border-[#232946] last:border-b-0">
                       <div className="flex items-start gap-2">
                         <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden">
-                          {getImageUrl(n.user?.profilePicture) ? (
-                            <img src={getImageUrl(n.user?.profilePicture)} alt={n.user?.name} className="w-full h-full object-cover" />
-                          ) : (
-                            getInitials(n.user?.name || t('eventDetails.user'))
-                          )}
+                          {(() => {
+                            const currentPic = n.user?.profilePictures?.find((p: any) => p.isCurrent && !p.deletedAt);
+                            const url = getImageUrl(currentPic?.url || n.user?.profilePicture);
+                            return url ? (
+                              <img src={url} alt={n.user?.name} className="w-full h-full object-cover" />
+                            ) : (
+                              getInitials(n.user?.name || t('eventDetails.user'))
+                            );
+                          })()}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-white font-medium text-sm mb-0.5">{n.user?.name || t('eventDetails.user')}</div>
@@ -393,11 +401,15 @@ const EventDetails = () => {
           {event?.participants?.map((p, idx) => (
             <div key={p.id || idx} className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3">
               <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden">
-                {getImageUrl(p.user?.profilePicture) ? (
-                  <img src={getImageUrl(p.user?.profilePicture)} alt={p.user?.name} className="w-full h-full object-cover" />
-                ) : (
-                  getInitials(p.user?.name)
-                )}
+                {(() => {
+                  const currentPic = p.user?.profilePictures?.find((pic: any) => pic.isCurrent && !pic.deletedAt);
+                  const url = getImageUrl(currentPic?.url || p.user?.profilePicture);
+                  return url ? (
+                    <img src={url} alt={p.user?.name} className="w-full h-full object-cover" />
+                  ) : (
+                    getInitials(p.user?.name)
+                  );
+                })()}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold text-white truncate">{p.user?.name}</div>

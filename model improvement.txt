@@ -1,0 +1,34 @@
+Here are some targeted suggestions to improve your Prisma schema for scalability, maintainability, and feature completeness:
+
+1. Event Model
+status: Consider using an enum for status (upcoming, ongoing, completed, cancelled) for type safety.
+eventType: If you expect a fixed set of sports/types, use an enum.
+exceptionDates: If this grows large, consider a separate table for exceptions for better query performance.
+inviteToken: Add an index for faster lookups (already present).
+archived: If you expect many archived events, consider partitioning or archiving to a separate table for performance.
+2. EventParticipant & GuestParticipant
+status: Use an enum for status (pending, confirmed, declined).
+joinedAt: Consider adding an index if you need to query by join date.
+3. EventReminder
+sent: If you want to track multiple reminders per event/user, consider a composite key or a separate log table.
+4. EventNotification, GroupNotification, TeamUpNotification
+type: Use enums for notification types.
+params/metadata: If you need to query inside these JSON fields, consider extracting key fields to top-level columns.
+5. User Model
+email: Already indexed and unique.
+profilePicture: If you want to support multiple pictures (history), consider a separate table.
+6. General
+Soft Deletes: If you want to support undo/restore, add a deletedAt field instead of hard deletes.
+Audit Fields: For compliance, add createdBy, updatedBy fields where needed.
+Composite Indexes: Review query patterns and add composite indexes for frequent multi-field queries.
+7. Recurring Events
+recurrenceRule: If you want to support more complex recurrence, consider a dedicated recurrence table.
+8. Comments
+parentId: Already supports threading. If you expect deep threads, consider a path or depth field for efficient queries.
+9. TeamUpRequest/Response
+status: Use enums for status.
+10. General Best Practices
+Enums: Use Prisma enums for all status/type fields.
+Indexes: Regularly review and add indexes based on query performance.
+Relations: Use explicit relation names for clarity.
+If you want to implement any of these, let me know which area to prioritize!

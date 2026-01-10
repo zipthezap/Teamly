@@ -1,3 +1,49 @@
+model UserProfilePicture {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url       String
+  createdAt DateTime @default(now())
+  isCurrent Boolean  @default(false)
+  deletedAt DateTime?
+  createdBy String?
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, isCurrent])
+}
+enum EventNotificationType {
+  join
+  leave
+  late
+  confirmed
+  declined
+  status_change
+  comment
+}
+
+enum GroupNotificationType {
+  accepted
+  invited
+  join_request
+}
+
+enum TeamUpNotificationType {
+  teamup_response
+  teamup_accepted
+  teamup_declined
+  teamup_nearby
+}
+enum EventParticipantStatus {
+  pending
+  confirmed
+  declined
+}
+
+enum GuestParticipantStatus {
+  confirmed
+  declined
+}
 model GroupMessage {
   id        String   @id @default(uuid())
   content   String
@@ -16,6 +62,9 @@ model EventReminder {
   user      User     @relation(fields: [userId], references: [id])
   remindAt  DateTime
   sent      Boolean  @default(false)
+
+  @@unique([eventId, userId, remindAt]) // Composite key for multiple reminders per event/user
+  @@index([sent]) // For efficient querying of sent reminders
 }
 
 model EventAttendance {
@@ -36,7 +85,7 @@ model EventNotification {
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  type      String   // join, leave, late, confirmed, declined, status_change, comment
+  type      EventNotificationType
   params    Json?    // Parameters for frontend translation (e.g., { name, eventTitle })
   metadata  Json?    // Additional data for the notification
   createdAt DateTime @default(now())
@@ -55,7 +104,7 @@ model GroupNotification {
   group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  type      String   // accepted, invited, join_request, etc.
+  type      GroupNotificationType
   params    Json?    // Parameters for frontend translation (e.g., { groupName })
   createdAt DateTime @default(now())
   read      Boolean  @default(false)
@@ -73,7 +122,7 @@ model TeamUpNotification {
   teamUpRequest   TeamUpRequest @relation(fields: [teamUpRequestId], references: [id], onDelete: Cascade)
   userId          String
   user            User     @relation(fields: [userId], references: [id])
-  type            String   // teamup_response (someone applied), teamup_accepted (someone joined), teamup_declined (someone left), teamup_nearby (new opportunity in area)
+  type            TeamUpNotificationType
   params          Json?    // Parameters for frontend translation (e.g., { name, title, sportType })
   metadata        Json?    // Additional data for the notification
   createdAt       DateTime @default(now())
@@ -133,6 +182,10 @@ model User {
   
   // Profile picture
   profilePicture    String?
+  profilePictures   UserProfilePicture[]
+  deletedAt         DateTime?
+  createdBy         String?
+  updatedBy         String?
 
   groupMemberships  GroupMember[]
   createdGroups     Group[]             @relation("GroupCreator")
@@ -160,6 +213,7 @@ model User {
   @@index([emailVerificationToken]) // For email verification
   @@index([passwordResetToken]) // For password reset lookups
   @@index([city, country]) // For location-based queries
+  @@index([createdAt, deletedAt]) // Example composite index for queries
 }
 
 model Group {
@@ -215,11 +269,29 @@ model GroupMember {
   @@index([role]) // For admin/member filtering
 }
 
+enum EventStatus {
+  upcoming
+  ongoing
+  completed
+  cancelled
+}
+
+enum SportType {
+  football
+  basketball
+  tennis
+  volleyball
+  running
+  cycling
+  swimming
+  other
+}
+
 model Event {
   id          String   @id @default(uuid())
   title       String
   description String?
-  eventType   String   // e.g., "football", "basketball", "tennis", etc.
+  eventType   SportType
   location    String?
   latitude    Float?
   longitude   Float?
@@ -232,8 +304,8 @@ model Event {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   archived    Boolean  @default(false) // For archiving past events
-  status      String   @default("upcoming") // upcoming, ongoing, completed, cancelled
-  
+  status      EventStatus   @default(upcoming)
+
   // Public/Private event and invite features
   isPublic    Boolean  @default(false) // Public events can be joined by anyone with the link
   inviteToken String?  @unique // Unique token for shareable invite links
@@ -246,6 +318,7 @@ model Event {
   parentEvent     Event?    @relation("RecurringEvents", fields: [parentEventId], references: [id], onDelete: Cascade)
   instances       Event[]   @relation("RecurringEvents")
   exceptionDates  Json?     // Array of dates to skip
+  // If exceptionDates grows large, consider a separate EventException table for better performance
 
   creatorId String
   creator   User   @relation("EventCreator", fields: [creatorId], references: [id])
@@ -258,7 +331,7 @@ model Event {
   eventAttendances EventAttendance[]
   eventNotifications EventNotification[]
   comments Comment[]
-  
+
   @@index([groupId]) // For group events queries
   @@index([creatorId]) // For user's created events
   @@index([startTime]) // For date-based queries
@@ -269,11 +342,12 @@ model Event {
   @@index([groupId, startTime]) // Composite for group events by date
   @@index([creatorId, startTime]) // Composite for user events by date
   @@index([city, country]) // For location-based queries
+  // If archived events grow large, consider partitioning or archiving to a separate table for performance
 }
 
 model EventParticipant {
   id         String   @id @default(uuid())
-  status     String   @default("pending") // pending, confirmed, declined
+  status     EventParticipantStatus @default(pending)
   joinedAt   DateTime @default(now())
 
   eventId String
@@ -286,6 +360,7 @@ model EventParticipant {
   @@index([userId]) // For user's events queries
   @@index([status]) // For filtering by status
   @@index([eventId, status]) // Composite for event participants by status
+  @@index([joinedAt]) // For joined date queries
 }
 
 model EventRequest {
@@ -381,13 +456,14 @@ model CommentMention {
 model GuestParticipant {
   id         String   @id @default(uuid())
   name       String   // Guest's display name
-  status     String   @default("confirmed") // confirmed, declined
+  status     GuestParticipantStatus @default(confirmed)
   joinedAt   DateTime @default(now())
   
   eventId String
   event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
   
   @@index([eventId])
+  @@index([joinedAt]) // For joined date queries
 }
 
 // JWT Refresh Token for token rotation

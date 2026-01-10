@@ -16,6 +16,7 @@ import {
   NotificationPreferences,
   TwoFactorSection,
 } from '../components/profile';
+import ProfilePictureHistory from '../components/profile/ProfilePictureHistory';
 import { AxiosError } from 'axios';
 
 const Profile = () => {
@@ -48,6 +49,8 @@ const Profile = () => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [preferencesLoading, setPreferencesLoading] = useState(true);
+  const [pictureHistory, setPictureHistory] = useState([]);
+  const [pictureHistoryLoading, setPictureHistoryLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -61,9 +64,22 @@ const Profile = () => {
         discoveryRadius: user.discoveryRadius || 25,
       });
       setAllNotificationsMuted(!user.emailNotifications);
+      fetchProfilePictureHistory();
     }
     fetchEmailPreferences();
   }, [user]);
+
+  const fetchProfilePictureHistory = async () => {
+    setPictureHistoryLoading(true);
+    try {
+      const response = await authAPI.listProfilePictures();
+      setPictureHistory(response.data.pictures || []);
+    } catch (err) {
+      // Optionally handle error
+    } finally {
+      setPictureHistoryLoading(false);
+    }
+  };
 
   const fetchEmailPreferences = async () => {
     try {
@@ -184,12 +200,12 @@ const Profile = () => {
   const handleUploadProfilePicture = async (file: File) => {
     setError('');
     setSuccess('');
-    
     try {
       const response = await authAPI.uploadProfilePicture(file);
       const updatedUser = response.data.user;
       updateUser(updatedUser);
       setSuccess('Profile picture updated successfully');
+      fetchProfilePictureHistory();
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
         ? err.response?.data?.error || 'Failed to upload profile picture'
@@ -202,18 +218,45 @@ const Profile = () => {
   const handleDeleteProfilePicture = async () => {
     setError('');
     setSuccess('');
-    
     try {
       const response = await authAPI.deleteProfilePicture();
       const updatedUser = response.data.user;
       updateUser(updatedUser);
       setSuccess('Profile picture removed successfully');
+      fetchProfilePictureHistory();
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
         ? err.response?.data?.error || 'Failed to delete profile picture'
         : 'Failed to delete profile picture';
       setError(errorMessage);
       throw err;
+    }
+  };
+
+  const handleRestoreProfilePicture = async (pictureId: string) => {
+    setError('');
+    setSuccess('');
+    try {
+      await authAPI.restoreProfilePicture(pictureId);
+      setSuccess('Profile picture restored');
+      fetchProfilePictureHistory();
+      // Optionally refresh user/profile
+      const refreshed = await authAPI.getProfile();
+      updateUser(refreshed.data.user);
+    } catch (err) {
+      setError('Failed to restore profile picture');
+    }
+  };
+
+  const handleHardDeleteProfilePicture = async (pictureId: string) => {
+    setError('');
+    setSuccess('');
+    try {
+      await authAPI.hardDeleteProfilePicture(pictureId);
+      setSuccess('Profile picture permanently deleted');
+      fetchProfilePictureHistory();
+    } catch (err) {
+      setError('Failed to permanently delete profile picture');
     }
   };
 
@@ -253,6 +296,12 @@ const Profile = () => {
                   onSubmit={handleUpdateProfile}
                   onUploadPicture={handleUploadProfilePicture}
                   onDeletePicture={handleDeleteProfilePicture}
+                />
+                <ProfilePictureHistory
+                  pictures={pictureHistory}
+                  onRestore={handleRestoreProfilePicture}
+                  onHardDelete={handleHardDeleteProfilePicture}
+                  currentPictureId={user.profilePicture}
                 />
               </Grid>
               <Grid item xs={12} md={6}>

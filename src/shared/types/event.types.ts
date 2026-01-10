@@ -1,3 +1,35 @@
+export enum EventNotificationType {
+  join = 'join',
+  leave = 'leave',
+  late = 'late',
+  confirmed = 'confirmed',
+  declined = 'declined',
+  status_change = 'status_change',
+  comment = 'comment',
+}
+
+export enum GroupNotificationType {
+  accepted = 'accepted',
+  invited = 'invited',
+  join_request = 'join_request',
+}
+
+export enum TeamUpNotificationType {
+  teamup_response = 'teamup_response',
+  teamup_accepted = 'teamup_accepted',
+  teamup_declined = 'teamup_declined',
+  teamup_nearby = 'teamup_nearby',
+}
+export enum EventParticipantStatus {
+  pending = 'pending',
+  confirmed = 'confirmed',
+  declined = 'declined',
+}
+
+export enum GuestParticipantStatus {
+  confirmed = 'confirmed',
+  declined = 'declined',
+}
 /**
  * Event-related TypeScript interfaces based on Prisma schema
  */
@@ -5,12 +37,29 @@
 import { PublicUser } from './user.types';
 import { Group } from './group.types';
 
-// Main Event interface
+export enum EventStatus {
+  upcoming = 'upcoming',
+  ongoing = 'ongoing',
+  completed = 'completed',
+  cancelled = 'cancelled',
+}
+
+export enum SportType {
+  football = 'football',
+  basketball = 'basketball',
+  tennis = 'tennis',
+  volleyball = 'volleyball',
+  running = 'running',
+  cycling = 'cycling',
+  swimming = 'swimming',
+  other = 'other',
+}
+
 export interface Event {
   id: string;
   title: string;
   description?: string | null;
-  eventType: string;
+  eventType: SportType;
   location?: string | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -23,27 +72,54 @@ export interface Event {
   createdAt: Date | string;
   updatedAt: Date | string;
   archived: boolean;
-  status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+  status: EventStatus;
   isPublic: boolean;
   inviteToken?: string | null;
-  
+
   // Recurring event fields
   isRecurring: boolean;
   recurrenceRule?: string | null;
   recurrenceEnd?: Date | string | null;
   parentEventId?: string | null;
   exceptionDates?: any | null;
-  
+
   creatorId: string;
   groupId: string;
 }
 
 // Event with relations
+export interface EventNotification {
+  id: string;
+  userId: string;
+  type: EventNotificationType;
+  createdAt: Date | string;
+  user?: PublicUser;
+}
+
+export interface GroupNotification {
+  id: string;
+  groupId: string;
+  userId: string;
+  type: GroupNotificationType;
+  createdAt: Date | string;
+  user?: PublicUser;
+}
+
+export interface TeamUpNotification {
+  id: string;
+  teamUpRequestId: string;
+  userId: string;
+  type: TeamUpNotificationType;
+  createdAt: Date | string;
+  user?: PublicUser;
+}
+
 export interface EventWithDetails extends Event {
   creator?: PublicUser;
   group?: Group;
   participants?: EventParticipant[];
   guestParticipants?: GuestParticipant[];
+  eventNotifications?: EventNotification[];
   _count?: {
     participants: number;
     guestParticipants: number;
@@ -54,7 +130,7 @@ export interface EventWithDetails extends Event {
 // Event Participant
 export interface EventParticipant {
   id: string;
-  status: 'pending' | 'confirmed' | 'declined';
+  status: EventParticipantStatus;
   joinedAt: Date | string;
   eventId: string;
   userId: string;
@@ -66,7 +142,7 @@ export interface EventParticipant {
 export interface GuestParticipant {
   id: string;
   name: string;
-  status: 'confirmed' | 'declined';
+  status: GuestParticipantStatus;
   joinedAt: Date | string;
   eventId: string;
 }
@@ -91,6 +167,7 @@ export interface EventReminder {
   sent: boolean;
   event?: Event;
   user?: PublicUser;
+  // Composite key: [eventId, userId, remindAt]
 }
 
 // Event Request (voting system)

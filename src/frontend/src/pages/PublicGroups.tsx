@@ -422,12 +422,6 @@ const PublicGroups = () => {
                           {t('groups.membersCount', { count: memberCount })}
                         </Typography>
                       </Box>
-                      <Box display="flex" alignItems="center" gap={0.5}>
-                        <EventIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                        <Typography variant="caption" color="text.secondary">
-                          {t('groups.eventsCount', { count: eventCount })}
-                        </Typography>
-                      </Box>
                     </Box>
                   </CardContent>
                   <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>

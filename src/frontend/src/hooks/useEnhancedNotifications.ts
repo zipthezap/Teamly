@@ -6,11 +6,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { notificationsAPI } from '../services/api';
 import { useTranslation } from 'react-i18next';
+import { EventNotificationType, GroupNotificationType, TeamUpNotificationType } from '../../../shared/types/event.types';
 
 export interface NotificationMetadata {
   actionUrl?: string;
   actionText?: string;
-  category?: 'event' | 'group' | 'system' | 'social';
+  category?: 'event' | 'group' | 'teamup' | 'system' | 'social';
   priority?: 'low' | 'medium' | 'high';
   imageUrl?: string;
   relatedUserId?: string;
@@ -20,8 +21,8 @@ export interface NotificationMetadata {
 export interface Notification {
   id: string;
   userId: string;
-  type: string;
-  notificationType: 'event' | 'group';
+  type: EventNotificationType | GroupNotificationType | TeamUpNotificationType;
+  notificationType: 'event' | 'group' | 'teamup';
   title: string;
   message: string;
   read: boolean;

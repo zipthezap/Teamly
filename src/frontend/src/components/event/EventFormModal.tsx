@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
 import { eventsAPI } from '../../services/api';
 import EventForm, { EventFormData } from '../common/EventForm';
+import { SportType } from '../../../shared/types/event.types';
 
 interface EventFormModalProps {
   open: boolean;
@@ -47,7 +48,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({
         groupId: initialData.groupId?.toString() || groupId?.toString() || '',
         title: initialData.title || '',
         description: initialData.description || '',
-        eventType: initialData.eventType || 'football',
+        eventType: initialData.eventType && Object.values(SportType).includes(initialData.eventType) ? initialData.eventType : SportType.football,
         location: initialData.location || '',
         startDate,
         startHour,

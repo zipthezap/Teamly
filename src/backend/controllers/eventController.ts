@@ -7,6 +7,7 @@ import { Request, Response } from 'express';
 import { createInviteToken } from '../utils/inviteToken';
 import { TRANSACTION } from '../config/security';
 import * as eventService from '../services/eventService';
+import { EventParticipantStatus, GuestParticipantStatus } from '../../shared/types/event.types';
 import * as groupService from '../services/groupService';
 import * as locationService from '../services/locationService';
 import { exportToCSV, exportToICalendar, exportToJSON } from '../services/exportService';
@@ -96,7 +97,7 @@ export const createEvent = async (req: Request, res: Response) => {
         participants: {
           create: {
             userId: req.user.id,
-            status: 'confirmed'
+            status: EventParticipantStatus.confirmed
           }
         }
       },
@@ -374,7 +375,8 @@ export const updateEvent = async (req: Request, res: Response) => {
         ...(startTime && { startTime: new Date(startTime) }),
         ...(endTime !== undefined && { endTime: endTime ? new Date(endTime) : null }),
         ...(maxPlayers !== undefined && { maxPlayers: maxPlayers ? parseInt(maxPlayers) : null }),
-        ...(isPublic !== undefined && { isPublic })
+        ...(isPublic !== undefined && { isPublic }),
+        ...(isPublic === false && { inviteToken: null })
       },
       include: {
         creator: {
@@ -524,7 +526,7 @@ export const joinEvent = async (req: Request, res: Response) => {
         const guestCount = await tx.guestParticipant.count({
           where: {
             eventId: id,
-            status: 'confirmed'
+            status: GuestParticipantStatus.confirmed
           }
         });
 
@@ -1243,14 +1245,14 @@ export const joinEventAsGuest = async (req: Request, res: Response) => {
         const confirmedParticipants = await tx.eventParticipant.count({
           where: {
             eventId: event.id,
-            status: 'confirmed'
+            status: EventParticipantStatus.confirmed
           }
         });
 
         const confirmedGuests = await tx.guestParticipant.count({
           where: {
             eventId: event.id,
-            status: 'confirmed'
+            status: GuestParticipantStatus.confirmed
           }
         });
 
@@ -1266,7 +1268,7 @@ export const joinEventAsGuest = async (req: Request, res: Response) => {
         data: {
           eventId: event.id,
           name: name.trim(),
-          status: 'confirmed'
+          status: GuestParticipantStatus.confirmed
         }
       });
 
