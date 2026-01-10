@@ -1,143 +1,123 @@
 import prisma from '../config/database';
-import { logger } from '../utils/logger';
 import crypto from 'crypto';
 import { sendEmail } from '../utils/emailService';
 import { Request, Response } from 'express';
+import { asyncHandler } from '../middleware/asyncHandler';
+import { BadRequestError, NotFoundError } from '../utils/errors';
 
 // Get user email preferences
-export const getEmailPreferences = async (req: Request, res: Response) => {
-  try {
-    let preferences = await prisma.emailPreference.findUnique({
-      where: { userId: req.user.id }
+export const getEmailPreferences = asyncHandler(async (req: Request, res: Response) => {
+  let preferences = await prisma.emailPreference.findUnique({
+    where: { userId: req.user.id }
+  });
+
+  // Create default preferences if they don't exist
+  if (!preferences) {
+    preferences = await prisma.emailPreference.create({
+      data: { userId: req.user.id }
     });
-
-    // Create default preferences if they don't exist
-    if (!preferences) {
-      preferences = await prisma.emailPreference.create({
-        data: { userId: req.user.id }
-      });
-    }
-
-    res.json(preferences);
-  } catch (error) {
-    logger.error('Get email preferences error:', 'emailControllerController', { error });
-    res.status(500).json({ error: 'Failed to get email preferences' });
   }
-};
+
+  res.json(preferences);
+});
 
 // Update user email preferences
-export const updateEmailPreferences = async (req: Request, res: Response) => {
-  try {
-    const {
-      eventInvites,
-      eventReminders,
-      eventUpdates,
-      eventCancellations,
-      groupInvites,
-      commentMentions
-    } = req.body;
+export const updateEmailPreferences = asyncHandler(async (req: Request, res: Response) => {
+  const {
+    eventInvites,
+    eventReminders,
+    eventUpdates,
+    eventCancellations,
+    groupInvites,
+    commentMentions
+  } = req.body;
 
-    const preferences = await prisma.emailPreference.upsert({
-      where: { userId: req.user.id },
-      update: {
-        eventInvites: eventInvites !== undefined ? eventInvites : undefined,
-        eventReminders: eventReminders !== undefined ? eventReminders : undefined,
-        eventUpdates: eventUpdates !== undefined ? eventUpdates : undefined,
-        eventCancellations: eventCancellations !== undefined ? eventCancellations : undefined,
-        groupInvites: groupInvites !== undefined ? groupInvites : undefined,
-        commentMentions: commentMentions !== undefined ? commentMentions : undefined
-      },
-      create: {
-        userId: req.user.id,
-        eventInvites: eventInvites !== undefined ? eventInvites : true,
-        eventReminders: eventReminders !== undefined ? eventReminders : true,
-        eventUpdates: eventUpdates !== undefined ? eventUpdates : true,
-        eventCancellations: eventCancellations !== undefined ? eventCancellations : true,
-        groupInvites: groupInvites !== undefined ? groupInvites : true,
-        commentMentions: commentMentions !== undefined ? commentMentions : true
-      }
-    });
+  const preferences = await prisma.emailPreference.upsert({
+    where: { userId: req.user.id },
+    update: {
+      eventInvites: eventInvites !== undefined ? eventInvites : undefined,
+      eventReminders: eventReminders !== undefined ? eventReminders : undefined,
+      eventUpdates: eventUpdates !== undefined ? eventUpdates : undefined,
+      eventCancellations: eventCancellations !== undefined ? eventCancellations : undefined,
+      groupInvites: groupInvites !== undefined ? groupInvites : undefined,
+      commentMentions: commentMentions !== undefined ? commentMentions : undefined
+    },
+    create: {
+      userId: req.user.id,
+      eventInvites: eventInvites !== undefined ? eventInvites : true,
+      eventReminders: eventReminders !== undefined ? eventReminders : true,
+      eventUpdates: eventUpdates !== undefined ? eventUpdates : true,
+      eventCancellations: eventCancellations !== undefined ? eventCancellations : true,
+      groupInvites: groupInvites !== undefined ? groupInvites : true,
+      commentMentions: commentMentions !== undefined ? commentMentions : true
+    }
+  });
 
-    res.json(preferences);
-  } catch (error) {
-    logger.error('Update email preferences error:', 'emailControllerController', { error });
-    res.status(500).json({ error: 'Failed to update email preferences' });
-  }
-};
+  res.json(preferences);
+});
 
 // Send email verification
-export const sendVerificationEmail = async (req: Request, res: Response) => {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id }
-    });
+export const sendVerificationEmail = asyncHandler(async (req: Request, res: Response) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.id }
+  });
 
-    if (user.emailVerified) {
-      return res.status(400).json({ error: 'Email already verified' });
-    }
-
-    // Generate verification token
-    const token = crypto.randomBytes(32).toString('hex');
-
-    // Update user with token
-    await prisma.user.update({
-      where: { id: req.user.id },
-      data: { emailVerificationToken: token }
-    });
-
-    // Send verification email
-    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/verify-email/${token}`;
-    await sendEmail(user.email, 'emailVerification', user.name, verificationUrl);
-
-    res.json({ message: 'Verification email sent' });
-  } catch (error) {
-    logger.error('Send verification email error:', 'emailControllerController', { error });
-    res.status(500).json({ error: 'Failed to send verification email' });
+  if (!user) {
+    throw new NotFoundError('User not found');
   }
-};
+
+  if (user.emailVerified) {
+    throw new BadRequestError('Email already verified');
+  }
+
+  // Generate verification token
+  const token = crypto.randomBytes(32).toString('hex');
+
+  // Update user with token
+  await prisma.user.update({
+    where: { id: req.user.id },
+    data: { emailVerificationToken: token }
+  });
+
+  // Send verification email
+  const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/verify-email/${token}`;
+  await sendEmail(user.email, 'emailVerification', user.name, verificationUrl);
+
+  res.json({ message: 'Verification email sent' });
+});
 
 // Verify email
-export const verifyEmail = async (req: Request, res: Response) => {
-  try {
-    const { token } = req.params;
+export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
+  const { token } = req.params;
 
-    const user = await prisma.user.findFirst({
-      where: { emailVerificationToken: token }
-    });
+  const user = await prisma.user.findFirst({
+    where: { emailVerificationToken: token }
+  });
 
-    if (!user) {
-      return res.status(400).json({ error: 'Invalid or expired verification token' });
-    }
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        emailVerified: true,
-        emailVerificationToken: null
-      }
-    });
-
-    res.json({ message: 'Email verified successfully' });
-  } catch (error) {
-    logger.error('Verify email error:', 'emailControllerController', { error });
-    res.status(500).json({ error: 'Failed to verify email' });
+  if (!user) {
+    throw new BadRequestError('Invalid or expired verification token');
   }
-};
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      emailVerified: true,
+      emailVerificationToken: null
+    }
+  });
+
+  res.json({ message: 'Email verified successfully' });
+});
 
 // Toggle email notifications on/off
-export const toggleEmailNotifications = async (req: Request, res: Response) => {
-  try {
-    const { enabled } = req.body;
+export const toggleEmailNotifications = asyncHandler(async (req: Request, res: Response) => {
+  const { enabled } = req.body;
 
-    const user = await prisma.user.update({
-      where: { id: req.user.id },
-      data: { emailNotifications: enabled }
-    });
+  const user = await prisma.user.update({
+    where: { id: req.user.id },
+    data: { emailNotifications: enabled }
+  });
 
-    res.json({ emailNotifications: user.emailNotifications });
-  } catch (error) {
-    logger.error('Toggle email notifications error:', 'emailControllerController', { error });
-    res.status(500).json({ error: 'Failed to toggle email notifications' });
-  }
-};
+  res.json({ emailNotifications: user.emailNotifications });
+});
 
