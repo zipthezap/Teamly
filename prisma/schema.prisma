@@ -66,6 +66,25 @@ model GroupNotification {
   @@index([userId, read]) // Composite for unread user notifications
   @@index([createdAt]) // For chronological sorting
 }
+
+model TeamUpNotification {
+  id              String   @id @default(uuid())
+  teamUpRequestId String
+  teamUpRequest   TeamUpRequest @relation(fields: [teamUpRequestId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  type            String   // teamup_response (someone applied), teamup_accepted (someone joined), teamup_declined (someone left)
+  params          Json?    // Parameters for frontend translation (e.g., { name, title, sportType })
+  metadata        Json?    // Additional data for the notification
+  createdAt       DateTime @default(now())
+  read            Boolean  @default(false)
+  
+  @@index([userId]) // For user notifications queries
+  @@index([teamUpRequestId]) // For teamup request notifications
+  @@index([read]) // For unread filtering
+  @@index([userId, read]) // Composite for unread user notifications
+  @@index([createdAt]) // For chronological sorting
+}
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -121,6 +140,7 @@ model User {
   eventAttendances  EventAttendance[]
   eventNotifications EventNotification[]
   groupNotifications GroupNotification[]
+  teamUpNotifications TeamUpNotification[]
   groupJoinRequests GroupJoinRequest[]
   createdEventRequests EventRequest[]   @relation("EventRequestCreator")
   eventVotes        EventVote[]
@@ -130,6 +150,8 @@ model User {
   refreshTokens     RefreshToken[]
   revokedTokens     RevokedToken[]
   activeSessions    UserSession[]
+  teamUpRequests    TeamUpRequest[]  @relation("TeamUpRequestCreator")
+  teamUpResponses   TeamUpResponse[]
   
   @@index([email]) // For faster email lookups
   @@index([emailVerificationToken]) // For email verification
@@ -422,4 +444,56 @@ model EmailQueue {
   @@index([status])
   @@index([scheduledAt])
   @@index([recipient])
+}
+
+// TeamUp functionality for finding substitute/replacement players
+model TeamUpRequest {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  sportType   String   // e.g., "football", "basketball", "tennis", etc.
+  location    String?
+  latitude    Float?
+  longitude   Float?
+  locationName String?
+  city        String?
+  country     String?
+  dateTime    DateTime // When the sub/replacement is needed
+  playersNeeded Int    @default(1) // Number of players needed
+  skillLevel  String?  // beginner, intermediate, advanced, any
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  status      String   @default("open") // open, filled, cancelled, expired
+  expiresAt   DateTime? // Auto-expire after a certain time
+  
+  creatorId   String
+  creator     User     @relation("TeamUpRequestCreator", fields: [creatorId], references: [id])
+  
+  responses      TeamUpResponse[]
+  notifications  TeamUpNotification[]
+  
+  @@index([creatorId])
+  @@index([dateTime])
+  @@index([status])
+  @@index([sportType])
+  @@index([city, country])
+  @@index([status, dateTime]) // For finding open requests by date
+}
+
+// Responses to TeamUp requests (people interested in filling the spots)
+model TeamUpResponse {
+  id        String   @id @default(uuid())
+  message   String?  // Optional message from the responder
+  status    String   @default("pending") // pending, accepted, declined
+  createdAt DateTime @default(now())
+  
+  teamUpRequestId String
+  teamUpRequest   TeamUpRequest @relation(fields: [teamUpRequestId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  
+  @@unique([teamUpRequestId, userId])
+  @@index([teamUpRequestId])
+  @@index([userId])
+  @@index([status])
 }

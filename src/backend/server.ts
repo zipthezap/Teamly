@@ -15,6 +15,7 @@ import commentRoutes from './routes/commentRoutes';
 import groupChatRoutes from './routes/groupChatRoutes';
 import notificationPreferenceRoutes from './routes/notificationPreferenceRoutes';
 import notificationRoutes from './routes/notificationRoutes';
+import teamUpRoutes from './routes/teamUpRoutes';
 import { apiLimiter } from './middleware/rateLimiter';
 import { requestTimeout } from './middleware/requestTimeout';
 import { logger } from './utils/logger';
@@ -143,6 +144,7 @@ app.use('/api/comments', commentRoutes);
 app.use('/api/chat', groupChatRoutes);
 app.use('/api/notification-preferences', notificationPreferenceRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/teamup', teamUpRoutes);
 
 // Enhanced health check with detailed metrics
 app.get('/health', async (_req: Request, res: Response) => {
