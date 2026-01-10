@@ -90,19 +90,71 @@ const Dashboard = () => {
         </Typography>
       </Box>
 
-      {/* Main Content and Sidebar Row */}
-      <Grid container spacing={3} alignItems="flex-start">
-        {/* Main Content - Left Side */}
-        <Grid item xs={12} md={8} lg={9}>
+      {/* Responsive flex layout: sidebar always first on mobile, left on desktop */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          alignItems: 'flex-start',
+          gap: 4,
+        }}
+      >
+        {/* Sidebar */}
+        <Box
+          sx={{
+            width: { xs: '100%', md: 340, lg: 360 },
+            flexShrink: 0,
+            mb: { xs: 4, md: 0 },
+            position: { md: 'sticky' },
+            top: { md: 80 },
+            alignSelf: { md: 'flex-start' },
+            maxHeight: { md: 'calc(100vh - 100px)' },
+            overflowY: { md: 'auto' },
+            background: 'rgba(30, 41, 59, 0.98)',
+            borderRadius: 3,
+            boxShadow: 3,
+            border: '1.5px solid #22304a',
+            p: 3,
+          }}
+        >
+          <Stack spacing={3}>
+            {/* Recent Activity */}
+            <RecentActivityTimeline
+              events={events}
+              groups={groups}
+              userId={user?.id}
+              onActivityClick={(id, type) => {
+                if (type === 'event') {
+                  navigate(`/events/${id}`);
+                } else {
+                  navigate(`/groups/${id}`);
+                }
+              }}
+            />
+
+            {/* Upcoming Schedule */}
+            <UpcomingEventsCalendar
+              events={events}
+              onEventClick={(eventId) => navigate(`/events/${eventId}`)}
+              userId={user?.id}
+            />
+
+            {/* Quick Links */}
+            <QuickLinks onNavigate={(path) => navigate(path)} />
+          </Stack>
+        </Box>
+
+        {/* Main Content */}
+        <Box sx={{ flex: 1, minWidth: 0, background: 'rgba(30, 41, 59, 0.98)', borderRadius: 3, boxShadow: 3, border: '1.5px solid #22304a', p: 3 }}>
           {/* Statistics Section */}
-          <Box sx={{ mb: 3 }}>
+          <Box sx={{ mb: 4 }}>
             <UserStatistics />
           </Box>
 
           {/* Upcoming Events */}
-          <Box sx={{ mb: 3 }}>
+          <Box sx={{ mb: 4 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h5" sx={{ fontWeight: 600 }}>{t('dashboard.upcomingEvents')}</Typography>
+              <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: 0.5, color: 'primary.light', textTransform: 'uppercase' }}>{t('dashboard.upcomingEvents')}</Typography>
               <Button
                 variant="text"
                 size="small"
@@ -118,12 +170,12 @@ const Dashboard = () => {
                 const isFull = event.maxPlayers && event.participants?.length >= event.maxPlayers;
                 return (
                   <Grid item xs={12} sm={6} md={4} key={event.id}>
-                    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'all 0.3s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 } }}>
+                    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'all 0.3s', background: 'rgba(51,65,85,0.98)', borderRadius: 2, boxShadow: 2, border: '1.5px solid #2d3a53', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6, borderColor: 'primary.main' } }}>
                       <CardContent sx={{ flexGrow: 1, p: 3 }}>
                         <Box display="flex" gap={2} mb={1.5}>
                           <Avatar
-                            sx={{ 
-                              width: 60, 
+                            sx={{
+                              width: 60,
                               height: 60,
                               borderRadius: '8px',
                               bgcolor: 'primary.main'
@@ -143,11 +195,11 @@ const Dashboard = () => {
                             </Box>
                           </Box>
                         </Box>
-                        <Typography 
-                          variant="body2" 
-                          color="text.secondary" 
-                          sx={{ 
-                            mb: 2, 
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{
+                            mb: 2,
                             minHeight: 40,
                             display: '-webkit-box',
                             WebkitLineClamp: 2,
@@ -174,7 +226,7 @@ const Dashboard = () => {
                         </Box>
                       </CardContent>
                       <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
-                        <Button 
+                        <Button
                           variant="contained"
                           fullWidth
                           onClick={() => navigate(`/events/${event.id}`)}
@@ -192,7 +244,7 @@ const Dashboard = () => {
                     icon={<EventIcon />}
                     title={t('dashboard.noUpcomingEvents')}
                     description={t('dashboard.noUpcomingEventsDesc')}
-                    actions={[ 
+                    actions={[
                       { label: t('dashboard.createFirstEvent'), onClick: () => navigate('/events/new') },
                       { label: t('dashboard.findEvents'), onClick: () => navigate('/events') }
                     ]}
@@ -206,7 +258,7 @@ const Dashboard = () => {
           {/* Your Groups */}
           <Box>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h5" sx={{ fontWeight: 600 }}>{t('dashboard.yourGroups')}</Typography>
+              <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: 0.5, color: 'primary.light', textTransform: 'uppercase' }}>{t('dashboard.yourGroups')}</Typography>
               <Button
                 variant="text"
                 size="small"
@@ -223,7 +275,7 @@ const Dashboard = () => {
                 const hasJoined = group.members?.some(m => m.userId === user?.id);
                 const recentMembers = hasJoined ? (group.members?.slice(0, 4) || []) : [];
                 return (
-                  <Card key={group.id} sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'all 0.3s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 } }}>
+                  <Card key={group.id} sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'all 0.3s', background: 'rgba(51,65,85,0.98)', borderRadius: 2, boxShadow: 2, border: '1.5px solid #2d3a53', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6, borderColor: 'primary.main' } }}>
                     <CardContent sx={{ flexGrow: 1, p: 3 }}>
                       <Box display="flex" gap={2} mb={1.5}>
                         <Avatar
@@ -270,7 +322,7 @@ const Dashboard = () => {
                           {recentMembers.map((member, idx) => {
                             const profilePictureUrl = getImageUrl(member.user?.profilePicture);
                             return (
-                              <Avatar 
+                              <Avatar
                                 key={idx}
                                 src={profilePictureUrl || undefined}
                                 sx={{ width: 32, height: 32, fontSize: '0.75rem', bgcolor: 'primary.main' }}
@@ -283,7 +335,7 @@ const Dashboard = () => {
                       )}
                     </CardContent>
                     <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
-                      <Button 
+                      <Button
                         variant="contained"
                         fullWidth
                         onClick={() => navigate(`/groups/${group.id}`)}
@@ -300,7 +352,7 @@ const Dashboard = () => {
                     icon={<GroupIcon />}
                     title={t('dashboard.noGroupsYet')}
                     description={t('dashboard.noGroupsYetDesc')}
-                    actions={[ 
+                    actions={[
                       { label: t('dashboard.createFirstGroup'), onClick: () => navigate('/groups/new') },
                       { label: t('dashboard.discoverGroups'), onClick: () => navigate('/groups') }
                     ]}
@@ -310,62 +362,8 @@ const Dashboard = () => {
               )}
             </Box>
           </Box>
-        </Grid>
-
-        {/* Right Sidebar - aligns with stats and main content */}
-        <Grid 
-          item 
-          xs={12} 
-          md={4}
-          lg={3} 
-          sx={{ 
-            position: { md: 'sticky' }, 
-            top: { md: 80 }, 
-            alignSelf: { md: 'flex-start' },
-            maxHeight: { md: 'calc(100vh - 100px)' },
-            overflowY: { md: 'auto' },
-            '&::-webkit-scrollbar': {
-              width: '6px',
-            },
-            '&::-webkit-scrollbar-track': {
-              background: 'transparent',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: 'rgba(156, 163, 175, 0.3)',
-              borderRadius: '3px',
-            },
-            '&::-webkit-scrollbar-thumb:hover': {
-              background: 'rgba(156, 163, 175, 0.5)',
-            },
-          }}
-        >
-          <Stack spacing={3}>
-            {/* Recent Activity */}
-            <RecentActivityTimeline
-              events={events}
-              groups={groups}
-              userId={user?.id}
-              onActivityClick={(id, type) => {
-                if (type === 'event') {
-                  navigate(`/events/${id}`);
-                } else {
-                  navigate(`/groups/${id}`);
-                }
-              }}
-            />
-
-            {/* Upcoming Schedule */}
-            <UpcomingEventsCalendar 
-              events={events} 
-              onEventClick={(eventId) => navigate(`/events/${eventId}`)}
-              userId={user?.id}
-            />
-
-            {/* Quick Links */}
-            <QuickLinks onNavigate={(path) => navigate(path)} />
-          </Stack>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Container>
   );
 };

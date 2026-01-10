@@ -242,67 +242,30 @@ const EventsList = () => {
     );
   }
 
-  // Filter events by tab
+  // Filter events by tab (fix: use creatorId, and only filter by date and participation/ownership)
   const now = new Date();
   let filteredEvents: any[] = [];
   if (tab === 'my') {
-    // 0. Events I'm organizing
-    // 1. Private events of groups I'm in and participating
-    // 2. Public events of groups I'm in and participating
-    const userGroupIds = groups
-      .filter(g => g.members?.some((m: any) => m.userId === user?.id))
-      .map(g => g.id);
-    const organizedEvents = events.filter(event => {
-      const eventDate = new Date(event.startTime);
-      return eventDate >= now && event.organizerId === user?.id;
-    });
-    const privateInGroups = events.filter(event => {
-      const eventDate = new Date(event.startTime);
-      const isUserGroup = event.group && userGroupIds.includes(event.group.id);
-      const isJoined = event.participants?.some((p: any) => p.userId === user?.id);
-      return eventDate >= now && !event.isPublic && isUserGroup && isJoined && event.organizerId !== user?.id;
-    });
-    const publicInGroups = events.filter(event => {
-      const eventDate = new Date(event.startTime);
-      const isUserGroup = event.group && userGroupIds.includes(event.group.id);
-      const isJoined = event.participants?.some((p: any) => p.userId === user?.id);
-      return eventDate >= now && event.isPublic && isUserGroup && isJoined && event.organizerId !== user?.id;
-    });
-    filteredEvents = [...organizedEvents, ...privateInGroups, ...publicInGroups];
-  } else if (tab === 'upcoming') {
-    // 0. Events I'm organizing
-    // 1. Private events of groups I'm in
-    // 2. Public events of groups I'm in
-    // 3. Public events of groups I'm not in
-    const userGroupIds = groups
-      .filter(g => g.members?.some((m: any) => m.userId === user?.id))
-      .map(g => g.id);
-    const organizedEvents = events.filter(event => {
-      const eventDate = new Date(event.startTime);
-      return eventDate >= now && event.organizerId === user?.id;
-    });
-    const privateInGroups = events.filter(event => {
-      const eventDate = new Date(event.startTime);
-      const isUserGroup = event.group && userGroupIds.includes(event.group.id);
-      return eventDate >= now && !event.isPublic && isUserGroup && event.organizerId !== user?.id;
-    });
-    const publicInGroups = events.filter(event => {
-      const eventDate = new Date(event.startTime);
-      const isUserGroup = event.group && userGroupIds.includes(event.group.id);
-      return eventDate >= now && event.isPublic && isUserGroup && event.organizerId !== user?.id;
-    });
-    const publicNotInGroups = events.filter(event => {
-      const eventDate = new Date(event.startTime);
-      const isUserGroup = event.group && userGroupIds.includes(event.group.id);
-      return eventDate >= now && event.isPublic && !isUserGroup && event.organizerId !== user?.id;
-    });
-    filteredEvents = [...organizedEvents, ...privateInGroups, ...publicInGroups, ...publicNotInGroups];
-  } else {
+    // Show all upcoming events where user is a participant or creator
     filteredEvents = events.filter(event => {
       const eventDate = new Date(event.startTime);
       const isJoined = event.participants?.some((p: any) => p.userId === user?.id);
-      const isOrganizer = event.organizerId === user?.id;
-      return eventDate < now && (isJoined || isOrganizer);
+      const isCreator = event.creatorId === user?.id;
+      return eventDate >= now && (isJoined || isCreator);
+    });
+  } else if (tab === 'upcoming') {
+    // Show all upcoming events
+    filteredEvents = events.filter(event => {
+      const eventDate = new Date(event.startTime);
+      return eventDate >= now;
+    });
+  } else {
+    // Show all past events where user is a participant or creator
+    filteredEvents = events.filter(event => {
+      const eventDate = new Date(event.startTime);
+      const isJoined = event.participants?.some((p: any) => p.userId === user?.id);
+      const isCreator = event.creatorId === user?.id;
+      return eventDate < now && (isJoined || isCreator);
     });
   }
 

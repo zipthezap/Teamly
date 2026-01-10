@@ -205,14 +205,22 @@ export const buildEventFilters = (
     where.groupId = filters.groupId;
   }
   
-  // Only show events from groups the user is a member of
-  where.group = {
-    members: {
-      some: {
-        userId
+
+  // Show events where the user is a participant or organizer
+  where.OR = [
+    // User is a participant
+    {
+      participants: {
+        some: {
+          userId
+        }
       }
+    },
+    // User is the creator
+    {
+      creatorId: userId
     }
-  };
+  ];
 
   // Search filter
   if (filters.search) {

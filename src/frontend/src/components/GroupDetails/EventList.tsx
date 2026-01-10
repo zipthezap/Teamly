@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import GroupEventsModal from "./GroupEventsModal";
 import { useTranslation } from "react-i18next";
 import Button from "../ui/Button";
 import PlusIcon from "../icons/PlusIcon";
@@ -28,6 +29,7 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
   const { t } = useTranslation();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
+  const [viewAllOpen, setViewAllOpen] = useState(false);
 
   const handleDeleteClick = (event: any) => {
     setEventToDelete(event);
@@ -42,10 +44,20 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
   // Hide past events: only show events whose startTime is within the last hour or in the future
   const now = new Date();
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-  const filteredEvents = events.filter(event => {
-    const eventDate = new Date(event.startTime || event.date);
-    return eventDate >= oneHourAgo;
-  });
+  const filteredEvents = events
+    .filter(event => {
+      const eventDate = new Date(event.startTime || event.date);
+      return eventDate >= oneHourAgo;
+    })
+    .sort((a, b) => new Date(a.startTime || a.date).getTime() - new Date(b.startTime || b.date).getTime());
+
+  // All upcoming events for modal, sorted soonest first
+  const allUpcomingEvents = events
+    .filter(event => {
+      const eventDate = new Date(event.startTime || event.date);
+      return eventDate >= oneHourAgo;
+    })
+    .sort((a, b) => new Date(a.startTime || a.date).getTime() - new Date(b.startTime || b.date).getTime());
 
   return (
     <section className="bg-slate-800 rounded-lg p-4 shadow">
@@ -53,12 +65,20 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
         <h2 className="text-xl font-semibold">{t('groupDetails.events', 'Events')}</h2>
         <div className="flex gap-2 items-center">
           <button
-            onClick={() => window.location.href = '/events'}
+            onClick={() => setViewAllOpen(true)}
             className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-pink-400 rounded text-sm font-medium transition shadow-none focus:outline-none"
             style={{ minWidth: 0 }}
           >
             {t('groupDetails.viewAll', 'View All')}
           </button>
+                {/* View All Modal */}
+                <GroupEventsModal
+                  open={viewAllOpen}
+                  onClose={() => setViewAllOpen(false)}
+                  events={allUpcomingEvents}
+                  onEventClick={onEventClick}
+                  t={t}
+                />
           {isAdmin && onCreate && (
             <button
               onClick={onCreate}

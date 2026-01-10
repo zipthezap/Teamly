@@ -59,6 +59,20 @@ CREATE TABLE "GroupNotification" (
 );
 
 -- CreateTable
+CREATE TABLE "TeamUpNotification" (
+    "id" TEXT NOT NULL,
+    "teamUpRequestId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "params" JSONB,
+    "metadata" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "read" BOOLEAN NOT NULL DEFAULT false,
+
+    CONSTRAINT "TeamUpNotification_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
@@ -78,6 +92,9 @@ CREATE TABLE "User" (
     "accountLockedUntil" TIMESTAMP(3),
     "city" TEXT,
     "country" TEXT,
+    "address" TEXT,
+    "postalCode" TEXT,
+    "discoveryRadius" INTEGER DEFAULT 25,
     "profilePicture" TEXT,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
@@ -131,6 +148,11 @@ CREATE TABLE "Event" (
     "description" TEXT,
     "eventType" TEXT NOT NULL,
     "location" TEXT,
+    "latitude" DOUBLE PRECISION,
+    "longitude" DOUBLE PRECISION,
+    "locationName" TEXT,
+    "city" TEXT,
+    "country" TEXT,
     "startTime" TIMESTAMP(3) NOT NULL,
     "endTime" TIMESTAMP(3),
     "maxPlayers" INTEGER,
@@ -204,6 +226,7 @@ CREATE TABLE "EmailPreference" (
     "eventCancellations" BOOLEAN NOT NULL DEFAULT true,
     "groupInvites" BOOLEAN NOT NULL DEFAULT true,
     "commentMentions" BOOLEAN NOT NULL DEFAULT true,
+    "nearbyTeamUps" BOOLEAN NOT NULL DEFAULT true,
     "muteEventInvites" BOOLEAN NOT NULL DEFAULT false,
     "muteEventReminders" BOOLEAN NOT NULL DEFAULT false,
     "muteEventUpdates" BOOLEAN NOT NULL DEFAULT false,
@@ -212,6 +235,7 @@ CREATE TABLE "EmailPreference" (
     "muteGroupRequests" BOOLEAN NOT NULL DEFAULT false,
     "muteNearbyGroups" BOOLEAN NOT NULL DEFAULT false,
     "muteEventCreated" BOOLEAN NOT NULL DEFAULT false,
+    "muteNearbyTeamUps" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -309,17 +333,161 @@ CREATE TABLE "EmailQueue" (
     CONSTRAINT "EmailQueue_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "TeamUpRequest" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "sportType" TEXT NOT NULL,
+    "location" TEXT,
+    "latitude" DOUBLE PRECISION,
+    "longitude" DOUBLE PRECISION,
+    "locationName" TEXT,
+    "city" TEXT,
+    "country" TEXT,
+    "dateTime" TIMESTAMP(3) NOT NULL,
+    "playersNeeded" INTEGER NOT NULL DEFAULT 1,
+    "skillLevel" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'open',
+    "expiresAt" TIMESTAMP(3),
+    "creatorId" TEXT NOT NULL,
+
+    CONSTRAINT "TeamUpRequest_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "TeamUpResponse" (
+    "id" TEXT NOT NULL,
+    "message" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "teamUpRequestId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+
+    CONSTRAINT "TeamUpResponse_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "EventAttendance_eventId_userId_key" ON "EventAttendance"("eventId", "userId");
 
 -- CreateIndex
+CREATE INDEX "EventNotification_userId_idx" ON "EventNotification"("userId");
+
+-- CreateIndex
+CREATE INDEX "EventNotification_eventId_idx" ON "EventNotification"("eventId");
+
+-- CreateIndex
+CREATE INDEX "EventNotification_read_idx" ON "EventNotification"("read");
+
+-- CreateIndex
+CREATE INDEX "EventNotification_userId_read_idx" ON "EventNotification"("userId", "read");
+
+-- CreateIndex
+CREATE INDEX "EventNotification_createdAt_idx" ON "EventNotification"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "GroupNotification_userId_idx" ON "GroupNotification"("userId");
+
+-- CreateIndex
+CREATE INDEX "GroupNotification_groupId_idx" ON "GroupNotification"("groupId");
+
+-- CreateIndex
+CREATE INDEX "GroupNotification_read_idx" ON "GroupNotification"("read");
+
+-- CreateIndex
+CREATE INDEX "GroupNotification_userId_read_idx" ON "GroupNotification"("userId", "read");
+
+-- CreateIndex
+CREATE INDEX "GroupNotification_createdAt_idx" ON "GroupNotification"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "TeamUpNotification_userId_idx" ON "TeamUpNotification"("userId");
+
+-- CreateIndex
+CREATE INDEX "TeamUpNotification_teamUpRequestId_idx" ON "TeamUpNotification"("teamUpRequestId");
+
+-- CreateIndex
+CREATE INDEX "TeamUpNotification_read_idx" ON "TeamUpNotification"("read");
+
+-- CreateIndex
+CREATE INDEX "TeamUpNotification_userId_read_idx" ON "TeamUpNotification"("userId", "read");
+
+-- CreateIndex
+CREATE INDEX "TeamUpNotification_createdAt_idx" ON "TeamUpNotification"("createdAt");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- CreateIndex
+CREATE INDEX "User_email_idx" ON "User"("email");
+
+-- CreateIndex
+CREATE INDEX "User_emailVerificationToken_idx" ON "User"("emailVerificationToken");
+
+-- CreateIndex
+CREATE INDEX "User_passwordResetToken_idx" ON "User"("passwordResetToken");
+
+-- CreateIndex
+CREATE INDEX "User_city_country_idx" ON "User"("city", "country");
+
+-- CreateIndex
+CREATE INDEX "GroupMember_userId_idx" ON "GroupMember"("userId");
+
+-- CreateIndex
+CREATE INDEX "GroupMember_groupId_idx" ON "GroupMember"("groupId");
+
+-- CreateIndex
+CREATE INDEX "GroupMember_role_idx" ON "GroupMember"("role");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "GroupMember_userId_groupId_key" ON "GroupMember"("userId", "groupId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Event_inviteToken_key" ON "Event"("inviteToken");
+
+-- CreateIndex
+CREATE INDEX "Event_groupId_idx" ON "Event"("groupId");
+
+-- CreateIndex
+CREATE INDEX "Event_creatorId_idx" ON "Event"("creatorId");
+
+-- CreateIndex
+CREATE INDEX "Event_startTime_idx" ON "Event"("startTime");
+
+-- CreateIndex
+CREATE INDEX "Event_status_idx" ON "Event"("status");
+
+-- CreateIndex
+CREATE INDEX "Event_eventType_idx" ON "Event"("eventType");
+
+-- CreateIndex
+CREATE INDEX "Event_inviteToken_idx" ON "Event"("inviteToken");
+
+-- CreateIndex
+CREATE INDEX "Event_archived_idx" ON "Event"("archived");
+
+-- CreateIndex
+CREATE INDEX "Event_groupId_startTime_idx" ON "Event"("groupId", "startTime");
+
+-- CreateIndex
+CREATE INDEX "Event_creatorId_startTime_idx" ON "Event"("creatorId", "startTime");
+
+-- CreateIndex
+CREATE INDEX "Event_city_country_idx" ON "Event"("city", "country");
+
+-- CreateIndex
+CREATE INDEX "EventParticipant_eventId_idx" ON "EventParticipant"("eventId");
+
+-- CreateIndex
+CREATE INDEX "EventParticipant_userId_idx" ON "EventParticipant"("userId");
+
+-- CreateIndex
+CREATE INDEX "EventParticipant_status_idx" ON "EventParticipant"("status");
+
+-- CreateIndex
+CREATE INDEX "EventParticipant_eventId_status_idx" ON "EventParticipant"("eventId", "status");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "EventParticipant_eventId_userId_key" ON "EventParticipant"("eventId", "userId");
@@ -381,6 +549,36 @@ CREATE INDEX "EmailQueue_scheduledAt_idx" ON "EmailQueue"("scheduledAt");
 -- CreateIndex
 CREATE INDEX "EmailQueue_recipient_idx" ON "EmailQueue"("recipient");
 
+-- CreateIndex
+CREATE INDEX "TeamUpRequest_creatorId_idx" ON "TeamUpRequest"("creatorId");
+
+-- CreateIndex
+CREATE INDEX "TeamUpRequest_dateTime_idx" ON "TeamUpRequest"("dateTime");
+
+-- CreateIndex
+CREATE INDEX "TeamUpRequest_status_idx" ON "TeamUpRequest"("status");
+
+-- CreateIndex
+CREATE INDEX "TeamUpRequest_sportType_idx" ON "TeamUpRequest"("sportType");
+
+-- CreateIndex
+CREATE INDEX "TeamUpRequest_city_country_idx" ON "TeamUpRequest"("city", "country");
+
+-- CreateIndex
+CREATE INDEX "TeamUpRequest_status_dateTime_idx" ON "TeamUpRequest"("status", "dateTime");
+
+-- CreateIndex
+CREATE INDEX "TeamUpResponse_teamUpRequestId_idx" ON "TeamUpResponse"("teamUpRequestId");
+
+-- CreateIndex
+CREATE INDEX "TeamUpResponse_userId_idx" ON "TeamUpResponse"("userId");
+
+-- CreateIndex
+CREATE INDEX "TeamUpResponse_status_idx" ON "TeamUpResponse"("status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "TeamUpResponse_teamUpRequestId_userId_key" ON "TeamUpResponse"("teamUpRequestId", "userId");
+
 -- AddForeignKey
 ALTER TABLE "GroupMessage" ADD CONSTRAINT "GroupMessage_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
@@ -410,6 +608,12 @@ ALTER TABLE "GroupNotification" ADD CONSTRAINT "GroupNotification_groupId_fkey" 
 
 -- AddForeignKey
 ALTER TABLE "GroupNotification" ADD CONSTRAINT "GroupNotification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TeamUpNotification" ADD CONSTRAINT "TeamUpNotification_teamUpRequestId_fkey" FOREIGN KEY ("teamUpRequestId") REFERENCES "TeamUpRequest"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TeamUpNotification" ADD CONSTRAINT "TeamUpNotification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Group" ADD CONSTRAINT "Group_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -482,3 +686,12 @@ ALTER TABLE "RevokedToken" ADD CONSTRAINT "RevokedToken_userId_fkey" FOREIGN KEY
 
 -- AddForeignKey
 ALTER TABLE "UserSession" ADD CONSTRAINT "UserSession_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TeamUpRequest" ADD CONSTRAINT "TeamUpRequest_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TeamUpResponse" ADD CONSTRAINT "TeamUpResponse_teamUpRequestId_fkey" FOREIGN KEY ("teamUpRequestId") REFERENCES "TeamUpRequest"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TeamUpResponse" ADD CONSTRAINT "TeamUpResponse_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
