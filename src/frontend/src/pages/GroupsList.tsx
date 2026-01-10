@@ -223,7 +223,8 @@ const GroupsList = () => {
             const role = getUserRole(group);
             const memberCount = group.members?.length || 0;
             const eventCount = group.events?.length || 0;
-            const recentMembers = group.members?.slice(0, 4) || [];
+            const hasJoined = group.members?.some(m => m.userId === user?.id);
+            const recentMembers = hasJoined ? (group.members?.slice(0, 4) || []) : [];
             return (
               <Card 
                 key={group.id}
