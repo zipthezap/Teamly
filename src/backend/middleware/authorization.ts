@@ -13,7 +13,7 @@ import * as groupService from '../services/groupService';
  */
 export const requireGroupAdmin = async (
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
@@ -45,7 +45,7 @@ export const requireGroupAdmin = async (
  * @param allowedRoles - Array of roles that are allowed
  */
 export const requireGroupRole = (allowedRoles: string[]) => {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = (req.user as any)?.id;
       const groupId = req.params.id || req.body.groupId;
@@ -76,7 +76,7 @@ export const requireGroupRole = (allowedRoles: string[]) => {
  */
 export const requireGroupMembership = async (
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {

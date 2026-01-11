@@ -29,7 +29,8 @@ export type IconType =
 interface IconProps {
   type: IconType;
   className?: string;
-  size?: number;
+  width?: number;
+  height?: number;
 }
 
 /**
@@ -110,8 +111,9 @@ const iconPaths: Record<IconType, React.ReactNode> = {
   users: (
     <>
       <circle cx="9" cy="7" r="4" />
-      <path d="M17 21v-2a4 4 0 0 0-8 0v2" />
-      <circle cx="12" cy="7" r="4" />
+      <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
+      <circle cx="16" cy="7" r="3" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
     </>
   ),
 };
@@ -119,17 +121,24 @@ const iconPaths: Record<IconType, React.ReactNode> = {
 /**
  * Icon component
  * @param type - The icon type to render
- * @param className - Optional CSS classes
- * @param size - Optional size (defaults to 20px via w-5 h-5)
+ * @param className - Optional CSS classes (use Tailwind classes like 'w-5 h-5')
+ * @param width - Optional width in pixels (alternative to className)
+ * @param height - Optional height in pixels (alternative to className)
  */
-const Icon: React.FC<IconProps> = ({ type, className = 'w-5 h-5', size }) => {
-  const sizeClass = size ? `w-${size} h-${size}` : className;
+const Icon: React.FC<IconProps> = ({ type, className = 'w-5 h-5', width, height }) => {
   const fill = type === 'groupAdd' ? 'currentColor' : 'none';
   const stroke = type === 'groupAdd' ? 'none' : 'currentColor';
 
+  // Use inline styles if width/height are provided, otherwise use className
+  const style = (width || height) ? {
+    width: width ? `${width}px` : undefined,
+    height: height ? `${height}px` : undefined,
+  } : undefined;
+
   return (
     <svg
-      className={sizeClass}
+      className={!style ? className : undefined}
+      style={style}
       fill={fill}
       stroke={stroke}
       strokeWidth={type === 'groupAdd' ? 0 : 2}
