@@ -366,11 +366,9 @@ export const updateEvent = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    // Check if user is event creator or group admin
-    const isEventCreator = event.creatorId === (req.user as any).id;
-    const isGroupAdmin = await groupService.checkGroupAdmin(event.groupId, (req.user as any).id);
-
-    if (!isEventCreator && !isGroupAdmin) {
+    // Check if user has permission to manage this event
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    if (!isAuthorized) {
       return res.status(403).json({ error: 'Only the event creator or group admins can update it' });
     }
 
@@ -468,11 +466,9 @@ export const deleteEvent = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    // Check if user is event creator or group admin
-    const isEventCreator = event.creatorId === (req.user as any).id;
-    const isGroupAdmin = await groupService.checkGroupAdmin(event.groupId, (req.user as any).id);
-
-    if (!isEventCreator && !isGroupAdmin) {
+    // Check if user has permission to manage this event
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    if (!isAuthorized) {
       return res.status(403).json({ error: 'Only the event creator or group admins can delete it' });
     }
 
@@ -867,11 +863,9 @@ export const addRecurringEventException = async (req: Request, res: Response) =>
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    // Check if user is event creator or group admin
-    const isEventCreator = event.creatorId === (req.user as any).id;
-    const isGroupAdmin = await groupService.checkGroupAdmin(event.groupId, (req.user as any).id);
-
-    if (!isEventCreator && !isGroupAdmin) {
+    // Check if user has permission to manage this event
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    if (!isAuthorized) {
       return res.status(403).json({ error: 'Only the event creator or group admins can add exceptions' });
     }
 
@@ -924,11 +918,9 @@ export const removeRecurringEventException = async (req: Request, res: Response)
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    // Check if user is event creator or group admin
-    const isEventCreator = event.creatorId === (req.user as any).id;
-    const isGroupAdmin = await groupService.checkGroupAdmin(event.groupId, (req.user as any).id);
-
-    if (!isEventCreator && !isGroupAdmin) {
+    // Check if user has permission to manage this event
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    if (!isAuthorized) {
       return res.status(403).json({ error: 'Only the event creator or group admins can remove exceptions' });
     }
 
@@ -1062,11 +1054,9 @@ export const archiveEvent = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    // Check if user is event creator or group admin
-    const isEventCreator = event.creatorId === (req.user as any).id;
-    const isGroupAdmin = await groupService.checkGroupAdmin(event.groupId, (req.user as any).id);
-
-    if (!isEventCreator && !isGroupAdmin) {
+    // Check if user has permission to manage this event
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    if (!isAuthorized) {
       return res.status(403).json({ error: 'Only the event creator or group admins can archive it' });
     }
 
@@ -1096,11 +1086,9 @@ export const unarchiveEvent = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    // Check if user is event creator or group admin
-    const isEventCreator = event.creatorId === (req.user as any).id;
-    const isGroupAdmin = await groupService.checkGroupAdmin(event.groupId, (req.user as any).id);
-
-    if (!isEventCreator && !isGroupAdmin) {
+    // Check if user has permission to manage this event
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    if (!isAuthorized) {
       return res.status(403).json({ error: 'Only the event creator or group admins can unarchive it' });
     }
 
@@ -1146,11 +1134,9 @@ export const updateEventStatus = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    // Check if user is event creator or group admin
-    const isEventCreator = event.creatorId === (req.user as any).id;
-    const isGroupAdmin = await groupService.checkGroupAdmin(event.groupId, (req.user as any).id);
-
-    if (!isEventCreator && !isGroupAdmin) {
+    // Check if user has permission to manage this event
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    if (!isAuthorized) {
       return res.status(403).json({ error: 'Only the event creator or group admins can update event status' });
     }
 
@@ -1307,11 +1293,9 @@ export const generateInviteToken = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    // Check if user is event creator or group admin
-    const isEventCreator = event.creatorId === (req.user as any).id;
-    const isGroupAdmin = await groupService.checkGroupAdmin(event.groupId, (req.user as any).id);
-
-    if (!isEventCreator && !isGroupAdmin) {
+    // Check if user has permission to manage this event
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    if (!isAuthorized) {
       return res.status(403).json({ error: 'Only the event creator or group admins can generate invite links' });
     }
 

@@ -364,6 +364,35 @@ export const canModifyEvent = (event: any, userId: string) => {
 };
 
 /**
+ * Checks if user has permission to manage an event (creator or group admin)
+ * Returns an object with isAuthorized flag and individual checks
+ */
+export const checkEventManagementPermission = async (
+  event: { id: string; creatorId: string; groupId: string } | null,
+  userId: string
+): Promise<{
+  isAuthorized: boolean;
+  isEventCreator: boolean;
+  isGroupAdmin: boolean;
+}> => {
+  if (!event) {
+    return { isAuthorized: false, isEventCreator: false, isGroupAdmin: false };
+  }
+
+  const isEventCreator = event.creatorId === userId;
+  
+  // Check if user is a group admin using the groupService
+  const { checkGroupAdmin } = await import('./groupService');
+  const isGroupAdmin = await checkGroupAdmin(event.groupId, userId);
+  
+  return {
+    isAuthorized: isEventCreator || isGroupAdmin,
+    isEventCreator,
+    isGroupAdmin
+  };
+};
+
+/**
  * Gets participant by user and event ID
  */
 export const getParticipant = async (eventId: string, userId: string) => {
