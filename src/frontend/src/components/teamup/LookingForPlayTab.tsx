@@ -297,7 +297,7 @@ const LookingForPlayTab = () => {
                           <Box sx={{ display: 'flex', gap: 0.5 }}>
                             {isUrgent && (
                               <Chip
-                                label="Urgent"
+                                label={t('teamup.urgent')}
                                 color="warning"
                                 size="small"
                                 sx={{ fontWeight: 'bold' }}

@@ -104,6 +104,11 @@ const NeedPlayersTab = () => {
   const handleOpenDialog = (request?: TeamUpRequest) => {
     if (request) {
       setEditingRequest(request);
+      const requestDate = new Date(request.dateTime);
+      const dateTimeValue = isNaN(requestDate.getTime()) 
+        ? '' 
+        : requestDate.toISOString().slice(0, 16);
+      
       setFormData({
         title: request.title,
         description: request.description || '',
@@ -114,7 +119,7 @@ const NeedPlayersTab = () => {
         locationName: request.locationName || '',
         city: request.city || '',
         country: request.country || '',
-        dateTime: new Date(request.dateTime).toISOString().slice(0, 16),
+        dateTime: dateTimeValue,
         playersNeeded: request.playersNeeded,
         skillLevel: request.skillLevel || 'any',
       });
@@ -252,7 +257,7 @@ const NeedPlayersTab = () => {
   };
 
   const requestsWithResponses = myRequests.filter(
-    (req: TeamUpRequest) => req.responses && req.responses.length > 0
+    (req) => req.responses && req.responses.length > 0
   );
 
   if (loading) {

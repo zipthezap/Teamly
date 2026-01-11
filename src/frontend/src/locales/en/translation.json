@@ -664,6 +664,7 @@
     "filterByLocation": "Filter by Location",
     "filterBySkillLevel": "Filter by Skill Level",
     "allSports": "All Sports",
+    "urgent": "Urgent",
     "youCannotRespondToOwnRequest": "You cannot respond to your own request",
     "alreadyResponded": "You have already responded to this request"
   }
