@@ -87,6 +87,11 @@ router.post('/profile/picture/hard-delete', authMiddleware, authController.hardD
 // Session management
 router.get('/sessions', authMiddleware, authController.getSessions);
 
+// OAuth account management
+router.get('/oauth/status', authMiddleware, authController.getOAuthStatus);
+router.post('/oauth/unlink', authMiddleware, authController.unlinkOAuthAccount);
+router.post('/oauth/sync-picture', authMiddleware, authController.syncOAuthProfilePicture);
+
 // Password reset routes (with rate limiting)
 router.post('/forgot-password', authLimiter, authController.requestPasswordReset);
 router.post('/reset-password', authLimiter, authController.resetPassword);

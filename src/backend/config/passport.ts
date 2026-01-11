@@ -71,7 +71,9 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
               data: {
                 googleId: profile.id,
                 authProvider: authProvider === 'local' ? 'local' : authProvider, // Keep local if already local
-                emailVerified: true // Google emails are verified
+                emailVerified: true, // Google emails are verified
+                oauthProfilePicture: profile.photos?.[0]?.value || user.oauthProfilePicture,
+                lastOAuthSync: new Date()
               }
             });
             return done(null, user);
@@ -85,7 +87,9 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
               googleId: profile.id,
               authProvider: 'google',
               emailVerified: true, // Google emails are verified
-              password: null // No password for OAuth users
+              password: null, // No password for OAuth users
+              oauthProfilePicture: profile.photos?.[0]?.value || null,
+              lastOAuthSync: new Date()
             }
           });
 
@@ -144,7 +148,9 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
               data: {
                 facebookId: profile.id,
                 authProvider: authProvider === 'local' ? 'local' : authProvider, // Keep local if already local
-                emailVerified: true // Facebook emails are verified
+                emailVerified: true, // Facebook emails are verified
+                oauthProfilePicture: profile.photos?.[0]?.value || user.oauthProfilePicture,
+                lastOAuthSync: new Date()
               }
             });
             return done(null, user);
@@ -158,7 +164,9 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
               facebookId: profile.id,
               authProvider: 'facebook',
               emailVerified: true, // Facebook emails are verified
-              password: null // No password for OAuth users
+              password: null, // No password for OAuth users
+              oauthProfilePicture: profile.photos?.[0]?.value || null,
+              lastOAuthSync: new Date()
             }
           });
 

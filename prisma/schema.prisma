@@ -163,6 +163,8 @@ model User {
   googleId    String?  @unique
   facebookId  String?  @unique
   authProvider String? // 'local', 'google', 'facebook'
+  oauthProfilePicture String? // Profile picture URL from OAuth provider
+  lastOAuthSync DateTime? // Last time OAuth data was synced
   
   // Two-Factor Authentication fields
   twoFactorEnabled  Boolean  @default(false)

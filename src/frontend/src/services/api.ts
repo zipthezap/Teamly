@@ -67,6 +67,10 @@ export const authAPI = {
   listProfilePictures: () => api.get('/auth/profile/pictures'),
   restoreProfilePicture: (pictureId: string) => api.post('/auth/profile/picture/restore', { pictureId }),
   hardDeleteProfilePicture: (pictureId: string) => api.post('/auth/profile/picture/hard-delete', { pictureId }),
+  // OAuth management endpoints
+  getOAuthStatus: () => api.get('/auth/oauth/status'),
+  unlinkOAuthAccount: (provider: 'google' | 'facebook') => api.post('/auth/oauth/unlink', { provider }),
+  syncOAuthProfilePicture: () => api.post('/auth/oauth/sync-picture'),
 };
 
 // Groups API

@@ -229,7 +229,31 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
 export const getProfile = async (req: Request, res: Response): Promise<void> => {
   try {
-    res.json({ user: req.user });
+    // Include authProvider and OAuth status in profile response
+    const user = await prisma.user.findUnique({
+      where: { id: (req.user as any)!.id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        profilePicture: true,
+        city: true,
+        country: true,
+        address: true,
+        postalCode: true,
+        discoveryRadius: true,
+        createdAt: true,
+        emailVerified: true,
+        emailNotifications: true,
+        twoFactorEnabled: true,
+        authProvider: true,
+        googleId: true,
+        facebookId: true,
+        lastOAuthSync: true
+      }
+    });
+    
+    res.json({ user });
   } catch (error) {
     logger.error('Failed to get profile', 'AuthController', { error });
     res.status(500).json({ error: 'Failed to get profile' });
@@ -301,8 +325,8 @@ export const updatePassword = async (req: Request, res: Response): Promise<void>
   try {
     const { currentPassword, newPassword } = req.body;
 
-    if (!currentPassword || !newPassword) {
-      res.status(400).json({ error: 'Current password and new password are required' });
+    if (!newPassword) {
+      res.status(400).json({ error: 'New password is required' });
       return;
     }
 
@@ -320,7 +344,7 @@ export const updatePassword = async (req: Request, res: Response): Promise<void>
     // Get user with password
     const user = await prisma.user.findUnique({
       where: { id: (req.user as any)!.id },
-      select: { id: true, password: true }
+      select: { id: true, password: true, authProvider: true }
     });
 
     if (!user) {
@@ -328,20 +352,35 @@ export const updatePassword = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // Verify current password
-    const isValidPassword = await bcrypt.compare(currentPassword, user.password);
-    if (!isValidPassword) {
-      res.status(401).json({ error: 'Current password is incorrect' });
-      return;
+    // If user has a password (not OAuth-only), verify current password
+    if (user.password) {
+      if (!currentPassword) {
+        res.status(400).json({ error: 'Current password is required' });
+        return;
+      }
+      
+      // Verify current password
+      const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+      if (!isValidPassword) {
+        res.status(401).json({ error: 'Current password is incorrect' });
+        return;
+      }
     }
 
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // Update password
+    // Update password and set authProvider to local if it was OAuth-only
+    const updateData: any = { password: hashedPassword };
+    if (!user.password && user.authProvider && user.authProvider !== 'local') {
+      // User is setting password for the first time (OAuth user)
+      // Keep their OAuth provider but mark that they can also use local auth
+      updateData.authProvider = 'local';
+    }
+
     await prisma.user.update({
       where: { id: (req.user as any)!.id },
-      data: { password: hashedPassword }
+      data: updateData
     });
 
     // Revoke all existing tokens for security (except current one for convenience)
@@ -940,5 +979,198 @@ export const oauthCallback = async (req: Request, res: Response): Promise<void> 
     logger.error('OAuth callback error', 'AuthController', { error });
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     res.redirect(`${frontendUrl}/login?error=oauth_failed`);
+  }
+};
+
+/**
+ * Get OAuth account connection status
+ */
+export const getOAuthStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req.user as any)?.id;
+    
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        googleId: true,
+        facebookId: true,
+        authProvider: true,
+        password: true,
+        lastOAuthSync: true,
+        oauthProfilePicture: true
+      }
+    });
+
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    res.json({
+      connections: {
+        google: !!user.googleId,
+        facebook: !!user.facebookId,
+        local: !!user.password
+      },
+      primaryProvider: user.authProvider,
+      lastOAuthSync: user.lastOAuthSync,
+      hasOAuthProfilePicture: !!user.oauthProfilePicture
+    });
+  } catch (error) {
+    logger.error('Failed to get OAuth status', 'AuthController', { error });
+    res.status(500).json({ error: 'Failed to get OAuth status' });
+  }
+};
+
+/**
+ * Unlink OAuth account
+ */
+export const unlinkOAuthAccount = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req.user as any)?.id;
+    const { provider } = req.body;
+
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    if (!provider || !['google', 'facebook'].includes(provider)) {
+      res.status(400).json({ error: 'Invalid provider. Must be "google" or "facebook"' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        googleId: true,
+        facebookId: true,
+        password: true,
+        authProvider: true
+      }
+    });
+
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    // Check if user has another authentication method
+    const hasGoogle = !!user.googleId;
+    const hasFacebook = !!user.facebookId;
+    const hasPassword = !!user.password;
+
+    if (provider === 'google' && hasGoogle && !hasFacebook && !hasPassword) {
+      res.status(400).json({ 
+        error: 'Cannot unlink Google account. You must have at least one authentication method. Please set a password first.' 
+      });
+      return;
+    }
+
+    if (provider === 'facebook' && hasFacebook && !hasGoogle && !hasPassword) {
+      res.status(400).json({ 
+        error: 'Cannot unlink Facebook account. You must have at least one authentication method. Please set a password first.' 
+      });
+      return;
+    }
+
+    // Unlink the account
+    const updateData: any = {};
+    if (provider === 'google') {
+      updateData.googleId = null;
+      // Update authProvider if Google was the primary
+      if (user.authProvider === 'google') {
+        if (hasFacebook) {
+          updateData.authProvider = 'facebook';
+        } else if (hasPassword) {
+          updateData.authProvider = 'local';
+        }
+      }
+    } else if (provider === 'facebook') {
+      updateData.facebookId = null;
+      // Update authProvider if Facebook was the primary
+      if (user.authProvider === 'facebook') {
+        if (hasGoogle) {
+          updateData.authProvider = 'google';
+        } else if (hasPassword) {
+          updateData.authProvider = 'local';
+        }
+      }
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: updateData
+    });
+
+    logger.info(`${provider} account unlinked`, 'AuthController', { userId });
+    res.json({ message: `${provider} account unlinked successfully` });
+  } catch (error) {
+    logger.error('Failed to unlink OAuth account', 'AuthController', { error });
+    res.status(500).json({ error: 'Failed to unlink OAuth account' });
+  }
+};
+
+/**
+ * Sync OAuth profile picture
+ */
+export const syncOAuthProfilePicture = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req.user as any)?.id;
+
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        oauthProfilePicture: true,
+        profilePicture: true
+      }
+    });
+
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    if (!user.oauthProfilePicture) {
+      res.status(400).json({ error: 'No OAuth profile picture available' });
+      return;
+    }
+
+    // Update user's profile picture to OAuth picture
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { 
+        profilePicture: user.oauthProfilePicture,
+        lastOAuthSync: new Date()
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        profilePicture: true,
+        city: true,
+        country: true,
+        address: true,
+        postalCode: true,
+        discoveryRadius: true,
+        createdAt: true
+      }
+    });
+
+    logger.info('OAuth profile picture synced', 'AuthController', { userId });
+    res.json({ user: updatedUser, message: 'Profile picture synced from OAuth provider' });
+  } catch (error) {
+    logger.error('Failed to sync OAuth profile picture', 'AuthController', { error });
+    res.status(500).json({ error: 'Failed to sync OAuth profile picture' });
   }
 };

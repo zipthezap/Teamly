@@ -15,6 +15,7 @@ import {
   PasswordChangeForm,
   NotificationPreferences,
   TwoFactorSection,
+  OAuthConnections,
 } from '../components/profile';
 import ProfilePictureHistory from '../components/profile/ProfilePictureHistory';
 import { AxiosError } from 'axios';
@@ -137,18 +138,25 @@ const Profile = () => {
       return;
     }
 
-    if (passwordData.newPassword.length < 6) {
-      setError('New password must be at least 6 characters');
+    if (passwordData.newPassword.length < 8) {
+      setError('New password must be at least 8 characters');
       return;
     }
 
     setLoading(true);
 
     try {
-      await authAPI.updatePassword({
-        currentPassword: passwordData.currentPassword,
+      // If user doesn't have a password (OAuth-only), don't require current password
+      const payload: any = {
         newPassword: passwordData.newPassword,
-      });
+      };
+      
+      // Only include currentPassword if it's provided (user has existing password)
+      if (passwordData.currentPassword) {
+        payload.currentPassword = passwordData.currentPassword;
+      }
+      
+      await authAPI.updatePassword(payload);
       setSuccess('Password updated successfully');
       setPasswordData({
         currentPassword: '',
@@ -286,6 +294,10 @@ const Profile = () => {
 
           <Stack spacing={3}>
             <TwoFactorSection />
+            <OAuthConnections 
+              onSuccess={(message) => setSuccess(message)}
+              onError={(error) => setError(error)}
+            />
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <ProfileForm
