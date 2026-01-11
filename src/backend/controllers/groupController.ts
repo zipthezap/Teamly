@@ -58,7 +58,7 @@ export const deleteGroup = async (req: Request, res: Response) => {
   }
 };
 import prisma from '../config/database';
-import { sendEmail } from '../utils/emailService';
+import { sendEmailWithQueue } from '../services/emailQueueService';
 import { shouldSendEmailNotification } from '../utils/notificationHelper';
 import { logger } from '../utils/logger';
 import { Request, Response } from 'express';
@@ -405,12 +405,28 @@ export const inviteMember = async (req: Request, res: Response) => {
     const shouldSend = await shouldSendEmailNotification(userToInvite.id, 'groupInvites');
 
     if (shouldSend) {
-      await sendEmail(
+      const htmlContent = `
+        <h2>You've Been Invited to Join a Group!</h2>
+        <p>Hi ${userToInvite.name},</p>
+        <p>${inviterUser.name} has invited you to join the group:</p>
+        <h3>${group.name}</h3>
+        <p>${group.description || ''}</p>
+        <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/groups">View Group</a></p>
+      `;
+      
+      await sendEmailWithQueue(
         userToInvite.email,
-        'groupInvitation',
-        userToInvite.name,
-        group.name,
-        inviterUser.name
+        `Group Invitation: ${group.name}`,
+        htmlContent,
+        {
+          templateType: 'group_invitation',
+          templateData: {
+            recipientName: userToInvite.name,
+            groupName: group.name,
+            groupDescription: group.description,
+            inviterName: inviterUser.name
+          }
+        }
       );
     }
 
