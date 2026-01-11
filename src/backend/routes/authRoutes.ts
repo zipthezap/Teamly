@@ -5,6 +5,13 @@ import { authLimiter, uploadLimiter } from '../middleware/rateLimiter';
 import { uploadProfilePicture } from '../middleware/upload';
 import passport from '../config/passport';
 
+// Extend session type to include inviteGroupId
+declare module 'express-session' {
+  interface SessionData {
+    inviteGroupId?: string;
+  }
+}
+
 const router = Router();
 
 // Apply strict rate limiting to auth endpoints
@@ -19,8 +26,8 @@ router.post('/refresh-token', authLimiter, authController.refreshToken);
 router.get('/google', (req, res, next) => {
   // Store invite group ID in session if provided
   const inviteGroupId = req.query.inviteGroupId as string;
-  if (inviteGroupId) {
-    (req.session as any).inviteGroupId = inviteGroupId;
+  if (inviteGroupId && req.session) {
+    req.session.inviteGroupId = inviteGroupId;
   }
   passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
 });
@@ -38,8 +45,8 @@ router.get(
 router.get('/facebook', (req, res, next) => {
   // Store invite group ID in session if provided
   const inviteGroupId = req.query.inviteGroupId as string;
-  if (inviteGroupId) {
-    (req.session as any).inviteGroupId = inviteGroupId;
+  if (inviteGroupId && req.session) {
+    req.session.inviteGroupId = inviteGroupId;
   }
   passport.authenticate('facebook', { scope: ['email'] })(req, res, next);
 });

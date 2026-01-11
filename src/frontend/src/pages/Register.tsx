@@ -36,12 +36,12 @@ const Register = () => {
     const inviteGroupId = params.get('invite');
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
     
-    let authUrl = `${apiUrl}/api/auth/${provider}`;
+    const authUrl = new URL(`/api/auth/${provider}`, apiUrl);
     if (inviteGroupId) {
-      authUrl += `?inviteGroupId=${inviteGroupId}`;
+      authUrl.searchParams.set('inviteGroupId', inviteGroupId);
     }
     
-    window.location.href = authUrl;
+    window.location.href = authUrl.toString();
   };
 
   const handleSubmit = async (e) => {

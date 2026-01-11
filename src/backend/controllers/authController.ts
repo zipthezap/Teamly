@@ -918,11 +918,11 @@ export const oauthCallback = async (req: Request, res: Response): Promise<void> 
     const tokens = await generateTokenPair(user.id, deviceInfo, ipAddress);
 
     // Get the invite group ID from session if it exists
-    const inviteGroupId = (req.session as any)?.inviteGroupId;
+    const inviteGroupId = req.session?.inviteGroupId;
     
     // Clear the session data
-    if (inviteGroupId) {
-      delete (req.session as any).inviteGroupId;
+    if (inviteGroupId && req.session) {
+      delete req.session.inviteGroupId;
     }
 
     // Build redirect URL with tokens

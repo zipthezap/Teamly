@@ -64,11 +64,13 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 
           if (user) {
             // Link Google account to existing user
+            // Preserve original authProvider if it exists, otherwise set to google
+            const authProvider = user.authProvider || 'google';
             user = await prisma.user.update({
               where: { id: user.id },
               data: {
                 googleId: profile.id,
-                authProvider: user.authProvider || 'google',
+                authProvider: authProvider === 'local' ? 'local' : authProvider, // Keep local if already local
                 emailVerified: true // Google emails are verified
               }
             });
@@ -135,11 +137,13 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
 
           if (user) {
             // Link Facebook account to existing user
+            // Preserve original authProvider if it exists, otherwise set to facebook
+            const authProvider = user.authProvider || 'facebook';
             user = await prisma.user.update({
               where: { id: user.id },
               data: {
                 facebookId: profile.id,
-                authProvider: user.authProvider || 'facebook',
+                authProvider: authProvider === 'local' ? 'local' : authProvider, // Keep local if already local
                 emailVerified: true // Facebook emails are verified
               }
             });
