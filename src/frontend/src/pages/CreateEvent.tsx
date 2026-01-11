@@ -61,10 +61,11 @@ const CreateEvent = () => {
         } else if (pattern === 'WEEKLY') {
           const days = formData.recurrenceDays && formData.recurrenceDays.length > 0 
             ? formData.recurrenceDays.join(',') 
-            : new Intl.DateTimeFormat('en-US', { weekday: 'short' })
-                .format(startDateTime)
-                .toUpperCase()
-                .substring(0, 2);
+            : (() => {
+                // Get day abbreviation from start date
+                const dayNames = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+                return dayNames[startDateTime.getDay()];
+              })();
           recurrenceRule = `FREQ=WEEKLY;BYDAY=${days};INTERVAL=${interval}`;
         } else if (pattern === 'MONTHLY') {
           const dayOfMonth = startDateTime.getDate();

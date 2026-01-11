@@ -821,7 +821,9 @@ export const addRecurringEventException = async (req: Request, res: Response) =>
 
     // Get existing exceptions
     const existingExceptions = event.exceptionDates 
-      ? JSON.parse(JSON.stringify(event.exceptionDates))
+      ? Array.isArray(event.exceptionDates) 
+        ? [...event.exceptionDates]
+        : []
       : [];
 
     // Add new exception if not already present

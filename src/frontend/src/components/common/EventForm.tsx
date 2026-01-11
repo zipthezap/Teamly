@@ -319,7 +319,11 @@ const EventForm: React.FC<EventFormProps> = ({
             value={formData.recurrenceInterval}
             onChange={handleChange}
             inputProps={{ min: 1, max: 365 }}
-            helperText={`Repeat every ${formData.recurrenceInterval || 1} ${formData.recurrencePattern?.toLowerCase() || 'day'}(s)`}
+            helperText={`Repeat every ${formData.recurrenceInterval || 1} ${
+              formData.recurrencePattern === 'DAILY' ? 'day' : 
+              formData.recurrencePattern === 'WEEKLY' ? 'week' : 
+              'month'
+            }${(formData.recurrenceInterval || 1) !== '1' ? 's' : ''}`}
           />
 
           {formData.recurrencePattern === 'WEEKLY' && (
