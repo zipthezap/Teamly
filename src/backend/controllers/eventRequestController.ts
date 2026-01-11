@@ -398,7 +398,8 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
         startTime: eventRequest.startTime,
         endTime: eventRequest.endTime,
         maxPlayers: eventRequest.maxPlayers,
-        status: 'upcoming'
+        status: 'upcoming',
+        isPublic: false // Events from requests are private to the group
       },
       include: {
         creator: {
