@@ -7,6 +7,7 @@ This document describes the newly implemented features in Teamly.
 1. [Public Group Discovery and Join Requests](#public-group-discovery-and-join-requests)
 2. [Two-Factor Authentication (2FA)](#two-factor-authentication-2fa)
 3. [Event Request with Voting](#event-request-with-voting)
+4. [Recurring Events](#recurring-events)
 
 ---
 
@@ -1054,3 +1055,189 @@ For issues or questions about these features, please:
 2. Review the API endpoint documentation
 3. Check server logs for detailed error messages
 4. Open an issue on the project repository
+
+---
+
+## Recurring Events
+
+### Overview
+Users can create events that repeat on a schedule (daily, weekly, or monthly). The recurring event feature uses the iCalendar RRULE format for defining recurrence patterns.
+
+### Backend Implementation
+
+#### Schema Changes
+- `Event.isRecurring`: Boolean to indicate if event repeats
+- `Event.recurrenceRule`: RRULE format string defining the pattern
+- `Event.recurrenceEnd`: Optional end date for recurrence
+- `Event.parentEventId`: Reference to parent event for instances
+- `Event.exceptionDates`: Array of dates to skip (holidays, etc.)
+
+#### Key Components
+
+**Recurrence Service** (`src/backend/utils/recurrenceService.ts`)
+- `validateRecurrenceRule(rule)`: Validates RRULE format
+- `generateRecurrenceInstances()`: Generates event instances based on rule
+- `RecurrencePatterns`: Helper methods for common patterns
+- `getNextOccurrence()`: Gets next instance date
+- `calculateDuration()`: Calculates event duration
+- `applyDuration()`: Applies duration to generate end times
+
+#### API Endpoints
+
+1. **POST /api/events** - Create recurring event (include isRecurring fields)
+2. **GET /api/events/:id/instances** - Get recurring event instances
+   - Query params: `startDate`, `endDate`, `limit`
+3. **POST /api/events/:id/exceptions** - Add exception date
+4. **DELETE /api/events/:id/exceptions** - Remove exception date
+
+### Frontend Implementation
+
+#### EventForm Component
+Enhanced with recurring event controls:
+- **Recurring Toggle**: Switch to enable/disable recurrence
+- **Pattern Selector**: Choose Daily, Weekly, or Monthly
+- **Interval Input**: Specify repeat frequency (every N days/weeks/months)
+- **Day Selector**: For weekly patterns, select which days
+- **End Date**: Optional recurrence end date
+
+#### RRULE Generation
+The frontend builds RRULE strings based on user selections:
+- **Daily**: `FREQ=DAILY;INTERVAL=1`
+- **Weekly**: `FREQ=WEEKLY;BYDAY=MO,WE,FR;INTERVAL=1`
+- **Monthly**: `FREQ=MONTHLY;BYMONTHDAY=15;INTERVAL=1`
+
+### Usage Examples
+
+#### Creating a Daily Recurring Event
+```javascript
+POST /api/events
+{
+  "groupId": "uuid",
+  "title": "Morning Jog",
+  "eventType": "running",
+  "startTime": "2024-01-15T07:00:00Z",
+  "endTime": "2024-01-15T08:00:00Z",
+  "isRecurring": true,
+  "recurrenceRule": "FREQ=DAILY;INTERVAL=1",
+  "recurrenceEnd": "2024-12-31T23:59:59Z"
+}
+```
+
+#### Creating a Weekly Recurring Event
+```javascript
+POST /api/events
+{
+  "groupId": "uuid",
+  "title": "Soccer Practice",
+  "eventType": "football",
+  "startTime": "2024-01-15T18:00:00Z",
+  "endTime": "2024-01-15T20:00:00Z",
+  "isRecurring": true,
+  "recurrenceRule": "FREQ=WEEKLY;BYDAY=MO,WE,FR;INTERVAL=1"
+}
+```
+
+#### Getting Event Instances
+```bash
+GET /api/events/:id/instances?startDate=2024-01-01&endDate=2024-02-01&limit=50
+```
+
+Response:
+```json
+[
+  {
+    "id": "event-uuid-2024-01-15T18:00:00.000Z",
+    "title": "Soccer Practice",
+    "startTime": "2024-01-15T18:00:00.000Z",
+    "endTime": "2024-01-15T20:00:00.000Z",
+    "parentEventId": "event-uuid",
+    "isInstance": true
+  },
+  ...
+]
+```
+
+#### Adding Exception Dates
+Skip specific occurrences (e.g., holidays):
+```bash
+POST /api/events/:id/exceptions
+{
+  "exceptionDate": "2024-12-25T18:00:00Z"
+}
+```
+
+### Supported Recurrence Patterns
+
+#### Daily
+- Repeat every N days
+- Example: "Every 2 days" → `FREQ=DAILY;INTERVAL=2`
+
+#### Weekly
+- Repeat every N weeks on specific days
+- Days: MO, TU, WE, TH, FR, SA, SU
+- Example: "Every week on Mon, Wed, Fri" → `FREQ=WEEKLY;BYDAY=MO,WE,FR;INTERVAL=1`
+
+#### Monthly
+- Repeat every N months on the same day
+- Example: "Every month on the 15th" → `FREQ=MONTHLY;BYMONTHDAY=15;INTERVAL=1`
+
+### User Interface
+
+When creating an event, users can:
+1. Toggle "Recurring Event" switch
+2. Select pattern (Daily/Weekly/Monthly)
+3. Set repeat interval (every N periods)
+4. For weekly: select specific days of week
+5. Optionally set end date
+
+The UI provides clear feedback:
+- "Repeat every 1 week" (or "2 weeks", etc.)
+- Day buttons show selected state
+- End date is optional with helpful text
+
+### Technical Notes
+
+#### Recurrence Limits
+- Default instance limit: 100 occurrences
+- Default time range: 1 year if no end date specified
+- Backend validates RRULE format before saving
+
+#### Instance IDs
+Virtual instances use composite IDs: `{parentId}-{instanceDate}`
+This allows unique identification without database storage.
+
+#### Exception Dates
+Stored as JSON array of ISO date strings. Used to skip specific occurrences
+(holidays, cancelled dates, etc.).
+
+#### Performance
+Instances are generated on-demand, not stored in database. This keeps
+database size manageable and allows easy pattern updates.
+
+### Best Practices
+
+1. **Set End Dates**: For long-running recurring events, set an end date
+   to prevent indefinite recurrence.
+
+2. **Use Exceptions Wisely**: For skipping holidays or special dates,
+   use exception dates rather than complex RRULE patterns.
+
+3. **Weekly vs Daily**: For events that happen on specific weekdays,
+   use WEEKLY pattern with BYDAY, not daily with complex rules.
+
+4. **Testing**: Always test recurring event creation to ensure the
+   pattern generates expected instances.
+
+### Troubleshooting
+
+**Issue**: Invalid recurrence rule error
+- **Solution**: Ensure RRULE format is correct. Use RecurrencePatterns helpers.
+
+**Issue**: Too many instances generated
+- **Solution**: Set `recurrenceEnd` date or use smaller `limit` parameter.
+
+**Issue**: Wrong days in weekly pattern
+- **Solution**: Verify day codes (MO, TU, WE, TH, FR, SA, SU) are correct.
+
+**Issue**: Monthly events on wrong dates
+- **Solution**: Check BYMONTHDAY value matches intended day of month.
