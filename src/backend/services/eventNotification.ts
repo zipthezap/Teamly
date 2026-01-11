@@ -5,6 +5,7 @@
 
 import { sendEmailWithQueue } from './emailQueueService';
 import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
+import { escapeHtml } from '../utils/validation';
 
 interface User {
   id: string;
@@ -36,11 +37,11 @@ export const sendEventInvitations = async (
     .map(recipient => {
       const htmlContent = `
         <h2>You're Invited to an Event!</h2>
-        <p>Hi ${recipient.name},</p>
+        <p>Hi ${escapeHtml(recipient.name)},</p>
         <p>You have been invited to participate in:</p>
-        <h3>${eventTitle}</h3>
+        <h3>${escapeHtml(eventTitle)}</h3>
         <p><strong>When:</strong> ${eventStartTime.toLocaleString()}</p>
-        <p><strong>Group:</strong> ${groupName}</p>
+        <p><strong>Group:</strong> ${escapeHtml(groupName)}</p>
         <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/events">View Event Details</a></p>
       `;
       
@@ -86,8 +87,8 @@ export const sendEventUpdateNotifications = async (
     .map(recipient => {
       const htmlContent = `
         <h2>Event Updated</h2>
-        <p>Hi ${recipient.name},</p>
-        <p>The event "${eventTitle}" in group "${groupName}" has been updated.</p>
+        <p>Hi ${escapeHtml(recipient.name)},</p>
+        <p>The event "${escapeHtml(eventTitle)}" in group "${escapeHtml(groupName)}" has been updated.</p>
         <p>Please check the event details for any changes.</p>
         <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/events">View Event</a></p>
       `;
@@ -133,8 +134,8 @@ export const sendEventCancellationNotifications = async (
     .map(recipient => {
       const htmlContent = `
         <h2>Event Cancelled</h2>
-        <p>Hi ${recipient.name},</p>
-        <p>Unfortunately, the event "${eventTitle}" in group "${groupName}" has been cancelled.</p>
+        <p>Hi ${escapeHtml(recipient.name)},</p>
+        <p>Unfortunately, the event "${escapeHtml(eventTitle)}" in group "${escapeHtml(groupName)}" has been cancelled.</p>
         <p>We apologize for any inconvenience this may cause.</p>
         <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/events">Browse Other Events</a></p>
       `;

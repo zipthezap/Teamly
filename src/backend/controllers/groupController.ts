@@ -61,6 +61,7 @@ import prisma from '../config/database';
 import { sendEmailWithQueue } from '../services/emailQueueService';
 import { shouldSendEmailNotification } from '../utils/notificationHelper';
 import { logger } from '../utils/logger';
+import { escapeHtml } from '../utils/validation';
 import { Request, Response } from 'express';
 import path from 'path';
 import { 
@@ -407,10 +408,10 @@ export const inviteMember = async (req: Request, res: Response) => {
     if (shouldSend) {
       const htmlContent = `
         <h2>You've Been Invited to Join a Group!</h2>
-        <p>Hi ${userToInvite.name},</p>
-        <p>${inviterUser.name} has invited you to join the group:</p>
-        <h3>${group.name}</h3>
-        <p>${group.description || ''}</p>
+        <p>Hi ${escapeHtml(userToInvite.name)},</p>
+        <p>${escapeHtml(inviterUser.name)} has invited you to join the group:</p>
+        <h3>${escapeHtml(group.name)}</h3>
+        <p>${escapeHtml(group.description || '')}</p>
         <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/groups">View Group</a></p>
       `;
       

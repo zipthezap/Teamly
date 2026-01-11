@@ -1611,8 +1611,12 @@ export const getEventParticipantsByStatus = async (req: Request, res: Response) 
       _count: true
     });
 
+    // Calculate totals
+    const totalAllStatuses = statusCounts.reduce((sum, sc) => sum + sc._count, 0);
+    
     const summary = {
-      total: participants.length,
+      total: totalAllStatuses,  // Total of ALL participants regardless of filter
+      filtered: participants.length,  // Number of participants matching the filter
       byStatus: Object.fromEntries(
         statusCounts.map(sc => [sc.status, sc._count])
       )
