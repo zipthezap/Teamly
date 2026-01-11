@@ -581,6 +581,11 @@
   "teamup": {
     "title": "TeamUp",
     "subtitle": "Find players or fill substitute spots",
+    "lookingForPlayTab": "Looking for Play",
+    "needPlayersTab": "Need Players",
+    "browseActivities": "Browse Activities",
+    "myResponses": "My Responses",
+    "manageResponses": "Manage Responses",
     "submitTab": "Need Players",
     "browseTab": "Find Activities",
     "myResponsesTab": "My Responses",
@@ -617,6 +622,7 @@
     "updateRequestError": "Failed to update request",
     "deleteRequestSuccess": "Request deleted successfully",
     "deleteRequestError": "Failed to delete request",
+    "statusUpdateSuccess": "Status updated successfully",
     "respondSuccess": "Response submitted successfully",
     "respondError": "Failed to submit response",
     "acceptResponseSuccess": "Response accepted",
@@ -658,6 +664,7 @@
     "filterByLocation": "Filter by Location",
     "filterBySkillLevel": "Filter by Skill Level",
     "allSports": "All Sports",
+    "urgent": "Urgent",
     "youCannotRespondToOwnRequest": "You cannot respond to your own request",
     "alreadyResponded": "You have already responded to this request"
   }
