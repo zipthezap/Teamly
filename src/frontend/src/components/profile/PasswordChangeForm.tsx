@@ -8,7 +8,9 @@ import {
   Grid,
   Box,
   Stack,
+  Alert,
 } from '@mui/material';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface PasswordChangeFormProps {
   passwordData: {
@@ -19,6 +21,7 @@ interface PasswordChangeFormProps {
   loading: boolean;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
+  hasPassword?: boolean;
 }
 
 const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({
@@ -26,36 +29,51 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({
   loading,
   onChange,
   onSubmit,
+  hasPassword = true,
 }) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  
+  // Check if user is OAuth-only (no password set)
+  const isOAuthOnly = user?.authProvider && user.authProvider !== 'local' && !hasPassword;
+
   return (
     <Paper sx={{ p: 4 }}>
       <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-        {t('profile.changePassword')}
+        {isOAuthOnly ? 'Set Password' : t('profile.changePassword')}
       </Typography>
+      
+      {isOAuthOnly && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          You signed up using {user.authProvider}. Setting a password will allow you to sign in with email and password as well.
+        </Alert>
+      )}
+      
       <form onSubmit={onSubmit}>
         <Stack spacing={3}>
+          {!isOAuthOnly && (
+            <TextField
+              label={t('profile.currentPassword')}
+              name="currentPassword"
+              type="password"
+              value={passwordData.currentPassword}
+              onChange={onChange}
+              fullWidth
+              required
+            />
+          )}
           <TextField
-            label={t('profile.currentPassword')}
-            name="currentPassword"
-            type="password"
-            value={passwordData.currentPassword}
-            onChange={onChange}
-            fullWidth
-            required
-          />
-          <TextField
-            label={t('profile.newPassword')}
+            label={isOAuthOnly ? 'New Password' : t('profile.newPassword')}
             name="newPassword"
             type="password"
             value={passwordData.newPassword}
             onChange={onChange}
             fullWidth
             required
-            helperText={t('profile.passwordMinLength')}
+            helperText={t('profile.passwordMinLength') || 'Minimum 8 characters with uppercase, lowercase, number, and special character'}
           />
           <TextField
-            label={t('profile.confirmNewPassword')}
+            label={isOAuthOnly ? 'Confirm Password' : t('profile.confirmNewPassword')}
             name="confirmPassword"
             type="password"
             value={passwordData.confirmPassword}
@@ -71,7 +89,7 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({
             size="large"
             disabled={loading}
           >
-            {t('profile.updatePassword')}
+            {isOAuthOnly ? 'Set Password' : t('profile.updatePassword')}
           </Button>
         </Box>
       </form>
