@@ -23,13 +23,6 @@ interface TeamUpRequest {
   creatorId: string;
 }
 
-interface UserWithLocation {
-  id: string;
-  city: string | null;
-  country: string | null;
-  discoveryRadius: number | null;
-}
-
 const DEFAULT_DISCOVERY_RADIUS = 25; // km
 const COUNTRY_LEVEL_MIN_RADIUS = 100; // km - minimum radius to match country-level TeamUp requests
 
