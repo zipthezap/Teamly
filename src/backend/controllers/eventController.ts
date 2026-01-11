@@ -1580,7 +1580,8 @@ export const getEventParticipantsByStatus = async (req: Request, res: Response) 
 
     // Build where clause to leverage composite index [eventId, status]
     const where: any = { eventId: id };
-    if (status && ['pending', 'confirmed', 'declined'].includes(status as string)) {
+    const validStatuses = Object.values(EventParticipantStatus);
+    if (status && validStatuses.includes(status as EventParticipantStatus)) {
       where.status = status; // Uses composite index [eventId, status]
     }
 

@@ -31,6 +31,7 @@ interface UserWithLocation {
 }
 
 const DEFAULT_DISCOVERY_RADIUS = 25; // km
+const COUNTRY_LEVEL_MIN_RADIUS = 100; // km - minimum radius to match country-level TeamUp requests
 
 /**
  * Find users who should be notified about a new TeamUp request
@@ -83,10 +84,10 @@ export async function findUsersForTeamUpNotification(
       }
       
       // If only country matches (different cities), only notify if they have
-      // a large discovery radius (e.g., >= 100km)
+      // a large discovery radius (e.g., >= COUNTRY_LEVEL_MIN_RADIUS)
       if (user.country && teamUpRequest.country && 
           user.country.toLowerCase() === teamUpRequest.country.toLowerCase() &&
-          userRadius >= 100) {
+          userRadius >= COUNTRY_LEVEL_MIN_RADIUS) {
         return true;
       }
       
