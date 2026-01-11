@@ -9,7 +9,7 @@ const router = Router();
 router.use(authMiddleware);
 router.use(authenticatedLimiter);
 
-// Create event request (admin only)
+// Create event request (members can create, admins approve)
 router.post('/', eventRequestController.createEventRequest);
 
 // Get event requests for a group

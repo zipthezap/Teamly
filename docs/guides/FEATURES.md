@@ -168,7 +168,7 @@ Admins can create event requests that require member approval through voting bef
 
 #### API Endpoints
 
-1. **POST /api/event-requests** - Create event request (admin only)
+1. **POST /api/event-requests** - Create event request (any group member)
 2. **GET /api/event-requests/group/:groupId** - Get event requests for a group
 3. **GET /api/event-requests/:id** - Get specific event request
 4. **POST /api/event-requests/:id/vote** - Vote on event request
@@ -177,7 +177,7 @@ Admins can create event requests that require member approval through voting bef
 
 ### Usage
 
-#### Creating an Event Request (Admin)
+#### Creating an Event Request (Any Group Member)
 ```bash
 POST /api/event-requests
 {
@@ -232,7 +232,7 @@ POST /api/event-requests/{requestId}/cancel
 
 ### Workflow
 
-1. **Admin creates event request** → Status: "voting"
+1. **Member creates event request** → Status: "voting"
 2. **Members vote** → Each member votes yes/no
 3. **Admin finalizes** → 
    - If majority yes: Status → "finalized", Event created

@@ -262,6 +262,7 @@
       "createRequest": "Create Event Request",
       "noRequests": "No event requests yet",
       "noRequestsAdmin": "Create an event request for members to vote on!",
+      "noRequestsMember": "Create an event request for other members to vote on!",
       "noRequestsUser": "Check back later for new event proposals",
       "failedToLoad": "Failed to load event requests",
       "voteRecorded": "Vote recorded successfully",

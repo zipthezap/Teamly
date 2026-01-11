@@ -5,7 +5,7 @@ import { Request, Response } from 'express';
 import * as eventService from '../services/eventService';
 import { SportType } from '../../shared/types/event.types';
 
-// Create event request (admin only)
+// Create event request (any group member can create, admins approve)
 export const createEventRequest = async (req: Request, res: Response) => {
   try {
     const { 
@@ -69,17 +69,16 @@ export const createEventRequest = async (req: Request, res: Response) => {
       threshold = parseFloat(voteThreshold);
     }
 
-    // Check if user is admin of the group
+    // Check if user is a member of the group
     const membership = await prisma.groupMember.findFirst({
       where: {
         groupId: groupId,
-        userId: req.user.id,
-        role: 'admin'
+        userId: req.user.id
       }
     });
 
     if (!membership) {
-      return res.status(403).json({ error: 'Only admins can create event requests' });
+      return res.status(403).json({ error: 'Only group members can create event requests' });
     }
 
     const eventRequest = await prisma.eventRequest.create({
