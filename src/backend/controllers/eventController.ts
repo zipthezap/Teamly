@@ -1635,6 +1635,43 @@ export const getEventParticipantsByStatus = async (req: Request, res: Response) 
 };
 
 /**
+ * Helper function to verify event creator authorization for guest management
+ * Returns the event and guest participant if authorization succeeds
+ */
+const verifyGuestManagementAuth = async (
+  eventId: string,
+  guestId: string,
+  userId: string
+): Promise<{ event: any; guest: any } | { error: string; status: number }> => {
+  // Check if user is the creator of the event
+  const event = await prisma.event.findUnique({
+    where: { id: eventId }
+  });
+
+  if (!event) {
+    return { error: 'Event not found', status: 404 };
+  }
+
+  if (event.creatorId !== userId) {
+    return { error: 'Only the event creator can manage guest participants', status: 403 };
+  }
+
+  // Verify guest participant belongs to this event
+  const guest = await prisma.guestParticipant.findFirst({
+    where: {
+      id: guestId,
+      eventId: eventId
+    }
+  });
+
+  if (!guest) {
+    return { error: 'Guest participant not found', status: 404 };
+  }
+
+  return { event, guest };
+};
+
+/**
  * Update guest participant name
  * Allows the event creator to update a guest's name
  */
@@ -1647,25 +1684,10 @@ export const updateGuestParticipant = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Name is required' });
     }
 
-    // Check if user is the creator of the event
-    const event = await prisma.event.findUnique({
-      where: { id }
-    });
-
-    if (!event || event.creatorId !== (req.user as any).id) {
-      return res.status(403).json({ error: 'Only the event creator can update guest participants' });
-    }
-
-    // Verify guest participant belongs to this event
-    const guestParticipant = await prisma.guestParticipant.findFirst({
-      where: {
-        id: guestId,
-        eventId: id
-      }
-    });
-
-    if (!guestParticipant) {
-      return res.status(404).json({ error: 'Guest participant not found' });
+    // Verify authorization and get guest
+    const authResult = await verifyGuestManagementAuth(id, guestId, (req.user as any).id);
+    if ('error' in authResult) {
+      return res.status(authResult.status).json({ error: authResult.error });
     }
 
     // Update guest participant name
@@ -1698,25 +1720,10 @@ export const updateGuestParticipantStatus = async (req: Request, res: Response) 
       });
     }
 
-    // Check if user is the creator of the event
-    const event = await prisma.event.findUnique({
-      where: { id }
-    });
-
-    if (!event || event.creatorId !== (req.user as any).id) {
-      return res.status(403).json({ error: 'Only the event creator can update guest participant status' });
-    }
-
-    // Verify guest participant belongs to this event
-    const guestParticipant = await prisma.guestParticipant.findFirst({
-      where: {
-        id: guestId,
-        eventId: id
-      }
-    });
-
-    if (!guestParticipant) {
-      return res.status(404).json({ error: 'Guest participant not found' });
+    // Verify authorization and get guest
+    const authResult = await verifyGuestManagementAuth(id, guestId, (req.user as any).id);
+    if ('error' in authResult) {
+      return res.status(authResult.status).json({ error: authResult.error });
     }
 
     // Update guest participant status
@@ -1740,25 +1747,10 @@ export const removeGuestParticipant = async (req: Request, res: Response) => {
   try {
     const { id, guestId } = req.params;
 
-    // Check if user is the creator of the event
-    const event = await prisma.event.findUnique({
-      where: { id }
-    });
-
-    if (!event || event.creatorId !== (req.user as any).id) {
-      return res.status(403).json({ error: 'Only the event creator can remove guest participants' });
-    }
-
-    // Verify guest participant belongs to this event
-    const guestParticipant = await prisma.guestParticipant.findFirst({
-      where: {
-        id: guestId,
-        eventId: id
-      }
-    });
-
-    if (!guestParticipant) {
-      return res.status(404).json({ error: 'Guest participant not found' });
+    // Verify authorization and get guest
+    const authResult = await verifyGuestManagementAuth(id, guestId, (req.user as any).id);
+    if ('error' in authResult) {
+      return res.status(authResult.status).json({ error: authResult.error });
     }
 
     // Delete guest participant
@@ -1775,7 +1767,8 @@ export const removeGuestParticipant = async (req: Request, res: Response) => {
 
 /**
  * Get all guest participants for an event
- * Allows viewing guest participants with optional status filtering
+ * Allows any group member to view guest participants with optional status filtering
+ * Note: Uses group membership check (not event creator) to allow all group members to see guests
  */
 export const getGuestParticipants = async (req: Request, res: Response) => {
   try {
@@ -1783,6 +1776,7 @@ export const getGuestParticipants = async (req: Request, res: Response) => {
     const { status } = req.query;
 
     // Verify user is a member of the group that owns this event
+    // This allows any group member to view guests, not just the creator
     const event = await prisma.event.findFirst({
       where: {
         id,
