@@ -73,7 +73,15 @@ const CreateEvent = () => {
         }
       }
 
-      const data: any = {
+      const data: {
+        [key: string]: any;
+        startTime: string;
+        endTime: string | null;
+        maxPlayers: number | null;
+        isRecurring: boolean;
+        recurrenceRule?: string;
+        recurrenceEnd?: string;
+      } = {
         ...formData,
         startTime: startDateTime.toISOString(),
         endTime: endDateTime ? endDateTime.toISOString() : null,
