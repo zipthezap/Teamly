@@ -273,17 +273,23 @@ const OAuthConnections: React.FC<OAuthConnectionsProps> = ({ onSuccess, onError 
 
       {/* Unlink Confirmation Dialog */}
       <Dialog open={unlinkDialog.open} onClose={closeUnlinkDialog}>
-        <DialogTitle>Unlink {unlinkDialog.provider === 'google' ? 'Google' : 'Facebook'} Account?</DialogTitle>
+        <DialogTitle>
+          Unlink {unlinkDialog.provider ? (unlinkDialog.provider === 'google' ? 'Google' : 'Facebook') : ''} Account?
+        </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to unlink your {unlinkDialog.provider === 'google' ? 'Google' : 'Facebook'} account?
-            You will no longer be able to sign in using this provider.
-            {!canUnlink(unlinkDialog.provider!) && (
-              <Box sx={{ mt: 2 }}>
-                <Alert severity="error">
-                  You cannot unlink this account as it's your only authentication method. Please set a password or link another account first.
-                </Alert>
-              </Box>
+            {unlinkDialog.provider && (
+              <>
+                Are you sure you want to unlink your {unlinkDialog.provider === 'google' ? 'Google' : 'Facebook'} account?
+                You will no longer be able to sign in using this provider.
+                {!canUnlink(unlinkDialog.provider) && (
+                  <Box sx={{ mt: 2 }}>
+                    <Alert severity="error">
+                      You cannot unlink this account as it's your only authentication method. Please set a password or link another account first.
+                    </Alert>
+                  </Box>
+                )}
+              </>
             )}
           </DialogContentText>
         </DialogContent>
@@ -291,14 +297,16 @@ const OAuthConnections: React.FC<OAuthConnectionsProps> = ({ onSuccess, onError 
           <Button onClick={closeUnlinkDialog} disabled={actionLoading !== null}>
             Cancel
           </Button>
-          <Button
-            onClick={() => handleUnlinkAccount(unlinkDialog.provider!)}
-            color="error"
-            variant="contained"
-            disabled={actionLoading !== null || !canUnlink(unlinkDialog.provider!)}
-          >
-            {actionLoading?.startsWith('unlink') ? 'Unlinking...' : 'Unlink'}
-          </Button>
+          {unlinkDialog.provider && (
+            <Button
+              onClick={() => handleUnlinkAccount(unlinkDialog.provider!)}
+              color="error"
+              variant="contained"
+              disabled={actionLoading !== null || !canUnlink(unlinkDialog.provider)}
+            >
+              {actionLoading?.startsWith('unlink') ? 'Unlinking...' : 'Unlink'}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </>

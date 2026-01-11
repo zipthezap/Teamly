@@ -370,17 +370,13 @@ export const updatePassword = async (req: Request, res: Response): Promise<void>
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // Update password and set authProvider to local if it was OAuth-only
-    const updateData: any = { password: hashedPassword };
-    if (!user.password && user.authProvider && user.authProvider !== 'local') {
-      // User is setting password for the first time (OAuth user)
-      // Keep their OAuth provider but mark that they can also use local auth
-      updateData.authProvider = 'local';
-    }
-
+    // Update password
+    // Note: We keep the authProvider as is (google/facebook) even when setting password
+    // This preserves the information about how the user originally signed up
+    // The user can now authenticate with either OAuth or password
     await prisma.user.update({
       where: { id: (req.user as any)!.id },
-      data: updateData
+      data: { password: hashedPassword }
     });
 
     // Revoke all existing tokens for security (except current one for convenience)
