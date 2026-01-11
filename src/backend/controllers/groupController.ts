@@ -58,9 +58,10 @@ export const deleteGroup = async (req: Request, res: Response) => {
   }
 };
 import prisma from '../config/database';
-import { sendEmail } from '../utils/emailService';
+import { sendEmailWithQueue } from '../services/emailQueueService';
 import { shouldSendEmailNotification } from '../utils/notificationHelper';
 import { logger } from '../utils/logger';
+import { escapeHtml } from '../utils/validation';
 import { Request, Response } from 'express';
 import path from 'path';
 import { 
@@ -411,12 +412,28 @@ export const inviteMember = async (req: Request, res: Response) => {
     const shouldSend = await shouldSendEmailNotification(userToInvite.id, 'groupInvites');
 
     if (shouldSend) {
-      await sendEmail(
+      const htmlContent = `
+        <h2>You've Been Invited to Join a Group!</h2>
+        <p>Hi ${escapeHtml(userToInvite.name)},</p>
+        <p>${escapeHtml(inviterUser.name)} has invited you to join the group:</p>
+        <h3>${escapeHtml(group.name)}</h3>
+        <p>${escapeHtml(group.description || '')}</p>
+        <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/groups">View Group</a></p>
+      `;
+      
+      await sendEmailWithQueue(
         userToInvite.email,
-        'groupInvitation',
-        userToInvite.name,
-        group.name,
-        inviterUser.name
+        `Group Invitation: ${group.name}`,
+        htmlContent,
+        {
+          templateType: 'group_invitation',
+          templateData: {
+            recipientName: userToInvite.name,
+            groupName: group.name,
+            groupDescription: group.description,
+            inviterName: inviterUser.name
+          }
+        }
       );
     }
 
@@ -1067,7 +1084,7 @@ export const deleteGroupPicture = async (req: Request, res: Response) => {
 // Get nearby groups based on location and radius
 export const getNearbyGroups = async (req: Request, res: Response) => {
   try {
-    const { latitude, longitude, radius = 10, limit = 50 } = req.query;
+    const { latitude, longitude, radius, limit = 50 } = req.query;
 
     if (!latitude || !longitude) {
       return res.status(400).json({ error: 'Latitude and longitude are required' });
@@ -1075,7 +1092,19 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
 
     const lat = parseFloat(latitude as string);
     const lon = parseFloat(longitude as string);
-    const radiusKm = parseFloat(radius as string);
+    
+    // Use user's discoveryRadius if no radius provided
+    let radiusKm: number;
+    if (radius) {
+      radiusKm = parseFloat(radius as string);
+    } else {
+      // Get user's discovery radius preference
+      const user = await prisma.user.findUnique({
+        where: { id: (req.user as any).id },
+        select: { discoveryRadius: true }
+      });
+      radiusKm = user?.discoveryRadius || 25; // Default to 25km if not set
+    }
 
     // Validate coordinates
     const coordValidation = locationService.validateCoordinates(lat, lon);
@@ -1105,7 +1134,7 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
       take: parseInt(limit as string) * 2 // Get more than needed for filtering
     });
 
-    // Filter by location and add distance
+    // Filter by location and add distance, leveraging user's discoveryRadius
     const nearbyGroups = locationService.filterByLocation(
       groups,
       lat,
@@ -1122,7 +1151,8 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
       results: enrichedGroups,
       total: enrichedGroups.length,
       center: { latitude: lat, longitude: lon },
-      radius: radiusKm
+      radius: radiusKm,
+      usingUserPreference: !radius // Indicate if using user's preferred radius
     });
   } catch (error) {
     logger.error('Get nearby groups error', 'GroupController', { error });

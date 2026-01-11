@@ -492,6 +492,7 @@
     "confirmDeleteEventDesc": "Êtes-vous sûr de vouloir supprimer {{title}} ? Cette action est irréversible.",
     "someoneIsTyping": "Quelqu'un est en train d'écrire...",
     "createEvent": "Créer un événement",
+    "requestEvent": "Demander un événement",
     "online": "En ligne",
     "offline": "Hors ligne",
     "rsvp": "Répondre",
@@ -505,7 +506,8 @@
     "totalEvents": "Événements totaux",
     "upcomingEvents": "Événements à venir",
     "pastEvents": "Événements passés",
-    "recentActivity": "Activité récente"
+    "recentActivity": "Activité récente",
+    "viewAll": "Voir tout"
   },
   "profile": {
     "profileSettings": "Paramètres du profil",

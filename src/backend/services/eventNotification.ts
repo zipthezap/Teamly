@@ -3,8 +3,9 @@
  * Handles all event-related email notifications and activity tracking
  */
 
-import { sendEmail } from '../utils/emailService';
+import { sendEmailWithQueue } from './emailQueueService';
 import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
+import { escapeHtml } from '../utils/validation';
 
 interface User {
   id: string;
@@ -30,19 +31,35 @@ export const sendEventInvitations = async (
   const userIds = filteredRecipients.map(r => r.id);
   const notificationMap = await batchShouldSendEmailNotification(userIds, 'eventInvites');
   
-  // Send emails to users who have notifications enabled
+  // Send emails to users who have notifications enabled using template system
   const emailPromises = filteredRecipients
     .filter(recipient => notificationMap.get(recipient.id))
-    .map(recipient => 
-      sendEmail(
+    .map(recipient => {
+      const htmlContent = `
+        <h2>You're Invited to an Event!</h2>
+        <p>Hi ${escapeHtml(recipient.name)},</p>
+        <p>You have been invited to participate in:</p>
+        <h3>${escapeHtml(eventTitle)}</h3>
+        <p><strong>When:</strong> ${eventStartTime.toLocaleString()}</p>
+        <p><strong>Group:</strong> ${escapeHtml(groupName)}</p>
+        <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/events">View Event Details</a></p>
+      `;
+      
+      return sendEmailWithQueue(
         recipient.email,
-        'eventInvitation',
-        recipient.name,
-        eventTitle,
-        eventStartTime,
-        groupName
-      )
-    );
+        `Event Invitation: ${eventTitle}`,
+        htmlContent,
+        {
+          templateType: 'event_invitation',
+          templateData: {
+            recipientName: recipient.name,
+            eventTitle,
+            eventStartTime: eventStartTime.toISOString(),
+            groupName
+          }
+        }
+      );
+    });
 
   await Promise.all(emailPromises);
 };
@@ -64,18 +81,32 @@ export const sendEventUpdateNotifications = async (
   const userIds = recipients.map(r => r.id);
   const notificationMap = await batchShouldSendEmailNotification(userIds, 'eventUpdates');
   
-  // Send emails
+  // Send emails using template system
   const emailPromises = recipients
     .filter(recipient => notificationMap.get(recipient.id))
-    .map(recipient =>
-      sendEmail(
+    .map(recipient => {
+      const htmlContent = `
+        <h2>Event Updated</h2>
+        <p>Hi ${escapeHtml(recipient.name)},</p>
+        <p>The event "${escapeHtml(eventTitle)}" in group "${escapeHtml(groupName)}" has been updated.</p>
+        <p>Please check the event details for any changes.</p>
+        <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/events">View Event</a></p>
+      `;
+      
+      return sendEmailWithQueue(
         recipient.email,
-        'eventUpdate',
-        recipient.name,
-        eventTitle,
-        groupName
-      )
-    );
+        `Event Updated: ${eventTitle}`,
+        htmlContent,
+        {
+          templateType: 'event_update',
+          templateData: {
+            recipientName: recipient.name,
+            eventTitle,
+            groupName
+          }
+        }
+      );
+    });
 
   await Promise.all(emailPromises);
 };
@@ -97,18 +128,32 @@ export const sendEventCancellationNotifications = async (
   const userIds = recipients.map(r => r.id);
   const notificationMap = await batchShouldSendEmailNotification(userIds, 'eventCancellations');
   
-  // Send emails
+  // Send emails using template system
   const emailPromises = recipients
     .filter(recipient => notificationMap.get(recipient.id))
-    .map(recipient =>
-      sendEmail(
+    .map(recipient => {
+      const htmlContent = `
+        <h2>Event Cancelled</h2>
+        <p>Hi ${escapeHtml(recipient.name)},</p>
+        <p>Unfortunately, the event "${escapeHtml(eventTitle)}" in group "${escapeHtml(groupName)}" has been cancelled.</p>
+        <p>We apologize for any inconvenience this may cause.</p>
+        <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/events">Browse Other Events</a></p>
+      `;
+      
+      return sendEmailWithQueue(
         recipient.email,
-        'eventCancellation',
-        recipient.name,
-        eventTitle,
-        groupName
-      )
-    );
+        `Event Cancelled: ${eventTitle}`,
+        htmlContent,
+        {
+          templateType: 'event_cancellation',
+          templateData: {
+            recipientName: recipient.name,
+            eventTitle,
+            groupName
+          }
+        }
+      );
+    });
 
   await Promise.all(emailPromises);
 };

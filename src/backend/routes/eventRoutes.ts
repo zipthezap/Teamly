@@ -21,6 +21,8 @@ router.get('/export', eventController.exportEvents);
 router.get('/nearby', eventController.getNearbyEvents);
 router.get('/statistics', eventController.getUserStatistics);
 router.get('/:id', eventController.getEvent);
+router.get('/:id/participants', eventController.getEventParticipantsByStatus);
+router.get('/:id/guests', eventController.getGuestParticipants);
 router.get('/:id/activity', eventController.getEventActivityFeed);
 router.post('/:id/generate-invite', eventController.generateInviteToken);
 router.put('/:id', eventController.updateEvent);
@@ -29,6 +31,9 @@ router.post('/:id/join', eventController.joinEvent);
 router.delete('/:id/leave', eventController.leaveEvent);
 router.put('/:id/status', eventController.updateParticipationStatus);
 router.put('/:id/event-status', eventController.updateEventStatus);
+router.put('/:id/guests/:guestId', eventController.updateGuestParticipant);
+router.put('/:id/guests/:guestId/status', eventController.updateGuestParticipantStatus);
+router.delete('/:id/guests/:guestId', eventController.removeGuestParticipant);
 router.post('/:id/archive', eventController.archiveEvent);
 router.post('/:id/unarchive', eventController.unarchiveEvent);
 

@@ -1,3 +1,8 @@
+// Export new generic Icon component
+export { default as Icon } from './Icon';
+export type { IconType } from './Icon';
+
+// Legacy icon exports for backward compatibility
 export { default as LinkIcon } from './LinkIcon';
 export { default as GridIcon } from './GridIcon';
 export { default as ClipboardIcon } from './ClipboardIcon';
@@ -15,3 +20,4 @@ export { default as TrashIcon } from './TrashIcon';
 export { default as ChevronRightIcon } from './ChevronRightIcon';
 export { default as BellIcon } from './BellIcon';
 export { default as ArrowRightIcon } from './ArrowRightIcon';
+export { default as GroupAddIcon } from './GroupAddIcon';

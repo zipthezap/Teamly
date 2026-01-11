@@ -90,6 +90,9 @@ export default function GroupDetailsPage() {
     isAdmin = group.creator.email === userEmail;
   }
 
+  // Check if user is a member of the group
+  const isMember = group?.members?.some((m: GroupMember) => user && m.userId === user.id);
+
   // Update group settings when group data loads
   React.useEffect(() => {
     if (group) {
@@ -449,6 +452,8 @@ export default function GroupDetailsPage() {
           onEdit={isAdmin ? (event) => { setEditEvent(event); setEventModalOpen(true); } : undefined}
           onDelete={isAdmin ? (event) => deleteEventMutation.mutate(event.id) : undefined}
           isAdmin={isAdmin}
+          groupId={groupId}
+          isMember={isMember}
         />
         <ChatBox chat={chatMessages || []} message={message} setMessage={setMessage} onSend={handleSend} isTyping={isTyping} />
       </div>
