@@ -139,8 +139,9 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
       offset = 0
     } = req.query;
 
+    // Build where clause - optimized to use composite index [status, dateTime]
     const where: any = {
-      status: status as string
+      status: status as string  // First part of composite index
     };
 
     if (sportType) {
@@ -159,7 +160,7 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
       where.skillLevel = skillLevel as string;
     }
 
-    // Only show future events
+    // Only show future events - second part of composite index [status, dateTime]
     where.dateTime = {
       gte: new Date()
     };
@@ -195,7 +196,7 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
           select: { responses: true }
         }
       },
-      orderBy: { dateTime: 'asc' },
+      orderBy: { dateTime: 'asc' },  // Leverages composite index [status, dateTime]
       take: parseInt(limit as string),
       skip: parseInt(offset as string)
     });

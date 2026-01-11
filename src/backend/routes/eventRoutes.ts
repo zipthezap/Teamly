@@ -21,6 +21,7 @@ router.get('/export', eventController.exportEvents);
 router.get('/nearby', eventController.getNearbyEvents);
 router.get('/statistics', eventController.getUserStatistics);
 router.get('/:id', eventController.getEvent);
+router.get('/:id/participants', eventController.getEventParticipantsByStatus);
 router.get('/:id/activity', eventController.getEventActivityFeed);
 router.post('/:id/generate-invite', eventController.generateInviteToken);
 router.put('/:id', eventController.updateEvent);
