@@ -818,6 +818,27 @@ export const addRecurringEventException = async (req: Request, res: Response) =>
     if (!event.isRecurring) {
       return res.status(400).json({ error: 'Event is not recurring' });
     }
+
+    // Get existing exceptions
+    const existingExceptions = event.exceptionDates 
+      ? JSON.parse(JSON.stringify(event.exceptionDates))
+      : [];
+
+    // Add new exception if not already present
+    const exceptionDateISO = new Date(exceptionDate).toISOString();
+    if (!existingExceptions.some((d: string) => new Date(d).toISOString() === exceptionDateISO)) {
+      existingExceptions.push(exceptionDateISO);
+    }
+
+    // Update event with new exceptions
+    const updatedEvent = await prisma.event.update({
+      where: { id },
+      data: {
+        exceptionDates: existingExceptions
+      }
+    });
+
+    res.json(updatedEvent);
   } catch (error) {
     logger.error('Add recurring event exception error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to add exception' });

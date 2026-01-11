@@ -19,6 +19,12 @@ export interface EventFormData {
   startTime?: string;
   endTime?: string;
   isPublic?: boolean;
+  isRecurring?: boolean;
+  recurrencePattern?: string;
+  recurrenceInterval?: string;
+  recurrenceDays?: string[];
+  recurrenceEnd?: string;
+  recurrenceRule?: string;
 }
 
 export interface EventFormProps {
@@ -58,6 +64,11 @@ const EventForm: React.FC<EventFormProps> = ({
     endMinute: initialData.endMinute || '00',
     maxPlayers: initialData.maxPlayers || '',
     isPublic: initialData.isPublic || false,
+    isRecurring: initialData.isRecurring || false,
+    recurrencePattern: initialData.recurrencePattern || 'DAILY',
+    recurrenceInterval: initialData.recurrenceInterval || '1',
+    recurrenceDays: initialData.recurrenceDays || [],
+    recurrenceEnd: initialData.recurrenceEnd || '',
   });
 
   const [localError, setLocalError] = useState<string>('');
@@ -257,6 +268,108 @@ const EventForm: React.FC<EventFormProps> = ({
         onChange={handleChange}
         inputProps={{ min: 1 }}
       />
+      
+      {/* Recurring Event Section */}
+      <Box sx={{ mt: 3, mb: 2 }}>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={formData.isRecurring}
+              onChange={(e) => setFormData({ ...formData, isRecurring: e.target.checked })}
+              color="primary"
+            />
+          }
+          label={
+            <Box>
+              <Typography variant="body1">Recurring Event</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Create an event that repeats on a schedule
+              </Typography>
+            </Box>
+          }
+        />
+      </Box>
+
+      {formData.isRecurring && (
+        <Paper elevation={1} sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
+          <Typography variant="subtitle2" sx={{ mb: 2 }}>
+            Recurrence Settings
+          </Typography>
+          
+          <TextField
+            select
+            label="Repeat Pattern"
+            name="recurrencePattern"
+            fullWidth
+            margin="normal"
+            value={formData.recurrencePattern}
+            onChange={handleChange}
+          >
+            <MenuItem value="DAILY">Daily</MenuItem>
+            <MenuItem value="WEEKLY">Weekly</MenuItem>
+            <MenuItem value="MONTHLY">Monthly</MenuItem>
+          </TextField>
+
+          <TextField
+            label="Repeat Every"
+            name="recurrenceInterval"
+            type="number"
+            fullWidth
+            margin="normal"
+            value={formData.recurrenceInterval}
+            onChange={handleChange}
+            inputProps={{ min: 1, max: 365 }}
+            helperText={`Repeat every ${formData.recurrenceInterval || 1} ${formData.recurrencePattern?.toLowerCase() || 'day'}(s)`}
+          />
+
+          {formData.recurrencePattern === 'WEEKLY' && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                Repeat On
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {[
+                  { label: 'Mon', value: 'MO' },
+                  { label: 'Tue', value: 'TU' },
+                  { label: 'Wed', value: 'WE' },
+                  { label: 'Thu', value: 'TH' },
+                  { label: 'Fri', value: 'FR' },
+                  { label: 'Sat', value: 'SA' },
+                  { label: 'Sun', value: 'SU' },
+                ].map(day => (
+                  <Button
+                    key={day.value}
+                    variant={formData.recurrenceDays?.includes(day.value) ? 'contained' : 'outlined'}
+                    size="small"
+                    onClick={() => {
+                      const days = formData.recurrenceDays || [];
+                      const newDays = days.includes(day.value)
+                        ? days.filter(d => d !== day.value)
+                        : [...days, day.value];
+                      setFormData({ ...formData, recurrenceDays: newDays });
+                    }}
+                  >
+                    {day.label}
+                  </Button>
+                ))}
+              </Box>
+            </Box>
+          )}
+
+          <TextField
+            label="End Date (Optional)"
+            name="recurrenceEnd"
+            type="date"
+            fullWidth
+            margin="normal"
+            value={formData.recurrenceEnd}
+            onChange={handleChange}
+            InputLabelProps={{ shrink: true }}
+            helperText="Leave empty to repeat indefinitely (up to 1 year)"
+          />
+        </Paper>
+      )}
+
       <Box sx={{ mt: 2, mb: 2 }}>
         <FormControlLabel
           control={

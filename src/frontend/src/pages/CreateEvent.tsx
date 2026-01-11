@@ -49,20 +49,57 @@ const CreateEvent = () => {
           return;
         }
       }
-      const data = {
+
+      // Build recurrence rule if recurring event
+      let recurrenceRule = null;
+      if (formData.isRecurring) {
+        const pattern = formData.recurrencePattern || 'DAILY';
+        const interval = formData.recurrenceInterval || '1';
+        
+        if (pattern === 'DAILY') {
+          recurrenceRule = `FREQ=DAILY;INTERVAL=${interval}`;
+        } else if (pattern === 'WEEKLY') {
+          const days = formData.recurrenceDays && formData.recurrenceDays.length > 0 
+            ? formData.recurrenceDays.join(',') 
+            : new Intl.DateTimeFormat('en-US', { weekday: 'short' })
+                .format(startDateTime)
+                .toUpperCase()
+                .substring(0, 2);
+          recurrenceRule = `FREQ=WEEKLY;BYDAY=${days};INTERVAL=${interval}`;
+        } else if (pattern === 'MONTHLY') {
+          const dayOfMonth = startDateTime.getDate();
+          recurrenceRule = `FREQ=MONTHLY;BYMONTHDAY=${dayOfMonth};INTERVAL=${interval}`;
+        }
+      }
+
+      const data: any = {
         ...formData,
         startTime: startDateTime.toISOString(),
         endTime: endDateTime ? endDateTime.toISOString() : null,
         maxPlayers: formData.maxPlayers ? parseInt(formData.maxPlayers) : null,
+        isRecurring: formData.isRecurring || false,
       };
+
+      if (formData.isRecurring && recurrenceRule) {
+        data.recurrenceRule = recurrenceRule;
+        if (formData.recurrenceEnd) {
+          data.recurrenceEnd = new Date(formData.recurrenceEnd).toISOString();
+        }
+      }
+
+      // Remove temporary form fields
       delete data.startDate;
       delete data.startHour;
       delete data.startMinute;
       delete data.endHour;
       delete data.endMinute;
+      delete data.recurrencePattern;
+      delete data.recurrenceInterval;
+      delete data.recurrenceDays;
+
       const response = await eventsAPI.create(data);
       navigate(`/events/${response.data.id}`);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to create event');
     } finally {
       setLoading(false);
