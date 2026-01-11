@@ -17,7 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getInitials } from '../utils/imageUtils';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
-import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
+import { GoogleMap, LoadScript, Marker, Autocomplete, Circle } from '@react-google-maps/api';
 import { groupsAPI } from '../services/api';
 import { useTranslation } from 'react-i18next';
 import { getImageUrl } from '../utils/imageUtils';
@@ -44,12 +44,28 @@ const PublicGroups = () => {
   const [mapCenter, setMapCenter] = useState(null);
   const [customSearchLocation, setCustomSearchLocation] = useState(null);
   const [searchAddress, setSearchAddress] = useState('');
+  const [mapZoom, setMapZoom] = useState(2);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
   const navigate = useNavigate();
   const { t } = useTranslation();
 
   useEffect(() => {
     fetchPublicGroups();
+  }, []);
+
+  // Calculate appropriate zoom level based on radius
+  const calculateZoomLevel = useCallback((radiusKm: number) => {
+    // Approximate zoom levels for different radius ranges
+    // These values are empirically chosen to fit the radius well in the viewport
+    if (radiusKm <= 1) return 14;
+    if (radiusKm <= 2) return 13;
+    if (radiusKm <= 5) return 12;
+    if (radiusKm <= 10) return 11;
+    if (radiusKm <= 20) return 10;
+    if (radiusKm <= 50) return 9;
+    if (radiusKm <= 100) return 8;
+    return 7;
   }, []);
 
   // Calculate distance between two coordinates using Haversine formula
@@ -105,6 +121,13 @@ const PublicGroups = () => {
     }
   }, [groups, locationEnabled, userLocation, customSearchLocation, distanceRadius, filterGroupsByDistance]);
 
+  // Update zoom level when radius changes and a location is set
+  useEffect(() => {
+    if (mapCenter && (locationEnabled || customSearchLocation)) {
+      setMapZoom(calculateZoomLevel(distanceRadius));
+    }
+  }, [distanceRadius, mapCenter, locationEnabled, customSearchLocation, calculateZoomLevel]);
+
   const fetchPublicGroups = async () => {
     try {
       const response = await groupsAPI.getPublic();
@@ -140,6 +163,7 @@ const PublicGroups = () => {
         };
         setUserLocation(location);
         setMapCenter(location);
+        setMapZoom(calculateZoomLevel(distanceRadius));
         setLocationEnabled(true);
         setCustomSearchLocation(null); // Reset custom location when using current location
         setSnackbar({
@@ -165,6 +189,7 @@ const PublicGroups = () => {
     };
     setCustomSearchLocation(clickedLocation);
     setMapCenter(clickedLocation);
+    setMapZoom(calculateZoomLevel(distanceRadius));
     setLocationEnabled(true);
     setSnackbar({
       open: true,
@@ -200,6 +225,7 @@ const PublicGroups = () => {
       
       setCustomSearchLocation(searchLocation);
       setMapCenter(searchLocation);
+      setMapZoom(calculateZoomLevel(distanceRadius));
       setLocationEnabled(true);
       setSearchAddress(place.formatted_address || place.name || '');
       setSnackbar({
@@ -285,9 +311,27 @@ const PublicGroups = () => {
               <GoogleMap
                 mapContainerStyle={mapContainerStyle}
                 center={mapCenter || { lat: 0, lng: 0 }}
-                zoom={mapCenter ? 12 : 2}
+                zoom={mapCenter ? mapZoom : 2}
                 onClick={handleMapClick}
+                onLoad={(map) => { mapRef.current = map; }}
               >
+                {/* Show radius circle when location is enabled */}
+                {(customSearchLocation || (locationEnabled && userLocation)) && (
+                  <Circle
+                    center={{
+                      lat: (customSearchLocation?.latitude ?? userLocation?.latitude) || 0,
+                      lng: (customSearchLocation?.longitude ?? userLocation?.longitude) || 0,
+                    }}
+                    radius={distanceRadius * 1000} // Convert km to meters
+                    options={{
+                      fillColor: '#4A90E2',
+                      fillOpacity: 0.15,
+                      strokeColor: '#4A90E2',
+                      strokeOpacity: 0.5,
+                      strokeWeight: 2,
+                    }}
+                  />
+                )}
                 {customSearchLocation && (
                   <Marker
                     position={{
