@@ -681,6 +681,26 @@
     "allSports": "Tous les sports",
     "urgent": "Urgent",
     "youCannotRespondToOwnRequest": "Vous ne pouvez pas répondre à votre propre demande",
-    "alreadyResponded": "Vous avez déjà répondu à cette demande"
+    "alreadyResponded": "Vous avez déjà répondu à cette demande",
+    "activityDetails": "Détails de l'activité",
+    "details": "Détails",
+    "chat": "Discussion",
+    "description": "Description",
+    "city": "Ville",
+    "spotsFilled": "Places occupées",
+    "allSpotsFilled": "Toutes les places sont occupées !",
+    "expressInterest": "Montrer votre intérêt",
+    "tellThemWhy": "Dites-leur pourquoi vous seriez un bon choix...",
+    "pendingResponses": "réponses en attente",
+    "beTheFirst": "Soyez le premier à répondre !",
+    "noComments": "Pas encore de commentaires",
+    "startConversation": "Commencez la conversation !",
+    "typeMessage": "Tapez un message...",
+    "commentAdded": "Commentaire ajouté avec succès",
+    "commentError": "Échec de l'ajout du commentaire",
+    "commentDeleted": "Commentaire supprimé avec succès",
+    "commentDeleteError": "Échec de la suppression du commentaire",
+    "confirmDeleteComment": "Êtes-vous sûr de vouloir supprimer ce commentaire ?",
+    "loadingError": "Échec du chargement des détails de l'activité"
   }
 }

@@ -181,6 +181,9 @@ export const teamUpAPI = {
   respond: (id: string | number, message?: string) => api.post(`/teamup/${id}/respond`, { message }),
   handleResponse: (id: string | number, responseId: string | number, action: 'accept' | 'decline') => 
     api.post(`/teamup/${id}/responses/${responseId}`, { action }),
+  getComments: (id: string | number) => api.get(`/teamup/${id}/comments`),
+  addComment: (id: string | number, content: string) => api.post(`/teamup/${id}/comments`, { content }),
+  deleteComment: (id: string | number, commentId: string | number) => api.delete(`/teamup/${id}/comments/${commentId}`),
 };
 
 export default api;
