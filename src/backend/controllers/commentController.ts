@@ -24,7 +24,7 @@ export const createComment = asyncHandler(async (req: Request, res: Response) =>
       group: {
         members: {
           some: {
-            userId: req.user.id
+            userId: (req.user as any).id
           }
         }
       }
@@ -69,7 +69,7 @@ export const createComment = asyncHandler(async (req: Request, res: Response) =>
     data: {
       content: sanitizedContent,
       eventId,
-      userId: req.user.id,
+      userId: (req.user as any).id,
       parentId: parentId || null
     },
     include: {
@@ -105,7 +105,7 @@ export const createComment = asyncHandler(async (req: Request, res: Response) =>
       const mentionLower = mention.toLowerCase();
       const mentionedMember = membersByName.get(mentionLower) || membersByEmail.get(mentionLower);
       
-      if (mentionedMember && mentionedMember.user.id !== req.user.id) {
+      if (mentionedMember && mentionedMember.user.id !== (req.user as any).id) {
         mentionedUsers.add(mentionedMember.user);
       }
     }
@@ -130,7 +130,7 @@ export const createComment = asyncHandler(async (req: Request, res: Response) =>
           user.email,
           'commentMention',
           user.name,
-          req.user.name,
+          (req.user as any).name,
           event.title,
           content
         );
@@ -152,7 +152,7 @@ export const getEventComments = asyncHandler(async (req: Request, res: Response)
       group: {
         members: {
           some: {
-            userId: req.user.id
+            userId: (req.user as any).id
           }
         }
       }
@@ -220,7 +220,7 @@ export const updateComment = asyncHandler(async (req: Request, res: Response) =>
     throw new NotFoundError('Comment not found');
   }
 
-  if (existingComment.userId !== req.user.id) {
+  if (existingComment.userId !== (req.user as any).id) {
     throw new ForbiddenError('You can only edit your own comments');
   }
 
@@ -250,7 +250,7 @@ export const deleteComment = asyncHandler(async (req: Request, res: Response) =>
     throw new NotFoundError('Comment not found');
   }
 
-  if (comment.userId !== req.user.id) {
+  if (comment.userId !== (req.user as any).id) {
     throw new ForbiddenError('You can only delete your own comments');
   }
 

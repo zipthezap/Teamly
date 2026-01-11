@@ -30,7 +30,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
     if (!UPLOAD_CONFIG.ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       logger.warn('Invalid file MIME type', 'UploadMiddleware', { 
         mimetype: file.mimetype,
-        userId: req.user?.id 
+        userId: (req.user as any)?.id 
       });
       return cb(new Error('Invalid file type. Only JPEG, PNG, and WebP images are allowed.'));
     }
@@ -40,7 +40,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
     if (!UPLOAD_CONFIG.ALLOWED_EXTENSIONS.includes(ext)) {
       logger.warn('Invalid file extension', 'UploadMiddleware', { 
         extension: ext,
-        userId: req.user?.id 
+        userId: (req.user as any)?.id 
       });
       return cb(new Error('Invalid file extension. Only .jpg, .jpeg, .png, and .webp are allowed.'));
     }
@@ -50,7 +50,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
     if (sanitizedOriginalName !== file.originalname) {
       logger.warn('Attempted path traversal in filename', 'UploadMiddleware', { 
         originalname: file.originalname,
-        userId: req.user?.id 
+        userId: (req.user as any)?.id 
       });
       return cb(new Error('Invalid filename.'));
     }
@@ -84,7 +84,7 @@ const multerErrorHandler = (uploadMiddleware: RequestHandler): RequestHandler =>
         logger.warn('Multer error', 'UploadMiddleware', { 
           error: error.message, 
           code: error.code,
-          userId: req.user?.id 
+          userId: (req.user as any)?.id 
         });
         
         if (error.code === 'LIMIT_FILE_SIZE') {
@@ -105,7 +105,7 @@ const multerErrorHandler = (uploadMiddleware: RequestHandler): RequestHandler =>
       }
       
       if (error) {
-        logger.error('Upload error', 'UploadMiddleware', { error, userId: req.user?.id });
+        logger.error('Upload error', 'UploadMiddleware', { error, userId: (req.user as any)?.id });
         return res.status(400).json({ error: error.message || 'File upload failed.' });
       }
       

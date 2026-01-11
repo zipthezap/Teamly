@@ -39,7 +39,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
         callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/api/auth/google/callback',
         scope: ['profile', 'email']
       },
-      async (accessToken, refreshToken, profile, done) => {
+      async (_accessToken, _refreshToken, profile, done) => {
         try {
           const email = profile.emails?.[0]?.value;
           
@@ -110,7 +110,7 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
         callbackURL: process.env.FACEBOOK_CALLBACK_URL || 'http://localhost:3000/api/auth/facebook/callback',
         profileFields: ['id', 'emails', 'name', 'displayName']
       },
-      async (accessToken, refreshToken, profile, done) => {
+      async (_accessToken, _refreshToken, profile, done) => {
         try {
           const email = profile.emails?.[0]?.value;
           

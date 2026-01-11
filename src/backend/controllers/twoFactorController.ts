@@ -10,7 +10,7 @@ import { logger } from '../utils/logger';
 
 // Setup 2FA - Generate secret and QR code
 export const setup2FA = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user.id;
+  const userId = (req.user as any).id;
 
   // Check if 2FA is already enabled
   const user = await prisma.user.findUnique({
@@ -55,7 +55,7 @@ export const setup2FA = asyncHandler(async (req: Request, res: Response) => {
 
 // Verify and enable 2FA
 export const verify2FA = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user.id;
+  const userId = (req.user as any).id;
   const { token } = req.body;
 
   if (!token) {
@@ -98,7 +98,7 @@ export const verify2FA = asyncHandler(async (req: Request, res: Response) => {
 
 // Disable 2FA
 export const disable2FA = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user.id;
+  const userId = (req.user as any).id;
   const { password } = req.body;
 
   if (!password) {
@@ -175,7 +175,7 @@ export const validate2FAToken = async (userId: string, token: string): Promise<a
 
 // Get 2FA status
 export const get2FAStatus = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user.id;
+  const userId = (req.user as any).id;
   
   const user = await prisma.user.findUnique({
     where: { id: userId },
