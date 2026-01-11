@@ -4,17 +4,17 @@ import { asyncHandler } from '../middleware/asyncHandler';
 
 export const getNotificationPreferences = asyncHandler(async (req: Request, res: Response) => {
   let prefs = await prisma.emailPreference.findUnique({
-    where: { userId: req.user.id },
+    where: { userId: (req.user as any).id },
   });
   if (!prefs) {
-    prefs = await prisma.emailPreference.create({ data: { userId: req.user.id } });
+    prefs = await prisma.emailPreference.create({ data: { userId: (req.user as any).id } });
   }
   res.json(prefs);
 });
 
 export const updateNotificationPreferences = asyncHandler(async (req: Request, res: Response) => {
   const prefs = await prisma.emailPreference.update({
-    where: { userId: req.user.id },
+    where: { userId: (req.user as any).id },
     data: req.body,
   });
   res.json(prefs);

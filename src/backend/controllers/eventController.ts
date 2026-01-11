@@ -58,7 +58,7 @@ export const createEvent = async (req: Request, res: Response) => {
     }
 
     // Check if user is admin of the group
-    const isAdmin = await groupService.checkGroupAdmin(groupId, req.user.id);
+    const isAdmin = await groupService.checkGroupAdmin(groupId, (req.user as any).id);
     if (!isAdmin) {
       return res.status(403).json({ error: 'Only group admins can create events for this group' });
     }
@@ -75,7 +75,7 @@ export const createEvent = async (req: Request, res: Response) => {
     const event = await prisma.event.create({
       data: {
         groupId,
-        creatorId: req.user.id,
+        creatorId: (req.user as any).id,
         title: sanitized.title!,
         description: sanitized.description,
         eventType: sanitized.eventType! as SportType,
@@ -96,7 +96,7 @@ export const createEvent = async (req: Request, res: Response) => {
         inviteToken,
         participants: {
           create: {
-            userId: req.user.id,
+            userId: (req.user as any).id,
             status: EventParticipantStatus.confirmed
           }
         }
@@ -126,8 +126,8 @@ export const createEvent = async (req: Request, res: Response) => {
     const enrichedEvent = locationService.enrichWithLocationInfo(event);
 
     // Send global notification to group members (except creator)
-    const memberIds = group.members.map(m => m.user.id).filter(uid => uid !== req.user.id);
-    await eventService.createEventNotifications(group.id, event.title, req.user.name, group.name, memberIds);
+    const memberIds = group.members.map(m => m.user.id).filter(uid => uid !== (req.user as any).id);
+    await eventService.createEventNotifications(group.id, event.title, (req.user as any).name, group.name, memberIds);
 
     res.status(201).json(enrichedEvent);
   } catch (error) {
@@ -141,7 +141,7 @@ export const getEvents = async (req: Request, res: Response) => {
     const { groupId, search, eventType, startDate, endDate, location, status, archived } = req.query;
 
     // Build where filter using service
-    const where = eventService.buildEventFilters(req.user.id, {
+    const where = eventService.buildEventFilters((req.user as any).id, {
       groupId: groupId as string,
       search: search as string,
       eventType: eventType as string,
@@ -187,7 +187,7 @@ export const getEvents = async (req: Request, res: Response) => {
     // 1. Events user joined + private (from groups user is in)
     // 2. Events user joined + public
     // 3. Other events (not joined)
-    const userId = req.user.id;
+    const userId = (req.user as any).id;
     
     // Pre-compute joined status for efficiency using Set for O(1) lookups
     const eventsWithJoinStatus = events.map(event => {
@@ -240,7 +240,7 @@ export const getEvent = async (req: Request, res: Response) => {
         group: {
           members: {
             some: {
-              userId: req.user.id
+              userId: (req.user as any).id
             }
           }
         }
@@ -356,7 +356,7 @@ export const updateEvent = async (req: Request, res: Response) => {
       }
     });
 
-    if (!event || event.creatorId !== req.user.id) {
+    if (!event || event.creatorId !== (req.user as any).id) {
       return res.status(403).json({ error: 'Only the event creator can update it' });
     }
 
@@ -410,7 +410,7 @@ export const updateEvent = async (req: Request, res: Response) => {
     // Send email notifications to participants
     await eventService.sendEventEmailNotifications(
       (updatedEvent as any).participants,
-      req.user.id,
+      (req.user as any).id,
       'eventUpdates',
       'eventUpdate',
       updatedEvent.title,
@@ -450,14 +450,14 @@ export const deleteEvent = async (req: Request, res: Response) => {
       }
     });
 
-    if (!event || event.creatorId !== req.user.id) {
+    if (!event || event.creatorId !== (req.user as any).id) {
       return res.status(403).json({ error: 'Only the event creator can delete it' });
     }
 
     // Send email notifications to participants
     await eventService.sendEventEmailNotifications(
       event.participants,
-      req.user.id,
+      (req.user as any).id,
       'eventCancellations',
       'eventCancellation',
       event.title,
@@ -488,7 +488,7 @@ export const joinEvent = async (req: Request, res: Response) => {
           group: {
             members: {
               some: {
-                userId: req.user.id
+                userId: (req.user as any).id
               }
             }
           }
@@ -509,7 +509,7 @@ export const joinEvent = async (req: Request, res: Response) => {
         where: {
           eventId_userId: {
             eventId: id,
-            userId: req.user.id
+            userId: (req.user as any).id
           }
         }
       });
@@ -541,7 +541,7 @@ export const joinEvent = async (req: Request, res: Response) => {
       const participant = await tx.eventParticipant.create({
         data: {
           eventId: id,
-          userId: req.user.id,
+          userId: (req.user as any).id,
           status: 'confirmed'
         }
       });
@@ -550,10 +550,10 @@ export const joinEvent = async (req: Request, res: Response) => {
       await tx.eventNotification.create({
         data: {
           eventId: id,
-          userId: req.user.id,
+          userId: (req.user as any).id,
           type: 'join',
           params: {
-            name: req.user.name,
+            name: (req.user as any).name,
             eventTitle: event.title
           }
         }
@@ -607,7 +607,7 @@ export const leaveEvent = async (req: Request, res: Response) => {
     const participant = await prisma.eventParticipant.findFirst({
       where: {
         eventId: id,
-        userId: req.user.id
+        userId: (req.user as any).id
       }
     });
 
@@ -624,7 +624,7 @@ export const leaveEvent = async (req: Request, res: Response) => {
       prisma.eventAttendance.deleteMany({
         where: {
           eventId: id,
-          userId: req.user.id
+          userId: (req.user as any).id
         }
       })
     ]);
@@ -640,10 +640,10 @@ export const leaveEvent = async (req: Request, res: Response) => {
       await prisma.eventNotification.create({
         data: {
           eventId: id,
-          userId: req.user.id,
+          userId: (req.user as any).id,
           type: 'leave',
           params: {
-            name: req.user.name,
+            name: (req.user as any).name,
             eventTitle: leftEvent.title
           }
         }
@@ -669,7 +669,7 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
     const participant = await prisma.eventParticipant.findFirst({
       where: {
         eventId: id,
-        userId: req.user.id
+        userId: (req.user as any).id
       }
     });
 
@@ -697,10 +697,10 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
         await prisma.eventNotification.create({
           data: {
             eventId: id,
-            userId: req.user.id,
+            userId: (req.user as any).id,
             type: status,
             params: {
-              name: req.user.name,
+              name: (req.user as any).name,
               eventTitle: statusEvent.title
             }
           }
@@ -728,7 +728,7 @@ export const getRecurringEventInstances = async (req: Request, res: Response) =>
         group: {
           members: {
             some: {
-              userId: req.user.id
+              userId: (req.user as any).id
             }
           }
         }
@@ -811,7 +811,7 @@ export const addRecurringEventException = async (req: Request, res: Response) =>
       where: { id }
     });
 
-    if (!event || event.creatorId !== req.user.id) {
+    if (!event || event.creatorId !== (req.user as any).id) {
       return res.status(403).json({ error: 'Only the event creator can add exceptions' });
     }
 
@@ -839,7 +839,7 @@ export const removeRecurringEventException = async (req: Request, res: Response)
       where: { id }
     });
 
-    if (!event || event.creatorId !== req.user.id) {
+    if (!event || event.creatorId !== (req.user as any).id) {
       return res.status(403).json({ error: 'Only the event creator can remove exceptions' });
     }
 
@@ -870,7 +870,7 @@ export const removeRecurringEventException = async (req: Request, res: Response)
 // Get user event statistics
 export const getUserStatistics = async (req: Request, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = (req.user as any).id;
     const now = new Date();
 
     // Get all events where user is a participant
@@ -969,7 +969,7 @@ export const archiveEvent = async (req: Request, res: Response) => {
       where: { id }
     });
 
-    if (!event || event.creatorId !== req.user.id) {
+    if (!event || event.creatorId !== (req.user as any).id) {
       return res.status(403).json({ error: 'Only the event creator can archive it' });
     }
 
@@ -995,7 +995,7 @@ export const unarchiveEvent = async (req: Request, res: Response) => {
       where: { id }
     });
 
-    if (!event || event.creatorId !== req.user.id) {
+    if (!event || event.creatorId !== (req.user as any).id) {
       return res.status(403).json({ error: 'Only the event creator can unarchive it' });
     }
 
@@ -1037,7 +1037,7 @@ export const updateEventStatus = async (req: Request, res: Response) => {
       }
     });
 
-    if (!event || event.creatorId !== req.user.id) {
+    if (!event || event.creatorId !== (req.user as any).id) {
       return res.status(403).json({ error: 'Only the event creator can update event status' });
     }
 
@@ -1048,7 +1048,7 @@ export const updateEventStatus = async (req: Request, res: Response) => {
 
     // Create notifications for participants about status change
     const participantIds = event.participants
-      .filter(p => p.userId !== req.user.id)
+      .filter(p => p.userId !== (req.user as any).id)
       .map(p => p.userId);
     
     await Promise.all(participantIds.map(userId =>
@@ -1058,7 +1058,7 @@ export const updateEventStatus = async (req: Request, res: Response) => {
           userId,
           type: 'status_change',
           params: {
-            name: req.user.name,
+            name: (req.user as any).name,
             eventTitle: event.title,
             newStatus: status,
             oldStatus: event.status
@@ -1088,7 +1088,7 @@ export const getEventActivityFeed = async (req: Request, res: Response) => {
         group: {
           members: {
             some: {
-              userId: req.user.id
+              userId: (req.user as any).id
             }
           }
         }
@@ -1190,7 +1190,7 @@ export const generateInviteToken = async (req: Request, res: Response) => {
       where: { id }
     });
 
-    if (!event || event.creatorId !== req.user.id) {
+    if (!event || event.creatorId !== (req.user as any).id) {
       return res.status(403).json({ error: 'Only the event creator can generate invite links' });
     }
 
@@ -1377,7 +1377,7 @@ export const getNearbyEvents = async (req: Request, res: Response) => {
  */
 export const exportEvents = async (req: Request, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = (req.user as any).id;
     const format = (req.query.format as string)?.toLowerCase() || 'csv';
     
     // Validate format

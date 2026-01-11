@@ -154,10 +154,15 @@ datasource db {
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
-  password  String
+  password  String?
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+  // OAuth fields
+  googleId    String?  @unique
+  facebookId  String?  @unique
+  authProvider String? // 'local', 'google', 'facebook'
   
   // Two-Factor Authentication fields
   twoFactorEnabled  Boolean  @default(false)
@@ -218,6 +223,8 @@ model User {
   @@index([passwordResetToken]) // For password reset lookups
   @@index([city, country]) // For location-based queries
   @@index([createdAt, deletedAt]) // Example composite index for queries
+  @@index([googleId]) // For OAuth lookups
+  @@index([facebookId]) // For OAuth lookups
 }
 
 model Group {

@@ -4,6 +4,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import path from 'path';
+import session from 'express-session';
+import passport from './config/passport';
 
 import authRoutes from './routes/authRoutes';
 import groupRoutes from './routes/groupRoutes';
@@ -99,6 +101,22 @@ app.use(cors(corsOptions));
 // Security: Limit request body size to prevent DoS attacks
 app.use(express.json({ limit: config.requestBodySizeLimit }));
 app.use(express.urlencoded({ extended: true, limit: config.requestBodySizeLimit }));
+
+// Session middleware for OAuth (required by passport)
+app.use(session({
+  secret: process.env.JWT_SECRET || 'your-session-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 1000 * 60 * 60 // 1 hour
+  }
+}));
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Sanitize all incoming data to prevent XSS
 app.use(sanitizeInput);

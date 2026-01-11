@@ -2,13 +2,14 @@ import { Request, Response, NextFunction } from 'express';
 import { verifyToken, isTokenRevoked } from '../utils/jwt';
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
-import { PublicUser } from '../../shared/types';
 
-// Extend Express Request type to include user property
+// Note: We don't need to extend Express.Request.user here
+// because passport already does it. We just cast it to PublicUser when needed.
+
+// Extend Express Request type to include token property
 declare global {
   namespace Express {
     interface Request {
-      user?: PublicUser;
       token?: string; // Store token for potential revocation
     }
   }
@@ -49,7 +50,7 @@ const authMiddleware = async (req: Request, res: Response, next: NextFunction): 
       return;
     }
 
-    req.user = user;
+    req.user = user as any;
     req.token = token; // Store for potential logout/revocation
     next();
   } catch (error) {
@@ -94,7 +95,7 @@ export const optionalAuthMiddleware = async (req: Request, _res: Response, next:
 
     // If user is found, attach to request
     if (user) {
-      req.user = user;
+      req.user = user as any;
       req.token = token;
     }
     

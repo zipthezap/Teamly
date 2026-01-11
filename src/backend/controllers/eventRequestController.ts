@@ -73,7 +73,7 @@ export const createEventRequest = async (req: Request, res: Response) => {
     const membership = await prisma.groupMember.findFirst({
       where: {
         groupId: groupId,
-        userId: req.user.id
+        userId: (req.user as any).id
       }
     });
 
@@ -84,7 +84,7 @@ export const createEventRequest = async (req: Request, res: Response) => {
     const eventRequest = await prisma.eventRequest.create({
       data: {
         groupId,
-        creatorId: req.user.id,
+        creatorId: (req.user as any).id,
         title: sanitized.title!,
         description: sanitized.description,
         eventType: sanitized.eventType!,
@@ -126,7 +126,7 @@ export const getEventRequests = async (req: Request, res: Response) => {
     const membership = await prisma.groupMember.findFirst({
       where: {
         groupId: groupId,
-        userId: req.user.id
+        userId: (req.user as any).id
       }
     });
 
@@ -199,7 +199,7 @@ export const getEventRequest = async (req: Request, res: Response) => {
     const membership = await prisma.groupMember.findFirst({
       where: {
         groupId: eventRequest.groupId,
-        userId: req.user.id
+        userId: (req.user as any).id
       }
     });
 
@@ -250,7 +250,7 @@ export const voteOnEventRequest = async (req: Request, res: Response) => {
     const membership = await prisma.groupMember.findFirst({
       where: {
         groupId: eventRequest.groupId,
-        userId: req.user.id
+        userId: (req.user as any).id
       }
     });
 
@@ -262,7 +262,7 @@ export const voteOnEventRequest = async (req: Request, res: Response) => {
     const existingVote = await prisma.eventVote.findFirst({
       where: {
         eventRequestId: id,
-        userId: req.user.id
+        userId: (req.user as any).id
       }
     });
 
@@ -284,7 +284,7 @@ export const voteOnEventRequest = async (req: Request, res: Response) => {
     const newVote = await prisma.eventVote.create({
       data: {
         eventRequestId: id,
-        userId: req.user.id,
+        userId: (req.user as any).id,
         vote
       },
       include: {
@@ -326,7 +326,7 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
     const membership = await prisma.groupMember.findFirst({
       where: {
         groupId: eventRequest.groupId,
-        userId: req.user.id,
+        userId: (req.user as any).id,
         role: 'admin'
       }
     });
@@ -450,7 +450,7 @@ export const cancelEventRequest = async (req: Request, res: Response) => {
     const membership = await prisma.groupMember.findFirst({
       where: {
         groupId: eventRequest.groupId,
-        userId: req.user.id,
+        userId: (req.user as any).id,
         role: 'admin'
       }
     });
@@ -506,7 +506,7 @@ export const getEventRequestStatistics = async (req: Request, res: Response) => 
     const membership = await prisma.groupMember.findFirst({
       where: {
         groupId: eventRequest.groupId,
-        userId: req.user.id
+        userId: (req.user as any).id
       }
     });
 

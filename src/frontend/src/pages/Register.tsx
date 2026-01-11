@@ -11,8 +11,11 @@ import {
   Typography,
   Box,
   Alert,
+  Divider,
 } from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import GoogleIcon from '@mui/icons-material/Google';
+import FacebookIcon from '@mui/icons-material/Facebook';
 import { StyledLink } from '../components/common';
 
 const Register = () => {
@@ -27,6 +30,19 @@ const Register = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
+
+  const handleOAuthSignup = (provider: 'google' | 'facebook') => {
+    const params = new URLSearchParams(location.search);
+    const inviteGroupId = params.get('invite');
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    
+    const authUrl = new URL(`/api/auth/${provider}`, apiUrl);
+    if (inviteGroupId) {
+      authUrl.searchParams.set('inviteGroupId', inviteGroupId);
+    }
+    
+    window.location.href = authUrl.toString();
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -91,6 +107,35 @@ const Register = () => {
               {error}
             </Alert>
           )}
+
+          <Box sx={{ width: '100%', mb: 3 }}>
+            <Button
+              variant="outlined"
+              fullWidth
+              size="large"
+              startIcon={<GoogleIcon />}
+              onClick={() => handleOAuthSignup('google')}
+              sx={{ mb: 1, textTransform: 'none' }}
+            >
+              {t('auth.signUpWithGoogle') || 'Sign up with Google'}
+            </Button>
+            <Button
+              variant="outlined"
+              fullWidth
+              size="large"
+              startIcon={<FacebookIcon />}
+              onClick={() => handleOAuthSignup('facebook')}
+              sx={{ textTransform: 'none' }}
+            >
+              {t('auth.signUpWithFacebook') || 'Sign up with Facebook'}
+            </Button>
+          </Box>
+
+          <Divider sx={{ width: '100%', mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              {t('auth.orContinueWith') || 'Or continue with email'}
+            </Typography>
+          </Divider>
 
           <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
             <TextField

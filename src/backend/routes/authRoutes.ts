@@ -3,6 +3,14 @@ import * as authController from '../controllers/authController';
 import authMiddleware from '../middleware/auth';
 import { authLimiter, uploadLimiter } from '../middleware/rateLimiter';
 import { uploadProfilePicture } from '../middleware/upload';
+import passport from '../config/passport';
+
+// Extend session type to include inviteGroupId
+declare module 'express-session' {
+  interface SessionData {
+    inviteGroupId?: string;
+  }
+}
 
 const router = Router();
 
@@ -12,6 +20,45 @@ router.post('/login', authLimiter, authController.login);
 router.post('/logout', authMiddleware, authController.logout);
 router.post('/logout-all', authMiddleware, authController.logoutAll);
 router.post('/refresh-token', authLimiter, authController.refreshToken);
+
+// OAuth routes
+// Google OAuth
+router.get('/google', (req, res, next) => {
+  // Store invite group ID in session if provided
+  const inviteGroupId = req.query.inviteGroupId as string;
+  if (inviteGroupId && req.session) {
+    req.session.inviteGroupId = inviteGroupId;
+  }
+  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+});
+
+router.get(
+  '/google/callback',
+  passport.authenticate('google', { 
+    session: false,
+    failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/login?error=google_auth_failed` 
+  }),
+  authController.oauthCallback
+);
+
+// Facebook OAuth
+router.get('/facebook', (req, res, next) => {
+  // Store invite group ID in session if provided
+  const inviteGroupId = req.query.inviteGroupId as string;
+  if (inviteGroupId && req.session) {
+    req.session.inviteGroupId = inviteGroupId;
+  }
+  passport.authenticate('facebook', { scope: ['email'] })(req, res, next);
+});
+
+router.get(
+  '/facebook/callback',
+  passport.authenticate('facebook', { 
+    session: false,
+    failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/login?error=facebook_auth_failed` 
+  }),
+  authController.oauthCallback
+);
 
 // Email verification
 router.post('/verify-email', authLimiter, authController.verifyEmail);

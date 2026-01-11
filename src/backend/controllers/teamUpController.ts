@@ -68,7 +68,7 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
 
     const teamUpRequest = await prisma.teamUpRequest.create({
       data: {
-        creatorId: req.user.id,
+        creatorId: (req.user as any).id,
         title: sanitized.title!,
         description: sanitized.description,
         sportType: sanitized.sportType!,
@@ -218,7 +218,7 @@ export const getMyTeamUpRequests = async (req: Request, res: Response) => {
     const { status } = req.query;
 
     const where: any = {
-      creatorId: req.user.id
+      creatorId: (req.user as any).id
     };
 
     if (status) {
@@ -347,7 +347,7 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'TeamUp request not found' });
     }
 
-    if (teamUpRequest.creatorId !== req.user.id) {
+    if (teamUpRequest.creatorId !== (req.user as any).id) {
       return res.status(403).json({ error: 'Only the creator can update this request' });
     }
 
@@ -450,7 +450,7 @@ export const deleteTeamUpRequest = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'TeamUp request not found' });
     }
 
-    if (teamUpRequest.creatorId !== req.user.id) {
+    if (teamUpRequest.creatorId !== (req.user as any).id) {
       return res.status(403).json({ error: 'Only the creator can delete this request' });
     }
 
@@ -499,7 +499,7 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'This TeamUp request is no longer accepting responses' });
     }
 
-    if (teamUpRequest.creatorId === req.user.id) {
+    if (teamUpRequest.creatorId === (req.user as any).id) {
       return res.status(400).json({ error: 'You cannot respond to your own TeamUp request' });
     }
 
@@ -507,7 +507,7 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
     const existingResponse = await prisma.teamUpResponse.findFirst({
       where: {
         teamUpRequestId: id,
-        userId: req.user.id
+        userId: (req.user as any).id
       }
     });
 
@@ -518,7 +518,7 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
     const response = await prisma.teamUpResponse.create({
       data: {
         teamUpRequestId: id,
-        userId: req.user.id,
+        userId: (req.user as any).id,
         message: sanitized.message,
         status: 'pending'
       },
@@ -542,14 +542,14 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
           teamUpRequestId: id,
           type: 'teamup_response',
           params: {
-            name: req.user.name,
+            name: (req.user as any).name,
             title: teamUpRequest.title,
             sportType: teamUpRequest.sportType
           },
           metadata: {
             responseId: response.id,
-            responderId: req.user.id,
-            responderName: req.user.name
+            responderId: (req.user as any).id,
+            responderName: (req.user as any).name
           }
         }
       });
@@ -558,7 +558,7 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
       const emailHtml = `
         <h2>New Response to Your TeamUp Request</h2>
         <p>Hi ${teamUpRequest.creator.name},</p>
-        <p><strong>${req.user.name}</strong> has responded to your TeamUp request:</p>
+        <p><strong>${(req.user as any).name}</strong> has responded to your TeamUp request:</p>
         <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0;">
           <h3 style="margin-top: 0;">${teamUpRequest.title}</h3>
           <p><strong>Sport:</strong> ${teamUpRequest.sportType}</p>
@@ -616,7 +616,7 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'TeamUp request not found' });
     }
 
-    if (teamUpRequest.creatorId !== req.user.id) {
+    if (teamUpRequest.creatorId !== (req.user as any).id) {
       return res.status(403).json({ error: 'Only the creator can manage responses' });
     }
 
@@ -751,7 +751,7 @@ export const getMyTeamUpResponses = async (req: Request, res: Response) => {
     const responses = await prisma.teamUpResponse.findMany({
       where: {
         teamUpRequest: {
-          creatorId: req.user.id
+          creatorId: (req.user as any).id
         }
       },
       include: {
