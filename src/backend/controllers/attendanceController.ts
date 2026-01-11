@@ -23,7 +23,11 @@ export const markAttendance = asyncHandler(async (req: Request, res: Response) =
   // Check if event exists
   const event = await prisma.event.findUnique({
     where: { id: eventId },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      creatorId: true,
+      startTime: true,
       participants: {
         where: { userId: targetUserId }
       }
@@ -219,7 +223,7 @@ export const getAttendanceStats = asyncHandler(async (req: Request, res: Respons
       onTime: onTimeCount,
       late: lateCount,
       noShow: noShowCount,
-      attendanceRate: totalParticipants > 0 ? ((onTimeCount + lateCount) / totalParticipants * 100).toFixed(1) : '0.0'
+      attendanceRate: totalParticipants > 0 ? parseFloat(((onTimeCount + lateCount) / totalParticipants * 100).toFixed(1)) : 0
     }
   });
 });

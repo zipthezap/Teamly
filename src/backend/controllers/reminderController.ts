@@ -292,7 +292,8 @@ export const updateReminder = asyncHandler(async (req: Request, res: Response) =
     throw new BadRequestError('A reminder for this time already exists');
   }
 
-  // Delete old reminder and create new one (due to composite unique constraint)
+  // Delete old reminder and create new one (due to composite unique constraint on eventId, userId, remindAt)
+  // Direct update is not possible when changing remindAt because it's part of the unique constraint
   const [, updatedReminder] = await prisma.$transaction([
     prisma.eventReminder.delete({
       where: { id: reminderId }
