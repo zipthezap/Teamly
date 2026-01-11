@@ -1633,3 +1633,210 @@ export const getEventParticipantsByStatus = async (req: Request, res: Response) 
     res.status(500).json({ error: 'Failed to get event participants' });
   }
 };
+
+/**
+ * Update guest participant name
+ * Allows the event creator to update a guest's name
+ */
+export const updateGuestParticipant = async (req: Request, res: Response) => {
+  try {
+    const { id, guestId } = req.params;
+    const { name } = req.body;
+
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+
+    // Check if user is the creator of the event
+    const event = await prisma.event.findUnique({
+      where: { id }
+    });
+
+    if (!event || event.creatorId !== (req.user as any).id) {
+      return res.status(403).json({ error: 'Only the event creator can update guest participants' });
+    }
+
+    // Verify guest participant belongs to this event
+    const guestParticipant = await prisma.guestParticipant.findFirst({
+      where: {
+        id: guestId,
+        eventId: id
+      }
+    });
+
+    if (!guestParticipant) {
+      return res.status(404).json({ error: 'Guest participant not found' });
+    }
+
+    // Update guest participant name
+    const updatedGuest = await prisma.guestParticipant.update({
+      where: { id: guestId },
+      data: { name: name.trim() }
+    });
+
+    res.json(updatedGuest);
+  } catch (error) {
+    logger.error('Update guest participant error', 'EventController', { error });
+    res.status(500).json({ error: 'Failed to update guest participant' });
+  }
+};
+
+/**
+ * Update guest participant status
+ * Allows the event creator to update a guest's status (confirmed/declined)
+ */
+export const updateGuestParticipantStatus = async (req: Request, res: Response) => {
+  try {
+    const { id, guestId } = req.params;
+    const { status } = req.body;
+
+    // Validate status
+    const validStatuses = Object.values(GuestParticipantStatus);
+    if (!status || !validStatuses.includes(status as GuestParticipantStatus)) {
+      return res.status(400).json({ 
+        error: 'Invalid status. Must be one of: confirmed, declined' 
+      });
+    }
+
+    // Check if user is the creator of the event
+    const event = await prisma.event.findUnique({
+      where: { id }
+    });
+
+    if (!event || event.creatorId !== (req.user as any).id) {
+      return res.status(403).json({ error: 'Only the event creator can update guest participant status' });
+    }
+
+    // Verify guest participant belongs to this event
+    const guestParticipant = await prisma.guestParticipant.findFirst({
+      where: {
+        id: guestId,
+        eventId: id
+      }
+    });
+
+    if (!guestParticipant) {
+      return res.status(404).json({ error: 'Guest participant not found' });
+    }
+
+    // Update guest participant status
+    const updatedGuest = await prisma.guestParticipant.update({
+      where: { id: guestId },
+      data: { status: status as GuestParticipantStatus }
+    });
+
+    res.json(updatedGuest);
+  } catch (error) {
+    logger.error('Update guest participant status error', 'EventController', { error });
+    res.status(500).json({ error: 'Failed to update guest participant status' });
+  }
+};
+
+/**
+ * Remove guest participant from event
+ * Allows the event creator to remove a guest participant
+ */
+export const removeGuestParticipant = async (req: Request, res: Response) => {
+  try {
+    const { id, guestId } = req.params;
+
+    // Check if user is the creator of the event
+    const event = await prisma.event.findUnique({
+      where: { id }
+    });
+
+    if (!event || event.creatorId !== (req.user as any).id) {
+      return res.status(403).json({ error: 'Only the event creator can remove guest participants' });
+    }
+
+    // Verify guest participant belongs to this event
+    const guestParticipant = await prisma.guestParticipant.findFirst({
+      where: {
+        id: guestId,
+        eventId: id
+      }
+    });
+
+    if (!guestParticipant) {
+      return res.status(404).json({ error: 'Guest participant not found' });
+    }
+
+    // Delete guest participant
+    await prisma.guestParticipant.delete({
+      where: { id: guestId }
+    });
+
+    res.json({ message: 'Guest participant removed successfully' });
+  } catch (error) {
+    logger.error('Remove guest participant error', 'EventController', { error });
+    res.status(500).json({ error: 'Failed to remove guest participant' });
+  }
+};
+
+/**
+ * Get all guest participants for an event
+ * Allows viewing guest participants with optional status filtering
+ */
+export const getGuestParticipants = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.query;
+
+    // Verify user is a member of the group that owns this event
+    const event = await prisma.event.findFirst({
+      where: {
+        id,
+        group: {
+          members: {
+            some: {
+              userId: (req.user as any).id
+            }
+          }
+        }
+      }
+    });
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Build where clause
+    const where: any = { eventId: id };
+    const validStatuses = Object.values(GuestParticipantStatus);
+    if (status && validStatuses.includes(status as GuestParticipantStatus)) {
+      where.status = status;
+    }
+
+    // Get guest participants
+    const guestParticipants = await prisma.guestParticipant.findMany({
+      where,
+      orderBy: {
+        joinedAt: 'asc'  // Use joinedAt index for sorting
+      }
+    });
+
+    // Get counts by status for summary
+    const statusCounts = await prisma.guestParticipant.groupBy({
+      by: ['status'],
+      where: { eventId: id },
+      _count: true
+    });
+
+    const summary = {
+      total: statusCounts.reduce((sum, sc) => sum + sc._count, 0),
+      filtered: guestParticipants.length,
+      byStatus: Object.fromEntries(
+        statusCounts.map(sc => [sc.status, sc._count])
+      )
+    };
+
+    res.json({
+      guestParticipants,
+      summary,
+      filter: status || 'all'
+    });
+  } catch (error) {
+    logger.error('Get guest participants error', 'EventController', { error });
+    res.status(500).json({ error: 'Failed to get guest participants' });
+  }
+};
