@@ -196,6 +196,10 @@ const EventRequests = () => {
     (m) => m.userId === user?.id && m.role === 'admin'
   );
 
+  const isMember = group?.members?.some(
+    (m) => m.userId === user?.id
+  );
+
   const getVotePercentage = (request) => {
     const total = request.yesVotes + request.noVotes;
     if (total === 0) return 0;
@@ -223,7 +227,7 @@ const EventRequests = () => {
             <div className="text-sm text-gray-400">{group.name}</div>
           )}
         </div>
-        {isAdmin && (
+        {isMember && (
           <button
             className="inline-flex items-center gap-2 px-4 py-2 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition text-sm"
             onClick={() => setCreateDialogOpen(true)}
@@ -239,8 +243,8 @@ const EventRequests = () => {
           <svg className="mx-auto mb-4 w-16 h-16 text-gray-300" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 17v-6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v6" /><path d="M12 19v2" /><circle cx="12" cy="12" r="10" /></svg>
           <div className="text-lg text-gray-400 font-semibold mb-2">{t('eventRequests.noRequests')}</div>
           <div className="text-sm text-gray-400">
-            {isAdmin
-              ? t('eventRequests.noRequestsAdmin')
+            {isMember
+              ? t('eventRequests.noRequestsMember')
               : t('eventRequests.noRequestsUser')}
           </div>
         </div>

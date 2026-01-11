@@ -262,6 +262,7 @@
       "createRequest": "Créer une demande d'événement",
       "noRequests": "Aucune demande d'événement pour le moment",
       "noRequestsAdmin": "Créez une demande d'événement pour que les membres puissent voter !",
+      "noRequestsMember": "Créez une demande d'événement pour que les autres membres puissent voter !",
       "noRequestsUser": "Revenez plus tard pour de nouvelles propositions d'événements",
       "failedToLoad": "Échec du chargement des demandes d'événement",
       "voteRecorded": "Vote enregistré avec succès",

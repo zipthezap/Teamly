@@ -264,7 +264,7 @@ Democratic event creation process where admins propose events and members vote b
 ### Technical Implementation
 - **Component**: `src/frontend/src/pages/EventRequests.js`
 - **API Endpoints**:
-  - `POST /api/event-requests` - Create (admin)
+  - `POST /api/event-requests` - Create (any group member)
   - `GET /api/event-requests/group/:groupId` - List
   - `GET /api/event-requests/:id` - Get details
   - `POST /api/event-requests/:id/vote` - Vote
