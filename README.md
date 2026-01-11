@@ -5,7 +5,9 @@ A sports event organization app that allows individuals to set and organize smal
 ## Features
 
 - **User Management**: Register and authenticate users with JWT tokens
+- **🔐 OAuth Authentication**: Sign in with Google or Facebook accounts
 - **Group Management**: Create groups, invite friends, and manage group members
+- **🔗 Group Invite Links**: Share invite links to let people join groups easily
 - **Event Management**: Create sports events with types (football, basketball, tennis, etc.)
 - **Event Participation**: Join/leave events, track participants, set max players
 - **Role-Based Access**: Admin and member roles for group management
