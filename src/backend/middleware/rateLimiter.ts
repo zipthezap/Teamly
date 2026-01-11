@@ -1,4 +1,6 @@
 import rateLimit from 'express-rate-limit';
+// Use the ipKeyGenerator helper from express-rate-limit for IPv6-safe IP keys
+const { ipKeyGenerator } = require('express-rate-limit');
 import { Request, Response } from 'express';
 import { logger } from '../utils/logger';
 
@@ -12,8 +14,8 @@ const authAwareKeyGenerator = (req: Request): string => {
   if (userId && typeof userId === 'string' && userId.length > 0) {
     return `user:${userId}`;
   }
-  // For unauthenticated requests, use IP
-  return `ip:${req.ip}`;
+  // For unauthenticated requests, use IPv6-safe IP key
+  return `ip:${ipKeyGenerator(req.ip)}`;
 };
 
 /**
@@ -55,7 +57,7 @@ export const authLimiter = rateLimit({
   legacyHeaders: false,
   handler: rateLimitHandler,
   // Use IP-based limiting for auth endpoints (users aren't authenticated yet)
-  keyGenerator: (req) => `auth:${req.ip}`,
+  keyGenerator: (req) => `auth:${ipKeyGenerator(req.ip)}`,
 });
 
 // Moderate limiter for authenticated routes
@@ -88,7 +90,7 @@ export const passwordResetLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: rateLimitHandler,
-  keyGenerator: (req) => `pwd-reset:${req.ip}`,
+  keyGenerator: (req) => `pwd-reset:${ipKeyGenerator(req.ip)}`,
 });
 
 // Limiter for email verification to prevent spam
@@ -99,5 +101,5 @@ export const emailVerificationLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: rateLimitHandler,
-  keyGenerator: (req) => `email-verify:${req.ip}`,
+  keyGenerator: (req) => `email-verify:${ipKeyGenerator(req.ip)}`,
 });

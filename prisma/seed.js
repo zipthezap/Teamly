@@ -218,7 +218,7 @@ async function main() {
       id: 'seed-event-alice-group-past',
       title: 'Morning Yoga Session',
       description: 'Relaxing morning yoga session at the park',
-      eventType: 'yoga',
+      eventType: 'other',
       location: 'Central Park Great Lawn',
       city: 'New York',
       country: 'USA',

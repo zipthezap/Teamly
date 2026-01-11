@@ -1,3 +1,39 @@
+-- CreateEnum
+CREATE TYPE "EventNotificationType" AS ENUM ('join', 'leave', 'late', 'confirmed', 'declined', 'status_change', 'comment', 'event_updated', 'event_cancelled');
+
+-- CreateEnum
+CREATE TYPE "GroupNotificationType" AS ENUM ('accepted', 'invited', 'join_request', 'event_created', 'nearby_created');
+
+-- CreateEnum
+CREATE TYPE "TeamUpNotificationType" AS ENUM ('teamup_response', 'teamup_accepted', 'teamup_declined', 'teamup_nearby');
+
+-- CreateEnum
+CREATE TYPE "EventParticipantStatus" AS ENUM ('pending', 'confirmed', 'declined');
+
+-- CreateEnum
+CREATE TYPE "GuestParticipantStatus" AS ENUM ('confirmed', 'declined');
+
+-- CreateEnum
+CREATE TYPE "EventStatus" AS ENUM ('upcoming', 'ongoing', 'completed', 'cancelled');
+
+-- CreateEnum
+CREATE TYPE "SportType" AS ENUM ('football', 'basketball', 'tennis', 'volleyball', 'running', 'cycling', 'swimming', 'other');
+
+-- CreateTable
+CREATE TABLE "UserProfilePicture" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "url" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "isCurrent" BOOLEAN NOT NULL DEFAULT false,
+    "deletedAt" TIMESTAMP(3),
+    "createdBy" TEXT,
+    "updatedBy" TEXT,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "UserProfilePicture_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateTable
 CREATE TABLE "GroupMessage" (
     "id" TEXT NOT NULL,
@@ -36,7 +72,7 @@ CREATE TABLE "EventNotification" (
     "id" TEXT NOT NULL,
     "eventId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "type" TEXT NOT NULL,
+    "type" "EventNotificationType" NOT NULL,
     "params" JSONB,
     "metadata" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -50,7 +86,7 @@ CREATE TABLE "GroupNotification" (
     "id" TEXT NOT NULL,
     "groupId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "type" TEXT NOT NULL,
+    "type" "GroupNotificationType" NOT NULL,
     "params" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "read" BOOLEAN NOT NULL DEFAULT false,
@@ -63,7 +99,7 @@ CREATE TABLE "TeamUpNotification" (
     "id" TEXT NOT NULL,
     "teamUpRequestId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "type" TEXT NOT NULL,
+    "type" "TeamUpNotificationType" NOT NULL,
     "params" JSONB,
     "metadata" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -76,10 +112,15 @@ CREATE TABLE "TeamUpNotification" (
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
-    "password" TEXT NOT NULL,
+    "password" TEXT,
     "name" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "googleId" TEXT,
+    "facebookId" TEXT,
+    "authProvider" TEXT,
+    "oauthProfilePicture" TEXT,
+    "lastOAuthSync" TIMESTAMP(3),
     "twoFactorEnabled" BOOLEAN NOT NULL DEFAULT false,
     "twoFactorSecret" TEXT,
     "twoFactorBackupCodes" TEXT[] DEFAULT ARRAY[]::TEXT[],
@@ -96,6 +137,9 @@ CREATE TABLE "User" (
     "postalCode" TEXT,
     "discoveryRadius" INTEGER DEFAULT 25,
     "profilePicture" TEXT,
+    "deletedAt" TIMESTAMP(3),
+    "createdBy" TEXT,
+    "updatedBy" TEXT,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -146,7 +190,7 @@ CREATE TABLE "Event" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
-    "eventType" TEXT NOT NULL,
+    "eventType" "SportType" NOT NULL,
     "location" TEXT,
     "latitude" DOUBLE PRECISION,
     "longitude" DOUBLE PRECISION,
@@ -159,7 +203,7 @@ CREATE TABLE "Event" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "archived" BOOLEAN NOT NULL DEFAULT false,
-    "status" TEXT NOT NULL DEFAULT 'upcoming',
+    "status" "EventStatus" NOT NULL DEFAULT 'upcoming',
     "isPublic" BOOLEAN NOT NULL DEFAULT false,
     "inviteToken" TEXT,
     "isRecurring" BOOLEAN NOT NULL DEFAULT false,
@@ -176,7 +220,7 @@ CREATE TABLE "Event" (
 -- CreateTable
 CREATE TABLE "EventParticipant" (
     "id" TEXT NOT NULL,
-    "status" TEXT NOT NULL DEFAULT 'pending',
+    "status" "EventParticipantStatus" NOT NULL DEFAULT 'pending',
     "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "eventId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -269,7 +313,7 @@ CREATE TABLE "CommentMention" (
 CREATE TABLE "GuestParticipant" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "status" TEXT NOT NULL DEFAULT 'confirmed',
+    "status" "GuestParticipantStatus" NOT NULL DEFAULT 'confirmed',
     "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "eventId" TEXT NOT NULL,
 
@@ -370,6 +414,15 @@ CREATE TABLE "TeamUpResponse" (
 );
 
 -- CreateIndex
+CREATE INDEX "UserProfilePicture_userId_isCurrent_idx" ON "UserProfilePicture"("userId", "isCurrent");
+
+-- CreateIndex
+CREATE INDEX "EventReminder_sent_idx" ON "EventReminder"("sent");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "EventReminder_eventId_userId_remindAt_key" ON "EventReminder"("eventId", "userId", "remindAt");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "EventAttendance_eventId_userId_key" ON "EventAttendance"("eventId", "userId");
 
 -- CreateIndex
@@ -421,6 +474,12 @@ CREATE INDEX "TeamUpNotification_createdAt_idx" ON "TeamUpNotification"("created
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "User_googleId_key" ON "User"("googleId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_facebookId_key" ON "User"("facebookId");
+
+-- CreateIndex
 CREATE INDEX "User_email_idx" ON "User"("email");
 
 -- CreateIndex
@@ -431,6 +490,15 @@ CREATE INDEX "User_passwordResetToken_idx" ON "User"("passwordResetToken");
 
 -- CreateIndex
 CREATE INDEX "User_city_country_idx" ON "User"("city", "country");
+
+-- CreateIndex
+CREATE INDEX "User_createdAt_deletedAt_idx" ON "User"("createdAt", "deletedAt");
+
+-- CreateIndex
+CREATE INDEX "User_googleId_idx" ON "User"("googleId");
+
+-- CreateIndex
+CREATE INDEX "User_facebookId_idx" ON "User"("facebookId");
 
 -- CreateIndex
 CREATE INDEX "GroupMember_userId_idx" ON "GroupMember"("userId");
@@ -490,6 +558,9 @@ CREATE INDEX "EventParticipant_status_idx" ON "EventParticipant"("status");
 CREATE INDEX "EventParticipant_eventId_status_idx" ON "EventParticipant"("eventId", "status");
 
 -- CreateIndex
+CREATE INDEX "EventParticipant_joinedAt_idx" ON "EventParticipant"("joinedAt");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "EventParticipant_eventId_userId_key" ON "EventParticipant"("eventId", "userId");
 
 -- CreateIndex
@@ -506,6 +577,9 @@ CREATE UNIQUE INDEX "CommentMention_commentId_userId_key" ON "CommentMention"("c
 
 -- CreateIndex
 CREATE INDEX "GuestParticipant_eventId_idx" ON "GuestParticipant"("eventId");
+
+-- CreateIndex
+CREATE INDEX "GuestParticipant_joinedAt_idx" ON "GuestParticipant"("joinedAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "RefreshToken_token_key" ON "RefreshToken"("token");
@@ -578,6 +652,9 @@ CREATE INDEX "TeamUpResponse_status_idx" ON "TeamUpResponse"("status");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "TeamUpResponse_teamUpRequestId_userId_key" ON "TeamUpResponse"("teamUpRequestId", "userId");
+
+-- AddForeignKey
+ALTER TABLE "UserProfilePicture" ADD CONSTRAINT "UserProfilePicture_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "GroupMessage" ADD CONSTRAINT "GroupMessage_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

@@ -208,8 +208,22 @@ export const buildEventFilters = (
   }
   
 
-  // Show events where the user is a participant or organizer
+
+  // Show events where:
+  // - The event is in a group the user is a member of
+  // - OR the user is a participant
+  // - OR the user is the creator
   where.OR = [
+    // Event is in a group the user is a member of
+    {
+      group: {
+        members: {
+          some: {
+            userId
+          }
+        }
+      }
+    },
     // User is a participant
     {
       participants: {

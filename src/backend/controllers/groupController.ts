@@ -190,11 +190,17 @@ export const getGroups = async (req: Request, res: Response) => {
           }
         },
         events: {
-          orderBy: { startTime: 'asc' },
-          take: 5
+          orderBy: { startTime: 'asc' }
         }
       },
       orderBy: { createdAt: 'desc' }
+    });
+
+
+    // Log group and member info for debugging
+    groups.forEach((group: any) => {
+      // eslint-disable-next-line no-console
+      console.log('[getGroups] group:', group.id, group.name, 'members:', group.members.map((m: any) => ({ userId: m.user.id, name: m.user.name, role: m.role })));
     });
 
     // Map each group to flatten member user fields

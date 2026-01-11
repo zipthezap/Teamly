@@ -422,6 +422,22 @@ const PublicGroups = () => {
                           {t('groups.membersCount', { count: memberCount })}
                         </Typography>
                       </Box>
+                      {/* Google Maps Directions Button for group location */}
+                      {(group.latitude && group.longitude) || group.location || group.address ? (
+                        <a
+                          href={
+                            group.latitude && group.longitude
+                              ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(group.latitude + ',' + group.longitude)}`
+                              : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(group.location || group.address || group.name)}`
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ marginLeft: 8, color: '#1976d2', fontSize: 12, textDecoration: 'underline' }}
+                          title="Open in Google Maps"
+                        >
+                          {group.latitude && group.longitude ? 'Directions' : 'Map'}
+                        </a>
+                      ) : null}
                     </Box>
                   </CardContent>
                   <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>

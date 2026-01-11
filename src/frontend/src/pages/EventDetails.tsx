@@ -226,6 +226,20 @@ const EventDetails = () => {
               <div className="flex items-center gap-2 bg-[#1a2233] px-3 py-2 rounded-lg">
                 <span role="img" aria-label="location">📍</span>
                 <span className="text-[#d4d8e1]">{event.location}</span>
+                {/* Google Maps Directions Button */}
+                <a
+                  href={
+                    event.latitude && event.longitude
+                      ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(event.latitude + ',' + event.longitude)}`
+                      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-2 text-blue-400 underline hover:text-blue-300 text-xs"
+                  title="Open in Google Maps"
+                >
+                  {event.latitude && event.longitude ? 'Directions' : 'Map'}
+                </a>
               </div>
             )}
           </div>

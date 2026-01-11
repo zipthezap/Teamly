@@ -261,12 +261,19 @@ const EventsList = () => {
   const now = new Date();
   let filteredEvents: EventWithDetails[] = [];
   // Get group IDs where user is a member
+  // Debug: log groups and user memberships
+  // eslint-disable-next-line no-console
+  console.log('[EventsList] groups:', groups);
+  // eslint-disable-next-line no-console
+  console.log('[EventsList] current user:', user);
   const userGroupIds = groups
-    .filter(g => g.members?.some((m: GroupMember) => m.userId === user?.id))
+    .filter(g => g.members?.some((m: GroupMember) => m.id === user?.id))
     .map(g => g.id);
+  // eslint-disable-next-line no-console
+  console.log('[EventsList] userGroupIds:', userGroupIds);
 
   if (tab === 'my') {
-    // All upcoming events where user is a participant or creator (as before)
+    // Only events the user is joined in (participant or creator), upcoming only
     filteredEvents = events.filter(event => {
       const eventDate = new Date(event.startTime);
       const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user?.id);
@@ -274,9 +281,7 @@ const EventsList = () => {
       return eventDate >= now && (isJoined || isCreator);
     });
   } else if (tab === 'upcoming') {
-    // All upcoming events:
-    // - If event is in a group the user is a member of, show it even if not joined (public or private)
-    // - Otherwise, show public events
+    // Only events the user has NOT joined yet, from their groups (public or private) or public events from other groups
     filteredEvents = events.filter(event => {
       const eventDate = new Date(event.startTime);
       const isUserGroup = event.group && userGroupIds.includes(event.group.id);
@@ -286,10 +291,8 @@ const EventsList = () => {
       // - (User is group member and not joined) OR (public event and not joined)
       return (
         eventDate >= now &&
-        (
-          (isUserGroup && !isJoined) ||
-          (!isUserGroup && event.isPublic && !isJoined)
-        )
+        !isJoined &&
+        ((isUserGroup) || (!isUserGroup && event.isPublic))
       );
     });
   } else {

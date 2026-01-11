@@ -163,12 +163,12 @@ const Dashboard = () => {
               </Button>
             </Box>
             <Grid container spacing={2}>
-              {upcomingEvents.slice(0, 3).map((event) => {
+              {upcomingEvents.slice(0, 4).map((event) => {
                 const isParticipating = event.participants?.some(p => p.userId === user?.id);
                 const isFull = event.maxPlayers && event.participants?.length >= event.maxPlayers;
                 return (
-                  <Grid item={true} xs={12} sm={6} md={4} key={event.id}>
-                    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'all 0.3s', background: 'rgba(51,65,85,0.98)', borderRadius: 2, boxShadow: 2, border: '1.5px solid #2d3a53', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6, borderColor: 'primary.main' } }}>
+                  <Grid item={true} xs={12} sm={6} md={3} key={event.id}>
+                    <Card sx={{ height: 340, display: 'flex', flexDirection: 'column', transition: 'all 0.3s', background: 'rgba(51,65,85,0.98)', borderRadius: 2, boxShadow: 2, border: '1.5px solid #2d3a53', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6, borderColor: 'primary.main' } }}>
                       <CardContent sx={{ flexGrow: 1, p: 3 }}>
                         <Box display="flex" gap={2} mb={1.5}>
                           <Avatar
@@ -218,9 +218,18 @@ const Dashboard = () => {
                           {isFull && (
                             <Chip label={t('common.full')} size="small" color="warning" />
                           )}
-                          {isParticipating && (
-                            <Chip label={t('common.joined')} size="small" color="success" />
-                          )}
+                          {/* Attendance status chip will be handled in next step */}
+                          {(() => {
+                            if (!event.participants) return null;
+                            const participant = event.participants.find(p => p.userId === user?.id);
+                            if (!participant) return null;
+                            if (participant.status === 'confirmed') {
+                              return <Chip label={t('common.confirmed')} size="small" color="success" />;
+                            } else if (participant.status === 'refused') {
+                              return <Chip label={t('common.refused')} size="small" color="error" />;
+                            }
+                            return null;
+                          })()}
                         </Box>
                       </CardContent>
                       <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>

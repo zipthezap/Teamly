@@ -27,6 +27,12 @@ const formatEventDate = (dateString: string) => {
 
 
 const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, onEdit, onDelete, isAdmin }) => {
+    // Debug: Log all events received
+    if (typeof window !== 'undefined') {
+      // Only log in browser
+      // eslint-disable-next-line no-console
+      console.debug('[Group EventList] Received events:', events);
+    }
   const { t } = useTranslation();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<EventWithDetails | null>(null);
@@ -42,23 +48,18 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
     setEventToDelete(null);
   };
 
-  // Hide past events: only show events whose startTime is within the last hour or in the future
-  const now = new Date();
-  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+  // Show all events, sorted by start time
   const filteredEvents = events
-    .filter(event => {
-      const eventDate = new Date(event.startTime);
-      return eventDate >= oneHourAgo;
-    })
     .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
-  // All upcoming events for modal, sorted soonest first
-  const allUpcomingEvents = events
-    .filter(event => {
-      const eventDate = new Date(event.startTime);
-      return eventDate >= oneHourAgo;
-    })
-    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+  // Debug: Log filtered events
+  if (typeof window !== 'undefined') {
+    // eslint-disable-next-line no-console
+    console.debug('[Group EventList] Filtered events:', filteredEvents);
+  }
+
+  // All events for modal, sorted soonest first
+  const allUpcomingEvents = filteredEvents;
 
   return (
     <section className="bg-slate-800 rounded-lg p-4 shadow">
@@ -100,10 +101,11 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
             const eventDate = event.startTime;
             const eventType = event.eventType;
             const organizerName = event.creator?.name || 'Unknown';
+            const isPast = isPastEvent(eventDate);
             return (
               <li
                 key={event.id}
-                className={`mb-3 p-3 bg-slate-700 rounded flex items-center gap-3 cursor-pointer transition hover:bg-slate-600 border-l-4 ${isPastEvent(eventDate) ? "border-slate-500 opacity-70" : "border-green-500"}`}
+                className={`mb-3 p-3 bg-slate-700 rounded flex items-center gap-3 cursor-pointer transition hover:bg-slate-600 border-l-4 ${isPast ? "border-slate-500 opacity-70" : "border-green-500"}`}
                 onClick={() => onEventClick(event.id)}
                 tabIndex={0}
                 aria-label={`${t('common.viewDetails')} ${event.title}`}
@@ -123,9 +125,9 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
                   })()}
                 </div>
                 <div className="flex-1">
-                  <div className="font-medium flex items-center gap-2">
+                  <div className={`font-medium flex items-center gap-2 ${isPast ? 'line-through text-slate-400' : ''}`}>
                     {event.title}
-                    {isPastEvent(eventDate) && (
+                    {isPast && (
                       <span className="ml-2 text-xs bg-slate-500 px-2 py-0.5 rounded text-white">{t('groupDetails.past')}</span>
                     )}
                   </div>

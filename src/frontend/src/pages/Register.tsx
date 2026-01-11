@@ -108,29 +108,6 @@ const Register = () => {
             </Alert>
           )}
 
-          <Box sx={{ width: '100%', mb: 3 }}>
-            <Button
-              variant="outlined"
-              fullWidth
-              size="large"
-              startIcon={<GoogleIcon />}
-              onClick={() => handleOAuthSignup('google')}
-              sx={{ mb: 1, textTransform: 'none' }}
-            >
-              {t('auth.signUpWithGoogle') || 'Sign up with Google'}
-            </Button>
-            <Button
-              variant="outlined"
-              fullWidth
-              size="large"
-              startIcon={<FacebookIcon />}
-              onClick={() => handleOAuthSignup('facebook')}
-              sx={{ textTransform: 'none' }}
-            >
-              {t('auth.signUpWithFacebook') || 'Sign up with Facebook'}
-            </Button>
-          </Box>
-
           <Divider sx={{ width: '100%', mb: 2 }}>
             <Typography variant="body2" color="text.secondary">
               {t('auth.orContinueWith') || 'Or continue with email'}
@@ -186,6 +163,30 @@ const Register = () => {
             >
               {loading ? t('common.loading') : t('auth.registerButton')}
             </Button>
+
+            {/* External sign-ups below Teamly sign-up */}
+            <Box sx={{ width: '100%', mt: 1 }}>
+              <Button
+                variant="outlined"
+                fullWidth
+                size="large"
+                startIcon={<GoogleIcon />}
+                onClick={() => handleOAuthSignup('google')}
+                sx={{ mb: 1, textTransform: 'none' }}
+              >
+                {t('auth.signUpWithGoogle') || 'Sign up with Google'}
+              </Button>
+              <Button
+                variant="outlined"
+                fullWidth
+                size="large"
+                startIcon={<FacebookIcon />}
+                onClick={() => handleOAuthSignup('facebook')}
+                sx={{ textTransform: 'none' }}
+              >
+                {t('auth.signUpWithFacebook') || 'Sign up with Facebook'}
+              </Button>
+            </Box>
           </Box>
 
           <Typography variant="body2" sx={{ mt: 2 }}>

@@ -84,29 +84,6 @@ const Login = () => {
 
           {!requires2FA && (
             <>
-              <Box sx={{ width: '100%', mb: 3 }}>
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  size="large"
-                  startIcon={<GoogleIcon />}
-                  onClick={() => handleOAuthLogin('google')}
-                  sx={{ mb: 1, textTransform: 'none' }}
-                >
-                  {t('auth.signInWithGoogle') || 'Sign in with Google'}
-                </Button>
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  size="large"
-                  startIcon={<FacebookIcon />}
-                  onClick={() => handleOAuthLogin('facebook')}
-                  sx={{ textTransform: 'none' }}
-                >
-                  {t('auth.signInWithFacebook') || 'Sign in with Facebook'}
-                </Button>
-              </Box>
-
               <Divider sx={{ width: '100%', mb: 2 }}>
                 <Typography variant="body2" color="text.secondary">
                   {t('auth.orContinueWith') || 'Or continue with email'}
@@ -171,6 +148,32 @@ const Login = () => {
             >
               {loading ? t('common.loading') : requires2FA ? t('auth.verifyAndLogin') : t('auth.loginButton')}
             </Button>
+
+            {/* External sign-ins below Teamly sign-in */}
+            {!requires2FA && (
+              <Box sx={{ width: '100%', mt: 1 }}>
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  size="large"
+                  startIcon={<GoogleIcon />}
+                  onClick={() => handleOAuthLogin('google')}
+                  sx={{ mb: 1, textTransform: 'none' }}
+                >
+                  {t('auth.signInWithGoogle') || 'Sign in with Google'}
+                </Button>
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  size="large"
+                  startIcon={<FacebookIcon />}
+                  onClick={() => handleOAuthLogin('facebook')}
+                  sx={{ textTransform: 'none' }}
+                >
+                  {t('auth.signInWithFacebook') || 'Sign in with Facebook'}
+                </Button>
+              </Box>
+            )}
             
             {requires2FA && (
               <Button
