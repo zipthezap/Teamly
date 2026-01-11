@@ -271,7 +271,7 @@ const LookingForPlayTab = () => {
                 const ownRequest = isOwnRequest(request);
                 const responded = hasResponded(request);
                 const acceptedResponses = request.responses?.filter(
-                  (r: any) => r.status === 'accepted'
+                  (r) => r.status === 'accepted'
                 ).length || 0;
                 const spotsLeft = request.playersNeeded - acceptedResponses;
                 
