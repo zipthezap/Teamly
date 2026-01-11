@@ -6,6 +6,7 @@ import { sendEmail } from '../utils/emailService';
 import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
 import { sanitizeString } from '../utils/validation';
 import { ValidationResult } from '../../shared/types';
+import { checkGroupAdmin } from './groupService';
 
 /**
  * Sanitizes event data inputs
@@ -380,9 +381,6 @@ export const checkEventManagementPermission = async (
   }
 
   const isEventCreator = event.creatorId === userId;
-  
-  // Check if user is a group admin using the groupService
-  const { checkGroupAdmin } = await import('./groupService');
   const isGroupAdmin = await checkGroupAdmin(event.groupId, userId);
   
   return {
