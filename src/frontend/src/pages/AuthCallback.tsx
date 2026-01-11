@@ -1,0 +1,82 @@
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Container, CircularProgress, Box, Typography, Alert } from '@mui/material';
+import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
+import { groupsAPI } from '../services/api';
+
+const AuthCallback = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { setTokens } = useAuth();
+  const { t } = useTranslation();
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const handleCallback = async () => {
+      const token = searchParams.get('token');
+      const refreshToken = searchParams.get('refreshToken');
+      const inviteGroupId = searchParams.get('inviteGroupId');
+      const errorParam = searchParams.get('error');
+
+      if (errorParam) {
+        setError(t('auth.oauthFailed') || 'OAuth authentication failed');
+        setTimeout(() => navigate('/login'), 3000);
+        return;
+      }
+
+      if (!token || !refreshToken) {
+        setError(t('auth.invalidAuthResponse') || 'Invalid authentication response');
+        setTimeout(() => navigate('/login'), 3000);
+        return;
+      }
+
+      // Store tokens
+      localStorage.setItem('token', token);
+      localStorage.setItem('refreshToken', refreshToken);
+
+      // Update auth context
+      if (setTokens) {
+        await setTokens(token, refreshToken);
+      }
+
+      // If there's an invite group ID, join the group
+      if (inviteGroupId) {
+        try {
+          // Get user info from token
+          const userInfo = JSON.parse(atob(token.split('.')[1]));
+          await groupsAPI.joinByInvite(userInfo.userId, inviteGroupId);
+          navigate(`/groups/${inviteGroupId}`);
+        } catch (err) {
+          console.error('Failed to join group:', err);
+          navigate('/dashboard');
+        }
+      } else {
+        navigate('/dashboard');
+      }
+    };
+
+    handleCallback();
+  }, [searchParams, navigate, setTokens, t]);
+
+  return (
+    <Container maxWidth="sm" sx={{ mt: 8 }}>
+      <Box display="flex" flexDirection="column" alignItems="center">
+        {error ? (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        ) : (
+          <>
+            <CircularProgress size={60} sx={{ mb: 2 }} />
+            <Typography variant="h6">
+              {t('auth.completingLogin') || 'Completing login...'}
+            </Typography>
+          </>
+        )}
+      </Box>
+    </Container>
+  );
+};
+
+export default AuthCallback;

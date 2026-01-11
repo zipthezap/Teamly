@@ -5,6 +5,7 @@ import Navbar from './components/Navbar';
 import PrivateRoute from './components/PrivateRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import AuthCallback from './pages/AuthCallback';
 import Dashboard from './pages/Dashboard';
 import GroupsList from './pages/GroupsList';
 import GroupDetailsPage from './pages/GroupDetailsPage';
@@ -32,8 +33,9 @@ function App() {
             <Route path="/" element={<Navigate to="/dashboard" />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/public-groups" element={<PublicGroups />} />
-            <Route path="/groups/join/:groupId" element={<JoinGroup />} />
+            <Route path="/join-group/:groupId" element={<JoinGroup />} />
             <Route path="/events/join/:token" element={<JoinEventByInvite />} />
             <Route
               path="/dashboard"

@@ -899,3 +899,46 @@ export const hardDeleteProfilePicture = async (req: Request, res: Response): Pro
     res.status(500).json({ error: 'Failed to permanently delete profile picture' });
   }
 };
+
+/**
+ * OAuth callback handler - generates tokens after successful OAuth authentication
+ */
+export const oauthCallback = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication failed' });
+      return;
+    }
+
+    const user = req.user as any;
+
+    // Generate token pair with session tracking
+    const deviceInfo = req.headers['user-agent'];
+    const ipAddress = req.ip;
+    const tokens = await generateTokenPair(user.id, deviceInfo, ipAddress);
+
+    // Get the invite group ID from session if it exists
+    const inviteGroupId = (req.session as any)?.inviteGroupId;
+    
+    // Clear the session data
+    if (inviteGroupId) {
+      delete (req.session as any).inviteGroupId;
+    }
+
+    // Build redirect URL with tokens
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    const redirectUrl = new URL('/auth/callback', frontendUrl);
+    redirectUrl.searchParams.set('token', tokens.token);
+    redirectUrl.searchParams.set('refreshToken', tokens.refreshToken);
+    
+    if (inviteGroupId) {
+      redirectUrl.searchParams.set('inviteGroupId', inviteGroupId);
+    }
+
+    res.redirect(redirectUrl.toString());
+  } catch (error) {
+    logger.error('OAuth callback error', 'AuthController', { error });
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    res.redirect(`${frontendUrl}/login?error=oauth_failed`);
+  }
+};

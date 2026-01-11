@@ -10,8 +10,11 @@ import {
   Typography,
   Box,
   Alert,
+  Divider,
 } from '@mui/material';
 import LoginIcon from '@mui/icons-material/Login';
+import GoogleIcon from '@mui/icons-material/Google';
+import FacebookIcon from '@mui/icons-material/Facebook';
 import { StyledLink } from '../components/common';
 
 const Login = () => {
@@ -26,6 +29,11 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
+
+  const handleOAuthLogin = (provider: 'google' | 'facebook') => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    window.location.href = `${apiUrl}/api/auth/${provider}`;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -72,6 +80,39 @@ const Login = () => {
             <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
               {error}
             </Alert>
+          )}
+
+          {!requires2FA && (
+            <>
+              <Box sx={{ width: '100%', mb: 3 }}>
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  size="large"
+                  startIcon={<GoogleIcon />}
+                  onClick={() => handleOAuthLogin('google')}
+                  sx={{ mb: 1, textTransform: 'none' }}
+                >
+                  {t('auth.signInWithGoogle') || 'Sign in with Google'}
+                </Button>
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  size="large"
+                  startIcon={<FacebookIcon />}
+                  onClick={() => handleOAuthLogin('facebook')}
+                  sx={{ textTransform: 'none' }}
+                >
+                  {t('auth.signInWithFacebook') || 'Sign in with Facebook'}
+                </Button>
+              </Box>
+
+              <Divider sx={{ width: '100%', mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  {t('auth.orContinueWith') || 'Or continue with email'}
+                </Typography>
+              </Divider>
+            </>
           )}
 
           <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>

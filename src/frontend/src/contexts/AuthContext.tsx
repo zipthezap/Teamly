@@ -15,6 +15,7 @@ interface AuthContextType {
   login: (credentials: any) => Promise<any>;
   register: (userData: any) => Promise<User>;
   logout: () => void;
+  setTokens: (token: string, refreshToken: string) => Promise<void>;
   loading: boolean;
 }
 
@@ -80,8 +81,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
   };
 
+  const setTokens = async (token: string, refreshToken: string) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('refreshToken', refreshToken);
+    
+    // Fetch user profile with the new token
+    try {
+      const response = await authAPI.getProfile();
+      const userData = response.data.user;
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+    } catch (error) {
+      console.error('Failed to fetch user profile:', error);
+      logout();
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, setUser, updateUser, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, setUser, updateUser, login, register, logout, setTokens, loading }}>
       {children}
     </AuthContext.Provider>
   );
