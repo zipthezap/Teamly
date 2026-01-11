@@ -299,7 +299,7 @@ const OAuthConnections: React.FC<OAuthConnectionsProps> = ({ onSuccess, onError 
           </Button>
           {unlinkDialog.provider && (
             <Button
-              onClick={() => handleUnlinkAccount(unlinkDialog.provider!)}
+              onClick={() => handleUnlinkAccount(unlinkDialog.provider as 'google' | 'facebook')}
               color="error"
               variant="contained"
               disabled={actionLoading !== null || !canUnlink(unlinkDialog.provider)}

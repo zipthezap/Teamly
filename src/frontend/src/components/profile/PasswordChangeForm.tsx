@@ -70,7 +70,7 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({
             onChange={onChange}
             fullWidth
             required
-            helperText={t('profile.passwordMinLength') || 'Minimum 8 characters, including uppercase, lowercase, number, and special character'}
+            helperText={t('profile.passwordMinLength') || 'Minimum 8 characters with uppercase, lowercase, number, and special character'}
           />
           <TextField
             label={isOAuthOnly ? 'Confirm Password' : t('profile.confirmNewPassword')}

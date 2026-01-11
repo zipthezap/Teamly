@@ -322,6 +322,7 @@ const Profile = () => {
                   loading={loading}
                   onChange={handlePasswordChange}
                   onSubmit={handleUpdatePassword}
+                  hasPassword={!!user.password}
                 />
               </Grid>
             </Grid>
