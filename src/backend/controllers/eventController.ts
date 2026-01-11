@@ -261,6 +261,9 @@ export const getEvent = async (req: Request, res: Response) => {
             user: {
               select: { name: true, email: true, profilePicture: true }
             }
+          },
+          orderBy: {
+            joinedAt: 'asc'  // Sort by when they joined, leveraging the joinedAt index
           }
         },
         guestParticipants: {
@@ -269,6 +272,9 @@ export const getEvent = async (req: Request, res: Response) => {
             name: true,
             status: true,
             joinedAt: true
+          },
+          orderBy: {
+            joinedAt: 'asc'  // Sort by when they joined
           }
         },
         eventAttendances: {
@@ -555,6 +561,15 @@ export const joinEvent = async (req: Request, res: Response) => {
           params: {
             name: (req.user as any).name,
             eventTitle: event.title
+          },
+          metadata: {
+            eventType: event.eventType,
+            eventStartTime: event.startTime,
+            groupId: event.groupId,
+            participantCount: await tx.eventParticipant.count({
+              where: { eventId: id, status: 'confirmed' }
+            }),
+            maxPlayers: event.maxPlayers
           }
         }
       });
@@ -633,7 +648,12 @@ export const leaveEvent = async (req: Request, res: Response) => {
     // First get the event details
     const leftEvent = await prisma.event.findUnique({
       where: { id },
-      select: { title: true }
+      select: { 
+        title: true, 
+        eventType: true, 
+        startTime: true,
+        groupId: true 
+      }
     });
 
     if (leftEvent) {
@@ -645,6 +665,11 @@ export const leaveEvent = async (req: Request, res: Response) => {
           params: {
             name: (req.user as any).name,
             eventTitle: leftEvent.title
+          },
+          metadata: {
+            eventType: leftEvent.eventType,
+            eventStartTime: leftEvent.startTime,
+            groupId: leftEvent.groupId
           }
         }
       });
@@ -690,7 +715,12 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
       // Get the event details
       const statusEvent = await prisma.event.findUnique({
         where: { id },
-        select: { title: true }
+        select: { 
+          title: true,
+          eventType: true,
+          startTime: true,
+          groupId: true
+        }
       });
 
       if (statusEvent) {
@@ -702,6 +732,12 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
             params: {
               name: (req.user as any).name,
               eventTitle: statusEvent.title
+            },
+            metadata: {
+              eventType: statusEvent.eventType,
+              eventStartTime: statusEvent.startTime,
+              groupId: statusEvent.groupId,
+              previousStatus: participant.status
             }
           }
         });
@@ -1512,5 +1548,83 @@ export const exportEvents = async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Export events error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to export events' });
+  }
+};
+
+/**
+ * Get event participants filtered by status
+ * Leverages the composite index [eventId, status] for optimal performance
+ */
+export const getEventParticipantsByStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.query;
+
+    // Verify user is a member of the group that owns this event
+    const event = await prisma.event.findFirst({
+      where: {
+        id,
+        group: {
+          members: {
+            some: {
+              userId: (req.user as any).id
+            }
+          }
+        }
+      }
+    });
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Build where clause to leverage composite index [eventId, status]
+    const where: any = { eventId: id };
+    if (status && ['pending', 'confirmed', 'declined'].includes(status as string)) {
+      where.status = status; // Uses composite index [eventId, status]
+    }
+
+    // Get participants with optimal query using composite index
+    const participants = await prisma.eventParticipant.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            profilePicture: true,
+            city: true,
+            country: true
+          }
+        }
+      },
+      orderBy: {
+        joinedAt: 'asc'  // Use joinedAt index for sorting
+      }
+    });
+
+    // Get counts by status for summary
+    const statusCounts = await prisma.eventParticipant.groupBy({
+      by: ['status'],
+      where: { eventId: id },
+      _count: true
+    });
+
+    const summary = {
+      total: participants.length,
+      byStatus: Object.fromEntries(
+        statusCounts.map(sc => [sc.status, sc._count])
+      )
+    };
+
+    res.json({
+      participants,
+      summary,
+      filter: status || 'all'
+    });
+  } catch (error) {
+    logger.error('Get event participants by status error', 'EventController', { error });
+    res.status(500).json({ error: 'Failed to get event participants' });
   }
 };

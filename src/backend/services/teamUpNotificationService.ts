@@ -23,6 +23,15 @@ interface TeamUpRequest {
   creatorId: string;
 }
 
+interface UserWithLocation {
+  id: string;
+  city: string | null;
+  country: string | null;
+  discoveryRadius: number | null;
+}
+
+const DEFAULT_DISCOVERY_RADIUS = 25; // km
+
 /**
  * Find users who should be notified about a new TeamUp request
  * based on their location preferences and discovery radius
@@ -51,38 +60,36 @@ export async function findUsersForTeamUpNotification(
       }
     });
 
-    // If TeamUp has coordinates, filter by distance
-    if (teamUpRequest.latitude && teamUpRequest.longitude) {
-      // We need to geocode user addresses or match by city/country
-      // For now, we'll match users in the same city or use a fallback approach
-      const matchedUsers = users.filter(user => {
-        // Match by city and country if available
-        if (user.city && teamUpRequest.city) {
-          if (user.city.toLowerCase() === teamUpRequest.city.toLowerCase()) {
-            if (!user.country && !teamUpRequest.country) return true;
-            if (user.country && teamUpRequest.country && 
-                user.country.toLowerCase() === teamUpRequest.country.toLowerCase()) {
-              return true;
-            }
-          }
-        }
-        return false;
-      });
-
-      return matchedUsers.map(u => u.id);
-    }
-
-    // If no coordinates, match by city/country only
+    // Match users based on location
+    // Since users don't have coordinates, we match by city/country
+    // In the future, this could be enhanced with geocoding
     const matchedUsers = users.filter(user => {
+      // Use user's discovery radius if set, otherwise use default (25km)
+      // For city-based matching, we treat same city as "within radius"
+      const userRadius = user.discoveryRadius || DEFAULT_DISCOVERY_RADIUS;
+      
       if (user.city && teamUpRequest.city) {
-        if (user.city.toLowerCase() === teamUpRequest.city.toLowerCase()) {
-          if (!user.country && !teamUpRequest.country) return true;
-          if (user.country && teamUpRequest.country && 
-              user.country.toLowerCase() === teamUpRequest.country.toLowerCase()) {
-            return true;
+        const cityMatch = user.city.toLowerCase() === teamUpRequest.city.toLowerCase();
+        
+        // If in same city, consider it within radius
+        if (cityMatch) {
+          // Also check country if both are available
+          if (user.country && teamUpRequest.country) {
+            return user.country.toLowerCase() === teamUpRequest.country.toLowerCase();
           }
+          // If no country specified for one or both, accept city match
+          return true;
         }
       }
+      
+      // If only country matches (different cities), only notify if they have
+      // a large discovery radius (e.g., >= 100km)
+      if (user.country && teamUpRequest.country && 
+          user.country.toLowerCase() === teamUpRequest.country.toLowerCase() &&
+          userRadius >= 100) {
+        return true;
+      }
+      
       return false;
     });
 

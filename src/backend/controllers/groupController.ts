@@ -1061,7 +1061,7 @@ export const deleteGroupPicture = async (req: Request, res: Response) => {
 // Get nearby groups based on location and radius
 export const getNearbyGroups = async (req: Request, res: Response) => {
   try {
-    const { latitude, longitude, radius = 10, limit = 50 } = req.query;
+    const { latitude, longitude, radius, limit = 50 } = req.query;
 
     if (!latitude || !longitude) {
       return res.status(400).json({ error: 'Latitude and longitude are required' });
@@ -1069,7 +1069,19 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
 
     const lat = parseFloat(latitude as string);
     const lon = parseFloat(longitude as string);
-    const radiusKm = parseFloat(radius as string);
+    
+    // Use user's discoveryRadius if no radius provided
+    let radiusKm: number;
+    if (radius) {
+      radiusKm = parseFloat(radius as string);
+    } else {
+      // Get user's discovery radius preference
+      const user = await prisma.user.findUnique({
+        where: { id: (req.user as any).id },
+        select: { discoveryRadius: true }
+      });
+      radiusKm = user?.discoveryRadius || 25; // Default to 25km if not set
+    }
 
     // Validate coordinates
     const coordValidation = locationService.validateCoordinates(lat, lon);
@@ -1099,7 +1111,7 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
       take: parseInt(limit as string) * 2 // Get more than needed for filtering
     });
 
-    // Filter by location and add distance
+    // Filter by location and add distance, leveraging user's discoveryRadius
     const nearbyGroups = locationService.filterByLocation(
       groups,
       lat,
@@ -1116,7 +1128,8 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
       results: enrichedGroups,
       total: enrichedGroups.length,
       center: { latitude: lat, longitude: lon },
-      radius: radiusKm
+      radius: radiusKm,
+      usingUserPreference: !radius // Indicate if using user's preferred radius
     });
   } catch (error) {
     logger.error('Get nearby groups error', 'GroupController', { error });
