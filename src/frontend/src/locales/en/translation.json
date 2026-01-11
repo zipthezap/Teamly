@@ -1,5 +1,14 @@
+    "events": {
+      "type": {
+        "running": "Running",
+        "cycling": "Cycling",
+        "swimming": "Swimming"
+      }
+    },
 {
   "common": {
+    "confirmed": "Confirmed",
+    "refused": "Refused",
     "teamly": "Teamly",
     "dashboard": "Dashboard",
     "groups": "Groups",

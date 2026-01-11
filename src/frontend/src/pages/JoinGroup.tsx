@@ -48,7 +48,7 @@ const JoinGroup = () => {
 
   const handleJoinGroup = useCallback(async () => {
     if (!user) {
-      setError(t('joinGroup.loginToJoin'));
+      setError(t('groups.joinGroup.loginToJoin'));
       return;
     }
 
@@ -57,7 +57,7 @@ const JoinGroup = () => {
     
     try {
       await groupsAPI.joinByInvite(user.id, groupId);
-      setSuccess(t('joinGroup.successfullyJoined'));
+      setSuccess(t('groups.joinGroup.successfullyJoined'));
       setTimeout(() => {
         navigate(`/groups/${groupId}`);
       }, 1500);
@@ -66,7 +66,7 @@ const JoinGroup = () => {
         err.response && typeof err.response === 'object' && 'data' in err.response &&
         err.response.data && typeof err.response.data === 'object' && 'error' in err.response.data
         ? String(err.response.data.error)
-        : t('joinGroup.failedToJoin');
+        : t('groups.joinGroup.failedToJoin');
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -86,7 +86,7 @@ const JoinGroup = () => {
       <Container maxWidth="sm" sx={{ mt: 8 }}>
         <Paper sx={{ p: 4 }}>
           <Typography variant="h5" gutterBottom>
-            {t('joinGroup.title')}
+            {t('groups.joinGroup.title')}
           </Typography>
           {groupInfo && (
             <Box sx={{ mb: 3, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
@@ -101,20 +101,20 @@ const JoinGroup = () => {
             </Box>
           )}
           <Typography variant="body1" paragraph>
-            {t('joinGroup.loginToJoin')}
+            {t('groups.joinGroup.loginToJoin')}
           </Typography>
           <Box display="flex" gap={2}>
             <Button
               variant="contained"
               onClick={() => navigate('/login', { state: { returnTo: `/join-group/${groupId}` } })}
             >
-              {t('joinGroup.login')}
+              {t('groups.joinGroup.login')}
             </Button>
             <Button
               variant="outlined"
               onClick={() => navigate('/register', { state: { returnTo: `/join-group/${groupId}` } })}
             >
-              {t('joinGroup.signup')}
+              {t('groups.joinGroup.signup')}
             </Button>
           </Box>
         </Paper>
@@ -126,7 +126,7 @@ const JoinGroup = () => {
     <Container maxWidth="sm" sx={{ mt: 8 }}>
       <Paper sx={{ p: 4 }}>
         <Typography variant="h5" gutterBottom>
-          {t('joinGroup.title')}
+          {t('groups.joinGroup.title')}
         </Typography>
         
         {groupInfo && (
@@ -149,7 +149,7 @@ const JoinGroup = () => {
           <Box display="flex" justifyContent="center" alignItems="center" py={4}>
             <CircularProgress />
             <Typography variant="body1" sx={{ ml: 2 }}>
-              {t('joinGroup.joining')}
+              {t('groups.joinGroup.joining')}
             </Typography>
           </Box>
         )}
@@ -160,13 +160,13 @@ const JoinGroup = () => {
               variant="contained"
               onClick={handleJoinGroup}
             >
-              {t('joinGroup.tryAgain')}
+              {t('groups.joinGroup.tryAgain')}
             </Button>
             <Button
               variant="outlined"
               onClick={() => navigate('/groups')}
             >
-              {t('joinGroup.goToGroups')}
+              {t('groups.joinGroup.goToGroups')}
             </Button>
           </Box>
         )}

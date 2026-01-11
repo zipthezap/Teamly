@@ -162,91 +162,89 @@ const Dashboard = () => {
                 {t('common.viewAll')}
               </Button>
             </Box>
-            <Grid container spacing={2}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr' }, gridTemplateRows: { xs: 'auto', sm: '1fr 1fr', md: '1fr 1fr' }, gap: 4, minHeight: 700 }}>
               {upcomingEvents.slice(0, 4).map((event) => {
                 const isParticipating = event.participants?.some(p => p.userId === user?.id);
                 const isFull = event.maxPlayers && event.participants?.length >= event.maxPlayers;
                 return (
-                  <Grid item={true} xs={12} sm={6} md={3} key={event.id}>
-                    <Card sx={{ height: 340, display: 'flex', flexDirection: 'column', transition: 'all 0.3s', background: 'rgba(51,65,85,0.98)', borderRadius: 2, boxShadow: 2, border: '1.5px solid #2d3a53', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6, borderColor: 'primary.main' } }}>
-                      <CardContent sx={{ flexGrow: 1, p: 3 }}>
-                        <Box display="flex" gap={2} mb={1.5}>
-                          <Avatar
-                            sx={{
-                              width: 60,
-                              height: 60,
-                              borderRadius: '8px',
-                              bgcolor: 'primary.main'
-                            }}
-                            variant="rounded"
-                          >
-                            <EventIcon sx={{ fontSize: 32 }} />
-                          </Avatar>
-                          <Box flexGrow={1} minWidth={0}>
-                            <Box display="flex" justifyContent="space-between" alignItems="start" mb={0.5}>
-                              <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, pr: 1 }}>
-                                {event.title}
-                              </Typography>
-                              <Box display="flex" gap={0.5} flexShrink={0}>
-                                <Chip label={event.eventType} size="small" color="primary" />
-                              </Box>
+                  <Card key={event.id} sx={{ height: 340, minHeight: 340, display: 'flex', flexDirection: 'column', transition: 'all 0.3s', background: 'rgba(51,65,85,0.98)', borderRadius: 2, boxShadow: 2, border: '1.5px solid #2d3a53', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6, borderColor: 'primary.main' } }}>
+                    <CardContent sx={{ flexGrow: 1, p: 3 }}>
+                      <Box display="flex" gap={2} mb={1.5}>
+                        <Avatar
+                          sx={{
+                            width: 60,
+                            height: 60,
+                            borderRadius: '8px',
+                            bgcolor: 'primary.main'
+                          }}
+                          variant="rounded"
+                        >
+                          <EventIcon sx={{ fontSize: 32 }} />
+                        </Avatar>
+                        <Box flexGrow={1} minWidth={0}>
+                          <Box display="flex" justifyContent="space-between" alignItems="start" mb={0.5}>
+                            <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, pr: 1 }}>
+                              {event.title}
+                            </Typography>
+                            <Box display="flex" gap={0.5} flexShrink={0}>
+                              <Chip label={event.eventType} size="small" color="primary" />
                             </Box>
                           </Box>
                         </Box>
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{
-                            mb: 2,
-                            minHeight: 40,
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden'
-                          }}
-                        >
-                          📅 {new Date(event.startTime).toLocaleDateString()} • 🕐 {new Date(event.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                          {event.location && ` • 📍 ${event.location}`}
-                        </Typography>
-                        <Box display="flex" alignItems="center" gap={2} mb={2}>
-                          <Box display="flex" alignItems="center" gap={0.5}>
-                            <GroupIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                            <Typography variant="caption" color="text.secondary">
-                              {event.participants?.length || 0}{event.maxPlayers && ` / ${event.maxPlayers}`} {t('common.participants')}
-                            </Typography>
-                          </Box>
-                          {isFull && (
-                            <Chip label={t('common.full')} size="small" color="warning" />
-                          )}
-                          {/* Attendance status chip will be handled in next step */}
-                          {(() => {
-                            if (!event.participants) return null;
-                            const participant = event.participants.find(p => p.userId === user?.id);
-                            if (!participant) return null;
-                            if (participant.status === 'confirmed') {
-                              return <Chip label={t('common.confirmed')} size="small" color="success" />;
-                            } else if (participant.status === 'refused') {
-                              return <Chip label={t('common.refused')} size="small" color="error" />;
-                            }
-                            return null;
-                          })()}
+                      </Box>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          mb: 2,
+                          minHeight: 40,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden'
+                        }}
+                      >
+                        📅 {new Date(event.startTime).toLocaleDateString()} • 🕐 {new Date(event.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                        {event.location && ` • 📍 ${event.location}`}
+                      </Typography>
+                      <Box display="flex" alignItems="center" gap={2} mb={2}>
+                        <Box display="flex" alignItems="center" gap={0.5}>
+                          <GroupIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                          <Typography variant="caption" color="text.secondary">
+                            {event.participants?.length || 0}{event.maxPlayers && ` / ${event.maxPlayers}`} {t('common.participants')}
+                          </Typography>
                         </Box>
-                      </CardContent>
-                      <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
-                        <Button
-                          variant="contained"
-                          fullWidth
-                          onClick={() => navigate(`/events/${event.id}`)}
-                        >
-                          {t('common.viewDetails')}
-                        </Button>
-                      </CardActions>
-                    </Card>
-                  </Grid>
+                        {isFull && (
+                          <Chip label={t('common.full')} size="small" color="warning" />
+                        )}
+                        {/* Attendance status chip will be handled in next step */}
+                        {(() => {
+                          if (!event.participants) return null;
+                          const participant = event.participants.find(p => p.userId === user?.id);
+                          if (!participant) return null;
+                          if (participant.status === 'confirmed') {
+                            return <Chip label={t('common.confirmed')} size="small" color="success" />;
+                          } else if (participant.status === 'refused') {
+                            return <Chip label={t('common.refused')} size="small" color="error" />;
+                          }
+                          return null;
+                        })()}
+                      </Box>
+                    </CardContent>
+                    <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        onClick={() => navigate(`/events/${event.id}`)}
+                      >
+                        {t('common.viewDetails')}
+                      </Button>
+                    </CardActions>
+                  </Card>
                 );
               })}
               {upcomingEvents.length === 0 && (
-                <Grid item={true} xs={12}>
+                <Box gridColumn="1 / -1">
                   <EmptyState
                     icon={<EventIcon />}
                     title={t('dashboard.noUpcomingEvents')}
@@ -257,9 +255,9 @@ const Dashboard = () => {
                     ]}
                     gradient="linear-gradient(135deg, rgba(245, 0, 87, 0.05) 0%, rgba(245, 0, 87, 0.02) 100%)"
                   />
-                </Grid>
+                </Box>
               )}
-            </Grid>
+            </Box>
           </Box>
 
           {/* Your Groups */}

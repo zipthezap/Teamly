@@ -42,6 +42,12 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ onNavigate }) => {
       path: '/profile',
       color: 'bg-yellow-500',
     },
+    {
+      label: t('teamup', 'TeamUp'),
+      icon: <UsersIcon className="w-5 h-5 text-white" />,
+      path: '/teamup',
+      color: 'bg-purple-500',
+    },
   ];
 
   const [open, setOpen] = useState(true);
