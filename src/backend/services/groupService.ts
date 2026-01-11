@@ -289,3 +289,20 @@ export const buildGroupFilters = (
 export const isValidRole = (role: string): role is 'admin' | 'member' => {
   return role === 'admin' || role === 'member';
 };
+
+/**
+ * Gets a specific group member
+ */
+export const getGroupMember = async (groupId: string, userId: string) => {
+  return await prisma.groupMember.findFirst({
+    where: {
+      groupId,
+      userId
+    }
+  });
+};
+
+/**
+ * Checks if user is a member of a group (alias for checkGroupMember)
+ */
+export const isGroupMember = checkGroupMember;
