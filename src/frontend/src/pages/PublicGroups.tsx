@@ -319,8 +319,8 @@ const PublicGroups = () => {
                 {(customSearchLocation || (locationEnabled && userLocation)) && (
                   <Circle
                     center={{
-                      lat: customSearchLocation?.latitude || userLocation?.latitude,
-                      lng: customSearchLocation?.longitude || userLocation?.longitude,
+                      lat: (customSearchLocation?.latitude ?? userLocation?.latitude) || 0,
+                      lng: (customSearchLocation?.longitude ?? userLocation?.longitude) || 0,
                     }}
                     radius={distanceRadius * 1000} // Convert km to meters
                     options={{
