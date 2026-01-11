@@ -478,7 +478,7 @@
     "confirmDeleteEventDesc": "Are you sure you want to delete {{title}}? This action cannot be undone.",
     "someoneIsTyping": "Someone is typing...",
     "createEvent": "Create Event",
-    "events": "Events",
+    "requestEvent": "Request Event",
     "online": "Online",
     "offline": "Offline",
     "rsvp": "RSVP",
@@ -492,7 +492,8 @@
     "totalEvents": "Total Events",
     "upcomingEvents": "Upcoming Events",
     "pastEvents": "Past Events",
-    "recentActivity": "Recent Activity"
+    "recentActivity": "Recent Activity",
+    "viewAll": "View All"
   },
   "profile": {
     "profileSettings": "Profile Settings",

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import GroupEventsModal from "./GroupEventsModal";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import Button from "../ui/Button";
 import PlusIcon from "../icons/PlusIcon";
 import { EventWithDetails } from "../../../../shared/types";
@@ -12,6 +13,8 @@ interface EventListProps {
   onEdit?: (event: EventWithDetails) => void;
   onDelete?: (event: EventWithDetails) => void;
   isAdmin?: boolean;
+  groupId?: string;
+  isMember?: boolean;
 }
 
 const isPastEvent = (date: string) => new Date(date) < new Date();
@@ -26,8 +29,9 @@ const formatEventDate = (dateString: string) => {
 };
 
 
-const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, onEdit, onDelete, isAdmin }) => {
+const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, onEdit, onDelete, isAdmin, groupId, isMember }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<EventWithDetails | null>(null);
   const [viewAllOpen, setViewAllOpen] = useState(false);
@@ -40,6 +44,12 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
     if (eventToDelete && onDelete) onDelete(eventToDelete);
     setDeleteDialogOpen(false);
     setEventToDelete(null);
+  };
+
+  const handleRequestEvent = () => {
+    if (groupId) {
+      navigate(`/event-requests/${groupId}`);
+    }
   };
 
   // Hide past events: only show events whose startTime is within the last hour or in the future
@@ -80,6 +90,17 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
                   onEventClick={onEventClick}
                   t={t}
                 />
+          {/* Request Event button for non-admin members */}
+          {!isAdmin && isMember && groupId && (
+            <button
+              onClick={handleRequestEvent}
+              className="ml-2 flex items-center justify-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition shadow-none focus:outline-none"
+              aria-label={t('groupDetails.requestEvent', 'Request Event')}
+            >
+              <PlusIcon className="w-4 h-4" />
+              {t('groupDetails.requestEvent', 'Request Event')}
+            </button>
+          )}
           {isAdmin && onCreate && (
             <button
               onClick={onCreate}
