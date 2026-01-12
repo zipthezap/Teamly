@@ -55,6 +55,7 @@ export interface Tournament {
   isPublic?: boolean;
   allowLateRegistration?: boolean;
   autoGenerateBrackets?: boolean;
+  useManualBrackets?: boolean; // Enable manual bracket/pool management
   prizesDescription?: string;
   rulesDescription?: string;
   contactEmail?: string;
@@ -73,6 +74,10 @@ export interface TournamentTeam {
   captainEmail?: string;
   captainUserId?: string;
   tournamentId: string;
+  // Manual pool/bracket management
+  poolNumber?: number;
+  poolName?: string;
+  seedNumber?: number;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -82,11 +87,14 @@ export interface TournamentMatch {
   tournamentId: string;
   homeTeamId: string;
   awayTeamId: string;
+  refereeTeamId?: string; // Team assigned to referee this match
   homeScore?: number;
   awayScore?: number;
   stage?: BracketStage;
   roundNumber?: number;
   groupName?: string;
+  isManuallyCreated?: boolean;
+  matchOrder?: number;
   status: MatchStatus;
   scheduledAt?: Date | string;
   startedAt?: Date | string;
@@ -95,6 +103,7 @@ export interface TournamentMatch {
   updatedAt: Date | string;
   homeTeam?: TournamentTeam;
   awayTeam?: TournamentTeam;
+  refereeTeam?: TournamentTeam;
 }
 
 export interface TournamentStanding {
@@ -147,6 +156,7 @@ export interface CreateTournamentDto {
   isPublic?: boolean;
   allowLateRegistration?: boolean;
   autoGenerateBrackets?: boolean;
+  useManualBrackets?: boolean;
   prizesDescription?: string;
   rulesDescription?: string;
   contactEmail?: string;
@@ -173,6 +183,7 @@ export interface UpdateTournamentDto {
   isPublic?: boolean;
   allowLateRegistration?: boolean;
   autoGenerateBrackets?: boolean;
+  useManualBrackets?: boolean;
   prizesDescription?: string;
   rulesDescription?: string;
   contactEmail?: string;
@@ -183,6 +194,9 @@ export interface CreateTeamDto {
   captainName?: string;
   captainEmail?: string;
   captainUserId?: string;
+  poolNumber?: number;
+  poolName?: string;
+  seedNumber?: number;
 }
 
 export interface UpdateTeamDto {
@@ -190,6 +204,9 @@ export interface UpdateTeamDto {
   captainName?: string;
   captainEmail?: string;
   captainUserId?: string;
+  poolNumber?: number;
+  poolName?: string;
+  seedNumber?: number;
 }
 
 export interface SubmitScoreDto {
@@ -201,3 +218,37 @@ export interface GenerateBracketsDto {
   format?: TournamentFormat;
   numberOfGroups?: number; // For groups_knockout format
 }
+
+// Manual bracket management DTOs
+export interface CreateMatchDto {
+  homeTeamId: string;
+  awayTeamId: string;
+  refereeTeamId?: string;
+  stage?: BracketStage;
+  roundNumber?: number;
+  groupName?: string;
+  scheduledAt?: Date | string;
+  matchOrder?: number;
+}
+
+export interface UpdateMatchDto {
+  homeTeamId?: string;
+  awayTeamId?: string;
+  refereeTeamId?: string;
+  stage?: BracketStage;
+  roundNumber?: number;
+  groupName?: string;
+  scheduledAt?: Date | string;
+  matchOrder?: number;
+  status?: MatchStatus;
+}
+
+export interface AssignRefereeDto {
+  refereeTeamId: string | null; // null to remove referee assignment
+}
+
+export interface AssignPoolDto {
+  poolNumber?: number;
+  poolName?: string;
+}
+

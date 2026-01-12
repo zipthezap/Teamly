@@ -687,6 +687,7 @@ model Tournament {
   isPublic            Boolean  @default(true)
   allowLateRegistration Boolean @default(false)
   autoGenerateBrackets Boolean @default(false)
+  useManualBrackets   Boolean  @default(false) // Enable manual bracket/pool management
   prizesDescription   String?
   rulesDescription    String?
   contactEmail        String?
@@ -723,16 +724,23 @@ model TournamentTeam {
   tournamentId String
   tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   
+  // Manual pool/bracket management
+  poolNumber   Int?     // For manual pool assignment (1, 2, 3, etc.)
+  poolName     String?  // Custom pool name (e.g., "Pool A", "Group 1")
+  seedNumber   Int?     // Seeding position for bracket generation
+  
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   
   homeMatches  TournamentMatch[] @relation("HomeTeam")
   awayMatches  TournamentMatch[] @relation("AwayTeam")
+  refereingMatches TournamentMatch[] @relation("RefereeTeam")
   standings    TournamentStanding[]
   
   @@unique([tournamentId, name])
   @@index([tournamentId])
   @@index([captainUserId])
+  @@index([poolNumber])
 }
 
 model TournamentMatch {
@@ -745,12 +753,20 @@ model TournamentMatch {
   awayTeamId   String
   awayTeam     TournamentTeam @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
   
+  // Referee assignment - team that will officiate this match
+  refereeTeamId String?
+  refereeTeam   TournamentTeam? @relation("RefereeTeam", fields: [refereeTeamId], references: [id], onDelete: SetNull)
+  
   homeScore    Int?
   awayScore    Int?
   
   stage        BracketStage?
   roundNumber  Int?      // For round-robin or group stages
   groupName    String?   // For group stages (e.g., "Group A")
+  
+  // Manual bracket management
+  isManuallyCreated Boolean @default(false) // Track if match was manually created
+  matchOrder   Int?      // Custom ordering for display
   
   status       MatchStatus @default(scheduled)
   scheduledAt  DateTime?
@@ -763,8 +779,10 @@ model TournamentMatch {
   @@index([tournamentId])
   @@index([homeTeamId])
   @@index([awayTeamId])
+  @@index([refereeTeamId])
   @@index([status])
   @@index([stage])
+  @@index([matchOrder])
 }
 
 model TournamentStanding {
