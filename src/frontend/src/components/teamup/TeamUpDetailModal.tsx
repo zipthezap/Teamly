@@ -639,14 +639,6 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
                     </Stack>
                   </Box>
                 )}
-                              </Box>
-                            </Box>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </Stack>
-                  </Box>
-                )}
 
                 {/* Chat/Comments Section */}
                 <Box>
