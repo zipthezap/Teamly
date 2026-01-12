@@ -23,21 +23,28 @@ export const errorHandler = (
   res: Response,
   _next: NextFunction
 ): void => {
+  // Convert Prisma errors to ApiErrors
+  let error = err;
+  if (isPrismaError(err)) {
+    error = prismaErrorHandler(err);
+  }
+  
   // Default to 500 if not an ApiError
-  const statusCode = err instanceof ApiError ? err.statusCode : 500;
-  const code = err instanceof ApiError ? err.code : undefined;
+  const statusCode = error instanceof ApiError ? error.statusCode : 500;
+  const code = error instanceof ApiError ? error.code : undefined;
   
   // Log the error with appropriate level
   if (statusCode >= 500) {
-    logger.error(err.message, 'ErrorHandler', {
+    logger.error(error.message, 'ErrorHandler', {
       statusCode,
       code,
       path: req.path,
       method: req.method,
-      stack: err.stack
+      stack: error.stack,
+      originalError: err.name
     });
   } else if (statusCode >= 400) {
-    logger.warn(err.message, 'ErrorHandler', {
+    logger.warn(error.message, 'ErrorHandler', {
       statusCode,
       code,
       path: req.path,
@@ -47,16 +54,23 @@ export const errorHandler = (
 
   // Prepare error response
   const response: ErrorResponse = {
-    error: err.message || 'Internal server error',
+    error: error.message || 'Internal server error',
     code
   };
 
   // Include stack trace in development mode
   if (process.env.NODE_ENV === 'development') {
-    response.stack = err.stack;
+    response.stack = error.stack;
   }
 
   res.status(statusCode).json(response);
+};
+
+/**
+ * Check if error is a Prisma error
+ */
+export const isPrismaError = (err: any): boolean => {
+  return (err.code && err.code.startsWith('P')) || err.name?.includes('Prisma');
 };
 
 /**
@@ -79,9 +93,29 @@ export const prismaErrorHandler = (err: any): ApiError => {
     return new ApiError('Record not found', 404, true, 'NOT_FOUND');
   }
 
+  // Handle Prisma connection errors
+  if (err.code === 'P1001' || err.code === 'P1002') {
+    return new ApiError('Database connection error', 503, false, 'DATABASE_CONNECTION_ERROR');
+  }
+
+  // Handle Prisma timeout errors
+  if (err.code === 'P2024') {
+    return new ApiError('Database operation timed out', 504, false, 'DATABASE_TIMEOUT');
+  }
+
   // Handle validation errors (check by name instead of import)
   if (err.name === 'PrismaClientValidationError') {
     return new ApiError('Invalid data provided', 400, true, 'VALIDATION_ERROR');
+  }
+
+  // Handle Prisma initialization errors
+  if (err.name === 'PrismaClientInitializationError') {
+    return new ApiError('Database initialization error', 503, false, 'DATABASE_INIT_ERROR');
+  }
+
+  // Handle Prisma known request errors
+  if (err.name === 'PrismaClientKnownRequestError') {
+    return new ApiError('Database request error', 500, false, 'DATABASE_REQUEST_ERROR');
   }
 
   // Default to internal server error for unknown Prisma errors

@@ -6,6 +6,12 @@
 import { Response } from 'express';
 import { logger } from './logger';
 import { ApiSuccessResponse, PaginationMeta } from '../../shared/types';
+import { 
+  BadRequestError, 
+  NotFoundError, 
+  UnauthorizedError, 
+  ForbiddenError 
+} from './errors';
 
 /**
  * Standard success response helper
@@ -56,6 +62,7 @@ export const getUserId = (req: any): string => {
 
 /**
  * Validates required fields in request body
+ * @throws BadRequestError if validation fails
  */
 export const validateRequiredFields = (
   body: any,
@@ -68,6 +75,55 @@ export const validateRequiredFields = (
   }
   
   return { valid: true };
+};
+
+/**
+ * Validates required fields and throws error if missing
+ * @throws BadRequestError if validation fails
+ */
+export const requireFields = (body: any, requiredFields: string[]): void => {
+  const missing = requiredFields.filter(field => !body[field]);
+  
+  if (missing.length > 0) {
+    throw new BadRequestError(
+      `Missing required fields: ${missing.join(', ')}`,
+      'MISSING_REQUIRED_FIELDS'
+    );
+  }
+};
+
+/**
+ * Validates that a resource exists
+ * @throws NotFoundError if resource is null or undefined
+ */
+export const ensureResourceExists = <T>(
+  resource: T | null | undefined,
+  resourceName: string = 'Resource'
+): T => {
+  if (!resource) {
+    throw new NotFoundError(`${resourceName} not found`, 'RESOURCE_NOT_FOUND');
+  }
+  return resource;
+};
+
+/**
+ * Validates user authorization
+ * @throws UnauthorizedError if user is not authenticated
+ */
+export const ensureAuthenticated = (userId: any): void => {
+  if (!userId) {
+    throw new UnauthorizedError('Authentication required', 'NOT_AUTHENTICATED');
+  }
+};
+
+/**
+ * Validates user permission
+ * @throws ForbiddenError if user lacks permission
+ */
+export const ensurePermission = (hasPermission: boolean, message: string = 'Insufficient permissions'): void => {
+  if (!hasPermission) {
+    throw new ForbiddenError(message, 'INSUFFICIENT_PERMISSIONS');
+  }
 };
 
 /**

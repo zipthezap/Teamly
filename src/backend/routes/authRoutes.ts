@@ -3,6 +3,7 @@ import * as authController from '../controllers/authController';
 import authMiddleware from '../middleware/auth';
 import { authLimiter, uploadLimiter } from '../middleware/rateLimiter';
 import { uploadProfilePicture } from '../middleware/upload';
+import { asyncHandler } from '../middleware/asyncHandler';
 import passport from '../config/passport';
 
 // Extend session type to include inviteGroupId
@@ -15,11 +16,11 @@ declare module 'express-session' {
 const router = Router();
 
 // Apply strict rate limiting to auth endpoints
-router.post('/register', authLimiter, authController.register);
-router.post('/login', authLimiter, authController.login);
-router.post('/logout', authMiddleware, authController.logout);
-router.post('/logout-all', authMiddleware, authController.logoutAll);
-router.post('/refresh-token', authLimiter, authController.refreshToken);
+router.post('/register', authLimiter, asyncHandler(authController.register));
+router.post('/login', authLimiter, asyncHandler(authController.login));
+router.post('/logout', authMiddleware, asyncHandler(authController.logout));
+router.post('/logout-all', authMiddleware, asyncHandler(authController.logoutAll));
+router.post('/refresh-token', authLimiter, asyncHandler(authController.refreshToken));
 
 // OAuth routes
 // Google OAuth
@@ -38,7 +39,7 @@ router.get(
     session: false,
     failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/login?error=google_auth_failed` 
   }),
-  authController.oauthCallback
+  asyncHandler(authController.oauthCallback)
 );
 
 // Facebook OAuth
@@ -57,17 +58,17 @@ router.get(
     session: false,
     failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/login?error=facebook_auth_failed` 
   }),
-  authController.oauthCallback
+  asyncHandler(authController.oauthCallback)
 );
 
 // Email verification
-router.post('/verify-email', authLimiter, authController.verifyEmail);
-router.post('/resend-verification', authLimiter, authController.resendVerificationEmail);
+router.post('/verify-email', authLimiter, asyncHandler(authController.verifyEmail));
+router.post('/resend-verification', authLimiter, asyncHandler(authController.resendVerificationEmail));
 
 // Profile management
-router.get('/profile', authMiddleware, authController.getProfile);
-router.put('/profile', authMiddleware, authController.updateProfile);
-router.put('/password', authMiddleware, authController.updatePassword);
+router.get('/profile', authMiddleware, asyncHandler(authController.getProfile));
+router.put('/profile', authMiddleware, asyncHandler(authController.updateProfile));
+router.put('/password', authMiddleware, asyncHandler(authController.updatePassword));
 
 // Profile picture management
 
@@ -77,23 +78,23 @@ router.post(
   authMiddleware,
   uploadLimiter,
   uploadProfilePicture,
-  authController.uploadProfilePicture
+  asyncHandler(authController.uploadProfilePicture)
 );
-router.delete('/profile/picture', authMiddleware, authController.deleteProfilePicture);
-router.get('/profile/pictures', authMiddleware, authController.listProfilePictures);
-router.post('/profile/picture/restore', authMiddleware, authController.restoreProfilePicture);
-router.post('/profile/picture/hard-delete', authMiddleware, authController.hardDeleteProfilePicture);
+router.delete('/profile/picture', authMiddleware, asyncHandler(authController.deleteProfilePicture));
+router.get('/profile/pictures', authMiddleware, asyncHandler(authController.listProfilePictures));
+router.post('/profile/picture/restore', authMiddleware, asyncHandler(authController.restoreProfilePicture));
+router.post('/profile/picture/hard-delete', authMiddleware, asyncHandler(authController.hardDeleteProfilePicture));
 
 // Session management
-router.get('/sessions', authMiddleware, authController.getSessions);
+router.get('/sessions', authMiddleware, asyncHandler(authController.getSessions));
 
 // OAuth account management
-router.get('/oauth/status', authMiddleware, authController.getOAuthStatus);
-router.post('/oauth/unlink', authMiddleware, authController.unlinkOAuthAccount);
-router.post('/oauth/sync-picture', authMiddleware, authController.syncOAuthProfilePicture);
+router.get('/oauth/status', authMiddleware, asyncHandler(authController.getOAuthStatus));
+router.post('/oauth/unlink', authMiddleware, asyncHandler(authController.unlinkOAuthAccount));
+router.post('/oauth/sync-picture', authMiddleware, asyncHandler(authController.syncOAuthProfilePicture));
 
 // Password reset routes (with rate limiting)
-router.post('/forgot-password', authLimiter, authController.requestPasswordReset);
-router.post('/reset-password', authLimiter, authController.resetPassword);
+router.post('/forgot-password', authLimiter, asyncHandler(authController.requestPasswordReset));
+router.post('/reset-password', authLimiter, asyncHandler(authController.resetPassword));
 
 export default router;
