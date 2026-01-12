@@ -23,6 +23,9 @@ import JoinEventByInvite from './pages/JoinEventByInvite';
 import Profile from './pages/Profile';
 import NotificationsCenter from './pages/NotificationsCenter';
 import TeamUp from './pages/TeamUp';
+import TournamentsList from './pages/TournamentsList';
+import CreateTournament from './pages/CreateTournament';
+import TournamentDetails from './pages/TournamentDetails';
 
 function App() {
   return (
@@ -146,6 +149,30 @@ function App() {
               element={
                 <PrivateRoute>
                   <TeamUp />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/tournaments"
+              element={
+                <PrivateRoute>
+                  <TournamentsList />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/tournaments/create"
+              element={
+                <PrivateRoute>
+                  <CreateTournament />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/tournaments/:id"
+              element={
+                <PrivateRoute>
+                  <TournamentDetails />
                 </PrivateRoute>
               }
             />
