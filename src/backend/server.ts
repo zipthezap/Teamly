@@ -66,16 +66,28 @@ const timingSafeCompare = (a: string, b: string): boolean => {
     return false;
   }
   
-  // Pad shorter string to prevent length-based timing attacks
+  // Pad both strings to same length to prevent length-based timing attacks
   const maxLen = Math.max(a.length, b.length);
   const bufA = Buffer.from(a.padEnd(maxLen, '\0'));
   const bufB = Buffer.from(b.padEnd(maxLen, '\0'));
   
   try {
-    return crypto.timingSafeEqual(bufA, bufB) && a.length === b.length;
+    // Buffers are already same length due to padding, no need for length check
+    return crypto.timingSafeEqual(bufA, bufB);
   } catch {
     return false;
   }
+};
+
+/**
+ * Extract bearer token from Authorization header
+ * Case-insensitive to handle 'Bearer', 'bearer', 'BEARER'
+ */
+const extractBearerToken = (authHeader?: string): string => {
+  if (!authHeader) {
+    return '';
+  }
+  return authHeader.replace(/^Bearer\s+/i, '') || '';
 };
 
 const app: Application = express();
@@ -209,8 +221,7 @@ app.get('/metrics', (req: Request, res: Response, next) => {
   // Or if the provided token matches (using timing-safe comparison)
   const metricsToken = process.env.METRICS_TOKEN;
   if (metricsToken) {
-    const authHeader = req.headers.authorization;
-    const providedToken = authHeader?.replace('Bearer ', '') || '';
+    const providedToken = extractBearerToken(req.headers.authorization);
     // Always call timingSafeCompare to prevent timing attacks
     if (!timingSafeCompare(providedToken, metricsToken)) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -231,8 +242,7 @@ app.get('/health', async (req: Request, res: Response) => {
     
     // Check if detailed health info is requested with auth token (using timing-safe comparison)
     const healthToken = process.env.HEALTH_CHECK_TOKEN;
-    const authHeader = req.headers.authorization;
-    const providedToken = authHeader?.replace('Bearer ', '') || '';
+    const providedToken = extractBearerToken(req.headers.authorization);
     // Always call timingSafeCompare when healthToken is set to prevent timing attacks
     const isAuthenticated = !healthToken || timingSafeCompare(providedToken, healthToken);
     
@@ -251,14 +261,13 @@ app.get('/health', async (req: Request, res: Response) => {
       // Return minimal info for unauthenticated requests
       res.status(statusCode).json({
         status: healthCheck.status,
-        timestamp: new Date().toISOString(),
       });
     }
   } catch (error) {
     logger.error('Health check failed', 'Server', { error });
+    // Minimal error response - no details or timestamp for security
     res.status(503).json({
       status: 'unhealthy',
-      timestamp: new Date().toISOString(),
     });
   }
 });
