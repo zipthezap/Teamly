@@ -26,5 +26,8 @@ export * from './comment.types';
 // Email types
 export * from './email.types';
 
+// Tournament types
+export * from './tournament.types';
+
 // Common types
 export * from './common.types';
