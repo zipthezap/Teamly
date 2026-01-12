@@ -22,6 +22,9 @@ import {
  */
 const permissionCache = new Map<string, { result: boolean; timestamp: number }>();
 const CACHE_TTL = 60000; // 1 minute
+const MAX_CACHE_SIZE = 10000;
+let lastCleanup = Date.now();
+const CLEANUP_INTERVAL = 300000; // 5 minutes
 
 /**
  * Generate cache key for permission check
@@ -48,15 +51,34 @@ function getCachedResult(key: string): boolean | null {
 function cacheResult(key: string, result: boolean): void {
   permissionCache.set(key, { result, timestamp: Date.now() });
   
-  // Clean up old cache entries periodically (simple approach)
-  if (permissionCache.size > 10000) {
-    const now = Date.now();
-    for (const [k, v] of permissionCache.entries()) {
-      if (now - v.timestamp > CACHE_TTL) {
-        permissionCache.delete(k);
-      }
+  // Efficient cleanup: only run if cache is large and cleanup interval has passed
+  if (permissionCache.size > MAX_CACHE_SIZE && Date.now() - lastCleanup > CLEANUP_INTERVAL) {
+    cleanupCache();
+  }
+}
+
+/**
+ * Efficient cache cleanup - removes expired entries
+ */
+function cleanupCache(): void {
+  const now = Date.now();
+  const keysToDelete: string[] = [];
+  
+  // Collect keys to delete
+  for (const [key, value] of permissionCache.entries()) {
+    if (now - value.timestamp > CACHE_TTL) {
+      keysToDelete.push(key);
     }
   }
+  
+  // Delete in batch
+  keysToDelete.forEach(key => permissionCache.delete(key));
+  lastCleanup = now;
+  
+  logger.info('Cache cleanup completed', 'PermissionService', {
+    deletedEntries: keysToDelete.length,
+    remainingEntries: permissionCache.size
+  });
 }
 
 /**
@@ -101,6 +123,32 @@ export async function hasGroupPermission(
 }
 
 /**
+ * Internal helper to check group admin permission without caching (avoids recursion issues)
+ */
+async function checkGroupAdminDirect(userId: string, groupId: string): Promise<boolean> {
+  try {
+    const membership = await prisma.groupMember.findUnique({
+      where: {
+        userId_groupId: {
+          userId,
+          groupId
+        }
+      },
+      select: { role: true }
+    });
+
+    if (!membership) return false;
+
+    // Check if role has manage_events permission (admin or moderator)
+    const rolePermissions = GroupRolePermissions[membership.role as GroupRole] || [];
+    return rolePermissions.includes(Permission.GROUP_MANAGE_EVENTS);
+  } catch (error) {
+    logger.error('Error checking group admin direct', 'PermissionService', { error, userId, groupId });
+    return false;
+  }
+}
+
+/**
  * Check if user has permission for a tournament action
  */
 export async function hasTournamentPermission(
@@ -134,9 +182,9 @@ export async function hasTournamentPermission(
       return hasPermission;
     }
 
-    // If tournament is associated with a group, check group admin permissions
+    // If tournament is associated with a group, check group admin permissions (non-cached to avoid recursion)
     if (tournament.groupId) {
-      const isGroupAdmin = await hasGroupPermission(userId, tournament.groupId, Permission.GROUP_MANAGE_EVENTS);
+      const isGroupAdmin = await checkGroupAdminDirect(userId, tournament.groupId);
       if (isGroupAdmin) {
         const rolePermissions = TournamentRolePermissions[TournamentRole.CO_ORGANIZER];
         const hasPermission = rolePermissions.includes(permission);
@@ -346,20 +394,26 @@ export async function hasPermission(context: PermissionContext): Promise<boolean
 
 /**
  * Batch permission check for multiple resources (for scalability)
+ * Uses concurrency limiting to avoid overwhelming the database
  */
 export async function hasBulkPermissions(
   contexts: PermissionContext[]
 ): Promise<Map<string, boolean>> {
   const results = new Map<string, boolean>();
+  const CONCURRENCY_LIMIT = 10; // Process max 10 checks in parallel
   
-  // Process all checks in parallel for better performance
-  await Promise.all(
-    contexts.map(async (context) => {
-      const key = `${context.resourceType}:${context.resourceId}:${context.action}`;
-      const result = await hasPermission(context);
-      results.set(key, result);
-    })
-  );
+  // Process in batches to avoid overwhelming the database connection pool
+  for (let i = 0; i < contexts.length; i += CONCURRENCY_LIMIT) {
+    const batch = contexts.slice(i, i + CONCURRENCY_LIMIT);
+    
+    await Promise.all(
+      batch.map(async (context) => {
+        const key = `${context.resourceType}:${context.resourceId}:${context.action}`;
+        const result = await hasPermission(context);
+        results.set(key, result);
+      })
+    );
+  }
   
   return results;
 }
@@ -420,9 +474,9 @@ export async function getUserTournamentRole(userId: string, tournamentId: string
       return TournamentRole.ORGANIZER;
     }
 
-    // Check if group admin (acts as co-organizer)
+    // Check if group admin (acts as co-organizer) - use direct check to avoid recursion
     if (tournament.groupId) {
-      const isGroupAdmin = await hasGroupPermission(userId, tournament.groupId, Permission.GROUP_MANAGE_EVENTS);
+      const isGroupAdmin = await checkGroupAdminDirect(userId, tournament.groupId);
       if (isGroupAdmin) {
         return TournamentRole.CO_ORGANIZER;
       }

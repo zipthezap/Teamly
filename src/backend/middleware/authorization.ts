@@ -9,6 +9,7 @@ import { ForbiddenError, BadRequestError } from '../utils/errors';
 import * as groupService from '../services/groupService';
 import * as permissionService from '../services/permissionService';
 import { Permission, GroupRole } from '../../shared/types/permissions.types';
+import { AuthenticatedUser } from '../../shared/types/auth.types';
 import { logger } from '../utils/logger';
 
 /**
@@ -21,7 +22,7 @@ export const requireGroupAdmin = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = (req.user as any)?.id;
+    const userId = req.user?.id;
     const groupId = req.params.id || req.body.groupId;
 
     if (!groupId) {
@@ -51,7 +52,7 @@ export const requireGroupAdmin = async (
 export const requireGroupRole = (allowedRoles: string[]) => {
   return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user?.id;
       const groupId = req.params.id || req.body.groupId;
 
       if (!groupId) {
@@ -84,7 +85,7 @@ export const requireGroupMembership = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = (req.user as any)?.id;
+    const userId = req.user?.id;
     const groupId = req.params.id || req.body.groupId;
 
     if (!groupId) {
@@ -120,7 +121,7 @@ export const requirePermission = (
 ) => {
   return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     try {
-      const userId = (req.user as any)?.id;
+      const userId = req.user?.id;
       const resourceId = getResourceId(req);
 
       if (!resourceId) {
