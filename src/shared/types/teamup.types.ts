@@ -30,8 +30,10 @@ export interface TeamUpRequest {
 export interface TeamUpRequestWithDetails extends TeamUpRequest {
   creator?: PublicUser;
   responses?: TeamUpResponse[];
+  comments?: TeamUpComment[];
   _count?: {
     responses: number;
+    comments?: number;
   };
 }
 
@@ -50,6 +52,17 @@ export interface TeamUpResponse {
     sportType: string;
     dateTime: Date | string;
   };
+}
+
+// TeamUp Comment
+export interface TeamUpComment {
+  id: string;
+  content: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  teamUpRequestId: string;
+  userId: string;
+  user?: PublicUser;
 }
 
 // Create TeamUp Request data
