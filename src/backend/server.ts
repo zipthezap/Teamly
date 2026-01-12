@@ -112,12 +112,13 @@ app.use(express.urlencoded({ extended: true, limit: config.requestBodySizeLimit 
 
 // Session middleware for OAuth (required by passport)
 app.use(session({
-  secret: process.env.JWT_SECRET || 'your-session-secret',
+  secret: process.env.SESSION_SECRET || process.env.JWT_SECRET || 'your-session-secret',
   resave: false,
   saveUninitialized: false,
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
+    sameSite: 'strict', // CSRF protection
     maxAge: 1000 * 60 * 60 // 1 hour
   }
 }));
@@ -175,10 +176,24 @@ app.use('/api/reminders', reminderRoutes);
 app.use('/api/tournaments', tournamentRoutes);
 
 // Metrics endpoint for Prometheus
-app.get('/metrics', getMetrics);
+// In production, restrict access via network rules or add IP whitelist
+// For now, we'll add a simple token-based authentication
+app.get('/metrics', (req: Request, res: Response, next) => {
+  // Allow access if METRICS_TOKEN is not set (for backward compatibility)
+  // Or if the provided token matches
+  const metricsToken = process.env.METRICS_TOKEN;
+  if (metricsToken) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || authHeader !== `Bearer ${metricsToken}`) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+  }
+  next();
+}, getMetrics);
 
 // Enhanced health check with detailed metrics
-app.get('/health', async (_req: Request, res: Response) => {
+app.get('/health', async (req: Request, res: Response) => {
   try {
     const healthCheck = await performHealthCheck();
     
@@ -186,20 +201,33 @@ app.get('/health', async (_req: Request, res: Response) => {
                      : healthCheck.status === 'degraded' ? 200 
                      : 503;
     
-    res.status(statusCode).json({
-      status: healthCheck.status,
-      message: healthCheck.status === 'healthy' 
-        ? 'Teamly API is running smoothly' 
-        : healthCheck.status === 'degraded'
-        ? 'Teamly API is running with degraded performance'
-        : 'Teamly API is experiencing issues',
-      ...healthCheck,
-    });
+    // Check if detailed health info is requested with auth token
+    const healthToken = process.env.HEALTH_CHECK_TOKEN;
+    const authHeader = req.headers.authorization;
+    const isAuthenticated = !healthToken || (authHeader && authHeader === `Bearer ${healthToken}`);
+    
+    // Return detailed info only if authenticated, otherwise return basic status
+    if (isAuthenticated) {
+      res.status(statusCode).json({
+        status: healthCheck.status,
+        message: healthCheck.status === 'healthy' 
+          ? 'Teamly API is running smoothly' 
+          : healthCheck.status === 'degraded'
+          ? 'Teamly API is running with degraded performance'
+          : 'Teamly API is experiencing issues',
+        ...healthCheck,
+      });
+    } else {
+      // Return minimal info for unauthenticated requests
+      res.status(statusCode).json({
+        status: healthCheck.status,
+        timestamp: new Date().toISOString(),
+      });
+    }
   } catch (error) {
     logger.error('Health check failed', 'Server', { error });
     res.status(503).json({
       status: 'unhealthy',
-      message: 'Health check failed',
       timestamp: new Date().toISOString(),
     });
   }

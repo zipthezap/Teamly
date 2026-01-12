@@ -42,15 +42,15 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     const hashedPassword = await authService.hashPassword(password);
 
-    // Generate email verification token
-    const emailVerificationToken = authService.generateEmailVerificationToken();
+    // Generate email verification token (returns plain and hashed versions)
+    const { token: emailVerificationToken, hashedToken: hashedEmailToken } = authService.generateEmailVerificationToken();
 
     const user = await prisma.user.create({
       data: {
         email: sanitized.email,
         password: hashedPassword,
         name: sanitized.name,
-        emailVerificationToken
+        emailVerificationToken: hashedEmailToken // Store hashed token
       },
       select: {
         id: true,
@@ -61,7 +61,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       }
     });
 
-    // Send verification email
+    // Send verification email with plain token
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     const verificationUrl = `${frontendUrl}/verify-email?token=${emailVerificationToken}`;
     
