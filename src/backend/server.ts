@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import path from 'path';
 import session from 'express-session';
+import RedisStore from 'connect-redis';
 import passport from './config/passport';
 
 import authRoutes from './routes/authRoutes';
@@ -21,6 +22,7 @@ import teamUpRoutes from './routes/teamUpRoutes';
 import reminderRoutes from './routes/reminderRoutes';
 import tournamentRoutes from './routes/tournamentRoutes';
 import { apiLimiter } from './middleware/rateLimiter';
+import { distributedApiLimiter } from './middleware/distributedRateLimiter';
 import { requestTimeout } from './middleware/requestTimeout';
 import { logger } from './utils/logger';
 import { validateEnvironmentOrThrow } from './utils/envValidator';
@@ -33,7 +35,7 @@ import { startEmailQueueProcessor, stopEmailQueueProcessor } from './services/em
 import { startScheduledJobs, stopScheduledJobs } from './services/scheduledJobs';
 import { ensureUploadDirectories } from './utils/imageProcessor';
 import { closeDatabaseConnections } from './config/database';
-import { initializeRedis, closeRedis } from './config/redis';
+import { initializeRedis, closeRedis, getRedisClient, isRedisEnabled } from './config/redis';
 import { cleanupCache } from './services/cacheService';
 import { metricsMiddleware, getMetrics } from './services/metricsService';
 
@@ -111,7 +113,8 @@ app.use(express.json({ limit: config.requestBodySizeLimit }));
 app.use(express.urlencoded({ extended: true, limit: config.requestBodySizeLimit }));
 
 // Session middleware for OAuth (required by passport)
-app.use(session({
+// Use Redis for session storage if available, otherwise fall back to in-memory
+const sessionConfig: session.SessionOptions = {
   secret: process.env.JWT_SECRET || 'your-session-secret',
   resave: false,
   saveUninitialized: false,
@@ -120,7 +123,26 @@ app.use(session({
     httpOnly: true,
     maxAge: 1000 * 60 * 60 // 1 hour
   }
-}));
+};
+
+// Add Redis store if enabled
+if (isRedisEnabled()) {
+  const redisClient = getRedisClient();
+  if (redisClient) {
+    sessionConfig.store = new RedisStore({
+      client: redisClient,
+      prefix: 'sess:',
+      ttl: 60 * 60 // 1 hour in seconds
+    });
+    logger.info('Using Redis for session storage', 'Server');
+  } else {
+    logger.warn('Redis enabled but client not available, using in-memory session storage', 'Server');
+  }
+} else {
+  logger.info('Using in-memory session storage (not recommended for production)', 'Server');
+}
+
+app.use(session(sessionConfig));
 
 // Initialize Passport
 app.use(passport.initialize());
@@ -156,8 +178,8 @@ app.use('/uploads', express.static(path.join(__dirname, '../../uploads'), {
   }
 }));
 
-// Apply rate limiting to all API routes
-app.use('/api/', apiLimiter);
+// Apply distributed rate limiting to all API routes (falls back to in-memory if Redis unavailable)
+app.use('/api/', distributedApiLimiter);
 
 // Routes
 app.use('/api/auth', authRoutes);

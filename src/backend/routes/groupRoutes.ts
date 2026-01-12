@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as groupController from '../controllers/groupController';
 import authMiddleware, { optionalAuthMiddleware } from '../middleware/auth';
 import { authenticatedLimiter, uploadLimiter } from '../middleware/rateLimiter';
+import { distributedAuthenticatedLimiter, distributedUploadLimiter } from '../middleware/distributedRateLimiter';
 import { uploadGroupPicture } from '../middleware/upload';
 import { asyncHandler } from '../middleware/asyncHandler';
 
@@ -14,7 +15,7 @@ router.post('/join', asyncHandler(groupController.joinGroupByInvite));
 router.get('/public', optionalAuthMiddleware, asyncHandler(groupController.getPublicGroups));
 
 router.use(authMiddleware);
-router.use(authenticatedLimiter);
+router.use(distributedAuthenticatedLimiter);
 
 router.post('/', asyncHandler(groupController.createGroup));
 router.get('/', asyncHandler(groupController.getGroups));
@@ -35,7 +36,7 @@ router.get('/:id/invite-link', asyncHandler(groupController.getInviteLink));
 // Group picture management (admin only)
 router.post(
   '/:id/picture',
-  uploadLimiter,
+  distributedUploadLimiter,
   uploadGroupPicture,
   asyncHandler(groupController.uploadGroupPicture)
 );

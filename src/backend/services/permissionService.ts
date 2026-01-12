@@ -5,6 +5,7 @@
 
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
+import CacheService from './cacheService';
 import {
   Permission,
   GroupRole,
@@ -17,68 +18,15 @@ import {
 } from '../../shared/types/permissions.types';
 
 /**
- * Cache for permission checks to improve scalability
- * In production, this should be replaced with Redis or similar
+ * Cache TTL for permission checks (1 minute)
  */
-const permissionCache = new Map<string, { result: boolean; timestamp: number }>();
-const CACHE_TTL = 60000; // 1 minute
-const MAX_CACHE_SIZE = 10000;
-let lastCleanup = Date.now();
-const CLEANUP_INTERVAL = 300000; // 5 minutes
+const PERMISSION_CACHE_TTL = 60;
 
 /**
  * Generate cache key for permission check
  */
 function getCacheKey(userId: string, permission: Permission, resourceType: string, resourceId: string): string {
-  return `${userId}:${permission}:${resourceType}:${resourceId}`;
-}
-
-/**
- * Check if cached result is still valid
- */
-function getCachedResult(key: string): boolean | null {
-  const cached = permissionCache.get(key);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.result;
-  }
-  permissionCache.delete(key);
-  return null;
-}
-
-/**
- * Cache permission check result
- */
-function cacheResult(key: string, result: boolean): void {
-  permissionCache.set(key, { result, timestamp: Date.now() });
-  
-  // Efficient cleanup: only run if cache is large and cleanup interval has passed
-  if (permissionCache.size > MAX_CACHE_SIZE && Date.now() - lastCleanup > CLEANUP_INTERVAL) {
-    cleanupCache();
-  }
-}
-
-/**
- * Efficient cache cleanup - removes expired entries
- */
-function cleanupCache(): void {
-  const now = Date.now();
-  const keysToDelete: string[] = [];
-  
-  // Collect keys to delete
-  for (const [key, value] of permissionCache.entries()) {
-    if (now - value.timestamp > CACHE_TTL) {
-      keysToDelete.push(key);
-    }
-  }
-  
-  // Delete in batch
-  keysToDelete.forEach(key => permissionCache.delete(key));
-  lastCleanup = now;
-  
-  logger.info('Cache cleanup completed', 'PermissionService', {
-    deletedEntries: keysToDelete.length,
-    remainingEntries: permissionCache.size
-  });
+  return `permission:${userId}:${permission}:${resourceType}:${resourceId}`;
 }
 
 /**
@@ -90,36 +38,33 @@ export async function hasGroupPermission(
   permission: Permission
 ): Promise<boolean> {
   const cacheKey = getCacheKey(userId, permission, 'group', groupId);
-  const cached = getCachedResult(cacheKey);
-  if (cached !== null) return cached;
+  
+  // Use distributed cache service with wrap
+  return await CacheService.wrap(cacheKey, PERMISSION_CACHE_TTL, async () => {
+    try {
+      // Get user's role in the group
+      const membership = await prisma.groupMember.findUnique({
+        where: {
+          userId_groupId: {
+            userId,
+            groupId
+          }
+        },
+        select: { role: true }
+      });
 
-  try {
-    // Get user's role in the group
-    const membership = await prisma.groupMember.findUnique({
-      where: {
-        userId_groupId: {
-          userId,
-          groupId
-        }
-      },
-      select: { role: true }
-    });
+      if (!membership) {
+        return false;
+      }
 
-    if (!membership) {
-      cacheResult(cacheKey, false);
+      // Check if role has permission
+      const rolePermissions = GroupRolePermissions[membership.role as GroupRole] || [];
+      return rolePermissions.includes(permission);
+    } catch (error) {
+      logger.error('Error checking group permission', 'PermissionService', { error, userId, groupId, permission });
       return false;
     }
-
-    // Check if role has permission
-    const rolePermissions = GroupRolePermissions[membership.role as GroupRole] || [];
-    const hasPermission = rolePermissions.includes(permission);
-    
-    cacheResult(cacheKey, hasPermission);
-    return hasPermission;
-  } catch (error) {
-    logger.error('Error checking group permission', 'PermissionService', { error, userId, groupId, permission });
-    return false;
-  }
+  });
 }
 
 /**
@@ -157,103 +102,91 @@ export async function hasTournamentPermission(
   permission: Permission
 ): Promise<boolean> {
   const cacheKey = getCacheKey(userId, permission, 'tournament', tournamentId);
-  const cached = getCachedResult(cacheKey);
-  if (cached !== null) return cached;
+  
+  // Use distributed cache service with wrap
+  return await CacheService.wrap(cacheKey, PERMISSION_CACHE_TTL, async () => {
+    try {
+      const tournament = await prisma.tournament.findUnique({
+        where: { id: tournamentId },
+        select: { 
+          organizerId: true,
+          groupId: true
+        }
+      });
 
-  try {
-    const tournament = await prisma.tournament.findUnique({
-      where: { id: tournamentId },
-      select: { 
-        organizerId: true,
-        groupId: true
+      if (!tournament) {
+        return false;
       }
-    });
 
-    if (!tournament) {
-      cacheResult(cacheKey, false);
+      // Organizer has all permissions
+      if (tournament.organizerId === userId) {
+        const rolePermissions = TournamentRolePermissions[TournamentRole.ORGANIZER];
+        return rolePermissions.includes(permission);
+      }
+
+      // If tournament is associated with a group, check group admin permissions (non-cached to avoid recursion)
+      if (tournament.groupId) {
+        const isGroupAdmin = await checkGroupAdminDirect(userId, tournament.groupId);
+        if (isGroupAdmin) {
+          const rolePermissions = TournamentRolePermissions[TournamentRole.CO_ORGANIZER];
+          return rolePermissions.includes(permission);
+        }
+      }
+
+      // Check if user is a team captain
+      const captainTeam = await prisma.tournamentTeam.findFirst({
+        where: {
+          tournamentId,
+          captainUserId: userId
+        }
+      });
+
+      if (captainTeam) {
+        const rolePermissions = TournamentRolePermissions[TournamentRole.TEAM_CAPTAIN];
+        return rolePermissions.includes(permission);
+      }
+
+      // Check if user is a registered player
+      const playerRecord = await prisma.tournamentPlayer.findFirst({
+        where: {
+          userId,
+          team: {
+            tournamentId
+          }
+        }
+      });
+
+      if (playerRecord) {
+        const rolePermissions = TournamentRolePermissions[TournamentRole.PLAYER];
+        return rolePermissions.includes(permission);
+      }
+
+      // Check if user is a referee (team assigned as referee)
+      const refereeMatch = await prisma.tournamentMatch.findFirst({
+        where: {
+          tournamentId,
+          refereeTeam: {
+            OR: [
+              { captainUserId: userId },
+              { players: { some: { userId } } }
+            ]
+          }
+        }
+      });
+
+      if (refereeMatch) {
+        const rolePermissions = TournamentRolePermissions[TournamentRole.REFEREE];
+        return rolePermissions.includes(permission);
+      }
+
+      // Default: viewer role (can only view public info)
+      const rolePermissions = TournamentRolePermissions[TournamentRole.VIEWER];
+      return rolePermissions.includes(permission);
+    } catch (error) {
+      logger.error('Error checking tournament permission', 'PermissionService', { error, userId, tournamentId, permission });
       return false;
     }
-
-    // Organizer has all permissions
-    if (tournament.organizerId === userId) {
-      const rolePermissions = TournamentRolePermissions[TournamentRole.ORGANIZER];
-      const hasPermission = rolePermissions.includes(permission);
-      cacheResult(cacheKey, hasPermission);
-      return hasPermission;
-    }
-
-    // If tournament is associated with a group, check group admin permissions (non-cached to avoid recursion)
-    if (tournament.groupId) {
-      const isGroupAdmin = await checkGroupAdminDirect(userId, tournament.groupId);
-      if (isGroupAdmin) {
-        const rolePermissions = TournamentRolePermissions[TournamentRole.CO_ORGANIZER];
-        const hasPermission = rolePermissions.includes(permission);
-        cacheResult(cacheKey, hasPermission);
-        return hasPermission;
-      }
-    }
-
-    // Check if user is a team captain
-    const captainTeam = await prisma.tournamentTeam.findFirst({
-      where: {
-        tournamentId,
-        captainUserId: userId
-      }
-    });
-
-    if (captainTeam) {
-      const rolePermissions = TournamentRolePermissions[TournamentRole.TEAM_CAPTAIN];
-      const hasPermission = rolePermissions.includes(permission);
-      cacheResult(cacheKey, hasPermission);
-      return hasPermission;
-    }
-
-    // Check if user is a registered player
-    const playerRecord = await prisma.tournamentPlayer.findFirst({
-      where: {
-        userId,
-        team: {
-          tournamentId
-        }
-      }
-    });
-
-    if (playerRecord) {
-      const rolePermissions = TournamentRolePermissions[TournamentRole.PLAYER];
-      const hasPermission = rolePermissions.includes(permission);
-      cacheResult(cacheKey, hasPermission);
-      return hasPermission;
-    }
-
-    // Check if user is a referee (team assigned as referee)
-    const refereeMatch = await prisma.tournamentMatch.findFirst({
-      where: {
-        tournamentId,
-        refereeTeam: {
-          OR: [
-            { captainUserId: userId },
-            { players: { some: { userId } } }
-          ]
-        }
-      }
-    });
-
-    if (refereeMatch) {
-      const rolePermissions = TournamentRolePermissions[TournamentRole.REFEREE];
-      const hasPermission = rolePermissions.includes(permission);
-      cacheResult(cacheKey, hasPermission);
-      return hasPermission;
-    }
-
-    // Default: viewer role (can only view public info)
-    const rolePermissions = TournamentRolePermissions[TournamentRole.VIEWER];
-    const hasPermission = rolePermissions.includes(permission);
-    cacheResult(cacheKey, hasPermission);
-    return hasPermission;
-  } catch (error) {
-    logger.error('Error checking tournament permission', 'PermissionService', { error, userId, tournamentId, permission });
-    return false;
-  }
+  });
 }
 
 /**
@@ -265,54 +198,48 @@ export async function hasTeamUpPermission(
   permission: Permission
 ): Promise<boolean> {
   const cacheKey = getCacheKey(userId, permission, 'teamup', teamUpId);
-  const cached = getCachedResult(cacheKey);
-  if (cached !== null) return cached;
+  
+  // Use distributed cache service with wrap
+  return await CacheService.wrap(cacheKey, PERMISSION_CACHE_TTL, async () => {
+    try {
+      const teamUpRequest = await prisma.teamUpRequest.findUnique({
+        where: { id: teamUpId },
+        select: { 
+          creatorId: true
+        }
+      });
 
-  try {
-    const teamUpRequest = await prisma.teamUpRequest.findUnique({
-      where: { id: teamUpId },
-      select: { 
-        creatorId: true
+      if (!teamUpRequest) {
+        return false;
       }
-    });
 
-    if (!teamUpRequest) {
-      cacheResult(cacheKey, false);
+      // Creator has all creator permissions
+      if (teamUpRequest.creatorId === userId) {
+        const rolePermissions = TeamUpRolePermissions[TeamUpRole.CREATOR];
+        return rolePermissions.includes(permission);
+      }
+
+      // Check if user is a participant (has responded)
+      const response = await prisma.teamUpResponse.findFirst({
+        where: {
+          teamUpRequestId: teamUpId,
+          userId
+        }
+      });
+
+      if (response) {
+        const rolePermissions = TeamUpRolePermissions[TeamUpRole.PARTICIPANT];
+        return rolePermissions.includes(permission);
+      }
+
+      // Default: viewer role
+      const rolePermissions = TeamUpRolePermissions[TeamUpRole.VIEWER];
+      return rolePermissions.includes(permission);
+    } catch (error) {
+      logger.error('Error checking TeamUp permission', 'PermissionService', { error, userId, teamUpId, permission });
       return false;
     }
-
-    // Creator has all creator permissions
-    if (teamUpRequest.creatorId === userId) {
-      const rolePermissions = TeamUpRolePermissions[TeamUpRole.CREATOR];
-      const hasPermission = rolePermissions.includes(permission);
-      cacheResult(cacheKey, hasPermission);
-      return hasPermission;
-    }
-
-    // Check if user is a participant (has responded)
-    const response = await prisma.teamUpResponse.findFirst({
-      where: {
-        teamUpRequestId: teamUpId,
-        userId
-      }
-    });
-
-    if (response) {
-      const rolePermissions = TeamUpRolePermissions[TeamUpRole.PARTICIPANT];
-      const hasPermission = rolePermissions.includes(permission);
-      cacheResult(cacheKey, hasPermission);
-      return hasPermission;
-    }
-
-    // Default: viewer role
-    const rolePermissions = TeamUpRolePermissions[TeamUpRole.VIEWER];
-    const hasPermission = rolePermissions.includes(permission);
-    cacheResult(cacheKey, hasPermission);
-    return hasPermission;
-  } catch (error) {
-    logger.error('Error checking TeamUp permission', 'PermissionService', { error, userId, teamUpId, permission });
-    return false;
-  }
+  });
 }
 
 /**
