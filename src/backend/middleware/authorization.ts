@@ -8,9 +8,10 @@ import { Request, Response, NextFunction } from 'express';
 import { ForbiddenError, BadRequestError } from '../utils/errors';
 import * as groupService from '../services/groupService';
 import * as permissionService from '../services/permissionService';
-import { Permission, GroupRole } from '../../shared/types/permissions.types';
-import { AuthenticatedUser } from '../../shared/types/auth.types';
+import { Permission } from '../../shared/types/permissions.types';
 import { logger } from '../utils/logger';
+// Import auth types to ensure Express.User is properly extended
+import '../../shared/types/auth.types';
 
 /**
  * Middleware to check if the authenticated user is an admin of the specified group
