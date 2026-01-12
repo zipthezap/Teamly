@@ -11,7 +11,11 @@ import {
   SubmitScoreDto,
   TournamentStanding,
   GenerateBracketsDto,
-  TournamentStatus
+  TournamentStatus,
+  CreateMatchDto,
+  UpdateMatchDto,
+  AssignRefereeDto,
+  AssignPoolDto
 } from '../../../shared/types';
 
 const API_BASE_URL = typeof import.meta.env.VITE_API_URL !== 'undefined' 
@@ -86,9 +90,39 @@ export const tournamentAPI = {
     await api.delete(`/tournaments/${tournamentId}/teams/${teamId}`);
   },
 
+  // Assign team to pool
+  assignTeamToPool: async (tournamentId: string, teamId: string, data: AssignPoolDto): Promise<TournamentTeam> => {
+    const response = await api.put(`/tournaments/${tournamentId}/teams/${teamId}/pool`, data);
+    return response.data;
+  },
+
   // Generate tournament brackets
   generateBrackets: async (tournamentId: string, data?: GenerateBracketsDto): Promise<{ message: string; matchesCreated: number }> => {
     const response = await api.post(`/tournaments/${tournamentId}/generate-brackets`, data || {});
+    return response.data;
+  },
+
+  // Manual bracket management
+  // Create a match manually
+  createMatch: async (tournamentId: string, data: CreateMatchDto): Promise<TournamentMatch> => {
+    const response = await api.post(`/tournaments/${tournamentId}/matches`, data);
+    return response.data;
+  },
+
+  // Update a match
+  updateMatch: async (tournamentId: string, matchId: string, data: UpdateMatchDto): Promise<TournamentMatch> => {
+    const response = await api.put(`/tournaments/${tournamentId}/matches/${matchId}`, data);
+    return response.data;
+  },
+
+  // Delete a match
+  deleteMatch: async (tournamentId: string, matchId: string): Promise<void> => {
+    await api.delete(`/tournaments/${tournamentId}/matches/${matchId}`);
+  },
+
+  // Assign referee to a match
+  assignReferee: async (tournamentId: string, matchId: string, data: AssignRefereeDto): Promise<TournamentMatch> => {
+    const response = await api.put(`/tournaments/${tournamentId}/matches/${matchId}/referee`, data);
     return response.data;
   },
 

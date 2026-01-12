@@ -20,10 +20,17 @@ router.delete('/:id', tournamentController.deleteTournament);
 router.post('/:id/teams', tournamentController.addTeam);
 router.put('/:id/teams/:teamId', tournamentController.updateTeam);
 router.delete('/:id/teams/:teamId', tournamentController.deleteTeam);
+router.put('/:id/teams/:teamId/pool', tournamentController.assignTeamToPool);
 
 // Bracket and match management
 router.post('/:id/generate-brackets', tournamentController.generateBrackets);
 router.post('/:id/matches/:matchId/score', tournamentController.submitScore);
+
+// Manual bracket management (admin only)
+router.post('/:id/matches', tournamentController.createMatch);
+router.put('/:id/matches/:matchId', tournamentController.updateMatch);
+router.delete('/:id/matches/:matchId', tournamentController.deleteMatch);
+router.put('/:id/matches/:matchId/referee', tournamentController.assignReferee);
 
 // Standings
 router.get('/:id/standings', tournamentController.getStandings);

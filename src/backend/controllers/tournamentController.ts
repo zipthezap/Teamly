@@ -35,6 +35,7 @@ export const createTournament = async (req: Request, res: Response) => {
       isPublic,
       allowLateRegistration,
       autoGenerateBrackets,
+      useManualBrackets,
       prizesDescription,
       rulesDescription,
       contactEmail,
@@ -135,6 +136,7 @@ export const createTournament = async (req: Request, res: Response) => {
         isPublic: isPublic !== undefined ? isPublic : true,
         allowLateRegistration: allowLateRegistration || false,
         autoGenerateBrackets: autoGenerateBrackets || false,
+        useManualBrackets: useManualBrackets || false,
         prizesDescription: sanitized.prizesDescription || undefined,
         rulesDescription: sanitized.rulesDescription || undefined,
         contactEmail: contactEmail || undefined,
@@ -281,7 +283,7 @@ export const updateTournament = async (req: Request, res: Response) => {
       location, locationName, city, country, latitude, longitude,
       // Admin controls
       registrationDeadline, isPublic, allowLateRegistration,
-      autoGenerateBrackets, prizesDescription, rulesDescription, contactEmail
+      autoGenerateBrackets, useManualBrackets, prizesDescription, rulesDescription, contactEmail
     } = req.body;
 
     const tournament = await prisma.tournament.findUnique({
@@ -369,6 +371,9 @@ export const updateTournament = async (req: Request, res: Response) => {
     if (autoGenerateBrackets !== undefined) {
       updateData.autoGenerateBrackets = autoGenerateBrackets;
     }
+    if (useManualBrackets !== undefined) {
+      updateData.useManualBrackets = useManualBrackets;
+    }
     if (prizesDescription !== undefined) {
       const sanitized = tournamentService.sanitizeTournamentData({ prizesDescription });
       updateData.prizesDescription = sanitized.prizesDescription || null;
@@ -451,7 +456,7 @@ export const addTeam = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = (req as any).userId;
-    const { name, captainName, captainEmail, captainUserId } = req.body;
+    const { name, captainName, captainEmail, captainUserId, poolNumber, poolName, seedNumber } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Team name is required' });
@@ -488,7 +493,10 @@ export const addTeam = async (req: Request, res: Response) => {
         captainName,
         captainEmail,
         captainUserId: captainUserId || undefined,
-        tournamentId: id
+        tournamentId: id,
+        poolNumber: poolNumber || undefined,
+        poolName: poolName || undefined,
+        seedNumber: seedNumber || undefined
       },
       include: {
         captainUser: {
@@ -522,7 +530,7 @@ export const updateTeam = async (req: Request, res: Response) => {
   try {
     const { id, teamId } = req.params;
     const userId = (req as any).userId;
-    const { name, captainName, captainEmail, captainUserId } = req.body;
+    const { name, captainName, captainEmail, captainUserId, poolNumber, poolName, seedNumber } = req.body;
 
     const tournament = await prisma.tournament.findUnique({
       where: { id }
@@ -555,6 +563,12 @@ export const updateTeam = async (req: Request, res: Response) => {
     if (captainName !== undefined) updateData.captainName = captainName;
     if (captainEmail !== undefined) updateData.captainEmail = captainEmail;
     if (captainUserId !== undefined) updateData.captainUserId = captainUserId || null;
+    // Only organizer can change pool assignments
+    if (isOrg) {
+      if (poolNumber !== undefined) updateData.poolNumber = poolNumber || null;
+      if (poolName !== undefined) updateData.poolName = poolName || null;
+      if (seedNumber !== undefined) updateData.seedNumber = seedNumber || null;
+    }
 
     const updatedTeam = await prisma.tournamentTeam.update({
       where: { id: teamId },
@@ -815,3 +829,405 @@ export const getStandings = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to fetch standings' });
   }
 };
+
+/**
+ * Create a manual match (admin only)
+ */
+export const createMatch = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).userId;
+    const {
+      homeTeamId,
+      awayTeamId,
+      refereeTeamId,
+      stage,
+      roundNumber,
+      groupName,
+      scheduledAt,
+      matchOrder
+    } = req.body;
+
+    if (!homeTeamId || !awayTeamId) {
+      return res.status(400).json({
+        error: 'Both home and away teams are required'
+      });
+    }
+
+    if (homeTeamId === awayTeamId) {
+      return res.status(400).json({
+        error: 'Home and away teams must be different'
+      });
+    }
+
+    const tournament = await prisma.tournament.findUnique({
+      where: { id }
+    });
+
+    if (!tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    if (!tournamentService.isOrganizer(tournament, userId)) {
+      return res.status(403).json({
+        error: 'Only the organizer can create matches'
+      });
+    }
+
+    // Verify teams exist and belong to this tournament
+    const homeTeam = await prisma.tournamentTeam.findFirst({
+      where: { id: homeTeamId, tournamentId: id }
+    });
+    const awayTeam = await prisma.tournamentTeam.findFirst({
+      where: { id: awayTeamId, tournamentId: id }
+    });
+
+    if (!homeTeam || !awayTeam) {
+      return res.status(400).json({
+        error: 'Invalid team IDs or teams do not belong to this tournament'
+      });
+    }
+
+    // Verify referee team if provided
+    if (refereeTeamId) {
+      if (refereeTeamId === homeTeamId || refereeTeamId === awayTeamId) {
+        return res.status(400).json({
+          error: 'Referee team cannot be one of the playing teams'
+        });
+      }
+      const refereeTeam = await prisma.tournamentTeam.findFirst({
+        where: { id: refereeTeamId, tournamentId: id }
+      });
+      if (!refereeTeam) {
+        return res.status(400).json({
+          error: 'Invalid referee team ID or team does not belong to this tournament'
+        });
+      }
+    }
+
+    const match = await prisma.tournamentMatch.create({
+      data: {
+        tournamentId: id,
+        homeTeamId,
+        awayTeamId,
+        refereeTeamId: refereeTeamId || undefined,
+        stage: stage as BracketStage || undefined,
+        roundNumber,
+        groupName,
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
+        matchOrder,
+        isManuallyCreated: true,
+        status: MatchStatus.SCHEDULED
+      },
+      include: {
+        homeTeam: true,
+        awayTeam: true,
+        refereeTeam: true
+      }
+    });
+
+    logger.info('Match created manually', 'TournamentController', {
+      tournamentId: id,
+      matchId: match.id,
+      userId
+    });
+
+    res.status(201).json(match);
+  } catch (error) {
+    logger.error('Error creating match', 'TournamentController', { error });
+    res.status(500).json({ error: 'Failed to create match' });
+  }
+};
+
+/**
+ * Update a match (admin only)
+ */
+export const updateMatch = async (req: Request, res: Response) => {
+  try {
+    const { id, matchId } = req.params;
+    const userId = (req as any).userId;
+    const {
+      homeTeamId,
+      awayTeamId,
+      refereeTeamId,
+      stage,
+      roundNumber,
+      groupName,
+      scheduledAt,
+      matchOrder,
+      status
+    } = req.body;
+
+    const tournament = await prisma.tournament.findUnique({
+      where: { id }
+    });
+
+    if (!tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    if (!tournamentService.isOrganizer(tournament, userId)) {
+      return res.status(403).json({
+        error: 'Only the organizer can update matches'
+      });
+    }
+
+    const match = await prisma.tournamentMatch.findUnique({
+      where: { id: matchId }
+    });
+
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    // Validate new team IDs if provided
+    if (homeTeamId || awayTeamId) {
+      const newHomeId = homeTeamId || match.homeTeamId;
+      const newAwayId = awayTeamId || match.awayTeamId;
+
+      if (newHomeId === newAwayId) {
+        return res.status(400).json({
+          error: 'Home and away teams must be different'
+        });
+      }
+
+      if (homeTeamId) {
+        const homeTeam = await prisma.tournamentTeam.findFirst({
+          where: { id: homeTeamId, tournamentId: id }
+        });
+        if (!homeTeam) {
+          return res.status(400).json({ error: 'Invalid home team ID' });
+        }
+      }
+
+      if (awayTeamId) {
+        const awayTeam = await prisma.tournamentTeam.findFirst({
+          where: { id: awayTeamId, tournamentId: id }
+        });
+        if (!awayTeam) {
+          return res.status(400).json({ error: 'Invalid away team ID' });
+        }
+      }
+    }
+
+    const updateData: any = {};
+    if (homeTeamId !== undefined) updateData.homeTeamId = homeTeamId;
+    if (awayTeamId !== undefined) updateData.awayTeamId = awayTeamId;
+    if (refereeTeamId !== undefined) updateData.refereeTeamId = refereeTeamId || null;
+    if (stage !== undefined) updateData.stage = stage;
+    if (roundNumber !== undefined) updateData.roundNumber = roundNumber;
+    if (groupName !== undefined) updateData.groupName = groupName;
+    if (scheduledAt !== undefined) updateData.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+    if (matchOrder !== undefined) updateData.matchOrder = matchOrder;
+    if (status !== undefined) updateData.status = status;
+
+    const updatedMatch = await prisma.tournamentMatch.update({
+      where: { id: matchId },
+      data: updateData,
+      include: {
+        homeTeam: true,
+        awayTeam: true,
+        refereeTeam: true
+      }
+    });
+
+    logger.info('Match updated', 'TournamentController', {
+      tournamentId: id,
+      matchId,
+      userId
+    });
+
+    res.json(updatedMatch);
+  } catch (error) {
+    logger.error('Error updating match', 'TournamentController', { error });
+    res.status(500).json({ error: 'Failed to update match' });
+  }
+};
+
+/**
+ * Delete a match (admin only)
+ */
+export const deleteMatch = async (req: Request, res: Response) => {
+  try {
+    const { id, matchId } = req.params;
+    const userId = (req as any).userId;
+
+    const tournament = await prisma.tournament.findUnique({
+      where: { id }
+    });
+
+    if (!tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    if (!tournamentService.isOrganizer(tournament, userId)) {
+      return res.status(403).json({
+        error: 'Only the organizer can delete matches'
+      });
+    }
+
+    const match = await prisma.tournamentMatch.findUnique({
+      where: { id: matchId }
+    });
+
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    // Don't allow deleting completed matches with scores
+    if (match.status === MatchStatus.COMPLETED && (match.homeScore !== null || match.awayScore !== null)) {
+      return res.status(400).json({
+        error: 'Cannot delete completed matches with scores. Please remove scores first.'
+      });
+    }
+
+    await prisma.tournamentMatch.delete({
+      where: { id: matchId }
+    });
+
+    logger.info('Match deleted', 'TournamentController', {
+      tournamentId: id,
+      matchId,
+      userId
+    });
+
+    res.json({ message: 'Match deleted successfully' });
+  } catch (error) {
+    logger.error('Error deleting match', 'TournamentController', { error });
+    res.status(500).json({ error: 'Failed to delete match' });
+  }
+};
+
+/**
+ * Assign referee to a match (admin only)
+ */
+export const assignReferee = async (req: Request, res: Response) => {
+  try {
+    const { id, matchId } = req.params;
+    const userId = (req as any).userId;
+    const { refereeTeamId } = req.body;
+
+    const tournament = await prisma.tournament.findUnique({
+      where: { id }
+    });
+
+    if (!tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    if (!tournamentService.isOrganizer(tournament, userId)) {
+      return res.status(403).json({
+        error: 'Only the organizer can assign referees'
+      });
+    }
+
+    const match = await prisma.tournamentMatch.findUnique({
+      where: { id: matchId }
+    });
+
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    // Verify referee team if provided
+    if (refereeTeamId) {
+      if (refereeTeamId === match.homeTeamId || refereeTeamId === match.awayTeamId) {
+        return res.status(400).json({
+          error: 'Referee team cannot be one of the playing teams'
+        });
+      }
+      const refereeTeam = await prisma.tournamentTeam.findFirst({
+        where: { id: refereeTeamId, tournamentId: id }
+      });
+      if (!refereeTeam) {
+        return res.status(400).json({
+          error: 'Invalid referee team ID or team does not belong to this tournament'
+        });
+      }
+    }
+
+    const updatedMatch = await prisma.tournamentMatch.update({
+      where: { id: matchId },
+      data: {
+        refereeTeamId: refereeTeamId || null
+      },
+      include: {
+        homeTeam: true,
+        awayTeam: true,
+        refereeTeam: true
+      }
+    });
+
+    logger.info('Referee assigned to match', 'TournamentController', {
+      tournamentId: id,
+      matchId,
+      refereeTeamId,
+      userId
+    });
+
+    res.json(updatedMatch);
+  } catch (error) {
+    logger.error('Error assigning referee', 'TournamentController', { error });
+    res.status(500).json({ error: 'Failed to assign referee' });
+  }
+};
+
+/**
+ * Assign team to pool (admin only)
+ */
+export const assignTeamToPool = async (req: Request, res: Response) => {
+  try {
+    const { id, teamId } = req.params;
+    const userId = (req as any).userId;
+    const { poolNumber, poolName } = req.body;
+
+    const tournament = await prisma.tournament.findUnique({
+      where: { id }
+    });
+
+    if (!tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    if (!tournamentService.isOrganizer(tournament, userId)) {
+      return res.status(403).json({
+        error: 'Only the organizer can assign teams to pools'
+      });
+    }
+
+    const team = await prisma.tournamentTeam.findFirst({
+      where: { id: teamId, tournamentId: id }
+    });
+
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    const updatedTeam = await prisma.tournamentTeam.update({
+      where: { id: teamId },
+      data: {
+        poolNumber: poolNumber || null,
+        poolName: poolName || null
+      },
+      include: {
+        captainUser: {
+          select: { id: true, name: true, email: true }
+        }
+      }
+    });
+
+    logger.info('Team assigned to pool', 'TournamentController', {
+      tournamentId: id,
+      teamId,
+      poolNumber,
+      poolName,
+      userId
+    });
+
+    res.json(updatedTeam);
+  } catch (error) {
+    logger.error('Error assigning team to pool', 'TournamentController', { error });
+    res.status(500).json({ error: 'Failed to assign team to pool' });
+  }
+};
+
