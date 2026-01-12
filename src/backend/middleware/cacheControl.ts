@@ -19,7 +19,7 @@ export const cacheControl = (
     staleWhileRevalidate?: number;
   } = {}
 ) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (_req: Request, res: Response, next: NextFunction) => {
     const directives: string[] = [];
 
     // Set cache visibility
@@ -53,7 +53,7 @@ export const cacheControl = (
 /**
  * Sets no-cache headers for responses that should never be cached
  */
-export const noCache = (req: Request, res: Response, next: NextFunction) => {
+export const noCache = (_req: Request, res: Response, next: NextFunction) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
@@ -103,7 +103,7 @@ function generateETag(body: any): string {
  * Indicates which request headers affect the response (important for caching proxies)
  */
 export const varyOn = (...headers: string[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (_req: Request, res: Response, next: NextFunction) => {
     const existing = res.getHeader('Vary');
     const varyHeaders = existing ? `${existing}, ${headers.join(', ')}` : headers.join(', ');
     res.setHeader('Vary', varyHeaders);
