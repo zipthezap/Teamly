@@ -232,6 +232,83 @@ const TournamentDetails: React.FC = () => {
           </Typography>
         )}
 
+        {/* Admin Control Panel */}
+        {isOrganizer && (
+          <Alert severity="info" icon={<EditIcon />} sx={{ mb: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+              <Typography variant="body2">
+                <strong>Organizer Controls:</strong> You can manage teams, generate brackets, and update scores.
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                {tournament.status === TournamentStatus.DRAFT && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<EditIcon />}
+                    onClick={() => navigate(`/tournaments/${id}/edit`)}
+                  >
+                    Edit
+                  </Button>
+                )}
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="error"
+                  startIcon={<DeleteIcon />}
+                  onClick={() => {
+                    if (window.confirm('Are you sure you want to delete this tournament?')) {
+                      // Handle delete
+                    }
+                  }}
+                >
+                  Delete
+                </Button>
+              </Box>
+            </Box>
+          </Alert>
+        )}
+
+        {/* Additional Tournament Info */}
+        {(tournament.prizesDescription || tournament.rulesDescription || tournament.registrationDeadline) && (
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            {tournament.prizesDescription && (
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom color="primary">
+                      🏆 Prizes
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {tournament.prizesDescription}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            )}
+            {tournament.rulesDescription && (
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom color="primary">
+                      📋 Rules
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {tournament.rulesDescription}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            )}
+            {tournament.registrationDeadline && (
+              <Grid item xs={12}>
+                <Alert severity="warning">
+                  Registration Deadline: {new Date(tournament.registrationDeadline).toLocaleString()}
+                </Alert>
+              </Grid>
+            )}
+          </Grid>
+        )}
+
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12} sm={6} md={3}>
             <Card variant="outlined">
@@ -288,13 +365,113 @@ const TournamentDetails: React.FC = () => {
 
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={tabValue} onChange={(_, val) => setTabValue(val)}>
+            <Tab label="Overview" />
             <Tab label="Teams" />
             <Tab label="Matches" />
             <Tab label="Standings" />
           </Tabs>
         </Box>
 
+        {/* Overview Tab */}
         <TabPanel value={tabValue} index={0}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    Tournament Information
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Organizer
+                      </Typography>
+                      <Typography variant="body1">
+                        {tournament.organizer?.name || 'Unknown'}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Format
+                      </Typography>
+                      <Typography variant="body1">
+                        {tournament.format.replace('_', ' ').toUpperCase()}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Sport
+                      </Typography>
+                      <Typography variant="body1">
+                        {tournament.sportType}
+                      </Typography>
+                    </Box>
+                    {tournament.contactEmail && (
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">
+                          Contact
+                        </Typography>
+                        <Typography variant="body1">
+                          {tournament.contactEmail}
+                        </Typography>
+                      </Box>
+                    )}
+                    {tournament.isRecurring && (
+                      <Box>
+                        <Chip label="Recurring Tournament" color="secondary" size="small" />
+                      </Box>
+                    )}
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    Statistics
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Total Teams
+                      </Typography>
+                      <Typography variant="body1" fontWeight="bold">
+                        {tournament.teams?.length || 0}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Total Matches
+                      </Typography>
+                      <Typography variant="body1" fontWeight="bold">
+                        {tournament.matches?.length || 0}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Completed Matches
+                      </Typography>
+                      <Typography variant="body1" fontWeight="bold">
+                        {tournament.matches?.filter(m => m.status === MatchStatus.COMPLETED).length || 0}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Upcoming Matches
+                      </Typography>
+                      <Typography variant="body1" fontWeight="bold">
+                        {tournament.matches?.filter(m => m.status === MatchStatus.SCHEDULED).length || 0}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={1}>
           {isOrganizer && tournament.status === TournamentStatus.DRAFT && (
             <Button
               variant="contained"
@@ -335,7 +512,7 @@ const TournamentDetails: React.FC = () => {
           </TableContainer>
         </TabPanel>
 
-        <TabPanel value={tabValue} index={1}>
+        <TabPanel value={tabValue} index={2}>
           {tournament.matches && tournament.matches.length > 0 ? (
             <TableContainer>
               <Table>
@@ -393,7 +570,7 @@ const TournamentDetails: React.FC = () => {
           )}
         </TabPanel>
 
-        <TabPanel value={tabValue} index={2}>
+        <TabPanel value={tabValue} index={3}>
           {tournament.standings && tournament.standings.length > 0 ? (
             <TableContainer>
               <Table>

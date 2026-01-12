@@ -50,6 +50,18 @@ export interface Tournament {
   country?: string;
   organizerId: string;
   groupId?: string;
+  // Admin controls
+  registrationDeadline?: Date | string;
+  isPublic?: boolean;
+  allowLateRegistration?: boolean;
+  autoGenerateBrackets?: boolean;
+  prizesDescription?: string;
+  rulesDescription?: string;
+  contactEmail?: string;
+  // Recurring tournament support
+  isRecurring?: boolean;
+  recurrenceRule?: string;
+  parentTournamentId?: string;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -130,6 +142,17 @@ export interface CreateTournamentDto {
   city?: string;
   country?: string;
   groupId?: string;
+  // Admin controls
+  registrationDeadline?: Date | string;
+  isPublic?: boolean;
+  allowLateRegistration?: boolean;
+  autoGenerateBrackets?: boolean;
+  prizesDescription?: string;
+  rulesDescription?: string;
+  contactEmail?: string;
+  // Recurring tournament support
+  isRecurring?: boolean;
+  recurrenceRule?: string;
 }
 
 export interface UpdateTournamentDto {
@@ -145,6 +168,14 @@ export interface UpdateTournamentDto {
   locationName?: string;
   city?: string;
   country?: string;
+  // Admin controls
+  registrationDeadline?: Date | string;
+  isPublic?: boolean;
+  allowLateRegistration?: boolean;
+  autoGenerateBrackets?: boolean;
+  prizesDescription?: string;
+  rulesDescription?: string;
+  contactEmail?: string;
 }
 
 export interface CreateTeamDto {
