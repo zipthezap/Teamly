@@ -7,7 +7,6 @@ import { Response } from 'express';
 import { logger } from './logger';
 import { ApiSuccessResponse, PaginationMeta } from '../../shared/types';
 import { 
-  ApiError, 
   BadRequestError, 
   NotFoundError, 
   UnauthorizedError, 

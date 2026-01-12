@@ -3,6 +3,7 @@ import {
   MatchStatus, 
   BracketStage
 } from '../../shared/types/tournament.types';
+import { BadRequestError } from '../utils/errors';
 
 /**
  * Sanitize tournament data to prevent XSS attacks

@@ -44,13 +44,13 @@ router.post('/:id/exceptions', asyncHandler(eventController.addRecurringEventExc
 router.delete('/:id/exceptions', asyncHandler(eventController.removeRecurringEventException));
 
 // Event reminder routes
-router.post('/:eventId/reminders', asyncHandler(reminderController.createReminder));
-router.get('/:eventId/reminders', asyncHandler(reminderController.getEventReminders));
+router.post('/:eventId/reminders', reminderController.createReminder);
+router.get('/:eventId/reminders', reminderController.getEventReminders);
 
 // Event attendance routes
-router.post('/:eventId/attendance', asyncHandler(attendanceController.markAttendance));
-router.get('/:eventId/attendance', asyncHandler(attendanceController.getEventAttendance));
-router.get('/:eventId/attendance/stats', asyncHandler(attendanceController.getAttendanceStats));
-router.delete('/:eventId/attendance/:userId', asyncHandler(attendanceController.deleteAttendance));
+router.post('/:eventId/attendance', attendanceController.markAttendance);
+router.get('/:eventId/attendance', attendanceController.getEventAttendance);
+router.get('/:eventId/attendance/stats', attendanceController.getAttendanceStats);
+router.delete('/:eventId/attendance/:userId', attendanceController.deleteAttendance);
 
 export default router;

@@ -6,20 +6,19 @@ import {
   deleteComment
 } from '../controllers/commentController';
 import authMiddleware from '../middleware/auth';
-import { asyncHandler } from '../middleware/asyncHandler';
 
 const router = Router();
 
 // Create a comment
-router.post('/', authMiddleware, asyncHandler(createComment));
+router.post('/', authMiddleware, createComment);
 
 // Get comments for an event
-router.get('/event/:eventId', authMiddleware, asyncHandler(getEventComments));
+router.get('/event/:eventId', authMiddleware, getEventComments);
 
 // Update a comment
-router.put('/:commentId', authMiddleware, asyncHandler(updateComment));
+router.put('/:commentId', authMiddleware, updateComment);
 
 // Delete a comment
-router.delete('/:commentId', authMiddleware, asyncHandler(deleteComment));
+router.delete('/:commentId', authMiddleware, deleteComment);
 
 export default router;
