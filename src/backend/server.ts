@@ -21,7 +21,6 @@ import notificationRoutes from './routes/notificationRoutes';
 import teamUpRoutes from './routes/teamUpRoutes';
 import reminderRoutes from './routes/reminderRoutes';
 import tournamentRoutes from './routes/tournamentRoutes';
-import { apiLimiter } from './middleware/rateLimiter';
 import { distributedApiLimiter } from './middleware/distributedRateLimiter';
 import { requestTimeout } from './middleware/requestTimeout';
 import { logger } from './utils/logger';

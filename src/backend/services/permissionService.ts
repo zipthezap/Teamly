@@ -5,7 +5,7 @@
 
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
-import CacheService from './cacheService';
+import { CacheService } from './cacheService';
 import {
   Permission,
   GroupRole,
@@ -350,19 +350,25 @@ export async function hasBulkPermissions(
 /**
  * Clear permission cache for a user (call after role changes)
  */
-export function clearUserPermissionCache(userId: string): void {
-  for (const key of permissionCache.keys()) {
-    if (key.startsWith(`${userId}:`)) {
-      permissionCache.delete(key);
-    }
+export async function clearUserPermissionCache(userId: string): Promise<void> {
+  try {
+    await CacheService.deletePattern(`permission:${userId}:*`);
+    logger.info('Cleared permission cache for user', 'PermissionService', { userId });
+  } catch (error) {
+    logger.error('Error clearing user permission cache', 'PermissionService', { userId, error });
   }
 }
 
 /**
  * Clear all permission cache
  */
-export function clearAllPermissionCache(): void {
-  permissionCache.clear();
+export async function clearAllPermissionCache(): Promise<void> {
+  try {
+    await CacheService.deletePattern('permission:*');
+    logger.info('Cleared all permission cache', 'PermissionService');
+  } catch (error) {
+    logger.error('Error clearing all permission cache', 'PermissionService', { error });
+  }
 }
 
 /**

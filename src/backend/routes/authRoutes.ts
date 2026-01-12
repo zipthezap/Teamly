@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import * as authController from '../controllers/authController';
 import authMiddleware from '../middleware/auth';
-import { authLimiter, uploadLimiter } from '../middleware/rateLimiter';
 import { distributedAuthLimiter, distributedUploadLimiter, distributedPasswordResetLimiter, distributedEmailVerificationLimiter } from '../middleware/distributedRateLimiter';
 import { uploadProfilePicture } from '../middleware/upload';
 import { asyncHandler } from '../middleware/asyncHandler';
