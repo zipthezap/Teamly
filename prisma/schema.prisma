@@ -220,6 +220,9 @@ model User {
   teamUpRequests    TeamUpRequest[]  @relation("TeamUpRequestCreator")
   teamUpResponses   TeamUpResponse[]
   teamUpComments    TeamUpComment[]
+  tournaments       Tournament[]     @relation("TournamentOrganizer")
+  captainedTeams    TournamentTeam[] @relation("TeamCaptain")
+  tournamentPlayers TournamentPlayer[] @relation("TournamentPlayer")
   
   @@index([email]) // For faster email lookups
   @@index([emailVerificationToken]) // For email verification
@@ -255,6 +258,7 @@ model Group {
   groupMessages GroupMessage[]
   groupNotifications GroupNotification[]
   eventRequests EventRequest[]
+  tournaments Tournament[]
 }
 
 model GroupJoinRequest {
@@ -615,4 +619,216 @@ model TeamUpComment {
   @@index([teamUpRequestId])
   @@index([userId])
   @@index([createdAt])
+}
+
+// Tournament hosting functionality
+enum TournamentFormat {
+  single_elimination
+  double_elimination
+  round_robin
+  groups_knockout
+}
+
+enum TournamentStatus {
+  draft
+  registration
+  in_progress
+  completed
+  cancelled
+}
+
+enum MatchStatus {
+  scheduled
+  in_progress
+  completed
+  cancelled
+}
+
+enum BracketStage {
+  group_stage
+  round_of_32
+  round_of_16
+  quarter_finals
+  semi_finals
+  third_place
+  finals
+}
+
+model Tournament {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  sportType   SportType
+  format      TournamentFormat @default(single_elimination)
+  status      TournamentStatus @default(draft)
+  startDate   DateTime
+  endDate     DateTime?
+  maxTeams    Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Location fields
+  location    String?
+  latitude    Float?
+  longitude   Float?
+  locationName String?
+  city        String?
+  country     String?
+  
+  // Organizer
+  organizerId String
+  organizer   User     @relation("TournamentOrganizer", fields: [organizerId], references: [id])
+  
+  // Optional group association
+  groupId     String?
+  group       Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  // Admin controls
+  registrationDeadline DateTime?
+  isPublic            Boolean  @default(true)
+  allowLateRegistration Boolean @default(false)
+  autoGenerateBrackets Boolean @default(false)
+  useManualBrackets   Boolean  @default(false) // Enable manual bracket/pool management
+  prizesDescription   String?
+  rulesDescription    String?
+  contactEmail        String?
+  
+  // Recurring tournament support
+  isRecurring         Boolean  @default(false)
+  recurrenceRule      String?  // RRule format
+  parentTournamentId  String?
+  parentTournament    Tournament? @relation("RecurringTournaments", fields: [parentTournamentId], references: [id], onDelete: SetNull)
+  childTournaments    Tournament[] @relation("RecurringTournaments")
+  
+  teams       TournamentTeam[]
+  matches     TournamentMatch[]
+  standings   TournamentStanding[]
+  
+  @@index([organizerId])
+  @@index([groupId])
+  @@index([status])
+  @@index([startDate])
+  @@index([sportType])
+  @@index([city, country])
+  @@index([isPublic])
+  @@index([parentTournamentId])
+}
+
+model TournamentTeam {
+  id           String   @id @default(uuid())
+  name         String
+  captainName  String?
+  captainEmail String?
+  captainUserId String?
+  captainUser   User?   @relation("TeamCaptain", fields: [captainUserId], references: [id])
+  
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  
+  // Manual pool/bracket management
+  poolNumber   Int?     // For manual pool assignment (1, 2, 3, etc.)
+  poolName     String?  // Custom pool name (e.g., "Pool A", "Group 1")
+  seedNumber   Int?     // Seeding position for bracket generation
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  homeMatches  TournamentMatch[] @relation("HomeTeam")
+  awayMatches  TournamentMatch[] @relation("AwayTeam")
+  refereingMatches TournamentMatch[] @relation("RefereeTeam")
+  standings    TournamentStanding[]
+  players      TournamentPlayer[]
+  
+  @@unique([tournamentId, name])
+  @@index([tournamentId])
+  @@index([captainUserId])
+  @@index([poolNumber])
+}
+
+model TournamentMatch {
+  id           String   @id @default(uuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  
+  homeTeamId   String
+  homeTeam     TournamentTeam @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  awayTeamId   String
+  awayTeam     TournamentTeam @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  
+  // Referee assignment - team that will officiate this match
+  refereeTeamId String?
+  refereeTeam   TournamentTeam? @relation("RefereeTeam", fields: [refereeTeamId], references: [id], onDelete: SetNull)
+  
+  homeScore    Int?
+  awayScore    Int?
+  
+  stage        BracketStage?
+  roundNumber  Int?      // For round-robin or group stages
+  groupName    String?   // For group stages (e.g., "Group A")
+  
+  // Manual bracket management
+  isManuallyCreated Boolean @default(false) // Track if match was manually created
+  matchOrder   Int?      // Custom ordering for display
+  
+  status       MatchStatus @default(scheduled)
+  scheduledAt  DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@index([tournamentId])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+  @@index([refereeTeamId])
+  @@index([status])
+  @@index([stage])
+  @@index([matchOrder])
+}
+
+model TournamentStanding {
+  id           String   @id @default(uuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  
+  teamId       String
+  team         TournamentTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  points       Int      @default(0)
+  wins         Int      @default(0)
+  losses       Int      @default(0)
+  draws        Int      @default(0)
+  goalsFor     Int      @default(0)
+  goalsAgainst Int      @default(0)
+  
+  groupName    String?  // For group stages
+  
+  updatedAt    DateTime @updatedAt
+  
+  @@unique([tournamentId, teamId, groupName])
+  @@index([tournamentId])
+  @@index([teamId])
+  @@index([points])
+}
+
+// Tournament players - tracks registered players on a team
+model TournamentPlayer {
+  id        String   @id @default(uuid())
+  
+  teamId    String
+  team      TournamentTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  userId    String?
+  user      User?    @relation("TournamentPlayer", fields: [userId], references: [id], onDelete: SetNull)
+  
+  playerName  String   // Name of the player (required even if userId is set)
+  playerEmail String?  // Optional email
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([teamId, userId]) // A user can only be registered once per team
+  @@index([teamId])
+  @@index([userId])
 }

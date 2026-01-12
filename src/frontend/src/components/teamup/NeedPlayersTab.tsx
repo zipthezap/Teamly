@@ -258,12 +258,36 @@ const NeedPlayersTab = () => {
       )}
 
       {/* View Toggle */}
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
         <ToggleButtonGroup
           value={view}
           exclusive
           onChange={handleViewChange}
           aria-label="view selection"
+          sx={{
+            backgroundColor: 'white',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            borderRadius: 2,
+            '& .MuiToggleButton-root': {
+              px: 3,
+              py: 1.5,
+              border: 'none',
+              fontWeight: 600,
+              textTransform: 'none',
+              fontSize: '0.95rem',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                backgroundColor: 'rgba(102, 126, 234, 0.08)'
+              },
+              '&.Mui-selected': {
+                backgroundColor: '#667eea',
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: '#5568d3'
+                }
+              }
+            }
+          }}
         >
           <ToggleButton value="myRequests" aria-label="my requests">
             {t('teamup.myRequests')}
@@ -271,7 +295,7 @@ const NeedPlayersTab = () => {
           <ToggleButton value="manageResponses" aria-label="manage responses">
             {t('teamup.manageResponses')}
             {requestsWithResponses.length > 0 && (
-              <Badge badgeContent={requestsWithResponses.length} color="primary" sx={{ ml: 1 }} />
+              <Badge badgeContent={requestsWithResponses.length} color="error" sx={{ ml: 1 }} />
             )}
           </ToggleButton>
         </ToggleButtonGroup>
@@ -279,8 +303,25 @@ const NeedPlayersTab = () => {
         {view === 'myRequests' && (
           <Button
             variant="contained"
+            size="large"
             startIcon={<AddIcon />}
             onClick={() => handleOpenDialog()}
+            sx={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              fontWeight: 600,
+              textTransform: 'none',
+              px: 3,
+              py: 1.5,
+              borderRadius: 2,
+              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 6px 16px rgba(102, 126, 234, 0.5)'
+              }
+            }}
           >
             {t('teamup.createRequest')}
           </Button>
@@ -291,76 +332,138 @@ const NeedPlayersTab = () => {
       {view === 'myRequests' && (
         <>
           {myRequests.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 8 }}>
-              <Typography variant="h6" color="text.secondary">
+            <Box sx={{ 
+              textAlign: 'center', 
+              py: 8,
+              backgroundColor: 'white',
+              borderRadius: 2,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+            }}>
+              <Typography variant="h4" sx={{ mb: 2, fontSize: '3rem' }}>📝</Typography>
+              <Typography variant="h6" color="text.secondary" gutterBottom>
                 {t('teamup.noRequestsYet')}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Create your first request to find players!
               </Typography>
             </Box>
           ) : (
             <Grid container spacing={3}>
               {myRequests.map((request) => (
                 <Grid item xs={12} md={6} lg={4} key={request.id}>
-                  <Card>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="h6" component="div">
+                  <Card sx={{
+                    height: '100%',
+                    borderRadius: 2,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: '0 8px 16px rgba(0,0,0,0.15)'
+                    }
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'flex-start' }}>
+                        <Typography variant="h6" component="div" sx={{ 
+                          fontWeight: 600,
+                          flex: 1,
+                          pr: 1
+                        }}>
                           {request.title}
                         </Typography>
                         <Chip
                           label={t(`teamup.status.${request.status}`)}
-                          color={
-                            request.status === 'open'
-                              ? 'success'
-                              : request.status === 'filled'
-                              ? 'primary'
-                              : 'default'
-                          }
                           size="small"
+                          sx={{
+                            fontWeight: 600,
+                            ...(request.status === 'open' && {
+                              background: 'linear-gradient(135deg, #4caf50 0%, #8bc34a 100%)',
+                              color: 'white'
+                            }),
+                            ...(request.status === 'filled' && {
+                              background: 'linear-gradient(135deg, #2196f3 0%, #21cbf3 100%)',
+                              color: 'white'
+                            })
+                          }}
                         />
                       </Box>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                        {request.sportType}
-                      </Typography>
+                      <Chip
+                        label={request.sportType}
+                        size="small"
+                        sx={{ 
+                          mb: 2,
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: 'white',
+                          fontWeight: 600
+                        }}
+                      />
                       {request.description && (
-                        <Typography variant="body2" sx={{ mb: 1 }}>
+                        <Typography 
+                          variant="body2" 
+                          sx={{ 
+                            mb: 2,
+                            color: 'text.secondary',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical'
+                          }}
+                        >
                           {request.description}
                         </Typography>
                       )}
-                      <Typography variant="body2" color="text.secondary">
-                        📅 {new Date(request.dateTime).toLocaleString()}
-                      </Typography>
-                      {request.location && (
-                        <Typography variant="body2" color="text.secondary">
-                          📍 {request.location}
-                        </Typography>
-                      )}
-                      <Typography variant="body2" color="text.secondary">
-                        👥 {t('teamup.fillersNeeded', { count: request.playersNeeded })}
-                      </Typography>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body2" sx={{ fontSize: '1rem' }}>📅</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {new Date(request.dateTime).toLocaleString()}
+                          </Typography>
+                        </Box>
+                        {request.location && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="body2" sx={{ fontSize: '1rem' }}>📍</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {request.location}
+                            </Typography>
+                          </Box>
+                        )}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body2" sx={{ fontSize: '1rem' }}>👥</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {t('teamup.fillersNeeded', { count: request.playersNeeded })}
+                          </Typography>
+                        </Box>
+                      </Box>
                       {request._count?.responses > 0 && (
-                        <Box sx={{ mt: 1 }}>
-                          <Badge 
-                            badgeContent={request._count.responses} 
-                            color="primary"
-                            sx={{ width: '100%' }}
-                          >
-                            <Chip 
-                              icon={<PeopleIcon />}
-                              label={t('teamup.responses')}
-                              color="primary"
-                              variant="outlined"
-                              size="small"
-                              sx={{ width: '100%' }}
-                            />
-                          </Badge>
+                        <Box sx={{ mb: 2 }}>
+                          <Chip 
+                            icon={<PeopleIcon />}
+                            label={`${request._count.responses} ${t('teamup.responses')}`}
+                            size="small"
+                            sx={{
+                              width: '100%',
+                              justifyContent: 'center',
+                              background: 'linear-gradient(135deg, #ff9800 0%, #f44336 100%)',
+                              color: 'white',
+                              fontWeight: 600,
+                              '& .MuiChip-icon': {
+                                color: 'white'
+                              }
+                            }}
+                          />
                         </Box>
                       )}
                     </CardContent>
-                    <CardActions>
+                    <CardActions sx={{ px: 3, pb: 2, pt: 0, borderTop: '1px solid', borderColor: 'divider', gap: 1, flexWrap: 'wrap' }}>
                       <IconButton
                         size="small"
                         onClick={() => handleOpenDialog(request)}
-                        color="primary"
+                        sx={{
+                          color: '#667eea',
+                          '&:hover': {
+                            backgroundColor: 'rgba(102, 126, 234, 0.08)'
+                          }
+                        }}
                         title={t('common.edit')}
                       >
                         <EditIcon />
@@ -368,7 +471,12 @@ const NeedPlayersTab = () => {
                       <IconButton
                         size="small"
                         onClick={() => handleDelete(request.id)}
-                        color="error"
+                        sx={{
+                          color: 'error.main',
+                          '&:hover': {
+                            backgroundColor: 'rgba(244, 67, 54, 0.08)'
+                          }
+                        }}
                         title={t('common.delete')}
                       >
                         <DeleteIcon />
@@ -378,6 +486,16 @@ const NeedPlayersTab = () => {
                         variant="outlined"
                         startIcon={<VisibilityIcon />}
                         onClick={() => handleOpenDetailModal(request.id)}
+                        sx={{
+                          borderColor: '#667eea',
+                          color: '#667eea',
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          '&:hover': {
+                            borderColor: '#5568d3',
+                            backgroundColor: 'rgba(102, 126, 234, 0.08)'
+                          }
+                        }}
                       >
                         {t('common.viewDetails')}
                       </Button>
@@ -385,6 +503,14 @@ const NeedPlayersTab = () => {
                         <Button
                           size="small"
                           onClick={() => handleStatusChange(request.id, 'filled')}
+                          sx={{
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            color: '#4caf50',
+                            '&:hover': {
+                              backgroundColor: 'rgba(76, 175, 80, 0.08)'
+                            }
+                          }}
                         >
                           {t('teamup.markAsFilled')}
                         </Button>
@@ -393,6 +519,14 @@ const NeedPlayersTab = () => {
                         <Button
                           size="small"
                           onClick={() => handleStatusChange(request.id, 'open')}
+                          sx={{
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            color: '#2196f3',
+                            '&:hover': {
+                              backgroundColor: 'rgba(33, 150, 243, 0.08)'
+                            }
+                          }}
                         >
                           {t('teamup.markAsOpen')}
                         </Button>
@@ -410,11 +544,18 @@ const NeedPlayersTab = () => {
       {view === 'manageResponses' && (
         <>
           {requestsWithResponses.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 8 }}>
-              <Typography variant="h6" color="text.secondary">
+            <Box sx={{ 
+              textAlign: 'center', 
+              py: 8,
+              backgroundColor: 'white',
+              borderRadius: 2,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+            }}>
+              <Typography variant="h4" sx={{ mb: 2, fontSize: '3rem' }}>📬</Typography>
+              <Typography variant="h6" color="text.secondary" gutterBottom>
                 {t('teamup.noResponsesReceived')}
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              <Typography variant="body2" color="text.secondary">
                 {t('teamup.noResponsesReceivedDesc')}
               </Typography>
             </Box>
@@ -428,47 +569,87 @@ const NeedPlayersTab = () => {
                   <Grid item xs={12} md={6} lg={4} key={request.id}>
                     <Card sx={{
                       cursor: 'pointer',
-                      transition: 'all 0.2s',
+                      height: '100%',
+                      borderRadius: 2,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                       '&:hover': {
-                        transform: 'translateY(-4px)',
-                        boxShadow: 4
+                        transform: 'translateY(-8px)',
+                        boxShadow: '0 12px 24px rgba(102, 126, 234, 0.3)'
                       }
                     }}
                     onClick={() => handleOpenDetailModal(request.id)}
                     >
-                      <CardContent>
-                        <Typography variant="h6" component="div" gutterBottom>
+                      <CardContent sx={{ p: 3 }}>
+                        <Typography variant="h6" component="div" gutterBottom sx={{ fontWeight: 600 }}>
                           {request.title}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                          {request.sportType} • {new Date(request.dateTime).toLocaleString()}
-                        </Typography>
-                        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 0.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+                          <Chip
+                            label={request.sportType}
+                            size="small"
+                            sx={{ 
+                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                              color: 'white',
+                              fontWeight: 600
+                            }}
+                          />
+                          <Typography variant="body2" color="text.secondary">•</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {new Date(request.dateTime).toLocaleString()}
+                          </Typography>
+                        </Box>
+                        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1, mb: 2 }}>
                           <Chip
                             label={`${stats.pending} ${t('teamup.pending')}`}
                             size="small"
-                            color="default"
+                            sx={{
+                              backgroundColor: 'grey.200',
+                              fontWeight: 600
+                            }}
                           />
                           <Chip
                             label={`${stats.accepted} ${t('teamup.accepted')}`}
                             size="small"
-                            color="success"
-                            variant="outlined"
+                            sx={{
+                              background: 'linear-gradient(135deg, #4caf50 0%, #8bc34a 100%)',
+                              color: 'white',
+                              fontWeight: 600
+                            }}
                           />
                           <Chip
                             label={`${stats.declined} ${t('teamup.declined')}`}
                             size="small"
-                            color="error"
-                            variant="outlined"
+                            sx={{
+                              backgroundColor: 'error.light',
+                              color: 'white',
+                              fontWeight: 600
+                            }}
                           />
                           <Chip
                             label={`${spotsLeft} ${t('teamup.spotsLeft')}`}
                             size="small"
-                            color={spotsLeft > 0 ? 'primary' : 'default'}
+                            sx={{
+                              background: spotsLeft > 0 
+                                ? 'linear-gradient(135deg, #2196f3 0%, #21cbf3 100%)'
+                                : 'grey.400',
+                              color: 'white',
+                              fontWeight: 600
+                            }}
                           />
                         </Stack>
                         {stats.pending > 0 && (
-                          <Alert severity="info" sx={{ mt: 2 }}>
+                          <Alert 
+                            severity="info" 
+                            sx={{ 
+                              mt: 2,
+                              borderRadius: 2,
+                              fontWeight: 600,
+                              '& .MuiAlert-icon': {
+                                fontSize: '1.5rem'
+                              }
+                            }}
+                          >
                             {stats.pending} {t('teamup.pendingResponses')}
                           </Alert>
                         )}

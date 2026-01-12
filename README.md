@@ -16,6 +16,19 @@ A sports event organization app that allows individuals to set and organize smal
 
 ### 🆕 New Features
 
+- **🏆 Tournament Hosting**: Organize and manage tournaments with comprehensive features:
+  - Multiple tournament formats: Single Elimination, Double Elimination, Round Robin, Groups + Knockout
+  - **🎯 Full Admin Control**: Tournament organizers have complete control over brackets and pools
+    - Manual bracket management: Create, edit, and delete matches as needed
+    - Custom pool creation: Build pools exactly how you want them
+    - Referee assignment: Assign teams to referee matches when on break
+    - Flexible scheduling: Change match times and stages anytime
+  - Team management with captain assignment
+  - Automatic OR manual bracket generation
+  - Score tracking and submission (by organizers and team captains)
+  - Real-time standings and leaderboards
+  - Support for various sports types
+  - Group stage and knockout stage management
 - **📸 Picture Uploads**: Secure profile and group picture uploads with comprehensive security
 - **📧 Email Notifications**: Receive notifications for event invitations, updates, cancellations, and group invites
 - **🔄 Recurring Events**: Create events that repeat on daily, weekly, or monthly schedules

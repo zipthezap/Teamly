@@ -206,7 +206,11 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
       maxWidth="md" 
       fullWidth
       PaperProps={{
-        sx: { height: '90vh' }
+        sx: { 
+          height: '90vh',
+          borderRadius: 3,
+          overflow: 'hidden'
+        }
       }}
     >
       <DialogTitle sx={{ 
@@ -214,12 +218,15 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
         justifyContent: 'space-between', 
         alignItems: 'center',
         borderBottom: 1,
-        borderColor: 'divider'
+        borderColor: 'divider',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        color: 'white',
+        py: 2
       }}>
-        <Typography variant="h5" component="div">
+        <Typography variant="h5" component="div" sx={{ fontWeight: 700 }}>
           {request?.title || t('teamup.activityDetails')}
         </Typography>
-        <IconButton onClick={onClose} edge="end">
+        <IconButton onClick={onClose} edge="end" sx={{ color: 'white' }}>
           <CloseIcon />
         </IconButton>
       </DialogTitle>
@@ -238,7 +245,30 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
       <Tabs 
         value={tabValue} 
         onChange={handleTabChange}
-        sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}
+        sx={{ 
+          borderBottom: 1, 
+          borderColor: 'divider', 
+          px: 2,
+          backgroundColor: 'grey.50',
+          '& .MuiTab-root': {
+            fontWeight: 600,
+            textTransform: 'none',
+            fontSize: '0.95rem',
+            minHeight: 64,
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              backgroundColor: 'rgba(102, 126, 234, 0.08)'
+            },
+            '&.Mui-selected': {
+              color: '#667eea'
+            }
+          },
+          '& .MuiTabs-indicator': {
+            height: 3,
+            borderRadius: '3px 3px 0 0',
+            backgroundColor: '#667eea'
+          }
+        }}
       >
         <Tab 
           icon={<InfoIcon />} 
@@ -247,16 +277,10 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
           id="teamup-tab-0" 
         />
         <Tab 
-          icon={<PeopleIcon />} 
-          iconPosition="start" 
-          label={`${t('teamup.responses')} (${request?.responses?.length || 0})`}
-          id="teamup-tab-1" 
-        />
-        <Tab 
           icon={<ChatIcon />} 
           iconPosition="start" 
-          label={`${t('teamup.chat')} (${comments.length})`}
-          id="teamup-tab-2" 
+          label={`${t('teamup.activity')} (${(request?.responses?.length || 0) + comments.length})`}
+          id="teamup-tab-1" 
         />
       </Tabs>
 
@@ -276,24 +300,46 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
                       label={t('teamup.urgent')}
                       color="warning"
                       size="small"
-                      sx={{ fontWeight: 'bold' }}
+                      sx={{ fontWeight: 700, fontSize: '0.75rem' }}
                     />
                   )}
                   <Chip
                     label={request?.sportType}
-                    color="primary"
                     size="small"
+                    sx={{
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      fontWeight: 600,
+                      fontSize: '0.75rem'
+                    }}
                   />
                   <Chip
                     label={t(`teamup.status.${request?.status}`)}
-                    color={request?.status === 'open' ? 'success' : 'default'}
                     size="small"
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: '0.75rem',
+                      ...(request?.status === 'open' && {
+                        background: 'linear-gradient(135deg, #4caf50 0%, #8bc34a 100%)',
+                        color: 'white'
+                      }),
+                      ...(request?.status === 'filled' && {
+                        backgroundColor: 'grey.400',
+                        color: 'white'
+                      })
+                    }}
                   />
                   {request?.skillLevel && request.skillLevel !== 'any' && (
                     <Chip
                       label={t(`teamup.skillLevels.${request.skillLevel}`)}
                       size="small"
                       variant="outlined"
+                      sx={{
+                        borderColor: '#667eea',
+                        color: '#667eea',
+                        fontWeight: 600,
+                        fontSize: '0.75rem'
+                      }}
                     />
                   )}
                 </Box>
@@ -353,7 +399,7 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
                 </Grid>
 
                 <Box sx={{ mb: 3 }}>
-                  <Typography variant="h6" gutterBottom>
+                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
                     {t('teamup.spotsFilled')}
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -362,20 +408,26 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
                         variant="determinate" 
                         value={(acceptedResponses / (request?.playersNeeded || 1)) * 100}
                         sx={{ 
-                          height: 10, 
-                          borderRadius: 1,
-                          backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                          height: 12, 
+                          borderRadius: 6,
+                          backgroundColor: 'rgba(0, 0, 0, 0.08)',
                           '& .MuiLinearProgress-bar': {
-                            backgroundColor: spotsLeft === 0 ? '#4caf50' : '#2196f3'
+                            borderRadius: 6,
+                            background: spotsLeft === 0 
+                              ? 'linear-gradient(90deg, #4caf50 0%, #8bc34a 100%)'
+                              : 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)'
                           }
                         }}
                       />
                     </Box>
-                    <Typography variant="body1" fontWeight="bold">
+                    <Typography variant="h6" fontWeight="bold" sx={{ 
+                      minWidth: 60,
+                      color: spotsLeft === 0 ? 'success.main' : 'primary.main'
+                    }}>
                       {acceptedResponses}/{request?.playersNeeded}
                     </Typography>
                   </Box>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="body2" color="text.secondary" fontWeight={600} sx={{ mt: 0.5 }}>
                     {spotsLeft > 0 
                       ? `${spotsLeft} ${t('teamup.spotsLeft')}`
                       : t('teamup.allSpotsFilled')
@@ -407,7 +459,7 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
 
                 {!isOwnRequest && !hasResponded && request?.status === 'open' && (
                   <Box sx={{ mt: 3 }}>
-                    <Typography variant="h6" gutterBottom>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: '#667eea' }}>
                       {t('teamup.expressInterest')}
                     </Typography>
                     <TextField
@@ -418,7 +470,17 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
                       value={responseMessage}
                       onChange={(e) => setResponseMessage(e.target.value)}
                       placeholder={t('teamup.tellThemWhy')}
-                      sx={{ mb: 2 }}
+                      sx={{ 
+                        mb: 2,
+                        '& .MuiOutlinedInput-root': {
+                          '&:hover fieldset': {
+                            borderColor: '#667eea'
+                          },
+                          '&.Mui-focused fieldset': {
+                            borderColor: '#667eea'
+                          }
+                        }
+                      }}
                     />
                     <Button
                       fullWidth
@@ -426,6 +488,25 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
                       onClick={handleRespond}
                       disabled={submittingResponse || spotsLeft === 0}
                       startIcon={<SendIcon />}
+                      sx={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        color: 'white',
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        py: 1.5,
+                        fontSize: '1rem',
+                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          background: 'linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)',
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 6px 16px rgba(102, 126, 234, 0.5)'
+                        },
+                        '&:disabled': {
+                          background: 'grey.300',
+                          color: 'grey.500'
+                        }
+                      }}
                     >
                       {submittingResponse ? t('common.sending') : t('teamup.sendResponse')}
                     </Button>
@@ -434,178 +515,289 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
               </Box>
             </TabPanel>
 
-            {/* Responses Tab */}
+            {/* Activity Tab - Combined Responses and Chat */}
             <TabPanel value={tabValue} index={1}>
-              <Box sx={{ px: 3 }}>
-                {request?.responses && request.responses.length > 0 ? (
-                  <Stack spacing={2}>
-                    {pendingResponses > 0 && (
-                      <Alert severity="info">
-                        {pendingResponses} {t('teamup.pendingResponses')}
-                      </Alert>
-                    )}
-                    {request.responses.map((response: TeamUpResponse) => (
-                      <Card key={response.id} variant="outlined">
-                        <CardContent>
-                          <Box sx={{ display: 'flex', gap: 2 }}>
-                            <Avatar
-                              src={getImageUrl(response.user?.profilePicture)}
-                              sx={{ width: 48, height: 48 }}
-                            >
-                              {getInitials(response.user?.name || 'User')}
-                            </Avatar>
-                            <Box sx={{ flex: 1 }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                <Typography variant="subtitle1" fontWeight="bold">
-                                  {response.user?.name}
-                                </Typography>
-                                <Chip
-                                  label={t(`teamup.responseStatus.${response.status}`)}
-                                  color={getStatusColor(response.status)}
-                                  size="small"
-                                />
-                              </Box>
-                              {response.message && (
-                                <Box sx={{ mb: 1, p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
-                                  <Typography variant="body2">
-                                    "{response.message}"
+              <Box sx={{ px: 3, display: 'flex', flexDirection: 'column' }}>
+                {/* Pending Responses Alert */}
+                {pendingResponses > 0 && (
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    {pendingResponses} {t('teamup.pendingResponses')}
+                  </Alert>
+                )}
+
+                {/* Responses Section */}
+                {request?.responses && request.responses.length > 0 && (
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600 }}>
+                      <PeopleIcon sx={{ color: '#667eea' }} /> {t('teamup.responses')} ({request.responses.length})
+                    </Typography>
+                    <Stack spacing={2}>
+                      {request.responses.map((response: TeamUpResponse) => (
+                        <Card 
+                          key={response.id} 
+                          variant="outlined"
+                          sx={{
+                            borderRadius: 2,
+                            borderColor: response.status === 'accepted' 
+                              ? 'success.light' 
+                              : response.status === 'declined'
+                              ? 'error.light'
+                              : 'divider',
+                            borderWidth: 2,
+                            transition: 'all 0.3s ease',
+                            '&:hover': {
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            }
+                          }}
+                        >
+                          <CardContent sx={{ p: 2.5 }}>
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                              <Avatar
+                                src={getImageUrl(response.user?.profilePicture)}
+                                sx={{ 
+                                  width: 48, 
+                                  height: 48,
+                                  border: '3px solid',
+                                  borderColor: response.status === 'accepted' 
+                                    ? 'success.light' 
+                                    : response.status === 'declined'
+                                    ? 'error.light'
+                                    : 'primary.light'
+                                }}
+                              >
+                                {getInitials(response.user?.name || 'User')}
+                              </Avatar>
+                              <Box sx={{ flex: 1 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                  <Typography variant="subtitle1" fontWeight="bold">
+                                    {response.user?.name}
                                   </Typography>
+                                  <Chip
+                                    label={t(`teamup.responseStatus.${response.status}`)}
+                                    color={getStatusColor(response.status)}
+                                    size="small"
+                                    sx={{ fontWeight: 600 }}
+                                  />
                                 </Box>
-                              )}
-                              <Typography variant="caption" color="text.secondary">
-                                {new Date(response.createdAt).toLocaleString()}
-                              </Typography>
-                              {isOwnRequest && response.status === 'pending' && (
-                                <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-                                  <Button
-                                    size="small"
-                                    variant="contained"
-                                    color="success"
-                                    startIcon={<CheckCircleIcon />}
-                                    onClick={() => handleResponseAction(response.id, 'accept')}
-                                    disabled={spotsLeft === 0}
-                                  >
-                                    {t('teamup.acceptResponse')}
-                                  </Button>
-                                  <Button
-                                    size="small"
-                                    variant="outlined"
-                                    color="error"
-                                    startIcon={<CancelIcon />}
-                                    onClick={() => handleResponseAction(response.id, 'decline')}
-                                  >
-                                    {t('teamup.declineResponse')}
-                                  </Button>
-                                </Stack>
-                              )}
+                                {response.message && (
+                                  <Box sx={{ 
+                                    mb: 1, 
+                                    p: 1.5, 
+                                    bgcolor: 'grey.50', 
+                                    borderRadius: 2,
+                                    borderLeft: 3,
+                                    borderColor: '#667eea'
+                                  }}>
+                                    <Typography variant="body2">
+                                      "{response.message}"
+                                    </Typography>
+                                  </Box>
+                                )}
+                                <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                                  {new Date(response.createdAt).toLocaleString()}
+                                </Typography>
+                                {isOwnRequest && response.status === 'pending' && (
+                                  <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                                    <Button
+                                      size="small"
+                                      variant="contained"
+                                      color="success"
+                                      startIcon={<CheckCircleIcon />}
+                                      onClick={() => handleResponseAction(response.id, 'accept')}
+                                      disabled={spotsLeft === 0}
+                                      sx={{
+                                        textTransform: 'none',
+                                        fontWeight: 600,
+                                        boxShadow: '0 2px 8px rgba(76, 175, 80, 0.3)',
+                                        '&:hover': {
+                                          boxShadow: '0 4px 12px rgba(76, 175, 80, 0.4)'
+                                        }
+                                      }}
+                                    >
+                                      {t('teamup.acceptResponse')}
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      color="error"
+                                      startIcon={<CancelIcon />}
+                                      onClick={() => handleResponseAction(response.id, 'decline')}
+                                      sx={{
+                                        textTransform: 'none',
+                                        fontWeight: 600
+                                      }}
+                                    >
+                                      {t('teamup.declineResponse')}
+                                    </Button>
+                                  </Stack>
+                                )}
+                              </Box>
                             </Box>
-                          </Box>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </Stack>
-                ) : (
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </Stack>
+                  </Box>
+                )}
+
+                {/* Chat/Comments Section */}
+                <Box>
+                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600 }}>
+                    <ChatIcon sx={{ color: '#667eea' }} /> {t('teamup.chat')} ({comments.length})
+                  </Typography>
+                  <List sx={{ mb: 2, maxHeight: 300, overflow: 'auto' }}>
+                    {comments.length > 0 ? (
+                      comments.map((comment) => (
+                        <ListItem
+                          key={comment.id}
+                          alignItems="flex-start"
+                          sx={{ 
+                            bgcolor: comment.userId === user?.id ? 'rgba(102, 126, 234, 0.08)' : 'transparent',
+                            borderRadius: 2,
+                            mb: 1,
+                            border: '1px solid',
+                            borderColor: comment.userId === user?.id ? 'rgba(102, 126, 234, 0.2)' : 'transparent',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              backgroundColor: comment.userId === user?.id ? 'rgba(102, 126, 234, 0.12)' : 'grey.50'
+                            }
+                          }}
+                          secondaryAction={
+                            comment.userId === user?.id && (
+                              <IconButton 
+                                edge="end" 
+                                aria-label="delete"
+                                onClick={() => handleDeleteComment(comment.id)}
+                                size="small"
+                                sx={{
+                                  color: 'error.main',
+                                  '&:hover': {
+                                    backgroundColor: 'error.light',
+                                    color: 'white'
+                                  }
+                                }}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            )
+                          }
+                        >
+                          <ListItemAvatar>
+                            <Avatar 
+                              src={getImageUrl(comment.user?.profilePicture)}
+                              sx={{
+                                border: '2px solid',
+                                borderColor: comment.userId === user?.id ? '#667eea' : 'grey.300'
+                              }}
+                            >
+                              {getInitials(comment.user?.name || 'User')}
+                            </Avatar>
+                          </ListItemAvatar>
+                          <ListItemText
+                            primary={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                <Typography variant="subtitle2" fontWeight="bold">
+                                  {comment.user?.name}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {new Date(comment.createdAt).toLocaleString()}
+                                </Typography>
+                              </Box>
+                            }
+                            secondary={
+                              <Typography variant="body2" sx={{ mt: 0.5, color: 'text.primary' }}>
+                                {comment.content}
+                              </Typography>
+                            }
+                          />
+                        </ListItem>
+                      ))
+                    ) : (
+                      <Box sx={{ 
+                        textAlign: 'center', 
+                        py: 4,
+                        backgroundColor: 'grey.50',
+                        borderRadius: 2
+                      }}>
+                        <Typography variant="h4" sx={{ mb: 1, fontSize: '2rem' }}>💬</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {t('teamup.noComments')}
+                        </Typography>
+                      </Box>
+                    )}
+                  </List>
+                  
+                  {/* Add Comment Input */}
+                  <Box sx={{ 
+                    pt: 2, 
+                    borderTop: 1, 
+                    borderColor: 'divider',
+                    backgroundColor: 'grey.50',
+                    borderRadius: 2,
+                    p: 2,
+                    mt: 2
+                  }}>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        placeholder={t('teamup.typeMessage')}
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleAddComment();
+                          }
+                        }}
+                        multiline
+                        maxRows={3}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            backgroundColor: 'white',
+                            '&:hover fieldset': {
+                              borderColor: '#667eea'
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: '#667eea'
+                            }
+                          }
+                        }}
+                      />
+                      <IconButton 
+                        onClick={handleAddComment}
+                        disabled={!newComment.trim() || submittingComment}
+                        sx={{
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: 'white',
+                          boxShadow: '0 2px 8px rgba(102, 126, 234, 0.4)',
+                          '&:hover': {
+                            background: 'linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)',
+                            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.5)'
+                          },
+                          '&:disabled': {
+                            background: 'grey.300',
+                            color: 'grey.500'
+                          }
+                        }}
+                      >
+                        <SendIcon />
+                      </IconButton>
+                    </Box>
+                  </Box>
+                </Box>
+
+                {/* Empty State */}
+                {(!request?.responses || request.responses.length === 0) && comments.length === 0 && (
                   <Box sx={{ textAlign: 'center', py: 8 }}>
                     <Typography variant="h6" color="text.secondary">
-                      {t('teamup.noResponsesYet')}
+                      {t('teamup.noActivityYet')}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                       {t('teamup.beTheFirst')}
                     </Typography>
                   </Box>
                 )}
-              </Box>
-            </TabPanel>
-
-            {/* Chat Tab */}
-            <TabPanel value={tabValue} index={2}>
-              <Box sx={{ px: 3, display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <List sx={{ flex: 1, overflow: 'auto', maxHeight: 400 }}>
-                  {comments.length > 0 ? (
-                    comments.map((comment) => (
-                      <ListItem
-                        key={comment.id}
-                        alignItems="flex-start"
-                        sx={{ 
-                          bgcolor: comment.userId === user?.id ? 'primary.50' : 'transparent',
-                          borderRadius: 1,
-                          mb: 1
-                        }}
-                        secondaryAction={
-                          comment.userId === user?.id && (
-                            <IconButton 
-                              edge="end" 
-                              aria-label="delete"
-                              onClick={() => handleDeleteComment(comment.id)}
-                              size="small"
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          )
-                        }
-                      >
-                        <ListItemAvatar>
-                          <Avatar src={getImageUrl(comment.user?.profilePicture)}>
-                            {getInitials(comment.user?.name || 'User')}
-                          </Avatar>
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Typography variant="subtitle2" fontWeight="bold">
-                                {comment.user?.name}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {new Date(comment.createdAt).toLocaleString()}
-                              </Typography>
-                            </Box>
-                          }
-                          secondary={
-                            <Typography variant="body2" sx={{ mt: 0.5 }}>
-                              {comment.content}
-                            </Typography>
-                          }
-                        />
-                      </ListItem>
-                    ))
-                  ) : (
-                    <Box sx={{ textAlign: 'center', py: 8 }}>
-                      <Typography variant="h6" color="text.secondary">
-                        {t('teamup.noComments')}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                        {t('teamup.startConversation')}
-                      </Typography>
-                    </Box>
-                  )}
-                </List>
-                
-                <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      placeholder={t('teamup.typeMessage')}
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleAddComment();
-                        }
-                      }}
-                      multiline
-                      maxRows={3}
-                    />
-                    <IconButton 
-                      color="primary" 
-                      onClick={handleAddComment}
-                      disabled={!newComment.trim() || submittingComment}
-                    >
-                      <SendIcon />
-                    </IconButton>
-                  </Box>
-                </Box>
               </Box>
             </TabPanel>
           </>

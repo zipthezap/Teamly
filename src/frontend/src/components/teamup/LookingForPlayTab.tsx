@@ -183,6 +183,30 @@ const LookingForPlayTab = () => {
           exclusive
           onChange={handleViewChange}
           aria-label="view selection"
+          sx={{
+            backgroundColor: 'white',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            borderRadius: 2,
+            '& .MuiToggleButton-root': {
+              px: 3,
+              py: 1.5,
+              border: 'none',
+              fontWeight: 600,
+              textTransform: 'none',
+              fontSize: '0.95rem',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                backgroundColor: 'rgba(102, 126, 234, 0.08)'
+              },
+              '&.Mui-selected': {
+                backgroundColor: '#667eea',
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: '#5568d3'
+                }
+              }
+            }
+          }}
         >
           <ToggleButton value="browse" aria-label="browse requests">
             {t('teamup.browseActivities')}
@@ -197,7 +221,13 @@ const LookingForPlayTab = () => {
       {view === 'browse' && (
         <>
           {/* Filters */}
-          <Box sx={{ mb: 3 }}>
+          <Box sx={{ 
+            mb: 3, 
+            p: 3, 
+            backgroundColor: 'white',
+            borderRadius: 2,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+          }}>
             <Grid container spacing={2}>
               <Grid item xs={12} sm={4}>
                 <TextField
@@ -206,6 +236,16 @@ const LookingForPlayTab = () => {
                   label={t('teamup.filterBySport')}
                   value={filters.sportType}
                   onChange={(e) => setFilters({ ...filters, sportType: e.target.value })}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '&:hover fieldset': {
+                        borderColor: '#667eea'
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#667eea'
+                      }
+                    }
+                  }}
                 >
                   <MenuItem value="">{t('teamup.allSports')}</MenuItem>
                   {SPORT_TYPES.map((sport) => (
@@ -222,6 +262,16 @@ const LookingForPlayTab = () => {
                   value={filters.city}
                   onChange={(e) => setFilters({ ...filters, city: e.target.value })}
                   placeholder="City"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '&:hover fieldset': {
+                        borderColor: '#667eea'
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#667eea'
+                      }
+                    }
+                  }}
                 />
               </Grid>
               <Grid item xs={12} sm={4}>
@@ -231,6 +281,16 @@ const LookingForPlayTab = () => {
                   label={t('teamup.filterBySkillLevel')}
                   value={filters.skillLevel}
                   onChange={(e) => setFilters({ ...filters, skillLevel: e.target.value })}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '&:hover fieldset': {
+                        borderColor: '#667eea'
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#667eea'
+                      }
+                    }
+                  }}
                 >
                   <MenuItem value="">{t('teamup.skillLevels.any')}</MenuItem>
                   <MenuItem value="beginner">{t('teamup.skillLevels.beginner')}</MenuItem>
@@ -243,9 +303,19 @@ const LookingForPlayTab = () => {
 
           {/* Requests Grid */}
           {requests.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 8 }}>
-              <Typography variant="h6" color="text.secondary">
+            <Box sx={{ 
+              textAlign: 'center', 
+              py: 8,
+              backgroundColor: 'white',
+              borderRadius: 2,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+            }}>
+              <Typography variant="h4" sx={{ mb: 2, fontSize: '3rem' }}>🔍</Typography>
+              <Typography variant="h6" color="text.secondary" gutterBottom>
                 {t('teamup.noRequestsFound')}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Try adjusting your filters to see more activities
               </Typography>
             </Box>
           ) : (
@@ -268,71 +338,130 @@ const LookingForPlayTab = () => {
                     <Card sx={{ 
                       position: 'relative',
                       cursor: 'pointer',
-                      transition: 'all 0.2s',
+                      height: '100%',
+                      borderRadius: 2,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      overflow: 'visible',
                       '&:hover': {
-                        transform: 'translateY(-4px)',
-                        boxShadow: 4
+                        transform: 'translateY(-8px)',
+                        boxShadow: '0 12px 24px rgba(102, 126, 234, 0.3)'
                       },
                       ...(isUrgent && {
                         borderLeft: 4,
-                        borderColor: 'warning.main'
+                        borderColor: 'warning.main',
+                        '&::before': {
+                          content: '""',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: '4px',
+                          background: 'linear-gradient(90deg, #ff9800 0%, #f44336 100%)',
+                          borderRadius: '8px 8px 0 0'
+                        }
                       })
                     }}
                     onClick={() => handleOpenModal(request.id)}
                     >
-                      <CardContent>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                          <Typography variant="h6" component="div">
+                      <CardContent sx={{ p: 3 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                          <Typography variant="h6" component="div" sx={{ 
+                            fontWeight: 600,
+                            color: '#1a1a1a',
+                            flex: 1,
+                            pr: 1
+                          }}>
                             {request.title}
                           </Typography>
-                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
                             {isUrgent && (
                               <Chip
                                 label={t('teamup.urgent')}
                                 color="warning"
                                 size="small"
-                                sx={{ fontWeight: 'bold' }}
+                                sx={{ 
+                                  fontWeight: 700,
+                                  fontSize: '0.7rem',
+                                  height: 24
+                                }}
                               />
                             )}
                             <Chip
                               label={request.sportType}
-                              color="primary"
                               size="small"
-                              variant="outlined"
+                              sx={{
+                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                color: 'white',
+                                fontWeight: 600,
+                                fontSize: '0.7rem',
+                                height: 24
+                              }}
                             />
                           </Box>
                         </Box>
                         {request.description && (
-                          <Typography variant="body2" sx={{ mb: 1 }}>
+                          <Typography 
+                            variant="body2" 
+                            sx={{ 
+                              mb: 2,
+                              color: 'text.secondary',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              lineHeight: 1.5
+                            }}
+                          >
                             {request.description}
                           </Typography>
                         )}
-                        <Typography variant="body2" color="text.secondary">
-                          📅 {new Date(request.dateTime).toLocaleString()}
-                        </Typography>
-                        {request.location && (
-                          <Typography variant="body2" color="text.secondary">
-                            📍 {request.location}
-                          </Typography>
-                        )}
-                        {request.city && (
-                          <Typography variant="body2" color="text.secondary">
-                            🌍 {request.city}{request.country ? `, ${request.country}` : ''}
-                          </Typography>
-                        )}
-                        <Typography variant="body2" color="text.secondary">
-                          👥 {acceptedResponses}/{request.playersNeeded} spots filled
-                        </Typography>
-                        <Box sx={{ mt: 1, mb: 1 }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="body2" sx={{ fontSize: '1rem' }}>📅</Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                              {new Date(request.dateTime).toLocaleString()}
+                            </Typography>
+                          </Box>
+                          {request.location && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography variant="body2" sx={{ fontSize: '1rem' }}>📍</Typography>
+                              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                                {request.location}
+                              </Typography>
+                            </Box>
+                          )}
+                          {request.city && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography variant="body2" sx={{ fontSize: '1rem' }}>🌍</Typography>
+                              <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                                {request.city}{request.country ? `, ${request.country}` : ''}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                        <Box sx={{ mb: 2 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                            <Typography variant="caption" fontWeight={600} color="text.secondary">
+                              👥 Spots Filled
+                            </Typography>
+                            <Typography variant="caption" fontWeight={700} color={spotsLeft === 0 ? 'success.main' : 'primary.main'}>
+                              {acceptedResponses}/{request.playersNeeded}
+                            </Typography>
+                          </Box>
                           <LinearProgress 
                             variant="determinate" 
                             value={(acceptedResponses / request.playersNeeded) * 100}
                             sx={{ 
                               height: 8, 
-                              borderRadius: 1,
-                              backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                              borderRadius: 4,
+                              backgroundColor: 'rgba(0, 0, 0, 0.08)',
                               '& .MuiLinearProgress-bar': {
-                                backgroundColor: spotsLeft === 0 ? '#4caf50' : '#2196f3'
+                                borderRadius: 4,
+                                background: spotsLeft === 0 
+                                  ? 'linear-gradient(90deg, #4caf50 0%, #8bc34a 100%)'
+                                  : 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)'
                               }
                             }}
                           />
@@ -341,19 +470,43 @@ const LookingForPlayTab = () => {
                           <Chip
                             label={t(`teamup.skillLevels.${request.skillLevel}`)}
                             size="small"
-                            sx={{ mt: 1 }}
+                            variant="outlined"
+                            sx={{ 
+                              mt: 1,
+                              borderColor: '#667eea',
+                              color: '#667eea',
+                              fontWeight: 600
+                            }}
                           />
                         )}
-                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          mt: 3,
+                          pt: 2,
+                          borderTop: '1px solid',
+                          borderColor: 'divider'
+                        }}>
                           <Avatar
                             src={getImageUrl(request.creator?.profilePicture)}
-                            sx={{ width: 32, height: 32, mr: 1 }}
+                            sx={{ 
+                              width: 36, 
+                              height: 36, 
+                              mr: 1.5,
+                              border: '2px solid',
+                              borderColor: 'primary.light'
+                            }}
                           >
                             {getInitials(request.creator?.name || 'User')}
                           </Avatar>
-                          <Typography variant="caption" color="text.secondary">
-                            {t('teamup.postedBy')} {request.creator?.name}
-                          </Typography>
+                          <Box>
+                            <Typography variant="caption" color="text.secondary" display="block" sx={{ lineHeight: 1.2 }}>
+                              {t('teamup.postedBy')}
+                            </Typography>
+                            <Typography variant="body2" fontWeight={600} sx={{ lineHeight: 1.2 }}>
+                              {request.creator?.name}
+                            </Typography>
+                          </Box>
                         </Box>
                       </CardContent>
                     </Card>
@@ -369,36 +522,77 @@ const LookingForPlayTab = () => {
       {view === 'myResponses' && (
         <>
           {myResponses.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 8 }}>
-              <Typography variant="h6" color="text.secondary">
+            <Box sx={{ 
+              textAlign: 'center', 
+              py: 8,
+              backgroundColor: 'white',
+              borderRadius: 2,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+            }}>
+              <Typography variant="h4" sx={{ mb: 2, fontSize: '3rem' }}>💬</Typography>
+              <Typography variant="h6" color="text.secondary" gutterBottom>
                 {t('teamup.noResponsesYet')}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Start browsing activities and express your interest!
               </Typography>
             </Box>
           ) : (
             <Grid container spacing={3}>
               {myResponses.map((response) => (
                 <Grid item xs={12} md={6} lg={4} key={response.id}>
-                  <Card>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="h6" component="div">
+                  <Card sx={{
+                    height: '100%',
+                    borderRadius: 2,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: '0 8px 16px rgba(0,0,0,0.15)'
+                    }
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'flex-start' }}>
+                        <Typography variant="h6" component="div" sx={{ 
+                          fontWeight: 600,
+                          flex: 1,
+                          pr: 1
+                        }}>
                           {response.teamUpRequest?.title}
                         </Typography>
                         <Chip
                           label={t(`teamup.responseStatus.${response.status}`)}
                           color={getStatusColor(response.status)}
                           size="small"
+                          sx={{ fontWeight: 600 }}
                         />
                       </Box>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                        {response.teamUpRequest?.sportType}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        📅 {new Date(response.teamUpRequest?.dateTime || '').toLocaleString()}
-                      </Typography>
+                      <Chip
+                        label={response.teamUpRequest?.sportType}
+                        size="small"
+                        sx={{ 
+                          mb: 2,
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: 'white',
+                          fontWeight: 600
+                        }}
+                      />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Typography variant="body2" sx={{ fontSize: '1rem' }}>📅</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {new Date(response.teamUpRequest?.dateTime || '').toLocaleString()}
+                        </Typography>
+                      </Box>
                       {response.message && (
-                        <Box sx={{ mt: 2, p: 1, bgcolor: 'grey.100', borderRadius: 1 }}>
-                          <Typography variant="caption" color="text.secondary">
+                        <Box sx={{ 
+                          mt: 2, 
+                          p: 2, 
+                          bgcolor: 'grey.50', 
+                          borderRadius: 2,
+                          borderLeft: 3,
+                          borderColor: '#667eea'
+                        }}>
+                          <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" sx={{ mb: 0.5 }}>
                             {t('teamup.yourMessage')}:
                           </Typography>
                           <Typography variant="body2">
@@ -406,7 +600,17 @@ const LookingForPlayTab = () => {
                           </Typography>
                         </Box>
                       )}
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+                      <Typography 
+                        variant="caption" 
+                        color="text.secondary" 
+                        sx={{ 
+                          display: 'block', 
+                          mt: 2,
+                          pt: 2,
+                          borderTop: '1px solid',
+                          borderColor: 'divider'
+                        }}
+                      >
                         {t('teamup.respondedOn')} {new Date(response.createdAt).toLocaleString()}
                       </Typography>
                     </CardContent>

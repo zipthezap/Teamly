@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Container, Box, Typography, Tabs, Tab } from '@mui/material';
+import { Container, Box, Typography, Tabs, Tab, Paper } from '@mui/material';
 import { useTranslation } from 'react-i18next';
+import SearchIcon from '@mui/icons-material/Search';
+import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import LookingForPlayTab from '../components/teamup/LookingForPlayTab';
 import NeedPlayersTab from '../components/teamup/NeedPlayersTab';
 
@@ -35,36 +37,107 @@ const TeamUp = () => {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" gutterBottom sx={{ fontWeight: 600 }}>
-          {t('teamup.title')}
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          {t('teamup.subtitle')}
-        </Typography>
-      </Box>
+    <Box sx={{ 
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      pb: 4
+    }}>
+      <Container maxWidth="xl" sx={{ pt: 4 }}>
+        {/* Header Section with Modern Design */}
+        <Box sx={{ 
+          mb: 4, 
+          textAlign: 'center',
+          color: 'white'
+        }}>
+          <Typography 
+            variant="h3" 
+            gutterBottom 
+            sx={{ 
+              fontWeight: 700,
+              textShadow: '2px 2px 4px rgba(0,0,0,0.2)',
+              mb: 1
+            }}
+          >
+            {t('teamup.title')}
+          </Typography>
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              fontWeight: 300,
+              opacity: 0.95,
+              maxWidth: '600px',
+              mx: 'auto'
+            }}
+          >
+            {t('teamup.subtitle')}
+          </Typography>
+        </Box>
 
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs 
-          value={tabValue} 
-          onChange={handleTabChange}
-          aria-label="teamup tabs"
-          centered
+        {/* Main Content Card */}
+        <Paper 
+          elevation={8}
+          sx={{ 
+            borderRadius: 3,
+            overflow: 'hidden',
+            backgroundColor: 'white'
+          }}
         >
-          <Tab label={t('teamup.lookingForPlayTab')} id="teamup-tab-0" />
-          <Tab label={t('teamup.needPlayersTab')} id="teamup-tab-1" />
-        </Tabs>
-      </Box>
+          <Tabs 
+            value={tabValue} 
+            onChange={handleTabChange}
+            aria-label="teamup tabs"
+            centered
+            sx={{
+              backgroundColor: 'grey.50',
+              borderBottom: 1,
+              borderColor: 'divider',
+              '& .MuiTab-root': {
+                minHeight: 72,
+                fontSize: '1rem',
+                fontWeight: 600,
+                textTransform: 'none',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  backgroundColor: 'rgba(102, 126, 234, 0.08)',
+                  transform: 'translateY(-2px)'
+                },
+                '&.Mui-selected': {
+                  color: '#667eea'
+                }
+              },
+              '& .MuiTabs-indicator': {
+                height: 3,
+                borderRadius: '3px 3px 0 0',
+                backgroundColor: '#667eea'
+              }
+            }}
+          >
+            <Tab 
+              icon={<SearchIcon />} 
+              iconPosition="start" 
+              label={t('teamup.lookingForPlayTab')} 
+              id="teamup-tab-0" 
+            />
+            <Tab 
+              icon={<GroupAddIcon />} 
+              iconPosition="start" 
+              label={t('teamup.needPlayersTab')} 
+              id="teamup-tab-1" 
+            />
+          </Tabs>
 
-      <TabPanel value={tabValue} index={0}>
-        <LookingForPlayTab />
-      </TabPanel>
+          <Box sx={{ backgroundColor: '#fafafa', minHeight: '60vh' }}>
+            <TabPanel value={tabValue} index={0}>
+              <LookingForPlayTab />
+            </TabPanel>
 
-      <TabPanel value={tabValue} index={1}>
-        <NeedPlayersTab />
-      </TabPanel>
-    </Container>
+            <TabPanel value={tabValue} index={1}>
+              <NeedPlayersTab />
+            </TabPanel>
+          </Box>
+        </Paper>
+      </Container>
+    </Box>
   );
 };
 
