@@ -273,7 +273,7 @@ model GroupJoinRequest {
 
 model GroupMember {
   id        String   @id @default(uuid())
-  role      String   @default("member") // member, admin
+  role      String   @default("member") // member, moderator, admin
   joinedAt  DateTime @default(now())
 
   userId  String
@@ -284,7 +284,8 @@ model GroupMember {
   @@unique([userId, groupId])
   @@index([userId]) // For user's groups queries
   @@index([groupId]) // For group members queries
-  @@index([role]) // For admin/member filtering
+  @@index([role]) // For admin/moderator/member filtering
+  @@index([groupId, role]) // Composite index for efficient role-based queries within a group (scalability)
 }
 
 enum EventStatus {
@@ -609,6 +610,7 @@ model TeamUpResponse {
   @@index([teamUpRequestId])
   @@index([userId])
   @@index([status])
+  @@index([userId, teamUpRequestId]) // Composite index for permission checks (scalability)
 }
 
 // Comments/Chat for TeamUp requests
@@ -758,6 +760,7 @@ model TournamentTeam {
   @@index([captainUserId])
   @@index([poolNumber])
   @@index([poolId])
+  @@index([tournamentId, captainUserId]) // Composite index for permission checks (scalability)
 }
 
 model TournamentMatch {
@@ -850,6 +853,7 @@ model TournamentPlayer {
   @@unique([teamId, userId]) // A user can only be registered once per team
   @@index([teamId])
   @@index([userId])
+  @@index([userId, teamId]) // Composite index for permission checks (scalability)
 }
 
 // Tournament pools - separate pools within a tournament with different team capacities
