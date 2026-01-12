@@ -56,23 +56,31 @@ setupGracefulShutdown();
 /**
  * Timing-safe string comparison to prevent timing attacks
  * Uses crypto.timingSafeEqual with constant-time operations
+ * Fixed maximum length to prevent timing leaks through dynamic padding
  */
 const timingSafeCompare = (a: string, b: string): boolean => {
-  // Handle null/undefined cases
+  // Use a fixed maximum length for consistent timing
+  const FIXED_MAX_LENGTH = 256;
+  
+  // Handle null/undefined cases with a realistic dummy comparison
   if (!a || !b) {
-    // Always perform a dummy comparison to prevent timing leaks
-    const dummyBuf = Buffer.alloc(32);
-    crypto.timingSafeEqual(dummyBuf, dummyBuf);
+    // Create two different buffers for a realistic comparison
+    const dummyBufA = Buffer.alloc(FIXED_MAX_LENGTH);
+    const dummyBufB = Buffer.alloc(FIXED_MAX_LENGTH);
+    dummyBufB[0] = 1; // Make them different
+    try {
+      crypto.timingSafeEqual(dummyBufA, dummyBufB);
+    } catch {
+      // Expected to throw since buffers are different
+    }
     return false;
   }
   
-  // Pad both strings to same length to prevent length-based timing attacks
-  const maxLen = Math.max(a.length, b.length);
-  const bufA = Buffer.from(a.padEnd(maxLen, '\0'));
-  const bufB = Buffer.from(b.padEnd(maxLen, '\0'));
+  // Pad both strings to fixed length for consistent timing
+  const bufA = Buffer.from(a.padEnd(FIXED_MAX_LENGTH, '\0').slice(0, FIXED_MAX_LENGTH));
+  const bufB = Buffer.from(b.padEnd(FIXED_MAX_LENGTH, '\0').slice(0, FIXED_MAX_LENGTH));
   
   try {
-    // Buffers are already same length due to padding, no need for length check
     return crypto.timingSafeEqual(bufA, bufB);
   } catch {
     return false;
@@ -241,12 +249,16 @@ app.get('/health', async (req: Request, res: Response) => {
                      : 503;
     
     // Check if detailed health info is requested with auth token (using timing-safe comparison)
-    const healthToken = process.env.HEALTH_CHECK_TOKEN || ''; // Use empty string if not set
+    const healthToken = process.env.HEALTH_CHECK_TOKEN;
     const providedToken = extractBearerToken(req.headers.authorization);
+    
     // Always call timingSafeCompare to maintain constant-time behavior
-    const tokenMatches = timingSafeCompare(providedToken, healthToken);
-    // If no token is configured (empty string), always allow access (backward compatibility)
-    const isAuthenticated = healthToken === '' || tokenMatches;
+    // When no token is configured, use a sentinel value that never matches real tokens
+    // but still goes through the same comparison logic
+    const tokenToCheck = healthToken || '__HEALTH_CHECK_DISABLED__';
+    const tokenMatches = timingSafeCompare(providedToken, tokenToCheck);
+    // If no token is configured, grant access (backward compatibility)
+    const isAuthenticated = !healthToken || tokenMatches;
     
     // Return detailed info only if authenticated, otherwise return basic status
     if (isAuthenticated) {
