@@ -48,17 +48,30 @@ export const hashPassword = async (password: string) => {
 };
 
 /**
+ * Hashes a token for secure storage
+ */
+export const hashToken = (token: string) => {
+  return crypto.createHash('sha256').update(token).digest('hex');
+};
+
+/**
  * Generates email verification token
+ * Returns both the plain token (to send to user) and hashed token (to store in DB)
  */
 export const generateEmailVerificationToken = () => {
-  return crypto.randomBytes(32).toString('hex');
+  const token = crypto.randomBytes(32).toString('hex');
+  const hashedToken = hashToken(token);
+  return { token, hashedToken };
 };
 
 /**
  * Generates password reset token
+ * Returns both the plain token (to send to user) and hashed token (to store in DB)
  */
 export const generatePasswordResetToken = () => {
-  return crypto.randomBytes(32).toString('hex');
+  const token = crypto.randomBytes(32).toString('hex');
+  const hashedToken = hashToken(token);
+  return { token, hashedToken };
 };
 
 /**
@@ -118,9 +131,12 @@ export const verifyPassword = async (password: string, hashedPassword: string) =
  * Validates password reset token and gets user
  */
 export const validatePasswordResetToken = async (token: string) => {
+  // Hash the token to compare with stored hash
+  const hashedToken = hashToken(token);
+  
   const user = await prisma.user.findFirst({
     where: {
-      passwordResetToken: token,
+      passwordResetToken: hashedToken,
       passwordResetExpires: {
         gt: new Date()
       }
@@ -157,9 +173,12 @@ export const updateUserPassword = async (userId: string, newPassword: string) =>
  * Validates email verification token and gets user
  */
 export const validateEmailVerificationToken = async (token: string) => {
+  // Hash the token to compare with stored hash
+  const hashedToken = hashToken(token);
+  
   const user = await prisma.user.findFirst({
     where: {
-      emailVerificationToken: token
+      emailVerificationToken: hashedToken
     }
   });
 
@@ -191,18 +210,18 @@ export const markEmailAsVerified = async (userId: string) => {
  * Creates password reset token for user
  */
 export const createPasswordResetToken = async (userId: string) => {
-  const resetToken = generatePasswordResetToken();
+  const { token, hashedToken } = generatePasswordResetToken();
   const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
   await prisma.user.update({
     where: { id: userId },
     data: {
-      passwordResetToken: resetToken,
+      passwordResetToken: hashedToken, // Store hashed token
       passwordResetExpires: resetTokenExpiry
     }
   });
 
-  return resetToken;
+  return token; // Return plain token to send to user
 };
 
 /**

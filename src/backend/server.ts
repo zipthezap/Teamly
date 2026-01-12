@@ -7,6 +7,7 @@ import path from 'path';
 import session from 'express-session';
 import RedisStore from 'connect-redis';
 import passport from './config/passport';
+import crypto from 'crypto';
 
 import authRoutes from './routes/authRoutes';
 import groupRoutes from './routes/groupRoutes';
@@ -52,6 +53,51 @@ try {
 
 // Setup graceful shutdown handlers
 setupGracefulShutdown();
+
+/**
+ * Timing-safe string comparison to prevent timing attacks
+ * Uses crypto.timingSafeEqual with constant-time operations
+ * Fixed maximum length to prevent timing leaks through dynamic padding
+ */
+const timingSafeCompare = (a: string, b: string): boolean => {
+  // Use a fixed maximum length for consistent timing
+  const FIXED_MAX_LENGTH = 256;
+  
+  // Handle null/undefined cases with a realistic dummy comparison
+  if (!a || !b) {
+    // Create two different buffers for a realistic comparison
+    const dummyBufA = Buffer.alloc(FIXED_MAX_LENGTH);
+    const dummyBufB = Buffer.alloc(FIXED_MAX_LENGTH);
+    dummyBufB[0] = 1; // Make them different
+    try {
+      crypto.timingSafeEqual(dummyBufA, dummyBufB);
+    } catch {
+      // Expected to throw since buffers are different
+    }
+    return false;
+  }
+  
+  // Pad both strings to fixed length for consistent timing
+  const bufA = Buffer.from(a.padEnd(FIXED_MAX_LENGTH, '\0').slice(0, FIXED_MAX_LENGTH));
+  const bufB = Buffer.from(b.padEnd(FIXED_MAX_LENGTH, '\0').slice(0, FIXED_MAX_LENGTH));
+  
+  try {
+    return crypto.timingSafeEqual(bufA, bufB);
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Extract bearer token from Authorization header
+ * Case-insensitive to handle 'Bearer', 'bearer', 'BEARER'
+ */
+const extractBearerToken = (authHeader?: string): string => {
+  if (!authHeader) {
+    return '';
+  }
+  return authHeader.replace(/^Bearer\s+/i, '') || '';
+};
 
 const app: Application = express();
 const PORT = config.port;
@@ -200,24 +246,26 @@ app.use('/api/teamup', teamUpRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/tournaments', tournamentRoutes);
 
-// Metrics endpoint for Prometheus (with optional authentication)
-app.get('/metrics', async (req: Request, res: Response) => {
-  // Optional: Require authentication via bearer token if METRICS_TOKEN is set
+// Metrics endpoint for Prometheus
+// In production, restrict access via network rules or add IP whitelist
+// For now, we'll add a simple token-based authentication
+app.get('/metrics', (req: Request, res: Response, next) => {
+  // Allow access if METRICS_TOKEN is not set (for backward compatibility)
+  // Or if the provided token matches (using timing-safe comparison)
   const metricsToken = process.env.METRICS_TOKEN;
   if (metricsToken) {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.replace(/^Bearer\s+/i, '');
-    
-    if (!token || token !== metricsToken) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    const providedToken = extractBearerToken(req.headers.authorization);
+    // Always call timingSafeCompare to prevent timing attacks
+    if (!timingSafeCompare(providedToken, metricsToken)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
   }
-  
-  await getMetrics(req, res);
-});
+  next();
+}, getMetrics);
 
 // Enhanced health check with detailed metrics
-app.get('/health', async (_req: Request, res: Response) => {
+app.get('/health', async (req: Request, res: Response) => {
   try {
     const healthCheck = await performHealthCheck();
     
@@ -225,21 +273,40 @@ app.get('/health', async (_req: Request, res: Response) => {
                      : healthCheck.status === 'degraded' ? 200 
                      : 503;
     
-    res.status(statusCode).json({
-      status: healthCheck.status,
-      message: healthCheck.status === 'healthy' 
-        ? 'Teamly API is running smoothly' 
-        : healthCheck.status === 'degraded'
-        ? 'Teamly API is running with degraded performance'
-        : 'Teamly API is experiencing issues',
-      ...healthCheck,
-    });
+    // Check if detailed health info is requested with auth token (using timing-safe comparison)
+    const healthToken = process.env.HEALTH_CHECK_TOKEN;
+    const providedToken = extractBearerToken(req.headers.authorization);
+    
+    // Always call timingSafeCompare to maintain constant-time behavior
+    // When no token is configured, use a sentinel value that never matches real tokens
+    // but still goes through the same comparison logic
+    const tokenToCheck = healthToken || '__HEALTH_CHECK_DISABLED__';
+    const tokenMatches = timingSafeCompare(providedToken, tokenToCheck);
+    // If no token is configured, grant access (backward compatibility)
+    const isAuthenticated = !healthToken || tokenMatches;
+    
+    // Return detailed info only if authenticated, otherwise return basic status
+    if (isAuthenticated) {
+      res.status(statusCode).json({
+        status: healthCheck.status,
+        message: healthCheck.status === 'healthy' 
+          ? 'Teamly API is running smoothly' 
+          : healthCheck.status === 'degraded'
+          ? 'Teamly API is running with degraded performance'
+          : 'Teamly API is experiencing issues',
+        ...healthCheck,
+      });
+    } else {
+      // Return minimal info for unauthenticated requests
+      res.status(statusCode).json({
+        status: healthCheck.status,
+      });
+    }
   } catch (error) {
     logger.error('Health check failed', 'Server', { error });
+    // Minimal error response - no details or timestamp for security
     res.status(503).json({
       status: 'unhealthy',
-      message: 'Health check failed',
-      timestamp: new Date().toISOString(),
     });
   }
 });
