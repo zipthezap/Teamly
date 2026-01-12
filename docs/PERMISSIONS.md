@@ -201,6 +201,8 @@ const contexts = [
 const results = await permissionService.hasBulkPermissions(contexts);
 ```
 
+**Note**: Bulk checks process in batches of 10 to avoid overwhelming the database connection pool. Within each batch, checks run in parallel.
+
 ### Future Scalability: Redis Integration
 For large-scale deployments, the in-memory cache can be replaced with Redis:
 1. Install Redis client: `npm install redis`

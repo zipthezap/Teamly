@@ -395,17 +395,19 @@ export async function hasPermission(context: PermissionContext): Promise<boolean
 /**
  * Batch permission check for multiple resources (for scalability)
  * Uses concurrency limiting to avoid overwhelming the database
+ * Processes in batches of 10 for optimal performance without overloading connection pool
  */
 export async function hasBulkPermissions(
   contexts: PermissionContext[]
 ): Promise<Map<string, boolean>> {
   const results = new Map<string, boolean>();
-  const CONCURRENCY_LIMIT = 10; // Process max 10 checks in parallel
+  const CONCURRENCY_LIMIT = 10; // Process max 10 checks in parallel per batch
   
-  // Process in batches to avoid overwhelming the database connection pool
+  // Process in sequential batches to avoid overwhelming the database connection pool
   for (let i = 0; i < contexts.length; i += CONCURRENCY_LIMIT) {
     const batch = contexts.slice(i, i + CONCURRENCY_LIMIT);
     
+    // Process items within each batch in parallel
     await Promise.all(
       batch.map(async (context) => {
         const key = `${context.resourceType}:${context.resourceId}:${context.action}`;

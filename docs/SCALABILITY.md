@@ -109,8 +109,13 @@ export async function hasBulkPermissions(
 
 ### Performance Impact
 - **Sequential**: 100ms × 10 items = 1000ms
-- **Parallel**: max(100ms) ≈ 100ms
+- **Batched (10 at a time)**: 100ms × ⌈items/10⌉ ≈ 100ms per batch
 - **With cache**: <10ms for cached items
+
+Example with 30 items:
+- Sequential: 3000ms
+- Batched: ~300ms (3 batches of 100ms each)
+- Fully cached: ~30ms
 
 ## 4. Rate Limiting Strategy (Future Implementation)
 
