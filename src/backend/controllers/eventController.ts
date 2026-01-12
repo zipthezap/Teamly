@@ -345,7 +345,7 @@ export const updateEvent = async (req: Request, res: Response) => {
       }
     }
 
-    // Check if user is the creator of the event
+    // Check if user is the creator of the event or a group admin
     const event = await prisma.event.findUnique({
       where: { id },
       include: {
@@ -362,8 +362,14 @@ export const updateEvent = async (req: Request, res: Response) => {
       }
     });
 
-    if (!event || event.creatorId !== (req.user as any).id) {
-      return res.status(403).json({ error: 'Only the event creator can update it' });
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Check if user has permission to manage this event
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    if (!isAuthorized) {
+      return res.status(403).json({ error: 'Only the event creator or group admins can update it' });
     }
 
     const updatedEvent = await prisma.event.update({
@@ -434,7 +440,7 @@ export const deleteEvent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // Check if user is the creator of the event
+    // Check if user is the creator of the event or a group admin
     const event = await prisma.event.findUnique({
       where: { id },
       include: {
@@ -456,8 +462,14 @@ export const deleteEvent = async (req: Request, res: Response) => {
       }
     });
 
-    if (!event || event.creatorId !== (req.user as any).id) {
-      return res.status(403).json({ error: 'Only the event creator can delete it' });
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Check if user has permission to manage this event
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    if (!isAuthorized) {
+      return res.status(403).json({ error: 'Only the event creator or group admins can delete it' });
     }
 
     // Send email notifications to participants
@@ -842,13 +854,19 @@ export const addRecurringEventException = async (req: Request, res: Response) =>
       return res.status(400).json({ error: 'Exception date is required' });
     }
 
-    // Check if user is the creator of the event
+    // Check if user is the creator of the event or a group admin
     const event = await prisma.event.findUnique({
       where: { id }
     });
 
-    if (!event || event.creatorId !== (req.user as any).id) {
-      return res.status(403).json({ error: 'Only the event creator can add exceptions' });
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Check if user has permission to manage this event
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    if (!isAuthorized) {
+      return res.status(403).json({ error: 'Only the event creator or group admins can add exceptions' });
     }
 
     if (!event.isRecurring) {
@@ -891,13 +909,19 @@ export const removeRecurringEventException = async (req: Request, res: Response)
       return res.status(400).json({ error: 'Exception date is required' });
     }
 
-    // Check if user is the creator of the event
+    // Check if user is the creator of the event or a group admin
     const event = await prisma.event.findUnique({
       where: { id }
     });
 
-    if (!event || event.creatorId !== (req.user as any).id) {
-      return res.status(403).json({ error: 'Only the event creator can remove exceptions' });
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Check if user has permission to manage this event
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    if (!isAuthorized) {
+      return res.status(403).json({ error: 'Only the event creator or group admins can remove exceptions' });
     }
 
     // Get existing exceptions
@@ -1021,13 +1045,19 @@ export const archiveEvent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // Check if user is the creator of the event
+    // Check if user is the creator of the event or a group admin
     const event = await prisma.event.findUnique({
       where: { id }
     });
 
-    if (!event || event.creatorId !== (req.user as any).id) {
-      return res.status(403).json({ error: 'Only the event creator can archive it' });
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Check if user has permission to manage this event
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    if (!isAuthorized) {
+      return res.status(403).json({ error: 'Only the event creator or group admins can archive it' });
     }
 
     const updatedEvent = await prisma.event.update({
@@ -1047,13 +1077,19 @@ export const unarchiveEvent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // Check if user is the creator of the event
+    // Check if user is the creator of the event or a group admin
     const event = await prisma.event.findUnique({
       where: { id }
     });
 
-    if (!event || event.creatorId !== (req.user as any).id) {
-      return res.status(403).json({ error: 'Only the event creator can unarchive it' });
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Check if user has permission to manage this event
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    if (!isAuthorized) {
+      return res.status(403).json({ error: 'Only the event creator or group admins can unarchive it' });
     }
 
     const updatedEvent = await prisma.event.update({
@@ -1080,7 +1116,7 @@ export const updateEventStatus = async (req: Request, res: Response) => {
       return res.status(400).json({ error: statusValidation.error });
     }
 
-    // Check if user is the creator of the event
+    // Check if user is the creator of the event or a group admin
     const event = await prisma.event.findUnique({
       where: { id },
       include: {
@@ -1094,8 +1130,14 @@ export const updateEventStatus = async (req: Request, res: Response) => {
       }
     });
 
-    if (!event || event.creatorId !== (req.user as any).id) {
-      return res.status(403).json({ error: 'Only the event creator can update event status' });
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Check if user has permission to manage this event
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    if (!isAuthorized) {
+      return res.status(403).json({ error: 'Only the event creator or group admins can update event status' });
     }
 
     const updatedEvent = await prisma.event.update({
@@ -1242,13 +1284,19 @@ export const generateInviteToken = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // Check if user is the creator of the event
+    // Check if user is the creator of the event or a group admin
     const event = await prisma.event.findUnique({
       where: { id }
     });
 
-    if (!event || event.creatorId !== (req.user as any).id) {
-      return res.status(403).json({ error: 'Only the event creator can generate invite links' });
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Check if user has permission to manage this event
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    if (!isAuthorized) {
+      return res.status(403).json({ error: 'Only the event creator or group admins can generate invite links' });
     }
 
     // Generate new token

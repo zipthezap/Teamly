@@ -6,6 +6,7 @@ import { sendEmail } from '../utils/emailService';
 import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
 import { sanitizeString } from '../utils/validation';
 import { ValidationResult } from '../../shared/types';
+import { checkGroupAdmin } from './groupService';
 
 /**
  * Sanitizes event data inputs
@@ -361,6 +362,32 @@ export const canModifyEvent = (event: any, userId: string) => {
   );
   
   return isGroupAdmin;
+};
+
+/**
+ * Checks if user has permission to manage an event (creator or group admin)
+ * Returns an object with isAuthorized flag and individual checks
+ */
+export const checkEventManagementPermission = async (
+  event: { id: string; creatorId: string; groupId: string } | null,
+  userId: string
+): Promise<{
+  isAuthorized: boolean;
+  isEventCreator: boolean;
+  isGroupAdmin: boolean;
+}> => {
+  if (!event) {
+    return { isAuthorized: false, isEventCreator: false, isGroupAdmin: false };
+  }
+
+  const isEventCreator = event.creatorId === userId;
+  const isGroupAdmin = await checkGroupAdmin(event.groupId, userId);
+  
+  return {
+    isAuthorized: isEventCreator || isGroupAdmin,
+    isEventCreator,
+    isGroupAdmin
+  };
 };
 
 /**
