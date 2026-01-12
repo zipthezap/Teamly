@@ -103,14 +103,6 @@ const TournamentsList: React.FC = () => {
     }
   };
 
-  const formatDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-
   const formatDateTime = (date: Date | string) => {
     return new Date(date).toLocaleString('en-US', {
       month: 'short',
@@ -164,7 +156,17 @@ const TournamentsList: React.FC = () => {
     return Array.from(types);
   };
 
-  const filteredTournaments = filterTournaments(tournaments);
+  const filteredTournaments = React.useMemo(() => filterTournaments(tournaments), [
+    tournaments,
+    searchQuery,
+    sportFilter,
+    tabValue,
+    user?.id
+  ]);
+
+  const upcomingCount = React.useMemo(() => tournaments.filter(isUpcoming).length, [tournaments]);
+  const pastCount = React.useMemo(() => tournaments.filter(isPast).length, [tournaments]);
+  const myTournamentsCount = React.useMemo(() => tournaments.filter(isMyTournament).length, [tournaments, user?.id]);
 
   if (loading) {
     return (
@@ -319,10 +321,10 @@ const TournamentsList: React.FC = () => {
           variant="fullWidth"
           sx={{ borderBottom: 1, borderColor: 'divider' }}
         >
-          <Tab label={`All (${filterTournaments(tournaments).length})`} />
-          <Tab label={`Upcoming (${tournaments.filter(isUpcoming).length})`} />
-          <Tab label={`Past (${tournaments.filter(isPast).length})`} />
-          <Tab label={`My Tournaments (${tournaments.filter(isMyTournament).length})`} />
+          <Tab label={`All (${filteredTournaments.length})`} />
+          <Tab label={`Upcoming (${upcomingCount})`} />
+          <Tab label={`Past (${pastCount})`} />
+          <Tab label={`My Tournaments (${myTournamentsCount})`} />
         </Tabs>
 
         <Box sx={{ p: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>

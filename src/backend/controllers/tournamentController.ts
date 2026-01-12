@@ -77,7 +77,7 @@ export const createTournament = async (req: Request, res: Response) => {
     if (registrationDeadline) {
       const regDate = new Date(registrationDeadline);
       const startDateObj = new Date(startDate);
-      if (regDate >= startDateObj) {
+      if (regDate > startDateObj) {
         return res.status(400).json({
           error: 'Registration deadline must be before the start date'
         });

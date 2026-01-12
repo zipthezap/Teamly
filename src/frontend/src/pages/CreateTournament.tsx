@@ -68,16 +68,21 @@ const CreateTournament: React.FC = () => {
   };
 
   const generateRecurrenceRule = () => {
-    if (!formData.isRecurring) return undefined;
+    if (!formData.isRecurring || !formData.startDate) return undefined;
     
-    const freq = formData.recurringFrequency === 'weekly' ? RRule.WEEKLY : RRule.MONTHLY;
-    const rule = new RRule({
-      freq,
-      count: formData.recurringCount,
-      dtstart: formData.startDate
-    });
-    
-    return rule.toString();
+    try {
+      const freq = formData.recurringFrequency === 'weekly' ? RRule.WEEKLY : RRule.MONTHLY;
+      const rule = new RRule({
+        freq,
+        count: formData.recurringCount,
+        dtstart: formData.startDate
+      });
+      
+      return rule.toString();
+    } catch (error) {
+      console.error('Error generating recurrence rule:', error);
+      return undefined;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
