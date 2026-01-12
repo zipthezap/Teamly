@@ -11,7 +11,14 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "serve": "ngrok http 80"
+    "serve": "ngrok http 80",
+    "pm2:start": "pm2 start ecosystem.config.js --env production",
+    "pm2:dev": "pm2 start ecosystem.config.js --env development",
+    "pm2:stop": "pm2 stop teamly-api",
+    "pm2:restart": "pm2 restart teamly-api",
+    "pm2:reload": "pm2 reload teamly-api",
+    "pm2:logs": "pm2 logs teamly-api",
+    "pm2:monit": "pm2 monit"
   },
   "keywords": [
     "sports",
