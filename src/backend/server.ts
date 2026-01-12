@@ -33,6 +33,9 @@ import { startEmailQueueProcessor, stopEmailQueueProcessor } from './services/em
 import { startScheduledJobs, stopScheduledJobs } from './services/scheduledJobs';
 import { ensureUploadDirectories } from './utils/imageProcessor';
 import { closeDatabaseConnections } from './config/database';
+import { initializeRedis, closeRedis } from './config/redis';
+import { cleanupCache } from './services/cacheService';
+import { metricsMiddleware, getMetrics } from './services/metricsService';
 
 // Validate environment variables before starting the server
 try {
@@ -55,6 +58,9 @@ const PORT = config.port;
 // Add request context and performance monitoring
 app.use(requestContext);
 app.use(performanceMonitor(config.slowRequestThresholdMs));
+
+// Add Prometheus metrics tracking
+app.use(metricsMiddleware);
 
 // Enable gzip compression for responses
 app.use(compression({
@@ -168,6 +174,9 @@ app.use('/api/teamup', teamUpRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/tournaments', tournamentRoutes);
 
+// Metrics endpoint for Prometheus
+app.get('/metrics', getMetrics);
+
 // Enhanced health check with detailed metrics
 app.get('/health', async (_req: Request, res: Response) => {
   try {
@@ -209,8 +218,11 @@ let emailQueueInterval: NodeJS.Timeout | null = null;
 
 // Initialize upload directories before starting server
 ensureUploadDirectories()
-  .then(() => {
+  .then(async () => {
     logger.info('Upload directories initialized', 'Server');
+    
+    // Initialize Redis connection (optional)
+    await initializeRedis();
     
     // Start server after upload directories are ready
     const server = app.listen(PORT, () => {
@@ -239,6 +251,20 @@ ensureUploadDirectories()
           stopEmailQueueProcessor(emailQueueInterval);
         }
         stopScheduledJobs();
+        
+        // Close Redis connection
+        try {
+          await closeRedis();
+        } catch (error) {
+          logger.error('Error closing Redis connection', 'Server', { error });
+        }
+        
+        // Cleanup cache
+        try {
+          cleanupCache();
+        } catch (error) {
+          logger.error('Error cleaning up cache', 'Server', { error });
+        }
         
         // Close database connections
         try {

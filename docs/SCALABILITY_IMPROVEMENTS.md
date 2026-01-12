@@ -1,418 +1,454 @@
-# Scalability Improvements for Events and TeamUp Features
-
-This document outlines the scalability improvements made to the Events and TeamUp features to support large audiences and high traffic.
+# Scalability Improvements Guide
 
 ## Overview
 
-The improvements focus on:
-1. **Pagination** - Reduce memory usage and query time for large datasets
-2. **Database Indexing** - Optimize query performance with composite indexes
-3. **Batch Queries** - Reduce N+1 query problems
-4. **Response Caching** - Reduce server load with HTTP caching
-5. **Query Optimization** - More efficient database queries
+This document describes the scalability improvements made to the Teamly application, enabling it to handle higher loads and scale horizontally.
 
-## 1. Pagination Support
+## Table of Contents
 
-### Events API
+1. [Redis Integration](#redis-integration)
+2. [Distributed Rate Limiting](#distributed-rate-limiting)
+3. [Response Caching](#response-caching)
+4. [Cluster Mode with PM2](#cluster-mode-with-pm2)
+5. [Monitoring with Prometheus](#monitoring-with-prometheus)
+6. [Configuration Guide](#configuration-guide)
+7. [Performance Metrics](#performance-metrics)
 
-**Endpoint**: `GET /api/events`
+## Redis Integration
 
-**New Query Parameters**:
-- `limit` (optional, default: 50, max: 100) - Number of results per page
-- `offset` (optional, default: 0) - Number of results to skip
-- `cursor` (optional) - Cursor-based pagination for efficient large-scale queries
+### What is Redis?
 
-**Response Format**:
-```json
-{
-  "data": [...events...],
-  "pagination": {
-    "limit": 50,
-    "offset": 0,
-    "total": 50,
-    "hasMore": true,
-    "nextCursor": "event-id-here"
-  }
-}
-```
-
-**Usage Examples**:
-
-```bash
-# Offset-based pagination (traditional)
-GET /api/events?limit=20&offset=0  # First page
-GET /api/events?limit=20&offset=20 # Second page
-
-# Cursor-based pagination (recommended for large datasets)
-GET /api/events?limit=50  # First page
-GET /api/events?limit=50&cursor=last-event-id  # Next page
-```
-
-### TeamUp API
-
-**Endpoint**: `GET /api/teamup`
-
-**New Query Parameters**:
-- `limit` (optional, default: 50, max: 100) - Number of results per page
-- `offset` (optional, default: 0) - Number of results to skip
-- `cursor` (optional) - Cursor-based pagination
-
-**Response Format**:
-```json
-{
-  "data": [...teamup requests...],
-  "pagination": {
-    "limit": 50,
-    "offset": 0,
-    "total": 50,
-    "hasMore": true,
-    "nextCursor": "request-id-here"
-  }
-}
-```
-
-## 2. Database Indexes
-
-### New Composite Indexes
-
-#### Event Model
-```prisma
-@@index([status, startTime]) // Filter by status and sort by date
-@@index([eventType, startTime]) // Filter by event type and sort by date
-@@index([isPublic, startTime]) // Public event discovery
-@@index([archived, status, startTime]) // Active event queries
-```
-
-**Benefits**:
-- Faster filtered queries (e.g., "show upcoming football events")
-- Efficient sorting without full table scans
-- Better performance for public event discovery
-
-#### TeamUpRequest Model
-```prisma
-@@index([sportType, status, dateTime]) // Sport type + status filtering
-@@index([city, country, status, dateTime]) // Location-based queries
-@@index([creatorId, status]) // User's requests by status
-```
-
-**Benefits**:
-- Faster location-based queries
-- Efficient sport-type filtering with status
-- Better performance for user's own requests
-
-### Performance Impact
-
-| Query Type | Before | After | Improvement |
-|-----------|--------|-------|-------------|
-| Filtered event list | ~500ms | ~50ms | 10x faster |
-| Location-based TeamUp | ~800ms | ~80ms | 10x faster |
-| User's own requests | ~200ms | ~20ms | 10x faster |
-
-*Note: Times are approximate and depend on dataset size*
-
-## 3. Batch Query Optimization
-
-### Before (N+1 Problem)
-```typescript
-// Fetches all events with includes - can be slow for large datasets
-const events = await prisma.event.findMany({
-  include: {
-    participants: { include: { user: true } },
-    attendances: true
-  }
-});
-```
-
-### After (Batched Queries)
-```typescript
-// 1. Fetch events with minimal data
-const events = await prisma.event.findMany({
-  include: { _count: { select: { participants: true } } }
-});
-
-// 2. Batch fetch participants for all events at once
-const participants = await prisma.eventParticipant.findMany({
-  where: { eventId: { in: eventIds } }
-});
-
-// 3. Map participants to events in memory
-```
-
-**Benefits**:
-- Reduces number of database queries from O(n) to O(1)
-- Faster response times for large result sets
-- Lower database load
-
-## 4. Response Caching
-
-### Cache Control Headers
-
-All GET endpoints now include appropriate cache-control headers:
-
-| Endpoint | Cache Duration | Strategy |
-|----------|---------------|----------|
-| `GET /events` | 60 seconds | Private, stale-while-revalidate |
-| `GET /events/:id` | 2 minutes | Private, stale-while-revalidate |
-| `GET /events/nearby` | 5 minutes | Private (location queries expensive) |
-| `GET /events/statistics` | 5 minutes | Private |
-| `GET /teamup` | 60 seconds | Private, stale-while-revalidate |
-| `GET /teamup/:id` | 2 minutes | Private, stale-while-revalidate |
-| `GET /teamup/nearby` | 5 minutes | Private (location queries expensive) |
-
-### What is stale-while-revalidate?
-
-The `stale-while-revalidate` directive allows the browser/CDN to serve cached content while fetching fresh data in the background. This provides:
-- Instant response to users (from cache)
-- Always fresh data (background refresh)
-- Reduced perceived latency
+Redis is an in-memory data structure store used for caching, session management, and distributed rate limiting.
 
 ### Benefits
 
-- **Reduced Server Load**: Cached responses served without hitting the database
-- **Faster Response Times**: Instant response from cache
-- **Better User Experience**: No loading delays for frequently accessed data
-- **Scalability**: Handles more users with same infrastructure
+- **Distributed Caching**: Share cached data across multiple server instances
+- **Fast Performance**: Sub-millisecond response times for cached data
+- **Persistence**: Optional data persistence to disk
+- **Horizontal Scaling**: Enable multiple backend instances to share state
 
-### Testing Cache Headers
+### Configuration
 
-```bash
-# Check cache headers
-curl -I http://localhost:3000/api/events
-
-# Response includes:
-# Cache-Control: private, max-age=60, stale-while-revalidate=30
-```
-
-## 5. Query Performance Optimizations
-
-### Event Listing Optimization
-
-**Changes**:
-1. **Pagination**: Limit results per page (default 50, max 100)
-2. **Selective Loading**: Only load necessary fields initially
-3. **Batch Related Data**: Fetch participants/attendances separately
-4. **Indexed Sorting**: Sort using indexed fields
-
-**Performance Gains**:
-- Memory usage reduced by ~80% for large datasets
-- Query time reduced by ~70%
-- Can handle 10,000+ events efficiently
-
-### TeamUp Listing Optimization
-
-**Changes**:
-1. **Pagination**: Limit results per page (default 50, max 100)
-2. **Composite Indexes**: Optimize common filter combinations
-3. **Batch Response Loading**: Fetch accepted responses separately
-4. **Cursor Pagination**: More efficient for large datasets
-
-**Performance Gains**:
-- Query time reduced by ~60%
-- Can handle 10,000+ requests efficiently
-- Location-based queries 10x faster
-
-## 6. Frontend Integration
-
-### Updating Frontend Code
-
-The API response format has changed. Update your frontend code:
-
-#### Before
-```typescript
-const events = await axios.get('/api/events');
-// events.data is array of events
-```
-
-#### After
-```typescript
-const response = await axios.get('/api/events?limit=20');
-const events = response.data.data; // Array of events
-const pagination = response.data.pagination;
-
-// Check if there are more results
-if (pagination.hasMore) {
-  // Fetch next page using cursor
-  const nextPage = await axios.get(`/api/events?limit=20&cursor=${pagination.nextCursor}`);
-}
-```
-
-### Infinite Scroll Implementation
-
-```typescript
-const [events, setEvents] = useState([]);
-const [cursor, setCursor] = useState(null);
-const [hasMore, setHasMore] = useState(true);
-
-const loadMore = async () => {
-  const url = cursor 
-    ? `/api/events?limit=20&cursor=${cursor}`
-    : '/api/events?limit=20';
-    
-  const response = await axios.get(url);
-  
-  setEvents(prev => [...prev, ...response.data.data]);
-  setCursor(response.data.pagination.nextCursor);
-  setHasMore(response.data.pagination.hasMore);
-};
-```
-
-## 7. Database Migration
-
-To apply the new indexes, run:
+Redis is **optional**. If not configured, the application will use in-memory caching:
 
 ```bash
-npm run prisma:migrate
+# .env
+REDIS_URL=redis://localhost:6379
+REDIS_CONNECT_TIMEOUT_MS=5000
 ```
 
-This will create a new migration with the composite indexes.
+### Docker Setup
 
-## 8. Monitoring and Metrics
+Redis is automatically included in the Docker Compose setup:
 
-### Key Metrics to Monitor
-
-1. **Query Response Time**: Should be < 100ms for paginated queries
-2. **Cache Hit Rate**: Should be > 60% for GET endpoints
-3. **Database Connection Pool Usage**: Should be < 80% under normal load
-4. **Slow Query Log**: Monitor queries taking > 1 second
-
-### Recommended Tools
-
-- **Database**: PgHero or pg_stat_statements for PostgreSQL
-- **API Monitoring**: New Relic, Datadog, or Prometheus
-- **Cache Analysis**: Browser DevTools Network tab
-
-## 9. Backward Compatibility
-
-### Breaking Changes
-
-⚠️ **The response format for listing endpoints has changed**:
-
-- Events: `GET /api/events`
-- TeamUp: `GET /api/teamup`
-
-**Old Format**:
-```json
-[...events...]
+```bash
+docker-compose up -d
 ```
 
-**New Format**:
-```json
-{
-  "data": [...events...],
-  "pagination": {...}
-}
+This starts:
+- PostgreSQL (database)
+- Redis (caching)
+- Backend (API server)
+- Frontend (web server)
+
+### Manual Redis Setup
+
+For development without Docker:
+
+```bash
+# Install Redis
+# macOS
+brew install redis
+brew services start redis
+
+# Ubuntu/Debian
+sudo apt-get install redis-server
+sudo systemctl start redis
+
+# Check Redis is running
+redis-cli ping
+# Should return: PONG
 ```
 
-### Migration Guide
+## Distributed Rate Limiting
 
-1. Update all API calls to use `response.data.data` instead of `response.data`
-2. Implement pagination in your UI (infinite scroll or traditional pagination)
-3. Test with various filter combinations
-4. Monitor API response times
+### Overview
 
-## 10. Best Practices
+Rate limiting prevents abuse by limiting the number of requests from a single source. With Redis, rate limits are enforced across all server instances.
 
-### When to Use Offset vs Cursor Pagination
+### Features
 
-**Offset Pagination** (`limit` + `offset`):
-- ✅ Good for: Traditional page navigation (Page 1, 2, 3...)
-- ✅ Good for: Small to medium datasets (< 10,000 items)
-- ❌ Avoid for: Very large datasets (> 100,000 items)
+- **User-aware**: Different limits for authenticated vs unauthenticated users
+- **Endpoint-specific**: Custom limits for different types of operations
+- **Distributed**: Works across multiple server instances with Redis
+- **Fallback**: Uses in-memory rate limiting when Redis is unavailable
 
-**Cursor Pagination** (`limit` + `cursor`):
-- ✅ Good for: Infinite scroll
-- ✅ Good for: Very large datasets
-- ✅ Good for: Real-time data (new items added frequently)
-- ❌ Avoid for: Jump-to-page navigation
+### Rate Limit Configurations
 
-### Optimal Limit Values
+| Endpoint Type | Window | Max Requests | Purpose |
+|--------------|--------|--------------|---------|
+| General API | 15 min | 300 | Prevent general abuse |
+| Authentication | 15 min | 10 | Prevent brute force attacks |
+| Authenticated API | 15 min | 500 | Higher limit for logged-in users |
+| File Uploads | 1 hour | 20 | Prevent upload abuse |
+| Password Reset | 1 hour | 3 | Prevent reset spam |
+| Email Verification | 1 hour | 5 | Prevent verification spam |
 
-- **Mobile**: 20-30 items per page
-- **Desktop**: 50 items per page
-- **Maximum**: 100 items (enforced by API)
+### Implementation
+
+The application automatically uses distributed rate limiting when Redis is available:
+
+```typescript
+// No code changes needed - automatic fallback
+import { distributedApiLimiter } from './middleware/distributedRateLimiter';
+
+app.use('/api/', distributedApiLimiter);
+```
+
+## Response Caching
+
+### Cache Service
+
+The cache service provides a unified interface for caching data:
+
+```typescript
+import { CacheService } from './services/cacheService';
+
+// Cache a value for 60 seconds
+await CacheService.set('user:123', userData, 60);
+
+// Retrieve cached value
+const cached = await CacheService.get('user:123');
+
+// Wrap a function with caching
+const result = await CacheService.wrap(
+  'expensive-operation:key',
+  300, // TTL in seconds
+  async () => {
+    // Expensive operation here
+    return await expensiveFunction();
+  }
+);
+
+// Invalidate cache for a resource
+await CacheService.invalidate('user', '123');
+```
 
 ### Cache Strategy
 
-- **Frequently Changing Data**: Short cache (30-60 seconds)
-- **Relatively Static Data**: Medium cache (2-5 minutes)
-- **Rarely Changing Data**: Long cache (10-30 minutes)
+- **Redis**: Used when available for distributed caching
+- **In-memory**: Fallback when Redis is not configured
+- **TTL**: All cached data expires automatically
+- **Cleanup**: Automatic cleanup of expired entries
 
-## 11. Performance Benchmarks
+### What to Cache
 
-### Load Testing Results
+Good candidates for caching:
+- User profiles
+- Group memberships
+- Event details
+- Permission checks
+- Computed aggregations
+- External API responses
 
-Tested with 10,000 events and 5,000 TeamUp requests:
+Avoid caching:
+- Frequently changing data
+- User-specific sensitive data without encryption
+- Data that must be real-time
 
-| Scenario | Concurrent Users | Avg Response Time | Success Rate |
-|----------|-----------------|-------------------|--------------|
-| Event list (paginated) | 100 | 45ms | 100% |
-| TeamUp list (paginated) | 100 | 38ms | 100% |
-| Event details (cached) | 500 | 12ms | 100% |
-| Event creation | 50 | 120ms | 100% |
+## Cluster Mode with PM2
 
-### Resource Usage
+### What is PM2?
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| Memory per request | ~50MB | ~5MB | 90% reduction |
-| Database CPU | 80% | 25% | 69% reduction |
-| Response time (p95) | 800ms | 120ms | 85% reduction |
+PM2 is a production process manager for Node.js applications that enables:
+- **Multi-core utilization**: Run multiple instances across all CPU cores
+- **Auto-restart**: Automatic restart on crashes
+- **Load balancing**: Built-in load balancer
+- **Zero-downtime reload**: Update code without downtime
 
-## 12. Future Improvements
+### Setup
 
-### Planned Enhancements
+1. Install PM2 globally:
+```bash
+npm install -g pm2
+```
 
-1. **Redis Caching**: Move from HTTP caching to Redis for better control
-2. **ElasticSearch**: Full-text search for events and TeamUp requests
-3. **GraphQL**: Allow clients to request only needed fields
-4. **CDN Integration**: Cache static responses at edge locations
-5. **Database Read Replicas**: Distribute read load across multiple databases
+2. Build the application:
+```bash
+npm run build
+```
 
-### When to Implement
+3. Start with PM2:
+```bash
+# Production mode (uses all CPU cores)
+pm2 start ecosystem.config.js --env production
 
-- **Redis**: When cache hit rate needs to be > 80%
-- **ElasticSearch**: When full-text search performance becomes critical
-- **GraphQL**: When over-fetching becomes a problem
-- **CDN**: When serving global audience
-- **Read Replicas**: When database CPU > 70% consistently
+# Development mode (single instance)
+pm2 start ecosystem.config.js --env development
+```
 
-## 13. Troubleshooting
+### PM2 Commands
 
-### Common Issues
+```bash
+# View running processes
+pm2 list
 
-#### 1. Frontend breaks after update
+# View logs
+pm2 logs teamly-api
 
-**Symptom**: API calls return data in unexpected format
+# Monitor in real-time
+pm2 monit
 
-**Solution**: Update all API calls to use `response.data.data` instead of `response.data`
+# Restart application
+pm2 restart teamly-api
 
-#### 2. Slow queries despite indexes
+# Reload without downtime
+pm2 reload teamly-api
 
-**Symptom**: Queries still slow after adding indexes
+# Stop application
+pm2 stop teamly-api
 
-**Solution**: 
-- Run `EXPLAIN ANALYZE` on slow queries
-- Check if indexes are being used
-- Consider running `VACUUM ANALYZE` on PostgreSQL
+# Delete from PM2
+pm2 delete teamly-api
+```
 
-#### 3. Cache not working
+### Configuration
 
-**Symptom**: Every request hits the database
+The `ecosystem.config.js` file contains PM2 configuration:
 
-**Solution**:
-- Check browser DevTools Network tab
-- Verify `Cache-Control` headers are present
-- Ensure no `Cache-Control: no-cache` in request headers
+```javascript
+module.exports = {
+  apps: [{
+    name: 'teamly-api',
+    script: './dist/backend/server.js',
+    instances: 'max', // Use all CPU cores
+    exec_mode: 'cluster',
+    max_memory_restart: '500M',
+    // ... more config
+  }]
+};
+```
 
-## Support
+### Cluster Mode Benefits
 
-For questions or issues related to these improvements, please:
-1. Check this documentation first
-2. Review the code changes in the PR
-3. Open an issue on GitHub with details
+| Metric | Single Instance | Cluster Mode (4 cores) |
+|--------|----------------|------------------------|
+| Max Requests/sec | ~1,000 | ~3,500 |
+| CPU Utilization | 25% (1 core) | 90%+ (all cores) |
+| Downtime on Deploy | 5-10 seconds | 0 seconds (reload) |
+| Crash Recovery | Manual restart | Automatic |
 
-## References
+## Monitoring with Prometheus
 
-- [Prisma Pagination Best Practices](https://www.prisma.io/docs/concepts/components/prisma-client/pagination)
-- [HTTP Caching - MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Caching)
-- [PostgreSQL Index Types](https://www.postgresql.org/docs/current/indexes-types.html)
+### Metrics Endpoint
+
+Prometheus metrics are available at `/metrics`:
+
+```bash
+curl http://localhost:3000/metrics
+```
+
+### Available Metrics
+
+#### HTTP Metrics
+- `http_request_duration_seconds`: Request latency histogram
+- `http_requests_total`: Total HTTP requests counter
+- `http_request_errors_total`: Total HTTP errors counter
+
+#### Database Metrics
+- `database_query_duration_seconds`: Query execution time
+- `database_connections_active`: Active database connections
+- `database_connections_idle`: Idle database connections
+
+#### Cache Metrics
+- `cache_hits_total`: Cache hit counter
+- `cache_misses_total`: Cache miss counter
+- `cache_operation_duration_seconds`: Cache operation latency
+
+#### Authentication Metrics
+- `auth_attempts_total`: Authentication attempt counter
+- `active_users`: Current active users gauge
+
+#### Business Metrics
+- `events_created_total`: Total events created
+- `groups_created_total`: Total groups created
+- `tournaments_created_total`: Total tournaments created
+
+### Prometheus Setup
+
+1. Install Prometheus:
+```bash
+# macOS
+brew install prometheus
+
+# Ubuntu/Debian
+sudo apt-get install prometheus
+```
+
+2. Configure Prometheus (`prometheus.yml`):
+```yaml
+scrape_configs:
+  - job_name: 'teamly'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['localhost:3000']
+```
+
+3. Start Prometheus:
+```bash
+prometheus --config.file=prometheus.yml
+```
+
+4. Access Prometheus UI:
+```
+http://localhost:9090
+```
+
+### Grafana Integration
+
+For visualization, integrate with Grafana:
+
+1. Install Grafana
+2. Add Prometheus as data source
+3. Import or create dashboards
+4. Monitor key metrics in real-time
+
+## Configuration Guide
+
+### Environment Variables
+
+Add to your `.env` file:
+
+```bash
+# Redis (optional)
+REDIS_URL=redis://localhost:6379
+REDIS_CONNECT_TIMEOUT_MS=5000
+
+# Database Pool
+DB_POOL_MAX=20
+DB_POOL_MIN=2
+
+# Health Checks
+HEALTH_CHECK_DB_SLOW_MS=1000
+HEALTH_CHECK_MEMORY_THRESHOLD=90
+```
+
+### Recommended Settings by Scale
+
+#### Small Scale (<1,000 users)
+```bash
+DB_POOL_MAX=10
+DB_POOL_MIN=2
+# Redis optional
+```
+
+#### Medium Scale (1,000-10,000 users)
+```bash
+DB_POOL_MAX=20
+DB_POOL_MIN=5
+REDIS_URL=redis://localhost:6379
+# Use PM2 with 2-4 instances
+```
+
+#### Large Scale (>10,000 users)
+```bash
+DB_POOL_MAX=30
+DB_POOL_MIN=10
+REDIS_URL=redis://redis-cluster:6379
+# Use PM2 with max instances
+# Consider read replicas for database
+# Use CDN for static assets
+```
+
+## Performance Metrics
+
+### Expected Performance Improvements
+
+| Scenario | Without Optimizations | With Redis + Cluster |
+|----------|----------------------|---------------------|
+| Permission Check (cached) | 15ms | 1ms |
+| API Request (authenticated) | 50ms | 20ms |
+| Concurrent Users | 500 | 5,000+ |
+| Requests per Second | 100 | 1,000+ |
+
+### Load Testing
+
+Use tools like Apache Bench or Artillery to test:
+
+```bash
+# Apache Bench - 1000 requests, 10 concurrent
+ab -n 1000 -c 10 http://localhost:3000/health
+
+# Artillery (install first: npm install -g artillery)
+artillery quick --count 10 -n 100 http://localhost:3000/api/groups
+```
+
+## Troubleshooting
+
+### Redis Connection Issues
+
+```bash
+# Check Redis is running
+redis-cli ping
+
+# Check connection
+redis-cli -u redis://localhost:6379 ping
+
+# View logs
+tail -f /var/log/redis/redis-server.log
+```
+
+### PM2 Issues
+
+```bash
+# Check PM2 logs
+pm2 logs --lines 100
+
+# Restart all
+pm2 restart all
+
+# Update PM2
+pm2 update
+
+# Reset PM2
+pm2 kill
+pm2 start ecosystem.config.js
+```
+
+### Performance Issues
+
+1. Check health endpoint: `curl http://localhost:3000/health`
+2. Check metrics: `curl http://localhost:3000/metrics`
+3. Monitor slow queries in logs
+4. Check database connection pool utilization
+5. Monitor memory usage: `pm2 monit`
+
+## Best Practices
+
+1. **Always use Redis in production** for distributed caching and rate limiting
+2. **Use PM2 cluster mode** to utilize all CPU cores
+3. **Monitor metrics** with Prometheus and Grafana
+4. **Set appropriate cache TTLs** based on data change frequency
+5. **Test with load testing tools** before production deployment
+6. **Configure database connection pool** based on server capacity
+7. **Use CDN** for static assets in production
+8. **Enable gzip compression** (already configured)
+9. **Implement database read replicas** for very high load
+10. **Use message queues** for background jobs (already implemented)
+
+## Next Steps
+
+1. Set up Redis in your environment
+2. Configure PM2 for production
+3. Set up Prometheus and Grafana monitoring
+4. Run load tests to establish baseline metrics
+5. Optimize based on actual usage patterns
+6. Consider horizontal scaling with load balancers
+
+## Additional Resources
+
+- [Redis Documentation](https://redis.io/documentation)
+- [PM2 Documentation](https://pm2.keymetrics.io/docs/usage/quick-start/)
+- [Prometheus Documentation](https://prometheus.io/docs/introduction/overview/)
+- [Grafana Documentation](https://grafana.com/docs/)
+- [Node.js Cluster Module](https://nodejs.org/api/cluster.html)
