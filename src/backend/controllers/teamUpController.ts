@@ -969,10 +969,11 @@ export const addTeamUpComment = async (req: Request, res: Response) => {
   }
 };
 
-// Delete a comment (author only)
+// Delete a comment (author or community admin)
 export const deleteTeamUpComment = async (req: Request, res: Response) => {
   try {
     const { id, commentId } = req.params;
+    const userId = (req.user as any).id;
 
     const comment = await prisma.teamUpComment.findUnique({
       where: { id: commentId },
@@ -987,15 +988,51 @@ export const deleteTeamUpComment = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Comment does not belong to this TeamUp request' });
     }
 
-    if (comment.userId !== (req.user as any).id) {
-      return res.status(403).json({ error: 'Only the author can delete this comment' });
+    // Check if user is the comment author
+    if (comment.userId === userId) {
+      await prisma.teamUpComment.delete({
+        where: { id: commentId }
+      });
+      return res.json({ message: 'Comment deleted' });
     }
 
-    await prisma.teamUpComment.delete({
-      where: { id: commentId }
+    // Check if user is a community admin (admin of any group in same location as the TeamUp request)
+    const teamUpRequest = await prisma.teamUpRequest.findUnique({
+      where: { id },
+      select: { city: true, country: true, creatorId: true }
     });
 
-    res.json({ message: 'Comment deleted' });
+    if (teamUpRequest && (teamUpRequest.creatorId === userId || 
+        (teamUpRequest.city && teamUpRequest.country))) {
+      // Check if creator or community admin
+      if (teamUpRequest.creatorId === userId) {
+        await prisma.teamUpComment.delete({
+          where: { id: commentId }
+        });
+        return res.json({ message: 'Comment deleted' });
+      }
+
+      const userGroups = await prisma.groupMember.findMany({
+        where: {
+          userId,
+          role: 'admin',
+          group: {
+            city: teamUpRequest.city,
+            country: teamUpRequest.country
+          }
+        },
+        select: { groupId: true }
+      });
+
+      if (userGroups.length > 0) {
+        await prisma.teamUpComment.delete({
+          where: { id: commentId }
+        });
+        return res.json({ message: 'Comment deleted' });
+      }
+    }
+
+    return res.status(403).json({ error: 'Only the author, request creator, or community admins can delete this comment' });
   } catch (error) {
     logger.error('Delete TeamUp comment error:', 'teamUpController', { error });
     res.status(500).json({ error: 'Failed to delete comment' });

@@ -3,6 +3,7 @@ import * as teamUpController from '../controllers/teamUpController';
 import authMiddleware from '../middleware/auth';
 import { authenticatedLimiter } from '../middleware/rateLimiter';
 import { asyncHandler } from '../middleware/asyncHandler';
+import { requireTeamUpCreatorOrGroupAdmin } from '../middleware/authorization';
 
 const router = Router();
 
@@ -28,11 +29,11 @@ router.get('/my-responses', asyncHandler(teamUpController.getMyTeamUpResponses))
 // Get a specific TeamUp request
 router.get('/:id', asyncHandler(teamUpController.getTeamUpRequest));
 
-// Update a TeamUp request
-router.put('/:id', asyncHandler(teamUpController.updateTeamUpRequest));
+// Update a TeamUp request (creator or community admin)
+router.put('/:id', requireTeamUpCreatorOrGroupAdmin, asyncHandler(teamUpController.updateTeamUpRequest));
 
-// Delete a TeamUp request
-router.delete('/:id', asyncHandler(teamUpController.deleteTeamUpRequest));
+// Delete a TeamUp request (creator or community admin)
+router.delete('/:id', requireTeamUpCreatorOrGroupAdmin, asyncHandler(teamUpController.deleteTeamUpRequest));
 
 // Respond to a TeamUp request
 router.post('/:id/respond', asyncHandler(teamUpController.respondToTeamUpRequest));
@@ -46,7 +47,7 @@ router.get('/:id/comments', asyncHandler(teamUpController.getTeamUpComments));
 // Add a comment to a TeamUp request
 router.post('/:id/comments', asyncHandler(teamUpController.addTeamUpComment));
 
-// Delete a comment (author only)
+// Delete a comment (author or community admin)
 router.delete('/:id/comments/:commentId', asyncHandler(teamUpController.deleteTeamUpComment));
 
 export default router;

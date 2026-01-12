@@ -293,20 +293,7 @@ export const updateTournament = async (req: Request, res: Response) => {
       autoGenerateBrackets, useManualBrackets, prizesDescription, rulesDescription, contactEmail
     } = req.body;
 
-    const tournament = await prisma.tournament.findUnique({
-      where: { id }
-    });
-
-    if (!tournament) {
-      return res.status(404).json({ error: 'Tournament not found' });
-    }
-
-    if (!tournamentService.isOrganizer(tournament, userId)) {
-      return res.status(403).json({
-        error: 'Only the organizer can update the tournament'
-      });
-    }
-
+    // Middleware already checked permissions, so no need to check again
     const updateData: any = {};
 
     if (name !== undefined) {
@@ -426,20 +413,7 @@ export const deleteTournament = async (req: Request, res: Response) => {
     const { id } = req.params;
     const userId = (req.user as any).id;
 
-    const tournament = await prisma.tournament.findUnique({
-      where: { id }
-    });
-
-    if (!tournament) {
-      return res.status(404).json({ error: 'Tournament not found' });
-    }
-
-    if (!tournamentService.isOrganizer(tournament, userId)) {
-      return res.status(403).json({
-        error: 'Only the organizer can delete the tournament'
-      });
-    }
-
+    // Middleware already checked permissions
     await prisma.tournament.delete({
       where: { id }
     });
@@ -539,8 +513,10 @@ export const updateTeam = async (req: Request, res: Response) => {
     const userId = (req.user as any).id;
     const { name, captainName, captainEmail, captainUserId, poolNumber, poolName, seedNumber } = req.body;
 
+    // Middleware already checked permissions
     const tournament = await prisma.tournament.findUnique({
-      where: { id }
+      where: { id },
+      select: { organizerId: true, groupId: true }
     });
 
     if (!tournament) {
@@ -555,14 +531,19 @@ export const updateTeam = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Team not found' });
     }
 
-    // Check permissions
+    // Check if user is organizer or group admin for pool assignments
     const isOrg = tournamentService.isOrganizer(tournament, userId);
-    const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
-
-    if (!isOrg && !isCaptain) {
-      return res.status(403).json({
-        error: 'Only the organizer or team captain can update the team'
+    let isGroupAdmin = false;
+    if (tournament.groupId) {
+      const groupMember = await prisma.groupMember.findUnique({
+        where: {
+          userId_groupId: {
+            userId,
+            groupId: tournament.groupId
+          }
+        }
       });
+      isGroupAdmin = groupMember?.role === 'admin';
     }
 
     const updateData: any = {};
@@ -570,8 +551,9 @@ export const updateTeam = async (req: Request, res: Response) => {
     if (captainName !== undefined) updateData.captainName = captainName;
     if (captainEmail !== undefined) updateData.captainEmail = captainEmail;
     if (captainUserId !== undefined) updateData.captainUserId = captainUserId || null;
-    // Only organizer can change pool assignments
-    if (isOrg) {
+    
+    // Only organizer or group admin can change pool assignments
+    if (isOrg || isGroupAdmin) {
       if (poolNumber !== undefined) updateData.poolNumber = poolNumber || null;
       if (poolName !== undefined) updateData.poolName = poolName || null;
       if (seedNumber !== undefined) updateData.seedNumber = seedNumber || null;
@@ -608,18 +590,14 @@ export const deleteTeam = async (req: Request, res: Response) => {
     const { id, teamId } = req.params;
     const userId = (req.user as any).id;
 
+    // Middleware already checked permissions
     const tournament = await prisma.tournament.findUnique({
-      where: { id }
+      where: { id },
+      select: { status: true }
     });
 
     if (!tournament) {
       return res.status(404).json({ error: 'Tournament not found' });
-    }
-
-    if (!tournamentService.isOrganizer(tournament, userId)) {
-      return res.status(403).json({
-        error: 'Only the organizer can delete teams'
-      });
     }
 
     // Check if tournament has started
@@ -655,18 +633,14 @@ export const generateBrackets = async (req: Request, res: Response) => {
     const userId = (req.user as any).id;
     const { numberOfGroups } = req.body;
 
+    // Middleware already checked permissions
     const tournament = await prisma.tournament.findUnique({
-      where: { id }
+      where: { id },
+      select: { format: true }
     });
 
     if (!tournament) {
       return res.status(404).json({ error: 'Tournament not found' });
-    }
-
-    if (!tournamentService.isOrganizer(tournament, userId)) {
-      return res.status(403).json({
-        error: 'Only the organizer can generate brackets'
-      });
     }
 
     // Check if brackets already exist
@@ -836,7 +810,7 @@ export const getStandings = async (req: Request, res: Response) => {
 };
 
 /**
- * Create a manual match (admin only)
+ * Create a manual match (organizer or group admin only)
  */
 export const createMatch = async (req: Request, res: Response) => {
   try {
@@ -865,19 +839,7 @@ export const createMatch = async (req: Request, res: Response) => {
       });
     }
 
-    const tournament = await prisma.tournament.findUnique({
-      where: { id }
-    });
-
-    if (!tournament) {
-      return res.status(404).json({ error: 'Tournament not found' });
-    }
-
-    if (!tournamentService.isOrganizer(tournament, userId)) {
-      return res.status(403).json({
-        error: 'Only the organizer can create matches'
-      });
-    }
+    // Middleware already checked permissions
 
     // Verify teams exist and belong to this tournament
     const homeTeam = await prisma.tournamentTeam.findFirst({
@@ -945,7 +907,7 @@ export const createMatch = async (req: Request, res: Response) => {
 };
 
 /**
- * Update a match (admin only)
+ * Update a match (organizer or group admin only)
  */
 export const updateMatch = async (req: Request, res: Response) => {
   try {
@@ -963,19 +925,7 @@ export const updateMatch = async (req: Request, res: Response) => {
       status
     } = req.body;
 
-    const tournament = await prisma.tournament.findUnique({
-      where: { id }
-    });
-
-    if (!tournament) {
-      return res.status(404).json({ error: 'Tournament not found' });
-    }
-
-    if (!tournamentService.isOrganizer(tournament, userId)) {
-      return res.status(403).json({
-        error: 'Only the organizer can update matches'
-      });
-    }
+    // Middleware already checked permissions
 
     const match = await prisma.tournamentMatch.findUnique({
       where: { id: matchId }
@@ -1050,26 +1000,14 @@ export const updateMatch = async (req: Request, res: Response) => {
 };
 
 /**
- * Delete a match (admin only)
+ * Delete a match (organizer or group admin only)
  */
 export const deleteMatch = async (req: Request, res: Response) => {
   try {
     const { id, matchId } = req.params;
     const userId = (req.user as any).id;
 
-    const tournament = await prisma.tournament.findUnique({
-      where: { id }
-    });
-
-    if (!tournament) {
-      return res.status(404).json({ error: 'Tournament not found' });
-    }
-
-    if (!tournamentService.isOrganizer(tournament, userId)) {
-      return res.status(403).json({
-        error: 'Only the organizer can delete matches'
-      });
-    }
+    // Middleware already checked permissions
 
     const match = await prisma.tournamentMatch.findUnique({
       where: { id: matchId }
@@ -1104,7 +1042,7 @@ export const deleteMatch = async (req: Request, res: Response) => {
 };
 
 /**
- * Assign referee to a match (admin only)
+ * Assign referee to a match (organizer or group admin only)
  */
 export const assignReferee = async (req: Request, res: Response) => {
   try {
