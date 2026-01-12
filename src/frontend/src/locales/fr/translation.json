@@ -1,11 +1,4 @@
-    "events": {
-      "type": {
-        "running": "Course à pied",
-        "cycling": "Cyclisme",
-        "swimming": "Natation"
-      }
-    },
-{
+    {
   "common": {
     "teamly": "Teamly",
     "dashboard": "Tableau de bord",
