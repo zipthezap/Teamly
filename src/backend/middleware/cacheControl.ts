@@ -4,6 +4,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
 
 /**
  * Sets cache-control headers for responses
@@ -85,17 +86,12 @@ export const setETag = (req: Request, res: Response, next: NextFunction) => {
 };
 
 /**
- * Generates a simple ETag from response body
+ * Generates an ETag from response body using MD5 hash
  */
 function generateETag(body: any): string {
   const content = typeof body === 'string' ? body : JSON.stringify(body);
-  let hash = 0;
-  for (let i = 0; i < content.length; i++) {
-    const char = content.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return `"${hash.toString(16)}"`;
+  const hash = crypto.createHash('md5').update(content).digest('hex');
+  return `"${hash}"`;
 }
 
 /**

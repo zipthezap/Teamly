@@ -144,8 +144,14 @@ export const getEvents = async (req: Request, res: Response) => {
     } = req.query;
 
     const userId = (req.user as any).id;
-    const parsedLimit = Math.min(parseInt(limit as string, 10), 100); // Cap at 100 for performance
+    
+    // Parse and validate pagination parameters
+    const parsedLimit = parseInt(limit as string, 10);
     const parsedOffset = parseInt(offset as string, 10);
+    
+    // Validate parsed values and apply defaults/caps
+    const validatedLimit = isNaN(parsedLimit) ? 50 : Math.min(Math.max(parsedLimit, 1), 100);
+    const validatedOffset = isNaN(parsedOffset) ? 0 : Math.max(parsedOffset, 0);
 
     // Build where filter using service
     const where = eventService.buildEventFilters(userId, {
@@ -186,8 +192,8 @@ export const getEvents = async (req: Request, res: Response) => {
         { startTime: 'asc' },
         { id: 'asc' } // Secondary sort for cursor stability
       ],
-      take: parsedLimit,
-      skip: cursor ? 0 : parsedOffset // Skip only for offset pagination
+      take: validatedLimit,
+      skip: cursor ? 0 : validatedOffset // Skip only for offset pagination
     });
 
     // Get participant data only for returned events (batch query)
@@ -223,8 +229,8 @@ export const getEvents = async (req: Request, res: Response) => {
     });
 
     // Map participants and attendances to events
-    const participantsByEvent = new Map<string, typeof participants>();
-    const attendancesByEvent = new Map<string, typeof attendances>();
+    const participantsByEvent = new Map<string, typeof participants[number][]>();
+    const attendancesByEvent = new Map<string, typeof attendances[number][]>();
     
     participants.forEach(p => {
       if (!participantsByEvent.has(p.eventId)) {
@@ -285,16 +291,16 @@ export const getEvents = async (req: Request, res: Response) => {
     );
 
     // Calculate next cursor for cursor-based pagination
-    const nextCursor = events.length === parsedLimit ? events[events.length - 1].id : null;
+    const nextCursor = events.length === validatedLimit ? events[events.length - 1].id : null;
 
     // Return paginated response with metadata
     res.json({
       data: enrichedEvents,
       pagination: {
-        limit: parsedLimit,
-        offset: parsedOffset,
+        limit: validatedLimit,
+        offset: validatedOffset,
         total: enrichedEvents.length,
-        hasMore: events.length === parsedLimit,
+        hasMore: events.length === validatedLimit,
         nextCursor
       }
     });

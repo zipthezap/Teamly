@@ -140,8 +140,13 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
       cursor
     } = req.query;
 
-    const parsedLimit = Math.min(parseInt(limit as string, 10), 100); // Cap at 100 for performance
+    // Parse and validate pagination parameters
+    const parsedLimit = parseInt(limit as string, 10);
     const parsedOffset = parseInt(offset as string, 10);
+    
+    // Validate parsed values and apply defaults/caps
+    const validatedLimit = isNaN(parsedLimit) ? 50 : Math.min(Math.max(parsedLimit, 1), 100);
+    const validatedOffset = isNaN(parsedOffset) ? 0 : Math.max(parsedOffset, 0);
 
     // Build where clause - optimized to use composite indexes
     const where: any = {
@@ -199,8 +204,8 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
         { dateTime: 'asc' },
         { id: 'asc' } // Secondary sort for cursor stability
       ],
-      take: parsedLimit,
-      skip: cursor ? 0 : parsedOffset // Skip only for offset pagination
+      take: validatedLimit,
+      skip: cursor ? 0 : validatedOffset // Skip only for offset pagination
     });
 
     // Get accepted responses for the fetched requests (batch query for efficiency)
@@ -222,7 +227,7 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
     });
 
     // Map responses to requests
-    const responsesByRequest = new Map<string, typeof acceptedResponses>();
+    const responsesByRequest = new Map<string, typeof acceptedResponses[number][]>();
     acceptedResponses.forEach(response => {
       if (!responsesByRequest.has(response.teamUpRequestId)) {
         responsesByRequest.set(response.teamUpRequestId, []);
@@ -242,7 +247,7 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
     );
 
     // Calculate next cursor for cursor-based pagination
-    const nextCursor = teamUpRequests.length === parsedLimit 
+    const nextCursor = teamUpRequests.length === validatedLimit 
       ? teamUpRequests[teamUpRequests.length - 1].id 
       : null;
 
@@ -250,10 +255,10 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
     res.json({
       data: enrichedRequests,
       pagination: {
-        limit: parsedLimit,
-        offset: parsedOffset,
+        limit: validatedLimit,
+        offset: validatedOffset,
         total: enrichedRequests.length,
-        hasMore: teamUpRequests.length === parsedLimit,
+        hasMore: teamUpRequests.length === validatedLimit,
         nextCursor
       }
     });
