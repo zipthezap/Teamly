@@ -247,16 +247,10 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
           id="teamup-tab-0" 
         />
         <Tab 
-          icon={<PeopleIcon />} 
-          iconPosition="start" 
-          label={`${t('teamup.responses')} (${request?.responses?.length || 0})`}
-          id="teamup-tab-1" 
-        />
-        <Tab 
           icon={<ChatIcon />} 
           iconPosition="start" 
-          label={`${t('teamup.chat')} (${comments.length})`}
-          id="teamup-tab-2" 
+          label={`${t('teamup.activity')} (${(request?.responses?.length || 0) + comments.length})`}
+          id="teamup-tab-1" 
         />
       </Tabs>
 
@@ -434,178 +428,188 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
               </Box>
             </TabPanel>
 
-            {/* Responses Tab */}
+            {/* Activity Tab - Combined Responses and Chat */}
             <TabPanel value={tabValue} index={1}>
-              <Box sx={{ px: 3 }}>
-                {request?.responses && request.responses.length > 0 ? (
-                  <Stack spacing={2}>
-                    {pendingResponses > 0 && (
-                      <Alert severity="info">
-                        {pendingResponses} {t('teamup.pendingResponses')}
-                      </Alert>
-                    )}
-                    {request.responses.map((response: TeamUpResponse) => (
-                      <Card key={response.id} variant="outlined">
-                        <CardContent>
-                          <Box sx={{ display: 'flex', gap: 2 }}>
-                            <Avatar
-                              src={getImageUrl(response.user?.profilePicture)}
-                              sx={{ width: 48, height: 48 }}
-                            >
-                              {getInitials(response.user?.name || 'User')}
-                            </Avatar>
-                            <Box sx={{ flex: 1 }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                <Typography variant="subtitle1" fontWeight="bold">
-                                  {response.user?.name}
-                                </Typography>
-                                <Chip
-                                  label={t(`teamup.responseStatus.${response.status}`)}
-                                  color={getStatusColor(response.status)}
-                                  size="small"
-                                />
-                              </Box>
-                              {response.message && (
-                                <Box sx={{ mb: 1, p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
-                                  <Typography variant="body2">
-                                    "{response.message}"
+              <Box sx={{ px: 3, display: 'flex', flexDirection: 'column' }}>
+                {/* Pending Responses Alert */}
+                {pendingResponses > 0 && (
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    {pendingResponses} {t('teamup.pendingResponses')}
+                  </Alert>
+                )}
+
+                {/* Responses Section */}
+                {request?.responses && request.responses.length > 0 && (
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <PeopleIcon /> {t('teamup.responses')} ({request.responses.length})
+                    </Typography>
+                    <Stack spacing={2}>
+                      {request.responses.map((response: TeamUpResponse) => (
+                        <Card key={response.id} variant="outlined">
+                          <CardContent>
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                              <Avatar
+                                src={getImageUrl(response.user?.profilePicture)}
+                                sx={{ width: 48, height: 48 }}
+                              >
+                                {getInitials(response.user?.name || 'User')}
+                              </Avatar>
+                              <Box sx={{ flex: 1 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                  <Typography variant="subtitle1" fontWeight="bold">
+                                    {response.user?.name}
                                   </Typography>
+                                  <Chip
+                                    label={t(`teamup.responseStatus.${response.status}`)}
+                                    color={getStatusColor(response.status)}
+                                    size="small"
+                                  />
                                 </Box>
-                              )}
-                              <Typography variant="caption" color="text.secondary">
-                                {new Date(response.createdAt).toLocaleString()}
-                              </Typography>
-                              {isOwnRequest && response.status === 'pending' && (
-                                <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-                                  <Button
-                                    size="small"
-                                    variant="contained"
-                                    color="success"
-                                    startIcon={<CheckCircleIcon />}
-                                    onClick={() => handleResponseAction(response.id, 'accept')}
-                                    disabled={spotsLeft === 0}
-                                  >
-                                    {t('teamup.acceptResponse')}
-                                  </Button>
-                                  <Button
-                                    size="small"
-                                    variant="outlined"
-                                    color="error"
-                                    startIcon={<CancelIcon />}
-                                    onClick={() => handleResponseAction(response.id, 'decline')}
-                                  >
-                                    {t('teamup.declineResponse')}
-                                  </Button>
-                                </Stack>
-                              )}
+                                {response.message && (
+                                  <Box sx={{ mb: 1, p: 1.5, bgcolor: 'grey.50', borderRadius: 1 }}>
+                                    <Typography variant="body2">
+                                      "{response.message}"
+                                    </Typography>
+                                  </Box>
+                                )}
+                                <Typography variant="caption" color="text.secondary">
+                                  {new Date(response.createdAt).toLocaleString()}
+                                </Typography>
+                                {isOwnRequest && response.status === 'pending' && (
+                                  <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                                    <Button
+                                      size="small"
+                                      variant="contained"
+                                      color="success"
+                                      startIcon={<CheckCircleIcon />}
+                                      onClick={() => handleResponseAction(response.id, 'accept')}
+                                      disabled={spotsLeft === 0}
+                                    >
+                                      {t('teamup.acceptResponse')}
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      color="error"
+                                      startIcon={<CancelIcon />}
+                                      onClick={() => handleResponseAction(response.id, 'decline')}
+                                    >
+                                      {t('teamup.declineResponse')}
+                                    </Button>
+                                  </Stack>
+                                )}
+                              </Box>
                             </Box>
-                          </Box>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </Stack>
-                ) : (
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </Stack>
+                  </Box>
+                )}
+
+                {/* Chat/Comments Section */}
+                <Box>
+                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <ChatIcon /> {t('teamup.chat')} ({comments.length})
+                  </Typography>
+                  <List sx={{ mb: 2, maxHeight: 300, overflow: 'auto' }}>
+                    {comments.length > 0 ? (
+                      comments.map((comment) => (
+                        <ListItem
+                          key={comment.id}
+                          alignItems="flex-start"
+                          sx={{ 
+                            bgcolor: comment.userId === user?.id ? 'primary.50' : 'transparent',
+                            borderRadius: 1,
+                            mb: 1
+                          }}
+                          secondaryAction={
+                            comment.userId === user?.id && (
+                              <IconButton 
+                                edge="end" 
+                                aria-label="delete"
+                                onClick={() => handleDeleteComment(comment.id)}
+                                size="small"
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            )
+                          }
+                        >
+                          <ListItemAvatar>
+                            <Avatar src={getImageUrl(comment.user?.profilePicture)}>
+                              {getInitials(comment.user?.name || 'User')}
+                            </Avatar>
+                          </ListItemAvatar>
+                          <ListItemText
+                            primary={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="subtitle2" fontWeight="bold">
+                                  {comment.user?.name}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {new Date(comment.createdAt).toLocaleString()}
+                                </Typography>
+                              </Box>
+                            }
+                            secondary={
+                              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                {comment.content}
+                              </Typography>
+                            }
+                          />
+                        </ListItem>
+                      ))
+                    ) : (
+                      <Box sx={{ textAlign: 'center', py: 4 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          {t('teamup.noComments')}
+                        </Typography>
+                      </Box>
+                    )}
+                  </List>
+                  
+                  {/* Add Comment Input */}
+                  <Box sx={{ pt: 2, borderTop: 1, borderColor: 'divider' }}>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        placeholder={t('teamup.typeMessage')}
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleAddComment();
+                          }
+                        }}
+                        multiline
+                        maxRows={3}
+                      />
+                      <IconButton 
+                        color="primary" 
+                        onClick={handleAddComment}
+                        disabled={!newComment.trim() || submittingComment}
+                      >
+                        <SendIcon />
+                      </IconButton>
+                    </Box>
+                  </Box>
+                </Box>
+
+                {/* Empty State */}
+                {(!request?.responses || request.responses.length === 0) && comments.length === 0 && (
                   <Box sx={{ textAlign: 'center', py: 8 }}>
                     <Typography variant="h6" color="text.secondary">
-                      {t('teamup.noResponsesYet')}
+                      {t('teamup.noActivityYet')}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                       {t('teamup.beTheFirst')}
                     </Typography>
                   </Box>
                 )}
-              </Box>
-            </TabPanel>
-
-            {/* Chat Tab */}
-            <TabPanel value={tabValue} index={2}>
-              <Box sx={{ px: 3, display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <List sx={{ flex: 1, overflow: 'auto', maxHeight: 400 }}>
-                  {comments.length > 0 ? (
-                    comments.map((comment) => (
-                      <ListItem
-                        key={comment.id}
-                        alignItems="flex-start"
-                        sx={{ 
-                          bgcolor: comment.userId === user?.id ? 'primary.50' : 'transparent',
-                          borderRadius: 1,
-                          mb: 1
-                        }}
-                        secondaryAction={
-                          comment.userId === user?.id && (
-                            <IconButton 
-                              edge="end" 
-                              aria-label="delete"
-                              onClick={() => handleDeleteComment(comment.id)}
-                              size="small"
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          )
-                        }
-                      >
-                        <ListItemAvatar>
-                          <Avatar src={getImageUrl(comment.user?.profilePicture)}>
-                            {getInitials(comment.user?.name || 'User')}
-                          </Avatar>
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Typography variant="subtitle2" fontWeight="bold">
-                                {comment.user?.name}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {new Date(comment.createdAt).toLocaleString()}
-                              </Typography>
-                            </Box>
-                          }
-                          secondary={
-                            <Typography variant="body2" sx={{ mt: 0.5 }}>
-                              {comment.content}
-                            </Typography>
-                          }
-                        />
-                      </ListItem>
-                    ))
-                  ) : (
-                    <Box sx={{ textAlign: 'center', py: 8 }}>
-                      <Typography variant="h6" color="text.secondary">
-                        {t('teamup.noComments')}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                        {t('teamup.startConversation')}
-                      </Typography>
-                    </Box>
-                  )}
-                </List>
-                
-                <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      placeholder={t('teamup.typeMessage')}
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleAddComment();
-                        }
-                      }}
-                      multiline
-                      maxRows={3}
-                    />
-                    <IconButton 
-                      color="primary" 
-                      onClick={handleAddComment}
-                      disabled={!newComment.trim() || submittingComment}
-                    >
-                      <SendIcon />
-                    </IconButton>
-                  </Box>
-                </Box>
               </Box>
             </TabPanel>
           </>
