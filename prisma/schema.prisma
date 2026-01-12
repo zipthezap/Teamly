@@ -368,6 +368,10 @@ model Event {
   @@index([groupId, startTime]) // Composite for group events by date
   @@index([creatorId, startTime]) // Composite for user events by date
   @@index([city, country]) // For location-based queries
+  @@index([status, startTime]) // Composite for filtering by status and date (scalability)
+  @@index([eventType, startTime]) // Composite for filtering by event type and date (scalability)
+  @@index([isPublic, startTime]) // Composite for public event discovery (scalability)
+  @@index([archived, status, startTime]) // Composite for active event queries (scalability)
   // If archived events grow large, consider partitioning or archiving to a separate table for performance
 }
 
@@ -592,6 +596,9 @@ model TeamUpRequest {
   @@index([sportType])
   @@index([city, country])
   @@index([status, dateTime]) // For finding open requests by date
+  @@index([sportType, status, dateTime]) // Composite for sport type filtering with status and date (scalability)
+  @@index([city, country, status, dateTime]) // Composite for location-based queries with status (scalability)
+  @@index([creatorId, status]) // Composite for user's requests by status (scalability)
 }
 
 // Responses to TeamUp requests (people interested in filling the spots)

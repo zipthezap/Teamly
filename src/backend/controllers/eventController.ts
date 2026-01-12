@@ -138,10 +138,17 @@ export const createEvent = async (req: Request, res: Response) => {
 
 export const getEvents = async (req: Request, res: Response) => {
   try {
-    const { groupId, search, eventType, startDate, endDate, location, status, archived } = req.query;
+    const { 
+      groupId, search, eventType, startDate, endDate, location, status, archived,
+      limit = '50', offset = '0', cursor
+    } = req.query;
+
+    const userId = (req.user as any).id;
+    const parsedLimit = Math.min(parseInt(limit as string, 10), 100); // Cap at 100 for performance
+    const parsedOffset = parseInt(offset as string, 10);
 
     // Build where filter using service
-    const where = eventService.buildEventFilters((req.user as any).id, {
+    const where = eventService.buildEventFilters(userId, {
       groupId: groupId as string,
       search: search as string,
       eventType: eventType as string,
@@ -152,6 +159,12 @@ export const getEvents = async (req: Request, res: Response) => {
       archived: archived as string
     });
 
+    // Add cursor-based pagination if cursor is provided
+    if (cursor) {
+      where.id = { gt: cursor as string };
+    }
+
+    // Optimize query - get participant info separately for large result sets
     const events = await prisma.event.findMany({
       where,
       include: {
@@ -161,36 +174,84 @@ export const getEvents = async (req: Request, res: Response) => {
         group: {
           select: { id: true, name: true }
         },
-        participants: {
-          select: {
-            id: true,
-            userId: true,
-            status: true,
-            joinedAt: true,
-            user: {
-              select: { name: true }
-            }
+        _count: {
+          select: { 
+            participants: true,
+            guestParticipants: true,
+            comments: true
           }
-        },
-        eventAttendances: {
-          select: {
-            id: true,
-            userId: true,
-            status: true,
-            updatedAt: true
-          }
+        }
+      },
+      orderBy: [
+        { startTime: 'asc' },
+        { id: 'asc' } // Secondary sort for cursor stability
+      ],
+      take: parsedLimit,
+      skip: cursor ? 0 : parsedOffset // Skip only for offset pagination
+    });
+
+    // Get participant data only for returned events (batch query)
+    const eventIds = events.map(e => e.id);
+    const participants = await prisma.eventParticipant.findMany({
+      where: { 
+        eventId: { in: eventIds }
+      },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+        joinedAt: true,
+        eventId: true,
+        user: {
+          select: { id: true, name: true, profilePicture: true }
         }
       }
     });
 
-    // Sort events by priority:
+    // Get attendance data for returned events (batch query)
+    const attendances = await prisma.eventAttendance.findMany({
+      where: {
+        eventId: { in: eventIds }
+      },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+        updatedAt: true,
+        eventId: true
+      }
+    });
+
+    // Map participants and attendances to events
+    const participantsByEvent = new Map<string, typeof participants>();
+    const attendancesByEvent = new Map<string, typeof attendances>();
+    
+    participants.forEach(p => {
+      if (!participantsByEvent.has(p.eventId)) {
+        participantsByEvent.set(p.eventId, []);
+      }
+      participantsByEvent.get(p.eventId)!.push(p);
+    });
+
+    attendances.forEach(a => {
+      if (!attendancesByEvent.has(a.eventId)) {
+        attendancesByEvent.set(a.eventId, []);
+      }
+      attendancesByEvent.get(a.eventId)!.push(a);
+    });
+
+    // Attach participants and attendances to events
+    const eventsWithParticipants = events.map(event => ({
+      ...event,
+      participants: participantsByEvent.get(event.id) || [],
+      eventAttendances: attendancesByEvent.get(event.id) || []
+    }));
+
+    // Sort events by priority (in-memory for this page of results only)
     // 1. Events user joined + private (from groups user is in)
     // 2. Events user joined + public
     // 3. Other events (not joined)
-    const userId = (req.user as any).id;
-    
-    // Pre-compute joined status for efficiency using Set for O(1) lookups
-    const eventsWithJoinStatus = events.map(event => {
+    const eventsWithJoinStatus = eventsWithParticipants.map(event => {
       const participantIds = new Set(event.participants.map(p => p.userId));
       return {
         event,
@@ -223,7 +284,20 @@ export const getEvents = async (req: Request, res: Response) => {
       locationService.enrichWithLocationInfo(event)
     );
 
-    res.json(enrichedEvents);
+    // Calculate next cursor for cursor-based pagination
+    const nextCursor = events.length === parsedLimit ? events[events.length - 1].id : null;
+
+    // Return paginated response with metadata
+    res.json({
+      data: enrichedEvents,
+      pagination: {
+        limit: parsedLimit,
+        offset: parsedOffset,
+        total: enrichedEvents.length,
+        hasMore: events.length === parsedLimit,
+        nextCursor
+      }
+    });
   } catch (error) {
     logger.error('Get events error', 'EventController', { error });
     res.status(500).json({ error: 'Failed to get events' });
