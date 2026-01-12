@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import * as authController from '../controllers/authController';
 import authMiddleware from '../middleware/auth';
-import { authLimiter, uploadLimiter } from '../middleware/rateLimiter';
+import { distributedAuthLimiter, distributedUploadLimiter, distributedPasswordResetLimiter, distributedEmailVerificationLimiter } from '../middleware/distributedRateLimiter';
 import { uploadProfilePicture } from '../middleware/upload';
 import { asyncHandler } from '../middleware/asyncHandler';
 import passport from '../config/passport';
@@ -16,11 +16,11 @@ declare module 'express-session' {
 const router = Router();
 
 // Apply strict rate limiting to auth endpoints
-router.post('/register', authLimiter, asyncHandler(authController.register));
-router.post('/login', authLimiter, asyncHandler(authController.login));
+router.post('/register', distributedAuthLimiter, asyncHandler(authController.register));
+router.post('/login', distributedAuthLimiter, asyncHandler(authController.login));
 router.post('/logout', authMiddleware, asyncHandler(authController.logout));
 router.post('/logout-all', authMiddleware, asyncHandler(authController.logoutAll));
-router.post('/refresh-token', authLimiter, asyncHandler(authController.refreshToken));
+router.post('/refresh-token', distributedAuthLimiter, asyncHandler(authController.refreshToken));
 
 // OAuth routes
 // Google OAuth
@@ -62,8 +62,8 @@ router.get(
 );
 
 // Email verification
-router.post('/verify-email', authLimiter, asyncHandler(authController.verifyEmail));
-router.post('/resend-verification', authLimiter, asyncHandler(authController.resendVerificationEmail));
+router.post('/verify-email', distributedEmailVerificationLimiter, asyncHandler(authController.verifyEmail));
+router.post('/resend-verification', distributedEmailVerificationLimiter, asyncHandler(authController.resendVerificationEmail));
 
 // Profile management
 router.get('/profile', authMiddleware, asyncHandler(authController.getProfile));
@@ -76,7 +76,7 @@ router.put('/password', authMiddleware, asyncHandler(authController.updatePasswo
 router.post(
   '/profile/picture',
   authMiddleware,
-  uploadLimiter,
+  distributedUploadLimiter,
   uploadProfilePicture,
   asyncHandler(authController.uploadProfilePicture)
 );
@@ -94,7 +94,7 @@ router.post('/oauth/unlink', authMiddleware, asyncHandler(authController.unlinkO
 router.post('/oauth/sync-picture', authMiddleware, asyncHandler(authController.syncOAuthProfilePicture));
 
 // Password reset routes (with rate limiting)
-router.post('/forgot-password', authLimiter, asyncHandler(authController.requestPasswordReset));
-router.post('/reset-password', authLimiter, asyncHandler(authController.resetPassword));
+router.post('/forgot-password', distributedPasswordResetLimiter, asyncHandler(authController.requestPasswordReset));
+router.post('/reset-password', distributedPasswordResetLimiter, asyncHandler(authController.resetPassword));
 
 export default router;

@@ -1,6 +1,12 @@
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import { sanitizeString } from '../utils/validation';
+import { CacheService } from './cacheService';
+
+/**
+ * Cache TTL for group details (5 minutes)
+ */
+const GROUP_DETAILS_CACHE_TTL = 300;
 
 /**
  * Checks if user is admin of a group
@@ -31,28 +37,17 @@ export const checkGroupMember = async (groupId: string, userId: string) => {
 
 /**
  * Gets group by ID with full details
+ * Uses caching for better performance
  */
 export const getGroupById = async (groupId: string) => {
-  return await prisma.group.findUnique({
-    where: { id: groupId },
-    include: {
-      creator: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          profilePicture: true,
-          profilePictures: true,
-          createdAt: true,
-          updatedAt: true,
-          deletedAt: true,
-          createdBy: true,
-          updatedBy: true
-        }
-      },
-      members: {
+  return await CacheService.wrap(
+    `group:full:${groupId}`,
+    GROUP_DETAILS_CACHE_TTL,
+    async () => {
+      return await prisma.group.findUnique({
+        where: { id: groupId },
         include: {
-          user: {
+          creator: {
             select: {
               id: true,
               name: true,
@@ -65,27 +60,45 @@ export const getGroupById = async (groupId: string) => {
               createdBy: true,
               updatedBy: true
             }
+          },
+          members: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  profilePicture: true,
+                  profilePictures: true,
+                  createdAt: true,
+                  updatedAt: true,
+                  deletedAt: true,
+                  createdBy: true,
+                  updatedBy: true
+                }
+              }
+            }
+          },
+          events: {
+            where: { archived: false },
+            select: {
+              id: true,
+              title: true,
+              startTime: true,
+              endTime: true,
+              eventType: true,
+              status: true,
+              maxPlayers: true,
+              _count: {
+                select: { participants: true }
+              }
+            },
+            orderBy: { startTime: 'asc' }
           }
         }
-      },
-      events: {
-        where: { archived: false },
-        select: {
-          id: true,
-          title: true,
-          startTime: true,
-          endTime: true,
-          eventType: true,
-          status: true,
-          maxPlayers: true,
-          _count: {
-            select: { participants: true }
-          }
-        },
-        orderBy: { startTime: 'asc' }
-      }
+      });
     }
-  });
+  );
 };
 
 /**

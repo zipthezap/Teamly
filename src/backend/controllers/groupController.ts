@@ -32,6 +32,10 @@ export const transferAdmin = async (req: Request, res: Response) => {
         data: { role: 'member' }
       })
     ]);
+    
+    // Invalidate group cache after role changes
+    await CacheService.invalidate('group', id);
+    
     res.json({ message: 'Admin rights transferred successfully.' });
   } catch (error) {
     logger.error('Failed to transfer admin rights', 'GroupController', { error });
@@ -75,6 +79,7 @@ import { UPLOAD_CONFIG } from '../config/upload';
 import * as groupService from '../services/groupService';
 import * as locationService from '../services/locationService';
 import { GroupNotificationType } from '../../shared/types/event.types';
+import { CacheService } from '../services/cacheService';
 
 
 export const createGroup = async (req: Request, res: Response) => {
@@ -330,6 +335,9 @@ export const updateGroup = async (req: Request, res: Response) => {
         }
       }
     });
+
+    // Invalidate group cache after update
+    await CacheService.invalidate('group', id);
 
     res.json(group);
   } catch (error) {
