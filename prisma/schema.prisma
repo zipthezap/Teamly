@@ -769,6 +769,10 @@ model TournamentMatch {
   homeScore    Int?
   awayScore    Int?
   
+  // Detailed scoring for sports with sets/periods (e.g., volleyball, tennis)
+  // Format: { sets: [{home: 25, away: 23}, {home: 23, away: 25}], ... }
+  detailedScore Json?
+  
   stage        BracketStage?
   roundNumber  Int?      // For round-robin or group stages
   groupName    String?   // For group stages (e.g., "Group A")

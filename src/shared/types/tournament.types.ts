@@ -106,6 +106,7 @@ export interface TournamentMatch {
   refereeTeamId?: string; // Team assigned to referee this match
   homeScore?: number;
   awayScore?: number;
+  detailedScore?: any; // JSON field for sports with sets/periods (volleyball, tennis, etc.)
   stage?: BracketStage;
   roundNumber?: number;
   groupName?: string;
