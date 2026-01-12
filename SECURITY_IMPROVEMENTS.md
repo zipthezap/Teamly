@@ -66,8 +66,9 @@ secret: process.env.SESSION_SECRET || process.env.JWT_SECRET || 'your-session-se
 app.get('/metrics', (req: Request, res: Response, next) => {
   const metricsToken = process.env.METRICS_TOKEN;
   if (metricsToken) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || authHeader !== `Bearer ${metricsToken}`) {
+    const providedToken = extractBearerToken(req.headers.authorization);
+    // Always call timingSafeCompare to prevent timing attacks
+    if (!timingSafeCompare(providedToken, metricsToken)) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
@@ -78,12 +79,14 @@ app.get('/metrics', (req: Request, res: Response, next) => {
 
 **Usage**: Set `METRICS_TOKEN` in production to restrict access. Leave empty for backward compatibility.
 
+**Security**: Uses timing-safe comparison and case-insensitive bearer token extraction.
+
 ### 5. Health Check Information Disclosure ✅
 
 **Issue**: `/health` endpoint returned detailed system information to unauthenticated users, potentially revealing infrastructure details.
 
 **Fix**: Implemented two-tier health check response:
-- Unauthenticated: Returns minimal status and timestamp
+- Unauthenticated: Returns minimal status only (no timestamp or details)
 - Authenticated (with `HEALTH_CHECK_TOKEN`): Returns detailed diagnostics
 
 **Impact**: LOW-MEDIUM - Reduces information disclosure while maintaining operational visibility for authorized users.
@@ -91,6 +94,12 @@ app.get('/metrics', (req: Request, res: Response, next) => {
 **Location**: `src/backend/server.ts`, `.env.example`
 
 ```typescript
+// Always call timingSafeCompare for constant-time behavior
+const healthToken = process.env.HEALTH_CHECK_TOKEN || '';
+const providedToken = extractBearerToken(req.headers.authorization);
+const tokenMatches = timingSafeCompare(providedToken, healthToken);
+const isAuthenticated = healthToken === '' || tokenMatches;
+
 // Return detailed info only if authenticated
 if (isAuthenticated) {
   res.status(statusCode).json({
@@ -102,10 +111,11 @@ if (isAuthenticated) {
   // Return minimal info for unauthenticated requests
   res.status(statusCode).json({
     status: healthCheck.status,
-    timestamp: new Date().toISOString(),
   });
 }
 ```
+
+**Security**: Uses timing-safe comparison, no information disclosure in minimal response.
 
 ### 6. Password Reset Token Storage Vulnerability ✅
 

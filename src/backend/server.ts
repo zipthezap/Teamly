@@ -241,10 +241,12 @@ app.get('/health', async (req: Request, res: Response) => {
                      : 503;
     
     // Check if detailed health info is requested with auth token (using timing-safe comparison)
-    const healthToken = process.env.HEALTH_CHECK_TOKEN;
+    const healthToken = process.env.HEALTH_CHECK_TOKEN || ''; // Use empty string if not set
     const providedToken = extractBearerToken(req.headers.authorization);
-    // Always call timingSafeCompare when healthToken is set to prevent timing attacks
-    const isAuthenticated = !healthToken || timingSafeCompare(providedToken, healthToken);
+    // Always call timingSafeCompare to maintain constant-time behavior
+    const tokenMatches = timingSafeCompare(providedToken, healthToken);
+    // If no token is configured (empty string), always allow access (backward compatibility)
+    const isAuthenticated = healthToken === '' || tokenMatches;
     
     // Return detailed info only if authenticated, otherwise return basic status
     if (isAuthenticated) {
