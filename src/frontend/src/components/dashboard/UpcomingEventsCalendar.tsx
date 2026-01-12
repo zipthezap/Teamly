@@ -25,16 +25,23 @@ const UpcomingEventsCalendar: React.FC<UpcomingEventsCalendarProps> = ({ events,
 
   const getEventColor = (eventType: string) => {
     const colors: Record<string, string> = {
-      Football: '#4CAF50',
-      Basketball: '#FF9800',
-      Tennis: '#2196F3',
-      Volleyball: '#9C27B0',
-      Running: '#FF5722',
-      Cycling: '#00BCD4',
-      Swimming: '#3F51B5',
-      Other: '#607D8B',
+      football: '#4CAF50',
+      basketball: '#FF9800',
+      cricket: '#FFB300',
+      americanFootball: '#795548',
+      iceHockey: '#00ACC1',
+      baseball: '#F44336',
+      volleyball: '#9C27B0',
+      rugby: '#689F38',
+      handball: '#E91E63',
+      fieldHockey: '#009688',
+      tennis: '#2196F3',
+      running: '#FF5722',
+      cycling: '#00BCD4',
+      swimming: '#3F51B5',
+      other: '#607D8B',
     };
-    return colors[eventType] || colors.Other;
+    return colors[eventType] || colors.other;
   };
 
   const getEventTypeLabel = (eventType: string) => {
