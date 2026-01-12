@@ -38,21 +38,23 @@ module.exports = {
   ],
   
   // Deployment configuration (optional)
+  // IMPORTANT: Update these values for your production environment
+  // or remove this section and manage deployments separately
   deploy: {
     production: {
       user: 'deploy',
-      host: 'production.server.com',
+      host: 'YOUR_PRODUCTION_SERVER', // Update with actual server
       ref: 'origin/main',
-      repo: 'git@github.com:your-org/teamly.git',
+      repo: 'YOUR_GIT_REPOSITORY', // Update with actual repository
       path: '/var/www/teamly',
       'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env production',
       'pre-setup': '',
     },
     staging: {
       user: 'deploy',
-      host: 'staging.server.com',
+      host: 'YOUR_STAGING_SERVER', // Update with actual server
       ref: 'origin/develop',
-      repo: 'git@github.com:your-org/teamly.git',
+      repo: 'YOUR_GIT_REPOSITORY', // Update with actual repository
       path: '/var/www/teamly-staging',
       'post-deploy': 'npm install && npm run build && pm2 reload ecosystem.config.js --env staging',
     },

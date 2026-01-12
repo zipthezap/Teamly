@@ -7,6 +7,7 @@ import { logger } from '../utils/logger';
 class InMemoryCache {
   private cache = new Map<string, { value: any; expiry: number }>();
   private cleanupInterval: NodeJS.Timeout;
+  private readonly MAX_CACHE_SIZE = parseInt(process.env.CACHE_MAX_SIZE || '10000', 10);
 
   constructor() {
     // Clean up expired entries every 60 seconds
@@ -34,8 +35,8 @@ class InMemoryCache {
     this.cache.set(key, { value, expiry });
 
     // Prevent memory leaks by limiting cache size
-    if (this.cache.size > 10000) {
-      logger.warn('In-memory cache size exceeded 10000 entries, cleaning up', 'Cache');
+    if (this.cache.size > this.MAX_CACHE_SIZE) {
+      logger.warn(`In-memory cache size exceeded ${this.MAX_CACHE_SIZE} entries, cleaning up`, 'Cache');
       this.cleanup();
     }
   }
@@ -96,11 +97,28 @@ class InMemoryCache {
 let inMemoryCache: InMemoryCache | null = null;
 
 /**
+ * Cache interface for unified access
+ */
+interface CacheAdapter {
+  get(key: string): Promise<string | null>;
+  set?(key: string, value: string, ttlSeconds: number): Promise<void>;
+  setEx?(key: string, ttlSeconds: number, value: string): Promise<void>;
+  del(key: string): Promise<void>;
+  exists(key: string): Promise<number>;
+  expire(key: string, ttlSeconds: number): Promise<void>;
+  keys(pattern: string): Promise<string[]>;
+}
+
+/**
  * Get cache instance (Redis or in-memory fallback)
  */
-const getCacheInstance = () => {
+const getCacheInstance = (): CacheAdapter | null => {
   if (isRedisEnabled()) {
-    return getRedisClient();
+    const redis = getRedisClient();
+    if (redis) {
+      // Redis client already implements the interface we need
+      return redis as unknown as CacheAdapter;
+    }
   }
 
   if (!inMemoryCache) {
@@ -149,10 +167,11 @@ export class CacheService {
 
       const serialized = JSON.stringify(value);
       
-      if (isRedisEnabled() && cache) {
+      // Check which method is available (Redis uses setEx, in-memory uses set)
+      if ('setEx' in cache && typeof cache.setEx === 'function') {
         // Redis client
-        await (cache as any).setEx(key, ttlSeconds, serialized);
-      } else {
+        await cache.setEx(key, ttlSeconds, serialized);
+      } else if ('set' in cache && typeof cache.set === 'function') {
         // In-memory cache
         await cache.set(key, serialized, ttlSeconds);
       }

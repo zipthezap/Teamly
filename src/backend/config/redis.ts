@@ -7,6 +7,10 @@ import { logger } from '../utils/logger';
  */
 let redisClient: RedisClientType | null = null;
 
+// Configuration constants
+const REDIS_MAX_RETRIES = parseInt(process.env.REDIS_MAX_RETRIES || '10', 10);
+const REDIS_RETRY_MAX_DELAY_MS = parseInt(process.env.REDIS_RETRY_MAX_DELAY_MS || '3000', 10);
+
 /**
  * Check if Redis is enabled based on environment configuration
  */
@@ -29,12 +33,12 @@ export const initializeRedis = async (): Promise<void> => {
       socket: {
         connectTimeout: parseInt(process.env.REDIS_CONNECT_TIMEOUT_MS || '5000', 10),
         reconnectStrategy: (retries) => {
-          // Exponential backoff: retry after 50ms, 100ms, 200ms, etc., up to 3 seconds
-          if (retries > 10) {
-            logger.error('Redis connection failed after 10 retries', 'Redis');
+          // Exponential backoff: retry after 50ms, 100ms, 200ms, etc., up to max delay
+          if (retries > REDIS_MAX_RETRIES) {
+            logger.error(`Redis connection failed after ${REDIS_MAX_RETRIES} retries`, 'Redis');
             return new Error('Redis connection failed');
           }
-          const delay = Math.min(50 * Math.pow(2, retries), 3000);
+          const delay = Math.min(50 * Math.pow(2, retries), REDIS_RETRY_MAX_DELAY_MS);
           logger.warn(`Redis reconnecting in ${delay}ms (attempt ${retries})`, 'Redis');
           return delay;
         },

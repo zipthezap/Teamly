@@ -89,7 +89,7 @@ export const performHealthCheck = async (): Promise<HealthCheckResult> => {
   
   if (!database.connected) {
     status = 'unhealthy';
-  } else if (redis.enabled && !redis.connected) {
+  } else if (redis.enabled && redis.connected === false) {
     status = 'degraded'; // Redis is optional, so degraded instead of unhealthy
   } else if (database.responseTime && database.responseTime > slowDbThreshold) {
     status = 'degraded'; // Slow database response
