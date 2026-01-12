@@ -55,15 +55,27 @@ setupGracefulShutdown();
 
 /**
  * Timing-safe string comparison to prevent timing attacks
- * Uses crypto.timingSafeEqual with length validation
+ * Uses crypto.timingSafeEqual with constant-time operations
  */
 const timingSafeCompare = (a: string, b: string): boolean => {
-  if (!a || !b || a.length !== b.length) {
+  // Handle null/undefined cases
+  if (!a || !b) {
+    // Always perform a dummy comparison to prevent timing leaks
+    const dummyBuf = Buffer.alloc(32);
+    crypto.timingSafeEqual(dummyBuf, dummyBuf);
     return false;
   }
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  return crypto.timingSafeEqual(bufA, bufB);
+  
+  // Pad shorter string to prevent length-based timing attacks
+  const maxLen = Math.max(a.length, b.length);
+  const bufA = Buffer.from(a.padEnd(maxLen, '\0'));
+  const bufB = Buffer.from(b.padEnd(maxLen, '\0'));
+  
+  try {
+    return crypto.timingSafeEqual(bufA, bufB) && a.length === b.length;
+  } catch {
+    return false;
+  }
 };
 
 const app: Application = express();
@@ -198,8 +210,9 @@ app.get('/metrics', (req: Request, res: Response, next) => {
   const metricsToken = process.env.METRICS_TOKEN;
   if (metricsToken) {
     const authHeader = req.headers.authorization;
-    const providedToken = authHeader?.replace('Bearer ', '');
-    if (!providedToken || !timingSafeCompare(providedToken, metricsToken)) {
+    const providedToken = authHeader?.replace('Bearer ', '') || '';
+    // Always call timingSafeCompare to prevent timing attacks
+    if (!timingSafeCompare(providedToken, metricsToken)) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
@@ -219,8 +232,9 @@ app.get('/health', async (req: Request, res: Response) => {
     // Check if detailed health info is requested with auth token (using timing-safe comparison)
     const healthToken = process.env.HEALTH_CHECK_TOKEN;
     const authHeader = req.headers.authorization;
-    const providedToken = authHeader?.replace('Bearer ', '');
-    const isAuthenticated = !healthToken || (providedToken && timingSafeCompare(providedToken, healthToken));
+    const providedToken = authHeader?.replace('Bearer ', '') || '';
+    // Always call timingSafeCompare when healthToken is set to prevent timing attacks
+    const isAuthenticated = !healthToken || timingSafeCompare(providedToken, healthToken);
     
     // Return detailed info only if authenticated, otherwise return basic status
     if (isAuthenticated) {
