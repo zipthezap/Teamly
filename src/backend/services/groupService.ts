@@ -4,6 +4,11 @@ import { sanitizeString } from '../utils/validation';
 import { CacheService } from './cacheService';
 
 /**
+ * Cache TTL for group details (5 minutes)
+ */
+const GROUP_DETAILS_CACHE_TTL = 300;
+
+/**
  * Checks if user is admin of a group
  */
 export const checkGroupAdmin = async (groupId: string, userId: string) => {
@@ -37,7 +42,7 @@ export const checkGroupMember = async (groupId: string, userId: string) => {
 export const getGroupById = async (groupId: string) => {
   return await CacheService.wrap(
     `group:full:${groupId}`,
-    300, // Cache for 5 minutes
+    GROUP_DETAILS_CACHE_TTL,
     async () => {
       return await prisma.group.findUnique({
         where: { id: groupId },

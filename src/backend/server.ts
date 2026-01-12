@@ -111,6 +111,10 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: config.requestBodySizeLimit }));
 app.use(express.urlencoded({ extended: true, limit: config.requestBodySizeLimit }));
 
+// Session configuration constants
+const SESSION_TTL_SECONDS = 60 * 60; // 1 hour
+const SESSION_COOKIE_MAX_AGE = SESSION_TTL_SECONDS * 1000; // Convert to milliseconds
+
 // Session middleware for OAuth (required by passport)
 // Use Redis for session storage if available, otherwise fall back to in-memory
 const sessionConfig: session.SessionOptions = {
@@ -120,7 +124,7 @@ const sessionConfig: session.SessionOptions = {
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 1000 * 60 * 60 // 1 hour
+    maxAge: SESSION_COOKIE_MAX_AGE
   }
 };
 
@@ -131,7 +135,7 @@ if (isRedisEnabled()) {
     sessionConfig.store = new RedisStore({
       client: redisClient,
       prefix: 'sess:',
-      ttl: 60 * 60 // 1 hour in seconds
+      ttl: SESSION_TTL_SECONDS
     });
     logger.info('Using Redis for session storage', 'Server');
   } else {

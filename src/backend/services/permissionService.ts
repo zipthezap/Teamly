@@ -124,7 +124,9 @@ export async function hasTournamentPermission(
         return rolePermissions.includes(permission);
       }
 
-      // If tournament is associated with a group, check group admin permissions (non-cached to avoid recursion)
+      // If tournament is associated with a group, check group admin permissions
+      // Note: We use checkGroupAdminDirect here to prevent cache key conflicts, 
+      // as hasGroupPermission might be called from within this cache wrapper
       if (tournament.groupId) {
         const isGroupAdmin = await checkGroupAdminDirect(userId, tournament.groupId);
         if (isGroupAdmin) {
