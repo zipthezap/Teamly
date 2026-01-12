@@ -413,6 +413,18 @@ CREATE TABLE "TeamUpResponse" (
     CONSTRAINT "TeamUpResponse_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "TeamUpComment" (
+    "id" TEXT NOT NULL,
+    "content" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "teamUpRequestId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+
+    CONSTRAINT "TeamUpComment_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE INDEX "UserProfilePicture_userId_isCurrent_idx" ON "UserProfilePicture"("userId", "isCurrent");
 
@@ -653,6 +665,15 @@ CREATE INDEX "TeamUpResponse_status_idx" ON "TeamUpResponse"("status");
 -- CreateIndex
 CREATE UNIQUE INDEX "TeamUpResponse_teamUpRequestId_userId_key" ON "TeamUpResponse"("teamUpRequestId", "userId");
 
+-- CreateIndex
+CREATE INDEX "TeamUpComment_teamUpRequestId_idx" ON "TeamUpComment"("teamUpRequestId");
+
+-- CreateIndex
+CREATE INDEX "TeamUpComment_userId_idx" ON "TeamUpComment"("userId");
+
+-- CreateIndex
+CREATE INDEX "TeamUpComment_createdAt_idx" ON "TeamUpComment"("createdAt");
+
 -- AddForeignKey
 ALTER TABLE "UserProfilePicture" ADD CONSTRAINT "UserProfilePicture_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -772,3 +793,9 @@ ALTER TABLE "TeamUpResponse" ADD CONSTRAINT "TeamUpResponse_teamUpRequestId_fkey
 
 -- AddForeignKey
 ALTER TABLE "TeamUpResponse" ADD CONSTRAINT "TeamUpResponse_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TeamUpComment" ADD CONSTRAINT "TeamUpComment_teamUpRequestId_fkey" FOREIGN KEY ("teamUpRequestId") REFERENCES "TeamUpRequest"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TeamUpComment" ADD CONSTRAINT "TeamUpComment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

@@ -24,10 +24,13 @@ const ChatBox: React.FC<ChatBoxProps> = ({ chat, message, setMessage, onSend, is
   const { t } = useTranslation();
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   
+  // Only scroll to bottom when a new message is added
+  const prevChatLength = useRef<number>(chat.length);
   useEffect(() => {
-    if (chatEndRef.current) {
+    if (chat.length > prevChatLength.current && chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
+    prevChatLength.current = chat.length;
   }, [chat]);
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {

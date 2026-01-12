@@ -99,7 +99,7 @@ export default function GroupDetailsPage() {
       setSettingsForm({
         name: group.name || '',
         description: group.description || '',
-        privacy: group.privacy || 'public',
+        privacy: group.isPublic ? 'public' : 'private',
       });
       setGroupPicture(group.picture);
     }
@@ -450,7 +450,7 @@ export default function GroupDetailsPage() {
           onEventClick={handleEventClick}
           onCreate={isAdmin ? () => { setEditEvent(null); setEventModalOpen(true); } : undefined}
           onEdit={isAdmin ? (event) => { setEditEvent(event); setEventModalOpen(true); } : undefined}
-          onDelete={isAdmin ? (event) => deleteEventMutation.mutate(event.id) : undefined}
+          onDelete={isAdmin ? (event) => deleteEventMutation.mutate(Number(event.id)) : undefined}
           isAdmin={isAdmin}
           groupId={groupId}
           isMember={isMember}
@@ -498,7 +498,13 @@ export default function GroupDetailsPage() {
       {/* Admin Transfer Dialog */}
       <AdminTransferDialog
         open={showAdminTransfer}
-        members={group?.members as GroupMember[] || []}
+        members={
+          (group?.members || []).map(m => ({
+            email: m.user?.email || '',
+            name: m.user?.name || '',
+            role: m.role
+          }))
+        }
         selectedNewAdmin={selectedNewAdmin}
         onSelect={setSelectedNewAdmin}
         onConfirm={confirmAdminTransfer}
