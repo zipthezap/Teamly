@@ -134,7 +134,7 @@ export const generateSingleEliminationBrackets = async (tournamentId: string) =>
   });
   
   if (teams.length < 2) {
-    throw new Error('At least 2 teams are required to generate brackets');
+    throw new BadRequestError('At least 2 teams are required to generate brackets', 'INSUFFICIENT_TEAMS');
   }
   
   // Calculate rounds needed
@@ -179,7 +179,7 @@ export const generateRoundRobinBrackets = async (tournamentId: string) => {
   });
   
   if (teams.length < 2) {
-    throw new Error('At least 2 teams are required to generate brackets');
+    throw new BadRequestError('At least 2 teams are required to generate brackets', 'INSUFFICIENT_TEAMS');
   }
   
   // Generate all possible match combinations
@@ -216,7 +216,10 @@ export const generateGroupsKnockoutBrackets = async (
   });
   
   if (teams.length < numberOfGroups * 2) {
-    throw new Error(`At least ${numberOfGroups * 2} teams are required for ${numberOfGroups} groups`);
+    throw new BadRequestError(
+      `At least ${numberOfGroups * 2} teams are required for ${numberOfGroups} groups`,
+      'INSUFFICIENT_TEAMS_FOR_GROUPS'
+    );
   }
   
   // Distribute teams into groups
