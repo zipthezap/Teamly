@@ -80,6 +80,22 @@ export interface TournamentTeam {
   seedNumber?: number;
   createdAt: Date | string;
   updatedAt: Date | string;
+  players?: TournamentPlayer[];
+}
+
+export interface TournamentPlayer {
+  id: string;
+  teamId: string;
+  userId?: string;
+  playerName: string;
+  playerEmail?: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  };
 }
 
 export interface TournamentMatch {
@@ -250,5 +266,17 @@ export interface AssignRefereeDto {
 export interface AssignPoolDto {
   poolNumber?: number;
   poolName?: string;
+}
+
+export interface AddPlayerDto {
+  playerName: string;
+  playerEmail?: string;
+  userId?: string; // Optional: link player to a registered user
+}
+
+export interface UpdatePlayerDto {
+  playerName?: string;
+  playerEmail?: string;
+  userId?: string;
 }
 
