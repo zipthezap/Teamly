@@ -19,6 +19,18 @@ CREATE TYPE "EventStatus" AS ENUM ('upcoming', 'ongoing', 'completed', 'cancelle
 -- CreateEnum
 CREATE TYPE "SportType" AS ENUM ('football', 'basketball', 'tennis', 'volleyball', 'running', 'cycling', 'swimming', 'other');
 
+-- CreateEnum
+CREATE TYPE "TournamentFormat" AS ENUM ('single_elimination', 'double_elimination', 'round_robin', 'groups_knockout');
+
+-- CreateEnum
+CREATE TYPE "TournamentStatus" AS ENUM ('draft', 'registration', 'in_progress', 'completed', 'cancelled');
+
+-- CreateEnum
+CREATE TYPE "MatchStatus" AS ENUM ('scheduled', 'in_progress', 'completed', 'cancelled');
+
+-- CreateEnum
+CREATE TYPE "BracketStage" AS ENUM ('group_stage', 'round_of_32', 'round_of_16', 'quarter_finals', 'semi_finals', 'third_place', 'finals');
+
 -- CreateTable
 CREATE TABLE "UserProfilePicture" (
     "id" TEXT NOT NULL,
@@ -425,6 +437,113 @@ CREATE TABLE "TeamUpComment" (
     CONSTRAINT "TeamUpComment_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "Tournament" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "sportType" "SportType" NOT NULL,
+    "format" "TournamentFormat" NOT NULL DEFAULT 'single_elimination',
+    "status" "TournamentStatus" NOT NULL DEFAULT 'draft',
+    "startDate" TIMESTAMP(3) NOT NULL,
+    "endDate" TIMESTAMP(3),
+    "maxTeams" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "location" TEXT,
+    "latitude" DOUBLE PRECISION,
+    "longitude" DOUBLE PRECISION,
+    "locationName" TEXT,
+    "city" TEXT,
+    "country" TEXT,
+    "organizerId" TEXT NOT NULL,
+    "groupId" TEXT,
+    "registrationDeadline" TIMESTAMP(3),
+    "isPublic" BOOLEAN NOT NULL DEFAULT true,
+    "allowLateRegistration" BOOLEAN NOT NULL DEFAULT false,
+    "autoGenerateBrackets" BOOLEAN NOT NULL DEFAULT false,
+    "useManualBrackets" BOOLEAN NOT NULL DEFAULT false,
+    "prizesDescription" TEXT,
+    "rulesDescription" TEXT,
+    "contactEmail" TEXT,
+    "isRecurring" BOOLEAN NOT NULL DEFAULT false,
+    "recurrenceRule" TEXT,
+    "parentTournamentId" TEXT,
+
+    CONSTRAINT "Tournament_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "TournamentTeam" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "captainName" TEXT,
+    "captainEmail" TEXT,
+    "captainUserId" TEXT,
+    "tournamentId" TEXT NOT NULL,
+    "poolNumber" INTEGER,
+    "poolName" TEXT,
+    "seedNumber" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "TournamentTeam_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "TournamentMatch" (
+    "id" TEXT NOT NULL,
+    "tournamentId" TEXT NOT NULL,
+    "homeTeamId" TEXT NOT NULL,
+    "awayTeamId" TEXT NOT NULL,
+    "refereeTeamId" TEXT,
+    "homeScore" INTEGER,
+    "awayScore" INTEGER,
+    "stage" "BracketStage",
+    "roundNumber" INTEGER,
+    "groupName" TEXT,
+    "isManuallyCreated" BOOLEAN NOT NULL DEFAULT false,
+    "matchOrder" INTEGER,
+    "status" "MatchStatus" NOT NULL DEFAULT 'scheduled',
+    "scheduledAt" TIMESTAMP(3),
+    "startedAt" TIMESTAMP(3),
+    "completedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "TournamentMatch_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "TournamentStanding" (
+    "id" TEXT NOT NULL,
+    "tournamentId" TEXT NOT NULL,
+    "teamId" TEXT NOT NULL,
+    "points" INTEGER NOT NULL DEFAULT 0,
+    "wins" INTEGER NOT NULL DEFAULT 0,
+    "losses" INTEGER NOT NULL DEFAULT 0,
+    "draws" INTEGER NOT NULL DEFAULT 0,
+    "goalsFor" INTEGER NOT NULL DEFAULT 0,
+    "goalsAgainst" INTEGER NOT NULL DEFAULT 0,
+    "groupName" TEXT,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "TournamentStanding_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "TournamentPlayer" (
+    "id" TEXT NOT NULL,
+    "teamId" TEXT NOT NULL,
+    "userId" TEXT,
+    "playerName" TEXT NOT NULL,
+    "playerEmail" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "TournamentPlayer_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE INDEX "UserProfilePicture_userId_isCurrent_idx" ON "UserProfilePicture"("userId", "isCurrent");
 
@@ -674,6 +793,84 @@ CREATE INDEX "TeamUpComment_userId_idx" ON "TeamUpComment"("userId");
 -- CreateIndex
 CREATE INDEX "TeamUpComment_createdAt_idx" ON "TeamUpComment"("createdAt");
 
+-- CreateIndex
+CREATE INDEX "Tournament_organizerId_idx" ON "Tournament"("organizerId");
+
+-- CreateIndex
+CREATE INDEX "Tournament_groupId_idx" ON "Tournament"("groupId");
+
+-- CreateIndex
+CREATE INDEX "Tournament_status_idx" ON "Tournament"("status");
+
+-- CreateIndex
+CREATE INDEX "Tournament_startDate_idx" ON "Tournament"("startDate");
+
+-- CreateIndex
+CREATE INDEX "Tournament_sportType_idx" ON "Tournament"("sportType");
+
+-- CreateIndex
+CREATE INDEX "Tournament_city_country_idx" ON "Tournament"("city", "country");
+
+-- CreateIndex
+CREATE INDEX "Tournament_isPublic_idx" ON "Tournament"("isPublic");
+
+-- CreateIndex
+CREATE INDEX "Tournament_parentTournamentId_idx" ON "Tournament"("parentTournamentId");
+
+-- CreateIndex
+CREATE INDEX "TournamentTeam_tournamentId_idx" ON "TournamentTeam"("tournamentId");
+
+-- CreateIndex
+CREATE INDEX "TournamentTeam_captainUserId_idx" ON "TournamentTeam"("captainUserId");
+
+-- CreateIndex
+CREATE INDEX "TournamentTeam_poolNumber_idx" ON "TournamentTeam"("poolNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "TournamentTeam_tournamentId_name_key" ON "TournamentTeam"("tournamentId", "name");
+
+-- CreateIndex
+CREATE INDEX "TournamentMatch_tournamentId_idx" ON "TournamentMatch"("tournamentId");
+
+-- CreateIndex
+CREATE INDEX "TournamentMatch_homeTeamId_idx" ON "TournamentMatch"("homeTeamId");
+
+-- CreateIndex
+CREATE INDEX "TournamentMatch_awayTeamId_idx" ON "TournamentMatch"("awayTeamId");
+
+-- CreateIndex
+CREATE INDEX "TournamentMatch_refereeTeamId_idx" ON "TournamentMatch"("refereeTeamId");
+
+-- CreateIndex
+CREATE INDEX "TournamentMatch_status_idx" ON "TournamentMatch"("status");
+
+-- CreateIndex
+CREATE INDEX "TournamentMatch_stage_idx" ON "TournamentMatch"("stage");
+
+-- CreateIndex
+CREATE INDEX "TournamentMatch_matchOrder_idx" ON "TournamentMatch"("matchOrder");
+
+-- CreateIndex
+CREATE INDEX "TournamentStanding_tournamentId_idx" ON "TournamentStanding"("tournamentId");
+
+-- CreateIndex
+CREATE INDEX "TournamentStanding_teamId_idx" ON "TournamentStanding"("teamId");
+
+-- CreateIndex
+CREATE INDEX "TournamentStanding_points_idx" ON "TournamentStanding"("points");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "TournamentStanding_tournamentId_teamId_groupName_key" ON "TournamentStanding"("tournamentId", "teamId", "groupName");
+
+-- CreateIndex
+CREATE INDEX "TournamentPlayer_teamId_idx" ON "TournamentPlayer"("teamId");
+
+-- CreateIndex
+CREATE INDEX "TournamentPlayer_userId_idx" ON "TournamentPlayer"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "TournamentPlayer_teamId_userId_key" ON "TournamentPlayer"("teamId", "userId");
+
 -- AddForeignKey
 ALTER TABLE "UserProfilePicture" ADD CONSTRAINT "UserProfilePicture_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -799,3 +996,42 @@ ALTER TABLE "TeamUpComment" ADD CONSTRAINT "TeamUpComment_teamUpRequestId_fkey" 
 
 -- AddForeignKey
 ALTER TABLE "TeamUpComment" ADD CONSTRAINT "TeamUpComment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Tournament" ADD CONSTRAINT "Tournament_organizerId_fkey" FOREIGN KEY ("organizerId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Tournament" ADD CONSTRAINT "Tournament_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "Group"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Tournament" ADD CONSTRAINT "Tournament_parentTournamentId_fkey" FOREIGN KEY ("parentTournamentId") REFERENCES "Tournament"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TournamentTeam" ADD CONSTRAINT "TournamentTeam_captainUserId_fkey" FOREIGN KEY ("captainUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TournamentTeam" ADD CONSTRAINT "TournamentTeam_tournamentId_fkey" FOREIGN KEY ("tournamentId") REFERENCES "Tournament"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TournamentMatch" ADD CONSTRAINT "TournamentMatch_tournamentId_fkey" FOREIGN KEY ("tournamentId") REFERENCES "Tournament"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TournamentMatch" ADD CONSTRAINT "TournamentMatch_homeTeamId_fkey" FOREIGN KEY ("homeTeamId") REFERENCES "TournamentTeam"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TournamentMatch" ADD CONSTRAINT "TournamentMatch_awayTeamId_fkey" FOREIGN KEY ("awayTeamId") REFERENCES "TournamentTeam"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TournamentMatch" ADD CONSTRAINT "TournamentMatch_refereeTeamId_fkey" FOREIGN KEY ("refereeTeamId") REFERENCES "TournamentTeam"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TournamentStanding" ADD CONSTRAINT "TournamentStanding_tournamentId_fkey" FOREIGN KEY ("tournamentId") REFERENCES "Tournament"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TournamentStanding" ADD CONSTRAINT "TournamentStanding_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "TournamentTeam"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TournamentPlayer" ADD CONSTRAINT "TournamentPlayer_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "TournamentTeam"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TournamentPlayer" ADD CONSTRAINT "TournamentPlayer_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
