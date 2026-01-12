@@ -25,7 +25,9 @@ import {
   TextField,
   Grid,
   Card,
-  CardContent
+  CardContent,
+  Switch,
+  FormControlLabel
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -43,6 +45,8 @@ import {
   MatchStatus,
   CreateTeamDto
 } from '../../../shared/types';
+import ManualBracketManager from '../components/ManualBracketManager';
+import PoolManager from '../components/PoolManager';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -214,15 +218,37 @@ const TournamentDetails: React.FC = () => {
             </Box>
           </Box>
           {isOrganizer && tournament.status === TournamentStatus.DRAFT && (
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<StartIcon />}
-              onClick={handleGenerateBrackets}
-              disabled={!tournament.teams || tournament.teams.length < 2}
-            >
-              Generate Brackets
-            </Button>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-end' }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={tournament.useManualBrackets || false}
+                    onChange={async (e) => {
+                      try {
+                        await tournamentAPI.updateTournament(tournament.id, {
+                          useManualBrackets: e.target.checked
+                        });
+                        loadTournament();
+                      } catch (err: any) {
+                        alert(err.response?.data?.error || 'Failed to update tournament');
+                      }
+                    }}
+                  />
+                }
+                label="Manual Bracket Management"
+              />
+              {!tournament.useManualBrackets && (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<StartIcon />}
+                  onClick={handleGenerateBrackets}
+                  disabled={!tournament.teams || tournament.teams.length < 2}
+                >
+                  Generate Brackets
+                </Button>
+              )}
+            </Box>
           )}
         </Box>
 
@@ -367,7 +393,9 @@ const TournamentDetails: React.FC = () => {
           <Tabs value={tabValue} onChange={(_, val) => setTabValue(val)}>
             <Tab label="Overview" />
             <Tab label="Teams" />
+            {isOrganizer && tournament.useManualBrackets && <Tab label="Pools" />}
             <Tab label="Matches" />
+            {isOrganizer && tournament.useManualBrackets && <Tab label="Bracket Manager" />}
             <Tab label="Standings" />
           </Tabs>
         </Box>
@@ -471,7 +499,8 @@ const TournamentDetails: React.FC = () => {
           </Grid>
         </TabPanel>
 
-        <TabPanel value={tabValue} index={1}>
+        {/* Teams Tab */}
+        <TabPanel value={tabValue} index={isOrganizer && tournament.useManualBrackets ? 1 : 1}>
           {isOrganizer && tournament.status === TournamentStatus.DRAFT && (
             <Button
               variant="contained"
@@ -490,6 +519,7 @@ const TournamentDetails: React.FC = () => {
                   <TableCell>Team Name</TableCell>
                   <TableCell>Captain</TableCell>
                   <TableCell>Email</TableCell>
+                  {isOrganizer && tournament.useManualBrackets && <TableCell>Pool</TableCell>}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -498,11 +528,16 @@ const TournamentDetails: React.FC = () => {
                     <TableCell>{team.name}</TableCell>
                     <TableCell>{team.captainName || '-'}</TableCell>
                     <TableCell>{team.captainEmail || '-'}</TableCell>
+                    {isOrganizer && tournament.useManualBrackets && (
+                      <TableCell>
+                        {team.poolName || (team.poolNumber ? `Pool ${team.poolNumber}` : '-')}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
                 {(!tournament.teams || tournament.teams.length === 0) && (
                   <TableRow>
-                    <TableCell colSpan={3} align="center">
+                    <TableCell colSpan={isOrganizer && tournament.useManualBrackets ? 4 : 3} align="center">
                       No teams added yet
                     </TableCell>
                   </TableRow>
@@ -512,7 +547,20 @@ const TournamentDetails: React.FC = () => {
           </TableContainer>
         </TabPanel>
 
-        <TabPanel value={tabValue} index={2}>
+        {/* Pools Tab (only for manual brackets + organizer) */}
+        {isOrganizer && tournament.useManualBrackets && (
+          <TabPanel value={tabValue} index={2}>
+            <PoolManager
+              tournamentId={tournament.id}
+              teams={tournament.teams || []}
+              isOrganizer={isOrganizer}
+              onUpdate={loadTournament}
+            />
+          </TabPanel>
+        )}
+
+        {/* Matches Tab */}
+        <TabPanel value={tabValue} index={isOrganizer && tournament.useManualBrackets ? 3 : 2}>
           {tournament.matches && tournament.matches.length > 0 ? (
             <TableContainer>
               <Table>
@@ -522,6 +570,7 @@ const TournamentDetails: React.FC = () => {
                     <TableCell>Home Team</TableCell>
                     <TableCell align="center">Score</TableCell>
                     <TableCell>Away Team</TableCell>
+                    {isOrganizer && tournament.useManualBrackets && <TableCell>Referee</TableCell>}
                     <TableCell>Status</TableCell>
                     <TableCell>Actions</TableCell>
                   </TableRow>
@@ -540,6 +589,15 @@ const TournamentDetails: React.FC = () => {
                         </Typography>
                       </TableCell>
                       <TableCell>{match.awayTeam.name}</TableCell>
+                      {isOrganizer && tournament.useManualBrackets && (
+                        <TableCell>
+                          {match.refereeTeam ? (
+                            <Chip label={match.refereeTeam.name} size="small" color="secondary" />
+                          ) : (
+                            '-'
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell>
                         <Chip
                           label={match.status.replace('_', ' ')}
@@ -565,12 +623,28 @@ const TournamentDetails: React.FC = () => {
             </TableContainer>
           ) : (
             <Alert severity="info">
-              No matches scheduled yet. Generate brackets to create matches.
+              {tournament.useManualBrackets 
+                ? 'No matches created yet. Use the Bracket Manager tab to create matches manually.' 
+                : 'No matches scheduled yet. Generate brackets to create matches.'}
             </Alert>
           )}
         </TabPanel>
 
-        <TabPanel value={tabValue} index={3}>
+        {/* Bracket Manager Tab (only for manual brackets + organizer) */}
+        {isOrganizer && tournament.useManualBrackets && (
+          <TabPanel value={tabValue} index={4}>
+            <ManualBracketManager
+              tournamentId={tournament.id}
+              teams={tournament.teams || []}
+              matches={tournament.matches || []}
+              isOrganizer={isOrganizer}
+              onUpdate={loadTournament}
+            />
+          </TabPanel>
+        )}
+
+        {/* Standings Tab */}
+        <TabPanel value={tabValue} index={isOrganizer && tournament.useManualBrackets ? 5 : 3}>
           {tournament.standings && tournament.standings.length > 0 ? (
             <TableContainer>
               <Table>
