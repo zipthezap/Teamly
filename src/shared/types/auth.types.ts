@@ -10,7 +10,7 @@ export interface AuthenticatedUser {
   country?: string | null;
 }
 
-// Extend Passport's User interface to include our user properties
+// Extend Express.User interface (defined by Passport) with our user properties
 // This provides a single source of truth for user properties
 declare global {
   namespace Express {
