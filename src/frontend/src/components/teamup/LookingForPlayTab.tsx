@@ -24,18 +24,20 @@ import { TeamUpRequest, TeamUpRequestFilters, TeamUpResponse } from '../../types
 import TeamUpDetailModal from './TeamUpDetailModal';
 
 const SPORT_TYPES = [
-  'Football/Soccer',
-  'Basketball',
+  '⚽ Soccer (Football)',
+  '🏀 Basketball',
+  '🏏 Cricket',
+  '🏈 American Football',
+  '🏒 Ice Hockey',
+  '⚾ Baseball',
+  '🏐 Volleyball',
+  '🏉 Rugby',
+  '🤾 Handball',
+  '🏑 Field Hockey',
   'Tennis',
-  'Volleyball',
-  'Baseball',
-  'Hockey',
-  'Rugby',
-  'Cricket',
-  'Golf',
-  'Swimming',
   'Running',
   'Cycling',
+  'Swimming',
   'Other',
 ];
 

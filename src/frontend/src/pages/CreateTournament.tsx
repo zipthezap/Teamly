@@ -182,15 +182,20 @@ const CreateTournament: React.FC = () => {
                 onChange={handleChange}
                 margin="normal"
               >
-                <MenuItem value="football">Football</MenuItem>
-                <MenuItem value="basketball">Basketball</MenuItem>
+                <MenuItem value="football">⚽ Soccer (Football)</MenuItem>
+                <MenuItem value="basketball">🏀 Basketball</MenuItem>
+                <MenuItem value="cricket">🏏 Cricket</MenuItem>
+                <MenuItem value="americanFootball">🏈 American Football</MenuItem>
+                <MenuItem value="iceHockey">🏒 Ice Hockey</MenuItem>
+                <MenuItem value="baseball">⚾ Baseball</MenuItem>
+                <MenuItem value="volleyball">🏐 Volleyball</MenuItem>
+                <MenuItem value="rugby">🏉 Rugby</MenuItem>
+                <MenuItem value="handball">🤾 Handball</MenuItem>
+                <MenuItem value="fieldHockey">🏑 Field Hockey</MenuItem>
                 <MenuItem value="tennis">Tennis</MenuItem>
-                <MenuItem value="volleyball">Volleyball</MenuItem>
                 <MenuItem value="running">Running</MenuItem>
                 <MenuItem value="cycling">Cycling</MenuItem>
                 <MenuItem value="swimming">Swimming</MenuItem>
-                <MenuItem value="badminton">Badminton</MenuItem>
-                <MenuItem value="cricket">Cricket</MenuItem>
                 <MenuItem value="other">Other</MenuItem>
               </TextField>
             </Grid>
