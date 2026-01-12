@@ -726,12 +726,12 @@ model TournamentTeam {
   tournamentId String
   tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   
-  // Manual pool/bracket management
-  poolNumber   Int?     // For manual pool assignment (1, 2, 3, etc.)
+  // Manual pool/bracket management (legacy - use poolId for new implementations)
+  poolNumber   Int?     // For manual pool assignment (1, 2, 3, etc.) - legacy field
   poolName     String?  // Custom pool name (e.g., "Pool A", "Group 1")
   seedNumber   Int?     // Seeding position for bracket generation
   
-  // Pool registration
+  // Pool registration (new implementation)
   poolId       String?
   pool         TournamentPool? @relation("PoolTeams", fields: [poolId], references: [id], onDelete: SetNull)
   registrationOrder Int? // Order in which team registered to pool

@@ -1756,9 +1756,9 @@ export const registerTeamToPool = async (req: Request, res: Response) => {
       where: { id: teamId },
       data: {
         poolId,
-        poolNumber: pool.teams.length + 1,
         poolName: pool.name,
         registrationOrder
+        // Note: poolNumber is legacy field, poolId is now the primary pool reference
       },
       include: {
         pool: true,
@@ -1864,9 +1864,9 @@ export const removeTeamFromPool = async (req: Request, res: Response) => {
           where: { id: firstWaitlistEntry.teamId },
           data: {
             poolId,
-            poolNumber: registrationOrder,
             poolName: pool.name,
             registrationOrder
+            // Note: poolNumber is legacy field, poolId is now the primary pool reference
           }
         });
 
