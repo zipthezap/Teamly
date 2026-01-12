@@ -703,6 +703,7 @@ model Tournament {
   teams       TournamentTeam[]
   matches     TournamentMatch[]
   standings   TournamentStanding[]
+  pools       TournamentPool[]
   
   @@index([organizerId])
   @@index([groupId])
@@ -730,6 +731,11 @@ model TournamentTeam {
   poolName     String?  // Custom pool name (e.g., "Pool A", "Group 1")
   seedNumber   Int?     // Seeding position for bracket generation
   
+  // Pool registration
+  poolId       String?
+  pool         TournamentPool? @relation("PoolTeams", fields: [poolId], references: [id], onDelete: SetNull)
+  registrationOrder Int? // Order in which team registered to pool
+  
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   
@@ -738,11 +744,13 @@ model TournamentTeam {
   refereingMatches TournamentMatch[] @relation("RefereeTeam")
   standings    TournamentStanding[]
   players      TournamentPlayer[]
+  waitlistEntries TournamentPoolWaitlist[]
   
   @@unique([tournamentId, name])
   @@index([tournamentId])
   @@index([captainUserId])
   @@index([poolNumber])
+  @@index([poolId])
 }
 
 model TournamentMatch {
@@ -831,4 +839,45 @@ model TournamentPlayer {
   @@unique([teamId, userId]) // A user can only be registered once per team
   @@index([teamId])
   @@index([userId])
+}
+
+// Tournament pools - separate pools within a tournament with different team capacities
+model TournamentPool {
+  id           String   @id @default(uuid())
+  name         String   // Pool name (e.g., "Pool A", "Beginners Pool", "Advanced Pool")
+  description  String?
+  maxTeams     Int      // Maximum number of teams allowed in this pool
+  
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  teams        TournamentTeam[] @relation("PoolTeams")
+  waitlist     TournamentPoolWaitlist[]
+  
+  @@unique([tournamentId, name])
+  @@index([tournamentId])
+}
+
+// Tournament pool waitlist - teams waiting for a spot in a full pool
+model TournamentPoolWaitlist {
+  id        String   @id @default(uuid())
+  
+  poolId    String
+  pool      TournamentPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  
+  teamId    String
+  team      TournamentTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  position  Int      // Position in the waitlist (lower = higher priority)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([poolId, teamId])
+  @@index([poolId])
+  @@index([teamId])
+  @@index([poolId, position])
 }

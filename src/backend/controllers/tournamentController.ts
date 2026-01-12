@@ -1497,3 +1497,484 @@ export const removePlayer = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Get all pools for a tournament
+ */
+export const getPools = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const pools = await prisma.tournamentPool.findMany({
+      where: { tournamentId: id },
+      include: {
+        _count: {
+          select: {
+            teams: true,
+            waitlist: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    res.json(pools);
+  } catch (error) {
+    logger.error('Error fetching pools', 'TournamentController', { error });
+    res.status(500).json({ error: 'Failed to fetch pools' });
+  }
+};
+
+/**
+ * Get pool details with teams and waitlist
+ */
+export const getPoolDetails = async (req: Request, res: Response) => {
+  try {
+    const { id, poolId } = req.params;
+
+    const pool = await prisma.tournamentPool.findFirst({
+      where: { 
+        id: poolId,
+        tournamentId: id 
+      },
+      include: {
+        teams: {
+          include: {
+            captainUser: {
+              select: { id: true, name: true, email: true }
+            },
+            players: true
+          },
+          orderBy: { registrationOrder: 'asc' }
+        },
+        waitlist: {
+          include: {
+            team: {
+              include: {
+                captainUser: {
+                  select: { id: true, name: true, email: true }
+                }
+              }
+            }
+          },
+          orderBy: { position: 'asc' }
+        }
+      }
+    });
+
+    if (!pool) {
+      return res.status(404).json({ error: 'Pool not found' });
+    }
+
+    res.json(pool);
+  } catch (error) {
+    logger.error('Error fetching pool details', 'TournamentController', { error });
+    res.status(500).json({ error: 'Failed to fetch pool details' });
+  }
+};
+
+/**
+ * Create a new pool for a tournament (organizer only)
+ */
+export const createPool = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = (req.user as any).id;
+    const { name, description, maxTeams } = req.body;
+
+    if (!name || !maxTeams) {
+      return res.status(400).json({ 
+        error: 'Pool name and max teams are required' 
+      });
+    }
+
+    if (maxTeams < 2) {
+      return res.status(400).json({ 
+        error: 'Pool must allow at least 2 teams' 
+      });
+    }
+
+    const tournament = await prisma.tournament.findUnique({
+      where: { id }
+    });
+
+    if (!tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    if (!tournamentService.isOrganizer(tournament, userId)) {
+      return res.status(403).json({
+        error: 'Only the organizer can create pools'
+      });
+    }
+
+    const pool = await prisma.tournamentPool.create({
+      data: {
+        name,
+        description,
+        maxTeams,
+        tournamentId: id
+      }
+    });
+
+    logger.info('Pool created', 'TournamentController', {
+      tournamentId: id,
+      poolId: pool.id,
+      userId
+    });
+
+    res.status(201).json(pool);
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return res.status(400).json({
+        error: 'A pool with this name already exists in the tournament'
+      });
+    }
+    logger.error('Error creating pool', 'TournamentController', { error });
+    res.status(500).json({ error: 'Failed to create pool' });
+  }
+};
+
+/**
+ * Register a team to a pool (team captain only)
+ */
+export const registerTeamToPool = async (req: Request, res: Response) => {
+  try {
+    const { id, poolId, teamId } = req.params;
+    const userId = (req.user as any).id;
+
+    const tournament = await prisma.tournament.findUnique({
+      where: { id }
+    });
+
+    if (!tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    // Check if tournament is in registration status
+    if (tournament.status !== 'draft' && tournament.status !== 'registration') {
+      return res.status(400).json({
+        error: 'Tournament registration is closed'
+      });
+    }
+
+    const team = await prisma.tournamentTeam.findFirst({
+      where: { 
+        id: teamId,
+        tournamentId: id 
+      }
+    });
+
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    // Check permissions - must be organizer or team captain
+    const isOrg = tournamentService.isOrganizer(tournament, userId);
+    const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
+
+    if (!isOrg && !isCaptain) {
+      return res.status(403).json({
+        error: 'Only the organizer or team captain can register teams to pools'
+      });
+    }
+
+    // Check if team is already registered to a pool
+    if (team.poolId) {
+      return res.status(400).json({
+        error: 'Team is already registered to a pool'
+      });
+    }
+
+    // Check if team is already on a waitlist
+    const existingWaitlist = await prisma.tournamentPoolWaitlist.findFirst({
+      where: { teamId }
+    });
+
+    if (existingWaitlist) {
+      return res.status(400).json({
+        error: 'Team is already on a waitlist for another pool'
+      });
+    }
+
+    const pool = await prisma.tournamentPool.findFirst({
+      where: { 
+        id: poolId,
+        tournamentId: id 
+      },
+      include: {
+        teams: true
+      }
+    });
+
+    if (!pool) {
+      return res.status(404).json({ error: 'Pool not found' });
+    }
+
+    // Check if pool is full
+    if (pool.teams.length >= pool.maxTeams) {
+      // Add to waitlist
+      const waitlistPosition = await prisma.tournamentPoolWaitlist.count({
+        where: { poolId }
+      }) + 1;
+
+      const waitlistEntry = await prisma.tournamentPoolWaitlist.create({
+        data: {
+          poolId,
+          teamId,
+          position: waitlistPosition
+        },
+        include: {
+          pool: true,
+          team: {
+            include: {
+              captainUser: {
+                select: { id: true, name: true, email: true }
+              }
+            }
+          }
+        }
+      });
+
+      logger.info('Team added to pool waitlist', 'TournamentController', {
+        tournamentId: id,
+        poolId,
+        teamId,
+        position: waitlistPosition,
+        userId
+      });
+
+      return res.status(201).json({
+        message: 'Pool is full. Team added to waitlist',
+        waitlist: waitlistEntry
+      });
+    }
+
+    // Register team to pool
+    const registrationOrder = pool.teams.length + 1;
+
+    const updatedTeam = await prisma.tournamentTeam.update({
+      where: { id: teamId },
+      data: {
+        poolId,
+        poolNumber: pool.teams.length + 1,
+        poolName: pool.name,
+        registrationOrder
+      },
+      include: {
+        pool: true,
+        captainUser: {
+          select: { id: true, name: true, email: true }
+        }
+      }
+    });
+
+    logger.info('Team registered to pool', 'TournamentController', {
+      tournamentId: id,
+      poolId,
+      teamId,
+      registrationOrder,
+      userId
+    });
+
+    res.json(updatedTeam);
+  } catch (error) {
+    logger.error('Error registering team to pool', 'TournamentController', { error });
+    res.status(500).json({ error: 'Failed to register team to pool' });
+  }
+};
+
+/**
+ * Remove a team from a pool (organizer or team captain)
+ * This will automatically promote the first team from the waitlist
+ */
+export const removeTeamFromPool = async (req: Request, res: Response) => {
+  try {
+    const { id, poolId, teamId } = req.params;
+    const userId = (req.user as any).id;
+
+    const tournament = await prisma.tournament.findUnique({
+      where: { id }
+    });
+
+    if (!tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    const team = await prisma.tournamentTeam.findFirst({
+      where: { 
+        id: teamId,
+        tournamentId: id,
+        poolId 
+      }
+    });
+
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found in this pool' });
+    }
+
+    // Check permissions
+    const isOrg = tournamentService.isOrganizer(tournament, userId);
+    const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
+
+    if (!isOrg && !isCaptain) {
+      return res.status(403).json({
+        error: 'Only the organizer or team captain can remove teams from pools'
+      });
+    }
+
+    // Remove team from pool
+    await prisma.tournamentTeam.update({
+      where: { id: teamId },
+      data: {
+        poolId: null,
+        poolNumber: null,
+        poolName: null,
+        registrationOrder: null
+      }
+    });
+
+    logger.info('Team removed from pool', 'TournamentController', {
+      tournamentId: id,
+      poolId,
+      teamId,
+      userId
+    });
+
+    // Check for waitlist and promote first team
+    const firstWaitlistEntry = await prisma.tournamentPoolWaitlist.findFirst({
+      where: { poolId },
+      orderBy: { position: 'asc' },
+      include: {
+        team: true
+      }
+    });
+
+    if (firstWaitlistEntry) {
+      // Get the pool to find registration order
+      const pool = await prisma.tournamentPool.findUnique({
+        where: { id: poolId },
+        include: { teams: true }
+      });
+
+      if (pool) {
+        const registrationOrder = pool.teams.length + 1;
+
+        // Promote team from waitlist
+        await prisma.tournamentTeam.update({
+          where: { id: firstWaitlistEntry.teamId },
+          data: {
+            poolId,
+            poolNumber: registrationOrder,
+            poolName: pool.name,
+            registrationOrder
+          }
+        });
+
+        // Remove from waitlist
+        await prisma.tournamentPoolWaitlist.delete({
+          where: { id: firstWaitlistEntry.id }
+        });
+
+        // Update positions for remaining waitlist entries
+        await prisma.$executeRaw`
+          UPDATE "TournamentPoolWaitlist"
+          SET position = position - 1
+          WHERE "poolId" = ${poolId} AND position > ${firstWaitlistEntry.position}
+        `;
+
+        logger.info('Team promoted from waitlist', 'TournamentController', {
+          tournamentId: id,
+          poolId,
+          promotedTeamId: firstWaitlistEntry.teamId,
+          previousPosition: firstWaitlistEntry.position
+        });
+
+        return res.json({
+          message: 'Team removed from pool and first waitlist team promoted',
+          promotedTeam: firstWaitlistEntry.team
+        });
+      }
+    }
+
+    res.json({ message: 'Team removed from pool successfully' });
+  } catch (error) {
+    logger.error('Error removing team from pool', 'TournamentController', { error });
+    res.status(500).json({ error: 'Failed to remove team from pool' });
+  }
+};
+
+/**
+ * Remove a team from waitlist (organizer or team captain)
+ */
+export const removeTeamFromWaitlist = async (req: Request, res: Response) => {
+  try {
+    const { id, poolId, teamId } = req.params;
+    const userId = (req.user as any).id;
+
+    const tournament = await prisma.tournament.findUnique({
+      where: { id }
+    });
+
+    if (!tournament) {
+      return res.status(404).json({ error: 'Tournament not found' });
+    }
+
+    const team = await prisma.tournamentTeam.findFirst({
+      where: { 
+        id: teamId,
+        tournamentId: id 
+      }
+    });
+
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    // Check permissions
+    const isOrg = tournamentService.isOrganizer(tournament, userId);
+    const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
+
+    if (!isOrg && !isCaptain) {
+      return res.status(403).json({
+        error: 'Only the organizer or team captain can remove teams from waitlist'
+      });
+    }
+
+    const waitlistEntry = await prisma.tournamentPoolWaitlist.findFirst({
+      where: { 
+        poolId,
+        teamId 
+      }
+    });
+
+    if (!waitlistEntry) {
+      return res.status(404).json({ error: 'Team not found in waitlist' });
+    }
+
+    // Remove from waitlist
+    await prisma.tournamentPoolWaitlist.delete({
+      where: { id: waitlistEntry.id }
+    });
+
+    // Update positions for remaining entries
+    await prisma.$executeRaw`
+      UPDATE "TournamentPoolWaitlist"
+      SET position = position - 1
+      WHERE "poolId" = ${poolId} AND position > ${waitlistEntry.position}
+    `;
+
+    logger.info('Team removed from waitlist', 'TournamentController', {
+      tournamentId: id,
+      poolId,
+      teamId,
+      userId
+    });
+
+    res.json({ message: 'Team removed from waitlist successfully' });
+  } catch (error) {
+    logger.error('Error removing team from waitlist', 'TournamentController', { error });
+    res.status(500).json({ error: 'Failed to remove team from waitlist' });
+  }
+};
+
+

@@ -42,4 +42,12 @@ router.put('/:id/matches/:matchId/referee', asyncHandler(tournamentController.as
 // Standings
 router.get('/:id/standings', asyncHandler(tournamentController.getStandings));
 
+// Pool management
+router.get('/:id/pools', asyncHandler(tournamentController.getPools));
+router.get('/:id/pools/:poolId', asyncHandler(tournamentController.getPoolDetails));
+router.post('/:id/pools', asyncHandler(tournamentController.createPool));
+router.post('/:id/pools/:poolId/teams/:teamId', asyncHandler(tournamentController.registerTeamToPool));
+router.delete('/:id/pools/:poolId/teams/:teamId', asyncHandler(tournamentController.removeTeamFromPool));
+router.delete('/:id/pools/:poolId/waitlist/:teamId', asyncHandler(tournamentController.removeTeamFromWaitlist));
+
 export default router;
