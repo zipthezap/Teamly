@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { SESSION } from '../config/security';
 import prisma from '../config/database';
 import { logger } from './logger';
+import { UnauthorizedError, InternalServerError } from './errors';
 
 const SECRET_KEY = process.env.JWT_SECRET || 'your-secret-key-here';
 
