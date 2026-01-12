@@ -135,11 +135,20 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
       country,
       skillLevel,
       status = 'open',
-      limit = 50,
-      offset = 0
+      limit = '50',
+      offset = '0',
+      cursor
     } = req.query;
 
-    // Build where clause - optimized to use composite index [status, dateTime]
+    // Parse and validate pagination parameters
+    const parsedLimit = parseInt(limit as string, 10);
+    const parsedOffset = parseInt(offset as string, 10);
+    
+    // Validate parsed values and apply defaults/caps
+    const validatedLimit = isNaN(parsedLimit) ? 50 : Math.min(Math.max(parsedLimit, 1), 100);
+    const validatedOffset = isNaN(parsedOffset) ? 0 : Math.max(parsedOffset, 0);
+
+    // Build where clause - optimized to use composite indexes
     const where: any = {
       status: status as string  // First part of composite index
     };
@@ -165,6 +174,12 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
       gte: new Date()
     };
 
+    // Add cursor-based pagination if cursor is provided
+    if (cursor) {
+      where.id = { gt: cursor as string };
+    }
+
+    // Optimize query - fetch responses separately for large result sets
     const teamUpRequests = await prisma.teamUpRequest.findMany({
       where,
       include: {
@@ -178,35 +193,75 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
             profilePicture: true
           }
         },
-        responses: {
-          where: {
-            status: 'accepted'
-          },
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                profilePicture: true
-              }
-            }
-          }
-        },
         _count: {
-          select: { responses: true }
+          select: { 
+            responses: true,
+            comments: true
+          }
         }
       },
-      orderBy: { dateTime: 'asc' },  // Leverages composite index [status, dateTime]
-      take: parseInt(limit as string),
-      skip: parseInt(offset as string)
+      orderBy: [
+        { dateTime: 'asc' },
+        { id: 'asc' } // Secondary sort for cursor stability
+      ],
+      take: validatedLimit,
+      skip: cursor ? 0 : validatedOffset // Skip only for offset pagination
     });
 
+    // Get accepted responses for the fetched requests (batch query for efficiency)
+    const requestIds = teamUpRequests.map(r => r.id);
+    const acceptedResponses = await prisma.teamUpResponse.findMany({
+      where: {
+        teamUpRequestId: { in: requestIds },
+        status: 'accepted'
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            profilePicture: true
+          }
+        }
+      }
+    });
+
+    // Map responses to requests
+    const responsesByRequest = new Map<string, typeof acceptedResponses[number][]>();
+    acceptedResponses.forEach(response => {
+      if (!responsesByRequest.has(response.teamUpRequestId)) {
+        responsesByRequest.set(response.teamUpRequestId, []);
+      }
+      responsesByRequest.get(response.teamUpRequestId)!.push(response);
+    });
+
+    // Attach responses to requests
+    const requestsWithResponses = teamUpRequests.map(request => ({
+      ...request,
+      responses: responsesByRequest.get(request.id) || []
+    }));
+
     // Enrich with location info
-    const enrichedRequests = teamUpRequests.map(request => 
+    const enrichedRequests = requestsWithResponses.map(request => 
       locationService.enrichWithLocationInfo(request)
     );
 
-    res.json(enrichedRequests);
+    // Calculate next cursor for cursor-based pagination
+    const nextCursor = teamUpRequests.length === validatedLimit 
+      ? teamUpRequests[teamUpRequests.length - 1].id 
+      : null;
+
+    // Return paginated response with metadata
+    res.json({
+      data: enrichedRequests,
+      pagination: {
+        limit: validatedLimit,
+        offset: validatedOffset,
+        total: enrichedRequests.length,
+        hasMore: teamUpRequests.length === validatedLimit,
+        nextCursor
+      }
+    });
   } catch (error) {
     logger.error('Get TeamUp requests error:', 'teamUpController', { error });
     res.status(500).json({ error: 'Failed to get TeamUp requests' });
