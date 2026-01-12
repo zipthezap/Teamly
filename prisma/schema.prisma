@@ -222,6 +222,7 @@ model User {
   teamUpComments    TeamUpComment[]
   tournaments       Tournament[]     @relation("TournamentOrganizer")
   captainedTeams    TournamentTeam[] @relation("TeamCaptain")
+  tournamentPlayers TournamentPlayer[] @relation("TournamentPlayer")
   
   @@index([email]) // For faster email lookups
   @@index([emailVerificationToken]) // For email verification
@@ -736,6 +737,7 @@ model TournamentTeam {
   awayMatches  TournamentMatch[] @relation("AwayTeam")
   refereingMatches TournamentMatch[] @relation("RefereeTeam")
   standings    TournamentStanding[]
+  players      TournamentPlayer[]
   
   @@unique([tournamentId, name])
   @@index([tournamentId])
@@ -808,4 +810,25 @@ model TournamentStanding {
   @@index([tournamentId])
   @@index([teamId])
   @@index([points])
+}
+
+// Tournament players - tracks registered players on a team
+model TournamentPlayer {
+  id        String   @id @default(uuid())
+  
+  teamId    String
+  team      TournamentTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  userId    String?
+  user      User?    @relation("TournamentPlayer", fields: [userId], references: [id], onDelete: SetNull)
+  
+  playerName  String   // Name of the player (required even if userId is set)
+  playerEmail String?  // Optional email
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([teamId, userId]) // A user can only be registered once per team
+  @@index([teamId])
+  @@index([userId])
 }

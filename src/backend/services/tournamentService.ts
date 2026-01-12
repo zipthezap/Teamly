@@ -66,6 +66,65 @@ export const isTeamCaptain = async (teamId: string, userId: string): Promise<boo
 };
 
 /**
+ * Check if user is a registered player on a team
+ */
+export const isRegisteredPlayer = async (teamId: string, userId: string): Promise<boolean> => {
+  const count = await prisma.tournamentPlayer.count({
+    where: { 
+      teamId,
+      userId
+    }
+  });
+  
+  return count > 0;
+};
+
+/**
+ * Check if user can submit score for a match
+ * User can submit if they are:
+ * - The tournament organizer
+ * - Team captain of either team
+ * - Registered player on either team
+ * - Registered player on the referee team
+ */
+export const canSubmitScore = async (
+  match: { homeTeamId: string; awayTeamId: string; refereeTeamId?: string | null },
+  tournament: { organizerId: string },
+  userId: string
+): Promise<boolean> => {
+  // Check if organizer
+  if (tournament.organizerId === userId) {
+    return true;
+  }
+  
+  // Check if captain of either team
+  const isHomeCaptain = await isTeamCaptain(match.homeTeamId, userId);
+  if (isHomeCaptain) return true;
+  
+  const isAwayCaptain = await isTeamCaptain(match.awayTeamId, userId);
+  if (isAwayCaptain) return true;
+  
+  // Check if registered player on either team
+  const isHomePlayer = await isRegisteredPlayer(match.homeTeamId, userId);
+  if (isHomePlayer) return true;
+  
+  const isAwayPlayer = await isRegisteredPlayer(match.awayTeamId, userId);
+  if (isAwayPlayer) return true;
+  
+  // Check if registered player on referee team
+  if (match.refereeTeamId) {
+    const isRefereePlayer = await isRegisteredPlayer(match.refereeTeamId, userId);
+    if (isRefereePlayer) return true;
+    
+    // Also check if captain of referee team
+    const isRefereeCaptain = await isTeamCaptain(match.refereeTeamId, userId);
+    if (isRefereeCaptain) return true;
+  }
+  
+  return false;
+};
+
+/**
  * Generate brackets for single elimination tournament
  */
 export const generateSingleEliminationBrackets = async (tournamentId: string) => {
