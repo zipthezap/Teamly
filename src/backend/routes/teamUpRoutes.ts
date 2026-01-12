@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as teamUpController from '../controllers/teamUpController';
 import authMiddleware from '../middleware/auth';
 import { authenticatedLimiter } from '../middleware/rateLimiter';
+import { asyncHandler } from '../middleware/asyncHandler';
 
 const router = Router();
 
@@ -10,42 +11,42 @@ router.use(authMiddleware);
 router.use(authenticatedLimiter);
 
 // Create a TeamUp request
-router.post('/', teamUpController.createTeamUpRequest);
+router.post('/', asyncHandler(teamUpController.createTeamUpRequest));
 
 // Get all TeamUp requests (browse with filters)
-router.get('/', teamUpController.getTeamUpRequests);
+router.get('/', asyncHandler(teamUpController.getTeamUpRequests));
 
 // Get nearby TeamUp requests
-router.get('/nearby', teamUpController.getNearbyTeamUpRequests);
+router.get('/nearby', asyncHandler(teamUpController.getNearbyTeamUpRequests));
 
 // Get user's own TeamUp requests
-router.get('/my-requests', teamUpController.getMyTeamUpRequests);
+router.get('/my-requests', asyncHandler(teamUpController.getMyTeamUpRequests));
 
 // Get responses for user's TeamUp requests
-router.get('/my-responses', teamUpController.getMyTeamUpResponses);
+router.get('/my-responses', asyncHandler(teamUpController.getMyTeamUpResponses));
 
 // Get a specific TeamUp request
-router.get('/:id', teamUpController.getTeamUpRequest);
+router.get('/:id', asyncHandler(teamUpController.getTeamUpRequest));
 
 // Update a TeamUp request
-router.put('/:id', teamUpController.updateTeamUpRequest);
+router.put('/:id', asyncHandler(teamUpController.updateTeamUpRequest));
 
 // Delete a TeamUp request
-router.delete('/:id', teamUpController.deleteTeamUpRequest);
+router.delete('/:id', asyncHandler(teamUpController.deleteTeamUpRequest));
 
 // Respond to a TeamUp request
-router.post('/:id/respond', teamUpController.respondToTeamUpRequest);
+router.post('/:id/respond', asyncHandler(teamUpController.respondToTeamUpRequest));
 
 // Accept or decline a response (creator only)
-router.post('/:id/responses/:responseId', teamUpController.handleTeamUpResponse);
+router.post('/:id/responses/:responseId', asyncHandler(teamUpController.handleTeamUpResponse));
 
 // Get comments for a TeamUp request
-router.get('/:id/comments', teamUpController.getTeamUpComments);
+router.get('/:id/comments', asyncHandler(teamUpController.getTeamUpComments));
 
 // Add a comment to a TeamUp request
-router.post('/:id/comments', teamUpController.addTeamUpComment);
+router.post('/:id/comments', asyncHandler(teamUpController.addTeamUpComment));
 
 // Delete a comment (author only)
-router.delete('/:id/comments/:commentId', teamUpController.deleteTeamUpComment);
+router.delete('/:id/comments/:commentId', asyncHandler(teamUpController.deleteTeamUpComment));
 
 export default router;
