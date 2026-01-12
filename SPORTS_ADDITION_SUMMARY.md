@@ -68,6 +68,20 @@ Two migrations were created:
 ### Set-Based Scoring (Volleyball, Tennis)
 The `detailedScore` field supports storing set-by-set scores for sports like volleyball and tennis.
 
+**TypeScript Interface:**
+```typescript
+interface SetScore {
+  home: number;
+  away: number;
+}
+
+interface DetailedScore {
+  sets?: SetScore[];      // For volleyball, tennis
+  periods?: SetScore[];   // For ice hockey, American football
+  innings?: SetScore[];   // For baseball, cricket
+}
+```
+
 **Example format:**
 ```json
 {
@@ -80,9 +94,10 @@ The `detailedScore` field supports storing set-by-set scores for sports like vol
 ```
 
 This allows:
-- Volleyball: Track individual set scores (typically best of 3 or 5 sets)
-- Tennis: Track individual set scores and tiebreaks
-- Other sports with period/quarter scoring
+- **Volleyball**: Track individual set scores (typically best of 3 or 5 sets)
+- **Tennis**: Track individual set scores and tiebreaks
+- **Ice Hockey & American Football**: Track period/quarter scores
+- **Baseball & Cricket**: Track inning-by-inning scores
 
 The simple `homeScore` and `awayScore` fields continue to work for final scores or aggregate results, maintaining backward compatibility.
 
@@ -127,22 +142,22 @@ The following components were updated to include all sports:
    - `UpcomingEventsCalendar.tsx` - Updated with color coding for all sports
 
 ### Color Scheme
-Each sport has been assigned a distinct color in the calendar view:
-- Football: Green (#4CAF50)
-- Basketball: Orange (#FF9800)
-- Cricket: Amber (#FFB300)
-- American Football: Brown (#795548)
-- Ice Hockey: Cyan (#00BCD4)
-- Baseball: Red (#F44336)
-- Volleyball: Purple (#9C27B0)
-- Rugby: Green (#4CAF50)
-- Handball: Pink (#E91E63)
-- Field Hockey: Teal (#009688)
-- Tennis: Blue (#2196F3)
-- Running: Deep Orange (#FF5722)
-- Cycling: Cyan (#00BCD4)
-- Swimming: Indigo (#3F51B5)
-- Other: Blue Grey (#607D8B)
+Each sport has been assigned a distinct and unique color in the calendar view:
+- **Football**: Green (#4CAF50)
+- **Basketball**: Orange (#FF9800)
+- **Cricket**: Amber (#FFB300)
+- **American Football**: Brown (#795548)
+- **Ice Hockey**: Cyan Dark (#00ACC1)
+- **Baseball**: Red (#F44336)
+- **Volleyball**: Purple (#9C27B0)
+- **Rugby**: Light Green (#689F38)
+- **Handball**: Pink (#E91E63)
+- **Field Hockey**: Teal (#009688)
+- **Tennis**: Blue (#2196F3)
+- **Running**: Deep Orange (#FF5722)
+- **Cycling**: Cyan (#00BCD4)
+- **Swimming**: Indigo (#3F51B5)
+- **Other**: Blue Grey (#607D8B)
 
 ## Usage Across Features
 
@@ -192,14 +207,16 @@ To add a new sport:
 When implementing UI for set-based scoring:
 1. Check the tournament's sport type
 2. If volleyball, tennis, or other set-based sport, use the `detailedScore` field
-3. Parse the JSON to display individual sets
-4. Update `homeScore`/`awayScore` with the total sets won
+3. Parse the DetailedScore object to display individual sets/periods/innings
+4. Update `homeScore`/`awayScore` with the total sets/periods/innings won
 
 Example:
 ```typescript
+import { DetailedScore, SetScore } from '@/shared/types/tournament.types';
+
 if (tournament.sportType === 'volleyball') {
   // Show set-by-set input
-  const detailedScore = {
+  const detailedScore: DetailedScore = {
     sets: [
       { home: 25, away: 23 },
       { home: 21, away: 25 },
