@@ -5,10 +5,18 @@
 
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
+import { checkRedisHealth, isRedisEnabled } from '../config/redis';
 
 export interface DatabaseHealthDetails {
   connected: boolean;
   responseTime?: number;
+  error?: string;
+}
+
+export interface RedisHealthDetails {
+  enabled: boolean;
+  connected?: boolean;
+  latency?: number;
   error?: string;
 }
 
@@ -17,6 +25,7 @@ export interface HealthCheckResult {
   timestamp: string;
   uptime: number;
   database: DatabaseHealthDetails;
+  redis: RedisHealthDetails;
   memory: {
     used: number;
     total: number;
@@ -56,6 +65,15 @@ export const checkDatabaseHealth = async (): Promise<DatabaseHealthDetails> => {
 export const performHealthCheck = async (): Promise<HealthCheckResult> => {
   const database = await checkDatabaseHealth();
   
+  // Check Redis health
+  const redisHealthCheck = await checkRedisHealth();
+  const redis: RedisHealthDetails = {
+    enabled: isRedisEnabled(),
+    connected: redisHealthCheck.status === 'healthy',
+    latency: redisHealthCheck.latency,
+    error: redisHealthCheck.error,
+  };
+  
   // Get memory usage
   const memoryUsage = process.memoryUsage();
   const totalMemory = memoryUsage.heapTotal;
@@ -71,6 +89,8 @@ export const performHealthCheck = async (): Promise<HealthCheckResult> => {
   
   if (!database.connected) {
     status = 'unhealthy';
+  } else if (redis.enabled && redis.connected === false) {
+    status = 'degraded'; // Redis is optional, so degraded instead of unhealthy
   } else if (database.responseTime && database.responseTime > slowDbThreshold) {
     status = 'degraded'; // Slow database response
   } else if (memoryPercentage > memoryThreshold) {
@@ -82,6 +102,7 @@ export const performHealthCheck = async (): Promise<HealthCheckResult> => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     database,
+    redis,
     memory: {
       used: Math.round(usedMemory / 1024 / 1024), // MB
       total: Math.round(totalMemory / 1024 / 1024), // MB

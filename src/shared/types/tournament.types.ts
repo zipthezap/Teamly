@@ -32,6 +32,18 @@ export enum BracketStage {
   FINALS = 'finals'
 }
 
+// Type definitions for detailed scoring
+export interface SetScore {
+  home: number;
+  away: number;
+}
+
+export interface DetailedScore {
+  sets?: SetScore[];  // For volleyball, tennis
+  periods?: SetScore[];  // For ice hockey, American football
+  innings?: SetScore[];  // For baseball, cricket
+}
+
 export interface Tournament {
   id: string;
   name: string;
@@ -106,6 +118,7 @@ export interface TournamentMatch {
   refereeTeamId?: string; // Team assigned to referee this match
   homeScore?: number;
   awayScore?: number;
+  detailedScore?: DetailedScore; // Structured scoring for sports with sets/periods
   stage?: BracketStage;
   roundNumber?: number;
   groupName?: string;

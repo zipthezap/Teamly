@@ -5,7 +5,9 @@ import helmet from 'helmet';
 import compression from 'compression';
 import path from 'path';
 import session from 'express-session';
+import RedisStore from 'connect-redis';
 import passport from './config/passport';
+import crypto from 'crypto';
 
 import authRoutes from './routes/authRoutes';
 import groupRoutes from './routes/groupRoutes';
@@ -20,7 +22,7 @@ import notificationRoutes from './routes/notificationRoutes';
 import teamUpRoutes from './routes/teamUpRoutes';
 import reminderRoutes from './routes/reminderRoutes';
 import tournamentRoutes from './routes/tournamentRoutes';
-import { apiLimiter } from './middleware/rateLimiter';
+import { distributedApiLimiter } from './middleware/distributedRateLimiter';
 import { requestTimeout } from './middleware/requestTimeout';
 import { logger } from './utils/logger';
 import { validateEnvironmentOrThrow } from './utils/envValidator';
@@ -33,6 +35,9 @@ import { startEmailQueueProcessor, stopEmailQueueProcessor } from './services/em
 import { startScheduledJobs, stopScheduledJobs } from './services/scheduledJobs';
 import { ensureUploadDirectories } from './utils/imageProcessor';
 import { closeDatabaseConnections } from './config/database';
+import { initializeRedis, closeRedis, getRedisClient, isRedisEnabled } from './config/redis';
+import { cleanupCache } from './services/cacheService';
+import { metricsMiddleware, getMetrics } from './services/metricsService';
 
 // Validate environment variables before starting the server
 try {
@@ -49,12 +54,60 @@ try {
 // Setup graceful shutdown handlers
 setupGracefulShutdown();
 
+/**
+ * Timing-safe string comparison to prevent timing attacks
+ * Uses crypto.timingSafeEqual with constant-time operations
+ * Fixed maximum length to prevent timing leaks through dynamic padding
+ */
+const timingSafeCompare = (a: string, b: string): boolean => {
+  // Use a fixed maximum length for consistent timing
+  const FIXED_MAX_LENGTH = 256;
+  
+  // Handle null/undefined cases with a realistic dummy comparison
+  if (!a || !b) {
+    // Create two different buffers for a realistic comparison
+    const dummyBufA = Buffer.alloc(FIXED_MAX_LENGTH);
+    const dummyBufB = Buffer.alloc(FIXED_MAX_LENGTH);
+    dummyBufB[0] = 1; // Make them different
+    try {
+      crypto.timingSafeEqual(dummyBufA, dummyBufB);
+    } catch {
+      // Expected to throw since buffers are different
+    }
+    return false;
+  }
+  
+  // Pad both strings to fixed length for consistent timing
+  const bufA = Buffer.from(a.padEnd(FIXED_MAX_LENGTH, '\0').slice(0, FIXED_MAX_LENGTH));
+  const bufB = Buffer.from(b.padEnd(FIXED_MAX_LENGTH, '\0').slice(0, FIXED_MAX_LENGTH));
+  
+  try {
+    return crypto.timingSafeEqual(bufA, bufB);
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Extract bearer token from Authorization header
+ * Case-insensitive to handle 'Bearer', 'bearer', 'BEARER'
+ */
+const extractBearerToken = (authHeader?: string): string => {
+  if (!authHeader) {
+    return '';
+  }
+  return authHeader.replace(/^Bearer\s+/i, '') || '';
+};
+
 const app: Application = express();
 const PORT = config.port;
 
 // Add request context and performance monitoring
 app.use(requestContext);
 app.use(performanceMonitor(config.slowRequestThresholdMs));
+
+// Add Prometheus metrics tracking
+app.use(metricsMiddleware);
 
 // Enable gzip compression for responses
 app.use(compression({
@@ -104,17 +157,42 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: config.requestBodySizeLimit }));
 app.use(express.urlencoded({ extended: true, limit: config.requestBodySizeLimit }));
 
+// Session configuration constants
+const SESSION_TTL_SECONDS = 60 * 60; // 1 hour
+const SESSION_COOKIE_MAX_AGE = SESSION_TTL_SECONDS * 1000; // Convert to milliseconds
+
 // Session middleware for OAuth (required by passport)
-app.use(session({
-  secret: process.env.JWT_SECRET || 'your-session-secret',
+// Use Redis for session storage if available, otherwise fall back to in-memory
+const sessionConfig: session.SessionOptions = {
+  secret: process.env.SESSION_SECRET || process.env.JWT_SECRET || 'your-session-secret',
   resave: false,
   saveUninitialized: false,
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 1000 * 60 * 60 // 1 hour
+    maxAge: SESSION_COOKIE_MAX_AGE,
+    sameSite: 'strict' // CSRF protection
   }
-}));
+};
+
+// Add Redis store if enabled
+if (isRedisEnabled()) {
+  const redisClient = getRedisClient();
+  if (redisClient) {
+    sessionConfig.store = new RedisStore({
+      client: redisClient,
+      prefix: 'sess:',
+      ttl: SESSION_TTL_SECONDS
+    });
+    logger.info('Using Redis for session storage', 'Server');
+  } else {
+    logger.warn('Redis enabled but client not available, using in-memory session storage', 'Server');
+  }
+} else {
+  logger.info('Using in-memory session storage (not recommended for production)', 'Server');
+}
+
+app.use(session(sessionConfig));
 
 // Initialize Passport
 app.use(passport.initialize());
@@ -150,8 +228,8 @@ app.use('/uploads', express.static(path.join(__dirname, '../../uploads'), {
   }
 }));
 
-// Apply rate limiting to all API routes
-app.use('/api/', apiLimiter);
+// Apply distributed rate limiting to all API routes (falls back to in-memory if Redis unavailable)
+app.use('/api/', distributedApiLimiter);
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -168,8 +246,26 @@ app.use('/api/teamup', teamUpRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/tournaments', tournamentRoutes);
 
+// Metrics endpoint for Prometheus
+// In production, restrict access via network rules or add IP whitelist
+// For now, we'll add a simple token-based authentication
+app.get('/metrics', (req: Request, res: Response, next) => {
+  // Allow access if METRICS_TOKEN is not set (for backward compatibility)
+  // Or if the provided token matches (using timing-safe comparison)
+  const metricsToken = process.env.METRICS_TOKEN;
+  if (metricsToken) {
+    const providedToken = extractBearerToken(req.headers.authorization);
+    // Always call timingSafeCompare to prevent timing attacks
+    if (!timingSafeCompare(providedToken, metricsToken)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+  }
+  next();
+}, getMetrics);
+
 // Enhanced health check with detailed metrics
-app.get('/health', async (_req: Request, res: Response) => {
+app.get('/health', async (req: Request, res: Response) => {
   try {
     const healthCheck = await performHealthCheck();
     
@@ -177,21 +273,40 @@ app.get('/health', async (_req: Request, res: Response) => {
                      : healthCheck.status === 'degraded' ? 200 
                      : 503;
     
-    res.status(statusCode).json({
-      status: healthCheck.status,
-      message: healthCheck.status === 'healthy' 
-        ? 'Teamly API is running smoothly' 
-        : healthCheck.status === 'degraded'
-        ? 'Teamly API is running with degraded performance'
-        : 'Teamly API is experiencing issues',
-      ...healthCheck,
-    });
+    // Check if detailed health info is requested with auth token (using timing-safe comparison)
+    const healthToken = process.env.HEALTH_CHECK_TOKEN;
+    const providedToken = extractBearerToken(req.headers.authorization);
+    
+    // Always call timingSafeCompare to maintain constant-time behavior
+    // When no token is configured, use a sentinel value that never matches real tokens
+    // but still goes through the same comparison logic
+    const tokenToCheck = healthToken || '__HEALTH_CHECK_DISABLED__';
+    const tokenMatches = timingSafeCompare(providedToken, tokenToCheck);
+    // If no token is configured, grant access (backward compatibility)
+    const isAuthenticated = !healthToken || tokenMatches;
+    
+    // Return detailed info only if authenticated, otherwise return basic status
+    if (isAuthenticated) {
+      res.status(statusCode).json({
+        status: healthCheck.status,
+        message: healthCheck.status === 'healthy' 
+          ? 'Teamly API is running smoothly' 
+          : healthCheck.status === 'degraded'
+          ? 'Teamly API is running with degraded performance'
+          : 'Teamly API is experiencing issues',
+        ...healthCheck,
+      });
+    } else {
+      // Return minimal info for unauthenticated requests
+      res.status(statusCode).json({
+        status: healthCheck.status,
+      });
+    }
   } catch (error) {
     logger.error('Health check failed', 'Server', { error });
+    // Minimal error response - no details or timestamp for security
     res.status(503).json({
       status: 'unhealthy',
-      message: 'Health check failed',
-      timestamp: new Date().toISOString(),
     });
   }
 });
@@ -209,8 +324,11 @@ let emailQueueInterval: NodeJS.Timeout | null = null;
 
 // Initialize upload directories before starting server
 ensureUploadDirectories()
-  .then(() => {
+  .then(async () => {
     logger.info('Upload directories initialized', 'Server');
+    
+    // Initialize Redis connection (optional)
+    await initializeRedis();
     
     // Start server after upload directories are ready
     const server = app.listen(PORT, () => {
@@ -239,6 +357,20 @@ ensureUploadDirectories()
           stopEmailQueueProcessor(emailQueueInterval);
         }
         stopScheduledJobs();
+        
+        // Close Redis connection
+        try {
+          await closeRedis();
+        } catch (error) {
+          logger.error('Error closing Redis connection', 'Server', { error });
+        }
+        
+        // Cleanup cache
+        try {
+          cleanupCache();
+        } catch (error) {
+          logger.error('Error cleaning up cache', 'Server', { error });
+        }
         
         // Close database connections
         try {

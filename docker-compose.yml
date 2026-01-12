@@ -15,6 +15,19 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   backend:
     build:
       context: .
@@ -23,6 +36,7 @@ services:
       - "3000:3000"
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/teamly?schema=public
+      REDIS_URL: redis://redis:6379
       PORT: 3000
       NODE_ENV: development
       # SECURITY: Set a strong JWT secret via environment variable in production
@@ -32,6 +46,8 @@ services:
       - uploads_data:/app/uploads
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     command: sh -c "npx prisma migrate deploy && npx prisma generate && node prisma/seed.js && npm start"
 
@@ -50,4 +66,5 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
   uploads_data:

@@ -273,7 +273,7 @@ model GroupJoinRequest {
 
 model GroupMember {
   id        String   @id @default(uuid())
-  role      String   @default("member") // member, admin
+  role      String   @default("member") // member, moderator, admin
   joinedAt  DateTime @default(now())
 
   userId  String
@@ -284,7 +284,8 @@ model GroupMember {
   @@unique([userId, groupId])
   @@index([userId]) // For user's groups queries
   @@index([groupId]) // For group members queries
-  @@index([role]) // For admin/member filtering
+  @@index([role]) // For admin/moderator/member filtering
+  @@index([groupId, role]) // Composite index for efficient role-based queries within a group (scalability)
 }
 
 enum EventStatus {
@@ -302,6 +303,13 @@ enum SportType {
   running
   cycling
   swimming
+  cricket
+  americanFootball
+  iceHockey
+  baseball
+  rugby
+  handball
+  fieldHockey
   other
 }
 
@@ -360,6 +368,10 @@ model Event {
   @@index([groupId, startTime]) // Composite for group events by date
   @@index([creatorId, startTime]) // Composite for user events by date
   @@index([city, country]) // For location-based queries
+  @@index([status, startTime]) // Composite for filtering by status and date (scalability)
+  @@index([eventType, startTime]) // Composite for filtering by event type and date (scalability)
+  @@index([isPublic, startTime]) // Composite for public event discovery (scalability)
+  @@index([archived, status, startTime]) // Composite for active event queries (scalability)
   // If archived events grow large, consider partitioning or archiving to a separate table for performance
 }
 
@@ -584,6 +596,9 @@ model TeamUpRequest {
   @@index([sportType])
   @@index([city, country])
   @@index([status, dateTime]) // For finding open requests by date
+  @@index([sportType, status, dateTime]) // Composite for sport type filtering with status and date (scalability)
+  @@index([city, country, status, dateTime]) // Composite for location-based queries with status (scalability)
+  @@index([creatorId, status]) // Composite for user's requests by status (scalability)
 }
 
 // Responses to TeamUp requests (people interested in filling the spots)
@@ -602,6 +617,7 @@ model TeamUpResponse {
   @@index([teamUpRequestId])
   @@index([userId])
   @@index([status])
+  @@index([userId, teamUpRequestId]) // Composite index for permission checks (scalability)
 }
 
 // Comments/Chat for TeamUp requests
@@ -703,6 +719,7 @@ model Tournament {
   teams       TournamentTeam[]
   matches     TournamentMatch[]
   standings   TournamentStanding[]
+  pools       TournamentPool[]
   
   @@index([organizerId])
   @@index([groupId])
@@ -725,10 +742,15 @@ model TournamentTeam {
   tournamentId String
   tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   
-  // Manual pool/bracket management
-  poolNumber   Int?     // For manual pool assignment (1, 2, 3, etc.)
+  // Manual pool/bracket management (legacy - use poolId for new implementations)
+  poolNumber   Int?     // For manual pool assignment (1, 2, 3, etc.) - legacy field
   poolName     String?  // Custom pool name (e.g., "Pool A", "Group 1")
   seedNumber   Int?     // Seeding position for bracket generation
+  
+  // Pool registration (new implementation)
+  poolId       String?
+  pool         TournamentPool? @relation("PoolTeams", fields: [poolId], references: [id], onDelete: SetNull)
+  registrationOrder Int? // Order in which team registered to pool
   
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -738,11 +760,14 @@ model TournamentTeam {
   refereingMatches TournamentMatch[] @relation("RefereeTeam")
   standings    TournamentStanding[]
   players      TournamentPlayer[]
+  waitlistEntries TournamentPoolWaitlist[]
   
   @@unique([tournamentId, name])
   @@index([tournamentId])
   @@index([captainUserId])
   @@index([poolNumber])
+  @@index([poolId])
+  @@index([tournamentId, captainUserId]) // Composite index for permission checks (scalability)
 }
 
 model TournamentMatch {
@@ -761,6 +786,10 @@ model TournamentMatch {
   
   homeScore    Int?
   awayScore    Int?
+  
+  // Detailed scoring for sports with sets/periods (e.g., volleyball, tennis)
+  // Format: { sets: [{home: 25, away: 23}, {home: 23, away: 25}], ... }
+  detailedScore Json?
   
   stage        BracketStage?
   roundNumber  Int?      // For round-robin or group stages
@@ -831,4 +860,46 @@ model TournamentPlayer {
   @@unique([teamId, userId]) // A user can only be registered once per team
   @@index([teamId])
   @@index([userId])
+  @@index([userId, teamId]) // Composite index for permission checks (scalability)
+}
+
+// Tournament pools - separate pools within a tournament with different team capacities
+model TournamentPool {
+  id           String   @id @default(uuid())
+  name         String   // Pool name (e.g., "Pool A", "Beginners Pool", "Advanced Pool")
+  description  String?
+  maxTeams     Int      // Maximum number of teams allowed in this pool
+  
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  teams        TournamentTeam[] @relation("PoolTeams")
+  waitlist     TournamentPoolWaitlist[]
+  
+  @@unique([tournamentId, name])
+  @@index([tournamentId])
+}
+
+// Tournament pool waitlist - teams waiting for a spot in a full pool
+model TournamentPoolWaitlist {
+  id        String   @id @default(uuid())
+  
+  poolId    String
+  pool      TournamentPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  
+  teamId    String
+  team      TournamentTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  position  Int      // Position in the waitlist (lower = higher priority)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([poolId, teamId])
+  @@index([poolId])
+  @@index([teamId])
+  @@index([poolId, position])
 }

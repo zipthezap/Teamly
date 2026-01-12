@@ -1,9 +1,9 @@
 import prisma from '../config/database';
-import crypto from 'crypto';
 import { sendEmail } from '../utils/emailService';
 import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { BadRequestError, NotFoundError } from '../utils/errors';
+import * as authService from '../services/authService';
 
 // Get user email preferences
 export const getEmailPreferences = asyncHandler(async (req: Request, res: Response) => {
@@ -70,16 +70,16 @@ export const sendVerificationEmail = asyncHandler(async (req: Request, res: Resp
     throw new BadRequestError('Email already verified');
   }
 
-  // Generate verification token
-  const token = crypto.randomBytes(32).toString('hex');
+  // Generate verification token (returns plain and hashed versions)
+  const { token, hashedToken } = authService.generateEmailVerificationToken();
 
-  // Update user with token
+  // Update user with hashed token
   await prisma.user.update({
     where: { id: (req.user as any).id },
-    data: { emailVerificationToken: token }
+    data: { emailVerificationToken: hashedToken }
   });
 
-  // Send verification email
+  // Send verification email with plain token
   const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/verify-email/${token}`;
   await sendEmail(user.email, 'emailVerification', user.name, verificationUrl);
 
@@ -90,8 +90,11 @@ export const sendVerificationEmail = asyncHandler(async (req: Request, res: Resp
 export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
   const { token } = req.params;
 
+  // Hash the token to compare with stored hash
+  const hashedToken = authService.hashToken(token);
+
   const user = await prisma.user.findFirst({
-    where: { emailVerificationToken: token }
+    where: { emailVerificationToken: hashedToken }
   });
 
   if (!user) {

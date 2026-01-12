@@ -16,13 +16,18 @@ import { eventsAPI } from '../services/api';
 const EVENT_TYPES = [
   'football',
   'basketball',
-  'tennis',
-  'volleyball',
-  'badminton',
   'cricket',
-  'rugby',
-  'hockey',
+  'americanFootball',
+  'iceHockey',
   'baseball',
+  'volleyball',
+  'rugby',
+  'handball',
+  'fieldHockey',
+  'tennis',
+  'running',
+  'cycling',
+  'swimming',
   'other',
 ];
 

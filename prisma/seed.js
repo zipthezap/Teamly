@@ -772,6 +772,573 @@ async function main() {
   });
   console.log('Seeded 3 guest participants');
 
+  // Create tournaments with multiple pools
+  console.log('\nSeeding tournaments with pools...');
+  
+  // Tournament 1: Football Tournament with 3 pools
+  const tournament1 = await prisma.tournament.upsert({
+    where: { id: 'seed-tournament-1' },
+    update: {},
+    create: {
+      id: 'seed-tournament-1',
+      name: 'Spring Football Championship',
+      description: 'Annual spring football tournament with multiple skill divisions',
+      sportType: 'football',
+      format: 'round_robin',
+      status: 'registration',
+      startDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      endDate: new Date(Date.now() + 32 * 24 * 60 * 60 * 1000), // 32 days from now
+      registrationDeadline: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000), // 25 days from now
+      maxTeams: 24,
+      location: 'Central Sports Complex',
+      city: 'New York',
+      country: 'USA',
+      latitude: 40.7589,
+      longitude: -73.9851,
+      locationName: 'Central Sports Complex',
+      organizerId: user1.id,
+      groupId: group1.id,
+      isPublic: true,
+      allowLateRegistration: false,
+      autoGenerateBrackets: true,
+      prizesDescription: 'Winner: $1000, Runner-up: $500',
+      rulesDescription: 'Standard FIFA rules apply'
+    }
+  });
+
+  // Create pools for tournament 1
+  const pool1A = await prisma.tournamentPool.upsert({
+    where: { id: 'seed-pool-1a' },
+    update: {},
+    create: {
+      id: 'seed-pool-1a',
+      name: 'Pool A - Beginners',
+      description: 'For teams new to competitive football',
+      maxTeams: 8,
+      tournamentId: tournament1.id
+    }
+  });
+
+  const pool1B = await prisma.tournamentPool.upsert({
+    where: { id: 'seed-pool-1b' },
+    update: {},
+    create: {
+      id: 'seed-pool-1b',
+      name: 'Pool B - Intermediate',
+      description: 'For teams with some competitive experience',
+      maxTeams: 10,
+      tournamentId: tournament1.id
+    }
+  });
+
+  const pool1C = await prisma.tournamentPool.upsert({
+    where: { id: 'seed-pool-1c' },
+    update: {},
+    create: {
+      id: 'seed-pool-1c',
+      name: 'Pool C - Advanced',
+      description: 'For experienced competitive teams',
+      maxTeams: 6,
+      tournamentId: tournament1.id
+    }
+  });
+
+  console.log('Created tournament 1 with 3 pools');
+
+  // Create teams for Pool A (7 teams registered, 1 spot left)
+  const teamNamesPoolA = [
+    'Thunder Strikers', 'Lightning FC', 'Storm Chasers', 'Rookie Rockets',
+    'Fresh Feet', 'Green Goalies', 'New Wave United'
+  ];
+  for (let i = 0; i < teamNamesPoolA.length; i++) {
+    await prisma.tournamentTeam.upsert({
+      where: { id: `seed-team-1a-${i}` },
+      update: {},
+      create: {
+        id: `seed-team-1a-${i}`,
+        name: teamNamesPoolA[i],
+        captainName: `Captain ${teamNamesPoolA[i]}`,
+        captainEmail: `captain.${i}@poolA.com`,
+        captainUserId: [user1.id, user2.id, user3.id, user4.id][i % 4],
+        tournamentId: tournament1.id,
+        poolId: pool1A.id,
+        poolNumber: 1,
+        poolName: pool1A.name,
+        registrationOrder: i + 1
+      }
+    });
+  }
+
+  // Create teams for Pool B (10 teams registered, FULL)
+  const teamNamesPoolB = [
+    'Mid-Level Masters', 'Average Avengers', 'Decent Defenders', 'Fair Play FC',
+    'Balanced Brigade', 'Moderate Movers', 'Standard Stars', 'Regular Rangers',
+    'Neutral Netters', 'Even Eagles'
+  ];
+  for (let i = 0; i < teamNamesPoolB.length; i++) {
+    await prisma.tournamentTeam.upsert({
+      where: { id: `seed-team-1b-${i}` },
+      update: {},
+      create: {
+        id: `seed-team-1b-${i}`,
+        name: teamNamesPoolB[i],
+        captainName: `Captain ${teamNamesPoolB[i]}`,
+        captainEmail: `captain.${i}@poolB.com`,
+        captainUserId: [user1.id, user2.id, user3.id, user4.id][i % 4],
+        tournamentId: tournament1.id,
+        poolId: pool1B.id,
+        poolNumber: 2,
+        poolName: pool1B.name,
+        registrationOrder: i + 1
+      }
+    });
+  }
+
+  // Create 2 teams on waitlist for Pool B
+  const waitlistTeamB1 = await prisma.tournamentTeam.upsert({
+    where: { id: 'seed-team-1b-waitlist-1' },
+    update: {},
+    create: {
+      id: 'seed-team-1b-waitlist-1',
+      name: 'Waiting Warriors',
+      captainName: 'Captain Waiting',
+      captainEmail: 'waiting1@poolB.com',
+      captainUserId: user1.id,
+      tournamentId: tournament1.id
+    }
+  });
+
+  const waitlistTeamB2 = await prisma.tournamentTeam.upsert({
+    where: { id: 'seed-team-1b-waitlist-2' },
+    update: {},
+    create: {
+      id: 'seed-team-1b-waitlist-2',
+      name: 'Hopeful Heroes',
+      captainName: 'Captain Hopeful',
+      captainEmail: 'waiting2@poolB.com',
+      captainUserId: user2.id,
+      tournamentId: tournament1.id
+    }
+  });
+
+  // Add teams to waitlist
+  await prisma.tournamentPoolWaitlist.upsert({
+    where: { id: 'seed-waitlist-1' },
+    update: {},
+    create: {
+      id: 'seed-waitlist-1',
+      poolId: pool1B.id,
+      teamId: waitlistTeamB1.id,
+      position: 1
+    }
+  });
+
+  await prisma.tournamentPoolWaitlist.upsert({
+    where: { id: 'seed-waitlist-2' },
+    update: {},
+    create: {
+      id: 'seed-waitlist-2',
+      poolId: pool1B.id,
+      teamId: waitlistTeamB2.id,
+      position: 2
+    }
+  });
+
+  // Create teams for Pool C (4 teams registered, 2 spots left)
+  const teamNamesPoolC = [
+    'Elite Eagles', 'Pro Panthers', 'Champion Chiefs', 'Victory Vipers'
+  ];
+  for (let i = 0; i < teamNamesPoolC.length; i++) {
+    await prisma.tournamentTeam.upsert({
+      where: { id: `seed-team-1c-${i}` },
+      update: {},
+      create: {
+        id: `seed-team-1c-${i}`,
+        name: teamNamesPoolC[i],
+        captainName: `Captain ${teamNamesPoolC[i]}`,
+        captainEmail: `captain.${i}@poolC.com`,
+        captainUserId: [user1.id, user2.id, user3.id, user4.id][i % 4],
+        tournamentId: tournament1.id,
+        poolId: pool1C.id,
+        poolNumber: 3,
+        poolName: pool1C.name,
+        registrationOrder: i + 1
+      }
+    });
+  }
+
+  // Add some players to teams
+  await prisma.tournamentPlayer.upsert({
+    where: { id: 'seed-player-1' },
+    update: {},
+    create: {
+      id: 'seed-player-1',
+      teamId: 'seed-team-1a-0',
+      userId: user1.id,
+      playerName: 'Alice',
+      playerEmail: user1.email
+    }
+  });
+
+  await prisma.tournamentPlayer.upsert({
+    where: { id: 'seed-player-2' },
+    update: {},
+    create: {
+      id: 'seed-player-2',
+      teamId: 'seed-team-1a-0',
+      playerName: 'John Smith',
+      playerEmail: 'john.smith@example.com'
+    }
+  });
+
+  await prisma.tournamentPlayer.upsert({
+    where: { id: 'seed-player-3' },
+    update: {},
+    create: {
+      id: 'seed-player-3',
+      teamId: 'seed-team-1b-0',
+      userId: user2.id,
+      playerName: 'Bob',
+      playerEmail: user2.email
+    }
+  });
+
+  console.log('Created tournament 1 teams and players');
+
+  // Tournament 2: Basketball Tournament with 2 pools
+  const tournament2 = await prisma.tournament.upsert({
+    where: { id: 'seed-tournament-2' },
+    update: {},
+    create: {
+      id: 'seed-tournament-2',
+      name: 'Summer Basketball League',
+      description: 'Competitive summer basketball tournament',
+      sportType: 'basketball',
+      format: 'single_elimination',
+      status: 'registration',
+      startDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000), // 45 days from now
+      endDate: new Date(Date.now() + 47 * 24 * 60 * 60 * 1000), // 47 days from now
+      registrationDeadline: new Date(Date.now() + 40 * 24 * 60 * 60 * 1000), // 40 days from now
+      maxTeams: 16,
+      location: 'Downtown Basketball Arena',
+      city: 'Los Angeles',
+      country: 'USA',
+      latitude: 34.0522,
+      longitude: -118.2437,
+      locationName: 'Downtown Arena',
+      organizerId: user2.id,
+      groupId: group2.id,
+      isPublic: true,
+      allowLateRegistration: true,
+      autoGenerateBrackets: true,
+      prizesDescription: 'Trophies for top 3 teams',
+      rulesDescription: 'NBA rules apply'
+    }
+  });
+
+  // Create pools for tournament 2
+  const pool2A = await prisma.tournamentPool.upsert({
+    where: { id: 'seed-pool-2a' },
+    update: {},
+    create: {
+      id: 'seed-pool-2a',
+      name: 'Division A',
+      description: 'Eastern division teams',
+      maxTeams: 8,
+      tournamentId: tournament2.id
+    }
+  });
+
+  const pool2B = await prisma.tournamentPool.upsert({
+    where: { id: 'seed-pool-2b' },
+    update: {},
+    create: {
+      id: 'seed-pool-2b',
+      name: 'Division B',
+      description: 'Western division teams',
+      maxTeams: 8,
+      tournamentId: tournament2.id
+    }
+  });
+
+  console.log('Created tournament 2 with 2 pools');
+
+  // Create teams for Pool 2A (5 teams registered)
+  const teamNamesPool2A = [
+    'Lakers Jr', 'Celtics Youth', 'Bulls Brigade', 'Warriors Way', 'Nets Next'
+  ];
+  for (let i = 0; i < teamNamesPool2A.length; i++) {
+    await prisma.tournamentTeam.upsert({
+      where: { id: `seed-team-2a-${i}` },
+      update: {},
+      create: {
+        id: `seed-team-2a-${i}`,
+        name: teamNamesPool2A[i],
+        captainName: `Captain ${teamNamesPool2A[i]}`,
+        captainEmail: `captain.${i}@pool2A.com`,
+        captainUserId: [user1.id, user2.id, user3.id, user4.id][i % 4],
+        tournamentId: tournament2.id,
+        poolId: pool2A.id,
+        poolNumber: 1,
+        poolName: pool2A.name,
+        registrationOrder: i + 1
+      }
+    });
+  }
+
+  // Create teams for Pool 2B (6 teams registered)
+  const teamNamesPool2B = [
+    'Heat Wave', 'Suns Rising', 'Clippers Elite', 'Blazers Best', 'Rockets Red', 'Spurs Special'
+  ];
+  for (let i = 0; i < teamNamesPool2B.length; i++) {
+    await prisma.tournamentTeam.upsert({
+      where: { id: `seed-team-2b-${i}` },
+      update: {},
+      create: {
+        id: `seed-team-2b-${i}`,
+        name: teamNamesPool2B[i],
+        captainName: `Captain ${teamNamesPool2B[i]}`,
+        captainEmail: `captain.${i}@pool2B.com`,
+        captainUserId: [user1.id, user2.id, user3.id, user4.id][i % 4],
+        tournamentId: tournament2.id,
+        poolId: pool2B.id,
+        poolNumber: 2,
+        poolName: pool2B.name,
+        registrationOrder: i + 1
+      }
+    });
+  }
+
+  console.log('Created tournament 2 teams');
+
+  // Tournament 3: Tennis Tournament with 4 pools (different sizes)
+  const tournament3 = await prisma.tournament.upsert({
+    where: { id: 'seed-tournament-3' },
+    update: {},
+    create: {
+      id: 'seed-tournament-3',
+      name: 'Fall Tennis Open',
+      description: 'Open tennis tournament with multiple skill categories',
+      sportType: 'tennis',
+      format: 'groups_knockout',
+      status: 'draft',
+      startDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days from now
+      endDate: new Date(Date.now() + 62 * 24 * 60 * 60 * 1000), // 62 days from now
+      registrationDeadline: new Date(Date.now() + 55 * 24 * 60 * 60 * 1000), // 55 days from now
+      maxTeams: 20,
+      location: 'City Tennis Club',
+      city: 'Chicago',
+      country: 'USA',
+      latitude: 41.8781,
+      longitude: -87.6298,
+      locationName: 'City Tennis Club',
+      organizerId: user3.id,
+      groupId: group3.id,
+      isPublic: true,
+      allowLateRegistration: false,
+      autoGenerateBrackets: false,
+      useManualBrackets: true,
+      prizesDescription: 'Cash prizes for winners',
+      rulesDescription: 'ITF rules'
+    }
+  });
+
+  // Create pools for tournament 3 (different sizes)
+  const pool3A = await prisma.tournamentPool.upsert({
+    where: { id: 'seed-pool-3a' },
+    update: {},
+    create: {
+      id: 'seed-pool-3a',
+      name: 'Singles - Men',
+      description: 'Men singles competition',
+      maxTeams: 8,
+      tournamentId: tournament3.id
+    }
+  });
+
+  const pool3B = await prisma.tournamentPool.upsert({
+    where: { id: 'seed-pool-3b' },
+    update: {},
+    create: {
+      id: 'seed-pool-3b',
+      name: 'Singles - Women',
+      description: 'Women singles competition',
+      maxTeams: 6,
+      tournamentId: tournament3.id
+    }
+  });
+
+  const pool3C = await prisma.tournamentPool.upsert({
+    where: { id: 'seed-pool-3c' },
+    update: {},
+    create: {
+      id: 'seed-pool-3c',
+      name: 'Doubles - Mixed',
+      description: 'Mixed doubles competition',
+      maxTeams: 4,
+      tournamentId: tournament3.id
+    }
+  });
+
+  const pool3D = await prisma.tournamentPool.upsert({
+    where: { id: 'seed-pool-3d' },
+    update: {},
+    create: {
+      id: 'seed-pool-3d',
+      name: 'Youth Category',
+      description: 'For players under 18',
+      maxTeams: 2,
+      tournamentId: tournament3.id
+    }
+  });
+
+  console.log('Created tournament 3 with 4 pools of different sizes');
+
+  // Create some teams for tournament 3
+  await prisma.tournamentTeam.upsert({
+    where: { id: 'seed-team-3a-0' },
+    update: {},
+    create: {
+      id: 'seed-team-3a-0',
+      name: 'Federer Fan',
+      captainName: 'Roger Smith',
+      captainEmail: 'roger@tennis.com',
+      captainUserId: user1.id,
+      tournamentId: tournament3.id,
+      poolId: pool3A.id,
+      poolNumber: 1,
+      poolName: pool3A.name,
+      registrationOrder: 1
+    }
+  });
+
+  await prisma.tournamentTeam.upsert({
+    where: { id: 'seed-team-3b-0' },
+    update: {},
+    create: {
+      id: 'seed-team-3b-0',
+      name: 'Serena Sisters',
+      captainName: 'Venus Williams',
+      captainEmail: 'venus@tennis.com',
+      captainUserId: user4.id,
+      tournamentId: tournament3.id,
+      poolId: pool3B.id,
+      poolNumber: 2,
+      poolName: pool3B.name,
+      registrationOrder: 1
+    }
+  });
+
+  // Full pool with waitlist for tournament 3 - Youth Category
+  await prisma.tournamentTeam.upsert({
+    where: { id: 'seed-team-3d-0' },
+    update: {},
+    create: {
+      id: 'seed-team-3d-0',
+      name: 'Young Guns 1',
+      captainName: 'Teen Captain 1',
+      captainEmail: 'teen1@tennis.com',
+      captainUserId: user2.id,
+      tournamentId: tournament3.id,
+      poolId: pool3D.id,
+      poolNumber: 4,
+      poolName: pool3D.name,
+      registrationOrder: 1
+    }
+  });
+
+  await prisma.tournamentTeam.upsert({
+    where: { id: 'seed-team-3d-1' },
+    update: {},
+    create: {
+      id: 'seed-team-3d-1',
+      name: 'Young Guns 2',
+      captainName: 'Teen Captain 2',
+      captainEmail: 'teen2@tennis.com',
+      captainUserId: user3.id,
+      tournamentId: tournament3.id,
+      poolId: pool3D.id,
+      poolNumber: 4,
+      poolName: pool3D.name,
+      registrationOrder: 2
+    }
+  });
+
+  // Add 3 teams to waitlist for Youth Category
+  const waitlistYouth1 = await prisma.tournamentTeam.upsert({
+    where: { id: 'seed-team-3d-wait-1' },
+    update: {},
+    create: {
+      id: 'seed-team-3d-wait-1',
+      name: 'Junior Hopefuls',
+      captainName: 'Junior Captain',
+      captainEmail: 'junior@tennis.com',
+      captainUserId: user1.id,
+      tournamentId: tournament3.id
+    }
+  });
+
+  const waitlistYouth2 = await prisma.tournamentTeam.upsert({
+    where: { id: 'seed-team-3d-wait-2' },
+    update: {},
+    create: {
+      id: 'seed-team-3d-wait-2',
+      name: 'Youth Stars',
+      captainName: 'Youth Captain',
+      captainEmail: 'youth@tennis.com',
+      captainUserId: user2.id,
+      tournamentId: tournament3.id
+    }
+  });
+
+  const waitlistYouth3 = await prisma.tournamentTeam.upsert({
+    where: { id: 'seed-team-3d-wait-3' },
+    update: {},
+    create: {
+      id: 'seed-team-3d-wait-3',
+      name: 'Teen Dreams',
+      captainName: 'Dream Captain',
+      captainEmail: 'dream@tennis.com',
+      captainUserId: user3.id,
+      tournamentId: tournament3.id
+    }
+  });
+
+  await prisma.tournamentPoolWaitlist.upsert({
+    where: { id: 'seed-waitlist-3' },
+    update: {},
+    create: {
+      id: 'seed-waitlist-3',
+      poolId: pool3D.id,
+      teamId: waitlistYouth1.id,
+      position: 1
+    }
+  });
+
+  await prisma.tournamentPoolWaitlist.upsert({
+    where: { id: 'seed-waitlist-4' },
+    update: {},
+    create: {
+      id: 'seed-waitlist-4',
+      poolId: pool3D.id,
+      teamId: waitlistYouth2.id,
+      position: 2
+    }
+  });
+
+  await prisma.tournamentPoolWaitlist.upsert({
+    where: { id: 'seed-waitlist-5' },
+    update: {},
+    create: {
+      id: 'seed-waitlist-5',
+      poolId: pool3D.id,
+      teamId: waitlistYouth3.id,
+      position: 3
+    }
+  });
+
+  console.log('Created tournament 3 teams and waitlists');
+
   console.log('\n========================================');
   console.log('Seeding completed successfully!');
   console.log('========================================');
@@ -787,6 +1354,11 @@ async function main() {
   console.log('- Event Reminders: 3');
   console.log('- Event Comments: 4');
   console.log('- Guest Participants: 3');
+  console.log('- Tournaments: 3 (upcoming only)');
+  console.log('- Tournament Pools: 9 (with varying team capacities)');
+  console.log('- Tournament Teams: 30+');
+  console.log('- Waitlist Entries: 5 (across multiple pools)');
+  console.log('- Tournament Players: 3+');
   console.log('========================================');
 }
 
