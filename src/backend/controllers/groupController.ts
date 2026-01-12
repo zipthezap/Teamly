@@ -198,12 +198,6 @@ export const getGroups = async (req: Request, res: Response) => {
     });
 
 
-    // Log group and member info for debugging
-    groups.forEach((group: any) => {
-      // eslint-disable-next-line no-console
-      console.log('[getGroups] group:', group.id, group.name, 'members:', group.members.map((m: any) => ({ userId: m.user.id, name: m.user.name, role: m.role })));
-    });
-
     // Map each group to flatten member user fields
     const mappedGroups = groups.map((group: any) => ({
       ...group,
