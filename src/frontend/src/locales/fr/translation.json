@@ -1,10 +1,3 @@
-    "events": {
-      "type": {
-        "running": "Course à pied",
-        "cycling": "Cyclisme",
-        "swimming": "Natation"
-      }
-    },
 {
   "common": {
     "teamly": "Teamly",
@@ -269,7 +262,10 @@
       "rugby": "Rugby",
       "hockey": "Hockey",
       "baseball": "Baseball",
-      "other": "Autre"
+      "other": "Autre",
+      "running": "Course à pied",
+      "cycling": "Cyclisme",
+      "swimming": "Natation"
     },
     "eventRequests": {
       "title": "Demandes d'événement",

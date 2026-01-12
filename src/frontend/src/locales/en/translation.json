@@ -1,10 +1,3 @@
-    "events": {
-      "type": {
-        "running": "Running",
-        "cycling": "Cycling",
-        "swimming": "Swimming"
-      }
-    },
 {
   "common": {
     "confirmed": "Confirmed",
@@ -269,7 +262,10 @@
       "rugby": "Rugby",
       "hockey": "Hockey",
       "baseball": "Baseball",
-      "other": "Other"
+      "other": "Other",
+      "running": "Running",
+      "cycling": "Cycling",
+      "swimming": "Swimming"
     },
     "eventRequests": {
       "title": "Event Requests",
