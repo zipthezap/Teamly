@@ -302,6 +302,13 @@ enum SportType {
   running
   cycling
   swimming
+  cricket
+  americanFootball
+  iceHockey
+  baseball
+  rugby
+  handball
+  fieldHockey
   other
 }
 

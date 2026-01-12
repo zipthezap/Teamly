@@ -56,6 +56,13 @@ export enum SportType {
   running = 'running',
   cycling = 'cycling',
   swimming = 'swimming',
+  cricket = 'cricket',
+  americanFootball = 'americanFootball',
+  iceHockey = 'iceHockey',
+  baseball = 'baseball',
+  rugby = 'rugby',
+  handball = 'handball',
+  fieldHockey = 'fieldHockey',
   other = 'other',
 }
 
