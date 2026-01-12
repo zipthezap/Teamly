@@ -6,6 +6,7 @@ import compression from 'compression';
 import path from 'path';
 import session from 'express-session';
 import passport from './config/passport';
+import crypto from 'crypto';
 
 import authRoutes from './routes/authRoutes';
 import groupRoutes from './routes/groupRoutes';
@@ -51,6 +52,19 @@ try {
 
 // Setup graceful shutdown handlers
 setupGracefulShutdown();
+
+/**
+ * Timing-safe string comparison to prevent timing attacks
+ * Uses crypto.timingSafeEqual with length validation
+ */
+const timingSafeCompare = (a: string, b: string): boolean => {
+  if (!a || !b || a.length !== b.length) {
+    return false;
+  }
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  return crypto.timingSafeEqual(bufA, bufB);
+};
 
 const app: Application = express();
 const PORT = config.port;
@@ -180,11 +194,12 @@ app.use('/api/tournaments', tournamentRoutes);
 // For now, we'll add a simple token-based authentication
 app.get('/metrics', (req: Request, res: Response, next) => {
   // Allow access if METRICS_TOKEN is not set (for backward compatibility)
-  // Or if the provided token matches
+  // Or if the provided token matches (using timing-safe comparison)
   const metricsToken = process.env.METRICS_TOKEN;
   if (metricsToken) {
     const authHeader = req.headers.authorization;
-    if (!authHeader || authHeader !== `Bearer ${metricsToken}`) {
+    const providedToken = authHeader?.replace('Bearer ', '');
+    if (!providedToken || !timingSafeCompare(providedToken, metricsToken)) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
@@ -201,10 +216,11 @@ app.get('/health', async (req: Request, res: Response) => {
                      : healthCheck.status === 'degraded' ? 200 
                      : 503;
     
-    // Check if detailed health info is requested with auth token
+    // Check if detailed health info is requested with auth token (using timing-safe comparison)
     const healthToken = process.env.HEALTH_CHECK_TOKEN;
     const authHeader = req.headers.authorization;
-    const isAuthenticated = !healthToken || (authHeader && authHeader === `Bearer ${healthToken}`);
+    const providedToken = authHeader?.replace('Bearer ', '');
+    const isAuthenticated = !healthToken || (providedToken && timingSafeCompare(providedToken, healthToken));
     
     // Return detailed info only if authenticated, otherwise return basic status
     if (isAuthenticated) {

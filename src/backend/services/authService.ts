@@ -48,12 +48,19 @@ export const hashPassword = async (password: string) => {
 };
 
 /**
+ * Hashes a token for secure storage
+ */
+export const hashToken = (token: string) => {
+  return crypto.createHash('sha256').update(token).digest('hex');
+};
+
+/**
  * Generates email verification token
  * Returns both the plain token (to send to user) and hashed token (to store in DB)
  */
 export const generateEmailVerificationToken = () => {
   const token = crypto.randomBytes(32).toString('hex');
-  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+  const hashedToken = hashToken(token);
   return { token, hashedToken };
 };
 
@@ -63,15 +70,8 @@ export const generateEmailVerificationToken = () => {
  */
 export const generatePasswordResetToken = () => {
   const token = crypto.randomBytes(32).toString('hex');
-  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+  const hashedToken = hashToken(token);
   return { token, hashedToken };
-};
-
-/**
- * Hashes a token for secure storage
- */
-export const hashToken = (token: string) => {
-  return crypto.createHash('sha256').update(token).digest('hex');
 };
 
 /**
