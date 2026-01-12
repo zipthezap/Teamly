@@ -44,7 +44,7 @@ const AuthCallback = () => {
       if (inviteGroupId) {
         try {
           // Fetch user profile from server
-          const profileResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/profile`, {
+          const profileResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/auth/profile`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }

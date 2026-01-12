@@ -80,7 +80,8 @@ const LookingForPlayTab = () => {
       const response = await teamUpAPI.getAll(params);
       
       // Sort by urgency: soonest events first
-      const sortedRequests = response.data.sort((a: TeamUpRequest, b: TeamUpRequest) => {
+      const requestsArray = Array.isArray(response.data) ? response.data : [];
+      const sortedRequests = requestsArray.sort((a: TeamUpRequest, b: TeamUpRequest) => {
         const aDate = new Date(a.dateTime).getTime();
         const bDate = new Date(b.dateTime).getTime();
         const now = Date.now();

@@ -150,10 +150,13 @@ export default function GroupDetailsPage() {
       // Optimistically update group members
       await queryClient.cancelQueries({ queryKey: ["groupDetails", groupId] });
       const prevGroup = queryClient.getQueryData(["groupDetails", groupId]);
-      if (prevGroup && (prevGroup as GroupWithDetails).members) {
+      const membersArray = Array.isArray((prevGroup as GroupWithDetails).members)
+        ? (prevGroup as GroupWithDetails).members
+        : [];
+      if (prevGroup) {
         queryClient.setQueryData(["groupDetails", groupId], {
           ...(prevGroup as GroupWithDetails),
-          members: (prevGroup as GroupWithDetails).members.filter((m: GroupMember) => m.userId !== email),
+          members: membersArray.filter((m: GroupMember) => m.userId !== email),
         });
       }
       return { prevGroup };
@@ -302,7 +305,8 @@ export default function GroupDetailsPage() {
 
   // Admin leave logic: require transfer
   const handleLeaveGroup = () => {
-    if (isAdmin && group?.members?.filter((m: GroupMember) => m.role !== "admin").length > 0) {
+    const membersArray = Array.isArray(group?.members) ? group.members : [];
+    if (isAdmin && membersArray.filter((m: GroupMember) => m.role !== "admin").length > 0) {
       setShowAdminTransfer(true);
     } else {
       setShowLeaveConfirm(true);

@@ -36,7 +36,7 @@ const Register = () => {
     const inviteGroupId = params.get('invite');
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
     
-    const authUrl = new URL(`/api/auth/${provider}`, apiUrl);
+    const authUrl = new URL(`/auth/${provider}`, apiUrl);
     if (inviteGroupId) {
       authUrl.searchParams.set('inviteGroupId', inviteGroupId);
     }

@@ -98,7 +98,7 @@ const EventsList = () => {
       const offset = (page - 1) * visibleCount;
       const params: EventSearchParams = { ...searchFilters, offset, limit: visibleCount };
       const response = await eventsAPI.getAll(params);
-      setEvents(response.data);
+      setEvents(Array.isArray(response.data) ? response.data : response.data?.data ?? []);
     } finally {
       setIsLoading(false);
       setIsFetching(false);
@@ -272,9 +272,12 @@ const EventsList = () => {
   // eslint-disable-next-line no-console
   console.log('[EventsList] userGroupIds:', userGroupIds);
 
+  // Ensure events is always an array
+  const eventsArray = Array.isArray(events) ? events : [];
+
   if (tab === 'my') {
     // Only events the user is joined in (participant or creator), upcoming only
-    filteredEvents = events.filter(event => {
+    filteredEvents = eventsArray.filter(event => {
       const eventDate = new Date(event.startTime);
       const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user?.id);
       const isCreator = event.creatorId === user?.id;
@@ -282,7 +285,7 @@ const EventsList = () => {
     });
   } else if (tab === 'upcoming') {
     // Only events the user has NOT joined yet, from their groups (public or private) or public events from other groups
-    filteredEvents = events.filter(event => {
+    filteredEvents = eventsArray.filter(event => {
       const eventDate = new Date(event.startTime);
       const isUserGroup = event.group && userGroupIds.includes(event.group.id);
       const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user?.id);
@@ -297,7 +300,7 @@ const EventsList = () => {
     });
   } else {
     // Past events where user is a participant or creator
-    filteredEvents = events.filter(event => {
+    filteredEvents = eventsArray.filter(event => {
       const eventDate = new Date(event.startTime);
       const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user?.id);
       const isCreator = event.creatorId === user?.id;

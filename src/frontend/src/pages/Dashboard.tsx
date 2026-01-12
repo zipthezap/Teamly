@@ -43,8 +43,9 @@ const Dashboard = () => {
         eventsAPI.getAll(),
       ]);
       setGroups(groupsRes.data);
-      // Sort events by startTime
-      const sortedEvents = eventsRes.data.sort((a, b) => 
+      // Ensure eventsRes.data is an array before sorting
+      const eventsArray = Array.isArray(eventsRes.data) ? eventsRes.data : (eventsRes.data?.data ?? []);
+      const sortedEvents = eventsArray.sort((a, b) => 
         new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
       );
       setEvents(sortedEvents);
