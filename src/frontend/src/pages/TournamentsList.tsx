@@ -23,9 +23,16 @@ import {
 import { tournamentAPI } from '../services/tournamentAPI';
 import { Tournament, TournamentStatus } from '../../../shared/types';
 
+interface TournamentWithCount extends Tournament {
+  _count?: {
+    teams: number;
+    matches: number;
+  };
+}
+
 const TournamentsList: React.FC = () => {
   const navigate = useNavigate();
-  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [tournaments, setTournaments] = useState<TournamentWithCount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -111,7 +118,7 @@ const TournamentsList: React.FC = () => {
         </Card>
       ) : (
         <Grid container spacing={3}>
-          {tournaments.map((tournament: any) => (
+          {tournaments.map((tournament) => (
             <Grid item xs={12} md={6} lg={4} key={tournament.id}>
               <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                 <CardContent sx={{ flexGrow: 1 }}>

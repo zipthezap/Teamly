@@ -15,7 +15,7 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { tournamentAPI } from '../services/tournamentAPI';
-import { CreateTournamentDto, TournamentFormat, SportType } from '../../../shared/types';
+import { CreateTournamentDto, TournamentFormat } from '../../../shared/types';
 
 const CreateTournament: React.FC = () => {
   const navigate = useNavigate();

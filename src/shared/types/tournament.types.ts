@@ -81,6 +81,8 @@ export interface TournamentMatch {
   completedAt?: Date | string;
   createdAt: Date | string;
   updatedAt: Date | string;
+  homeTeam?: TournamentTeam;
+  awayTeam?: TournamentTeam;
 }
 
 export interface TournamentStanding {
@@ -95,6 +97,7 @@ export interface TournamentStanding {
   goalsAgainst: number;
   groupName?: string;
   updatedAt: Date | string;
+  team?: TournamentTeam;
 }
 
 export interface TournamentWithDetails extends Tournament {

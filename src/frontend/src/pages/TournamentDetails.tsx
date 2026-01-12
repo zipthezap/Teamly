@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import {
   Container,
   Typography,
@@ -60,6 +61,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => {
 const TournamentDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [tournament, setTournament] = useState<TournamentWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -192,7 +194,7 @@ const TournamentDetails: React.FC = () => {
     );
   }
 
-  const isOrganizer = true; // TODO: Check if current user is organizer
+  const isOrganizer = user?.id === tournament.organizerId;
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -314,7 +316,7 @@ const TournamentDetails: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {tournament.teams?.map((team: any) => (
+                {tournament.teams?.map((team) => (
                   <TableRow key={team.id}>
                     <TableCell>{team.name}</TableCell>
                     <TableCell>{team.captainName || '-'}</TableCell>
@@ -348,7 +350,7 @@ const TournamentDetails: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {tournament.matches.map((match: any) => (
+                  {tournament.matches.map((match) => (
                     <TableRow key={match.id}>
                       <TableCell>
                         {match.stage?.replace('_', ' ').toUpperCase() || 
@@ -409,7 +411,7 @@ const TournamentDetails: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {tournament.standings.map((standing: any, index: number) => (
+                  {tournament.standings.map((standing, index: number) => (
                     <TableRow key={standing.id}>
                       <TableCell>{index + 1}</TableCell>
                       <TableCell>{standing.team.name}</TableCell>

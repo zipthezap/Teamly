@@ -231,14 +231,12 @@ export const updateStandings = async (matchId: string) => {
   }
   
   // Update or create standings for home team
+  const homeWhere = groupName 
+    ? { tournamentId_teamId_groupName: { tournamentId: match.tournamentId, teamId: homeTeamId, groupName } }
+    : { tournamentId_teamId_groupName: { tournamentId: match.tournamentId, teamId: homeTeamId, groupName: null } };
+    
   await prisma.tournamentStanding.upsert({
-    where: {
-      tournamentId_teamId_groupName: {
-        tournamentId: match.tournamentId,
-        teamId: homeTeamId,
-        groupName: groupName || ''
-      }
-    },
+    where: homeWhere,
     update: {
       points: { increment: homePoints },
       wins: { increment: homeWin },
@@ -250,7 +248,7 @@ export const updateStandings = async (matchId: string) => {
     create: {
       tournamentId: match.tournamentId,
       teamId: homeTeamId,
-      groupName: groupName || '',
+      groupName: groupName || null,
       points: homePoints,
       wins: homeWin,
       draws: homeDraw,
@@ -261,14 +259,12 @@ export const updateStandings = async (matchId: string) => {
   });
   
   // Update or create standings for away team
+  const awayWhere = groupName 
+    ? { tournamentId_teamId_groupName: { tournamentId: match.tournamentId, teamId: awayTeamId, groupName } }
+    : { tournamentId_teamId_groupName: { tournamentId: match.tournamentId, teamId: awayTeamId, groupName: null } };
+    
   await prisma.tournamentStanding.upsert({
-    where: {
-      tournamentId_teamId_groupName: {
-        tournamentId: match.tournamentId,
-        teamId: awayTeamId,
-        groupName: groupName || ''
-      }
-    },
+    where: awayWhere,
     update: {
       points: { increment: awayPoints },
       wins: { increment: awayWin },
@@ -280,7 +276,7 @@ export const updateStandings = async (matchId: string) => {
     create: {
       tournamentId: match.tournamentId,
       teamId: awayTeamId,
-      groupName: groupName || '',
+      groupName: groupName || null,
       points: awayPoints,
       wins: awayWin,
       draws: awayDraw,
