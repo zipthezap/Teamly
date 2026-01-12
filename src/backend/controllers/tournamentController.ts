@@ -1288,9 +1288,9 @@ export const addPlayer = async (req: Request, res: Response) => {
     const player = await prisma.tournamentPlayer.create({
       data: {
         teamId,
-        userId: playerId || undefined,
+        userId: playerId,
         playerName,
-        playerEmail: playerEmail || undefined
+        playerEmail
       },
       include: {
         user: {

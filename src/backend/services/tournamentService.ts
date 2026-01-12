@@ -69,14 +69,14 @@ export const isTeamCaptain = async (teamId: string, userId: string): Promise<boo
  * Check if user is a registered player on a team
  */
 export const isRegisteredPlayer = async (teamId: string, userId: string): Promise<boolean> => {
-  const player = await prisma.tournamentPlayer.findFirst({
+  const count = await prisma.tournamentPlayer.count({
     where: { 
       teamId,
       userId
     }
   });
   
-  return !!player;
+  return count > 0;
 };
 
 /**
