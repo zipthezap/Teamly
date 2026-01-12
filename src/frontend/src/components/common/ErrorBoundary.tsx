@@ -4,7 +4,7 @@
  */
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { logError } from '../utils/errorHandler';
+import { logError } from '../../utils/errorHandler';
 
 interface Props {
   children: ReactNode;

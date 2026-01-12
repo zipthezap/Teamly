@@ -243,7 +243,7 @@ export const retryRequest = async <T>(
       }
       
       // Calculate delay with exponential backoff
-      const delay = Math.min(initialDelay * Math.pow(2, attempt), maxDelay);
+      const delay = Math.min(initialDelay * (1 << attempt), maxDelay);
       
       // Wait before retrying
       await new Promise(resolve => setTimeout(resolve, delay));

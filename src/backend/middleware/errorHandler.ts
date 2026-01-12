@@ -70,7 +70,7 @@ export const errorHandler = (
  * Check if error is a Prisma error
  */
 export const isPrismaError = (err: any): boolean => {
-  return err.code && err.code.startsWith('P') || err.name?.includes('Prisma');
+  return (err.code && err.code.startsWith('P')) || err.name?.includes('Prisma');
 };
 
 /**
