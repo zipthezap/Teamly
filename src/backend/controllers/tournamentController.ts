@@ -1876,11 +1876,21 @@ export const removeTeamFromPool = async (req: Request, res: Response) => {
         });
 
         // Update positions for remaining waitlist entries
-        await prisma.$executeRaw`
-          UPDATE "TournamentPoolWaitlist"
-          SET position = position - 1
-          WHERE "poolId" = ${poolId} AND position > ${firstWaitlistEntry.position}
-        `;
+        // Get all waitlist entries after the promoted one
+        const remainingEntries = await prisma.tournamentPoolWaitlist.findMany({
+          where: { 
+            poolId,
+            position: { gt: firstWaitlistEntry.position }
+          }
+        });
+
+        // Update each entry's position
+        for (const entry of remainingEntries) {
+          await prisma.tournamentPoolWaitlist.update({
+            where: { id: entry.id },
+            data: { position: entry.position - 1 }
+          });
+        }
 
         logger.info('Team promoted from waitlist', 'TournamentController', {
           tournamentId: id,
@@ -1957,11 +1967,20 @@ export const removeTeamFromWaitlist = async (req: Request, res: Response) => {
     });
 
     // Update positions for remaining entries
-    await prisma.$executeRaw`
-      UPDATE "TournamentPoolWaitlist"
-      SET position = position - 1
-      WHERE "poolId" = ${poolId} AND position > ${waitlistEntry.position}
-    `;
+    const remainingEntries = await prisma.tournamentPoolWaitlist.findMany({
+      where: { 
+        poolId,
+        position: { gt: waitlistEntry.position }
+      }
+    });
+
+    // Update each entry's position
+    for (const entry of remainingEntries) {
+      await prisma.tournamentPoolWaitlist.update({
+        where: { id: entry.id },
+        data: { position: entry.position - 1 }
+      });
+    }
 
     logger.info('Team removed from waitlist', 'TournamentController', {
       tournamentId: id,
