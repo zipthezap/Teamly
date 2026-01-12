@@ -12,12 +12,16 @@ export const sanitizeTournamentData = (data: {
   description?: string;
   location?: string;
   locationName?: string;
+  prizesDescription?: string;
+  rulesDescription?: string;
 }) => {
   return {
     name: data.name?.trim() || '',
     description: data.description?.trim() || '',
     location: data.location?.trim() || '',
-    locationName: data.locationName?.trim() || ''
+    locationName: data.locationName?.trim() || '',
+    prizesDescription: data.prizesDescription?.trim() || '',
+    rulesDescription: data.rulesDescription?.trim() || ''
   };
 };
 

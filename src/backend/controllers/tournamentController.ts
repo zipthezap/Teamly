@@ -29,7 +29,18 @@ export const createTournament = async (req: Request, res: Response) => {
       locationName,
       city,
       country,
-      groupId
+      groupId,
+      // Admin controls
+      registrationDeadline,
+      isPublic,
+      allowLateRegistration,
+      autoGenerateBrackets,
+      prizesDescription,
+      rulesDescription,
+      contactEmail,
+      // Recurring tournament
+      isRecurring,
+      recurrenceRule
     } = req.body;
 
     const userId = (req as any).userId;
@@ -45,7 +56,9 @@ export const createTournament = async (req: Request, res: Response) => {
       name,
       description,
       location,
-      locationName
+      locationName,
+      prizesDescription,
+      rulesDescription
     });
 
     if (!sanitized.name) {
@@ -58,6 +71,17 @@ export const createTournament = async (req: Request, res: Response) => {
     const dateValidation = tournamentService.validateTournamentDates(startDate, endDate);
     if (!dateValidation.valid) {
       return res.status(400).json({ error: dateValidation.error });
+    }
+
+    // Validate registration deadline if provided
+    if (registrationDeadline) {
+      const regDate = new Date(registrationDeadline);
+      const startDateObj = new Date(startDate);
+      if (regDate >= startDateObj) {
+        return res.status(400).json({
+          error: 'Registration deadline must be before the start date'
+        });
+      }
     }
 
     // Validate coordinates if provided
@@ -105,7 +129,18 @@ export const createTournament = async (req: Request, res: Response) => {
         city,
         country,
         organizerId: userId,
-        groupId: groupId || undefined
+        groupId: groupId || undefined,
+        // Admin controls
+        registrationDeadline: registrationDeadline ? new Date(registrationDeadline) : undefined,
+        isPublic: isPublic !== undefined ? isPublic : true,
+        allowLateRegistration: allowLateRegistration || false,
+        autoGenerateBrackets: autoGenerateBrackets || false,
+        prizesDescription: sanitized.prizesDescription || undefined,
+        rulesDescription: sanitized.rulesDescription || undefined,
+        contactEmail: contactEmail || undefined,
+        // Recurring tournament
+        isRecurring: isRecurring || false,
+        recurrenceRule: recurrenceRule || undefined
       },
       include: {
         organizer: {
@@ -119,7 +154,8 @@ export const createTournament = async (req: Request, res: Response) => {
 
     logger.info('Tournament created', 'TournamentController', {
       tournamentId: tournament.id,
-      userId
+      userId,
+      isRecurring: tournament.isRecurring
     });
 
     res.status(201).json(tournament);
@@ -240,7 +276,13 @@ export const updateTournament = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = (req as any).userId;
-    const { name, description, status, startDate, endDate, maxTeams, location, locationName, city, country, latitude, longitude } = req.body;
+    const { 
+      name, description, status, startDate, endDate, maxTeams, 
+      location, locationName, city, country, latitude, longitude,
+      // Admin controls
+      registrationDeadline, isPublic, allowLateRegistration,
+      autoGenerateBrackets, prizesDescription, rulesDescription, contactEmail
+    } = req.body;
 
     const tournament = await prisma.tournament.findUnique({
       where: { id }
@@ -312,6 +354,31 @@ export const updateTournament = async (req: Request, res: Response) => {
       }
       updateData.latitude = parseFloat(latitude);
       updateData.longitude = parseFloat(longitude);
+    }
+
+    // Admin controls
+    if (registrationDeadline !== undefined) {
+      updateData.registrationDeadline = registrationDeadline ? new Date(registrationDeadline) : null;
+    }
+    if (isPublic !== undefined) {
+      updateData.isPublic = isPublic;
+    }
+    if (allowLateRegistration !== undefined) {
+      updateData.allowLateRegistration = allowLateRegistration;
+    }
+    if (autoGenerateBrackets !== undefined) {
+      updateData.autoGenerateBrackets = autoGenerateBrackets;
+    }
+    if (prizesDescription !== undefined) {
+      const sanitized = tournamentService.sanitizeTournamentData({ prizesDescription });
+      updateData.prizesDescription = sanitized.prizesDescription || null;
+    }
+    if (rulesDescription !== undefined) {
+      const sanitized = tournamentService.sanitizeTournamentData({ rulesDescription });
+      updateData.rulesDescription = sanitized.rulesDescription || null;
+    }
+    if (contactEmail !== undefined) {
+      updateData.contactEmail = contactEmail || null;
     }
 
     const updatedTournament = await prisma.tournament.update({

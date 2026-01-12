@@ -682,6 +682,22 @@ model Tournament {
   groupId     String?
   group       Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
   
+  // Admin controls
+  registrationDeadline DateTime?
+  isPublic            Boolean  @default(true)
+  allowLateRegistration Boolean @default(false)
+  autoGenerateBrackets Boolean @default(false)
+  prizesDescription   String?
+  rulesDescription    String?
+  contactEmail        String?
+  
+  // Recurring tournament support
+  isRecurring         Boolean  @default(false)
+  recurrenceRule      String?  // RRule format
+  parentTournamentId  String?
+  parentTournament    Tournament? @relation("RecurringTournaments", fields: [parentTournamentId], references: [id], onDelete: SetNull)
+  childTournaments    Tournament[] @relation("RecurringTournaments")
+  
   teams       TournamentTeam[]
   matches     TournamentMatch[]
   standings   TournamentStanding[]
@@ -692,6 +708,8 @@ model Tournament {
   @@index([startDate])
   @@index([sportType])
   @@index([city, country])
+  @@index([isPublic])
+  @@index([parentTournamentId])
 }
 
 model TournamentTeam {
