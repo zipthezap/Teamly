@@ -18,9 +18,6 @@ import {
   DialogActions,
   IconButton,
   Badge,
-  Avatar,
-  Divider,
-  Collapse,
   ToggleButton,
   ToggleButtonGroup,
 } from '@mui/material';
@@ -31,13 +28,10 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PeopleIcon from '@mui/icons-material/People';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CancelIcon from '@mui/icons-material/Cancel';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useAuth } from '../../contexts/AuthContext';
-import { getImageUrl, getInitials } from '../../utils/imageUtils';
 import { TeamUpRequest, CreateTeamUpRequestData, UpdateTeamUpRequestData } from '../../types/teamup';
+import TeamUpDetailModal from './TeamUpDetailModal';
 
 const SPORT_TYPES = [
   'Football/Soccer',
@@ -67,7 +61,8 @@ const NeedPlayersTab = () => {
   const [success, setSuccess] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [editingRequest, setEditingRequest] = useState<TeamUpRequest | null>(null);
-  const [expandedRequests, setExpandedRequests] = useState<Set<string>>(new Set());
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [openDetailModal, setOpenDetailModal] = useState(false);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -200,33 +195,18 @@ const NeedPlayersTab = () => {
     }
   };
 
-  const handleResponse = async (requestId: string, responseId: string, action: 'accept' | 'decline') => {
-    try {
-      await teamUpAPI.handleResponse(requestId, responseId, action);
-      setSuccess(
-        action === 'accept'
-          ? t('teamup.acceptResponseSuccess')
-          : t('teamup.declineResponseSuccess')
-      );
-      fetchMyRequests();
-    } catch (err: any) {
-      console.error('Error handling response:', err);
-      setError(
-        action === 'accept'
-          ? t('teamup.acceptResponseError')
-          : t('teamup.declineResponseError')
-      );
-    }
+  const handleOpenDetailModal = (requestId: string) => {
+    setSelectedRequestId(requestId);
+    setOpenDetailModal(true);
   };
 
-  const toggleExpanded = (requestId: string) => {
-    const newExpanded = new Set(expandedRequests);
-    if (newExpanded.has(requestId)) {
-      newExpanded.delete(requestId);
-    } else {
-      newExpanded.add(requestId);
-    }
-    setExpandedRequests(newExpanded);
+  const handleCloseDetailModal = () => {
+    setOpenDetailModal(false);
+    setSelectedRequestId(null);
+  };
+
+  const handleDetailModalUpdate = () => {
+    fetchMyRequests();
   };
 
   const getResponseStats = (request: TeamUpRequest) => {
@@ -381,6 +361,7 @@ const NeedPlayersTab = () => {
                         size="small"
                         onClick={() => handleOpenDialog(request)}
                         color="primary"
+                        title={t('common.edit')}
                       >
                         <EditIcon />
                       </IconButton>
@@ -388,9 +369,18 @@ const NeedPlayersTab = () => {
                         size="small"
                         onClick={() => handleDelete(request.id)}
                         color="error"
+                        title={t('common.delete')}
                       >
                         <DeleteIcon />
                       </IconButton>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<VisibilityIcon />}
+                        onClick={() => handleOpenDetailModal(request.id)}
+                      >
+                        {t('common.viewDetails')}
+                      </Button>
                       {request.status === 'open' && (
                         <Button
                           size="small"
@@ -432,120 +422,56 @@ const NeedPlayersTab = () => {
             <Grid container spacing={3}>
               {requestsWithResponses.map((request) => {
                 const stats = getResponseStats(request);
-                const isExpanded = expandedRequests.has(request.id);
                 const spotsLeft = request.playersNeeded - stats.accepted;
 
                 return (
-                  <Grid item xs={12} key={request.id}>
-                    <Card>
+                  <Grid item xs={12} md={6} lg={4} key={request.id}>
+                    <Card sx={{
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        transform: 'translateY(-4px)',
+                        boxShadow: 4
+                      }
+                    }}
+                    onClick={() => handleOpenDetailModal(request.id)}
+                    >
                       <CardContent>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <Box sx={{ flex: 1 }}>
-                            <Typography variant="h6" component="div">
-                              {request.title}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {request.sportType} • {new Date(request.dateTime).toLocaleString()}
-                            </Typography>
-                            <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                              <Chip
-                                label={`${stats.pending} ${t('teamup.pending')}`}
-                                size="small"
-                                color="default"
-                              />
-                              <Chip
-                                label={`${stats.accepted} ${t('teamup.accepted')}`}
-                                size="small"
-                                color="success"
-                                variant="outlined"
-                              />
-                              <Chip
-                                label={`${stats.declined} ${t('teamup.declined')}`}
-                                size="small"
-                                color="error"
-                                variant="outlined"
-                              />
-                              <Chip
-                                label={`${spotsLeft} ${t('teamup.spotsLeft')}`}
-                                size="small"
-                                color={spotsLeft > 0 ? 'primary' : 'default'}
-                              />
-                            </Stack>
-                          </Box>
-                          <IconButton onClick={() => toggleExpanded(request.id)}>
-                            {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                          </IconButton>
-                        </Box>
-
-                        <Collapse in={isExpanded}>
-                          <Divider sx={{ my: 2 }} />
-                          <Stack spacing={2}>
-                            {request.responses?.map((response) => (
-                              <Card key={response.id} variant="outlined">
-                                <CardContent>
-                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-                                      <Avatar
-                                        src={getImageUrl(response.user?.profilePicture)}
-                                        sx={{ width: 40, height: 40 }}
-                                      >
-                                        {getInitials(response.user?.name || 'User')}
-                                      </Avatar>
-                                      <Box sx={{ flex: 1 }}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                          <Typography variant="subtitle2">
-                                            {response.user?.name}
-                                          </Typography>
-                                          <Chip
-                                            label={t(`teamup.responseStatus.${response.status}`)}
-                                            color={getStatusColor(response.status)}
-                                            size="small"
-                                          />
-                                        </Box>
-                                        <Typography variant="caption" color="text.secondary">
-                                          {response.user?.email}
-                                        </Typography>
-                                        {response.message && (
-                                          <Box sx={{ mt: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
-                                            <Typography variant="body2">
-                                              "{response.message}"
-                                            </Typography>
-                                          </Box>
-                                        )}
-                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                                          {t('teamup.respondedOn')} {new Date(response.createdAt).toLocaleString()}
-                                        </Typography>
-                                      </Box>
-                                    </Box>
-                                    {response.status === 'pending' && (
-                                      <Stack direction="row" spacing={1}>
-                                        <Button
-                                          size="small"
-                                          variant="contained"
-                                          color="success"
-                                          startIcon={<CheckCircleIcon />}
-                                          onClick={() => handleResponse(request.id, response.id, 'accept')}
-                                          disabled={spotsLeft === 0}
-                                        >
-                                          {t('teamup.acceptResponse')}
-                                        </Button>
-                                        <Button
-                                          size="small"
-                                          variant="outlined"
-                                          color="error"
-                                          startIcon={<CancelIcon />}
-                                          onClick={() => handleResponse(request.id, response.id, 'decline')}
-                                        >
-                                          {t('teamup.declineResponse')}
-                                        </Button>
-                                      </Stack>
-                                    )}
-                                  </Box>
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </Stack>
-                        </Collapse>
+                        <Typography variant="h6" component="div" gutterBottom>
+                          {request.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                          {request.sportType} • {new Date(request.dateTime).toLocaleString()}
+                        </Typography>
+                        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 0.5 }}>
+                          <Chip
+                            label={`${stats.pending} ${t('teamup.pending')}`}
+                            size="small"
+                            color="default"
+                          />
+                          <Chip
+                            label={`${stats.accepted} ${t('teamup.accepted')}`}
+                            size="small"
+                            color="success"
+                            variant="outlined"
+                          />
+                          <Chip
+                            label={`${stats.declined} ${t('teamup.declined')}`}
+                            size="small"
+                            color="error"
+                            variant="outlined"
+                          />
+                          <Chip
+                            label={`${spotsLeft} ${t('teamup.spotsLeft')}`}
+                            size="small"
+                            color={spotsLeft > 0 ? 'primary' : 'default'}
+                          />
+                        </Stack>
+                        {stats.pending > 0 && (
+                          <Alert severity="info" sx={{ mt: 2 }}>
+                            {stats.pending} {t('teamup.pendingResponses')}
+                          </Alert>
+                        )}
                       </CardContent>
                     </Card>
                   </Grid>
@@ -643,6 +569,16 @@ const NeedPlayersTab = () => {
           </DialogActions>
         </form>
       </Dialog>
+
+      {/* Detail Modal */}
+      {selectedRequestId && (
+        <TeamUpDetailModal
+          open={openDetailModal}
+          onClose={handleCloseDetailModal}
+          requestId={selectedRequestId}
+          onUpdate={handleDetailModalUpdate}
+        />
+      )}
     </Box>
   );
 };

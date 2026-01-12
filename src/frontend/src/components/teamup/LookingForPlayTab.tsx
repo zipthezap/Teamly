@@ -4,7 +4,6 @@ import {
   Button,
   Card,
   CardContent,
-  CardActions,
   TextField,
   MenuItem,
   Grid,
@@ -12,10 +11,6 @@ import {
   Alert,
   Chip,
   Avatar,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   LinearProgress,
   ToggleButton,
   ToggleButtonGroup,
@@ -26,6 +21,7 @@ import { LoadingSpinner } from '../common';
 import { useAuth } from '../../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
 import { TeamUpRequest, TeamUpRequestFilters, TeamUpResponse } from '../../types/teamup';
+import TeamUpDetailModal from './TeamUpDetailModal';
 
 const SPORT_TYPES = [
   'Football/Soccer',
@@ -52,9 +48,8 @@ const LookingForPlayTab = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [selectedRequest, setSelectedRequest] = useState<TeamUpRequest | null>(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [responseMessage, setResponseMessage] = useState('');
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [openModal, setOpenModal] = useState(false);
   
   const [filters, setFilters] = useState<TeamUpRequestFilters>({
     sportType: '',
@@ -119,33 +114,21 @@ const LookingForPlayTab = () => {
     }
   };
 
-  const handleOpenDialog = (request: TeamUpRequest) => {
-    setSelectedRequest(request);
-    setResponseMessage('');
-    setOpenDialog(true);
+  const handleOpenModal = (requestId: string) => {
+    setSelectedRequestId(requestId);
+    setOpenModal(true);
   };
 
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setSelectedRequest(null);
-    setResponseMessage('');
+  const handleCloseModal = () => {
+    setOpenModal(false);
+    setSelectedRequestId(null);
   };
 
-  const handleRespond = async () => {
-    if (!selectedRequest) return;
-
-    try {
-      await teamUpAPI.respond(selectedRequest.id, responseMessage);
-      setSuccess(t('teamup.respondSuccess'));
-      handleCloseDialog();
+  const handleModalUpdate = () => {
+    if (view === 'browse') {
       fetchRequests();
-      if (view === 'myResponses') {
-        fetchMyResponses();
-      }
-    } catch (err: any) {
-      console.error('Error responding:', err);
-      const errorMessage = err.response?.data?.error || t('teamup.respondError');
-      setError(errorMessage);
+    } else {
+      fetchMyResponses();
     }
   };
 
@@ -284,11 +267,19 @@ const LookingForPlayTab = () => {
                   <Grid item xs={12} md={6} lg={4} key={request.id}>
                     <Card sx={{ 
                       position: 'relative',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        transform: 'translateY(-4px)',
+                        boxShadow: 4
+                      },
                       ...(isUrgent && {
                         borderLeft: 4,
                         borderColor: 'warning.main'
                       })
-                    }}>
+                    }}
+                    onClick={() => handleOpenModal(request.id)}
+                    >
                       <CardContent>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                           <Typography variant="h6" component="div">
@@ -365,22 +356,6 @@ const LookingForPlayTab = () => {
                           </Typography>
                         </Box>
                       </CardContent>
-                      <CardActions>
-                        {ownRequest ? (
-                          <Chip label="Your request" color="default" size="small" />
-                        ) : responded ? (
-                          <Chip label={t('teamup.alreadyResponded')} color="info" size="small" />
-                        ) : (
-                          <Button
-                            size="small"
-                            variant="contained"
-                            onClick={() => handleOpenDialog(request)}
-                            disabled={spotsLeft === 0}
-                          >
-                            {t('teamup.respondToRequest')}
-                          </Button>
-                        )}
-                      </CardActions>
                     </Card>
                   </Grid>
                 );
@@ -443,37 +418,14 @@ const LookingForPlayTab = () => {
         </>
       )}
 
-      {/* Response Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>{t('teamup.respondToRequest')}</DialogTitle>
-        <DialogContent>
-          {selectedRequest && (
-            <Box>
-              <Typography variant="h6" sx={{ mb: 1 }}>
-                {selectedRequest.title}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                {selectedRequest.sportType} • {new Date(selectedRequest.dateTime).toLocaleString()}
-              </Typography>
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                label={t('teamup.addMessage')}
-                value={responseMessage}
-                onChange={(e) => setResponseMessage(e.target.value)}
-                placeholder="Tell them why you'd be a good fit..."
-              />
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>{t('common.cancel')}</Button>
-          <Button onClick={handleRespond} variant="contained">
-            {t('teamup.sendResponse')}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {selectedRequestId && (
+        <TeamUpDetailModal
+          open={openModal}
+          onClose={handleCloseModal}
+          requestId={selectedRequestId}
+          onUpdate={handleModalUpdate}
+        />
+      )}
     </Box>
   );
 };

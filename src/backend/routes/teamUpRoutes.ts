@@ -39,4 +39,13 @@ router.post('/:id/respond', teamUpController.respondToTeamUpRequest);
 // Accept or decline a response (creator only)
 router.post('/:id/responses/:responseId', teamUpController.handleTeamUpResponse);
 
+// Get comments for a TeamUp request
+router.get('/:id/comments', teamUpController.getTeamUpComments);
+
+// Add a comment to a TeamUp request
+router.post('/:id/comments', teamUpController.addTeamUpComment);
+
+// Delete a comment (author only)
+router.delete('/:id/comments/:commentId', teamUpController.deleteTeamUpComment);
+
 export default router;

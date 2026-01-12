@@ -219,6 +219,7 @@ model User {
   activeSessions    UserSession[]
   teamUpRequests    TeamUpRequest[]  @relation("TeamUpRequestCreator")
   teamUpResponses   TeamUpResponse[]
+  teamUpComments    TeamUpComment[]
   
   @@index([email]) // For faster email lookups
   @@index([emailVerificationToken]) // For email verification
@@ -571,6 +572,7 @@ model TeamUpRequest {
   
   responses      TeamUpResponse[]
   notifications  TeamUpNotification[]
+  comments       TeamUpComment[]
   
   @@index([creatorId])
   @@index([dateTime])
@@ -596,4 +598,21 @@ model TeamUpResponse {
   @@index([teamUpRequestId])
   @@index([userId])
   @@index([status])
+}
+
+// Comments/Chat for TeamUp requests
+model TeamUpComment {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  teamUpRequestId String
+  teamUpRequest   TeamUpRequest @relation(fields: [teamUpRequestId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  
+  @@index([teamUpRequestId])
+  @@index([userId])
+  @@index([createdAt])
 }

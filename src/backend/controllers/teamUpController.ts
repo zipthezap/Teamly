@@ -300,8 +300,24 @@ export const getTeamUpRequest = async (req: Request, res: Response) => {
             }
           }
         },
+        comments: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                profilePicture: true
+              }
+            }
+          },
+          orderBy: { createdAt: 'asc' }
+        },
         _count: {
-          select: { responses: true }
+          select: { 
+            responses: true,
+            comments: true
+          }
         }
       }
     });
@@ -867,5 +883,121 @@ export const getNearbyTeamUpRequests = async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Get nearby TeamUp requests error', 'teamUpController', { error });
     res.status(500).json({ error: 'Failed to get nearby TeamUp requests' });
+  }
+};
+
+// Get comments for a TeamUp request
+export const getTeamUpComments = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const teamUpRequest = await prisma.teamUpRequest.findUnique({
+      where: { id },
+      select: { id: true }
+    });
+
+    if (!teamUpRequest) {
+      return res.status(404).json({ error: 'TeamUp request not found' });
+    }
+
+    const comments = await prisma.teamUpComment.findMany({
+      where: { teamUpRequestId: id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            profilePicture: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    res.json(comments);
+  } catch (error) {
+    logger.error('Get TeamUp comments error:', 'teamUpController', { error });
+    res.status(500).json({ error: 'Failed to get comments' });
+  }
+};
+
+// Add a comment to a TeamUp request
+export const addTeamUpComment = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { content } = req.body;
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: 'Comment content is required' });
+    }
+
+    // Sanitize the content
+    const sanitized = teamUpService.sanitizeTeamUpData({ message: content });
+
+    const teamUpRequest = await prisma.teamUpRequest.findUnique({
+      where: { id },
+      select: { id: true, status: true }
+    });
+
+    if (!teamUpRequest) {
+      return res.status(404).json({ error: 'TeamUp request not found' });
+    }
+
+    const comment = await prisma.teamUpComment.create({
+      data: {
+        teamUpRequestId: id,
+        userId: (req.user as any).id,
+        content: sanitized.message || content.trim()
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            profilePicture: true
+          }
+        }
+      }
+    });
+
+    res.status(201).json(comment);
+  } catch (error) {
+    logger.error('Add TeamUp comment error:', 'teamUpController', { error });
+    res.status(500).json({ error: 'Failed to add comment' });
+  }
+};
+
+// Delete a comment (author only)
+export const deleteTeamUpComment = async (req: Request, res: Response) => {
+  try {
+    const { id, commentId } = req.params;
+
+    const comment = await prisma.teamUpComment.findUnique({
+      where: { id: commentId },
+      select: { userId: true, teamUpRequestId: true }
+    });
+
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    if (comment.teamUpRequestId !== id) {
+      return res.status(400).json({ error: 'Comment does not belong to this TeamUp request' });
+    }
+
+    if (comment.userId !== (req.user as any).id) {
+      return res.status(403).json({ error: 'Only the author can delete this comment' });
+    }
+
+    await prisma.teamUpComment.delete({
+      where: { id: commentId }
+    });
+
+    res.json({ message: 'Comment deleted' });
+  } catch (error) {
+    logger.error('Delete TeamUp comment error:', 'teamUpController', { error });
+    res.status(500).json({ error: 'Failed to delete comment' });
   }
 };
