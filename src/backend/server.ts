@@ -118,13 +118,14 @@ const SESSION_COOKIE_MAX_AGE = SESSION_TTL_SECONDS * 1000; // Convert to millise
 // Session middleware for OAuth (required by passport)
 // Use Redis for session storage if available, otherwise fall back to in-memory
 const sessionConfig: session.SessionOptions = {
-  secret: process.env.JWT_SECRET || 'your-session-secret',
+  secret: process.env.SESSION_SECRET || process.env.JWT_SECRET || 'your-session-secret',
   resave: false,
   saveUninitialized: false,
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: SESSION_COOKIE_MAX_AGE
+    maxAge: SESSION_COOKIE_MAX_AGE,
+    sameSite: 'strict' // CSRF protection
   }
 };
 
@@ -199,8 +200,21 @@ app.use('/api/teamup', teamUpRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/tournaments', tournamentRoutes);
 
-// Metrics endpoint for Prometheus
-app.get('/metrics', getMetrics);
+// Metrics endpoint for Prometheus (with optional authentication)
+app.get('/metrics', async (req: Request, res: Response) => {
+  // Optional: Require authentication via bearer token if METRICS_TOKEN is set
+  const metricsToken = process.env.METRICS_TOKEN;
+  if (metricsToken) {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.replace(/^Bearer\s+/i, '');
+    
+    if (!token || token !== metricsToken) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+  }
+  
+  await getMetrics(req, res);
+});
 
 // Enhanced health check with detailed metrics
 app.get('/health', async (_req: Request, res: Response) => {
