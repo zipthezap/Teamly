@@ -11,8 +11,9 @@ const GroupStats: React.FC<GroupStatsProps> = ({ memberCount, events }) => {
   const { t } = useTranslation();
   
   const now = new Date();
-  const upcomingEvents = events.filter(e => new Date(e.date) >= now).length;
-  const pastEvents = events.filter(e => new Date(e.date) < now).length;
+  const safeEvents = Array.isArray(events) ? events : [];
+  const upcomingEvents = safeEvents.filter(e => new Date(e.date) >= now).length;
+  const pastEvents = safeEvents.filter(e => new Date(e.date) < now).length;
 
   return (
     <section className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 shadow-lg mb-6">

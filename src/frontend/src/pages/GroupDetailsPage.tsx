@@ -64,6 +64,7 @@ export default function GroupDetailsPage() {
     queryKey: ["groupEvents", groupId],
     queryFn: async () => {
       const res = await eventsAPI.getAll({ groupId });
+      console.log('[GroupDetailsPage] API events response:', res.data);
       return res.data;
     },
     enabled: !!groupId,
@@ -433,7 +434,9 @@ export default function GroupDetailsPage() {
         isAdmin={isAdmin}
       />
       {/* Group Statistics */}
-      <GroupStats memberCount={group.members?.length || 0} events={events || []} />
+  const eventsArray = Array.isArray(events) ? events : (events?.data ?? []);
+  {console.log('[GroupDetailsPage] events passed to GroupStats/EventList:', eventsArray)}
+      <GroupStats memberCount={group.members?.length || 0} events={eventsArray} />
       {/* Group Settings Modal (shared component) */}
       <GroupSettingsModal
         open={settingsOpen}
@@ -450,7 +453,7 @@ export default function GroupDetailsPage() {
       <div className={`grid ${gridCols} gap-6`}>
         <MemberList members={group.members as GroupMember[]} onRemove={isAdmin ? handleRemoveMember : undefined} />
         <EventList
-          events={events || []}
+          events={eventsArray}
           onEventClick={handleEventClick}
           onCreate={isAdmin ? () => { setEditEvent(null); setEventModalOpen(true); } : undefined}
           onEdit={isAdmin ? (event) => { setEditEvent(event); setEventModalOpen(true); } : undefined}

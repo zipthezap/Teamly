@@ -42,8 +42,10 @@ const Dashboard = () => {
         groupsAPI.getAll(),
         eventsAPI.getAll(),
       ]);
-      setGroups(groupsRes.data);
-      // Ensure eventsRes.data is an array before sorting
+      // Ensure groupsRes.data is always an array
+      const groupsArray = Array.isArray(groupsRes.data) ? groupsRes.data : (groupsRes.data?.data ?? []);
+      setGroups(groupsArray);
+      // Ensure eventsRes.data is always an array
       const eventsArray = Array.isArray(eventsRes.data) ? eventsRes.data : (eventsRes.data?.data ?? []);
       const sortedEvents = eventsArray.sort((a, b) => 
         new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
@@ -60,20 +62,20 @@ const Dashboard = () => {
     return <LoadingSpinner message={t('dashboard.loadingDashboard')} />;
   }
 
+  // Defensive: ensure events is always an array
+  const safeEvents = Array.isArray(events) ? events : [];
   // Calculate statistics
   // Only show upcoming events the user is confirmed on or organizing
-  const upcomingEvents = events.filter(e => {
+  const upcomingEvents = safeEvents.filter(e => {
     const isSoon = new Date(e.startTime) > new Date();
     if (!isSoon) return false;
-    
     // Show if user is the organizer
     if (e.creatorId === user?.id) return true;
-    
     // Show if user is a confirmed participant
     const isConfirmed = e.participants?.some(p => p.userId === user?.id && p.status === 'confirmed');
     return isConfirmed;
   });
-  const myEvents = events.filter(e => 
+  const myEvents = safeEvents.filter(e => 
     e.participants?.some(p => p.userId === user?.id)
   );
 
@@ -163,7 +165,20 @@ const Dashboard = () => {
                 {t('common.viewAll')}
               </Button>
             </Box>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr' }, gridTemplateRows: { xs: 'auto', sm: '1fr 1fr', md: '1fr 1fr' }, gap: 4, minHeight: 700 }}>
+            <Box
+              sx={(() => {
+                const count = Math.min(upcomingEvents.length, 4);
+                let columns = 1;
+                if (count === 2) columns = 2;
+                if (count >= 3) columns = 2;
+                return {
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: `repeat(${columns}, 1fr)`, md: `repeat(${columns}, 1fr)` },
+                  gap: 4,
+                  minHeight: count === 0 ? 700 : undefined,
+                };
+              })()}
+            >
               {upcomingEvents.slice(0, 4).map((event) => {
                 const isParticipating = event.participants?.some(p => p.userId === user?.id);
                 const isFull = event.maxPlayers && event.participants?.length >= event.maxPlayers;

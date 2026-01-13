@@ -55,9 +55,10 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
   // Hide past events: only show events whose startTime is within the last hour or in the future
   const now = new Date();
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-  const eventsArray = Array.isArray(events) ? events : (events?.data ?? []);
-  const filteredEvents = eventsArray
-    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+  // events is always an array now
+  const filteredEvents = Array.isArray(events)
+    ? [...events].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+    : [];
 
   // Debug: Log filtered events
   if (typeof window !== 'undefined') {
