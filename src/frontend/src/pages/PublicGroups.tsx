@@ -21,36 +21,21 @@ import { GoogleMap, LoadScript, Autocomplete, Circle } from '@react-google-maps/
 import { groupsAPI } from '../services/api';
 import { useTranslation } from 'react-i18next';
 import { getImageUrl } from '../utils/imageUtils';
+import { GroupWithDetails } from '../types/group';
+import { Coordinates } from '../../../shared/types/common.types';
 
 // Type definitions
-interface Location {
-  latitude: number;
-  longitude: number;
-}
+// Using Coordinates from shared types for consistency
+type Location = Coordinates;
 
 interface LatLng {
   lat: number;
   lng: number;
 }
 
-interface Group {
-  id: string;
-  name: string;
-  description?: string;
-  picture?: string;
-  latitude?: number;
-  longitude?: number;
-  location?: string;
-  address?: string;
+// Extended Group interface for public groups with distance calculation
+interface PublicGroup extends GroupWithDetails {
   distance?: number | null;
-  _count?: {
-    members?: number;
-    events?: number;
-  };
-  memberCount?: number;
-  eventCount?: number;
-  members?: unknown[];
-  events?: unknown[];
 }
 
 // Helper to validate lat/lng objects
@@ -110,8 +95,8 @@ const PublicGroups = () => {
   // Store marker instances so we can clean them up
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
   const { user } = useAuth();
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [filteredGroups, setFilteredGroups] = useState<Group[]>([]);
+  const [groups, setGroups] = useState<PublicGroup[]>([]);
+  const [filteredGroups, setFilteredGroups] = useState<PublicGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState<Record<string, boolean>>({});
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' }>({ open: false, message: '', severity: 'success' });
@@ -617,12 +602,12 @@ const PublicGroups = () => {
                         </Typography>
                       </Box>
                       {/* Google Maps Directions Button for group location */}
-                      {(group.latitude && group.longitude) || group.location || group.address ? (
+                      {(group.latitude && group.longitude) || group.locationName ? (
                         <a
                           href={
                             group.latitude && group.longitude
                               ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(group.latitude + ',' + group.longitude)}`
-                              : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(group.location || group.address || group.name)}`
+                              : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(group.locationName || group.name)}`
                           }
                           target="_blank"
                           rel="noopener noreferrer"
