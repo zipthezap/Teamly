@@ -43,15 +43,12 @@ const Dashboard = () => {
         groupsAPI.getAll(),
         eventsAPI.getAll(),
       ]);
-  // Ensure groupsRes.data is always an array
-  const groupsArray = Array.isArray(groupsRes.data) ? groupsRes.data : (groupsRes.data?.data ?? []);
-  setGroups(groupsArray);
-  // Ensure eventsRes.data is always an array
-  const eventsArray = Array.isArray(eventsRes.data) ? eventsRes.data : (eventsRes.data?.data ?? []);
-  const sortedEvents = eventsArray.sort((a, b) => 
-    new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-  );
-  setEvents(sortedEvents);
+      // Ensure groupsRes.data is always an array
+      const groupsArray = Array.isArray(groupsRes.data) ? groupsRes.data : (groupsRes.data?.data ?? []);
+      setGroups(groupsArray);
+      // Ensure eventsRes.data is always an array
+      const eventsArray = Array.isArray(eventsRes.data) ? eventsRes.data : (eventsRes.data?.data ?? []);
+      const sortedEvents = eventsArray.sort((a, b) => 
         new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
       );
       setEvents(sortedEvents);
@@ -79,13 +76,8 @@ const Dashboard = () => {
     const isConfirmed = (e as { participants?: EventParticipant[] }).participants?.some((p: EventParticipant) => p.userId === user?.id && p.status === 'confirmed');
     return isConfirmed;
   });
-<<<<<<< HEAD
   const myEvents = safeEvents.filter(e => 
-    e.participants?.some(p => p.userId === user?.id)
-=======
-  const myEvents = events.filter(e => 
     (e as { participants?: EventParticipant[] }).participants?.some((p: EventParticipant) => p.userId === user?.id)
->>>>>>> 39a9ddc1475ec8d9c4d528be40ae2400738a27c9
   );
 
   return (
