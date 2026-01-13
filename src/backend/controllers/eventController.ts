@@ -26,6 +26,7 @@ import { exportToCSV, exportToICalendar, exportToJSON } from '../services/export
 import { BadRequestError, ForbiddenError } from '../utils/errors';
 import { isRequired } from '../utils/validation';
 import { ensureResourceExists } from '../utils/controllerHelpers';
+import { CacheService } from '../services/cacheService';
 
 // ==================== EVENT CRUD OPERATIONS ====================
 
@@ -147,6 +148,10 @@ export const createEvent = async (req: Request, res: Response) => {
   const memberIds = group.members.map(m => m.user.id).filter(uid => uid !== req.user!.id);
   await eventService.createEventNotifications(group.id, event.title, req.user!.name, group.name, memberIds);
 
+  // Invalidate events cache for all group members
+  await CacheService.deletePattern(`events:user:*:group:${groupId}:*`);
+  await CacheService.deletePattern(`events:user:*:group:all:*`);
+
   res.status(201).json(enrichedEvent);
 };
 
@@ -165,6 +170,20 @@ export const getEvents = async (req: Request, res: Response) => {
   // Validate parsed values and apply defaults/caps
   const validatedLimit = isNaN(parsedLimit) ? 50 : Math.min(Math.max(parsedLimit, 1), 100);
   const validatedOffset = isNaN(parsedOffset) ? 0 : Math.max(parsedOffset, 0);
+
+  // Generate cache key for simple queries without search/filters
+  const hasFilters = search || eventType || startDate || endDate || location || status || archived;
+  const cacheKey = !hasFilters && !cursor 
+    ? `events:user:${userId}:group:${groupId || 'all'}:limit:${validatedLimit}:offset:${validatedOffset}`
+    : null;
+
+  // Try cache for simple queries
+  if (cacheKey) {
+    const cached = await CacheService.get(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+  }
 
   // Build where filter using service
   const where = eventService.buildEventFilters(userId, {
@@ -306,8 +325,7 @@ export const getEvents = async (req: Request, res: Response) => {
     // Calculate next cursor for cursor-based pagination
     const nextCursor = events.length === validatedLimit ? events[events.length - 1].id : null;
 
-    // Return paginated response with metadata
-    res.json({
+    const response = {
       data: enrichedEvents,
       pagination: {
         limit: validatedLimit,
@@ -316,7 +334,15 @@ export const getEvents = async (req: Request, res: Response) => {
         hasMore: events.length === validatedLimit,
         nextCursor
       }
-    });
+    };
+
+    // Cache simple queries for 30 seconds
+    if (cacheKey) {
+      await CacheService.set(cacheKey, response, 30);
+    }
+
+    // Return paginated response with metadata
+    res.json(response);
 };
 
 export const getEvent = async (req: Request, res: Response) => {
@@ -508,6 +534,10 @@ export const updateEvent = async (req: Request, res: Response) => {
     event!.group.name
   );
 
+  // Invalidate events cache
+  await CacheService.deletePattern(`events:user:*:group:${event!.groupId}:*`);
+  await CacheService.deletePattern(`events:user:*:group:all:*`);
+
   res.json(enrichedEvent);
 };
 
@@ -557,6 +587,10 @@ export const deleteEvent = async (req: Request, res: Response) => {
   await prisma.event.delete({
     where: { id }
   });
+
+  // Invalidate events cache
+  await CacheService.deletePattern(`events:user:*:group:${event!.groupId}:*`);
+  await CacheService.deletePattern(`events:user:*:group:all:*`);
 
   res.json({ message: 'Event deleted successfully' });
 };
@@ -1570,7 +1604,7 @@ export const exportEvents = async (req: Request, res: Response) => {
 
     logger.info('Exporting events', 'EventController', { userId, format });
 
-    // Fetch all events user is participating in
+    // Optimize query - only fetch fields needed for export
     const events = await prisma.event.findMany({
       where: {
         participants: {
@@ -1579,16 +1613,28 @@ export const exportEvents = async (req: Request, res: Response) => {
           }
         }
       },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        eventType: true,
+        location: true,
+        startTime: true,
+        endTime: true,
+        status: true,
+        maxPlayers: true,
         participants: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
+          where: {
+            userId: userId
+          },
+          select: {
+            status: true,
+            userId: true
+          }
+        },
+        _count: {
+          select: {
+            participants: true
           }
         },
         group: {
@@ -1624,7 +1670,7 @@ export const exportEvents = async (req: Request, res: Response) => {
         participantStatus: userParticipant?.status || 'unknown',
         groupName: event.group.name,
         creatorName: event.creator.name,
-        participantCount: event.participants.length,
+        participantCount: event._count.participants,
         maxPlayers: event.maxPlayers
       };
     });

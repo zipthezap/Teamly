@@ -81,6 +81,10 @@ import * as locationService from '../services/locationService';
 import { GroupNotificationType } from '../../shared/types/event.types';
 import { CacheService } from '../services/cacheService';
 
+// Time constants for event queries
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
 
 export const createGroup = async (req: Request, res: Response) => {
   try {
@@ -176,11 +180,23 @@ export const createGroup = async (req: Request, res: Response) => {
 
 export const getGroups = async (req: Request, res: Response) => {
   try {
+    const userId = req.user!.id;
+    const includeEvents = req.query.includeEvents === 'true';
+    
+    // Use cache wrapper for groups query
+    const cacheKey = `user:${userId}:groups:${includeEvents}`;
+    const cached = await CacheService.get(cacheKey);
+    
+    if (cached) {
+      return res.json(cached);
+    }
+
+    // Optimize query - only include events if requested
     const groups = await prisma.group.findMany({
       where: {
         members: {
           some: {
-            userId: req.user!.id
+            userId
           }
         }
       },
@@ -195,13 +211,28 @@ export const getGroups = async (req: Request, res: Response) => {
             }
           }
         },
-        events: {
-          orderBy: { startTime: 'asc' }
+        // Only load events if explicitly requested to reduce payload
+        ...(includeEvents && {
+          events: {
+            where: {
+              archived: false,
+              startTime: {
+                gte: new Date(Date.now() - THIRTY_DAYS_MS)
+              }
+            },
+            orderBy: { startTime: 'asc' },
+            take: 20 // Limit events per group
+          }
+        }),
+        _count: {
+          select: {
+            events: true,
+            members: true
+          }
         }
       },
       orderBy: { createdAt: 'desc' }
     });
-
 
     // Map each group to flatten member user fields
     const mappedGroups = groups.map((group: any) => ({
@@ -212,7 +243,6 @@ export const getGroups = async (req: Request, res: Response) => {
         email: member.user.email,
         profilePicture: member.user.profilePicture,
         role: member.role,
-        // add other member fields if needed
       }))
     }));
 
@@ -220,6 +250,9 @@ export const getGroups = async (req: Request, res: Response) => {
     const enrichedGroups = mappedGroups.map(group => 
       locationService.enrichWithLocationInfo(group)
     );
+
+    // Cache for 2 minutes
+    await CacheService.set(cacheKey, enrichedGroups, 120);
 
     res.json(enrichedGroups);
   } catch (error) {
@@ -231,13 +264,23 @@ export const getGroups = async (req: Request, res: Response) => {
 export const getGroup = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = req.user!.id;
 
+    // Try cache first
+    const cacheKey = `group:${id}:user:${userId}`;
+    const cached = await CacheService.get(cacheKey);
+    
+    if (cached) {
+      return res.json(cached);
+    }
+
+    // Optimize query - use separate queries to avoid loading all participants
     const group = await prisma.group.findFirst({
       where: {
         id,
         members: {
           some: {
-            userId: req.user!.id
+            userId
           }
         }
       },
@@ -252,14 +295,33 @@ export const getGroup = async (req: Request, res: Response) => {
             }
           }
         },
+        // Only load upcoming events with minimal participant data
         events: {
+          where: {
+            archived: false,
+            startTime: {
+              gte: new Date(Date.now() - SEVEN_DAYS_MS)
+            }
+          },
           include: {
             creator: {
               select: { id: true, name: true, email: true }
             },
-            participants: true
+            _count: {
+              select: {
+                participants: true,
+                guestParticipants: true
+              }
+            }
           },
-          orderBy: { startTime: 'asc' }
+          orderBy: { startTime: 'asc' },
+          take: 50 // Limit events to improve performance
+        },
+        _count: {
+          select: {
+            events: true,
+            members: true
+          }
         }
       }
     });
@@ -277,11 +339,13 @@ export const getGroup = async (req: Request, res: Response) => {
         email: member.user.email,
         profilePicture: member.user.profilePicture,
         role: member.role,
-        // add other member fields if needed
       }))
     };
 
     const enrichedGroup = locationService.enrichWithLocationInfo(mappedGroup);
+
+    // Cache for 1 minute
+    await CacheService.set(cacheKey, enrichedGroup, 60);
 
     res.json(enrichedGroup);
   } catch (error) {
@@ -439,6 +503,11 @@ export const inviteMember = async (req: Request, res: Response) => {
       );
     }
 
+    // Invalidate group cache for all affected users
+    await CacheService.invalidate('group', id);
+    // Invalidate user groups cache for the invited user
+    await CacheService.deletePattern(`user:${userToInvite.id}:groups:*`);
+
     res.status(201).json(newMember);
   } catch (error) {
     logger.error('Failed to invite member', 'GroupController', { error });
@@ -467,6 +536,12 @@ export const removeMember = async (req: Request, res: Response) => {
     await prisma.groupMember.delete({
       where: { id: memberId }
     });
+
+    // Invalidate group cache for all affected users
+    await CacheService.invalidate('group', id);
+    if (memberToRemove) {
+      await CacheService.deletePattern(`user:${memberToRemove.userId}:groups:*`);
+    }
 
     res.json({ message: 'Member removed successfully' });
   } catch (error) {
