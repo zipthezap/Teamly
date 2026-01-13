@@ -62,11 +62,14 @@ const EventRequests = () => {
       ]);
       setRequests(requestsRes.data);
       setGroup(groupRes.data);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching data:', error);
+      const errorMessage = error instanceof Error && 'response' in error 
+        ? ((error as any).response?.data?.error || t('eventRequests.failedToLoad'))
+        : t('eventRequests.failedToLoad');
       setSnackbar({
         open: true,
-        message: error.response?.data?.error || t('eventRequests.failedToLoad'),
+        message: errorMessage,
         severity: 'error',
       });
     } finally {
@@ -84,11 +87,14 @@ const EventRequests = () => {
         message: t('eventRequests.voteRecorded'),
         severity: 'success',
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error voting:', error);
+      const errorMessage = error instanceof Error && 'response' in error 
+        ? ((error as any).response?.data?.error || t('eventRequests.failedToVote'))
+        : t('eventRequests.failedToVote');
       setSnackbar({
         open: true,
-        message: error.response?.data?.error || t('eventRequests.failedToVote'),
+        message: errorMessage,
         severity: 'error',
       });
     } finally {
@@ -105,11 +111,14 @@ const EventRequests = () => {
         message: t('eventRequests.finalized'),
         severity: 'success',
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error finalizing:', error);
+      const errorMessage = error instanceof Error && 'response' in error 
+        ? ((error as any).response?.data?.error || t('eventRequests.failedToFinalize'))
+        : t('eventRequests.failedToFinalize');
       setSnackbar({
         open: true,
-        message: error.response?.data?.error || t('eventRequests.failedToFinalize'),
+        message: errorMessage,
         severity: 'error',
       });
     }
@@ -124,11 +133,14 @@ const EventRequests = () => {
         message: t('eventRequests.cancelled'),
         severity: 'success',
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error cancelling:', error);
+      const errorMessage = error instanceof Error && 'response' in error 
+        ? ((error as any).response?.data?.error || t('eventRequests.failedToCancel'))
+        : t('eventRequests.failedToCancel');
       setSnackbar({
         open: true,
-        message: error.response?.data?.error || t('eventRequests.failedToCancel'),
+        message: errorMessage,
         severity: 'error',
       });
     }
@@ -187,11 +199,14 @@ const EventRequests = () => {
         message: t('eventRequests.created'),
         severity: 'success',
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error creating request:', error);
+      const errorMessage = error instanceof Error && 'response' in error 
+        ? ((error as any).response?.data?.error || t('eventRequests.failedToCreate'))
+        : t('eventRequests.failedToCreate');
       setSnackbar({
         open: true,
-        message: error.response?.data?.error || t('eventRequests.failedToCreate'),
+        message: errorMessage,
         severity: 'error',
       });
     }

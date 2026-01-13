@@ -19,7 +19,7 @@ import { teamUpAPI } from '../../services/api';
 import { LoadingSpinner } from '../common';
 import { useAuth } from '../../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
-import { TeamUpRequest, TeamUpRequestFilters } from '../../types/teamup';
+import { TeamUpRequest, TeamUpResponse } from '../../types/teamup';
 import TeamUpDetailModal from './TeamUpDetailModal';
 import { SPORT_TYPES } from '../../constants/teamup';
 
@@ -100,7 +100,7 @@ const BrowseRequestsTab = () => {
   };
 
   const hasResponded = (request: TeamUpRequest) => {
-    return request.responses?.some((r) => r.userId === user?.id);
+    return request.responses?.some((r: TeamUpResponse) => r.userId === user?.id);
   };
 
   if (loading) {

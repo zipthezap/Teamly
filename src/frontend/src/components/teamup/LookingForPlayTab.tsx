@@ -124,7 +124,7 @@ const LookingForPlayTab = () => {
   };
 
   const hasResponded = (request: TeamUpRequest) => {
-    return request.responses?.some((r) => r.userId === user?.id);
+    return request.responses?.some((r: TeamUpResponse) => r.userId === user?.id);
   };
 
   const handleViewChange = (_event: React.MouseEvent<HTMLElement>, newView: 'browse' | 'myResponses' | null) => {
