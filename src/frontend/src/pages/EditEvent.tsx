@@ -167,8 +167,8 @@ const EditEvent = () => {
 
       await eventsAPI.update(id, data);
       navigate(`/events/${id}`);
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to update event');
+    } catch (err: unknown) {
+      setError((err as any)?.response?.data?.error || 'Failed to update event');
     } finally {
       setSubmitting(false);
     }

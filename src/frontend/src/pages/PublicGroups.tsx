@@ -133,7 +133,7 @@ const PublicGroups = () => {
       const response = await groupsAPI.getPublic();
       setGroups(response.data);
       setFilteredGroups(response.data);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching public groups:', error);
       setSnackbar({
         open: true,
@@ -246,8 +246,8 @@ const PublicGroups = () => {
         severity: 'success',
       });
       fetchPublicGroups();
-    } catch (error) {
-      const message = error.response?.data?.error || t('groups.publicGroups.failedToSendJoinRequest');
+    } catch (error: unknown) {
+      const message = (error as any)?.response?.data?.error || t('groups.publicGroups.failedToSendJoinRequest');
       setSnackbar({
         open: true,
         message,

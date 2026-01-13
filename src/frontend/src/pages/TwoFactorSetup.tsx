@@ -43,7 +43,7 @@ const TwoFactorSetup = () => {
     try {
       const response = await twoFactorAPI.getStatus();
       setStatus(response.data);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error checking 2FA status:', error);
     }
   };
@@ -55,14 +55,14 @@ const TwoFactorSetup = () => {
       const response = await twoFactorAPI.setup();
       setSetupData(response.data);
       setActiveStep(1);
-    } catch (error) {
-      setError(error.response?.data?.error || 'Failed to initialize 2FA setup');
+    } catch (error: unknown) {
+      setError((error as any)?.response?.data?.error || 'Failed to initialize 2FA setup');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerify = async (e) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -70,14 +70,14 @@ const TwoFactorSetup = () => {
       await twoFactorAPI.verify(token);
       setSuccess('Two-factor authentication enabled successfully!');
       setActiveStep(3);
-    } catch (error) {
-      setError(error.response?.data?.error || 'Invalid verification code');
+    } catch (error: unknown) {
+      setError((error as any)?.response?.data?.error || 'Invalid verification code');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDisable2FA = async (e) => {
+  const handleDisable2FA = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -86,8 +86,8 @@ const TwoFactorSetup = () => {
       setSuccess('Two-factor authentication disabled successfully!');
       checkStatus();
       setPassword('');
-    } catch (error) {
-      setError(error.response?.data?.error || 'Failed to disable 2FA');
+    } catch (error: unknown) {
+      setError((error as any)?.response?.data?.error || 'Failed to disable 2FA');
     } finally {
       setLoading(false);
     }
@@ -97,7 +97,7 @@ const TwoFactorSetup = () => {
     try {
       await navigator.clipboard.writeText(setupData.secret);
       setSuccess('Secret copied to clipboard!');
-    } catch (error) {
+    } catch (error: unknown) {
       setError('Failed to copy to clipboard. Please copy manually.');
     }
   };

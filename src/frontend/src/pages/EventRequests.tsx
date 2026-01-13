@@ -62,11 +62,11 @@ const EventRequests = () => {
       ]);
       setRequests(requestsRes.data);
       setGroup(groupRes.data);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching data:', error);
       setSnackbar({
         open: true,
-        message: error.response?.data?.error || t('eventRequests.failedToLoad'),
+        message: (error as any)?.response?.data?.error || t('eventRequests.failedToLoad'),
         severity: 'error',
       });
     } finally {
@@ -84,11 +84,11 @@ const EventRequests = () => {
         message: t('eventRequests.voteRecorded'),
         severity: 'success',
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error voting:', error);
       setSnackbar({
         open: true,
-        message: error.response?.data?.error || t('eventRequests.failedToVote'),
+        message: (error as any)?.response?.data?.error || t('eventRequests.failedToVote'),
         severity: 'error',
       });
     } finally {
@@ -105,11 +105,11 @@ const EventRequests = () => {
         message: t('eventRequests.finalized'),
         severity: 'success',
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error finalizing:', error);
       setSnackbar({
         open: true,
-        message: error.response?.data?.error || t('eventRequests.failedToFinalize'),
+        message: (error as any)?.response?.data?.error || t('eventRequests.failedToFinalize'),
         severity: 'error',
       });
     }
@@ -124,11 +124,11 @@ const EventRequests = () => {
         message: t('eventRequests.cancelled'),
         severity: 'success',
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error cancelling:', error);
       setSnackbar({
         open: true,
-        message: error.response?.data?.error || t('eventRequests.failedToCancel'),
+        message: (error as any)?.response?.data?.error || t('eventRequests.failedToCancel'),
         severity: 'error',
       });
     }
@@ -187,11 +187,11 @@ const EventRequests = () => {
         message: t('eventRequests.created'),
         severity: 'success',
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error creating request:', error);
       setSnackbar({
         open: true,
-        message: error.response?.data?.error || t('eventRequests.failedToCreate'),
+        message: (error as any)?.response?.data?.error || t('eventRequests.failedToCreate'),
         severity: 'error',
       });
     }

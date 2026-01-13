@@ -30,7 +30,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import PeopleIcon from '@mui/icons-material/People';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useAuth } from '../../contexts/AuthContext';
-import { TeamUpRequest, CreateTeamUpRequestData, UpdateTeamUpRequestData } from '../../types/teamup';
+import { TeamUpRequest, TeamUpResponse, CreateTeamUpRequest, TeamUpResponseData, UpdateTeamUpRequest, TeamUpResponseData } from '../../types/teamup';
 import TeamUpDetailModal from './TeamUpDetailModal';
 import { SPORT_TYPES, SKILL_LEVELS } from '../../constants/teamup';
 import { getTeamUpStatusColor } from '../../utils/statusHelpers';
