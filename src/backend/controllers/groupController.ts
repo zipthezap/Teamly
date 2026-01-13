@@ -364,7 +364,7 @@ export const updateGroup = async (req: Request, res: Response) => {
     // Check if user has permission to update the group
     const canUpdate = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_UPDATE);
     if (!canUpdate) {
-      return res.status(403).json({ error: 'Only admins can update the group' });
+      return res.status(403).json({ error: 'Only admins and moderators can update the group' });
     }
 
     // Sanitize text inputs
