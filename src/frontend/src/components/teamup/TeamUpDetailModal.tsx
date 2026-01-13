@@ -40,6 +40,10 @@ import { getImageUrl, getInitials } from '../../utils/imageUtils';
 import { TeamUpRequest, TeamUpComment, TeamUpResponse } from '../../types/teamup';
 import { TabPanel } from '../common';
 import { getTeamUpStatusColor } from '../../utils/statusHelpers';
+import { RequestDetailsTab } from './detail/RequestDetailsTab';
+import { ResponsesList } from './detail/ResponsesList';
+import { CommentsList } from './detail/CommentsList';
+import { ResponseForm } from './detail/ResponseForm';
 
 interface TeamUpDetailModalProps {
   open: boolean;
@@ -61,6 +65,7 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
   const [responseMessage, setResponseMessage] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [submittingResponse, setSubmittingResponse] = useState(false);
+  const [processingResponseId, setProcessingResponseId] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && requestId) {
@@ -132,6 +137,7 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
 
   const handleResponseAction = async (responseId: string, action: 'accept' | 'decline') => {
     try {
+      setProcessingResponseId(responseId);
       await teamUpAPI.handleResponse(requestId, responseId, action);
       setSuccess(
         action === 'accept'
@@ -147,6 +153,8 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
           ? t('teamup.acceptResponseError')
           : t('teamup.declineResponseError')
       );
+    } finally {
+      setProcessingResponseId(null);
     }
   };
 
@@ -263,226 +271,50 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
           <>
             {/* Details Tab */}
             <TabPanel value={tabValue} index={0}>
-              <Box sx={{ px: 3 }}>
-                <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
-                  {isUrgent && (
-                    <Chip
-                      label={t('teamup.urgent')}
-                      color="warning"
-                      size="small"
-                      sx={{ fontWeight: 700, fontSize: '0.75rem' }}
-                    />
-                  )}
-                  <Chip
-                    label={request?.sportType}
-                    size="small"
-                    sx={{
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      color: 'white',
-                      fontWeight: 600,
-                      fontSize: '0.75rem'
-                    }}
+              {request && (
+                <>
+                  <RequestDetailsTab 
+                    request={request}
+                    isUrgent={isUrgent}
+                    spotsLeft={spotsLeft}
                   />
-                  <Chip
-                    label={t(`teamup.status.${request?.status}`)}
-                    size="small"
-                    sx={{
-                      fontWeight: 600,
-                      fontSize: '0.75rem',
-                      ...(request?.status === 'open' && {
-                        background: 'linear-gradient(135deg, #4caf50 0%, #8bc34a 100%)',
-                        color: 'white'
-                      }),
-                      ...(request?.status === 'filled' && {
-                        backgroundColor: 'grey.400',
-                        color: 'white'
-                      })
-                    }}
-                  />
-                  {request?.skillLevel && request.skillLevel !== 'any' && (
-                    <Chip
-                      label={t(`teamup.skillLevels.${request.skillLevel}`)}
-                      size="small"
-                      variant="outlined"
-                      sx={{
-                        borderColor: '#667eea',
-                        color: '#667eea',
-                        fontWeight: 600,
-                        fontSize: '0.75rem'
-                      }}
-                    />
-                  )}
-                </Box>
+                  
+                  <Box sx={{ px: 3 }}>
+                    <Divider sx={{ my: 2 }} />
 
-                {request?.description && (
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="h6" gutterBottom>
-                      {t('teamup.description')}
-                    </Typography>
-                    <Typography variant="body1" color="text.secondary">
-                      {request.description}
-                    </Typography>
-                  </Box>
-                )}
-
-                <Grid container spacing={2} sx={{ mb: 3 }}>
-                  <Grid item xs={12} sm={6}>
-                    <Card variant="outlined">
-                      <CardContent>
-                        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                          📅 {t('teamup.dateTime')}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                      <Avatar
+                        src={getImageUrl(request.creator?.profilePicture)}
+                        sx={{ width: 48, height: 48 }}
+                      >
+                        {getInitials(request.creator?.name || 'User')}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="subtitle2">
+                          {t('teamup.postedBy')}
                         </Typography>
-                        <Typography variant="body1">
-                          {new Date(request?.dateTime || '').toLocaleString()}
+                        <Typography variant="body1" fontWeight="bold">
+                          {request.creator?.name}
                         </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                  {request?.location && (
-                    <Grid item xs={12} sm={6}>
-                      <Card variant="outlined">
-                        <CardContent>
-                          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                            📍 {t('teamup.location')}
-                          </Typography>
-                          <Typography variant="body1">
-                            {request.location}
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  )}
-                  {request?.city && (
-                    <Grid item xs={12} sm={6}>
-                      <Card variant="outlined">
-                        <CardContent>
-                          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                            🌍 {t('teamup.city')}
-                          </Typography>
-                          <Typography variant="body1">
-                            {request.city}{request.country ? `, ${request.country}` : ''}
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  )}
-                </Grid>
-
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                    {t('teamup.spotsFilled')}
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Box sx={{ flex: 1 }}>
-                      <LinearProgress 
-                        variant="determinate" 
-                        value={(acceptedResponses / (request?.playersNeeded || 1)) * 100}
-                        sx={{ 
-                          height: 12, 
-                          borderRadius: 6,
-                          backgroundColor: 'rgba(0, 0, 0, 0.08)',
-                          '& .MuiLinearProgress-bar': {
-                            borderRadius: 6,
-                            background: spotsLeft === 0 
-                              ? 'linear-gradient(90deg, #4caf50 0%, #8bc34a 100%)'
-                              : 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)'
-                          }
-                        }}
-                      />
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(request.createdAt).toLocaleDateString()}
+                        </Typography>
+                      </Box>
                     </Box>
-                    <Typography variant="h6" fontWeight="bold" sx={{ 
-                      minWidth: 60,
-                      color: spotsLeft === 0 ? 'success.main' : 'primary.main'
-                    }}>
-                      {acceptedResponses}/{request?.playersNeeded}
-                    </Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary" fontWeight={600} sx={{ mt: 0.5 }}>
-                    {spotsLeft > 0 
-                      ? `${spotsLeft} ${t('teamup.spotsLeft')}`
-                      : t('teamup.allSpotsFilled')
-                    }
-                  </Typography>
-                </Box>
 
-                <Divider sx={{ my: 2 }} />
-
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Avatar
-                    src={getImageUrl(request?.creator?.profilePicture)}
-                    sx={{ width: 48, height: 48 }}
-                  >
-                    {getInitials(request?.creator?.name || 'User')}
-                  </Avatar>
-                  <Box>
-                    <Typography variant="subtitle2">
-                      {t('teamup.postedBy')}
-                    </Typography>
-                    <Typography variant="body1" fontWeight="bold">
-                      {request?.creator?.name}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {new Date(request?.createdAt || '').toLocaleDateString()}
-                    </Typography>
+                    {!isOwnRequest && !hasResponded && request.status === 'open' && (
+                      <ResponseForm
+                        message={responseMessage}
+                        onMessageChange={setResponseMessage}
+                        onSubmit={handleRespond}
+                        isSubmitting={submittingResponse}
+                        spotsLeft={spotsLeft}
+                        isOwnRequest={isOwnRequest}
+                      />
+                    )}
                   </Box>
-                </Box>
-
-                {!isOwnRequest && !hasResponded && request?.status === 'open' && (
-                  <Box sx={{ mt: 3 }}>
-                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: '#667eea' }}>
-                      {t('teamup.expressInterest')}
-                    </Typography>
-                    <TextField
-                      fullWidth
-                      multiline
-                      rows={3}
-                      label={t('teamup.addMessage')}
-                      value={responseMessage}
-                      onChange={(e) => setResponseMessage(e.target.value)}
-                      placeholder={t('teamup.tellThemWhy')}
-                      sx={{ 
-                        mb: 2,
-                        '& .MuiOutlinedInput-root': {
-                          '&:hover fieldset': {
-                            borderColor: '#667eea'
-                          },
-                          '&.Mui-focused fieldset': {
-                            borderColor: '#667eea'
-                          }
-                        }
-                      }}
-                    />
-                    <Button
-                      fullWidth
-                      variant="contained"
-                      onClick={handleRespond}
-                      disabled={submittingResponse || spotsLeft === 0}
-                      startIcon={<SendIcon />}
-                      sx={{
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        color: 'white',
-                        fontWeight: 600,
-                        textTransform: 'none',
-                        py: 1.5,
-                        fontSize: '1rem',
-                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
-                        transition: 'all 0.3s ease',
-                        '&:hover': {
-                          background: 'linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)',
-                          transform: 'translateY(-2px)',
-                          boxShadow: '0 6px 16px rgba(102, 126, 234, 0.5)'
-                        },
-                        '&:disabled': {
-                          background: 'grey.300',
-                          color: 'grey.500'
-                        }
-                      }}
-                    >
-                      {submittingResponse ? t('common.sending') : t('teamup.sendResponse')}
-                    </Button>
-                  </Box>
-                )}
-              </Box>
+                </>
+              )}
             </TabPanel>
 
             {/* Activity Tab - Combined Responses and Chat */}
