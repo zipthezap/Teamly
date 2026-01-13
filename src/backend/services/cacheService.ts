@@ -1,5 +1,6 @@
 import { getRedisClient, isRedisEnabled } from '../config/redis';
 import { logger } from '../utils/logger';
+import { recordCacheHit, recordCacheMiss, recordCacheOperation } from '../services/metricsService';
 
 /**
  * In-memory cache for when Redis is not available
@@ -137,6 +138,7 @@ export class CacheService {
    * Get a value from cache
    */
   static async get<T = any>(key: string): Promise<T | null> {
+    const startTime = Date.now();
     try {
       const cache = getCacheInstance();
       if (!cache) {
@@ -144,13 +146,20 @@ export class CacheService {
       }
 
       const value = await cache.get(key);
+      const duration = Date.now() - startTime;
+      recordCacheOperation('get', isRedisEnabled() ? 'redis' : 'memory', duration);
+      
       if (!value) {
+        recordCacheMiss(isRedisEnabled() ? 'redis' : 'memory');
         return null;
       }
 
+      recordCacheHit(isRedisEnabled() ? 'redis' : 'memory');
       return JSON.parse(value) as T;
     } catch (error) {
       logger.error('Cache get error', 'Cache', { key, error });
+      const duration = Date.now() - startTime;
+      recordCacheOperation('get', isRedisEnabled() ? 'redis' : 'memory', duration);
       return null;
     }
   }
@@ -159,6 +168,7 @@ export class CacheService {
    * Set a value in cache with TTL
    */
   static async set(key: string, value: any, ttlSeconds: number = 60): Promise<void> {
+    const startTime = Date.now();
     try {
       const cache = getCacheInstance();
       if (!cache) {
@@ -175,8 +185,13 @@ export class CacheService {
         // In-memory cache
         await cache.set(key, serialized, ttlSeconds);
       }
+      
+      const duration = Date.now() - startTime;
+      recordCacheOperation('set', isRedisEnabled() ? 'redis' : 'memory', duration);
     } catch (error) {
       logger.error('Cache set error', 'Cache', { key, error });
+      const duration = Date.now() - startTime;
+      recordCacheOperation('set', isRedisEnabled() ? 'redis' : 'memory', duration);
     }
   }
 

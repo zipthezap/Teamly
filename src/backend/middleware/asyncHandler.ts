@@ -10,7 +10,7 @@ type AsyncRequestHandler = (
   req: Request,
   res: Response,
   next: NextFunction
-) => Promise<void | Response>;
+) => Promise<void | Response | any>;
 
 /**
  * Wraps an async route handler to automatically catch errors

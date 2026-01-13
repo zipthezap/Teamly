@@ -11,12 +11,11 @@ import { EventParticipantStatus, GuestParticipantStatus, SportType } from '../..
 import * as groupService from '../services/groupService';
 import * as locationService from '../services/locationService';
 import { exportToCSV, exportToICalendar, exportToJSON } from '../services/exportService';
-import { asyncHandler } from '../middleware/asyncHandler';
 import { BadRequestError, ForbiddenError } from '../utils/errors';
 import { isRequired } from '../utils/validation';
 import { ensureResourceExists } from '../utils/controllerHelpers';
 
-export const createEvent = asyncHandler(async (req: Request, res: Response) => {
+export const createEvent = async (req: Request, res: Response) => {
   const { 
     groupId, title, description, eventType, location, startTime, endTime, maxPlayers,
     isRecurring, recurrenceRule, recurrenceEnd, isPublic,
@@ -135,9 +134,9 @@ export const createEvent = asyncHandler(async (req: Request, res: Response) => {
   await eventService.createEventNotifications(group.id, event.title, (req.user as any).name, group.name, memberIds);
 
   res.status(201).json(enrichedEvent);
-});
+};
 
-export const getEvents = asyncHandler(async (req: Request, res: Response) => {
+export const getEvents = async (req: Request, res: Response) => {
   const { 
     groupId, search, eventType, startDate, endDate, location, status, archived,
     limit = '50', offset = '0', cursor
@@ -304,9 +303,9 @@ export const getEvents = asyncHandler(async (req: Request, res: Response) => {
         nextCursor
       }
     });
-});
+};
 
-export const getEvent = asyncHandler(async (req: Request, res: Response) => {
+export const getEvent = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   const event = await prisma.event.findFirst({
@@ -382,9 +381,9 @@ export const getEvent = asyncHandler(async (req: Request, res: Response) => {
   const enrichedEvent = locationService.enrichWithLocationInfo(event!);
 
   res.json(enrichedEvent);
-});
+};
 
-export const updateEvent = asyncHandler(async (req: Request, res: Response) => {
+export const updateEvent = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { title, description, eventType, location, startTime, endTime, maxPlayers, isPublic,
           latitude, longitude, locationName, city, country } = req.body;
@@ -496,9 +495,9 @@ export const updateEvent = asyncHandler(async (req: Request, res: Response) => {
   );
 
   res.json(enrichedEvent);
-});
+};
 
-export const deleteEvent = asyncHandler(async (req: Request, res: Response) => {
+export const deleteEvent = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   // Check if user is the creator of the event or a group admin
@@ -546,7 +545,7 @@ export const deleteEvent = asyncHandler(async (req: Request, res: Response) => {
   });
 
   res.json({ message: 'Event deleted successfully' });
-});
+};
 
 export const joinEvent = async (req: Request, res: Response) => {
   try {
