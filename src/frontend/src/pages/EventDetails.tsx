@@ -33,7 +33,7 @@ const EventDetails = () => {
     } finally {
       setLoading(false);
     }
-  }, [id, t]);
+  }, [id]);
 
   useEffect(() => {
     fetchEvent();
