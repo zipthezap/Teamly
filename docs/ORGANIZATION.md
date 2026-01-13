@@ -12,6 +12,8 @@ Teamly/
 │   ├── DEPLOYMENT.md                 # Production deployment guide
 │   ├── QUICK_START.md                # Quick setup instructions
 │   ├── SECURITY.md                   # Security features and best practices
+│   ├── architecture/                 # Architecture decisions and design
+│   │   └── UUID_VS_INTEGER_IDS.md    # UUID vs Integer ID decision doc
 │   ├── archive/                      # Historical documentation
 │   │   ├── README.md                 # Archive index
 │   │   └── [historical docs...]      # Old implementation summaries
@@ -53,6 +55,12 @@ Essential documentation for understanding and using the project:
 - **SCALABILITY_IMPROVEMENTS.md** - Detailed scalability enhancements
 - **SECURITY.md** - Security features, best practices, and configuration
 - **TOURNAMENT_API.md** - Tournament system API reference
+
+### Architecture (`docs/architecture/`)
+
+Architecture decisions and design documentation:
+- **UUID_VS_INTEGER_IDS.md** - UUID vs Integer ID architecture decision and rationale
+- **DATABASE_ID_QUICK_REFERENCE.md** - Quick reference guide for working with UUIDs
 
 ### Features (`docs/features/`)
 
@@ -139,6 +147,7 @@ Maintenance and utility scripts in the root scripts directory:
 3. **For features**: `docs/guides/FEATURES.md`
 4. **For setup help**: `docs/guides/WINDOWS_SETUP.md` or `docs/guides/setup/`
 5. **For security**: `docs/SECURITY.md`
+6. **For architecture decisions**: `docs/architecture/UUID_VS_INTEGER_IDS.md`
 
 ## Benefits of This Organization
 

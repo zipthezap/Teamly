@@ -423,6 +423,10 @@ The test scripts will:
 - **[docs/QUICK_START.md](docs/QUICK_START.md)** - Quick setup instructions
 - **[docs/SECURITY.md](docs/SECURITY.md)** - Security features and best practices
 
+### Architecture
+
+- **[docs/architecture/UUID_VS_INTEGER_IDS.md](docs/architecture/UUID_VS_INTEGER_IDS.md)** - UUID vs Integer ID architecture decision
+
 ### Features
 
 - **[docs/features/ENHANCED_NOTIFICATIONS.md](docs/features/ENHANCED_NOTIFICATIONS.md)** - Enhanced notification system
