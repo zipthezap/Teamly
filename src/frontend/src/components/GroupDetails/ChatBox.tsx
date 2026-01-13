@@ -88,7 +88,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({ chat, message, setMessage, onSend, is
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2 mb-1">
                     <span className="font-semibold text-sm text-gray-200">{senderName}</span>
-                    <span className="text-xs text-slate-500">{formatTime(typeof messageTime === 'string' ? messageTime : messageTime.toString())}</span>
+                    <span className="text-xs text-slate-500">{formatTime(String(messageTime))}</span>
                   </div>
                   <div className="bg-slate-800/60 rounded-lg rounded-tl-none px-3 py-2 text-sm text-gray-300 shadow-sm border border-slate-700/30">
                     {messageContent}
