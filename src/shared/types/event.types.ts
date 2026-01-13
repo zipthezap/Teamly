@@ -188,6 +188,8 @@ export interface EventRequestWithDetails extends EventRequest {
   creator?: PublicUser;
   group?: Group;
   votes?: EventVote[];
+  yesVotes?: number;  // Computed field from backend
+  noVotes?: number;   // Computed field from backend
   _count?: {
     votes: number;
   };
