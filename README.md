@@ -52,7 +52,7 @@ For detailed documentation on these features, see:
 - [docs/guides/FEATURES.md](docs/guides/FEATURES.md) - Core features
 - [docs/features/ENHANCED_NOTIFICATIONS.md](docs/features/ENHANCED_NOTIFICATIONS.md) - Enhanced notification system
 - [docs/features/EVENT_EXPORT.md](docs/features/EVENT_EXPORT.md) - Event data export feature
-- [docs/PICTURE_UPLOAD.md](docs/PICTURE_UPLOAD.md) - Secure picture upload feature
+- [docs/guides/PICTURE_UPLOAD.md](docs/guides/PICTURE_UPLOAD.md) - Secure picture upload feature
 
 ## Architecture
 
