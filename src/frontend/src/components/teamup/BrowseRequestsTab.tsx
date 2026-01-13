@@ -19,14 +19,14 @@ import { teamUpAPI } from '../../services/api';
 import { LoadingSpinner } from '../common';
 import { useAuth } from '../../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
-import { TeamUpRequest, TeamUpRequestFilters } from '../../types/teamup';
+import { TeamUpRequest, TeamUpRequestWithDetails, TeamUpRequestFilters } from '../../types/teamup';
 import TeamUpDetailModal from './TeamUpDetailModal';
 import { SPORT_TYPES } from '../../constants/teamup';
 
 const BrowseRequestsTab = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const [requests, setRequests] = useState<TeamUpRequest[]>([]);
+  const [requests, setRequests] = useState<TeamUpRequestWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -56,7 +56,7 @@ const BrowseRequestsTab = () => {
       const response = await teamUpAPI.getAll(params);
       
       // Sort by urgency: soonest events first, then by spots left
-      const sortedRequests = response.data.sort((a: TeamUpRequest, b: TeamUpRequest) => {
+      const sortedRequests = response.data.sort((a: TeamUpRequest, TeamUpRequestWithDetails, b: TeamUpRequest) => {
         const aDate = new Date(a.dateTime).getTime();
         const bDate = new Date(b.dateTime).getTime();
         const now = Date.now();
@@ -95,11 +95,11 @@ const BrowseRequestsTab = () => {
     fetchRequests();
   };
 
-  const isOwnRequest = (request: TeamUpRequest) => {
+  const isOwnRequest = (request: TeamUpRequestWithDetails) => {
     return request.creator?.id === user?.id;
   };
 
-  const hasResponded = (request: TeamUpRequest) => {
+  const hasResponded = (request: TeamUpRequestWithDetails) => {
     return request.responses?.some((r) => r.userId === user?.id);
   };
 

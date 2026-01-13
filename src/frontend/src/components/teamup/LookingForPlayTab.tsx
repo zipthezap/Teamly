@@ -20,7 +20,7 @@ import { teamUpAPI } from '../../services/api';
 import { LoadingSpinner } from '../common';
 import { useAuth } from '../../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
-import { TeamUpRequest, TeamUpRequestFilters, TeamUpResponse } from '../../types/teamup';
+import { TeamUpRequest, TeamUpRequestWithDetails, TeamUpRequestFilters, TeamUpResponse } from '../../types/teamup';
 import TeamUpDetailModal from './TeamUpDetailModal';
 import { SPORT_TYPES } from '../../constants/teamup';
 import { getTeamUpStatusColor } from '../../utils/statusHelpers';
@@ -29,7 +29,7 @@ const LookingForPlayTab = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [view, setView] = useState<'browse' | 'myResponses'>('browse');
-  const [requests, setRequests] = useState<TeamUpRequest[]>([]);
+  const [requests, setRequests] = useState<TeamUpRequestWithDetails[]>([]);
   const [myResponses, setMyResponses] = useState<TeamUpResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -65,7 +65,7 @@ const LookingForPlayTab = () => {
       
       // Sort by urgency: soonest events first
       const requestsArray = Array.isArray(response.data) ? response.data : [];
-      const sortedRequests = requestsArray.sort((a: TeamUpRequest, b: TeamUpRequest) => {
+      const sortedRequests = requestsArray.sort((a: TeamUpRequest, TeamUpRequestWithDetails, b: TeamUpRequest) => {
         const aDate = new Date(a.dateTime).getTime();
         const bDate = new Date(b.dateTime).getTime();
         const now = Date.now();
@@ -119,11 +119,11 @@ const LookingForPlayTab = () => {
     }
   };
 
-  const isOwnRequest = (request: TeamUpRequest) => {
+  const isOwnRequest = (request: TeamUpRequestWithDetails) => {
     return request.creator?.id === user?.id;
   };
 
-  const hasResponded = (request: TeamUpRequest) => {
+  const hasResponded = (request: TeamUpRequestWithDetails) => {
     return request.responses?.some((r) => r.userId === user?.id);
   };
 
