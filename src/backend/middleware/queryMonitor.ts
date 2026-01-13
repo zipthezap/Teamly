@@ -197,10 +197,11 @@ export async function getConnectionPoolStats(): Promise<{
     const { getPool } = await import('../config/database');
     const pool = getPool();
     
+    // Check if pool has the expected properties
     return {
-      total: pool.totalCount,
-      idle: pool.idleCount,
-      waiting: pool.waitingCount,
+      total: (pool as any).totalCount || 0,
+      idle: (pool as any).idleCount || 0,
+      waiting: (pool as any).waitingCount || 0,
     };
   } catch (error) {
     logger.error('Failed to get connection pool stats', 'QueryMonitor', { error });

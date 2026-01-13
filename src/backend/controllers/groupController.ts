@@ -81,6 +81,10 @@ import * as locationService from '../services/locationService';
 import { GroupNotificationType } from '../../shared/types/event.types';
 import { CacheService } from '../services/cacheService';
 
+// Time constants for event queries
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
 
 export const createGroup = async (req: Request, res: Response) => {
   try {
@@ -213,7 +217,7 @@ export const getGroups = async (req: Request, res: Response) => {
             where: {
               archived: false,
               startTime: {
-                gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
+                gte: new Date(Date.now() - THIRTY_DAYS_MS)
               }
             },
             orderBy: { startTime: 'asc' },
@@ -296,7 +300,7 @@ export const getGroup = async (req: Request, res: Response) => {
           where: {
             archived: false,
             startTime: {
-              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // Last 7 days
+              gte: new Date(Date.now() - SEVEN_DAYS_MS)
             }
           },
           include: {
