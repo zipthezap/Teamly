@@ -56,7 +56,7 @@ export const createRateLimiterMiddleware = (config: RateLimiterConfig) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       // Generate key based on user or IP
-      const userId = (req.user as any)?.id;
+      const userId = req.user?.id;
       const key = userId ? `user:${userId}` : `ip:${req.ip}`;
 
       await rateLimiter.consume(key);
@@ -66,7 +66,7 @@ export const createRateLimiterMiddleware = (config: RateLimiterConfig) => {
         // Rate limit exceeded
         const retryAfter = Math.ceil(error.msBeforeNext / 1000);
         
-        const userId = (req.user as any)?.id;
+        const userId = req.user?.id;
         const identifier = userId ? `User ${userId}` : `IP ${req.ip}`;
         logger.warn('Rate limit exceeded', 'RateLimiter', {
           identifier,
@@ -157,8 +157,11 @@ export const createRoleBasedRateLimiter = (limits: {
 
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const userId = (req.user as any)?.id;
-      const userRole = (req.user as any)?.role || 'member';
+      const userId = req.user?.id;
+      // Note: Role is on GroupMember, not User model. Rate limiting applies per-user globally,
+      // not per-group membership. All users get 'member' rate limits for now.
+      // TODO: Consider adding a global role field to User model if different rate limits are needed.
+      const userRole = 'member';
 
       // Get appropriate rate limiter for user's role
       const rateLimiter = rateLimiters.get(userRole) || rateLimiters.get('member');

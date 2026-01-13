@@ -84,7 +84,7 @@ export const optionalAuthMiddleware = async (req: Request, _res: Response, next:
 
     // If user is found, attach to request
     if (user) {
-      req.user = user as any;
+      req.user = user as AuthenticatedUser;
       req.token = token;
     }
     

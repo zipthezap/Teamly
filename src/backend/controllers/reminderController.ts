@@ -11,7 +11,7 @@ import { logger } from '../utils/logger';
 export const createReminder = asyncHandler(async (req: Request, res: Response) => {
   const { eventId } = req.params;
   const { remindAt } = req.body;
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
 
   if (!remindAt) {
     throw new BadRequestError('Reminder time is required');
@@ -105,7 +105,7 @@ export const createReminder = asyncHandler(async (req: Request, res: Response) =
  */
 export const getEventReminders = asyncHandler(async (req: Request, res: Response) => {
   const { eventId } = req.params;
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
 
   // Check if user has access to the event
   const event = await prisma.event.findFirst({
@@ -151,7 +151,7 @@ export const getEventReminders = asyncHandler(async (req: Request, res: Response
  * GET /api/reminders
  */
 export const getUserReminders = asyncHandler(async (req: Request, res: Response) => {
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
   const { upcoming } = req.query;
 
   const whereClause: any = {
@@ -200,7 +200,7 @@ export const getUserReminders = asyncHandler(async (req: Request, res: Response)
  */
 export const deleteReminder = asyncHandler(async (req: Request, res: Response) => {
   const { reminderId } = req.params;
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
 
   // Find the reminder and verify ownership
   const reminder = await prisma.eventReminder.findUnique({
@@ -241,7 +241,7 @@ export const deleteReminder = asyncHandler(async (req: Request, res: Response) =
 export const updateReminder = asyncHandler(async (req: Request, res: Response) => {
   const { reminderId } = req.params;
   const { remindAt } = req.body;
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
 
   if (!remindAt) {
     throw new BadRequestError('Reminder time is required');

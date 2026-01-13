@@ -5,7 +5,7 @@ export const transferAdmin = async (req: Request, res: Response) => {
     const { newAdminEmail } = req.body;
     // Check if user is current admin
     const currentAdmin = await prisma.groupMember.findFirst({
-      where: { groupId: id, userId: (req.user as any).id, role: 'admin' }
+      where: { groupId: id, userId: req.user!.id, role: 'admin' }
     });
     if (!currentAdmin) {
       return res.status(403).json({ error: 'Only current admin can transfer admin rights.' });
@@ -47,7 +47,7 @@ export const deleteGroup = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     // Check if user is admin of the group
-    const isAdmin = await groupService.checkGroupAdmin(id, (req.user as any).id);
+    const isAdmin = await groupService.checkGroupAdmin(id, req.user!.id);
     if (!isAdmin) {
       return res.status(403).json({ error: 'Only admins can delete the group' });
     }
@@ -109,10 +109,10 @@ export const createGroup = async (req: Request, res: Response) => {
         locationName: sanitized.locationName,
         city: sanitized.city,
         country: sanitized.country,
-        creatorId: (req.user as any).id,
+        creatorId: req.user!.id,
         members: {
           create: {
-            userId: (req.user as any).id,
+            userId: req.user!.id,
             role: 'admin'
           }
         }
@@ -138,7 +138,7 @@ export const createGroup = async (req: Request, res: Response) => {
       // const toRad = deg => deg * Math.PI / 180;
       const users = await prisma.user.findMany({
         where: {
-          id: { not: (req.user as any).id }
+          id: { not: req.user!.id }
         },
         select: { id: true }
       });
@@ -161,7 +161,7 @@ export const createGroup = async (req: Request, res: Response) => {
             type: GroupNotificationType.nearby_created,
             params: {
               groupName: group.name,
-              name: (req.user as any).name
+              name: req.user!.name
             }
           }
         })
@@ -180,7 +180,7 @@ export const getGroups = async (req: Request, res: Response) => {
       where: {
         members: {
           some: {
-            userId: (req.user as any).id
+            userId: req.user!.id
           }
         }
       },
@@ -237,7 +237,7 @@ export const getGroup = async (req: Request, res: Response) => {
         id,
         members: {
           some: {
-            userId: (req.user as any).id
+            userId: req.user!.id
           }
         }
       },
@@ -296,7 +296,7 @@ export const updateGroup = async (req: Request, res: Response) => {
     const { name, description, isPublic, latitude, longitude, locationName, city, country } = req.body;
 
     // Check if user is admin of the group
-    const isAdmin = await groupService.checkGroupAdmin(id, (req.user as any).id);
+    const isAdmin = await groupService.checkGroupAdmin(id, req.user!.id);
     if (!isAdmin) {
       return res.status(403).json({ error: 'Only admins can update the group' });
     }
@@ -359,7 +359,7 @@ export const inviteMember = async (req: Request, res: Response) => {
     const membership = await prisma.groupMember.findFirst({
       where: {
         groupId: id,
-        userId: (req.user as any).id
+        userId: req.user!.id
       }
     });
 
@@ -408,7 +408,7 @@ export const inviteMember = async (req: Request, res: Response) => {
 
     // Send email notification
     const inviterUser = await prisma.user.findUnique({
-      where: { id: (req.user as any).id }
+      where: { id: req.user!.id }
     });
 
     const shouldSend = await shouldSendEmailNotification(userToInvite.id, 'groupInvites');
@@ -451,7 +451,7 @@ export const removeMember = async (req: Request, res: Response) => {
     const { id, memberId } = req.params;
 
     // Check if user is admin of the group
-    const isAdmin = await groupService.checkGroupAdmin(id, (req.user as any).id);
+    const isAdmin = await groupService.checkGroupAdmin(id, req.user!.id);
     if (!isAdmin) {
       return res.status(403).json({ error: 'Only admins can remove members' });
     }
@@ -460,7 +460,7 @@ export const removeMember = async (req: Request, res: Response) => {
     const memberToRemove = await prisma.groupMember.findUnique({
       where: { id: memberId }
     });
-    if (memberToRemove && memberToRemove.userId === (req.user as any).id && memberToRemove.role === 'admin') {
+    if (memberToRemove && memberToRemove.userId === req.user!.id && memberToRemove.role === 'admin') {
       return res.status(403).json({ error: 'Admins cannot remove themselves from the group.' });
     }
 
@@ -492,7 +492,7 @@ export const updateMemberRole = async (req: Request, res: Response) => {
       const adminMembership = await tx.groupMember.findFirst({
         where: {
           groupId: id,
-          userId: (req.user as any).id,
+          userId: req.user!.id,
           role: 'admin'
         }
       });
@@ -562,7 +562,7 @@ export const updateMemberRole = async (req: Request, res: Response) => {
 // Get all public groups (for discovery)
 export const getPublicGroups = async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as any)?.id;
+    const userId = req.user!.id;
     
     // Build where clause to exclude groups user is already a member of
     const whereClause: any = {
@@ -625,7 +625,7 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
     const existingMembership = await prisma.groupMember.findFirst({
       where: {
         groupId: id,
-        userId: (req.user as any).id
+        userId: req.user!.id
       }
     });
 
@@ -637,7 +637,7 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
     const existingRequest = await prisma.groupJoinRequest.findFirst({
       where: {
         groupId: id,
-        userId: (req.user as any).id,
+        userId: req.user!.id,
         status: 'pending'
       }
     });
@@ -650,7 +650,7 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
     const joinRequest = await prisma.groupJoinRequest.create({
       data: {
         groupId: id,
-        userId: (req.user as any).id,
+        userId: req.user!.id,
         status: 'pending'
       },
       include: {
@@ -676,7 +676,7 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
           type: 'join_request',
           params: {
             groupName: joinRequest.group.name,
-            name: (req.user as any).name
+            name: req.user!.name
           }
         }
       })
@@ -698,7 +698,7 @@ export const getJoinRequests = async (req: Request, res: Response) => {
     const membership = await prisma.groupMember.findFirst({
       where: {
         groupId: id,
-        userId: (req.user as any).id,
+        userId: req.user!.id,
         role: 'admin'
       }
     });
@@ -741,7 +741,7 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
     const membership = await prisma.groupMember.findFirst({
       where: {
         groupId: id,
-        userId: (req.user as any).id,
+        userId: req.user!.id,
         role: 'admin'
       }
     });
@@ -798,7 +798,7 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
             type: 'accepted',
             params: {
               groupName: groupInfo.name,
-              name: (req.user as any).name
+              name: req.user!.name
             }
           }
         });
@@ -841,7 +841,7 @@ export const joinGroupByInvite = async (req: Request, res: Response) => {
 export const leaveGroup = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req.user as any).id;
+    const userId = req.user!.id;
 
     // Find the membership
     const membership = await prisma.groupMember.findFirst({
@@ -890,7 +890,7 @@ export const getInviteLink = async (req: Request, res: Response) => {
     const membership = await prisma.groupMember.findFirst({
       where: {
         groupId: id,
-        userId: (req.user as any).id
+        userId: req.user!.id
       }
     });
 
@@ -920,7 +920,7 @@ export const uploadGroupPicture = async (req: Request, res: Response) => {
     const membership = await prisma.groupMember.findFirst({
       where: {
         groupId: id,
-        userId: (req.user as any).id,
+        userId: req.user!.id,
         role: 'admin'
       }
     });
@@ -994,7 +994,7 @@ export const uploadGroupPicture = async (req: Request, res: Response) => {
 
     logger.info('Group picture uploaded successfully', 'GroupController', { 
       groupId: id,
-      userId: (req.user as any).id 
+      userId: req.user!.id 
     });
 
     res.json({ 
@@ -1027,7 +1027,7 @@ export const deleteGroupPicture = async (req: Request, res: Response) => {
     const membership = await prisma.groupMember.findFirst({
       where: {
         groupId: id,
-        userId: (req.user as any).id,
+        userId: req.user!.id,
         role: 'admin'
       }
     });
@@ -1069,7 +1069,7 @@ export const deleteGroupPicture = async (req: Request, res: Response) => {
 
     logger.info('Group picture deleted successfully', 'GroupController', { 
       groupId: id,
-      userId: (req.user as any).id 
+      userId: req.user!.id 
     });
 
     res.json({ 
@@ -1102,7 +1102,7 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
     } else {
       // Get user's discovery radius preference
       const user = await prisma.user.findUnique({
-        where: { id: (req.user as any).id },
+        where: { id: req.user!.id },
         select: { discoveryRadius: true }
       });
       radiusKm = user?.discoveryRadius || 25; // Default to 25km if not set

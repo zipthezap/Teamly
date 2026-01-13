@@ -6,7 +6,7 @@ import { BadRequestError, NotFoundError } from '../utils/errors';
 
 // Get notifications for the current user (event and group notifications)
 export const getNotifications = asyncHandler(async (req: Request, res: Response) => {
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
   // Fetch both event and group notifications, ordered by createdAt desc
   const [eventNotifications, groupNotifications] = await Promise.all([
     prisma.eventNotification.findMany({
@@ -24,7 +24,7 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
 // Undo Event Attendance (late)
 export const unmarkLate = asyncHandler(async (req: Request, res: Response) => {
   const { eventId } = req.body;
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
 
   // Find the attendance record
   const attendance = await prisma.eventAttendance.findUnique({
@@ -61,7 +61,7 @@ export const unmarkLate = asyncHandler(async (req: Request, res: Response) => {
 // Group Chat
 export const createMessage = asyncHandler(async (req: Request, res: Response) => {
   const { groupId, content } = req.body;
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
   
   // Sanitize content to prevent XSS
   const sanitizedContent = sanitizeUserInput(content);
@@ -86,7 +86,7 @@ export const getMessages = asyncHandler(async (req: Request, res: Response) => {
 // Event Attendance (late)
 export const markLate = asyncHandler(async (req: Request, res: Response) => {
   const { eventId } = req.body;
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
 
   // Get event to find the organizer
   const event = await prisma.event.findUnique({
@@ -118,7 +118,7 @@ export const markLate = asyncHandler(async (req: Request, res: Response) => {
         userId,
         type: 'late',
         params: {
-          name: (req.user as any).name,
+          name: req.user!.name,
           eventTitle: eventDetails.title
         }
       }
@@ -129,7 +129,7 @@ export const markLate = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const markNotificationsRead = asyncHandler(async (req: Request, res: Response) => {
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
   
   // Check if there are unread notifications first
   const [unreadEventCount, unreadGroupCount] = await Promise.all([

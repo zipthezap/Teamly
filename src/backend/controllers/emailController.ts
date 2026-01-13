@@ -4,17 +4,19 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { BadRequestError, NotFoundError } from '../utils/errors';
 import * as authService from '../services/authService';
+import { UpdateEmailPreferenceData } from '../../shared/types/email.types';
+import { AuthenticatedRequest, RouteParams } from '../types/controller.types';
 
 // Get user email preferences
-export const getEmailPreferences = asyncHandler(async (req: Request, res: Response) => {
+export const getEmailPreferences = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   let preferences = await prisma.emailPreference.findUnique({
-    where: { userId: (req.user as any).id }
+    where: { userId: req.user.id }
   });
 
   // Create default preferences if they don't exist
   if (!preferences) {
     preferences = await prisma.emailPreference.create({
-      data: { userId: (req.user as any).id }
+      data: { userId: req.user.id }
     });
   }
 
@@ -22,34 +24,23 @@ export const getEmailPreferences = asyncHandler(async (req: Request, res: Respon
 });
 
 // Update user email preferences
-export const updateEmailPreferences = asyncHandler(async (req: Request, res: Response) => {
-  const {
-    eventInvites,
-    eventReminders,
-    eventUpdates,
-    eventCancellations,
-    groupInvites,
-    commentMentions
-  } = req.body;
+export const updateEmailPreferences = asyncHandler(async (req: AuthenticatedRequest<UpdateEmailPreferenceData>, res: Response) => {
+  const data = req.body;
 
   const preferences = await prisma.emailPreference.upsert({
-    where: { userId: (req.user as any).id },
+    where: { userId: req.user.id },
     update: {
-      eventInvites: eventInvites !== undefined ? eventInvites : undefined,
-      eventReminders: eventReminders !== undefined ? eventReminders : undefined,
-      eventUpdates: eventUpdates !== undefined ? eventUpdates : undefined,
-      eventCancellations: eventCancellations !== undefined ? eventCancellations : undefined,
-      groupInvites: groupInvites !== undefined ? groupInvites : undefined,
-      commentMentions: commentMentions !== undefined ? commentMentions : undefined
+      ...(data.eventInvites !== undefined && { eventInvites: data.eventInvites }),
+      ...(data.eventReminders !== undefined && { eventReminders: data.eventReminders }),
+      ...(data.eventUpdates !== undefined && { eventUpdates: data.eventUpdates }),
+      ...(data.eventCancellations !== undefined && { eventCancellations: data.eventCancellations }),
+      ...(data.groupInvites !== undefined && { groupInvites: data.groupInvites }),
+      ...(data.commentMentions !== undefined && { commentMentions: data.commentMentions }),
+      ...(data.nearbyTeamUps !== undefined && { nearbyTeamUps: data.nearbyTeamUps })
     },
     create: {
-      userId: (req.user as any).id,
-      eventInvites: eventInvites !== undefined ? eventInvites : true,
-      eventReminders: eventReminders !== undefined ? eventReminders : true,
-      eventUpdates: eventUpdates !== undefined ? eventUpdates : true,
-      eventCancellations: eventCancellations !== undefined ? eventCancellations : true,
-      groupInvites: groupInvites !== undefined ? groupInvites : true,
-      commentMentions: commentMentions !== undefined ? commentMentions : true
+      userId: req.user.id,
+      ...data
     }
   });
 
@@ -57,9 +48,9 @@ export const updateEmailPreferences = asyncHandler(async (req: Request, res: Res
 });
 
 // Send email verification
-export const sendVerificationEmail = asyncHandler(async (req: Request, res: Response) => {
+export const sendVerificationEmail = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const user = await prisma.user.findUnique({
-    where: { id: (req.user as any).id }
+    where: { id: req.user.id }
   });
 
   if (!user) {
@@ -75,7 +66,7 @@ export const sendVerificationEmail = asyncHandler(async (req: Request, res: Resp
 
   // Update user with hashed token
   await prisma.user.update({
-    where: { id: (req.user as any).id },
+    where: { id: req.user.id },
     data: { emailVerificationToken: hashedToken }
   });
 
@@ -87,7 +78,7 @@ export const sendVerificationEmail = asyncHandler(async (req: Request, res: Resp
 });
 
 // Verify email
-export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
+export const verifyEmail = asyncHandler(async (req: Request<RouteParams<'token'>>, res: Response) => {
   const { token } = req.params;
 
   // Hash the token to compare with stored hash
@@ -112,12 +103,16 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
   res.json({ message: 'Email verified successfully' });
 });
 
+interface ToggleEmailBody {
+  enabled: boolean;
+}
+
 // Toggle email notifications on/off
-export const toggleEmailNotifications = asyncHandler(async (req: Request, res: Response) => {
+export const toggleEmailNotifications = asyncHandler(async (req: AuthenticatedRequest<ToggleEmailBody>, res: Response) => {
   const { enabled } = req.body;
 
   const user = await prisma.user.update({
-    where: { id: (req.user as any).id },
+    where: { id: req.user.id },
     data: { emailNotifications: enabled }
   });
 
