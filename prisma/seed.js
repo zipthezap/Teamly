@@ -1410,7 +1410,7 @@ async function main() {
   console.log('\n========================================');
   console.log('Seeding completed successfully!');
   console.log('========================================');
-  console.log('Summary:');
+  console.log('Summary (for display purposes only - counts may vary):');
   console.log('- Users: 4');
   console.log('- Groups: 5 (4 public, 1 private)');
   console.log('  - 2 groups in Sherbrooke, QC (Alice is NOT a member)');

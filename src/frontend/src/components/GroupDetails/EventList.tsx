@@ -81,7 +81,7 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, i
             onEventClick={onEventClick}
             t={tModal}
           />
-          {/* Request Event button for all members */}
+          {/* Request Event button - available for all members including admins */}
           {isMember && groupId && (
             <button
               onClick={handleRequestEvent}
