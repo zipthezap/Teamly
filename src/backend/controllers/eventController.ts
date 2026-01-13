@@ -872,6 +872,10 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
             }
           }
         });
+
+        // Invalidate events cache when status changes
+        await CacheService.deletePattern(`events:user:*:group:${statusEvent.groupId}:*`);
+        await CacheService.deletePattern(`events:user:*:group:all:*`);
       }
     }
 
