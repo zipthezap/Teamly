@@ -67,19 +67,11 @@ function isValidLocation(obj: Location | null): obj is Location {
 
 // Helper to convert Location to LatLng
 function toLatLng(location: Location | null): LatLng | null {
-  if (!location) return null;
-  if (
-    typeof location.latitude === 'number' &&
-    typeof location.longitude === 'number' &&
-    isFinite(location.latitude) &&
-    isFinite(location.longitude)
-  ) {
-    return {
-      lat: location.latitude,
-      lng: location.longitude
-    };
-  }
-  return null;
+  if (!isValidLocation(location)) return null;
+  return {
+    lat: location.latitude,
+    lng: location.longitude
+  };
 }
 
 const GOOGLE_MAPS_API_KEY = typeof import.meta.env.VITE_GOOGLE_MAPS_API_KEY !== 'undefined' ? import.meta.env.VITE_GOOGLE_MAPS_API_KEY : '';
