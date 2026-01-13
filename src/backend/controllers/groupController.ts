@@ -46,9 +46,9 @@ export const transferAdmin = async (req: Request, res: Response) => {
 export const deleteGroup = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    // Check if user is admin of the group
-    const isAdmin = await groupService.checkGroupAdmin(id, req.user!.id);
-    if (!isAdmin) {
+    // Check if user has permission to delete the group
+    const canDelete = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_DELETE);
+    if (!canDelete) {
       return res.status(403).json({ error: 'Only admins can delete the group' });
     }
     // Delete group and cascade related data (members, events, etc.)
@@ -77,9 +77,11 @@ import {
 } from '../utils/imageProcessor';
 import { UPLOAD_CONFIG } from '../config/upload';
 import * as groupService from '../services/groupService';
+import * as permissionService from '../services/permissionService';
 import * as locationService from '../services/locationService';
 import { GroupNotificationType } from '../../shared/types/event.types';
 import { CacheService } from '../services/cacheService';
+import { Permission } from '../../shared/types/permissions.types';
 
 // Time constants for event queries
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -359,9 +361,9 @@ export const updateGroup = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { name, description, isPublic, latitude, longitude, locationName, city, country } = req.body;
 
-    // Check if user is admin of the group
-    const isAdmin = await groupService.checkGroupAdmin(id, req.user!.id);
-    if (!isAdmin) {
+    // Check if user has permission to update the group
+    const canUpdate = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_UPDATE);
+    if (!canUpdate) {
       return res.status(403).json({ error: 'Only admins can update the group' });
     }
 
@@ -419,16 +421,10 @@ export const inviteMember = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    // Check if user is member of the group
-    const membership = await prisma.groupMember.findFirst({
-      where: {
-        groupId: id,
-        userId: req.user!.id
-      }
-    });
-
-    if (!membership) {
-      return res.status(403).json({ error: 'Only group members can invite others' });
+    // Check if user has permission to invite members (admins and moderators)
+    const canInvite = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_INVITE_MEMBERS);
+    if (!canInvite) {
+      return res.status(403).json({ error: 'Only admins and moderators can invite members' });
     }
 
     // Get group info
@@ -519,9 +515,9 @@ export const removeMember = async (req: Request, res: Response) => {
   try {
     const { id, memberId } = req.params;
 
-    // Check if user is admin of the group
-    const isAdmin = await groupService.checkGroupAdmin(id, req.user!.id);
-    if (!isAdmin) {
+    // Check if user has permission to remove members
+    const canRemove = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_REMOVE_MEMBERS);
+    if (!canRemove) {
       return res.status(403).json({ error: 'Only admins can remove members' });
     }
 
@@ -769,16 +765,9 @@ export const getJoinRequests = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // Check if user is admin of the group
-    const membership = await prisma.groupMember.findFirst({
-      where: {
-        groupId: id,
-        userId: req.user!.id,
-        role: 'admin'
-      }
-    });
-
-    if (!membership) {
+    // Check if user has permission to manage roles (admins only)
+    const canManageRoles = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_MANAGE_ROLES);
+    if (!canManageRoles) {
       return res.status(403).json({ error: 'Only admins can view join requests' });
     }
 
@@ -812,16 +801,9 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid action. Must be "approve" or "reject"' });
     }
 
-    // Check if user is admin of the group
-    const membership = await prisma.groupMember.findFirst({
-      where: {
-        groupId: id,
-        userId: req.user!.id,
-        role: 'admin'
-      }
-    });
-
-    if (!membership) {
+    // Check if user has permission to manage roles (admins only)
+    const canManageRoles = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_MANAGE_ROLES);
+    if (!canManageRoles) {
       return res.status(403).json({ error: 'Only admins can handle join requests' });
     }
 

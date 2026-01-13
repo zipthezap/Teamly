@@ -69,7 +69,7 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^1.4.12",
-    "@types/node": "^25.0.7",
+    "@types/node": "^25.0.8",
     "@types/nodemailer": "^7.0.4",
     "@types/passport": "^1.0.17",
     "@types/passport-facebook": "^3.0.4",

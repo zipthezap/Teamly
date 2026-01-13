@@ -38,7 +38,7 @@ export interface GroupWithDetails extends Group {
 // Group Member
 export interface GroupMember {
   id: string;
-  role: 'member' | 'admin';
+  role: 'member' | 'moderator' | 'admin';
   joinedAt: Date | string;
   userId: string;
   groupId: string;
