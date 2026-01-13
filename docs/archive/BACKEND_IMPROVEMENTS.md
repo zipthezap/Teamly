@@ -2,391 +2,397 @@
 
 ## Overview
 
-This document describes the backend improvements made to enhance code quality, maintainability, security, and observability of the Teamly application.
+This document describes the significant backend improvements made to enhance security, performance, reliability, and maintainability of the Teamly API.
 
-## New Features
+## Improvements Summary
 
-### 1. Async Error Handler Middleware (`middleware/asyncHandler.ts`)
+### 1. Database Connection Pooling
 
-**Purpose**: Eliminates repetitive try-catch blocks in route handlers.
+**File**: `src/backend/config/database.ts`
 
-**Usage**:
-```typescript
-import { asyncHandler } from '../middleware/asyncHandler';
+**Problem**: The application had no connection pool limits, which could lead to resource exhaustion under load.
 
-export const myRoute = asyncHandler(async (req, res) => {
-  // Your async code here
-  // Errors are automatically caught and passed to error middleware
-  const data = await someAsyncOperation();
-  res.json(data);
-});
+**Solution**: Implemented comprehensive connection pooling with the following features:
+
+- **Configurable Pool Size**: Max 20 connections, Min 2 connections (configurable via env vars)
+- **Connection Timeouts**: 5-second timeout for acquiring connections
+- **Query Timeouts**: 30-second timeout for query execution
+- **Idle Connection Management**: Connections idle for 30 seconds are recycled
+- **Connection Lifecycle**: Max 30-minute lifetime for connections
+- **Error Logging**: Pool errors and connection events are logged
+- **Slow Query Detection**: Queries taking >1 second are logged in development
+- **Graceful Shutdown**: Proper cleanup of database connections on shutdown
+
+**Environment Variables**:
+```bash
+DB_POOL_MAX=20                    # Maximum pool connections
+DB_POOL_MIN=2                     # Minimum pool connections
+DB_IDLE_TIMEOUT_MS=30000          # Idle connection timeout
+DB_CONNECTION_TIMEOUT_MS=5000     # Connection acquisition timeout
+DB_MAX_LIFETIME_SECONDS=1800      # Max connection lifetime (30 min)
+DB_QUERY_TIMEOUT_MS=30000         # Query execution timeout
+DB_STATEMENT_TIMEOUT_MS=30000     # Server-side statement timeout
 ```
-
-### 2. Custom Error Classes (`utils/errors.ts`)
-
-**Purpose**: Provides structured, HTTP-aware error handling with semantic error types.
-
-**Available Error Classes**:
-- `ApiError` - Base error class
-- `BadRequestError` (400)
-- `UnauthorizedError` (401)
-- `ForbiddenError` (403)
-- `NotFoundError` (404)
-- `ConflictError` (409)
-- `ValidationError` (422)
-- `TooManyRequestsError` (429)
-- `InternalServerError` (500)
-- `ServiceUnavailableError` (503)
-
-**Usage**:
-```typescript
-import { NotFoundError, BadRequestError } from '../utils/errors';
-
-// In a controller
-if (!user) {
-  throw new NotFoundError('User not found');
-}
-
-if (!email) {
-  throw new BadRequestError('Email is required', 'EMAIL_REQUIRED');
-}
-```
-
-### 3. Enhanced Error Handler (`middleware/errorHandler.ts`)
-
-**Purpose**: Centralized error handling with consistent formatting and appropriate logging.
-
-**Features**:
-- Automatic error logging based on severity
-- Consistent JSON error responses
-- Stack traces in development mode only
-- Prisma error translation
-- Request context in logs
-
-**Prisma Error Handling**:
-```typescript
-import { prismaErrorHandler } from '../middleware/errorHandler';
-
-try {
-  await prisma.user.create({ data });
-} catch (error) {
-  throw prismaErrorHandler(error);
-}
-```
-
-### 4. Request Context Middleware (`middleware/requestContext.ts`)
-
-**Purpose**: Adds unique request IDs and tracks request timing for better debugging and monitoring.
-
-**Features**:
-- Unique request ID for each request
-- Request timing and logging
-- Performance monitoring for slow requests
-- Request/response logging
 
 **Benefits**:
-- Trace requests through logs using request ID
-- Identify slow endpoints
-- Better debugging in production
+- Prevents connection exhaustion
+- Improves performance under load
+- Better resource utilization
+- Easier debugging with query logging
 
-### 5. Input Sanitization Middleware (`middleware/sanitizeInput.ts`)
+---
 
-**Purpose**: Automatically sanitizes all incoming data to prevent XSS attacks.
+### 2. Enhanced Rate Limiting
 
-**Features**:
-- Sanitizes request body, query params, and route params
-- Escapes HTML special characters
-- Preserves sensitive fields (passwords, tokens) unchanged
-- Works with nested objects and arrays
+**File**: `src/backend/middleware/rateLimiter.ts`
 
-**Protected Fields** (not HTML-escaped):
-- password
-- token
-- secret
-- apiKey
-- accessToken
-- refreshToken
-- twoFactorToken
-- etc.
+**Problem**: Basic IP-only rate limiting could be bypassed with proxies and didn't differentiate between authenticated/unauthenticated users.
 
-### 6. Database Health Check (`utils/databaseHealth.ts`)
+**Solution**: Implemented sophisticated rate limiting with:
 
-**Purpose**: Provides database connection health monitoring and graceful shutdown.
+- **User-Aware Limiting**: Tracks authenticated users by ID instead of just IP
+- **Endpoint-Specific Limits**:
+  - General API: 300 requests / 15 min
+  - Authentication: 10 attempts / 15 min
+  - Authenticated routes: 500 requests / 15 min
+  - File uploads: 20 uploads / hour
+  - Password reset: 3 requests / hour
+  - Email verification: 5 requests / hour
+- **Custom Logging**: Rate limit violations are logged with context
+- **Better Error Responses**: Include retry-after headers
 
-**Features**:
-- Database connectivity check for health endpoint
-- Graceful shutdown on SIGTERM/SIGINT
-- Automatic cleanup on uncaught exceptions
-- Clean connection pool management
+**Benefits**:
+- Better protection against brute force attacks
+- Prevents email/password reset spam
+- More flexible limits for authenticated users
+- Better observability of abuse attempts
 
-**Health Check Endpoint**:
-```bash
-curl http://localhost:3000/health
-```
+---
 
-Response:
-```json
+### 3. Response Compression
+
+**File**: `src/backend/server.ts`
+
+**Problem**: Large JSON responses were sent uncompressed, wasting bandwidth and slowing down clients.
+
+**Solution**: Implemented gzip compression with:
+
+- **Automatic Compression**: Responses >1KB are automatically compressed
+- **Configurable Level**: Compression level 6 (balanced)
+- **Selective Compression**: Can be disabled per-request with `x-no-compression` header
+- **Smart Filtering**: Only compresses compressible content types
+
+**Benefits**:
+- Reduced bandwidth usage (typically 60-80% reduction for JSON)
+- Faster response times for clients
+- Lower hosting costs
+- Better mobile experience
+
+---
+
+### 4. Request Timeouts
+
+**File**: `src/backend/middleware/requestTimeout.ts`
+
+**Problem**: Long-running or hanging requests could tie up server resources indefinitely.
+
+**Solution**: Implemented request timeout middleware with:
+
+- **Default Timeout**: 30 seconds for most operations
+- **Configurable Timeouts**: Different durations for different operations:
+  - Short: 10 seconds for fast operations
+  - Medium: 30 seconds (default)
+  - Long: 60 seconds for complex queries
+  - Upload: 120 seconds for file uploads
+- **Automatic Cleanup**: Timeouts are cleared when responses finish
+- **Logging**: Timeout events are logged with request details
+
+**Benefits**:
+- Prevents resource exhaustion from hanging requests
+- Better error handling for slow operations
+- Improved server stability
+- Easier debugging of performance issues
+
+---
+
+### 5. Database Indexes
+
+**File**: `prisma/schema.prisma`
+
+**Problem**: Missing indexes on frequently queried fields causing slow queries and table scans.
+
+**Solution**: Added comprehensive indexes on:
+
+**User Table**:
+- `email` - For login lookups
+- `emailVerificationToken` - For email verification
+- `passwordResetToken` - For password reset lookups
+- `city, country` - For location-based queries
+
+**Event Table**:
+- `groupId` - For group events
+- `creatorId` - For user's created events
+- `startTime` - For date-based filtering
+- `status` - For status filtering
+- `eventType` - For type filtering
+- `inviteToken` - For invite link lookups
+- `archived` - For archived events filtering
+- Composite: `groupId + startTime` - For group events by date
+- Composite: `creatorId + startTime` - For user events by date
+
+**EventParticipant Table**:
+- `eventId` - For event participants
+- `userId` - For user's events
+- `status` - For status filtering
+- Composite: `eventId + status` - For event participants by status
+
+**GroupMember Table**:
+- `userId` - For user's groups
+- `groupId` - For group members
+- `role` - For admin/member filtering
+
+**Notification Tables**:
+- `userId` - For user notifications
+- `eventId` / `groupId` - For related notifications
+- `read` - For unread filtering
+- Composite: `userId + read` - For unread user notifications
+- `createdAt` - For chronological sorting
+
+**Benefits**:
+- Dramatically faster query performance
+- Reduced database CPU usage
+- Better scalability
+- Improved user experience
+
+**Note**: Run `npm run prisma:migrate` to create and apply the migration.
+
+---
+
+### 6. Standardized API Responses
+
+**File**: `src/backend/utils/apiResponse.ts`
+
+**Problem**: Inconsistent response formats across endpoints made client-side handling difficult.
+
+**Solution**: Created standardized response utilities with:
+
+**Success Response Format**:
+```typescript
 {
-  "status": "ok",
-  "message": "Teamly API is running",
-  "database": "connected",
-  "timestamp": "2024-01-08T12:00:00.000Z"
+  success: true,
+  data: { ... },
+  message: "Optional message",
+  meta: {
+    timestamp: "2024-01-01T00:00:00.000Z",
+    requestId: "abc123",
+    pagination: { ... }
+  }
 }
 ```
 
-### 7. Centralized Configuration (`config/appConfig.ts`)
-
-**Purpose**: Type-safe configuration management with validation and defaults.
-
-**Features**:
-- Centralized environment variable access
-- Type-safe configuration
-- Default values
-- Environment-specific settings
-- Configuration validation
-- Feature flags
-
-**Usage**:
+**Error Response Format**:
 ```typescript
-import { config } from '../config/appConfig';
-
-// Access configuration
-const port = config.port;
-const isProduction = config.isProduction;
-const enableTwoFactor = config.enableTwoFactor;
+{
+  success: false,
+  error: {
+    code: "AUTH_1001",
+    message: "Invalid token",
+    details: { ... }
+  },
+  meta: {
+    timestamp: "2024-01-01T00:00:00.000Z",
+    requestId: "abc123"
+  }
+}
 ```
 
-**Available Settings**:
-- Server configuration (port, environment)
-- Database configuration
-- Security settings (JWT, rate limiting)
-- CORS configuration
-- Email settings
-- Feature flags
-- Performance settings
+**Standard Error Codes**:
+- `AUTH_1xxx` - Authentication/Authorization errors
+- `VALID_2xxx` - Validation errors
+- `RES_3xxx` - Resource errors
+- `DB_4xxx` - Database errors
+- `RATE_5xxx` - Rate limiting errors
+- `SERVER_9xxx` - Server errors
+
+**Helper Functions**:
+- `sendSuccess()` - Send standardized success response
+- `sendError()` - Send standardized error response
+- `calculatePagination()` - Calculate pagination metadata
+
+**Benefits**:
+- Consistent client-side error handling
+- Better API documentation
+- Easier debugging with error codes
+- Built-in pagination support
+- Request tracking with IDs
+
+---
+
+### 7. Enhanced Health Check
+
+**File**: `src/backend/utils/databaseHealth.ts`
+
+**Problem**: Basic health check only checked database connectivity without performance metrics.
+
+**Solution**: Comprehensive health check with:
+
+**Metrics Collected**:
+- Database connection status
+- Database response time
+- Server uptime
+- Memory usage (used/total/percentage)
+- Overall health status (healthy/degraded/unhealthy)
+
+**Status Determination**:
+- **Healthy**: Database connected, response time <1s, memory <90%
+- **Degraded**: Database connected but slow (>1s) or high memory (>90%)
+- **Unhealthy**: Database disconnected
+
+**Endpoint**: `GET /health`
+
+**Response Example**:
+```json
+{
+  "status": "healthy",
+  "message": "Teamly API is running smoothly",
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "uptime": 3600,
+  "database": {
+    "connected": true,
+    "responseTime": 15
+  },
+  "memory": {
+    "used": 128,
+    "total": 256,
+    "percentage": 50
+  }
+}
+```
+
+**Benefits**:
+- Better monitoring and alerting
+- Early detection of performance issues
+- Useful for load balancers and orchestrators
+- Easier debugging of production issues
+
+---
 
 ## Migration Guide
 
-### Converting Existing Controllers
+### For Development
 
-**Before**:
-```typescript
-export const getUser = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    
-    if (!id) {
-      return res.status(400).json({ error: 'ID is required' });
-    }
-    
-    const user = await prisma.user.findUnique({ where: { id } });
-    
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    res.json(user);
-  } catch (error) {
-    logger.error('Failed to get user', 'UserController', { error });
-    res.status(500).json({ error: 'Failed to get user' });
-  }
-};
-```
+1. **Update Dependencies**:
+   ```bash
+   npm install
+   ```
 
-**After**:
-```typescript
-import { asyncHandler } from '../middleware/asyncHandler';
-import { BadRequestError, NotFoundError } from '../utils/errors';
+2. **Update Environment Variables**:
+   Add new database pool configuration to your `.env` file (see `.env.example`).
 
-export const getUser = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  
-  if (!id) {
-    throw new BadRequestError('ID is required');
-  }
-  
-  const user = await prisma.user.findUnique({ where: { id } });
-  
-  if (!user) {
-    throw new NotFoundError('User not found');
-  }
-  
-  res.json(user);
-});
-```
+3. **Generate Prisma Client**:
+   ```bash
+   npm run prisma:generate
+   ```
 
-**Benefits**:
-- 40% less boilerplate code
-- Better error handling
-- Automatic logging
-- Consistent error responses
-- Request tracking via request ID
+4. **Create and Apply Migration**:
+   ```bash
+   npm run prisma:migrate
+   ```
+   Name the migration: `add_performance_indexes`
 
-## Configuration
+5. **Build and Test**:
+   ```bash
+   npm run build
+   npm run dev
+   ```
 
-### Environment Variables
+6. **Verify Health Check**:
+   ```bash
+   curl http://localhost:3000/health
+   ```
 
-New optional environment variables:
+### For Production
 
-```bash
-# Performance
-SLOW_REQUEST_THRESHOLD_MS=1000  # Log requests slower than this
-REQUEST_BODY_SIZE_LIMIT=10mb    # Max request body size
+1. **Review Environment Variables**: Ensure all new DB pool variables are set appropriately for production load.
 
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=900000            # 15 minutes
-RATE_LIMIT_MAX_REQUESTS=300            # Max requests per window
-AUTH_RATE_LIMIT_MAX_REQUESTS=5         # Auth endpoint limit
+2. **Plan Downtime**: The migration adds indexes, which may require brief downtime on large databases.
 
-# Feature Flags
-ENABLE_EMAIL_NOTIFICATIONS=true
-ENABLE_TWO_FACTOR=true
+3. **Backup Database**: Always backup before running migrations.
 
-# Security
-JWT_EXPIRY_DAYS=7
-```
+4. **Apply Migration**:
+   ```bash
+   npm run prisma:migrate deploy
+   ```
 
-## Monitoring and Debugging
+5. **Monitor**: Watch database performance and connection pool metrics after deployment.
 
-### Request Tracking
+6. **Tune Settings**: Adjust pool sizes and timeouts based on production load patterns.
 
-Every request now has a unique ID available in:
-- Response header: `X-Request-ID`
-- Request object: `req.id`
-- All related logs
-
-**Example log entry**:
-```
-[2024-01-08T12:00:00.000Z] [INFO] [RequestContext] GET /api/users/123
-{
-  "requestId": "a1b2c3d4e5f6...",
-  "method": "GET",
-  "path": "/api/users/123",
-  "duration": "45ms",
-  "statusCode": 200
-}
-```
-
-### Performance Monitoring
-
-Slow requests are automatically logged:
-```
-[2024-01-08T12:00:00.000Z] [WARN] [PerformanceMonitor] Slow request detected
-{
-  "requestId": "...",
-  "method": "GET",
-  "path": "/api/events",
-  "duration": "1250ms",
-  "threshold": "1000ms"
-}
-```
-
-### Error Logging
-
-Errors are logged with full context:
-```
-[2024-01-08T12:00:00.000Z] [ERROR] [ErrorHandler] User not found
-{
-  "statusCode": 404,
-  "code": "NOT_FOUND",
-  "path": "/api/users/123",
-  "method": "GET"
-}
-```
-
-## Security Enhancements
-
-1. **Input Sanitization**: All user input is automatically sanitized
-2. **XSS Prevention**: HTML special characters are escaped
-3. **Graceful Shutdown**: Clean resource cleanup on termination
-4. **Error Information Leakage Prevention**: Stack traces only in development
-5. **Request Body Size Limits**: Configurable DoS protection
-
-## Best Practices
-
-### 1. Use asyncHandler for All Async Routes
-
-```typescript
-// ✅ Good
-export const myRoute = asyncHandler(async (req, res) => {
-  // async code
-});
-
-// ❌ Avoid
-export const myRoute = async (req, res) => {
-  try {
-    // async code
-  } catch (error) {
-    // manual error handling
-  }
-};
-```
-
-### 2. Throw Semantic Errors
-
-```typescript
-// ✅ Good
-throw new NotFoundError('User not found');
-
-// ❌ Avoid
-res.status(404).json({ error: 'User not found' });
-```
-
-### 3. Use Configuration Object
-
-```typescript
-// ✅ Good
-import { config } from '../config/appConfig';
-const port = config.port;
-
-// ❌ Avoid
-const port = process.env.PORT || 3000;
-```
-
-### 4. Let Middleware Handle Errors
-
-```typescript
-// ✅ Good
-export const createUser = asyncHandler(async (req, res) => {
-  const user = await prisma.user.create({ data: req.body });
-  res.json(user);
-  // Errors are caught and handled automatically
-});
-
-// ❌ Avoid wrapping in try-catch when using asyncHandler
-```
-
-## Testing
-
-The improvements maintain backward compatibility. All existing tests should pass without modification.
-
-### Testing Error Handling
-
-```typescript
-import { BadRequestError } from '../utils/errors';
-
-// In your tests
-it('should throw BadRequestError for invalid input', async () => {
-  await expect(myFunction()).rejects.toThrow(BadRequestError);
-});
-```
+---
 
 ## Performance Impact
 
-- **Request Context**: < 1ms overhead per request
-- **Sanitization**: < 2ms overhead for typical payloads
-- **Error Handling**: No measurable overhead
+### Before Improvements
+- No connection pooling (could exhaust connections)
+- No query timeouts (hanging queries possible)
+- No response compression (large responses)
+- Missing indexes (slow queries)
+- Basic rate limiting (easy to bypass)
+- No request timeouts (hanging requests)
 
-## Backward Compatibility
+### After Improvements
+- Controlled connection pooling (stable under load)
+- Query timeouts prevent hanging (better stability)
+- Compressed responses (60-80% bandwidth reduction)
+- Comprehensive indexes (dramatically faster queries)
+- Sophisticated rate limiting (better security)
+- Request timeouts (no hanging requests)
 
-All improvements are backward compatible. Existing code will continue to work, but can be gradually migrated to use the new patterns.
+### Expected Improvements
+- **Query Performance**: 10-100x faster for indexed queries
+- **Bandwidth**: 60-80% reduction with compression
+- **Stability**: Better under high load with pooling and timeouts
+- **Security**: Better protection against abuse and attacks
 
-## Future Enhancements
+---
 
-Potential future improvements:
-- Structured logging with ELK/Splunk integration
-- Distributed tracing with OpenTelemetry
-- Circuit breaker pattern for external services
-- Request/response caching layer
-- GraphQL API support
-- WebSocket connection management
+## Monitoring Recommendations
+
+1. **Database Metrics**:
+   - Monitor connection pool usage
+   - Track slow queries (>1s)
+   - Watch for connection timeouts
+
+2. **Rate Limiting**:
+   - Monitor rate limit violations
+   - Adjust limits based on patterns
+
+3. **Health Check**:
+   - Use `/health` endpoint for monitoring
+   - Set up alerts for degraded/unhealthy status
+   - Monitor response times
+
+4. **Memory**:
+   - Watch memory usage trends
+   - Set up alerts at 80% usage
+
+---
+
+## Future Improvements
+
+1. **TypeScript Strict Mode**: Gradually enable strict type checking
+2. **Query Optimization**: Add query result caching
+3. **API Versioning**: Add v1, v2 API versions
+4. **Distributed Rate Limiting**: Use Redis for rate limiting across instances
+5. **Metrics Export**: Add Prometheus metrics export
+6. **Tracing**: Add distributed tracing with OpenTelemetry
+
+---
+
+## Questions?
+
+For questions or issues related to these improvements, please:
+1. Check the inline code comments in the modified files
+2. Review the environment variable documentation in `.env.example`
+3. Consult the README.md for general setup instructions
+4. Open an issue in the repository
