@@ -22,7 +22,7 @@ export const useNotifications = (): UseNotificationsReturn => {
       const res = await groupChatAPI.getNotifications();
       // Sort and group notifications by type for display
       setNotifications(res.data || []);
-    } catch (_e) {
+    } catch {
       setNotifications([]);
     } finally {
       setLoading(false);

@@ -51,7 +51,6 @@ const Profile = () => {
   const [loading, setLoading] = useState(false);
   const [preferencesLoading, setPreferencesLoading] = useState(true);
   const [pictureHistory, setPictureHistory] = useState([]);
-  const [pictureHistoryLoading, setPictureHistoryLoading] = useState(false);
 
   useEffect(() => {
     if (user) {

@@ -48,7 +48,7 @@ const EventForm: React.FC<EventFormProps> = ({
   onSubmit,
   onCancel,
   submitLabel = 'Create',
-  showGroupSelect = true,
+  showGroupSelect: _showGroupSelect = true,
 }) => {
   const { t } = useTranslation();
   const [formData, setFormData] = useState<EventFormData>({

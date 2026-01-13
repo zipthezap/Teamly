@@ -171,8 +171,8 @@ const BrowseRequestsTab = () => {
       ) : (
         <Grid container spacing={3}>
           {requests.map((request) => {
-            const ownRequest = isOwnRequest(request);
-            const responded = hasResponded(request);
+            const _ownRequest = isOwnRequest(request);
+            const _responded = hasResponded(request);
             const acceptedResponses = request.responses?.filter(
               (r: TeamUpResponse) => r.status === 'accepted'
             ).length || 0;

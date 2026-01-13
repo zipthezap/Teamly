@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { teamUpAPI } from '../../services/api';
 import { LoadingSpinner } from '../common';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
-import { TeamUpRequest, TeamUpResponse, TeamUpRequestWithDetails } from '../../types/teamup';
+import { TeamUpRequestWithDetails } from '../../types/teamup';
 import { getTeamUpStatusColor } from '../../utils/statusHelpers';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';

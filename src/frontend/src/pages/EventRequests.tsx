@@ -7,24 +7,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { EventRequestWithDetails, GroupWithDetails } from '../../../shared/types';
 import { getErrorMessage } from '../utils/errorHandler';
 
-const EVENT_TYPES = [
-  'football',
-  'basketball',
-  'cricket',
-  'americanFootball',
-  'iceHockey',
-  'baseball',
-  'volleyball',
-  'rugby',
-  'handball',
-  'fieldHockey',
-  'tennis',
-  'running',
-  'cycling',
-  'swimming',
-  'other',
-];
-
 const EventRequests = () => {
   const { groupId } = useParams();
   const { user } = useAuth();

@@ -109,7 +109,7 @@ const TwoFactorSetup = () => {
     try {
       await navigator.clipboard.writeText(setupData.secret);
       setSuccess('Secret copied to clipboard!');
-    } catch (error: unknown) {
+    } catch {
       setError('Failed to copy to clipboard. Please copy manually.');
     }
   };

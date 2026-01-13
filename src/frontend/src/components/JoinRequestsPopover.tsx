@@ -29,7 +29,7 @@ interface Feedback {
   message: string;
 }
 
-const JoinRequestsPopover: React.FC<JoinRequestsPopoverProps> = ({ groupId = null, showOnlyIfPending = false }) => {
+const JoinRequestsPopover: React.FC<JoinRequestsPopoverProps> = ({ groupId = null, showOnlyIfPending: _showOnlyIfPending = false }) => {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [actionLoading, setActionLoading] = useState<Record<string | number, boolean>>({});
   const [feedback, setFeedback] = useState<Feedback | null>(null);

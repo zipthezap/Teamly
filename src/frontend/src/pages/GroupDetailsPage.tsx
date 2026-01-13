@@ -60,7 +60,7 @@ export default function GroupDetailsPage() {
   });
 
   // Fetch events for this group
-  const { data: events, isLoading: eventsLoading, error: eventsError, refetch: refetchEvents } = useQuery({
+  const { data: events, isLoading: eventsLoading, refetch: refetchEvents } = useQuery({
     queryKey: ["groupEvents", groupId],
     queryFn: async () => {
       const res = await eventsAPI.getAll({ groupId });
@@ -71,7 +71,7 @@ export default function GroupDetailsPage() {
   });
 
   // Fetch chat messages for this group
-  const { data: chatMessages, isLoading: chatLoading, error: chatError, refetch: refetchChat } = useQuery({
+  const { data: chatMessages, isLoading: chatLoading } = useQuery({
     queryKey: ["groupChat", groupId],
     queryFn: async () => {
       const res = await groupChatAPI.getMessages(groupId!);

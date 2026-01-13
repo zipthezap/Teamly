@@ -76,7 +76,7 @@ const Register = () => {
           // Call backend to join group
           try {
             await groupsAPI.joinByInvite(newUser.id, inviteGroupId);
-          } catch (err) {
+          } catch {
             // Optionally handle join error
           }
           navigate(`/groups/${inviteGroupId}`);

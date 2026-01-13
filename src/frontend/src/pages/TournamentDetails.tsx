@@ -39,9 +39,7 @@ import { tournamentAPI } from '../services/tournamentAPI';
 import {
   TournamentWithDetails,
   TournamentStatus,
-  TournamentTeam,
   TournamentMatch,
-  TournamentStanding,
   MatchStatus,
   CreateTeamDto
 } from '../../../shared/types';

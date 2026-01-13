@@ -17,7 +17,6 @@ import { Group } from '../../../shared/types';
 const JoinGroup = () => {
   const { groupId } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuth();
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
@@ -36,7 +35,7 @@ const JoinGroup = () => {
         if (foundGroup) {
           setGroupInfo(foundGroup);
         }
-      } catch (err) {
+      } catch {
         // Silently fail - group info is optional
       }
     };

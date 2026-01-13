@@ -33,7 +33,6 @@ import {
 } from '@mui/icons-material';
 import { tournamentAPI } from '../services/tournamentAPI';
 import { Tournament, TournamentStatus } from '../../../shared/types';
-import { TabPanel } from '../components/common';
 import { getTournamentStatusColor } from '../utils/statusHelpers';
 import { getErrorMessage } from '../utils/errorHandler';
 

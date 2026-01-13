@@ -19,7 +19,6 @@ const EventDetails = () => {
   const [success, setSuccess] = useState('');
   const [lateSuccess, setLateSuccess] = useState('');
   const [lateError, setLateError] = useState('');
-  const [activityDialogOpen, setActivityDialogOpen] = useState(false);
   const [copySuccess, setCopySuccess] = useState('');
 
   const fetchEvent = useCallback(async () => {
@@ -112,7 +111,7 @@ const EventDetails = () => {
       await groupChatAPI.markLate(id!);
       setLateSuccess(t('eventDetails.markedLate'));
       fetchEvent();
-    } catch (err) {
+    } catch {
       setLateError(t('eventDetails.failedToMarkLate'));
     }
   };
@@ -124,7 +123,7 @@ const EventDetails = () => {
       await groupChatAPI.unmarkLate(id!);
       setLateSuccess(t('eventDetails.lateUndone'));
       fetchEvent();
-    } catch (err) {
+    } catch {
       setLateError(t('eventDetails.failedToUndoLate'));
     }
   };

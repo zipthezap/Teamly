@@ -5,7 +5,6 @@ import {
   Stack,
 } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import { EventWithDetails } from '../../../../shared/types';
 
 interface EventActionsProps {

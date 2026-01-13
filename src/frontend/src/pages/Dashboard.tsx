@@ -75,7 +75,7 @@ const Dashboard = () => {
     const isConfirmed = e.participants?.some((p: EventParticipant) => p.userId === user?.id && p.status === 'confirmed');
     return isConfirmed;
   });
-  const myEvents = safeEvents.filter(e => 
+  const _myEvents = safeEvents.filter(e => 
     e.participants?.some((p: EventParticipant) => p.userId === user?.id)
   );
 
@@ -214,7 +214,7 @@ const Dashboard = () => {
               })()}
             >
               {upcomingEvents.slice(0, 4).map((event) => {
-                const isParticipating = event.participants?.some(p => p.userId === user?.id);
+                const _isParticipating = event.participants?.some(p => p.userId === user?.id);
                 const isFull = event.maxPlayers && event.participants && event.participants.length >= event.maxPlayers;
                 return (
                   <Card key={event.id} sx={{ height: 340, minHeight: 340, display: 'flex', flexDirection: 'column', transition: 'all 0.3s', background: 'rgba(51,65,85,0.98)', borderRadius: 2, boxShadow: 2, border: '1.5px solid #2d3a53', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6, borderColor: 'primary.main' } }}>
