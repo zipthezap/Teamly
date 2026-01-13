@@ -91,6 +91,9 @@ export default function GroupDetailsPage() {
     isAdmin = group.creator.email === userEmail;
   }
 
+  // Check if user is a moderator or admin (can edit but not delete)
+  const canEdit = group?.members?.some((m: GroupMember) => user && m.userId === user.id && (m.role === "admin" || m.role === "moderator"));
+
   // Check if user is a member of the group
   const isMember = group?.members?.some((m: GroupMember) => user && m.userId === user.id);
 
@@ -430,7 +433,7 @@ export default function GroupDetailsPage() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <GroupHeader
         group={group}
-        onEdit={isAdmin ? () => setSettingsOpen(true) : undefined}
+        onEdit={canEdit ? () => setSettingsOpen(true) : undefined}
         onDelete={isAdmin ? handleDeleteGroup : undefined}
         onLeave={handleLeaveGroup}
         onInvite={handleInviteMember}
@@ -457,7 +460,7 @@ export default function GroupDetailsPage() {
         <EventList
           events={eventsArray}
           onEventClick={handleEventClick}
-          onCreate={isAdmin ? () => { setEditEvent(undefined); setEventModalOpen(true); } : undefined}
+          onCreate={isMember ? () => { setEditEvent(undefined); setEventModalOpen(true); } : undefined}
           onEdit={isAdmin ? (event) => { setEditEvent(event); setEventModalOpen(true); } : undefined}
           onDelete={isAdmin ? (event) => deleteEventMutation.mutate(Number(event.id)) : undefined}
           isAdmin={isAdmin}
