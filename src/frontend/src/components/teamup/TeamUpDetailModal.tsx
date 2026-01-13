@@ -39,6 +39,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
 import { TeamUpRequest, TeamUpComment, TeamUpResponse } from '../../types/teamup';
 import { TabPanel } from '../common';
+import { getTeamUpStatusColor } from '../../utils/statusHelpers';
 
 interface TeamUpDetailModalProps {
   open: boolean;
@@ -163,17 +164,6 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
   const now = Date.now();
   const hoursUntil = (eventDate - now) / (1000 * 60 * 60);
   const isUrgent = hoursUntil <= 48 && hoursUntil > 0;
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'accepted':
-        return 'success';
-      case 'declined':
-        return 'error';
-      default:
-        return 'default';
-    }
-  };
 
   if (!request && !loading) {
     return null;
@@ -554,7 +544,7 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
                                   </Typography>
                                   <Chip
                                     label={t(`teamup.responseStatus.${response.status}`)}
-                                    color={getStatusColor(response.status)}
+                                    color={getTeamUpStatusColor(response.status)}
                                     size="small"
                                     sx={{ fontWeight: 600 }}
                                   />

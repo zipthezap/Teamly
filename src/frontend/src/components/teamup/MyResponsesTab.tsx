@@ -14,6 +14,7 @@ import { teamUpAPI } from '../../services/api';
 import { LoadingSpinner } from '../common';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
 import { TeamUpResponse } from '../../types/teamup';
+import { getTeamUpStatusColor } from '../../utils/statusHelpers';
 
 const MyResponsesTab = () => {
   const { t } = useTranslation();
@@ -35,17 +36,6 @@ const MyResponsesTab = () => {
       setError(t('teamup.loadingResponses'));
     } finally {
       setLoading(false);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'accepted':
-        return 'success';
-      case 'declined':
-        return 'error';
-      default:
-        return 'default';
     }
   };
 
@@ -79,7 +69,7 @@ const MyResponsesTab = () => {
                     </Typography>
                     <Chip
                       label={t(`teamup.responseStatus.${response.status}`)}
-                      color={getStatusColor(response.status)}
+                      color={getTeamUpStatusColor(response.status)}
                       size="small"
                     />
                   </Box>

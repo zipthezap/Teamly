@@ -34,6 +34,7 @@ import {
 import { tournamentAPI } from '../services/tournamentAPI';
 import { Tournament, TournamentStatus } from '../../../shared/types';
 import { TabPanel } from '../components/common';
+import { getTournamentStatusColor } from '../utils/statusHelpers';
 
 interface TournamentWithCount extends Tournament {
   _count?: {
@@ -70,23 +71,6 @@ const TournamentsList: React.FC = () => {
       setError(err.response?.data?.error || 'Failed to load tournaments');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const getStatusColor = (status: TournamentStatus) => {
-    switch (status) {
-      case TournamentStatus.DRAFT:
-        return 'default';
-      case TournamentStatus.REGISTRATION:
-        return 'info';
-      case TournamentStatus.IN_PROGRESS:
-        return 'warning';
-      case TournamentStatus.COMPLETED:
-        return 'success';
-      case TournamentStatus.CANCELLED:
-        return 'error';
-      default:
-        return 'default';
     }
   };
 
@@ -188,7 +172,7 @@ const TournamentsList: React.FC = () => {
           </Box>
           <Chip
             label={tournament.status.replace('_', ' ').toUpperCase()}
-            color={getStatusColor(tournament.status)}
+            color={getTournamentStatusColor(tournament.status)}
             size="small"
           />
         </Box>

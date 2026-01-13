@@ -260,16 +260,9 @@ const EventsList = () => {
   const now = new Date();
   let filteredEvents: EventWithDetails[] = [];
   // Get group IDs where user is a member
-  // Debug: log groups and user memberships
-  // eslint-disable-next-line no-console
-  console.log('[EventsList] groups:', groups);
-  // eslint-disable-next-line no-console
-  console.log('[EventsList] current user:', user);
   const userGroupIds = groups
     .filter(g => g.members?.some((m: GroupMember) => m.id === user?.id))
     .map(g => g.id);
-  // eslint-disable-next-line no-console
-  console.log('[EventsList] userGroupIds:', userGroupIds);
 
   // Ensure events is always an array
   const eventsArray = Array.isArray(events) ? events : [];

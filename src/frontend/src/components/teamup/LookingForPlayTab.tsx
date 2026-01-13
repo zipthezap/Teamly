@@ -23,6 +23,7 @@ import { getImageUrl, getInitials } from '../../utils/imageUtils';
 import { TeamUpRequest, TeamUpRequestFilters, TeamUpResponse } from '../../types/teamup';
 import TeamUpDetailModal from './TeamUpDetailModal';
 import { SPORT_TYPES } from '../../constants/teamup';
+import { getTeamUpStatusColor } from '../../utils/statusHelpers';
 
 const LookingForPlayTab = () => {
   const { t } = useTranslation();
@@ -124,17 +125,6 @@ const LookingForPlayTab = () => {
 
   const hasResponded = (request: TeamUpRequest) => {
     return request.responses?.some((r) => r.userId === user?.id);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'accepted':
-        return 'success';
-      case 'declined':
-        return 'error';
-      default:
-        return 'default';
-    }
   };
 
   const handleViewChange = (_event: React.MouseEvent<HTMLElement>, newView: 'browse' | 'myResponses' | null) => {
@@ -548,7 +538,7 @@ const LookingForPlayTab = () => {
                         </Typography>
                         <Chip
                           label={t(`teamup.responseStatus.${response.status}`)}
-                          color={getStatusColor(response.status)}
+                          color={getTeamUpStatusColor(response.status)}
                           size="small"
                           sx={{ fontWeight: 600 }}
                         />

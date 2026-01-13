@@ -19,6 +19,7 @@ import { teamUpAPI } from '../../services/api';
 import { LoadingSpinner } from '../common';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
 import { TeamUpRequest } from '../../types/teamup';
+import { getTeamUpStatusColor } from '../../utils/statusHelpers';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -88,17 +89,6 @@ const ManageResponsesTab = () => {
     const accepted = responses.filter(r => r.status === 'accepted').length;
     const declined = responses.filter(r => r.status === 'declined').length;
     return { pending, accepted, declined, total: responses.length };
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'accepted':
-        return 'success';
-      case 'declined':
-        return 'error';
-      default:
-        return 'default';
-    }
   };
 
   if (loading) {
@@ -197,7 +187,7 @@ const ManageResponsesTab = () => {
                                       </Typography>
                                       <Chip
                                         label={t(`teamup.responseStatus.${response.status}`)}
-                                        color={getStatusColor(response.status)}
+                                        color={getTeamUpStatusColor(response.status)}
                                         size="small"
                                       />
                                     </Box>

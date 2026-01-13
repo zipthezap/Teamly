@@ -33,6 +33,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { TeamUpRequest, CreateTeamUpRequestData, UpdateTeamUpRequestData } from '../../types/teamup';
 import TeamUpDetailModal from './TeamUpDetailModal';
 import { SPORT_TYPES, SKILL_LEVELS } from '../../constants/teamup';
+import { getTeamUpStatusColor } from '../../utils/statusHelpers';
 
 const NeedPlayersTab = () => {
   const { t } = useTranslation();
@@ -198,17 +199,6 @@ const NeedPlayersTab = () => {
     const accepted = responses.filter(r => r.status === 'accepted').length;
     const declined = responses.filter(r => r.status === 'declined').length;
     return { pending, accepted, declined, total: responses.length };
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'accepted':
-        return 'success';
-      case 'declined':
-        return 'error';
-      default:
-        return 'default';
-    }
   };
 
   const handleViewChange = (_event: React.MouseEvent<HTMLElement>, newView: 'myRequests' | 'manageResponses' | null) => {

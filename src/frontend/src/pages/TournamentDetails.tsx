@@ -48,6 +48,7 @@ import {
 import ManualBracketManager from '../components/ManualBracketManager';
 import PoolManager from '../components/PoolManager';
 import { TabPanel } from '../components/common';
+import { getTournamentStatusColor } from '../utils/statusHelpers';
 
 const TournamentDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -137,23 +138,6 @@ const TournamentDetails: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: TournamentStatus) => {
-    switch (status) {
-      case TournamentStatus.DRAFT:
-        return 'default';
-      case TournamentStatus.REGISTRATION:
-        return 'info';
-      case TournamentStatus.IN_PROGRESS:
-        return 'warning';
-      case TournamentStatus.COMPLETED:
-        return 'success';
-      case TournamentStatus.CANCELLED:
-        return 'error';
-      default:
-        return 'default';
-    }
-  };
-
   const getMatchStatusColor = (status: MatchStatus) => {
     switch (status) {
       case MatchStatus.SCHEDULED:
@@ -198,7 +182,7 @@ const TournamentDetails: React.FC = () => {
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
               <Chip
                 label={tournament.status.replace('_', ' ').toUpperCase()}
-                color={getStatusColor(tournament.status)}
+                color={getTournamentStatusColor(tournament.status)}
               />
               <Chip label={tournament.sportType} />
               <Chip label={tournament.format.replace('_', ' ')} variant="outlined" />
