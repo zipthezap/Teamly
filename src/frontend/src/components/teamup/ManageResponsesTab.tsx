@@ -43,7 +43,7 @@ const ManageResponsesTab = () => {
       const response = await teamUpAPI.getMyRequests();
       // Filter to only show requests with responses
       const requestsWithResponses = response.data.filter(
-        (req: TeamUpRequest) => req.responses && req.responses.length > 0
+        (req: TeamUpRequestWithDetails) => req.responses && req.responses.length > 0
       );
       setRequests(requestsWithResponses);
     } catch (err) {

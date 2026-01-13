@@ -55,6 +55,11 @@ const EventRequests = () => {
   }, [groupId]);
 
   const fetchData = async () => {
+    if (!groupId) {
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     try {
       const [requestsRes, groupRes] = await Promise.all([

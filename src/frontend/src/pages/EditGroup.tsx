@@ -42,6 +42,12 @@ const EditGroup = () => {
   }, [id]);
 
   const fetchGroup = async () => {
+    if (!id) {
+      setError('Group ID is required');
+      setLoading(false);
+      return;
+    }
+    
     try {
       const response = await groupsAPI.getById(id);
       const group = response.data;
@@ -81,6 +87,13 @@ const EditGroup = () => {
         ...(location.city && { city: location.city }),
         ...(location.country && { country: location.country }),
       };
+      
+      if (!id) {
+        setError('Group ID is required');
+        setSubmitting(false);
+        return;
+      }
+      
       await groupsAPI.update(id, groupData);
       navigate(`/groups/${id}`);
     } catch (err: unknown) {

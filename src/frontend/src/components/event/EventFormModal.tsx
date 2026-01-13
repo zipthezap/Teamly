@@ -29,7 +29,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({
 
   // Parse initialData when editing an event
   useEffect(() => {
-    if (initialData && initialData.id) {
+    if (initialData && initialData.id && initialData.startTime) {
       // This is edit mode - parse the event data
       const startTime = new Date(initialData.startTime);
       const startDate = startTime.toISOString().split('T')[0];
@@ -110,7 +110,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({
         location: formData.location,
         startTime: startDateTime.toISOString(),
         endTime: endDateTime ? endDateTime.toISOString() : undefined,
-        maxPlayers: formData.maxPlayers ? parseInt(formData.maxPlayers) : null,
+        maxPlayers: formData.maxPlayers ? parseInt(formData.maxPlayers) : undefined,
         isPublic: formData.isPublic,
       };
       
