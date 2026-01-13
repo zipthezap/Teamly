@@ -166,7 +166,7 @@ export const useFormError = () => {
       // This assumes the API returns errors in a specific format
       // Adjust based on your API's error format
       if (error && typeof error === 'object' && 'response' in error) {
-        const response = (error as any).response;
+        const response = (error as { response?: { data?: { errors?: Record<string, string> } } }).response;
         if (response?.data?.errors && typeof response.data.errors === 'object') {
           setFieldErrors(response.data.errors);
         }

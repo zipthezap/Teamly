@@ -53,8 +53,9 @@ const PoolManager: React.FC<PoolManagerProps> = ({
       setPoolNumber('');
       setPoolName('');
       onUpdate();
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to assign team to pool');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      alert(error.response?.data?.error || 'Failed to assign team to pool');
     }
   };
 

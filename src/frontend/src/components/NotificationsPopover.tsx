@@ -18,6 +18,7 @@ import {
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import NotificationsOffIcon from '@mui/icons-material/NotificationsOff';
 import { useEnhancedNotifications } from '../hooks/useEnhancedNotifications';
+import { Notification } from '../../../shared/types/notification.types';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -46,7 +47,7 @@ const NotificationsPopover: React.FC = () => {
     setAnchorEl(null);
   };
 
-  const handleNotificationClick = async (notif: any) => {
+  const handleNotificationClick = async (notif: Notification) => {
     // Mark this notification as read
     try {
       await markAsRead([notif.id]);

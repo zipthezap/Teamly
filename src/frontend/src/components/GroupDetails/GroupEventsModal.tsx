@@ -1,9 +1,10 @@
 import React, { useState } from "react";
+import { EventWithDetails } from '../../../../shared/types';
 
 interface GroupEventsModalProps {
   open: boolean;
   onClose: () => void;
-  events: any[];
+  events: EventWithDetails[];
   onEventClick: (eventId: string) => void;
   t: (key: string, defaultText?: string) => string;
 }

@@ -1,7 +1,8 @@
 import React, { createContext, useContext, ReactNode } from 'react';
+import { EventWithDetails } from '../../../shared/types';
 
 interface EventContextType {
-  event: any | null;
+  event: EventWithDetails | null;
   loading: boolean;
   error: string;
   success: string;
