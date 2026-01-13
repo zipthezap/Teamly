@@ -1,5 +1,9 @@
 {
   "common": {
+    "teamup": "TeamUp",
+    "tournament": "Tournoi",
+    "teamup.title": "TeamUp",
+    "tournament.title": "Tournoi",
     "teamly": "Teamly",
     "dashboard": "Tableau de bord",
     "groups": "Groupes",

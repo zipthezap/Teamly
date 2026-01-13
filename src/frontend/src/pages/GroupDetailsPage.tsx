@@ -420,6 +420,7 @@ export default function GroupDetailsPage() {
   if (groupError || !group) return <div className="text-center text-red-400 mt-10">{t('groupDetails.failedToLoad')}</div>;
 
   const gridCols = "grid-cols-1 sm:grid-cols-2 md:grid-cols-3";
+  const eventsArray = Array.isArray(events) ? events : (events?.data ?? []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white p-2 sm:p-4 md:p-6">
@@ -434,8 +435,7 @@ export default function GroupDetailsPage() {
         isAdmin={isAdmin}
       />
       {/* Group Statistics */}
-  const eventsArray = Array.isArray(events) ? events : (events?.data ?? []);
-  {console.log('[GroupDetailsPage] events passed to GroupStats/EventList:', eventsArray)}
+      {console.log('[GroupDetailsPage] events passed to GroupStats/EventList:', eventsArray)}
       <GroupStats memberCount={group.members?.length || 0} events={eventsArray} />
       {/* Group Settings Modal (shared component) */}
       <GroupSettingsModal

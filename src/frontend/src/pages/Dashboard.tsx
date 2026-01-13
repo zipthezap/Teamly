@@ -21,6 +21,7 @@ import RecentActivityTimeline from '../components/dashboard/RecentActivityTimeli
 import QuickLinks from '../components/dashboard/QuickLinks';
 import GroupIcon from '@mui/icons-material/Group';
 import EventIcon from '@mui/icons-material/Event';
+import CalendarIcon from '@mui/icons-material/CalendarToday';
 import { useAuth } from '../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../utils/imageUtils';
 import { Event, GroupWithDetails, EventParticipant } from '../../../shared/types';
@@ -43,15 +44,12 @@ const Dashboard = () => {
         groupsAPI.getAll(),
         eventsAPI.getAll(),
       ]);
-  // Ensure groupsRes.data is always an array
-  const groupsArray = Array.isArray(groupsRes.data) ? groupsRes.data : (groupsRes.data?.data ?? []);
-  setGroups(groupsArray);
-  // Ensure eventsRes.data is always an array
-  const eventsArray = Array.isArray(eventsRes.data) ? eventsRes.data : (eventsRes.data?.data ?? []);
-  const sortedEvents = eventsArray.sort((a, b) => 
-    new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-  );
-  setEvents(sortedEvents);
+      // Ensure groupsRes.data is always an array
+      const groupsArray = Array.isArray(groupsRes.data) ? groupsRes.data : (groupsRes.data?.data ?? []);
+      setGroups(groupsArray);
+      // Ensure eventsRes.data is always an array
+      const eventsArray = Array.isArray(eventsRes.data) ? eventsRes.data : (eventsRes.data?.data ?? []);
+      const sortedEvents = eventsArray.sort((a, b) => 
         new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
       );
       setEvents(sortedEvents);
@@ -79,14 +77,6 @@ const Dashboard = () => {
     const isConfirmed = (e as { participants?: EventParticipant[] }).participants?.some((p: EventParticipant) => p.userId === user?.id && p.status === 'confirmed');
     return isConfirmed;
   });
-<<<<<<< HEAD
-  const myEvents = safeEvents.filter(e => 
-    e.participants?.some(p => p.userId === user?.id)
-=======
-  const myEvents = events.filter(e => 
-    (e as { participants?: EventParticipant[] }).participants?.some((p: EventParticipant) => p.userId === user?.id)
->>>>>>> 39a9ddc1475ec8d9c4d528be40ae2400738a27c9
-  );
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
@@ -150,7 +140,41 @@ const Dashboard = () => {
             />
 
             {/* Quick Links */}
-            <QuickLinks onNavigate={(path) => navigate(path)} />
+            <QuickLinks
+              links={[
+                {
+                  label: t('dashboard.myGroups'),
+                  icon: <GroupIcon sx={{ color: 'white' }} />,
+                  path: '/groups',
+                  color: 'bg-blue-500',
+                },
+                {
+                  label: t('dashboard.allEvents'),
+                  icon: <EventIcon sx={{ color: 'white' }} />,
+                  path: '/events',
+                  color: 'bg-pink-500',
+                },
+                {
+                  label: t('dashboard.discoverGroups'),
+                  icon: <EventIcon sx={{ color: 'white' }} />,
+                  path: '/public-groups',
+                  color: 'bg-green-500',
+                },
+                {
+                  label: t('teamup.title', 'TeamUp'),
+                  icon: <EventIcon sx={{ color: 'white' }} />,
+                  path: '/teamup',
+                  color: 'bg-purple-500',
+                },
+                {
+                  label: t('tournament.title', 'Tournament'),
+                  icon: <EventIcon sx={{ color: 'white' }} />,
+                  path: '/tournaments',
+                  color: 'bg-yellow-500',
+                },
+              ]}
+              onNavigate={(path) => navigate(path)}
+            />
           </Stack>
         </Box>
 
@@ -195,17 +219,19 @@ const Dashboard = () => {
                   <Card key={event.id} sx={{ height: 340, minHeight: 340, display: 'flex', flexDirection: 'column', transition: 'all 0.3s', background: 'rgba(51,65,85,0.98)', borderRadius: 2, boxShadow: 2, border: '1.5px solid #2d3a53', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6, borderColor: 'primary.main' } }}>
                     <CardContent sx={{ flexGrow: 1, p: 3 }}>
                       <Box display="flex" gap={2} mb={1.5}>
-                        <Avatar
-                          sx={{
-                            width: 60,
-                            height: 60,
-                            borderRadius: '8px',
-                            bgcolor: 'primary.main'
-                          }}
-                          variant="rounded"
-                        >
-                          <EventIcon sx={{ fontSize: 32 }} />
-                        </Avatar>
+                          <Box sx={{ width: 60, height: 60, bgcolor: 'slate.600', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {(() => {
+                              const dateObj = new Date(event.startTime);
+                              const month = dateObj.toLocaleString('en-US', { month: 'short' });
+                              const day = dateObj.getDate();
+                              return (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: '#60a5fa', lineHeight: 1 }}>{month}</span>
+                                  <span style={{ fontSize: 22, fontWeight: 800, color: 'white', lineHeight: 1 }}>{day}</span>
+                                </Box>
+                              );
+                            })()}
+                          </Box>
                         <Box flexGrow={1} minWidth={0}>
                           <Box display="flex" justifyContent="space-between" alignItems="start" mb={0.5}>
                             <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, pr: 1 }}>

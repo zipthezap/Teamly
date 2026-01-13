@@ -97,6 +97,7 @@ const EventsList = () => {
       const offset = (page - 1) * visibleCount;
       const params: EventSearchParams = { ...searchFilters, offset, limit: visibleCount };
       const response = await eventsAPI.getAll(params);
+      console.log('Fetched events:', response.data);
       setEvents(Array.isArray(response.data) ? response.data : response.data?.data ?? []);
     } finally {
       setIsLoading(false);

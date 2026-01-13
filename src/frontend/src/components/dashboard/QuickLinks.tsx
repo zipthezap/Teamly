@@ -11,45 +11,20 @@ import {
   ChevronUpIcon
 } from '../icons';
 
+export interface QuickLink {
+  label: string;
+  icon: React.ReactNode;
+  path: string;
+  color: string;
+}
+
 interface QuickLinksProps {
+  links: QuickLink[];
   onNavigate: (path: string) => void;
 }
 
-const QuickLinks: React.FC<QuickLinksProps> = ({ onNavigate }) => {
+const QuickLinks: React.FC<QuickLinksProps> = ({ links, onNavigate }) => {
   const { t } = useTranslation();
-  const links = [
-    {
-      label: t('dashboard.myGroups', 'My Groups'),
-      icon: <UsersIcon className="w-5 h-5 text-white" />,
-      path: '/groups',
-      color: 'bg-blue-500',
-    },
-    {
-      label: t('dashboard.allEvents', 'All Events'),
-      icon: <CalendarIcon className="w-5 h-5 text-white" />,
-      path: '/events',
-      color: 'bg-pink-500',
-    },
-    {
-      label: t('dashboard.discoverGroups', 'Discover Groups'),
-      icon: <GlobeIcon className="w-5 h-5 text-white" />,
-      path: '/public-groups',
-      color: 'bg-green-500',
-    },
-    {
-      label: t('dashboard.myProfile', 'My Profile'),
-      icon: <UserIcon className="w-5 h-5 text-white" />,
-      path: '/profile',
-      color: 'bg-yellow-500',
-    },
-    {
-      label: t('teamup', 'TeamUp'),
-      icon: <UsersIcon className="w-5 h-5 text-white" />,
-      path: '/teamup',
-      color: 'bg-purple-500',
-    },
-  ];
-
   const [open, setOpen] = useState(true);
   return (
     <div className="bg-[#1a2233] rounded-xl shadow-md p-5">

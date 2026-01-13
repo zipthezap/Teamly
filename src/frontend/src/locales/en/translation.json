@@ -1,5 +1,9 @@
 {
   "common": {
+    "teamup": "TeamUp",
+    "tournament": "Tournament",
+    "teamup.title": "TeamUp",
+    "tournament.title": "Tournament",
     "confirmed": "Confirmed",
     "refused": "Refused",
     "teamly": "Teamly",
