@@ -74,7 +74,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({ chat, message, setMessage, onSend, is
             const senderName = msg.user?.name || msg.sender || 'Unknown';
             const messageTime = msg.createdAt || msg.time || '';
             const messageContent = msg.content || msg.text || '';
-            const profilePictureUrl = getImageUrl(msg.user?.profilePicture || null);
+            const profilePictureUrl = getImageUrl(msg.user?.profilePicture);
             
             return (
               <div key={idx} className="flex items-start gap-3 animate-fadein">

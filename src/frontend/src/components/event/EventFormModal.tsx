@@ -109,7 +109,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({
         eventType: formData.eventType,
         location: formData.location,
         startTime: startDateTime.toISOString(),
-        endTime: endDateTime ? endDateTime.toISOString() : null,
+        endTime: endDateTime ? endDateTime.toISOString() : undefined,
         maxPlayers: formData.maxPlayers ? parseInt(formData.maxPlayers) : null,
         isPublic: formData.isPublic,
       };

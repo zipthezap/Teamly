@@ -134,11 +134,18 @@ const NeedPlayersTab = () => {
     setSuccess('');
 
     try {
+      // Convert null to undefined for API compatibility
+      const apiData = {
+        ...formData,
+        latitude: formData.latitude ?? undefined,
+        longitude: formData.longitude ?? undefined,
+      };
+      
       if (editingRequest) {
-        await teamUpAPI.update(editingRequest.id, formData);
+        await teamUpAPI.update(editingRequest.id, apiData);
         setSuccess(t('teamup.updateRequestSuccess'));
       } else {
-        await teamUpAPI.create(formData);
+        await teamUpAPI.create(apiData);
         setSuccess(t('teamup.createRequestSuccess'));
       }
       handleCloseDialog();
@@ -170,7 +177,13 @@ const NeedPlayersTab = () => {
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
-      await teamUpAPI.update(id, { status: newStatus });
+      // Validate status before sending
+      const validStatuses = ['open', 'filled', 'cancelled', 'expired'] as const;
+      if (!validStatuses.includes(newStatus as any)) {
+        setError('Invalid status');
+        return;
+      }
+      await teamUpAPI.update(id, { status: newStatus as 'open' | 'filled' | 'cancelled' | 'expired' });
       setSuccess(t('teamup.statusUpdateSuccess'));
       fetchMyRequests();
     } catch (err) {
@@ -407,7 +420,7 @@ const NeedPlayersTab = () => {
                           </Typography>
                         </Box>
                       </Box>
-                      {request._count?.responses > 0 && (
+                      {request._count?.responses && request._count.responses > 0 && (
                         <Box sx={{ mb: 2 }}>
                           <Chip 
                             icon={<PeopleIcon />}

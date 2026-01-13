@@ -65,7 +65,7 @@ const LookingForPlayTab = () => {
       
       // Sort by urgency: soonest events first
       const requestsArray = Array.isArray(response.data) ? response.data : [];
-      const sortedRequests = requestsArray.sort((a: TeamUpRequest, TeamUpRequestWithDetails, b: TeamUpRequest) => {
+      const sortedRequests = requestsArray.sort((a: TeamUpRequest, b: TeamUpRequest) => {
         const aDate = new Date(a.dateTime).getTime();
         const bDate = new Date(b.dateTime).getTime();
         const now = Date.now();
