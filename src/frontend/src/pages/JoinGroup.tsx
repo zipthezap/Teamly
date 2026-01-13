@@ -52,6 +52,11 @@ const JoinGroup = () => {
       return;
     }
 
+    if (!groupId) {
+      setError('Invalid group invitation');
+      return;
+    }
+
     setLoading(true);
     setError('');
     
