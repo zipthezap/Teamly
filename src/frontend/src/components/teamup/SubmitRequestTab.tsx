@@ -29,7 +29,6 @@ import PeopleIcon from '@mui/icons-material/People';
 import { useAuth } from '../../contexts/AuthContext';
 import { TeamUpRequest, TeamUpRequestWithDetails } from '../../types/teamup';
 import { SPORT_TYPES, SKILL_LEVELS } from '../../constants/teamup';
-import { getErrorMessage } from '../../utils/errorHandler';
 
 const SubmitRequestTab = () => {
   const { t } = useTranslation();

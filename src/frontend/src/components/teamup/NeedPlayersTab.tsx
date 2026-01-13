@@ -33,7 +33,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { TeamUpRequest, TeamUpRequestWithDetails } from '../../types/teamup';
 import TeamUpDetailModal from './TeamUpDetailModal';
 import { SPORT_TYPES, SKILL_LEVELS } from '../../constants/teamup';
-import { getErrorMessage } from '../../utils/errorHandler';
 
 const NeedPlayersTab = () => {
   const { t } = useTranslation();

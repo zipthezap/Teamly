@@ -3,7 +3,7 @@ import AdminTransferDialog from "../components/GroupDetails/AdminTransferDialog"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
 import GroupSettingsModal from "../components/common/GroupSettingsModal";
 import { useAuth } from "../contexts/AuthContext";
 import GroupHeader from "../components/GroupDetails/GroupHeader";

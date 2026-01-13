@@ -11,8 +11,6 @@ import {
   Box,
 } from '@mui/material';
 import GroupIcon from '@mui/icons-material/Group';
-import { useAuth } from '../contexts/AuthContext';
-import { getInitials } from '../utils/imageUtils';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import { GoogleMap, LoadScript, Autocomplete, Circle } from '@react-google-maps/api';
