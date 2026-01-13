@@ -17,6 +17,8 @@ import HistoryIcon from '@mui/icons-material/History';
 import CloseIcon from '@mui/icons-material/Close';
 import { EventWithDetails, PublicUser } from '../../../../shared/types';
 
+// Local EventNotification interface extends the shared type with user info
+// which is needed for the activity feed display
 interface EventNotification {
   id: string;
   type: string;

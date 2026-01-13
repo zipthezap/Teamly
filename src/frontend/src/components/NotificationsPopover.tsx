@@ -17,8 +17,7 @@ import {
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import NotificationsOffIcon from '@mui/icons-material/NotificationsOff';
-import { useEnhancedNotifications } from '../hooks/useEnhancedNotifications';
-import { Notification } from '../../../shared/types/notification.types';
+import { useEnhancedNotifications, Notification as EnhancedNotification } from '../hooks/useEnhancedNotifications';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -47,7 +46,7 @@ const NotificationsPopover: React.FC = () => {
     setAnchorEl(null);
   };
 
-  const handleNotificationClick = async (notif: Notification) => {
+  const handleNotificationClick = async (notif: EnhancedNotification) => {
     // Mark this notification as read
     try {
       await markAsRead([notif.id]);
@@ -56,12 +55,12 @@ const NotificationsPopover: React.FC = () => {
     }
 
     // Navigate based on notification type
-    if ('eventId' in notif && notif.eventId) {
-      navigate(`/events/${notif.eventId}`);
-    } else if ('groupId' in notif && notif.groupId) {
-      navigate(`/groups/${notif.groupId}`);
-    } else if ('teamUpRequestId' in notif && notif.teamUpRequestId) {
-      navigate(`/teamup/${notif.teamUpRequestId}`);
+    if (notif.notificationType === 'event' && notif.event?.id) {
+      navigate(`/events/${notif.event.id}`);
+    } else if (notif.notificationType === 'group' && notif.group?.id) {
+      navigate(`/groups/${notif.group.id}`);
+    } else if (notif.notificationType === 'teamup') {
+      navigate('/teamup');
     }
     handleClose();
   };
@@ -176,7 +175,7 @@ const NotificationsPopover: React.FC = () => {
                   <React.Fragment key={notif.id || idx}>
                     {idx > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />}
                     <ListItemButton
-                      onClick={() => handleNotificationClick(notif as unknown as Notification)}
+                      onClick={() => handleNotificationClick(notif)}
                       disabled={!isClickable}
                       sx={{
                         cursor: isClickable ? 'pointer' : 'default',
