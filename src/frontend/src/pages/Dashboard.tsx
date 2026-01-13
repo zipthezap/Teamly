@@ -73,11 +73,11 @@ const Dashboard = () => {
     // Show if user is the organizer
     if (e.creatorId === user?.id) return true;
     // Show if user is a confirmed participant
-    const isConfirmed = (e as { participants?: EventParticipant[] }).participants?.some((p: EventParticipant) => p.userId === user?.id && p.status === 'confirmed');
+    const isConfirmed = e.participants?.some((p: EventParticipant) => p.userId === user?.id && p.status === 'confirmed');
     return isConfirmed;
   });
   const myEvents = safeEvents.filter(e => 
-    (e as { participants?: EventParticipant[] }).participants?.some((p: EventParticipant) => p.userId === user?.id)
+    e.participants?.some((p: EventParticipant) => p.userId === user?.id)
   );
 
   return (
