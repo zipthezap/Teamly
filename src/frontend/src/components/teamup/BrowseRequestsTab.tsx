@@ -19,7 +19,7 @@ import { teamUpAPI } from '../../services/api';
 import { LoadingSpinner } from '../common';
 import { useAuth } from '../../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
-import { TeamUpRequest, TeamUpResponse, TeamUpRequest, TeamUpResponseFilters } from '../../types/teamup';
+import { TeamUpRequest, TeamUpResponse } from '../../types/teamup';
 import TeamUpDetailModal from './TeamUpDetailModal';
 import { SPORT_TYPES } from '../../constants/teamup';
 
