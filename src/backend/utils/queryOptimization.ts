@@ -46,29 +46,41 @@ export const EVENT_SELECT_MINIMAL = {
  * Batch size for bulk operations to prevent memory issues
  */
 export const BATCH_SIZE = parseInt(process.env.DB_BATCH_SIZE || '100', 10);
+const MIN_BATCH_SIZE = 1;
+const MAX_BATCH_SIZE = 1000;
 
 /**
  * Execute operations in batches to prevent memory issues with large datasets
  * 
  * @param items - Array of items to process
  * @param operation - Async function to execute for each batch
- * @param batchSize - Size of each batch (default: BATCH_SIZE)
+ * @param batchSize - Size of each batch (default: BATCH_SIZE, min: 1, max: 1000)
  */
 export async function executeBatched<T, R>(
   items: T[],
   operation: (batch: T[]) => Promise<R>,
   batchSize: number = BATCH_SIZE
 ): Promise<R[]> {
+  // Validate and sanitize batch size
+  const validBatchSize = Math.max(MIN_BATCH_SIZE, Math.min(batchSize, MAX_BATCH_SIZE));
+  
+  if (validBatchSize !== batchSize) {
+    logger.warn('Batch size adjusted to safe limits', 'QueryOptimization', {
+      requested: batchSize,
+      adjusted: validBatchSize
+    });
+  }
+  
   const results: R[] = [];
   
-  for (let i = 0; i < items.length; i += batchSize) {
-    const batch = items.slice(i, i + batchSize);
+  for (let i = 0; i < items.length; i += validBatchSize) {
+    const batch = items.slice(i, i + validBatchSize);
     try {
       const result = await operation(batch);
       results.push(result);
     } catch (error) {
       logger.error('Batch operation failed', 'QueryOptimization', {
-        batchIndex: Math.floor(i / batchSize),
+        batchIndex: Math.floor(i / validBatchSize),
         batchSize: batch.length,
         error
       });
@@ -82,7 +94,7 @@ export async function executeBatched<T, R>(
 /**
  * Helper to create a safe pagination limit
  * 
- * @param limit - Requested limit
+ * @param limit - Requested limit (can be string, number, or undefined)
  * @param defaultLimit - Default limit to use if none provided
  * @param maxLimit - Maximum allowed limit
  */
@@ -91,7 +103,9 @@ export function sanitizePaginationLimit(
   defaultLimit: number = 50,
   maxLimit: number = 100
 ): number {
-  if (!limit) return defaultLimit;
+  if (limit === undefined || limit === null) {
+    return defaultLimit;
+  }
   
   const parsed = typeof limit === 'string' ? parseInt(limit, 10) : limit;
   
@@ -105,12 +119,14 @@ export function sanitizePaginationLimit(
 /**
  * Helper to create a safe pagination offset
  * 
- * @param offset - Requested offset
+ * @param offset - Requested offset (can be string, number, or undefined)
  */
 export function sanitizePaginationOffset(
   offset: string | number | undefined
 ): number {
-  if (!offset) return 0;
+  if (offset === undefined || offset === null) {
+    return 0;
+  }
   
   const parsed = typeof offset === 'string' ? parseInt(offset, 10) : offset;
   

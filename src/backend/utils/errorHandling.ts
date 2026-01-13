@@ -55,25 +55,29 @@ export class ErrorHandler {
    * Handle database errors with proper logging
    */
   static handleDatabaseError(
-    error: any,
+    error: unknown,
     context: ErrorContext,
     res: Response
   ): void {
     this.logError(error, { ...context, errorType: 'database' }, ErrorSeverity.HIGH);
     
     // Handle specific Prisma errors
-    if (error.code === 'P2002') {
-      res.status(409).json({ 
-        error: 'A record with this information already exists' 
-      });
-      return;
-    }
-    
-    if (error.code === 'P2025') {
-      res.status(404).json({ 
-        error: 'Record not found' 
-      });
-      return;
+    if (typeof error === 'object' && error !== null && 'code' in error) {
+      const prismaError = error as { code: string };
+      
+      if (prismaError.code === 'P2002') {
+        res.status(409).json({ 
+          error: 'A record with this information already exists' 
+        });
+        return;
+      }
+      
+      if (prismaError.code === 'P2025') {
+        res.status(404).json({ 
+          error: 'Record not found' 
+        });
+        return;
+      }
     }
     
     // Generic database error
