@@ -247,7 +247,9 @@ const PublicGroups = () => {
       });
       fetchPublicGroups();
     } catch (error: unknown) {
-      const message = (error as any)?.response?.data?.error || t('groups.publicGroups.failedToSendJoinRequest');
+      const message = error instanceof Error && 'response' in error 
+        ? ((error as any).response?.data?.error || t('groups.publicGroups.failedToSendJoinRequest'))
+        : t('groups.publicGroups.failedToSendJoinRequest');
       setSnackbar({
         open: true,
         message,

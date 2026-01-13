@@ -56,7 +56,10 @@ const TwoFactorSetup = () => {
       setSetupData(response.data);
       setActiveStep(1);
     } catch (error: unknown) {
-      setError((error as any)?.response?.data?.error || 'Failed to initialize 2FA setup');
+      const errorMessage = error instanceof Error && 'response' in error 
+        ? ((error as any).response?.data?.error || 'Failed to initialize 2FA setup')
+        : 'Failed to initialize 2FA setup';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -71,7 +74,10 @@ const TwoFactorSetup = () => {
       setSuccess('Two-factor authentication enabled successfully!');
       setActiveStep(3);
     } catch (error: unknown) {
-      setError((error as any)?.response?.data?.error || 'Invalid verification code');
+      const errorMessage = error instanceof Error && 'response' in error 
+        ? ((error as any).response?.data?.error || 'Invalid verification code')
+        : 'Invalid verification code';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -87,7 +93,10 @@ const TwoFactorSetup = () => {
       checkStatus();
       setPassword('');
     } catch (error: unknown) {
-      setError((error as any)?.response?.data?.error || 'Failed to disable 2FA');
+      const errorMessage = error instanceof Error && 'response' in error 
+        ? ((error as any).response?.data?.error || 'Failed to disable 2FA')
+        : 'Failed to disable 2FA';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
