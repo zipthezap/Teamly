@@ -27,7 +27,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 const ManageResponsesTab = () => {
   const { t } = useTranslation();
-  const [requests, setRequests] = useState<TeamUpRequest[]>([]);
+  const [requests, setRequests] = useState<TeamUpRequestWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -83,7 +83,7 @@ const ManageResponsesTab = () => {
     setExpandedRequests(newExpanded);
   };
 
-  const getResponseStats = (request: TeamUpRequest) => {
+  const getResponseStats = (request: TeamUpRequestWithDetails) => {
     const responses = request.responses || [];
     const pending = responses.filter(r => r.status === 'pending').length;
     const accepted = responses.filter(r => r.status === 'accepted').length;
@@ -125,7 +125,7 @@ const ManageResponsesTab = () => {
             const spotsLeft = request.playersNeeded - stats.accepted;
 
             return (
-              <Grid item xs={12} key={request.id}>
+              <Grid size={{ xs: 12 }} key={request.id}>
                 <Card>
                   <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

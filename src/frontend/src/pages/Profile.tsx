@@ -299,7 +299,7 @@ const Profile = () => {
               onError={(error) => setError(error)}
             />
             <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <ProfileForm
                   formData={formData}
                   profilePicture={user.profilePicture}
@@ -316,7 +316,7 @@ const Profile = () => {
                   currentPictureId={user.profilePicture}
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <PasswordChangeForm
                   passwordData={passwordData}
                   loading={loading}

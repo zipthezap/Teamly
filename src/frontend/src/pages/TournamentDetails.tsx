@@ -270,7 +270,7 @@ const TournamentDetails: React.FC = () => {
         {(tournament.prizesDescription || tournament.rulesDescription || tournament.registrationDeadline) && (
           <Grid container spacing={2} sx={{ mb: 3 }}>
             {tournament.prizesDescription && (
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <Card variant="outlined">
                   <CardContent>
                     <Typography variant="h6" gutterBottom color="primary">
@@ -284,7 +284,7 @@ const TournamentDetails: React.FC = () => {
               </Grid>
             )}
             {tournament.rulesDescription && (
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <Card variant="outlined">
                   <CardContent>
                     <Typography variant="h6" gutterBottom color="primary">
@@ -298,7 +298,7 @@ const TournamentDetails: React.FC = () => {
               </Grid>
             )}
             {tournament.registrationDeadline && (
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Alert severity="warning">
                   Registration Deadline: {new Date(tournament.registrationDeadline).toLocaleString()}
                 </Alert>
@@ -308,7 +308,7 @@ const TournamentDetails: React.FC = () => {
         )}
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Card variant="outlined">
               <CardContent>
                 <Typography color="text.secondary" gutterBottom>
@@ -320,7 +320,7 @@ const TournamentDetails: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Card variant="outlined">
               <CardContent>
                 <Typography color="text.secondary" gutterBottom>
@@ -333,7 +333,7 @@ const TournamentDetails: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <Card variant="outlined">
               <CardContent>
                 <Typography color="text.secondary" gutterBottom>
@@ -346,7 +346,7 @@ const TournamentDetails: React.FC = () => {
             </Card>
           </Grid>
           {tournament.location && (
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card variant="outlined">
                 <CardContent>
                   <Typography color="text.secondary" gutterBottom>
@@ -375,7 +375,7 @@ const TournamentDetails: React.FC = () => {
         {/* Overview Tab */}
         <TabPanel value={tabValue} index={0}>
           <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card variant="outlined">
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -425,7 +425,7 @@ const TournamentDetails: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card variant="outlined">
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -703,7 +703,7 @@ const TournamentDetails: React.FC = () => {
           {selectedMatch && (
             <Box sx={{ mt: 2 }}>
               <Grid container spacing={2} alignItems="center">
-                <Grid item xs={5}>
+                <Grid size={{ xs: 5 }}>
                   <Typography variant="h6" align="center">
                     {selectedMatch.homeTeam?.name || 'Home Team'}
                   </Typography>
@@ -717,12 +717,12 @@ const TournamentDetails: React.FC = () => {
                     sx={{ mt: 1 }}
                   />
                 </Grid>
-                <Grid item xs={2}>
+                <Grid xs={2}>
                   <Typography variant="h4" align="center">
                     :
                   </Typography>
                 </Grid>
-                <Grid item xs={5}>
+                <Grid size={{ xs: 5 }}>
                   <Typography variant="h6" align="center">
                     {selectedMatch.awayTeam?.name || 'Away Team'}
                   </Typography>

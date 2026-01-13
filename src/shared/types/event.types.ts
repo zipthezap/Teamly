@@ -107,6 +107,13 @@ export interface EventWithDetails extends Event {
   participants?: EventParticipant[];
   guestParticipants?: GuestParticipant[];
   eventAttendances?: EventAttendance[];
+  eventNotifications?: Array<{
+    id: string;
+    type: string;
+    userId: string;
+    user?: PublicUser;
+    createdAt: Date | string;
+  }>;
   _count?: {
     participants: number;
     guestParticipants: number;
@@ -181,6 +188,8 @@ export interface EventRequestWithDetails extends EventRequest {
   creator?: PublicUser;
   group?: Group;
   votes?: EventVote[];
+  yesVotes?: number;  // Computed field from backend
+  noVotes?: number;   // Computed field from backend
   _count?: {
     votes: number;
   };

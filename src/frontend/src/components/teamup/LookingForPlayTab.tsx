@@ -20,7 +20,7 @@ import { teamUpAPI } from '../../services/api';
 import { LoadingSpinner } from '../common';
 import { useAuth } from '../../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
-import { TeamUpRequest, TeamUpRequestFilters, TeamUpResponse } from '../../types/teamup';
+import { TeamUpRequest, TeamUpRequestWithDetails, TeamUpRequestFilters, TeamUpResponse } from '../../types/teamup';
 import TeamUpDetailModal from './TeamUpDetailModal';
 import { SPORT_TYPES } from '../../constants/teamup';
 import { getTeamUpStatusColor } from '../../utils/statusHelpers';
@@ -29,7 +29,7 @@ const LookingForPlayTab = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [view, setView] = useState<'browse' | 'myResponses'>('browse');
-  const [requests, setRequests] = useState<TeamUpRequest[]>([]);
+  const [requests, setRequests] = useState<TeamUpRequestWithDetails[]>([]);
   const [myResponses, setMyResponses] = useState<TeamUpResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -65,7 +65,7 @@ const LookingForPlayTab = () => {
       
       // Sort by urgency: soonest events first
       const requestsArray = Array.isArray(response.data) ? response.data : [];
-      const sortedRequests = requestsArray.sort((a: TeamUpRequest, b: TeamUpRequest) => {
+      const sortedRequests = requestsArray.sort((a: TeamUpRequest, TeamUpRequestWithDetails, b: TeamUpRequest) => {
         const aDate = new Date(a.dateTime).getTime();
         const bDate = new Date(b.dateTime).getTime();
         const now = Date.now();
@@ -119,12 +119,12 @@ const LookingForPlayTab = () => {
     }
   };
 
-  const isOwnRequest = (request: TeamUpRequest) => {
+  const isOwnRequest = (request: TeamUpRequestWithDetails) => {
     return request.creator?.id === user?.id;
   };
 
-  const hasResponded = (request: TeamUpRequest) => {
-    return request.responses?.some((r: TeamUpResponse) => r.userId === user?.id);
+  const hasResponded = (request: TeamUpRequestWithDetails) => {
+    return request.responses?.some((r) => r.userId === user?.id);
   };
 
   const handleViewChange = (_event: React.MouseEvent<HTMLElement>, newView: 'browse' | 'myResponses' | null) => {
@@ -205,7 +205,7 @@ const LookingForPlayTab = () => {
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
           }}>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField
                   fullWidth
                   select
@@ -231,7 +231,7 @@ const LookingForPlayTab = () => {
                   ))}
                 </TextField>
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField
                   fullWidth
                   label={t('teamup.filterByLocation')}
@@ -250,7 +250,7 @@ const LookingForPlayTab = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField
                   fullWidth
                   select
@@ -310,7 +310,7 @@ const LookingForPlayTab = () => {
                 const isUrgent = hoursUntil <= 48 && hoursUntil > 0;
 
                 return (
-                  <Grid item xs={12} md={6} lg={4} key={request.id}>
+                  <Grid size={{ xs: 12, md: 6, lg: 4 }} key={request.id}>
                     <Card sx={{ 
                       position: 'relative',
                       cursor: 'pointer',
@@ -516,7 +516,7 @@ const LookingForPlayTab = () => {
           ) : (
             <Grid container spacing={3}>
               {myResponses.map((response) => (
-                <Grid item xs={12} md={6} lg={4} key={response.id}>
+                <Grid size={{ xs: 12, md: 6, lg: 4 }} key={response.id}>
                   <Card sx={{
                     height: '100%',
                     borderRadius: 2,

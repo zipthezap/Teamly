@@ -27,13 +27,13 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PeopleIcon from '@mui/icons-material/People';
 import { useAuth } from '../../contexts/AuthContext';
-import { TeamUpRequest, CreateTeamUpRequestData, UpdateTeamUpRequestData } from '../../types/teamup';
+import { TeamUpRequest, TeamUpRequestWithDetails, CreateTeamUpRequestData, UpdateTeamUpRequestData } from '../../types/teamup';
 import { SPORT_TYPES, SKILL_LEVELS } from '../../constants/teamup';
 
 const SubmitRequestTab = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const [myRequests, setMyRequests] = useState<TeamUpRequest[]>([]);
+  const [myRequests, setMyRequests] = useState<TeamUpRequestWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -203,7 +203,7 @@ const SubmitRequestTab = () => {
       ) : (
         <Grid container spacing={3}>
           {myRequests.map((request) => (
-            <Grid item xs={12} md={6} lg={4} key={request.id}>
+            <Grid size={{ xs: 12, md: 6, lg: 4 }} key={request.id}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>

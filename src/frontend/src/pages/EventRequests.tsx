@@ -4,6 +4,7 @@ import EventForm, { EventFormData } from '../components/common/EventForm';
 import { useParams } from 'react-router-dom';
 import { eventRequestsAPI, groupsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { EventRequestWithDetails, GroupWithDetails } from '../../../shared/types';
 
 const EVENT_TYPES = [
   'football',
@@ -27,10 +28,10 @@ const EventRequests = () => {
   const { groupId } = useParams();
   const { user } = useAuth();
   const { t } = useTranslation();
-  const [requests, setRequests] = useState([]);
-  const [group, setGroup] = useState(null);
+  const [requests, setRequests] = useState<EventRequestWithDetails[]>([]);
+  const [group, setGroup] = useState<GroupWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const [voting, setVoting] = useState({});
+  const [voting, setVoting] = useState<Record<string, boolean>>({});
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
   const [newRequest, setNewRequest] = useState<EventFormData>({
@@ -69,7 +70,7 @@ const EventRequests = () => {
         : t('eventRequests.failedToLoad');
       setSnackbar({
         open: true,
-        message: errorMessage,
+        message: (error as any).response?.data?.error || t('eventRequests.failedToLoad'),
         severity: 'error',
       });
     } finally {
@@ -77,7 +78,7 @@ const EventRequests = () => {
     }
   };
 
-  const handleVote = async (requestId, vote) => {
+  const handleVote = async (requestId: string, vote: 'yes' | 'no') => {
     setVoting((prev) => ({ ...prev, [requestId]: true }));
     try {
       await eventRequestsAPI.vote(requestId, vote);
@@ -94,7 +95,7 @@ const EventRequests = () => {
         : t('eventRequests.failedToVote');
       setSnackbar({
         open: true,
-        message: errorMessage,
+        message: (error as any).response?.data?.error || t('eventRequests.failedToVote'),
         severity: 'error',
       });
     } finally {
@@ -102,7 +103,7 @@ const EventRequests = () => {
     }
   };
 
-  const handleFinalize = async (requestId) => {
+  const handleFinalize = async (requestId: string) => {
     try {
       await eventRequestsAPI.finalize(requestId);
       await fetchData();
@@ -118,13 +119,13 @@ const EventRequests = () => {
         : t('eventRequests.failedToFinalize');
       setSnackbar({
         open: true,
-        message: errorMessage,
+        message: (error as any).response?.data?.error || t('eventRequests.failedToFinalize'),
         severity: 'error',
       });
     }
   };
 
-  const handleCancel = async (requestId) => {
+  const handleCancel = async (requestId: string) => {
     try {
       await eventRequestsAPI.cancel(requestId);
       await fetchData();
@@ -140,7 +141,7 @@ const EventRequests = () => {
         : t('eventRequests.failedToCancel');
       setSnackbar({
         open: true,
-        message: errorMessage,
+        message: (error as any).response?.data?.error || t('eventRequests.failedToCancel'),
         severity: 'error',
       });
     }
@@ -220,13 +221,13 @@ const EventRequests = () => {
     (m) => m.userId === user?.id
   );
 
-  const getVotePercentage = (request) => {
-    const total = request.yesVotes + request.noVotes;
+  const getVotePercentage = (request: EventRequestWithDetails) => {
+    const total = (request.yesVotes || 0) + (request.noVotes || 0);
     if (total === 0) return 0;
-    return (request.yesVotes / total) * 100;
+    return ((request.yesVotes || 0) / total) * 100;
   };
 
-  const getUserVote = (request) => {
+  const getUserVote = (request: EventRequestWithDetails) => {
     return request.votes?.find((v) => v.userId === user?.id)?.vote;
   };
 

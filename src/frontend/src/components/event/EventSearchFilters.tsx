@@ -3,13 +3,13 @@ import {
   Box,
   Paper,
   TextField,
-  Grid,
   Button,
   Stack,
   Collapse,
   IconButton,
   Typography,
 } from '@mui/material';
+import Grid from '@mui/material/Grid';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -101,7 +101,7 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = ({ onSearch }) => 
         <Collapse in={showFilters}>
           <Box sx={{ pt: 2 }}>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <TextField
                   fullWidth
                   label="Event Type"
@@ -111,7 +111,7 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = ({ onSearch }) => 
                   size="small"
                 />
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <TextField
                   fullWidth
                   label="Location"
@@ -121,7 +121,7 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = ({ onSearch }) => 
                   size="small"
                 />
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <TextField
                   fullWidth
                   label="Start Date"
@@ -132,7 +132,7 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = ({ onSearch }) => 
                   InputLabelProps={{ shrink: true }}
                 />
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <TextField
                   fullWidth
                   label="End Date"

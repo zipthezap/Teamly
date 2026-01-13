@@ -37,7 +37,7 @@ import { useTranslation } from 'react-i18next';
 import { teamUpAPI } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
-import { TeamUpRequest, TeamUpComment, TeamUpResponse } from '../../types/teamup';
+import { TeamUpRequestWithDetails, TeamUpComment, TeamUpResponse } from '../../types/teamup';
 import { TabPanel } from '../common';
 import { getTeamUpStatusColor } from '../../utils/statusHelpers';
 import { RequestDetailsTab } from './detail/RequestDetailsTab';
@@ -56,7 +56,7 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
   const { t } = useTranslation();
   const { user } = useAuth();
   const [tabValue, setTabValue] = useState(0);
-  const [request, setRequest] = useState<TeamUpRequest | null>(null);
+  const [request, setRequest] = useState<TeamUpRequestWithDetails | null>(null);
   const [comments, setComments] = useState<TeamUpComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

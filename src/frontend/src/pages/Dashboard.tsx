@@ -23,11 +23,11 @@ import GroupIcon from '@mui/icons-material/Group';
 import EventIcon from '@mui/icons-material/Event';
 import { useAuth } from '../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../utils/imageUtils';
-import { Event, GroupWithDetails, EventParticipant } from '../../../shared/types';
+import { EventWithDetails, GroupWithDetails, EventParticipant } from '../../../shared/types';
 
 const Dashboard = () => {
   const [groups, setGroups] = useState<GroupWithDetails[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<EventWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -43,15 +43,12 @@ const Dashboard = () => {
         groupsAPI.getAll(),
         eventsAPI.getAll(),
       ]);
-  // Ensure groupsRes.data is always an array
-  const groupsArray = Array.isArray(groupsRes.data) ? groupsRes.data : (groupsRes.data?.data ?? []);
-  setGroups(groupsArray);
-  // Ensure eventsRes.data is always an array
-  const eventsArray = Array.isArray(eventsRes.data) ? eventsRes.data : (eventsRes.data?.data ?? []);
-  const sortedEvents = eventsArray.sort((a, b) => 
-    new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-  );
-  setEvents(sortedEvents);
+      // Ensure groupsRes.data is always an array
+      const groupsArray = Array.isArray(groupsRes.data) ? groupsRes.data : (groupsRes.data?.data ?? []);
+      setGroups(groupsArray);
+      // Ensure eventsRes.data is always an array
+      const eventsArray = Array.isArray(eventsRes.data) ? eventsRes.data : (eventsRes.data?.data ?? []);
+      const sortedEvents = eventsArray.sort((a, b) => 
         new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
       );
       setEvents(sortedEvents);
@@ -76,16 +73,11 @@ const Dashboard = () => {
     // Show if user is the organizer
     if (e.creatorId === user?.id) return true;
     // Show if user is a confirmed participant
-    const isConfirmed = (e as { participants?: EventParticipant[] }).participants?.some((p: EventParticipant) => p.userId === user?.id && p.status === 'confirmed');
+    const isConfirmed = e.participants?.some((p: EventParticipant) => p.userId === user?.id && p.status === 'confirmed');
     return isConfirmed;
   });
-<<<<<<< HEAD
   const myEvents = safeEvents.filter(e => 
-    e.participants?.some(p => p.userId === user?.id)
-=======
-  const myEvents = events.filter(e => 
-    (e as { participants?: EventParticipant[] }).participants?.some((p: EventParticipant) => p.userId === user?.id)
->>>>>>> 39a9ddc1475ec8d9c4d528be40ae2400738a27c9
+    e.participants?.some((p: EventParticipant) => p.userId === user?.id)
   );
 
   return (

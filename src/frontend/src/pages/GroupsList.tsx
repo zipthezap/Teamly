@@ -26,10 +26,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { LoadingSpinner, EmptyState } from '../components/common';
 import { getImageUrl, getInitials } from '../utils/imageUtils';
+import { GroupWithDetails } from '../../../shared/types';
 
 const GroupsList = () => {
-  const [groups, setGroups] = useState([]);
-  const [filteredGroups, setFilteredGroups] = useState([]);
+  const [groups, setGroups] = useState<GroupWithDetails[]>([]);
+  const [filteredGroups, setFilteredGroups] = useState<GroupWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all');

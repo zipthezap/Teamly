@@ -60,7 +60,7 @@ const MyResponsesTab = () => {
       ) : (
         <Grid container spacing={3}>
           {responses.map((response) => (
-            <Grid item xs={12} md={6} lg={4} key={response.id}>
+            <Grid size={{ xs: 12, md: 6, lg: 4 }} key={response.id}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>

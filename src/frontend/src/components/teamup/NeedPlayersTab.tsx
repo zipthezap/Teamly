@@ -30,7 +30,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import PeopleIcon from '@mui/icons-material/People';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useAuth } from '../../contexts/AuthContext';
-import { TeamUpRequest, TeamUpResponse } from '../../types/teamup';
+import { TeamUpRequest, TeamUpRequestWithDetails, CreateTeamUpRequestData, UpdateTeamUpRequestData } from '../../types/teamup';
 import TeamUpDetailModal from './TeamUpDetailModal';
 import { SPORT_TYPES, SKILL_LEVELS } from '../../constants/teamup';
 import { getTeamUpStatusColor } from '../../utils/statusHelpers';
@@ -39,7 +39,7 @@ const NeedPlayersTab = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [view, setView] = useState<'myRequests' | 'manageResponses'>('myRequests');
-  const [myRequests, setMyRequests] = useState<TeamUpRequest[]>([]);
+  const [myRequests, setMyRequests] = useState<TeamUpRequestWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -193,7 +193,7 @@ const NeedPlayersTab = () => {
     fetchMyRequests();
   };
 
-  const getResponseStats = (request: TeamUpRequest) => {
+  const getResponseStats = (request: TeamUpRequestWithDetails) => {
     const responses = request.responses || [];
     const pending = responses.filter(r => r.status === 'pending').length;
     const accepted = responses.filter(r => r.status === 'accepted').length;
@@ -323,7 +323,7 @@ const NeedPlayersTab = () => {
           ) : (
             <Grid container spacing={3}>
               {myRequests.map((request) => (
-                <Grid item xs={12} md={6} lg={4} key={request.id}>
+                <Grid size={{ xs: 12, md: 6, lg: 4 }} key={request.id}>
                   <Card sx={{
                     height: '100%',
                     borderRadius: 2,
@@ -539,7 +539,7 @@ const NeedPlayersTab = () => {
                 const spotsLeft = request.playersNeeded - stats.accepted;
 
                 return (
-                  <Grid item xs={12} md={6} lg={4} key={request.id}>
+                  <Grid size={{ xs: 12, md: 6, lg: 4 }} key={request.id}>
                     <Card sx={{
                       cursor: 'pointer',
                       height: '100%',

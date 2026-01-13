@@ -58,6 +58,7 @@ export interface PublicUser {
   country?: string | null;
   profilePicture?: string | null;
   profilePictures?: UserProfilePicture[];
+  online?: boolean;  // Online status (optional, may be added by some endpoints)
 }
 
 // User data for profile responses
