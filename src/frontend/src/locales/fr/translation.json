@@ -350,7 +350,8 @@
     "activityConfirmed": "a confirmé sa présence",
     "activityDeclined": "a refusé",
     "activityLate": "sera en retard",
-    "activityJoin": "a rejoint l'événement"
+    "activityJoin": "a rejoint l'événement",
+    "activityLeave": "a quitté l'événement"
   },
   "groups": {
     "groupName": "Nom du groupe",

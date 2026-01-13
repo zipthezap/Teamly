@@ -351,7 +351,8 @@
     "activityConfirmed": "confirmed attendance",
     "activityDeclined": "declined",
     "activityLate": "will be late",
-    "activityJoin": "joined the event"
+    "activityJoin": "joined the event",
+    "activityLeave": "left the event"
   },
   "groups": {
     "groupName": "Group Name",

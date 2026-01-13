@@ -270,7 +270,7 @@ async function main() {
       {
         title: 'Spring Soccer Kickoff',
         description: 'Start the season with a friendly soccer match!',
-        eventType: 'soccer',
+        eventType: 'football',
         location: 'East Meadow Field',
         city: 'New York',
         country: 'USA',
@@ -292,7 +292,7 @@ async function main() {
       {
         title: 'Ultimate Frisbee Challenge',
         description: 'Join us for a fast-paced frisbee game!',
-        eventType: 'frisbee',
+        eventType: 'other',
         location: 'Great Lawn',
         city: 'New York',
         country: 'USA',
@@ -337,7 +337,7 @@ async function main() {
       {
         title: 'Winter Indoor Soccer',
         description: 'Indoor soccer to keep warm during winter!',
-        eventType: 'soccer',
+        eventType: 'football',
         location: 'Chelsea Piers',
         city: 'New York',
         country: 'USA',
