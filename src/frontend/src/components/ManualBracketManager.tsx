@@ -254,7 +254,7 @@ const ManualBracketManager: React.FC<ManualBracketManagerProps> = ({
         <DialogTitle>Create Match</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid xs={12}>
+            <Grid size={{ xs: 12 }}>
               <FormControl fullWidth required>
                 <InputLabel>Home Team</InputLabel>
                 <Select
@@ -270,7 +270,7 @@ const ManualBracketManager: React.FC<ManualBracketManagerProps> = ({
                 </Select>
               </FormControl>
             </Grid>
-            <Grid xs={12}>
+            <Grid size={{ xs: 12 }}>
               <FormControl fullWidth required>
                 <InputLabel>Away Team</InputLabel>
                 <Select
@@ -286,7 +286,7 @@ const ManualBracketManager: React.FC<ManualBracketManagerProps> = ({
                 </Select>
               </FormControl>
             </Grid>
-            <Grid xs={12}>
+            <Grid size={{ xs: 12 }}>
               <FormControl fullWidth>
                 <InputLabel>Stage</InputLabel>
                 <Select
@@ -304,7 +304,7 @@ const ManualBracketManager: React.FC<ManualBracketManagerProps> = ({
                 </Select>
               </FormControl>
             </Grid>
-            <Grid xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 label="Group Name (optional)"
@@ -313,7 +313,7 @@ const ManualBracketManager: React.FC<ManualBracketManagerProps> = ({
                 placeholder="e.g., A, B, 1, 2"
               />
             </Grid>
-            <Grid xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 label="Scheduled Time (optional)"
@@ -338,7 +338,7 @@ const ManualBracketManager: React.FC<ManualBracketManagerProps> = ({
         <DialogTitle>Edit Match</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid xs={12}>
+            <Grid size={{ xs: 12 }}>
               <FormControl fullWidth>
                 <InputLabel>Home Team</InputLabel>
                 <Select
@@ -354,7 +354,7 @@ const ManualBracketManager: React.FC<ManualBracketManagerProps> = ({
                 </Select>
               </FormControl>
             </Grid>
-            <Grid xs={12}>
+            <Grid size={{ xs: 12 }}>
               <FormControl fullWidth>
                 <InputLabel>Away Team</InputLabel>
                 <Select
@@ -370,7 +370,7 @@ const ManualBracketManager: React.FC<ManualBracketManagerProps> = ({
                 </Select>
               </FormControl>
             </Grid>
-            <Grid xs={12}>
+            <Grid size={{ xs: 12 }}>
               <FormControl fullWidth>
                 <InputLabel>Stage</InputLabel>
                 <Select
@@ -388,7 +388,7 @@ const ManualBracketManager: React.FC<ManualBracketManagerProps> = ({
                 </Select>
               </FormControl>
             </Grid>
-            <Grid xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 label="Group Name"
@@ -396,7 +396,7 @@ const ManualBracketManager: React.FC<ManualBracketManagerProps> = ({
                 onChange={(e) => setEditMatchData({ ...editMatchData, groupName: e.target.value })}
               />
             </Grid>
-            <Grid xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 label="Scheduled Time"

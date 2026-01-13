@@ -58,7 +58,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
 
       <form onSubmit={onSubmit}>
         <Grid container spacing={3}>
-          <Grid xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               label={t('common.name')}
               name="name"
@@ -68,7 +68,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
               required
             />
           </Grid>
-          <Grid xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               label={t('common.email')}
               name="email"
@@ -79,7 +79,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
               required
             />
           </Grid>
-          <Grid xs={12}>
+          <Grid size={{ xs: 12 }}>
             <TextField
               label={t('profile.address') || 'Address'}
               name="address"
@@ -89,7 +89,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
               helperText={t('profile.addressHelp') || 'Enter your address to receive notifications about nearby TeamUp opportunities'}
             />
           </Grid>
-          <Grid xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               label={t('profile.city')}
               name="city"
@@ -98,7 +98,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
               fullWidth
             />
           </Grid>
-          <Grid xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               label={t('profile.postalCode') || 'Postal Code'}
               name="postalCode"
@@ -107,7 +107,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
               fullWidth
             />
           </Grid>
-          <Grid xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               label={t('profile.country')}
               name="country"
@@ -116,7 +116,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
               fullWidth
             />
           </Grid>
-          <Grid xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               label={t('profile.discoveryRadius') || 'Discovery Radius (km)'}
               name="discoveryRadius"

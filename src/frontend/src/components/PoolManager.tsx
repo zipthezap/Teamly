@@ -210,7 +210,7 @@ const PoolManager: React.FC<PoolManagerProps> = ({
                 Team: <strong>{selectedTeam.name}</strong>
               </Typography>
               <Grid container spacing={2}>
-                <Grid xs={12}>
+                <Grid size={{ xs: 12 }}>
                   <TextField
                     fullWidth
                     label="Pool Number"
@@ -221,7 +221,7 @@ const PoolManager: React.FC<PoolManagerProps> = ({
                     helperText="Numeric pool identifier"
                   />
                 </Grid>
-                <Grid xs={12}>
+                <Grid size={{ xs: 12 }}>
                   <TextField
                     fullWidth
                     label="Pool Name"

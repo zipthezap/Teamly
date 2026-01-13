@@ -205,7 +205,7 @@ const LookingForPlayTab = () => {
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
           }}>
             <Grid container spacing={2}>
-              <Grid xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField
                   fullWidth
                   select
@@ -231,7 +231,7 @@ const LookingForPlayTab = () => {
                   ))}
                 </TextField>
               </Grid>
-              <Grid xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField
                   fullWidth
                   label={t('teamup.filterByLocation')}
@@ -250,7 +250,7 @@ const LookingForPlayTab = () => {
                   }}
                 />
               </Grid>
-              <Grid xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField
                   fullWidth
                   select

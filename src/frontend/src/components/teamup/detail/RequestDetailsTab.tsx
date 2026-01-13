@@ -77,7 +77,7 @@ export const RequestDetailsTab: React.FC<RequestDetailsTabProps> = ({ request, i
       )}
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Card variant="outlined">
             <CardContent>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -90,7 +90,7 @@ export const RequestDetailsTab: React.FC<RequestDetailsTabProps> = ({ request, i
           </Card>
         </Grid>
         {request.location && (
-          <Grid xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -103,7 +103,7 @@ export const RequestDetailsTab: React.FC<RequestDetailsTabProps> = ({ request, i
             </Card>
           </Grid>
         )}
-        <Grid xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Card variant="outlined">
             <CardContent>
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -131,7 +131,7 @@ export const RequestDetailsTab: React.FC<RequestDetailsTabProps> = ({ request, i
           </Card>
         </Grid>
         {request.city && (
-          <Grid xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="subtitle2" color="text.secondary" gutterBottom>
