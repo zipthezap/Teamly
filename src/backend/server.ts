@@ -28,6 +28,7 @@ import { logger } from './utils/logger';
 import { validateEnvironmentOrThrow } from './utils/envValidator';
 import { config, logConfig } from './config/appConfig';
 import { requestContext, performanceMonitor } from './middleware/requestContext';
+import { queryMonitorMiddleware, initializeQueryMonitoring } from './middleware/queryMonitor';
 import { sanitizeInput } from './middleware/sanitizeInput';
 import { errorHandler } from './middleware/errorHandler';
 import { setupGracefulShutdown, performHealthCheck } from './utils/databaseHealth';
@@ -102,9 +103,13 @@ const extractBearerToken = (authHeader?: string): string => {
 const app: Application = express();
 const PORT = config.port;
 
+// Initialize query monitoring
+initializeQueryMonitoring();
+
 // Add request context and performance monitoring
 app.use(requestContext);
 app.use(performanceMonitor(config.slowRequestThresholdMs));
+app.use(queryMonitorMiddleware());
 
 // Add Prometheus metrics tracking
 app.use(metricsMiddleware);

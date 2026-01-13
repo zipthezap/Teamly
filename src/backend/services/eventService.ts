@@ -108,6 +108,7 @@ export const getGroupWithMembers = async (groupId: string) => {
 
 /**
  * Creates event creation notifications for group members
+ * Uses batch insert for better performance
  */
 export const createEventNotifications = async (
   groupId: string,
@@ -116,9 +117,12 @@ export const createEventNotifications = async (
   groupName: string,
   memberIds: string[]
 ) => {
-  await Promise.all(memberIds.map(userId =>
-    prisma.groupNotification.create({
-      data: {
+  if (memberIds.length === 0) return;
+
+  try {
+    // Use createMany for batch insert - much faster than individual creates
+    await prisma.groupNotification.createMany({
+      data: memberIds.map(userId => ({
         groupId,
         userId,
         type: GroupNotificationType.event_created,
@@ -127,15 +131,20 @@ export const createEventNotifications = async (
           name: creatorName,
           groupName
         }
-      }
-    }).catch(error => {
-      logger.error('Failed to create notification', 'EventService', { error, userId });
-    })
-  ));
+      })),
+      skipDuplicates: true // Avoid errors on duplicate entries
+    });
+  } catch (error) {
+    logger.error('Failed to create batch notifications', 'EventService', { 
+      error, 
+      memberCount: memberIds.length 
+    });
+  }
 };
 
 /**
  * Creates event update notifications for participants
+ * Uses batch insert for better performance
  */
 export const createEventUpdateNotifications = async (
   eventId: string,
@@ -143,9 +152,12 @@ export const createEventUpdateNotifications = async (
   updaterName: string,
   participantIds: string[]
 ) => {
-  await Promise.all(participantIds.map(userId =>
-    prisma.eventNotification.create({
-      data: {
+  if (participantIds.length === 0) return;
+
+  try {
+    // Use createMany for batch insert - much faster than individual creates
+    await prisma.eventNotification.createMany({
+      data: participantIds.map(userId => ({
         eventId,
         userId,
         type: EventNotificationType.event_updated,
@@ -153,11 +165,15 @@ export const createEventUpdateNotifications = async (
           eventTitle,
           name: updaterName
         }
-      }
-    }).catch(error => {
-      logger.error('Failed to create update notification', 'EventService', { error, userId });
-    })
-  ));
+      })),
+      skipDuplicates: true // Avoid errors on duplicate entries
+    });
+  } catch (error) {
+    logger.error('Failed to create batch update notifications', 'EventService', { 
+      error, 
+      participantCount: participantIds.length 
+    });
+  }
 };
 
 /**
