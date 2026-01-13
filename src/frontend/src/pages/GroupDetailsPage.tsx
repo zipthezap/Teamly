@@ -425,6 +425,7 @@ export default function GroupDetailsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white p-2 sm:p-4 md:p-6">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {console.log('[GroupDetailsPage] isAdmin:', isAdmin, 'onEdit:', isAdmin ? () => setSettingsOpen(true) : undefined, 'onDelete:', isAdmin ? handleDeleteGroup : undefined)}
       <GroupHeader
         group={group}
         onEdit={isAdmin ? () => setSettingsOpen(true) : undefined}

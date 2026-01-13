@@ -19,6 +19,13 @@ const prisma = new PrismaClient({ adapter });
 const bcrypt = require('bcryptjs');
 
 async function main() {
+  // Check if seeding is needed (skip if Alice exists)
+  const existingAlice = await prisma.user.findUnique({ where: { email: 'alice@example.com' } });
+  if (existingAlice) {
+    console.log('Seed data already exists. Skipping seeding.');
+    return;
+  }
+
   // Hash the password for both users
   const hashedPassword = await bcrypt.hash('password123', 10);
 
@@ -168,7 +175,6 @@ async function main() {
   const events = [
     // Group 1 (Alice's Sports Club) events
     {
-      id: 'seed-event-alice-group-football',
       title: 'Weekend Football Match',
       description: 'Join us for a friendly football match this weekend!',
       eventType: 'football',
@@ -192,7 +198,6 @@ async function main() {
       ]
     },
     {
-      id: 'seed-event-alice-group-tennis',
       title: 'Tennis Doubles Tournament',
       description: 'Compete in our tennis doubles tournament!',
       eventType: 'tennis',
@@ -215,7 +220,6 @@ async function main() {
       ]
     },
     {
-      id: 'seed-event-alice-group-past',
       title: 'Morning Yoga Session',
       description: 'Relaxing morning yoga session at the park',
       eventType: 'other',
@@ -240,7 +244,6 @@ async function main() {
     },
     // Group 2 (Bob's Basketball League) events
     {
-      id: 'seed-event-bob-group-basketball-1',
       title: 'Basketball Pickup Game',
       description: 'Join us for a casual basketball game!',
       eventType: 'basketball',
@@ -264,7 +267,6 @@ async function main() {
       ]
     },
     {
-      id: 'seed-event-bob-group-basketball-2',
       title: 'Championship Game',
       description: 'Final championship game of the season!',
       eventType: 'basketball',
@@ -288,7 +290,6 @@ async function main() {
     },
     // Group 3 (Charlie's Tennis Club) events
     {
-      id: 'seed-event-charlie-group-tennis',
       title: 'Private Tennis Clinic',
       description: 'Members-only tennis coaching session',
       eventType: 'tennis',
@@ -314,10 +315,8 @@ async function main() {
 
   const createdEvents = [];
   for (const eventData of events) {
-    const event = await prisma.event.upsert({
-      where: { id: eventData.id },
-      update: {},
-      create: {
+    const event = await prisma.event.create({
+      data: {
         ...eventData,
         participants: {
           create: eventData.participants

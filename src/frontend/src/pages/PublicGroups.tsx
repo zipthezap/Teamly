@@ -1,3 +1,13 @@
+// Helper to validate lat/lng objects
+function isValidLatLng(obj: any): obj is { lat: number, lng: number } {
+  return (
+    obj &&
+    typeof obj.lat === 'number' &&
+    typeof obj.lng === 'number' &&
+    isFinite(obj.lat) &&
+    isFinite(obj.lng)
+  );
+}
 import EventIcon from '@mui/icons-material/Event';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -17,7 +27,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getInitials } from '../utils/imageUtils';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
-import { GoogleMap, LoadScript, Marker, Autocomplete, Circle } from '@react-google-maps/api';
+import { GoogleMap, LoadScript, Autocomplete, Circle } from '@react-google-maps/api';
 import { groupsAPI } from '../services/api';
 import { useTranslation } from 'react-i18next';
 import { getImageUrl } from '../utils/imageUtils';
@@ -32,7 +42,9 @@ const mapContainerStyle = {
 };
 
 const PublicGroups = () => {
-    const { user } = useAuth();
+  // Store marker instances so we can clean them up
+  const markersRef = useRef([]);
+  const { user } = useAuth();
   const [groups, setGroups] = useState([]);
   const [filteredGroups, setFilteredGroups] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +61,57 @@ const PublicGroups = () => {
   const mapRef = useRef<google.maps.Map | null>(null);
   const navigate = useNavigate();
   const { t } = useTranslation();
+
+  // Helper to clear all markers from the map
+  const clearMarkers = () => {
+    if (markersRef.current && markersRef.current.length) {
+      markersRef.current.forEach(marker => marker.setMap(null));
+      markersRef.current = [];
+    }
+  };
+
+  // Add AdvancedMarkerElement markers after map loads or data changes
+  useEffect(() => {
+    if (!window.google?.maps?.marker?.AdvancedMarkerElement || !mapRef.current) return;
+    clearMarkers();
+    // Custom search location marker
+    if (customSearchLocation) {
+      const marker = new window.google.maps.marker.AdvancedMarkerElement({
+        map: mapRef.current,
+        position: {
+          lat: customSearchLocation.latitude,
+          lng: customSearchLocation.longitude,
+        },
+        title: 'Custom Location',
+      });
+      markersRef.current.push(marker);
+    }
+    // User location marker
+    if (userLocation && !customSearchLocation) {
+      const marker = new window.google.maps.marker.AdvancedMarkerElement({
+        map: mapRef.current,
+        position: {
+          lat: userLocation.latitude,
+          lng: userLocation.longitude,
+        },
+        title: 'Your Location',
+      });
+      markersRef.current.push(marker);
+    }
+    // Group markers
+    filteredGroups.forEach((group) => {
+      if (group.latitude && group.longitude) {
+        const marker = new window.google.maps.marker.AdvancedMarkerElement({
+          map: mapRef.current,
+          position: { lat: group.latitude, lng: group.longitude },
+          title: group.name,
+        });
+        markersRef.current.push(marker);
+      }
+    });
+    // Cleanup markers on unmount
+    return clearMarkers;
+  }, [customSearchLocation, userLocation, filteredGroups, mapRef.current]);
 
   useEffect(() => {
     fetchPublicGroups();
@@ -157,20 +220,32 @@ const PublicGroups = () => {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const location = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
-        setUserLocation(location);
-        setMapCenter(location);
-        setMapZoom(calculateZoomLevel(distanceRadius));
-        setLocationEnabled(true);
-        setCustomSearchLocation(null); // Reset custom location when using current location
-        setSnackbar({
-          open: true,
-          message: t('groups.publicGroups.locationDetected'),
-          severity: 'success',
-        });
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        if (
+          typeof lat === 'number' &&
+          typeof lng === 'number' &&
+          isFinite(lat) &&
+          isFinite(lng)
+        ) {
+          const location = { latitude: lat, longitude: lng };
+          setUserLocation(location);
+          setMapCenter(location);
+          setMapZoom(calculateZoomLevel(distanceRadius));
+          setLocationEnabled(true);
+          setCustomSearchLocation(null); // Reset custom location when using current location
+          setSnackbar({
+            open: true,
+            message: t('groups.publicGroups.locationDetected'),
+            severity: 'success',
+          });
+        } else {
+          setSnackbar({
+            open: true,
+            message: t('groups.publicGroups.invalidCoordinates'),
+            severity: 'error',
+          });
+        }
       },
       (error) => {
         setSnackbar({
@@ -183,19 +258,34 @@ const PublicGroups = () => {
   };
 
   const handleMapClick = (e) => {
-    const clickedLocation = {
-      latitude: e.latLng.lat(),
-      longitude: e.latLng.lng(),
-    };
-    setCustomSearchLocation(clickedLocation);
-    setMapCenter(clickedLocation);
-    setMapZoom(calculateZoomLevel(distanceRadius));
-    setLocationEnabled(true);
-    setSnackbar({
-      open: true,
-      message: t('groups.publicGroups.customLocationSet'),
-      severity: 'success',
-    });
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+    if (
+      typeof lat === 'number' &&
+      typeof lng === 'number' &&
+      isFinite(lat) &&
+      isFinite(lng)
+    ) {
+      const clickedLocation = {
+        latitude: lat,
+        longitude: lng,
+      };
+      setCustomSearchLocation(clickedLocation);
+      setMapCenter(clickedLocation);
+      setMapZoom(calculateZoomLevel(distanceRadius));
+      setLocationEnabled(true);
+      setSnackbar({
+        open: true,
+        message: t('groups.publicGroups.customLocationSet'),
+        severity: 'success',
+      });
+    } else {
+      setSnackbar({
+        open: true,
+        message: t('groups.publicGroups.invalidCoordinates'),
+        severity: 'error',
+      });
+    }
   };
 
   const onAutocompleteLoad = (autocomplete: google.maps.places.Autocomplete) => {
@@ -205,7 +295,6 @@ const PublicGroups = () => {
   const onPlaceChanged = () => {
     if (autocompleteRef.current) {
       const place = autocompleteRef.current.getPlace();
-      
       if (!place.geometry || !place.geometry.location) {
         setSnackbar({
           open: true,
@@ -214,25 +303,35 @@ const PublicGroups = () => {
         });
         return;
       }
-      
       const lat = place.geometry.location.lat();
       const lng = place.geometry.location.lng();
-      
-      const searchLocation = {
-        latitude: lat,
-        longitude: lng,
-      };
-      
-      setCustomSearchLocation(searchLocation);
-      setMapCenter(searchLocation);
-      setMapZoom(calculateZoomLevel(distanceRadius));
-      setLocationEnabled(true);
-      setSearchAddress(place.formatted_address || place.name || '');
-      setSnackbar({
-        open: true,
-        message: t('groups.publicGroups.addressSearchSuccess'),
-        severity: 'success',
-      });
+      if (
+        typeof lat === 'number' &&
+        typeof lng === 'number' &&
+        isFinite(lat) &&
+        isFinite(lng)
+      ) {
+        const searchLocation = {
+          latitude: lat,
+          longitude: lng,
+        };
+        setCustomSearchLocation(searchLocation);
+        setMapCenter(searchLocation);
+        setMapZoom(calculateZoomLevel(distanceRadius));
+        setLocationEnabled(true);
+        setSearchAddress(place.formatted_address || place.name || '');
+        setSnackbar({
+          open: true,
+          message: t('groups.publicGroups.addressSearchSuccess'),
+          severity: 'success',
+        });
+      } else {
+        setSnackbar({
+          open: true,
+          message: t('groups.publicGroups.invalidCoordinates'),
+          severity: 'error',
+        });
+      }
     }
   };
 
@@ -312,8 +411,8 @@ const PublicGroups = () => {
               <div className="text-xs text-gray-400 mb-1">{t('groups.publicGroups.clickMapToSetLocation')}</div>
               <GoogleMap
                 mapContainerStyle={mapContainerStyle}
-                center={mapCenter || { lat: 0, lng: 0 }}
-                zoom={mapCenter ? mapZoom : 2}
+                center={isValidLatLng(mapCenter) ? mapCenter : { lat: 0, lng: 0 }}
+                zoom={isValidLatLng(mapCenter) ? mapZoom : 2}
                 onClick={handleMapClick}
                 onLoad={(map) => { mapRef.current = map; }}
               >
@@ -334,33 +433,7 @@ const PublicGroups = () => {
                     }}
                   />
                 )}
-                {customSearchLocation && (
-                  <Marker
-                    position={{
-                      lat: customSearchLocation.latitude,
-                      lng: customSearchLocation.longitude,
-                    }}
-                    icon={{ url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png' }}
-                  />
-                )}
-                {userLocation && !customSearchLocation && (
-                  <Marker
-                    position={{
-                      lat: userLocation.latitude,
-                      lng: userLocation.longitude,
-                    }}
-                  />
-                )}
-                {filteredGroups.map((group) =>
-                  group.latitude && group.longitude ? (
-                    <Marker
-                      key={group.id}
-                      position={{ lat: group.latitude, lng: group.longitude }}
-                      title={group.name}
-                      icon={{ url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png' }}
-                    />
-                  ) : null
-                )}
+                {/* Markers are now handled by AdvancedMarkerElement in useEffect above */}
               </GoogleMap>
             </div>
 

@@ -127,13 +127,22 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
                   const eventType = event.eventType;
                   const organizerName = event.creator?.name || 'Unknown';
                   const isPast = isPastEvent(eventDate);
+                  // Accept any non-empty string as valid event ID (UUID)
+                  const eventIdStr: string | null = (typeof event.id === 'string' && event.id.trim() !== '') ? event.id : null;
+                  if (eventIdStr === null) {
+                    // eslint-disable-next-line no-console
+                    console.warn('[EventList] Invalid event.id:', event.id, event);
+                  }
                   return (
                     <li
                       key={event.id}
                       className={`mb-3 p-3 bg-slate-700 rounded flex items-center gap-3 cursor-pointer transition hover:bg-slate-600 border-l-4 ${isPast ? "border-slate-500 opacity-70" : "border-green-500"}`}
-                      onClick={() => onEventClick(Number(event.id))}
+                      onClick={() => {
+                        if (eventIdStr !== null) onEventClick(eventIdStr);
+                      }}
                       tabIndex={0}
                       aria-label={`${t('common.viewDetails')} ${event.title}`}
+                      style={eventIdStr === null ? { pointerEvents: 'none', opacity: 0.5 } : {}}
                     >
                       <div className="w-10 h-10 bg-slate-600 rounded flex items-center justify-center">
                         {/* Custom date icon: show month and day */}
