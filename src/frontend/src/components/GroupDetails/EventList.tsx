@@ -10,8 +10,6 @@ interface EventListProps {
   events: EventWithDetails[];
   onEventClick: (eventId: string) => void;
   onCreate?: () => void;
-  onEdit?: (event: EventWithDetails) => void;
-  onDelete?: (event: EventWithDetails) => void;
   isAdmin?: boolean;
   groupId?: string;
   isMember?: boolean;
@@ -29,22 +27,10 @@ const formatEventDate = (dateString: string) => {
 };
 
 
-const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, onEdit, onDelete, isAdmin, groupId, isMember }) => {
+const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, isAdmin, groupId, isMember }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [eventToDelete, setEventToDelete] = useState<EventWithDetails | null>(null);
   const [viewAllOpen, setViewAllOpen] = useState(false);
-
-  const handleDeleteClick = (event: EventWithDetails) => {
-    setEventToDelete(event);
-    setDeleteDialogOpen(true);
-  };
-  const confirmDelete = () => {
-    if (eventToDelete && onDelete) onDelete(eventToDelete);
-    setDeleteDialogOpen(false);
-    setEventToDelete(null);
-  };
 
   const handleRequestEvent = () => {
     if (groupId) {
@@ -95,8 +81,8 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
             onEventClick={onEventClick}
             t={tModal}
           />
-          {/* Request Event button for non-admin members */}
-          {!isAdmin && isMember && groupId && (
+          {/* Request Event button - available for all members including admins */}
+          {isMember && groupId && (
             <button
               onClick={handleRequestEvent}
               className="ml-2 flex items-center justify-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition shadow-none focus:outline-none"
@@ -175,20 +161,6 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
                 })}
               </ul>
             )}
-        {deleteDialogOpen && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-            <div className="bg-slate-800 p-6 rounded shadow-lg w-80 text-center">
-              <div className="mb-4 text-lg">{t('groupDetails.deleteThisEvent')}</div>
-              <div className="mb-6 text-slate-400">
-                {t('groupDetails.confirmDeleteEventDesc', { title: eventToDelete?.title })}
-              </div>
-              <div className="flex gap-4 justify-center">
-                <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded" onClick={confirmDelete}>{t('common.delete')}</button>
-                <button className="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded" onClick={() => setDeleteDialogOpen(false)}>{t('common.cancel')}</button>
-              </div>
-            </div>
-          </div>
-        )}
     </section>
   );
 };
