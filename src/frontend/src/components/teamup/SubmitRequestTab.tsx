@@ -27,7 +27,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PeopleIcon from '@mui/icons-material/People';
 import { useAuth } from '../../contexts/AuthContext';
-import { TeamUpRequest, TeamUpRequestWithDetails, CreateTeamUpRequestData, UpdateTeamUpRequestData } from '../../types/teamup';
+import { TeamUpRequest, TeamUpRequestWithDetails } from '../../types/teamup';
 import { SPORT_TYPES, SKILL_LEVELS } from '../../constants/teamup';
 
 const SubmitRequestTab = () => {

@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Tabs, Tab } from '@mui/material';
 import {
   Container,
@@ -37,7 +37,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import DescriptionIcon from '@mui/icons-material/Description';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import DataObjectIcon from '@mui/icons-material/DataObject';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { eventsAPI, groupsAPI } from '../services/api';
 import EventFormModal from '../components/event/EventFormModal';
@@ -46,32 +46,30 @@ import EventSearchFilters from '../components/event/EventSearchFilters';
 import { LoadingSpinner, EmptyState } from '../components/common';
 import { StatusBadge, StatusType } from '../components/common/StatusBadge';
 import { EventWithDetails, EventSearchParams, GroupWithDetails, EventParticipant, GroupMember } from '../../../shared/types';
-import { SportType } from '../../../shared/types/event.types';
 import { AxiosError } from 'axios';
 
 
 const EventsList = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
   const [searchFilters, setSearchFilters] = useState<EventSearchParams>({});
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<EventWithDetails | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<EventWithDetails | null>(null);
-  const [visibleCount, setVisibleCount] = useState(12);
   const [events, setEvents] = useState<EventWithDetails[]>([]);
   const [groups, setGroups] = useState<GroupWithDetails[]>([]);
   const [tab, setTab] = useState<'my' | 'upcoming' | 'past'>('my');
   const [isLoading, setIsLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
   const [page, setPage] = useState(1);
-  const [useInfiniteScroll, setUseInfiniteScroll] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const visibleCount = 12; // Items per page
   const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [, setSearchParams] = useSearchParams();
 
   // Fetch all groups on mount
   useEffect(() => {

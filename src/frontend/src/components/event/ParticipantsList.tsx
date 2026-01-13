@@ -3,9 +3,10 @@ import React from 'react';
 import { getAvatarColor } from '../../utils/colors';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
 import { getParticipantStatusColor } from '../../utils/statusHelpers';
+import { EventWithDetails, EventAttendance, EventParticipant } from '../../../../shared/types';
 
 interface ParticipantsListProps {
-  event: any;
+  event: EventWithDetails;
   participantCount: number;
 }
 
@@ -37,8 +38,8 @@ const ParticipantsList: React.FC<ParticipantsListProps> = ({ event, participantC
         </div>
       ) : (
         <ul className="divide-y divide-gray-100 dark:divide-gray-800">
-          {event.participants.map((participant: any, idx: number) => {
-            const attendance = event.eventAttendances?.find((a: any) => a.userId === participant.userId);
+          {event.participants.map((participant: EventParticipant, idx: number) => {
+            const attendance = event.eventAttendances?.find((a: EventAttendance) => a.userId === participant.userId);
             const isLate = attendance?.status === 'late';
             const profilePictureUrl = getImageUrl(participant.user?.profilePicture);
             return (

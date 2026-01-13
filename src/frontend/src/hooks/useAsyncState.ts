@@ -26,7 +26,7 @@ interface UseAsyncStateReturn<T> {
  * Hook for managing async operations with loading and error states
  * Reduces boilerplate for common loading/error/success patterns
  */
-export const useAsyncState = <T = any>(
+export const useAsyncState = <T = unknown>(
   initialData: T | null = null
 ): UseAsyncStateReturn<T> => {
   const [state, setState] = useState<AsyncState<T>>({
@@ -53,8 +53,10 @@ export const useAsyncState = <T = any>(
       const result = await asyncFn();
       setState({ data: result, loading: false, error: null });
       return result;
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error || error.message || 'An error occurred';
+    } catch (error: unknown) {
+      const errorMessage = (error as { response?: { data?: { error?: string } }; message?: string }).response?.data?.error 
+        || (error as { message?: string }).message 
+        || 'An error occurred';
       setState((prev) => ({ ...prev, loading: false, error: errorMessage }));
       return null;
     }

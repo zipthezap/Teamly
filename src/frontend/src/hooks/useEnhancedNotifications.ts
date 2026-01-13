@@ -28,7 +28,7 @@ export interface Notification {
   read: boolean;
   createdAt: string;
   metadata?: NotificationMetadata;
-  params?: Record<string, any>; // Parameters for translation
+  params?: Record<string, unknown>; // Parameters for translation
   event?: {
     id: string;
     title: string;
@@ -116,8 +116,9 @@ export const useEnhancedNotifications = (options: UseEnhancedNotificationsOption
         }
         setHasMore(response.data.hasMore);
         setTotal(response.data.total);
-      } catch (err: any) {
-        setError(err.response?.data?.error || 'Failed to fetch notifications');
+      } catch (err: unknown) {
+        const error = err as { response?: { data?: { error?: string } } };
+        setError(error.response?.data?.error || 'Failed to fetch notifications');
         setNotifications([]);
       } finally {
         setLoading(false);
@@ -131,7 +132,7 @@ export const useEnhancedNotifications = (options: UseEnhancedNotificationsOption
     try {
       const response = await notificationsAPI.getStats();
       setStats(response.data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to fetch notification stats:', err);
     }
   }, []);
@@ -151,7 +152,7 @@ export const useEnhancedNotifications = (options: UseEnhancedNotificationsOption
         }
         // Refresh stats
         await fetchStats();
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Failed to mark notifications as read:', err);
         throw err;
       }

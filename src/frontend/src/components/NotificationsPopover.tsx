@@ -17,7 +17,7 @@ import {
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import NotificationsOffIcon from '@mui/icons-material/NotificationsOff';
-import { useEnhancedNotifications } from '../hooks/useEnhancedNotifications';
+import { useEnhancedNotifications, Notification as EnhancedNotification } from '../hooks/useEnhancedNotifications';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -46,7 +46,7 @@ const NotificationsPopover: React.FC = () => {
     setAnchorEl(null);
   };
 
-  const handleNotificationClick = async (notif: any) => {
+  const handleNotificationClick = async (notif: EnhancedNotification) => {
     // Mark this notification as read
     try {
       await markAsRead([notif.id]);
@@ -54,13 +54,13 @@ const NotificationsPopover: React.FC = () => {
       console.error('Failed to mark notification as read:', err);
     }
 
-    // Navigate based on metadata or fallback to type
-    if (notif.metadata?.actionUrl) {
-      navigate(notif.metadata.actionUrl);
-    } else if (notif.notificationType === 'event' && notif.event?.id) {
+    // Navigate based on notification type
+    if (notif.notificationType === 'event' && notif.event?.id) {
       navigate(`/events/${notif.event.id}`);
     } else if (notif.notificationType === 'group' && notif.group?.id) {
       navigate(`/groups/${notif.group.id}`);
+    } else if (notif.notificationType === 'teamup') {
+      navigate('/teamup');
     }
     handleClose();
   };

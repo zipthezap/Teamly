@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction as TranslateFunction } from 'i18next';
 import {
   Paper,
   Typography,
@@ -14,16 +15,28 @@ import {
 } from '@mui/material';
 import HistoryIcon from '@mui/icons-material/History';
 import CloseIcon from '@mui/icons-material/Close';
+import { EventWithDetails, PublicUser } from '../../../../shared/types';
+
+// Local EventNotification interface extends the shared type with user info
+// which is needed for the activity feed display
+interface EventNotification {
+  id: string;
+  type: string;
+  userId: string;
+  user?: PublicUser;
+  createdAt: Date | string;
+  metadata?: Record<string, unknown>;
+}
 
 interface EventActivityFeedProps {
-  event: any;
+  event: EventWithDetails;
   activityDialogOpen: boolean;
   onOpenDialog: () => void;
   onCloseDialog: () => void;
 }
 
-const getActivityMessage = (notif: any, t: any) => {
-  const userName = notif.user?.name || t('activityFeed.someone', 'Someone');
+const getActivityMessage = (notif: EventNotification, t: TranslateFunction) => {
+  const userName = notif.user?.name || t('activityFeed.someone');
   const metadata = notif.metadata || {};
   switch (notif.type) {
     case 'join':
@@ -37,7 +50,7 @@ const getActivityMessage = (notif: any, t: any) => {
     case 'declined':
       return t('activityFeed.declined', { userName });
     case 'status_change':
-      return t('activityFeed.statusChange', { newStatus: metadata.newStatus || t('activityFeed.updated', 'updated') });
+      return t('activityFeed.statusChange', { newStatus: metadata.newStatus || t('activityFeed.updated') });
     case 'comment':
       return t('activityFeed.commented', { userName });
     default:
@@ -206,8 +219,8 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
           <Stack spacing={1.5}>
             {event.eventNotifications && event.eventNotifications.length > 0 ? (
               event.eventNotifications
-                .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                .map((notif: any, idx: number) => (
+                .sort((a: EventNotification, b: EventNotification) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                .map((notif: EventNotification, idx: number) => (
                   <Box 
                     key={notif.id || idx}
                     sx={{

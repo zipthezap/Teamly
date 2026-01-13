@@ -85,8 +85,9 @@ const ManualBracketManager: React.FC<ManualBracketManagerProps> = ({
         scheduledAt: ''
       });
       onUpdate();
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to create match');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      alert(error.response?.data?.error || 'Failed to create match');
     }
   };
 
@@ -99,8 +100,9 @@ const ManualBracketManager: React.FC<ManualBracketManagerProps> = ({
       setSelectedMatch(null);
       setEditMatchData({});
       onUpdate();
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to update match');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      alert(error.response?.data?.error || 'Failed to update match');
     }
   };
 
@@ -112,8 +114,9 @@ const ManualBracketManager: React.FC<ManualBracketManagerProps> = ({
     try {
       await tournamentAPI.deleteMatch(tournamentId, matchId);
       onUpdate();
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to delete match');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      alert(error.response?.data?.error || 'Failed to delete match');
     }
   };
 
@@ -128,8 +131,9 @@ const ManualBracketManager: React.FC<ManualBracketManagerProps> = ({
       setSelectedMatch(null);
       setSelectedRefereeId('');
       onUpdate();
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to assign referee');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      alert(error.response?.data?.error || 'Failed to assign referee');
     }
   };
 

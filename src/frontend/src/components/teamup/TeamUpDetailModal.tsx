@@ -9,29 +9,15 @@ import {
   Typography,
   Divider,
   Avatar,
-  Chip,
   TextField,
   IconButton,
-  Card,
-  CardContent,
-  Grid,
-  LinearProgress,
-  Stack,
   Alert,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
   Tab,
   Tabs,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import SendIcon from '@mui/icons-material/Send';
-import DeleteIcon from '@mui/icons-material/Delete';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CancelIcon from '@mui/icons-material/Cancel';
 import ChatIcon from '@mui/icons-material/Chat';
-import PeopleIcon from '@mui/icons-material/People';
 import InfoIcon from '@mui/icons-material/Info';
 import { useTranslation } from 'react-i18next';
 import { teamUpAPI } from '../../services/api';
@@ -39,7 +25,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
 import { TeamUpRequestWithDetails, TeamUpComment, TeamUpResponse } from '../../types/teamup';
 import { TabPanel } from '../common';
-import { getTeamUpStatusColor } from '../../utils/statusHelpers';
 import { RequestDetailsTab } from './detail/RequestDetailsTab';
 import { ResponsesList } from './detail/ResponsesList';
 import { CommentsList } from './detail/CommentsList';

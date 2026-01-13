@@ -6,8 +6,6 @@ import {
   Button,
   Stack,
   Collapse,
-  IconButton,
-  Typography,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import SearchIcon from '@mui/icons-material/Search';
@@ -49,7 +47,7 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = ({ onSearch }) => 
         acc[key] = value;
       }
       return acc;
-    }, {} as any);
+    }, {} as Record<string, string>);
     
     onSearch(activeFilters);
   };

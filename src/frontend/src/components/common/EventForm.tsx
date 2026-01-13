@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Box, Button, MenuItem, Paper, TextField, Typography, Alert, Container, FormControlLabel, Switch } from '@mui/material';
+import { Box, Button, MenuItem, Paper, TextField, Typography, Alert, FormControlLabel, Switch } from '@mui/material';
 import LocationAutocomplete from './LocationAutocomplete';
 import { SportType } from '../../../../shared/types/event.types';
 
@@ -183,7 +183,7 @@ const EventForm: React.FC<EventFormProps> = ({
       </TextField>
       <LocationAutocomplete
         value={formData.location}
-        onChange={(value) => handleChange({ target: { name: 'location', value } } as any)}
+        onChange={(value) => handleChange({ target: { name: 'location', value } } as React.ChangeEvent<HTMLInputElement>)}
         label={t('events.location')}
       />
       <TextField

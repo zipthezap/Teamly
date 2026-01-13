@@ -13,7 +13,6 @@ const ProfilePictureHistory: React.FC<ProfilePictureHistoryProps> = ({
   pictures,
   onRestore,
   onHardDelete,
-  currentPictureId,
 }) => {
   if (!pictures || pictures.length === 0) return null;
   return (

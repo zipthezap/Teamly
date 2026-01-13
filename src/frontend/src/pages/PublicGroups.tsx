@@ -1,4 +1,3 @@
-import EventIcon from '@mui/icons-material/Event';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -36,21 +35,6 @@ interface LatLng {
 // Extended Group interface for public groups with distance calculation
 interface PublicGroup extends GroupWithDetails {
   distance?: number | null;
-}
-
-// Helper to validate lat/lng objects
-function isValidLatLng(obj: LatLng | null): obj is LatLng {
-  if (!obj) return false;
-  
-  // Check if it's a LatLng object with finite coordinates
-  return (
-    'lat' in obj &&
-    'lng' in obj &&
-    typeof obj.lat === 'number' &&
-    typeof obj.lng === 'number' &&
-    isFinite(obj.lat) &&
-    isFinite(obj.lng)
-  );
 }
 
 // Helper to validate Location objects

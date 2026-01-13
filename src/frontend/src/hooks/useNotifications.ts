@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { groupChatAPI } from '../services/api';
 
 interface Notification {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface UseNotificationsReturn {
@@ -22,7 +22,7 @@ export const useNotifications = (): UseNotificationsReturn => {
       const res = await groupChatAPI.getNotifications();
       // Sort and group notifications by type for display
       setNotifications(res.data || []);
-    } catch (e) {
+    } catch (_e) {
       setNotifications([]);
     } finally {
       setLoading(false);

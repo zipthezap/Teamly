@@ -23,10 +23,10 @@ interface UseFormStateReturn<T> {
   errors: Record<string, string>;
   touched: Record<string, boolean>;
   isSubmitting: boolean;
-  handleChange: (field: keyof T) => (e: any) => void;
+  handleChange: (field: keyof T) => (e: React.ChangeEvent<HTMLInputElement> | unknown) => void;
   handleBlur: (field: keyof T) => () => void;
   handleSubmit: (e?: React.FormEvent) => Promise<void>;
-  setFieldValue: (field: keyof T, value: any) => void;
+  setFieldValue: (field: keyof T, value: T[keyof T]) => void;
   setFieldError: (field: keyof T, error: string) => void;
   setValues: (values: Partial<T>) => void;
   resetForm: () => void;
@@ -37,7 +37,7 @@ interface UseFormStateReturn<T> {
  * Generic form state management hook
  * Handles form values, validation, errors, and submission
  */
-export const useFormState = <T extends Record<string, any>>({
+export const useFormState = <T extends Record<string, unknown>>({
   initialValues,
   onSubmit,
   validate,
@@ -49,8 +49,16 @@ export const useFormState = <T extends Record<string, any>>({
     isSubmitting: false,
   });
 
-  const handleChange = useCallback((field: keyof T) => (e: any) => {
-    const value = e.target ? (e.target.type === 'checkbox' ? e.target.checked : e.target.value) : e;
+  const handleChange = useCallback((field: keyof T) => (e: React.ChangeEvent<HTMLInputElement> | unknown) => {
+    // Type guard to check if it's a proper change event
+    const isChangeEvent = (evt: unknown): evt is React.ChangeEvent<HTMLInputElement> => {
+      return typeof evt === 'object' && evt !== null && 'target' in evt;
+    };
+    
+    const value = isChangeEvent(e) 
+      ? (e.target.type === 'checkbox' ? e.target.checked : e.target.value) 
+      : e;
+      
     setFormState((prev) => ({
       ...prev,
       values: { ...prev.values, [field]: value },
@@ -65,7 +73,7 @@ export const useFormState = <T extends Record<string, any>>({
     }));
   }, []);
 
-  const setFieldValue = useCallback((field: keyof T, value: any) => {
+  const setFieldValue = useCallback((field: keyof T, value: T[keyof T]) => {
     setFormState((prev) => ({
       ...prev,
       values: { ...prev.values, [field]: value },
