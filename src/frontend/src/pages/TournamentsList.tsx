@@ -33,6 +33,7 @@ import {
 } from '@mui/icons-material';
 import { tournamentAPI } from '../services/tournamentAPI';
 import { Tournament, TournamentStatus } from '../../../shared/types';
+import { TabPanel } from '../components/common';
 
 interface TournamentWithCount extends Tournament {
   _count?: {
@@ -45,20 +46,6 @@ interface TournamentWithCount extends Tournament {
     email: string;
   };
 }
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => {
-  return (
-    <div hidden={value !== index}>
-      {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
-    </div>
-  );
-};
 
 const TournamentsList: React.FC = () => {
   const navigate = useNavigate();

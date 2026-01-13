@@ -47,20 +47,7 @@ import {
 } from '../../../shared/types';
 import ManualBracketManager from '../components/ManualBracketManager';
 import PoolManager from '../components/PoolManager';
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => {
-  return (
-    <div hidden={value !== index}>
-      {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
-    </div>
-  );
-};
+import { TabPanel } from '../components/common';
 
 const TournamentDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();

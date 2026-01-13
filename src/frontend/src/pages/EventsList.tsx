@@ -39,7 +39,7 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import DataObjectIcon from '@mui/icons-material/DataObject';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { eventsAPI } from '../services/api';
+import { eventsAPI, groupsAPI } from '../services/api';
 import EventFormModal from '../components/event/EventFormModal';
 import { useAuth } from '../contexts/AuthContext';
 import EventSearchFilters from '../components/event/EventSearchFilters';
@@ -77,7 +77,7 @@ const EventsList = () => {
   useEffect(() => {
     async function fetchGroups() {
       try {
-        const response = await (await import('../services/api')).groupsAPI.getAll();
+        const response = await groupsAPI.getAll();
         setGroups(response.data);
       } catch (err) {
         // Optionally handle error
@@ -94,7 +94,6 @@ const EventsList = () => {
       } else {
         setIsFetching(true);
       }
-      setIsLoading(true);
       const offset = (page - 1) * visibleCount;
       const params: EventSearchParams = { ...searchFilters, offset, limit: visibleCount };
       const response = await eventsAPI.getAll(params);

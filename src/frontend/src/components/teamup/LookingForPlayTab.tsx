@@ -22,24 +22,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
 import { TeamUpRequest, TeamUpRequestFilters, TeamUpResponse } from '../../types/teamup';
 import TeamUpDetailModal from './TeamUpDetailModal';
-
-const SPORT_TYPES = [
-  '⚽ Soccer (Football)',
-  '🏀 Basketball',
-  '🏏 Cricket',
-  '🏈 American Football',
-  '🏒 Ice Hockey',
-  '⚾ Baseball',
-  '🏐 Volleyball',
-  '🏉 Rugby',
-  '🤾 Handball',
-  '🏑 Field Hockey',
-  'Tennis',
-  'Running',
-  'Cycling',
-  'Swimming',
-  'Other',
-];
+import { SPORT_TYPES } from '../../constants/teamup';
 
 const LookingForPlayTab = () => {
   const { t } = useTranslation();

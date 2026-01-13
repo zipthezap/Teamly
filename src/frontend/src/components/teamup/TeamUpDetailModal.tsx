@@ -38,33 +38,13 @@ import { teamUpAPI } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
 import { TeamUpRequest, TeamUpComment, TeamUpResponse } from '../../types/teamup';
+import { TabPanel } from '../common';
 
 interface TeamUpDetailModalProps {
   open: boolean;
   onClose: () => void;
   requestId: string;
   onUpdate?: () => void;
-}
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`teamup-tabpanel-${index}`}
-      aria-labelledby={`teamup-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ py: 2 }}>{children}</Box>}
-    </div>
-  );
 }
 
 const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, requestId, onUpdate }) => {

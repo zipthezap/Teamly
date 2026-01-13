@@ -32,26 +32,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useAuth } from '../../contexts/AuthContext';
 import { TeamUpRequest, CreateTeamUpRequestData, UpdateTeamUpRequestData } from '../../types/teamup';
 import TeamUpDetailModal from './TeamUpDetailModal';
-
-const SPORT_TYPES = [
-  '⚽ Soccer (Football)',
-  '🏀 Basketball',
-  '🏏 Cricket',
-  '🏈 American Football',
-  '🏒 Ice Hockey',
-  '⚾ Baseball',
-  '🏐 Volleyball',
-  '🏉 Rugby',
-  '🤾 Handball',
-  '🏑 Field Hockey',
-  'Tennis',
-  'Running',
-  'Cycling',
-  'Swimming',
-  'Other',
-];
-
-const SKILL_LEVELS = ['any', 'beginner', 'intermediate', 'advanced'];
+import { SPORT_TYPES, SKILL_LEVELS } from '../../constants/teamup';
 
 const NeedPlayersTab = () => {
   const { t } = useTranslation();

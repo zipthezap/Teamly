@@ -28,26 +28,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import PeopleIcon from '@mui/icons-material/People';
 import { useAuth } from '../../contexts/AuthContext';
 import { TeamUpRequest, CreateTeamUpRequestData, UpdateTeamUpRequestData } from '../../types/teamup';
-
-const SPORT_TYPES = [
-  '⚽ Soccer (Football)',
-  '🏀 Basketball',
-  '🏏 Cricket',
-  '🏈 American Football',
-  '🏒 Ice Hockey',
-  '⚾ Baseball',
-  '🏐 Volleyball',
-  '🏉 Rugby',
-  '🤾 Handball',
-  '🏑 Field Hockey',
-  'Tennis',
-  'Running',
-  'Cycling',
-  'Swimming',
-  'Other',
-];
-
-const SKILL_LEVELS = ['any', 'beginner', 'intermediate', 'advanced'];
+import { SPORT_TYPES, SKILL_LEVELS } from '../../constants/teamup';
 
 const SubmitRequestTab = () => {
   const { t } = useTranslation();
