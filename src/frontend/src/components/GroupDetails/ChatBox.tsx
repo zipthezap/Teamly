@@ -72,9 +72,9 @@ const ChatBox: React.FC<ChatBoxProps> = ({ chat, message, setMessage, onSend, is
         ) : (
           chat.map((msg, idx) => {
             const senderName = msg.user?.name || msg.sender || 'Unknown';
-            const messageTime = msg.createdAt || msg.time;
-            const messageContent = msg.content || msg.text;
-            const profilePictureUrl = getImageUrl(msg.user?.profilePicture);
+            const messageTime = msg.createdAt || msg.time || '';
+            const messageContent = msg.content || msg.text || '';
+            const profilePictureUrl = getImageUrl(msg.user?.profilePicture || null);
             
             return (
               <div key={idx} className="flex items-start gap-3 animate-fadein">
@@ -88,7 +88,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({ chat, message, setMessage, onSend, is
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2 mb-1">
                     <span className="font-semibold text-sm text-gray-200">{senderName}</span>
-                    <span className="text-xs text-slate-500">{formatTime(messageTime)}</span>
+                    <span className="text-xs text-slate-500">{formatTime(typeof messageTime === 'string' ? messageTime : messageTime.toString())}</span>
                   </div>
                   <div className="bg-slate-800/60 rounded-lg rounded-tl-none px-3 py-2 text-sm text-gray-300 shadow-sm border border-slate-700/30">
                     {messageContent}
