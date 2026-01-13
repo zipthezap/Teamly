@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Paper,
   Typography,
@@ -48,11 +48,7 @@ const OAuthConnections: React.FC<OAuthConnectionsProps> = ({ onSuccess, onError 
     provider: null,
   });
 
-  useEffect(() => {
-    fetchOAuthStatus();
-  }, []);
-
-  const fetchOAuthStatus = async () => {
+  const fetchOAuthStatus = useCallback(async () => {
     try {
       const response = await authAPI.getOAuthStatus();
       setOAuthStatus(response.data);
@@ -62,7 +58,11 @@ const OAuthConnections: React.FC<OAuthConnectionsProps> = ({ onSuccess, onError 
     } finally {
       setLoading(false);
     }
-  };
+  }, [onError]);
+
+  useEffect(() => {
+    fetchOAuthStatus();
+  }, [fetchOAuthStatus]);
 
   const handleLinkAccount = (provider: 'google' | 'facebook') => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';

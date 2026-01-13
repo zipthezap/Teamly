@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { eventsAPI } from '../../services/api';
-import { AxiosError } from 'axios';
 
 interface Statistics {
   totalEventsJoined: number;
@@ -31,11 +30,7 @@ const UserStatistics: React.FC = () => {
   const [error, setError] = useState('');
   const { t } = useTranslation();
 
-  useEffect(() => {
-    fetchStatistics();
-  }, []);
-
-  const fetchStatistics = async () => {
+  const fetchStatistics = useCallback(async () => {
     try {
       const response = await eventsAPI.getStatistics();
       setStatistics(response.data);
@@ -45,11 +40,11 @@ const UserStatistics: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
-  const getEventTypeLabel = (eventType: string) => {
-    return t(`event.type.${eventType.toLowerCase()}`, eventType);
-  };
+  useEffect(() => {
+    fetchStatistics();
+  }, [fetchStatistics]);
 
   if (loading) {
     return (
