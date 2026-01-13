@@ -9,7 +9,6 @@ import {
   BracketStage 
 } from '../../shared/types/tournament.types';
 import * as locationService from '../services/locationService';
-import { asyncHandler } from '../middleware/asyncHandler';
 import { BadRequestError, ForbiddenError } from '../utils/errors';
 import { isRequired } from '../utils/validation';
 import { ensureResourceExists } from '../utils/controllerHelpers';
@@ -17,7 +16,7 @@ import { ensureResourceExists } from '../utils/controllerHelpers';
 /**
  * Create a new tournament
  */
-export const createTournament = asyncHandler(async (req: Request, res: Response) => {
+export const createTournament = async (req: Request, res: Response) => {
   const {
     name,
     description,
@@ -158,12 +157,12 @@ export const createTournament = asyncHandler(async (req: Request, res: Response)
   });
 
   res.status(201).json(tournament);
-});
+};
 
 /**
  * Get all tournaments (with optional filters)
  */
-export const getTournaments = asyncHandler(async (req: Request, res: Response) => {
+export const getTournaments = async (req: Request, res: Response) => {
   const { groupId, status, sportType } = req.query;
 
   const where: any = {};
@@ -200,12 +199,12 @@ export const getTournaments = asyncHandler(async (req: Request, res: Response) =
   });
 
   res.json(tournaments);
-});
+};
 
 /**
  * Get a single tournament by ID
  */
-export const getTournament = asyncHandler(async (req: Request, res: Response) => {
+export const getTournament = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   const tournament = await prisma.tournament.findUnique({
@@ -257,12 +256,12 @@ export const getTournament = asyncHandler(async (req: Request, res: Response) =>
   ensureResourceExists(tournament, 'Tournament');
 
   res.json(tournament);
-});
+};
 
 /**
  * Update a tournament
  */
-export const updateTournament = asyncHandler(async (req: Request, res: Response) => {
+export const updateTournament = async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = (req.user as any).id;
   const { 
@@ -386,12 +385,12 @@ export const updateTournament = asyncHandler(async (req: Request, res: Response)
   });
 
   res.json(updatedTournament);
-});
+};
 
 /**
  * Delete a tournament
  */
-export const deleteTournament = asyncHandler(async (req: Request, res: Response) => {
+export const deleteTournament = async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = (req.user as any).id;
 
@@ -415,12 +414,12 @@ export const deleteTournament = asyncHandler(async (req: Request, res: Response)
   });
 
   res.json({ message: 'Tournament deleted successfully' });
-});
+};
 
 /**
  * Add a team to a tournament
  */
-export const addTeam = asyncHandler(async (req: Request, res: Response) => {
+export const addTeam = async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = (req.user as any).id;
   const { name, captainName, captainEmail, captainUserId, poolNumber, poolName, seedNumber } = req.body;
@@ -477,12 +476,12 @@ export const addTeam = asyncHandler(async (req: Request, res: Response) => {
   });
 
   res.status(201).json(team);
-});
+};
 
 /**
  * Update a team
  */
-export const updateTeam = asyncHandler(async (req: Request, res: Response) => {
+export const updateTeam = async (req: Request, res: Response) => {
   const { id, teamId } = req.params;
   const userId = (req.user as any).id;
   const { name, captainName, captainEmail, captainUserId, poolNumber, poolName, seedNumber } = req.body;
@@ -536,12 +535,12 @@ export const updateTeam = asyncHandler(async (req: Request, res: Response) => {
   });
 
   res.json(updatedTeam);
-});
+};
 
 /**
  * Delete a team
  */
-export const deleteTeam = asyncHandler(async (req: Request, res: Response) => {
+export const deleteTeam = async (req: Request, res: Response) => {
   const { id, teamId } = req.params;
   const userId = (req.user as any).id;
 
@@ -571,7 +570,7 @@ export const deleteTeam = asyncHandler(async (req: Request, res: Response) => {
   });
 
   res.json({ message: 'Team deleted successfully' });
-});
+};
 
 /**
  * Generate tournament brackets
