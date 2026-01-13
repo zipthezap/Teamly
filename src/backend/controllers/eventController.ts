@@ -1604,7 +1604,7 @@ export const exportEvents = async (req: Request, res: Response) => {
 
     logger.info('Exporting events', 'EventController', { userId, format });
 
-    // Fetch all events user is participating in
+    // Optimize query - only fetch fields needed for export
     const events = await prisma.event.findMany({
       where: {
         participants: {
@@ -1613,16 +1613,28 @@ export const exportEvents = async (req: Request, res: Response) => {
           }
         }
       },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        eventType: true,
+        location: true,
+        startTime: true,
+        endTime: true,
+        status: true,
+        maxPlayers: true,
         participants: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
+          where: {
+            userId: userId
+          },
+          select: {
+            status: true,
+            userId: true
+          }
+        },
+        _count: {
+          select: {
+            participants: true
           }
         },
         group: {
@@ -1658,7 +1670,7 @@ export const exportEvents = async (req: Request, res: Response) => {
         participantStatus: userParticipant?.status || 'unknown',
         groupName: event.group.name,
         creatorName: event.creator.name,
-        participantCount: event.participants.length,
+        participantCount: event._count.participants,
         maxPlayers: event.maxPlayers
       };
     });
