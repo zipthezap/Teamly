@@ -205,7 +205,7 @@ const LookingForPlayTab = () => {
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
           }}>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
+              <Grid xs={12} sm={4}>
                 <TextField
                   fullWidth
                   select
@@ -231,7 +231,7 @@ const LookingForPlayTab = () => {
                   ))}
                 </TextField>
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid xs={12} sm={4}>
                 <TextField
                   fullWidth
                   label={t('teamup.filterByLocation')}
@@ -250,7 +250,7 @@ const LookingForPlayTab = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid xs={12} sm={4}>
                 <TextField
                   fullWidth
                   select
@@ -310,7 +310,7 @@ const LookingForPlayTab = () => {
                 const isUrgent = hoursUntil <= 48 && hoursUntil > 0;
 
                 return (
-                  <Grid item xs={12} md={6} lg={4} key={request.id}>
+                  <Grid size={{ xs: 12, md: 6, lg: 4 }} key={request.id}>
                     <Card sx={{ 
                       position: 'relative',
                       cursor: 'pointer',
@@ -516,7 +516,7 @@ const LookingForPlayTab = () => {
           ) : (
             <Grid container spacing={3}>
               {myResponses.map((response) => (
-                <Grid item xs={12} md={6} lg={4} key={response.id}>
+                <Grid size={{ xs: 12, md: 6, lg: 4 }} key={response.id}>
                   <Card sx={{
                     height: '100%',
                     borderRadius: 2,

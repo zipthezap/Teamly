@@ -203,7 +203,7 @@ const SubmitRequestTab = () => {
       ) : (
         <Grid container spacing={3}>
           {myRequests.map((request) => (
-            <Grid item xs={12} md={6} lg={4} key={request.id}>
+            <Grid size={{ xs: 12, md: 6, lg: 4 }} key={request.id}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>

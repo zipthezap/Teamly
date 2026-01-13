@@ -163,7 +163,7 @@ const NotificationsCenter: React.FC = () => {
       {/* Stats Cards */}
       {stats && (
         <Grid container spacing={2} mb={3}>
-          <Grid item xs={12} sm={4}>
+          <Grid xs={12} sm={4}>
             <Card>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={1}>
@@ -178,7 +178,7 @@ const NotificationsCenter: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid xs={12} sm={4}>
             <Card>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={1}>
@@ -193,7 +193,7 @@ const NotificationsCenter: React.FC = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid xs={12} sm={4}>
             <Card>
               <CardContent>
                 <Box display="flex" alignItems="center" gap={1}>
@@ -247,7 +247,7 @@ const NotificationsCenter: React.FC = () => {
           {showFilters && (
             <Box mb={2} p={2} bgcolor="action.hover" borderRadius={1}>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+                <Grid xs={12} sm={6}>
                   <FormControl fullWidth size="small">
                     <InputLabel>{t('notifications.type')}</InputLabel>
                     <Select

@@ -122,7 +122,7 @@ const BrowseRequestsTab = () => {
 
       <Box sx={{ mb: 3 }}>
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={4}>
+          <Grid xs={12} sm={4}>
             <TextField
               fullWidth
               select
@@ -138,7 +138,7 @@ const BrowseRequestsTab = () => {
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid xs={12} sm={4}>
             <TextField
               fullWidth
               label={t('teamup.filterByLocation')}
@@ -147,7 +147,7 @@ const BrowseRequestsTab = () => {
               placeholder="City"
             />
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid xs={12} sm={4}>
             <TextField
               fullWidth
               select
@@ -187,7 +187,7 @@ const BrowseRequestsTab = () => {
             const isUrgent = hoursUntil <= 48 && hoursUntil > 0;
 
             return (
-              <Grid item xs={12} md={6} lg={4} key={request.id}>
+              <Grid size={{ xs: 12, md: 6, lg: 4 }} key={request.id}>
                 <Card sx={{ 
                   position: 'relative',
                   cursor: 'pointer',

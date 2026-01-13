@@ -323,7 +323,7 @@ const NeedPlayersTab = () => {
           ) : (
             <Grid container spacing={3}>
               {myRequests.map((request) => (
-                <Grid item xs={12} md={6} lg={4} key={request.id}>
+                <Grid size={{ xs: 12, md: 6, lg: 4 }} key={request.id}>
                   <Card sx={{
                     height: '100%',
                     borderRadius: 2,
@@ -539,7 +539,7 @@ const NeedPlayersTab = () => {
                 const spotsLeft = request.playersNeeded - stats.accepted;
 
                 return (
-                  <Grid item xs={12} md={6} lg={4} key={request.id}>
+                  <Grid size={{ xs: 12, md: 6, lg: 4 }} key={request.id}>
                     <Card sx={{
                       cursor: 'pointer',
                       height: '100%',

@@ -125,7 +125,7 @@ const ManageResponsesTab = () => {
             const spotsLeft = request.playersNeeded - stats.accepted;
 
             return (
-              <Grid item xs={12} key={request.id}>
+              <Grid size={{ xs: 12 }} key={request.id}>
                 <Card>
                   <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

@@ -98,7 +98,7 @@ const PoolManager: React.FC<PoolManagerProps> = ({
         </Typography>
         <Grid container spacing={2}>
           {Object.entries(poolGroups).map(([poolKey, poolTeams]) => (
-            <Grid item xs={12} sm={6} md={4} key={poolKey}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={poolKey}>
               <Card variant="outlined">
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
@@ -164,7 +164,7 @@ const PoolManager: React.FC<PoolManagerProps> = ({
       {Object.keys(poolGroups).length > 0 && (
         <Grid container spacing={2}>
           {Object.entries(poolGroups).map(([poolKey, poolTeams]) => (
-            <Grid item xs={12} sm={6} md={4} key={poolKey}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={poolKey}>
               <Card variant="outlined">
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -210,7 +210,7 @@ const PoolManager: React.FC<PoolManagerProps> = ({
                 Team: <strong>{selectedTeam.name}</strong>
               </Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12}>
+                <Grid xs={12}>
                   <TextField
                     fullWidth
                     label="Pool Number"
@@ -221,7 +221,7 @@ const PoolManager: React.FC<PoolManagerProps> = ({
                     helperText="Numeric pool identifier"
                   />
                 </Grid>
-                <Grid item xs={12}>
+                <Grid xs={12}>
                   <TextField
                     fullWidth
                     label="Pool Name"

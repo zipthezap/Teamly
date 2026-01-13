@@ -199,7 +199,7 @@ const JoinEventByInvite = () => {
           </Typography>
 
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid xs={12} sm={6}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                 <SportsSoccer color="action" />
                 <Box>
@@ -211,7 +211,7 @@ const JoinEventByInvite = () => {
               </Box>
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid xs={12} sm={6}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                 <AccessTime color="action" />
                 <Box>
@@ -227,7 +227,7 @@ const JoinEventByInvite = () => {
             </Grid>
 
             {event.location && (
-              <Grid item xs={12}>
+              <Grid xs={12}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                   <LocationOn color="action" />
                   <Box>
@@ -241,7 +241,7 @@ const JoinEventByInvite = () => {
             )}
 
             {event.description && (
-              <Grid item xs={12}>
+              <Grid xs={12}>
                 <Divider sx={{ my: 1 }} />
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
                   {event.description}

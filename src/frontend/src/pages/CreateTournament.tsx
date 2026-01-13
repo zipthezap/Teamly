@@ -172,7 +172,7 @@ const CreateTournament: React.FC = () => {
           />
 
           <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
+            <Grid xs={12} md={6}>
               <TextField
                 fullWidth
                 required
@@ -201,7 +201,7 @@ const CreateTournament: React.FC = () => {
               </TextField>
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid xs={12} md={6}>
               <TextField
                 fullWidth
                 required
@@ -236,7 +236,7 @@ const CreateTournament: React.FC = () => {
 
           <LocalizationProvider dateAdapter={AdapterDateFns}>
             <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
+              <Grid xs={12} md={6}>
                 <DateTimePicker
                   label="Start Date & Time"
                   value={formData.startDate}
@@ -251,7 +251,7 @@ const CreateTournament: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid xs={12} md={6}>
                 <DateTimePicker
                   label="End Date & Time (Optional)"
                   value={formData.endDate}
@@ -265,7 +265,7 @@ const CreateTournament: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid xs={12} md={6}>
                 <DateTimePicker
                   label="Registration Deadline (Optional)"
                   value={formData.registrationDeadline}
@@ -280,7 +280,7 @@ const CreateTournament: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} md={6}>
+              <Grid xs={12} md={6}>
                 <TextField
                   fullWidth
                   label="Maximum Teams (Optional)"
@@ -313,7 +313,7 @@ const CreateTournament: React.FC = () => {
           />
 
           <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
+            <Grid xs={12} md={6}>
               <TextField
                 fullWidth
                 label="City"
@@ -324,7 +324,7 @@ const CreateTournament: React.FC = () => {
               />
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid xs={12} md={6}>
               <TextField
                 fullWidth
                 label="Country"
@@ -348,7 +348,7 @@ const CreateTournament: React.FC = () => {
             </AccordionSummary>
             <AccordionDetails>
               <Grid container spacing={2}>
-                <Grid item xs={12}>
+                <Grid xs={12}>
                   <FormControlLabel
                     control={
                       <Checkbox
@@ -360,7 +360,7 @@ const CreateTournament: React.FC = () => {
                     label="Public Tournament (Visible to all users)"
                   />
                 </Grid>
-                <Grid item xs={12}>
+                <Grid xs={12}>
                   <FormControlLabel
                     control={
                       <Checkbox
@@ -372,7 +372,7 @@ const CreateTournament: React.FC = () => {
                     label="Allow late registration after deadline"
                   />
                 </Grid>
-                <Grid item xs={12}>
+                <Grid xs={12}>
                   <FormControlLabel
                     control={
                       <Checkbox
@@ -384,7 +384,7 @@ const CreateTournament: React.FC = () => {
                     label="Auto-generate brackets when registration closes"
                   />
                 </Grid>
-                <Grid item xs={12}>
+                <Grid xs={12}>
                   <TextField
                     fullWidth
                     label="Contact Email"
@@ -449,7 +449,7 @@ const CreateTournament: React.FC = () => {
 
               {formData.isRecurring && (
                 <Grid container spacing={2} sx={{ mt: 1 }}>
-                  <Grid item xs={12} md={6}>
+                  <Grid xs={12} md={6}>
                     <TextField
                       fullWidth
                       select
@@ -462,7 +462,7 @@ const CreateTournament: React.FC = () => {
                       <MenuItem value="monthly">Monthly</MenuItem>
                     </TextField>
                   </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid xs={12} md={6}>
                     <TextField
                       fullWidth
                       type="number"
@@ -474,7 +474,7 @@ const CreateTournament: React.FC = () => {
                       helperText="How many times should this repeat?"
                     />
                   </Grid>
-                  <Grid item xs={12}>
+                  <Grid xs={12}>
                     <Alert severity="info" sx={{ mt: 1 }}>
                       This will create {formData.recurringCount} tournaments, each {formData.recurringFrequency}.
                       Tournaments will be created automatically based on your schedule.
