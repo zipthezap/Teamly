@@ -2,6 +2,7 @@ import prisma from '../config/database';
 import { sendEmail as sendEmailDirect } from '../utils/emailService';
 import { logger } from '../utils/logger';
 import { EMAIL_RETRY } from '../config/security';
+import { emailCircuitBreaker } from '../utils/circuitBreaker';
 
 /**
  * Email Queue Service
@@ -116,12 +117,14 @@ export const processEmail = async (emailId: string): Promise<boolean> => {
     });
 
     try {
-      // Send email
-      await sendEmailDirect(
-        email.recipient,
-        email.subject,
-        email.htmlContent
-      );
+      // Send email with circuit breaker protection
+      await emailCircuitBreaker.execute(async () => {
+        await sendEmailDirect(
+          email.recipient,
+          email.subject,
+          email.htmlContent
+        );
+      });
 
       // Mark as sent
       await prisma.emailQueue.update({

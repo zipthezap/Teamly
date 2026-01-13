@@ -116,18 +116,62 @@ export const rateLimitExceeded = new Counter({
 export const eventsCreated = new Counter({
   name: 'events_created_total',
   help: 'Total number of events created',
+  labelNames: ['event_type'], // Track by sport type
   registers: [register],
 });
 
 export const groupsCreated = new Counter({
   name: 'groups_created_total',
   help: 'Total number of groups created',
+  labelNames: ['is_public'], // Track public vs private
   registers: [register],
 });
 
 export const tournamentsCreated = new Counter({
   name: 'tournaments_created_total',
   help: 'Total number of tournaments created',
+  labelNames: ['format'], // Track by tournament format
+  registers: [register],
+});
+
+export const userRegistrations = new Counter({
+  name: 'user_registrations_total',
+  help: 'Total number of user registrations',
+  labelNames: ['method'], // email, google, facebook
+  registers: [register],
+});
+
+export const eventParticipations = new Counter({
+  name: 'event_participations_total',
+  help: 'Total number of event participations',
+  labelNames: ['status'], // confirmed, declined, pending
+  registers: [register],
+});
+
+export const commentsCreated = new Counter({
+  name: 'comments_created_total',
+  help: 'Total number of comments created',
+  registers: [register],
+});
+
+export const invitationsSent = new Counter({
+  name: 'invitations_sent_total',
+  help: 'Total number of invitations sent',
+  labelNames: ['type'], // group, event
+  registers: [register],
+});
+
+export const emailsSent = new Counter({
+  name: 'emails_sent_total',
+  help: 'Total number of emails sent',
+  labelNames: ['status'], // success, failed
+  registers: [register],
+});
+
+export const searchQueries = new Counter({
+  name: 'search_queries_total',
+  help: 'Total number of search queries',
+  labelNames: ['type'], // events, groups, users
   registers: [register],
 });
 
@@ -207,16 +251,40 @@ export const recordRateLimitExceeded = (endpoint: string): void => {
 /**
  * Record business metrics
  */
-export const recordEventCreated = (): void => {
-  eventsCreated.inc();
+export const recordEventCreated = (eventType?: string): void => {
+  eventsCreated.labels(eventType || 'unknown').inc();
 };
 
-export const recordGroupCreated = (): void => {
-  groupsCreated.inc();
+export const recordGroupCreated = (isPublic: boolean = false): void => {
+  groupsCreated.labels(isPublic ? 'true' : 'false').inc();
 };
 
-export const recordTournamentCreated = (): void => {
-  tournamentsCreated.inc();
+export const recordTournamentCreated = (format?: string): void => {
+  tournamentsCreated.labels(format || 'unknown').inc();
+};
+
+export const recordUserRegistration = (method: string = 'email'): void => {
+  userRegistrations.labels(method).inc();
+};
+
+export const recordEventParticipation = (status: string): void => {
+  eventParticipations.labels(status).inc();
+};
+
+export const recordCommentCreated = (): void => {
+  commentsCreated.inc();
+};
+
+export const recordInvitationSent = (type: 'group' | 'event'): void => {
+  invitationsSent.labels(type).inc();
+};
+
+export const recordEmailSent = (status: 'success' | 'failed'): void => {
+  emailsSent.labels(status).inc();
+};
+
+export const recordSearchQuery = (type: 'events' | 'groups' | 'users'): void => {
+  searchQueries.labels(type).inc();
 };
 
 /**
