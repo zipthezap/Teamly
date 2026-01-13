@@ -1,8 +1,9 @@
 import React from 'react';
+import { EventWithDetails } from '../../../../shared/types';
 
 
 interface EventInformationProps {
-  event: any;
+  event: EventWithDetails;
   isParticipant: boolean;
   isCreator: boolean;
   isFull: boolean;

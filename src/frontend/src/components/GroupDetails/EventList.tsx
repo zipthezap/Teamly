@@ -116,7 +116,7 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, o
         <div className="text-slate-400 text-center py-4">{t('groupDetails.noEvents', 'No events found.')}</div>
       ) : (
         <ul>
-          {filteredEvents.map((event) => {
+          {filteredEvents.map((event: Event) => {
             const eventDate = event.startTime;
             const eventType = event.eventType;
             const organizerName = event.creator?.name || 'Unknown';

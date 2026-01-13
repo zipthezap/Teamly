@@ -46,12 +46,12 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
             <JoinRequestsPopover groupId={group.id} showOnlyIfPending />
           )}
           <span className="ml-2 px-2 py-0.5 text-xs bg-slate-700 rounded-full uppercase tracking-wide">
-            {group.privacy}
+            {group.privacy || (group.isPublic ? 'public' : 'private')}
           </span>
         </h1>
         <p className="text-slate-300 mt-1">{group.description || t('common.noDescription')}</p>
         <div className="flex gap-4 mt-2 text-sm text-slate-400">
-          <span>{t('groupDetails.created')}: {group.createdAt}</span>
+          <span>{t('groupDetails.created')}: {typeof group.createdAt === 'string' ? group.createdAt : new Date(group.createdAt).toLocaleDateString()}</span>
         </div>
       </div>
       <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
