@@ -138,7 +138,7 @@ export const RequestDetailsTab: React.FC<RequestDetailsTabProps> = ({ request, i
                   🌍 {t('teamup.city')}
                 </Typography>
                 <Typography variant="body1">
-                  {request.city}, {request.country}
+                  {request.city}{request.country ? `, ${request.country}` : ''}
                 </Typography>
               </CardContent>
             </Card>

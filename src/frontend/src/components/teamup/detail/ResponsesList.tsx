@@ -1,6 +1,8 @@
 import React from 'react';
-import { Box, Alert, Typography, Stack, Card, CardContent, Avatar, Chip } from '@mui/material';
+import { Box, Alert, Typography, Stack, Card, CardContent, Avatar, Chip, Button } from '@mui/material';
 import PeopleIcon from '@mui/icons-material/People';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
 import { useTranslation } from 'react-i18next';
 import { TeamUpResponse } from '../../../types/teamup';
 import { getImageUrl, getInitials } from '../../../utils/imageUtils';
@@ -98,22 +100,42 @@ export const ResponsesList: React.FC<ResponsesListProps> = ({
                     {new Date(response.createdAt).toLocaleString()}
                   </Typography>
                   {isCreator && response.status === 'pending' && (
-                    <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-                      <button
+                    <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="success"
+                        startIcon={<CheckCircleIcon />}
                         onClick={() => onAccept(response.id)}
                         disabled={processingResponseId === response.id}
-                        className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:from-green-600 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        sx={{
+                          flex: 1,
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          boxShadow: '0 2px 8px rgba(76, 175, 80, 0.3)',
+                          '&:hover': {
+                            boxShadow: '0 4px 12px rgba(76, 175, 80, 0.4)'
+                          }
+                        }}
                       >
                         {processingResponseId === response.id ? t('common.processing') : t('teamup.accept')}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        startIcon={<CancelIcon />}
                         onClick={() => onDecline(response.id)}
                         disabled={processingResponseId === response.id}
-                        className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:from-red-600 hover:to-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        sx={{
+                          flex: 1,
+                          textTransform: 'none',
+                          fontWeight: 600
+                        }}
                       >
                         {processingResponseId === response.id ? t('common.processing') : t('teamup.decline')}
-                      </button>
-                    </Box>
+                      </Button>
+                    </Stack>
                   )}
                 </Box>
               </Box>
