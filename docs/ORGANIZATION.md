@@ -43,31 +43,68 @@ Teamly/
 
 Essential documentation for understanding and using the project:
 - **API_DOCUMENTATION.md** - Complete API reference with endpoints, parameters, and examples
+- **BACKEND_IMPROVEMENTS.md** - Backend architecture and performance improvements
 - **DEPLOYMENT.md** - Deployment instructions for various environments
+- **LOCATION_API.md** - Location services and mapping integration
+- **OAUTH_SETUP.md** - OAuth authentication setup instructions
+- **PERMISSIONS.md** - Authorization and permissions system
 - **QUICK_START.md** - Quick setup guide for getting started fast
+- **SCALABILITY.md** - Scalability architecture overview
+- **SCALABILITY_IMPROVEMENTS.md** - Detailed scalability enhancements
 - **SECURITY.md** - Security features, best practices, and configuration
+- **TOURNAMENT_API.md** - Tournament system API reference
 
 ### Features (`docs/features/`)
 
 Documentation for specific features:
-- **ENHANCED_NOTIFICATIONS.md** - Enhanced notification system with real-time updates
+- **ENHANCED_NOTIFICATIONS.md** - Enhanced notification system with real-time updates and filtering
+- **EVENT_EXPORT.md** - Event data export functionality (CSV, iCal, JSON)
+- **TEAMUP_IMPROVEMENTS.md** - TeamUp feature improvements
+- **TEAMUP_NOTIFICATIONS.md** - TeamUp notification system
 
 ### Guides (`docs/guides/`)
 
 User and developer guides organized by topic:
-- Platform-specific guides (Windows, frontend)
-- Feature implementation guides
-- Setup and configuration guides
-- Future planning and roadmap
+
+#### User Guides
+- **FEATURES.md** - Complete guide to all features
+- **TOURNAMENT_USER_GUIDE.md** - How to use tournament features
+- **USER_GUIDE_MANUAL_BRACKETS.md** - Manual bracket management guide
+- **MANUAL_BRACKET_MANAGEMENT.md** - Advanced bracket management
+
+#### Setup Guides
+- **WINDOWS_SETUP.md** - Comprehensive Windows development setup
+- **SOCIAL_LOGIN_GUIDE.md** - Social authentication setup
+- **PICTURE_UPLOAD.md** - Picture upload feature setup
+- **GROUP_PICTURE_UPLOAD.md** - Group picture upload guide
+- **TOURNAMENT_PLAYER_REGISTRATION.md** - Tournament player registration
+- **setup/** - Additional setup guides (Google Maps, Translations)
+
+#### Developer Guides
+- **FRONTEND_GUIDE.md** - Frontend development guide
+- **ERROR_HANDLING_GUIDE.md** - Error handling best practices
+- **AUTH_SECURITY_GUIDE.md** - Authentication and security guide
+- **MIGRATION_GUIDE.md** - Migration guides for upgrades
+- **MIGRATION_TO_IOS.md** - iOS migration guide
+- **FEATURE_ROADMAP.md** - Future features and roadmap
+
+### Examples (`docs/examples/`)
+
+Code examples and usage patterns:
+- **CONTROLLER_MIGRATION_EXAMPLE.ts** - Controller migration example
+- **EXAMPLE_USAGE.tsx** - React component usage examples
 
 ### Archive (`docs/archive/`)
 
-Historical documentation preserved for reference:
-- Implementation summaries from feature development
-- Historical reports and comparisons
-- Old feature documentation
+Historical documentation preserved for reference, including:
+- Implementation summaries from all feature development phases
+- Security analysis and improvement reports
+- Scalability implementation documentation
+- Tournament, guest management, and OAuth implementation reports
+- Backend improvements and refactoring summaries
+- Historical bug fixes and quick references
 
-See [docs/archive/README.md](archive/README.md) for details.
+All archived documentation is organized and catalogued in [docs/archive/README.md](archive/README.md) for easy reference.
 
 ## Scripts Organization
 
