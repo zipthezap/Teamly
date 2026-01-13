@@ -1,3 +1,15 @@
+/**
+ * Tournament Controller
+ * 
+ * This controller manages all tournament-related operations including:
+ * - Tournament CRUD operations (create, read, update, delete)
+ * - Team management (add, update, delete, assign to pool)
+ * - Player management (add, update, remove, list)
+ * - Bracket and match management (generate, create, update, delete, assign referee)
+ * - Pool management (create, assign teams, standings)
+ * - Score submission and verification
+ */
+
 import { Request, Response } from 'express';
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
@@ -12,6 +24,8 @@ import * as locationService from '../services/locationService';
 import { BadRequestError, ForbiddenError } from '../utils/errors';
 import { isRequired } from '../utils/validation';
 import { ensureResourceExists } from '../utils/controllerHelpers';
+
+// ==================== TOURNAMENT CRUD OPERATIONS ====================
 
 /**
  * Create a new tournament
@@ -416,6 +430,8 @@ export const deleteTournament = async (req: Request, res: Response) => {
   res.json({ message: 'Tournament deleted successfully' });
 };
 
+// ==================== TEAM MANAGEMENT ====================
+
 /**
  * Add a team to a tournament
  */
@@ -571,6 +587,8 @@ export const deleteTeam = async (req: Request, res: Response) => {
 
   res.json({ message: 'Team deleted successfully' });
 };
+
+// ==================== BRACKET & MATCH MANAGEMENT ====================
 
 /**
  * Generate tournament brackets
@@ -1162,6 +1180,8 @@ export const assignTeamToPool = async (req: Request, res: Response) => {
   }
 };
 
+// ==================== PLAYER MANAGEMENT ====================
+
 /**
  * Add a player to a team (captain only)
  */
@@ -1422,6 +1442,8 @@ export const removePlayer = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to remove player' });
   }
 };
+
+// ==================== POOL MANAGEMENT ====================
 
 /**
  * Get all pools for a tournament

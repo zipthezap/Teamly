@@ -1,3 +1,17 @@
+/**
+ * Authentication Controller
+ * 
+ * This controller handles all authentication and user management operations including:
+ * - User registration and login (with 2FA support)
+ * - Password management (update, reset, recovery)
+ * - Email verification
+ * - Token management (access, refresh, logout)
+ * - Session management
+ * - Profile management (view, update)
+ * - Profile picture management (upload, delete, restore)
+ * - OAuth integration (Google, Facebook)
+ */
+
 import bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
 import prisma from '../config/database';
@@ -18,6 +32,8 @@ import {
 } from '../utils/imageProcessor';
 import { UPLOAD_CONFIG } from '../config/upload';
 import * as authService from '../services/authService';
+
+// ==================== REGISTRATION & LOGIN ====================
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -260,6 +276,8 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
+// ==================== PROFILE MANAGEMENT ====================
+
 export const updateProfile = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, email, city, country, address, postalCode, discoveryRadius } = req.body;
@@ -320,6 +338,8 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     res.status(500).json({ error: 'Failed to update profile' });
   }
 };
+
+// ==================== PASSWORD MANAGEMENT ====================
 
 export const updatePassword = async (req: Request, res: Response): Promise<void> => {
   try {

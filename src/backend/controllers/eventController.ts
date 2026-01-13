@@ -1,3 +1,15 @@
+/**
+ * Event Controller
+ * 
+ * This controller manages all event-related operations including:
+ * - Event CRUD operations (create, read, update, delete, archive, status)
+ * - Event participation (join, leave, update status)
+ * - Guest participant management
+ * - Recurring events management
+ * - Event queries (nearby, statistics, activity feed)
+ * - Event export functionality
+ */
+
 import prisma from '../config/database';
 import { generateRecurrenceInstances, calculateDuration, applyDuration } from '../utils/recurrenceService';
 import { getEventActivity } from '../services/eventNotification';
@@ -14,6 +26,8 @@ import { exportToCSV, exportToICalendar, exportToJSON } from '../services/export
 import { BadRequestError, ForbiddenError } from '../utils/errors';
 import { isRequired } from '../utils/validation';
 import { ensureResourceExists } from '../utils/controllerHelpers';
+
+// ==================== EVENT CRUD OPERATIONS ====================
 
 export const createEvent = async (req: Request, res: Response) => {
   const { 
@@ -547,6 +561,8 @@ export const deleteEvent = async (req: Request, res: Response) => {
   res.json({ message: 'Event deleted successfully' });
 };
 
+// ==================== EVENT PARTICIPATION OPERATIONS ====================
+
 export const joinEvent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -817,6 +833,8 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
   }
 };
 
+// ==================== RECURRING EVENTS MANAGEMENT ====================
+
 // Get recurring event instances
 export const getRecurringEventInstances = async (req: Request, res: Response) => {
   try {
@@ -1001,6 +1019,8 @@ export const removeRecurringEventException = async (req: Request, res: Response)
     res.status(500).json({ error: 'Failed to remove exception' });
   }
 };
+
+// ==================== EVENT QUERIES & ANALYTICS ====================
 
 // Get user event statistics
 export const getUserStatistics = async (req: Request, res: Response) => {
@@ -1280,6 +1300,8 @@ export const getEventActivityFeed = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to get event activity' });
   }
 };
+
+// ==================== GUEST PARTICIPANT MANAGEMENT ====================
 
 // Get event by invite token (no authentication required)
 // Note: This endpoint allows access to both public AND private events via invite token.
