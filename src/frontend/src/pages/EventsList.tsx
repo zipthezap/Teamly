@@ -344,7 +344,7 @@ const EventsList = () => {
             variant="contained"
             color="secondary"
             startIcon={<AddIcon />}
-            onClick={() => { setEditEvent(null); setModalOpen(true); }}
+            onClick={() => { setEditEvent(undefined); setModalOpen(true); }}
           >
             {t('events.createEvent')}
           </Button>
@@ -405,7 +405,7 @@ const EventsList = () => {
           title={Object.keys(searchFilters).length > 0 ? t('events.noEventsMatch') : t('events.noEventsAvailable')}
           description={Object.keys(searchFilters).length === 0 ? t('events.createFirstEventDesc') : ''}
           actions={Object.keys(searchFilters).length === 0 ? [
-            { label: t('events.createFirstEvent'), onClick: () => { setEditEvent(null); setModalOpen(true); } }
+            { label: t('events.createFirstEvent'), onClick: () => { setEditEvent(undefined); setModalOpen(true); } }
           ] : []}
           gradient="linear-gradient(135deg, rgba(245, 0, 87, 0.05) 0%, rgba(245, 0, 87, 0.02) 100%)"
         />

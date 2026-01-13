@@ -22,15 +22,25 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DownloadIcon from '@mui/icons-material/Download';
 import { twoFactorAPI } from '../services/api';
 
+interface TwoFactorSetupData {
+  secret: string;
+  qrCode: string;
+  backupCodes: string[];
+}
+
+interface TwoFactorStatus {
+  enabled: boolean;
+}
+
 const TwoFactorSetup = () => {
   const [activeStep, setActiveStep] = useState(0);
-  const [setupData, setSetupData] = useState(null);
+  const [setupData, setSetupData] = useState<TwoFactorSetupData | null>(null);
   const [token, setToken] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState(null);
+  const [status, setStatus] = useState<TwoFactorStatus | null>(null);
   const navigate = useNavigate();
 
   const steps = ['Get Started', 'Scan QR Code', 'Verify Setup', 'Save Backup Codes'];
@@ -103,6 +113,7 @@ const TwoFactorSetup = () => {
   };
 
   const handleCopySecret = async () => {
+    if (!setupData) return;
     try {
       await navigator.clipboard.writeText(setupData.secret);
       setSuccess('Secret copied to clipboard!');
@@ -112,6 +123,7 @@ const TwoFactorSetup = () => {
   };
 
   const handleDownloadBackupCodes = () => {
+    if (!setupData) return;
     const content = `Teamly 2FA Backup Codes\n\n${setupData.backupCodes.join('\n')}\n\nKeep these codes safe. Each code can only be used once.`;
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -159,7 +171,7 @@ const TwoFactorSetup = () => {
             <Box display="flex" justifyContent="center" my={3}>
               <Box
                 component="img"
-                src={setupData.qrCode}
+                src={setupData?.qrCode}
                 alt="QR Code"
                 sx={{ maxWidth: '250px', width: '100%', height: 'auto' }}
               />
@@ -170,7 +182,7 @@ const TwoFactorSetup = () => {
             </Typography>
             <Box display="flex" alignItems="center" gap={1}>
               <TextField
-                value={setupData.secret}
+                value={setupData?.secret}
                 fullWidth
                 size="small"
                 InputProps={{
@@ -242,7 +254,7 @@ const TwoFactorSetup = () => {
             </Alert>
             <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
               <List dense>
-                {setupData.backupCodes.map((code, index) => (
+                {setupData?.backupCodes.map((code: string, index: number) => (
                   <ListItem key={index}>
                     <ListItemText
                       primary={code}

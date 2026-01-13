@@ -37,9 +37,8 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import EventIcon from '@mui/icons-material/Event';
 import GroupIcon from '@mui/icons-material/Group';
 import { useNavigate } from 'react-router-dom';
-import { useEnhancedNotifications } from '../hooks/useEnhancedNotifications';
+import { useEnhancedNotifications, Notification } from '../hooks/useEnhancedNotifications';
 import { useTranslation } from 'react-i18next';
-import { Notification } from '../../../shared/types';
 
 const NotificationsCenter: React.FC = () => {
   const navigate = useNavigate();
@@ -307,7 +306,7 @@ const NotificationsCenter: React.FC = () => {
                             <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
                               <Box display="flex" alignItems="center" gap={1}>
                                 <Typography variant="body1" fontWeight={!notif.read ? 600 : 400}>
-                                  {t(`notifications.${notif.type}`, notif.params || {})}
+                                  {String(t(`notifications.${notif.type}`, notif.params || {}))}
                                 </Typography>
                                 {!notif.read && (
                                   <Chip label={t('notifications.new')} size="small" color="primary" sx={{ height: 20 }} />
@@ -329,7 +328,7 @@ const NotificationsCenter: React.FC = () => {
                           secondary={
                             <Box>
                               <Typography variant="body2" color="text.secondary" mb={0.5}>
-                                {t(`notifications.${notif.type}Message`, notif.params || {})}
+                                {String(t(`notifications.${notif.type}Message`, notif.params || {}))}
                               </Typography>
                               <Stack direction="row" spacing={1}>
                                 <Chip

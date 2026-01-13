@@ -554,13 +554,13 @@ const TournamentDetails: React.FC = () => {
                         {match.stage?.replace('_', ' ').toUpperCase() || 
                          (match.groupName ? `Group ${match.groupName}` : 'Round ' + match.roundNumber)}
                       </TableCell>
-                      <TableCell>{match.homeTeam.name}</TableCell>
+                      <TableCell>{match.homeTeam?.name || 'TBD'}</TableCell>
                       <TableCell align="center">
                         <Typography variant="h6">
                           {match.homeScore ?? '-'} : {match.awayScore ?? '-'}
                         </Typography>
                       </TableCell>
-                      <TableCell>{match.awayTeam.name}</TableCell>
+                      <TableCell>{match.awayTeam?.name || 'TBD'}</TableCell>
                       {isOrganizer && tournament.useManualBrackets && (
                         <TableCell>
                           {match.refereeTeam ? (
@@ -637,7 +637,7 @@ const TournamentDetails: React.FC = () => {
                   {tournament.standings.map((standing, index: number) => (
                     <TableRow key={standing.id}>
                       <TableCell>{index + 1}</TableCell>
-                      <TableCell>{standing.team.name}</TableCell>
+                      <TableCell>{standing.team?.name || 'TBD'}</TableCell>
                       <TableCell align="center"><strong>{standing.points}</strong></TableCell>
                       <TableCell align="center">{standing.wins}</TableCell>
                       <TableCell align="center">{standing.draws}</TableCell>
@@ -717,7 +717,7 @@ const TournamentDetails: React.FC = () => {
                     sx={{ mt: 1 }}
                   />
                 </Grid>
-                <Grid xs={2}>
+                <Grid size={{ xs: 2 }}>
                   <Typography variant="h4" align="center">
                     :
                   </Typography>

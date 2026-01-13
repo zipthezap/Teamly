@@ -35,7 +35,8 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({
   const { user } = useAuth();
   
   // Check if user is OAuth-only (no password set)
-  const isOAuthOnly = user?.authProvider && user.authProvider !== 'local' && !hasPassword;
+  const authProvider = user?.authProvider as string | undefined;
+  const isOAuthOnly = authProvider && authProvider !== 'local' && !hasPassword;
 
   return (
     <Paper sx={{ p: 4 }}>
@@ -45,7 +46,7 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({
       
       {isOAuthOnly && (
         <Alert severity="info" sx={{ mb: 3 }}>
-          You signed up using {user.authProvider}. Setting a password will allow you to sign in with email and password as well.
+          You signed up using {authProvider}. Setting a password will allow you to sign in with email and password as well.
         </Alert>
       )}
       

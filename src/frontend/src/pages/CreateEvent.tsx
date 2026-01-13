@@ -74,19 +74,29 @@ const CreateEvent = () => {
       }
 
       const data: {
+        groupId: string;
+        title: string;
+        description: string;
+        eventType: string;
+        location: string;
         startTime: string;
-        endTime: string | null;
-        maxPlayers: number | null;
+        endTime?: string;
+        maxPlayers?: number;
         isRecurring: boolean;
+        isPublic?: boolean;
         recurrenceRule?: string;
         recurrenceEnd?: string;
-        [key: string]: unknown;
       } = {
-        ...formData,
+        groupId: formData.groupId!,
+        title: formData.title,
+        description: formData.description,
+        eventType: formData.eventType,
+        location: formData.location,
         startTime: startDateTime.toISOString(),
-        endTime: endDateTime ? endDateTime.toISOString() : null,
-        maxPlayers: formData.maxPlayers ? parseInt(formData.maxPlayers) : null,
+        endTime: endDateTime ? endDateTime.toISOString() : undefined,
+        maxPlayers: formData.maxPlayers ? parseInt(formData.maxPlayers) : undefined,
         isRecurring: formData.isRecurring || false,
+        isPublic: formData.isPublic,
       };
 
       if (formData.isRecurring && recurrenceRule) {
@@ -95,16 +105,6 @@ const CreateEvent = () => {
           data.recurrenceEnd = new Date(formData.recurrenceEnd).toISOString();
         }
       }
-
-      // Remove temporary form fields
-      delete data.startDate;
-      delete data.startHour;
-      delete data.startMinute;
-      delete data.endHour;
-      delete data.endMinute;
-      delete data.recurrencePattern;
-      delete data.recurrenceInterval;
-      delete data.recurrenceDays;
 
       const response = await eventsAPI.create(data);
       navigate(`/events/${response.data.id}`);

@@ -58,11 +58,11 @@ const Profile = () => {
       setFormData({
         name: user.name || '',
         email: user.email || '',
-        city: user.city || '',
-        country: user.country || '',
-        address: user.address || '',
-        postalCode: user.postalCode || '',
-        discoveryRadius: user.discoveryRadius || 25,
+        city: (user.city as string | null | undefined) || '',
+        country: (user.country as string | null | undefined) || '',
+        address: (user.address as string | null | undefined) || '',
+        postalCode: (user.postalCode as string | null | undefined) || '',
+        discoveryRadius: (user.discoveryRadius as number | null | undefined) || 25,
       });
       setAllNotificationsMuted(!user.emailNotifications);
       fetchProfilePictureHistory();
@@ -302,7 +302,7 @@ const Profile = () => {
               <Grid size={{ xs: 12, md: 6 }}>
                 <ProfileForm
                   formData={formData}
-                  profilePicture={user.profilePicture}
+                  profilePicture={(user.profilePicture as string | null | undefined) ?? undefined}
                   loading={loading}
                   onChange={handleChange}
                   onSubmit={handleUpdateProfile}
@@ -313,7 +313,7 @@ const Profile = () => {
                   pictures={pictureHistory}
                   onRestore={handleRestoreProfilePicture}
                   onHardDelete={handleHardDeleteProfilePicture}
-                  currentPictureId={user.profilePicture}
+                  currentPictureId={(user.profilePicture as string | null | undefined) ?? undefined}
                 />
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>
