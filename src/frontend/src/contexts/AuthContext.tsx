@@ -1,19 +1,22 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { authAPI } from '../services/api';
+import { PublicUser, UserLoginData, UserRegistrationData } from '../../../shared/types';
 
-interface User {
-  id: string | number;
-  email: string;
-  name: string;
-  [key: string]: any;
+interface User extends PublicUser {
+  [key: string]: unknown;
+}
+
+interface LoginResponse {
+  requires2FA?: boolean;
+  user?: User;
 }
 
 interface AuthContextType {
   user: User | null;
   setUser: (user: User | null) => void;
   updateUser: (userData: Partial<User>) => void;
-  login: (credentials: any) => Promise<any>;
-  register: (userData: any) => Promise<User>;
+  login: (credentials: UserLoginData) => Promise<LoginResponse>;
+  register: (userData: UserRegistrationData) => Promise<User>;
   logout: () => void;
   setTokens: (token: string, refreshToken: string) => Promise<void>;
   loading: boolean;
@@ -39,7 +42,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = async (credentials: any) => {
+  const login = async (credentials: UserLoginData): Promise<LoginResponse> => {
     const response = await authAPI.login(credentials);
     
     // Check if 2FA is required
@@ -53,10 +56,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(user));
     setUser(user);
     
-    return user;
+    return { user };
   };
 
-  const register = async (userData: any) => {
+  const register = async (userData: UserRegistrationData): Promise<User> => {
     const response = await authAPI.register(userData);
     const { user, accessToken } = response.data;
     

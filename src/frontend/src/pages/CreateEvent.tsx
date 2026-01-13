@@ -74,13 +74,13 @@ const CreateEvent = () => {
       }
 
       const data: {
-        [key: string]: any;
         startTime: string;
         endTime: string | null;
         maxPlayers: number | null;
         isRecurring: boolean;
         recurrenceRule?: string;
         recurrenceEnd?: string;
+        [key: string]: unknown;
       } = {
         ...formData,
         startTime: startDateTime.toISOString(),
@@ -108,8 +108,9 @@ const CreateEvent = () => {
 
       const response = await eventsAPI.create(data);
       navigate(`/events/${response.data.id}`);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to create event');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || 'Failed to create event');
     } finally {
       setLoading(false);
     }

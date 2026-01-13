@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Event } from "../../types/group";
+import { Event } from "../../../../shared/types";
 
 interface GroupStatsProps {
   memberCount: number;
@@ -11,8 +11,14 @@ const GroupStats: React.FC<GroupStatsProps> = ({ memberCount, events }) => {
   const { t } = useTranslation();
   
   const now = new Date();
-  const upcomingEvents = events.filter(e => new Date(e.date) >= now).length;
-  const pastEvents = events.filter(e => new Date(e.date) < now).length;
+  const upcomingEvents = events.filter(e => {
+    const eventDate = e.date || e.startTime;
+    return eventDate && new Date(eventDate) >= now;
+  }).length;
+  const pastEvents = events.filter(e => {
+    const eventDate = e.date || e.startTime;
+    return eventDate && new Date(eventDate) < now;
+  }).length;
 
   return (
     <section className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 shadow-lg mb-6">

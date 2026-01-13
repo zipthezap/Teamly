@@ -23,10 +23,11 @@ import GroupIcon from '@mui/icons-material/Group';
 import EventIcon from '@mui/icons-material/Event';
 import { useAuth } from '../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../utils/imageUtils';
+import { Event, GroupWithDetails, EventParticipant } from '../../../shared/types';
 
 const Dashboard = () => {
-  const [groups, setGroups] = useState([]);
-  const [events, setEvents] = useState([]);
+  const [groups, setGroups] = useState<GroupWithDetails[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -44,8 +45,8 @@ const Dashboard = () => {
       ]);
       setGroups(groupsRes.data);
       // Ensure eventsRes.data is an array before sorting
-      const eventsArray = Array.isArray(eventsRes.data) ? eventsRes.data : (eventsRes.data?.data ?? []);
-      const sortedEvents = eventsArray.sort((a, b) => 
+      const eventsArray = Array.isArray(eventsRes.data) ? eventsRes.data : ((eventsRes.data as { data?: Event[] })?.data ?? []);
+      const sortedEvents = eventsArray.sort((a: Event, b: Event) => 
         new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
       );
       setEvents(sortedEvents);
@@ -70,11 +71,11 @@ const Dashboard = () => {
     if (e.creatorId === user?.id) return true;
     
     // Show if user is a confirmed participant
-    const isConfirmed = e.participants?.some(p => p.userId === user?.id && p.status === 'confirmed');
+    const isConfirmed = (e as { participants?: EventParticipant[] }).participants?.some((p: EventParticipant) => p.userId === user?.id && p.status === 'confirmed');
     return isConfirmed;
   });
   const myEvents = events.filter(e => 
-    e.participants?.some(p => p.userId === user?.id)
+    (e as { participants?: EventParticipant[] }).participants?.some((p: EventParticipant) => p.userId === user?.id)
   );
 
   return (
@@ -336,7 +337,7 @@ const Dashboard = () => {
                       {recentMembers.length > 0 && (
                         <AvatarGroup max={4} sx={{ justifyContent: 'flex-start' }}>
                           {recentMembers.map((member, idx) => {
-                            const currentPic = member.user?.profilePictures?.find((p: any) => p.isCurrent && !p.deletedAt);
+                            const currentPic = member.user?.profilePictures?.find((p) => p.isCurrent && !p.deletedAt);
                             const profilePictureUrl = getImageUrl(currentPic?.url || member.user?.profilePicture);
                             return (
                               <Avatar
