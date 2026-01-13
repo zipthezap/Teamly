@@ -10,7 +10,7 @@ import { logger } from '../utils/logger';
  */
 const authAwareKeyGenerator = (req: Request): string => {
   // For authenticated requests, use user ID (ensure it's a valid non-empty value)
-  const userId = (req.user as any)?.id;
+  const userId = req.user?.id;
   if (userId && typeof userId === 'string' && userId.length > 0) {
     return `user:${userId}`;
   }
@@ -22,7 +22,7 @@ const authAwareKeyGenerator = (req: Request): string => {
  * Custom rate limit handler with logging
  */
 const rateLimitHandler = (req: Request, res: Response): void => {
-  const userId = (req.user as any)?.id;
+  const userId = req.user?.id;
   const identifier = userId ? `User ${userId}` : `IP ${req.ip}`;
   logger.warn('Rate limit exceeded', 'RateLimiter', {
     identifier,

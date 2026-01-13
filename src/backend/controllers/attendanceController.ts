@@ -11,7 +11,7 @@ import { logger } from '../utils/logger';
 export const markAttendance = asyncHandler(async (req: Request, res: Response) => {
   const { eventId } = req.params;
   const { userId, status } = req.body;
-  const currentUserId = (req.user as any).id;
+  const currentUserId = req.user!.id;
 
   if (!status || !['on-time', 'late'].includes(status)) {
     throw new BadRequestError('Status must be either "on-time" or "late"');
@@ -121,7 +121,7 @@ export const markAttendance = asyncHandler(async (req: Request, res: Response) =
  */
 export const getEventAttendance = asyncHandler(async (req: Request, res: Response) => {
   const { eventId } = req.params;
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
 
   // Check if user has access to the event
   const event = await prisma.event.findFirst({
@@ -172,7 +172,7 @@ export const getEventAttendance = asyncHandler(async (req: Request, res: Respons
  */
 export const getAttendanceStats = asyncHandler(async (req: Request, res: Response) => {
   const { eventId } = req.params;
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
 
   // Check if user has access to the event
   const event = await prisma.event.findFirst({
@@ -234,7 +234,7 @@ export const getAttendanceStats = asyncHandler(async (req: Request, res: Respons
  */
 export const deleteAttendance = asyncHandler(async (req: Request, res: Response) => {
   const { eventId, userId: targetUserId } = req.params;
-  const currentUserId = (req.user as any).id;
+  const currentUserId = req.user!.id;
 
   // Find the event
   const event = await prisma.event.findUnique({

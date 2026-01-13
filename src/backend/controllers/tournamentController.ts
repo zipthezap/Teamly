@@ -46,7 +46,7 @@ export const createTournament = async (req: Request, res: Response) => {
     recurrenceRule
   } = req.body;
 
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
 
   // Validate required fields
   isRequired(name, 'Name');
@@ -263,7 +263,7 @@ export const getTournament = async (req: Request, res: Response) => {
  */
 export const updateTournament = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
   const { 
     name, description, status, startDate, endDate, maxTeams, 
     location, locationName, city, country, latitude, longitude,
@@ -392,7 +392,7 @@ export const updateTournament = async (req: Request, res: Response) => {
  */
 export const deleteTournament = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
 
   const tournament = await prisma.tournament.findUnique({
     where: { id }
@@ -421,7 +421,7 @@ export const deleteTournament = async (req: Request, res: Response) => {
  */
 export const addTeam = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
   const { name, captainName, captainEmail, captainUserId, poolNumber, poolName, seedNumber } = req.body;
 
   isRequired(name, 'Team name');
@@ -483,7 +483,7 @@ export const addTeam = async (req: Request, res: Response) => {
  */
 export const updateTeam = async (req: Request, res: Response) => {
   const { id, teamId } = req.params;
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
   const { name, captainName, captainEmail, captainUserId, poolNumber, poolName, seedNumber } = req.body;
 
   const tournament = await prisma.tournament.findUnique({
@@ -542,7 +542,7 @@ export const updateTeam = async (req: Request, res: Response) => {
  */
 export const deleteTeam = async (req: Request, res: Response) => {
   const { id, teamId } = req.params;
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
 
   const tournament = await prisma.tournament.findUnique({
     where: { id }
@@ -578,7 +578,7 @@ export const deleteTeam = async (req: Request, res: Response) => {
 export const generateBrackets = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req.user as any).id;
+    const userId = req.user!.id;
     const { numberOfGroups } = req.body;
 
     const tournament = await prisma.tournament.findUnique({
@@ -655,7 +655,7 @@ export const generateBrackets = async (req: Request, res: Response) => {
 export const submitScore = async (req: Request, res: Response) => {
   try {
     const { id, matchId } = req.params;
-    const userId = (req.user as any).id;
+    const userId = req.user!.id;
     const { homeScore, awayScore } = req.body;
 
     if (homeScore === undefined || awayScore === undefined) {
@@ -767,7 +767,7 @@ export const getStandings = async (req: Request, res: Response) => {
 export const createMatch = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req.user as any).id;
+    const userId = req.user!.id;
     const {
       homeTeamId,
       awayTeamId,
@@ -876,7 +876,7 @@ export const createMatch = async (req: Request, res: Response) => {
 export const updateMatch = async (req: Request, res: Response) => {
   try {
     const { id, matchId } = req.params;
-    const userId = (req.user as any).id;
+    const userId = req.user!.id;
     const {
       homeTeamId,
       awayTeamId,
@@ -981,7 +981,7 @@ export const updateMatch = async (req: Request, res: Response) => {
 export const deleteMatch = async (req: Request, res: Response) => {
   try {
     const { id, matchId } = req.params;
-    const userId = (req.user as any).id;
+    const userId = req.user!.id;
 
     const tournament = await prisma.tournament.findUnique({
       where: { id }
@@ -1035,7 +1035,7 @@ export const deleteMatch = async (req: Request, res: Response) => {
 export const assignReferee = async (req: Request, res: Response) => {
   try {
     const { id, matchId } = req.params;
-    const userId = (req.user as any).id;
+    const userId = req.user!.id;
     const { refereeTeamId } = req.body;
 
     const tournament = await prisma.tournament.findUnique({
@@ -1109,7 +1109,7 @@ export const assignReferee = async (req: Request, res: Response) => {
 export const assignTeamToPool = async (req: Request, res: Response) => {
   try {
     const { id, teamId } = req.params;
-    const userId = (req.user as any).id;
+    const userId = req.user!.id;
     const { poolNumber, poolName } = req.body;
 
     const tournament = await prisma.tournament.findUnique({
@@ -1168,7 +1168,7 @@ export const assignTeamToPool = async (req: Request, res: Response) => {
 export const addPlayer = async (req: Request, res: Response) => {
   try {
     const { id, teamId } = req.params;
-    const userId = (req.user as any).id;
+    const userId = req.user!.id;
     const { playerName, playerEmail, userId: playerId } = req.body;
 
     if (!playerName) {
@@ -1282,7 +1282,7 @@ export const getPlayers = async (req: Request, res: Response) => {
 export const updatePlayer = async (req: Request, res: Response) => {
   try {
     const { id, teamId, playerId } = req.params;
-    const userId = (req.user as any).id;
+    const userId = req.user!.id;
     const { playerName, playerEmail, userId: newUserId } = req.body;
 
     const tournament = await prisma.tournament.findUnique({
@@ -1369,7 +1369,7 @@ export const updatePlayer = async (req: Request, res: Response) => {
 export const removePlayer = async (req: Request, res: Response) => {
   try {
     const { id, teamId, playerId } = req.params;
-    const userId = (req.user as any).id;
+    const userId = req.user!.id;
 
     const tournament = await prisma.tournament.findUnique({
       where: { id }
@@ -1504,7 +1504,7 @@ export const getPoolDetails = async (req: Request, res: Response) => {
 export const createPool = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req.user as any).id;
+    const userId = req.user!.id;
     const { name, description, maxTeams } = req.body;
 
     if (!name || !maxTeams) {
@@ -1566,7 +1566,7 @@ export const createPool = async (req: Request, res: Response) => {
 export const registerTeamToPool = async (req: Request, res: Response) => {
   try {
     const { id, poolId, teamId } = req.params;
-    const userId = (req.user as any).id;
+    const userId = req.user!.id;
 
     const tournament = await prisma.tournament.findUnique({
       where: { id }
@@ -1716,7 +1716,7 @@ export const registerTeamToPool = async (req: Request, res: Response) => {
 export const removeTeamFromPool = async (req: Request, res: Response) => {
   try {
     const { id, poolId, teamId } = req.params;
-    const userId = (req.user as any).id;
+    const userId = req.user!.id;
 
     const tournament = await prisma.tournament.findUnique({
       where: { id }
@@ -1845,7 +1845,7 @@ export const removeTeamFromPool = async (req: Request, res: Response) => {
 export const removeTeamFromWaitlist = async (req: Request, res: Response) => {
   try {
     const { id, poolId, teamId } = req.params;
-    const userId = (req.user as any).id;
+    const userId = req.user!.id;
 
     const tournament = await prisma.tournament.findUnique({
       where: { id }

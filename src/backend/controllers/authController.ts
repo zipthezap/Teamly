@@ -231,7 +231,7 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
   try {
     // Include authProvider and OAuth status in profile response
     const user = await prisma.user.findUnique({
-      where: { id: (req.user as any)!.id },
+      where: { id: req.user!!.id },
       select: {
         id: true,
         email: true,
@@ -270,7 +270,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     }
 
     // Check if email is already taken by another user
-    if (email !== (req.user as any)!.email) {
+    if (email !== req.user!!.email) {
       const existingUser = await prisma.user.findUnique({
         where: { email }
       });
@@ -291,7 +291,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     }
 
     const updatedUser = await prisma.user.update({
-      where: { id: (req.user as any)!.id },
+      where: { id: req.user!!.id },
       data: { 
         name, 
         email,
@@ -343,7 +343,7 @@ export const updatePassword = async (req: Request, res: Response): Promise<void>
 
     // Get user with password
     const user = await prisma.user.findUnique({
-      where: { id: (req.user as any)!.id },
+      where: { id: req.user!!.id },
       select: { id: true, password: true, authProvider: true }
     });
 
@@ -375,14 +375,14 @@ export const updatePassword = async (req: Request, res: Response): Promise<void>
     // This preserves the information about how the user originally signed up
     // The user can now authenticate with either OAuth or password
     await prisma.user.update({
-      where: { id: (req.user as any)!.id },
+      where: { id: req.user!!.id },
       data: { password: hashedPassword }
     });
 
     // Revoke all existing tokens for security (except current one for convenience)
-    await revokeAllUserTokens((req.user as any)!.id, 'password_change');
+    await revokeAllUserTokens(req.user!!.id, 'password_change');
 
-    logger.info('Password changed', 'AuthController', { userId: (req.user as any)!.id });
+    logger.info('Password changed', 'AuthController', { userId: req.user!!.id });
     res.json({ message: 'Password updated successfully. You have been logged out from other devices for security.' });
   } catch (error) {
     logger.error('Failed to update password', 'AuthController', { error });
@@ -661,7 +661,7 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
 export const logout = async (req: Request, res: Response): Promise<void> => {
   try {
     if (req.token && req.user) {
-      await revokeToken(req.token, (req.user as any).id, 'logout');
+      await revokeToken(req.token, req.user!.id, 'logout');
     }
 
     res.json({ message: 'Logged out successfully' });
@@ -677,7 +677,7 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
 export const logoutAll = async (req: Request, res: Response): Promise<void> => {
   try {
     if (req.user) {
-      await revokeAllUserTokens((req.user as any).id, 'logout_all');
+      await revokeAllUserTokens(req.user!.id, 'logout_all');
     }
 
     res.json({ message: 'Logged out from all devices successfully' });
@@ -699,7 +699,7 @@ export const getSessions = async (req: Request, res: Response): Promise<void> =>
 
     const sessions = await prisma.userSession.findMany({
       where: { 
-        userId: (req.user as any).id,
+        userId: req.user!.id,
         expiresAt: { gt: new Date() }
       },
       select: {
@@ -729,7 +729,7 @@ export const uploadProfilePicture = async (req: Request, res: Response): Promise
   let tempFilePath: string | undefined;
   let finalFilePath: string | undefined;
   try {
-    if (!(req.user as any)?.id) {
+    if (!req.user!?.id) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
@@ -758,22 +758,22 @@ export const uploadProfilePicture = async (req: Request, res: Response): Promise
     const pictureUrl = `/uploads/profiles/${filename}`;
     // Mark all previous pictures as not current
     await prisma.userProfilePicture.updateMany({
-      where: { userId: (req.user as any).id, isCurrent: true, deletedAt: null },
-      data: { isCurrent: false, updatedBy: (req.user as any).id, updatedAt: new Date() },
+      where: { userId: req.user!.id, isCurrent: true, deletedAt: null },
+      data: { isCurrent: false, updatedBy: req.user!.id, updatedAt: new Date() },
     });
     // Insert new picture record
     await prisma.userProfilePicture.create({
       data: {
-        userId: (req.user as any).id,
+        userId: req.user!.id,
         url: pictureUrl,
         isCurrent: true,
-        createdBy: (req.user as any).id,
-        updatedBy: (req.user as any).id,
+        createdBy: req.user!.id,
+        updatedBy: req.user!.id,
       },
     });
     // Update User.profilePicture
     const updatedUser = await prisma.user.update({
-      where: { id: (req.user as any).id },
+      where: { id: req.user!.id },
       data: { profilePicture: pictureUrl },
       select: {
         id: true,
@@ -788,7 +788,7 @@ export const uploadProfilePicture = async (req: Request, res: Response): Promise
         createdAt: true,
       },
     });
-    logger.info('Profile picture uploaded (history/audit)', 'AuthController', { userId: (req.user as any).id });
+    logger.info('Profile picture uploaded (history/audit)', 'AuthController', { userId: req.user!.id });
     res.json({ user: updatedUser, message: 'Profile picture uploaded successfully' });
   } catch (error) {
     logger.error('Failed to upload profile picture', 'AuthController', { error });
@@ -805,13 +805,13 @@ export const uploadProfilePicture = async (req: Request, res: Response): Promise
 // Soft delete current profile picture, update User.profilePicture to previous (if any)
 export const deleteProfilePicture = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (!(req.user as any)?.id) {
+    if (!req.user!?.id) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
     // Find current profile picture
     const currentPic = await prisma.userProfilePicture.findFirst({
-      where: { userId: (req.user as any).id, isCurrent: true, deletedAt: null },
+      where: { userId: req.user!.id, isCurrent: true, deletedAt: null },
       orderBy: { createdAt: 'desc' },
     });
     if (!currentPic) {
@@ -821,16 +821,16 @@ export const deleteProfilePicture = async (req: Request, res: Response): Promise
     // Soft delete current
     await prisma.userProfilePicture.update({
       where: { id: currentPic.id },
-      data: { deletedAt: new Date(), isCurrent: false, updatedBy: (req.user as any).id, updatedAt: new Date() },
+      data: { deletedAt: new Date(), isCurrent: false, updatedBy: req.user!.id, updatedAt: new Date() },
     });
     // Find previous (not deleted) picture
     const prevPic = await prisma.userProfilePicture.findFirst({
-      where: { userId: (req.user as any).id, deletedAt: null, isCurrent: false },
+      where: { userId: req.user!.id, deletedAt: null, isCurrent: false },
       orderBy: { createdAt: 'desc' },
     });
     // Update User.profilePicture
     const updatedUser = await prisma.user.update({
-      where: { id: (req.user as any).id },
+      where: { id: req.user!.id },
       data: { profilePicture: prevPic ? prevPic.url : null },
       select: {
         id: true,
@@ -845,7 +845,7 @@ export const deleteProfilePicture = async (req: Request, res: Response): Promise
         createdAt: true,
       },
     });
-    logger.info('Profile picture soft-deleted (history/audit)', 'AuthController', { userId: (req.user as any).id });
+    logger.info('Profile picture soft-deleted (history/audit)', 'AuthController', { userId: req.user!.id });
     res.json({ user: updatedUser, message: 'Profile picture deleted successfully' });
   } catch (error) {
     logger.error('Failed to delete profile picture', 'AuthController', { error });
@@ -856,12 +856,12 @@ export const deleteProfilePicture = async (req: Request, res: Response): Promise
 // List all profile pictures (history, including soft-deleted)
 export const listProfilePictures = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (!(req.user as any)?.id) {
+    if (!req.user!?.id) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
     const pictures = await prisma.userProfilePicture.findMany({
-      where: { userId: (req.user as any).id },
+      where: { userId: req.user!.id },
       orderBy: [{ createdAt: 'desc' }],
     });
     res.json({ pictures });
@@ -874,14 +874,14 @@ export const listProfilePictures = async (req: Request, res: Response): Promise<
 // Restore a soft-deleted profile picture and set as current
 export const restoreProfilePicture = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (!(req.user as any)?.id) {
+    if (!req.user!?.id) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
     const { pictureId } = req.body;
     // Find the picture
     const pic = await prisma.userProfilePicture.findFirst({
-      where: { id: pictureId, userId: (req.user as any).id },
+      where: { id: pictureId, userId: req.user!.id },
     });
     if (!pic || !pic.deletedAt) {
       res.status(404).json({ error: 'Picture not found or not deleted' });
@@ -889,17 +889,17 @@ export const restoreProfilePicture = async (req: Request, res: Response): Promis
     }
     // Mark all other as not current
     await prisma.userProfilePicture.updateMany({
-      where: { userId: (req.user as any).id, isCurrent: true },
-      data: { isCurrent: false, updatedBy: (req.user as any).id, updatedAt: new Date() },
+      where: { userId: req.user!.id, isCurrent: true },
+      data: { isCurrent: false, updatedBy: req.user!.id, updatedAt: new Date() },
     });
     // Restore this picture
     await prisma.userProfilePicture.update({
       where: { id: pictureId },
-      data: { deletedAt: null, isCurrent: true, updatedBy: (req.user as any).id, updatedAt: new Date() },
+      data: { deletedAt: null, isCurrent: true, updatedBy: req.user!.id, updatedAt: new Date() },
     });
     // Update User.profilePicture
     await prisma.user.update({
-      where: { id: (req.user as any).id },
+      where: { id: req.user!.id },
       data: { profilePicture: pic.url },
     });
     res.json({ message: 'Profile picture restored and set as current' });
@@ -912,13 +912,13 @@ export const restoreProfilePicture = async (req: Request, res: Response): Promis
 // Permanently delete a profile picture (hard delete)
 export const hardDeleteProfilePicture = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (!(req.user as any)?.id) {
+    if (!req.user!?.id) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
     const { pictureId } = req.body;
     const pic = await prisma.userProfilePicture.findFirst({
-      where: { id: pictureId, userId: (req.user as any).id },
+      where: { id: pictureId, userId: req.user!.id },
     });
     if (!pic) {
       res.status(404).json({ error: 'Picture not found' });
@@ -945,7 +945,7 @@ export const oauthCallback = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const user = req.user as any;
+    const user = req.user!;
 
     // Generate token pair with session tracking
     const deviceInfo = req.headers['user-agent'];
@@ -983,7 +983,7 @@ export const oauthCallback = async (req: Request, res: Response): Promise<void> 
  */
 export const getOAuthStatus = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req.user as any)?.id;
+    const userId = req.user!?.id;
     
     if (!userId) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -1028,7 +1028,7 @@ export const getOAuthStatus = async (req: Request, res: Response): Promise<void>
  */
 export const unlinkOAuthAccount = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req.user as any)?.id;
+    const userId = req.user!?.id;
     const { provider } = req.body;
 
     if (!userId) {
@@ -1117,7 +1117,7 @@ export const unlinkOAuthAccount = async (req: Request, res: Response): Promise<v
  */
 export const syncOAuthProfilePicture = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req.user as any)?.id;
+    const userId = req.user!?.id;
 
     if (!userId) {
       res.status(401).json({ error: 'Unauthorized' });

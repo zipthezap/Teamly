@@ -28,7 +28,7 @@ import {
  *  - searchQuery: string (searches in title and message)
  */
 export const getNotifications = asyncHandler(async (req: Request, res: Response) => {
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
   const {
     includeRead = 'false',
     limit = '50',
@@ -88,7 +88,7 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
  * Body: { notificationIds?: string[] } - if not provided, marks all as read
  */
 export const markAsRead = asyncHandler(async (req: Request, res: Response) => {
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
   const { notificationIds } = req.body;
 
   await markNotificationsAsRead(userId, notificationIds);
@@ -101,7 +101,7 @@ export const markAsRead = asyncHandler(async (req: Request, res: Response) => {
  * GET /api/notifications/stats
  */
 export const getStats = asyncHandler(async (req: Request, res: Response) => {
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
   const stats = await getNotificationStats(userId);
 
   res.json(stats);
@@ -112,7 +112,7 @@ export const getStats = asyncHandler(async (req: Request, res: Response) => {
  * GET /api/notifications/unread-count
  */
 export const getUnreadCount = asyncHandler(async (req: Request, res: Response) => {
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
   const stats = await getNotificationStats(userId);
 
   res.json({
@@ -128,7 +128,7 @@ export const getUnreadCount = asyncHandler(async (req: Request, res: Response) =
  * Body: { notificationIds: string[] }
  */
 export const deleteNotificationsEndpoint = asyncHandler(async (req: Request, res: Response) => {
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
   const { notificationIds } = req.body;
 
   if (!notificationIds || !Array.isArray(notificationIds) || notificationIds.length === 0) {
@@ -148,7 +148,7 @@ export const deleteNotificationsEndpoint = asyncHandler(async (req: Request, res
  * DELETE /api/notifications/read
  */
 export const deleteAllReadNotificationsEndpoint = asyncHandler(async (req: Request, res: Response) => {
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
   const result = await deleteAllReadNotifications(userId);
 
   res.json({

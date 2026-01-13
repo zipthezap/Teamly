@@ -8,13 +8,13 @@ import * as authService from '../services/authService';
 // Get user email preferences
 export const getEmailPreferences = asyncHandler(async (req: Request, res: Response) => {
   let preferences = await prisma.emailPreference.findUnique({
-    where: { userId: (req.user as any).id }
+    where: { userId: req.user!.id }
   });
 
   // Create default preferences if they don't exist
   if (!preferences) {
     preferences = await prisma.emailPreference.create({
-      data: { userId: (req.user as any).id }
+      data: { userId: req.user!.id }
     });
   }
 
@@ -33,7 +33,7 @@ export const updateEmailPreferences = asyncHandler(async (req: Request, res: Res
   } = req.body;
 
   const preferences = await prisma.emailPreference.upsert({
-    where: { userId: (req.user as any).id },
+    where: { userId: req.user!.id },
     update: {
       eventInvites: eventInvites !== undefined ? eventInvites : undefined,
       eventReminders: eventReminders !== undefined ? eventReminders : undefined,
@@ -43,7 +43,7 @@ export const updateEmailPreferences = asyncHandler(async (req: Request, res: Res
       commentMentions: commentMentions !== undefined ? commentMentions : undefined
     },
     create: {
-      userId: (req.user as any).id,
+      userId: req.user!.id,
       eventInvites: eventInvites !== undefined ? eventInvites : true,
       eventReminders: eventReminders !== undefined ? eventReminders : true,
       eventUpdates: eventUpdates !== undefined ? eventUpdates : true,
@@ -59,7 +59,7 @@ export const updateEmailPreferences = asyncHandler(async (req: Request, res: Res
 // Send email verification
 export const sendVerificationEmail = asyncHandler(async (req: Request, res: Response) => {
   const user = await prisma.user.findUnique({
-    where: { id: (req.user as any).id }
+    where: { id: req.user!.id }
   });
 
   if (!user) {
@@ -75,7 +75,7 @@ export const sendVerificationEmail = asyncHandler(async (req: Request, res: Resp
 
   // Update user with hashed token
   await prisma.user.update({
-    where: { id: (req.user as any).id },
+    where: { id: req.user!.id },
     data: { emailVerificationToken: hashedToken }
   });
 
@@ -117,7 +117,7 @@ export const toggleEmailNotifications = asyncHandler(async (req: Request, res: R
   const { enabled } = req.body;
 
   const user = await prisma.user.update({
-    where: { id: (req.user as any).id },
+    where: { id: req.user!.id },
     data: { emailNotifications: enabled }
   });
 

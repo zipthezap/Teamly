@@ -62,7 +62,7 @@ export const createEvent = async (req: Request, res: Response) => {
   }
 
   // Check if user is admin of the group
-  const isAdmin = await groupService.checkGroupAdmin(groupId, (req.user as any).id);
+  const isAdmin = await groupService.checkGroupAdmin(groupId, req.user!.id);
   if (!isAdmin) {
     throw new ForbiddenError('Only group admins can create events for this group');
   }
@@ -79,7 +79,7 @@ export const createEvent = async (req: Request, res: Response) => {
   const event = await prisma.event.create({
     data: {
       groupId,
-      creatorId: (req.user as any).id,
+      creatorId: req.user!.id,
       title: sanitized.title!,
       description: sanitized.description,
       eventType: sanitized.eventType! as SportType,
@@ -100,7 +100,7 @@ export const createEvent = async (req: Request, res: Response) => {
       inviteToken,
       participants: {
         create: {
-          userId: (req.user as any).id,
+          userId: req.user!.id,
           status: EventParticipantStatus.confirmed
         }
       }
@@ -130,8 +130,8 @@ export const createEvent = async (req: Request, res: Response) => {
   const enrichedEvent = locationService.enrichWithLocationInfo(event);
 
   // Send global notification to group members (except creator)
-  const memberIds = group.members.map(m => m.user.id).filter(uid => uid !== (req.user as any).id);
-  await eventService.createEventNotifications(group.id, event.title, (req.user as any).name, group.name, memberIds);
+  const memberIds = group.members.map(m => m.user.id).filter(uid => uid !== req.user!.id);
+  await eventService.createEventNotifications(group.id, event.title, req.user!.name, group.name, memberIds);
 
   res.status(201).json(enrichedEvent);
 };
@@ -142,7 +142,7 @@ export const getEvents = async (req: Request, res: Response) => {
     limit = '50', offset = '0', cursor
   } = req.query;
 
-  const userId = (req.user as any).id;
+  const userId = req.user!.id;
   
   // Parse and validate pagination parameters
   const parsedLimit = parseInt(limit as string, 10);
@@ -314,7 +314,7 @@ export const getEvent = async (req: Request, res: Response) => {
       group: {
         members: {
           some: {
-            userId: (req.user as any).id
+            userId: req.user!.id
           }
         }
       }
@@ -432,7 +432,7 @@ export const updateEvent = async (req: Request, res: Response) => {
   ensureResourceExists(event, 'Event');
 
   // Check if user has permission to manage this event
-  const { isAuthorized } = await eventService.checkEventManagementPermission(event!, (req.user as any).id);
+  const { isAuthorized } = await eventService.checkEventManagementPermission(event!, req.user!.id);
   if (!isAuthorized) {
     throw new ForbiddenError('Only the event creator or group admins can update it');
   }
@@ -487,7 +487,7 @@ export const updateEvent = async (req: Request, res: Response) => {
   // Send email notifications to participants
   await eventService.sendEventEmailNotifications(
     (updatedEvent as any).participants,
-    (req.user as any).id,
+    req.user!.id,
     'eventUpdates',
     'eventUpdate',
     updatedEvent.title,
@@ -525,7 +525,7 @@ export const deleteEvent = async (req: Request, res: Response) => {
   ensureResourceExists(event, 'Event');
 
   // Check if user has permission to manage this event
-  const { isAuthorized } = await eventService.checkEventManagementPermission(event!, (req.user as any).id);
+  const { isAuthorized } = await eventService.checkEventManagementPermission(event!, req.user!.id);
   if (!isAuthorized) {
     throw new ForbiddenError('Only the event creator or group admins can delete it');
   }
@@ -533,7 +533,7 @@ export const deleteEvent = async (req: Request, res: Response) => {
   // Send email notifications to participants
   await eventService.sendEventEmailNotifications(
     event!.participants,
-    (req.user as any).id,
+    req.user!.id,
     'eventCancellations',
     'eventCancellation',
     event!.title,
@@ -560,7 +560,7 @@ export const joinEvent = async (req: Request, res: Response) => {
           group: {
             members: {
               some: {
-                userId: (req.user as any).id
+                userId: req.user!.id
               }
             }
           }
@@ -581,7 +581,7 @@ export const joinEvent = async (req: Request, res: Response) => {
         where: {
           eventId_userId: {
             eventId: id,
-            userId: (req.user as any).id
+            userId: req.user!.id
           }
         }
       });
@@ -613,7 +613,7 @@ export const joinEvent = async (req: Request, res: Response) => {
       const participant = await tx.eventParticipant.create({
         data: {
           eventId: id,
-          userId: (req.user as any).id,
+          userId: req.user!.id,
           status: 'confirmed'
         }
       });
@@ -622,10 +622,10 @@ export const joinEvent = async (req: Request, res: Response) => {
       await tx.eventNotification.create({
         data: {
           eventId: id,
-          userId: (req.user as any).id,
+          userId: req.user!.id,
           type: 'join',
           params: {
-            name: (req.user as any).name,
+            name: req.user!.name,
             eventTitle: event.title
           },
           metadata: {
@@ -688,7 +688,7 @@ export const leaveEvent = async (req: Request, res: Response) => {
     const participant = await prisma.eventParticipant.findFirst({
       where: {
         eventId: id,
-        userId: (req.user as any).id
+        userId: req.user!.id
       }
     });
 
@@ -705,7 +705,7 @@ export const leaveEvent = async (req: Request, res: Response) => {
       prisma.eventAttendance.deleteMany({
         where: {
           eventId: id,
-          userId: (req.user as any).id
+          userId: req.user!.id
         }
       })
     ]);
@@ -726,10 +726,10 @@ export const leaveEvent = async (req: Request, res: Response) => {
       await prisma.eventNotification.create({
         data: {
           eventId: id,
-          userId: (req.user as any).id,
+          userId: req.user!.id,
           type: 'leave',
           params: {
-            name: (req.user as any).name,
+            name: req.user!.name,
             eventTitle: leftEvent.title
           },
           metadata: {
@@ -760,7 +760,7 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
     const participant = await prisma.eventParticipant.findFirst({
       where: {
         eventId: id,
-        userId: (req.user as any).id
+        userId: req.user!.id
       }
     });
 
@@ -793,10 +793,10 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
         await prisma.eventNotification.create({
           data: {
             eventId: id,
-            userId: (req.user as any).id,
+            userId: req.user!.id,
             type: status,
             params: {
-              name: (req.user as any).name,
+              name: req.user!.name,
               eventTitle: statusEvent.title
             },
             metadata: {
@@ -830,7 +830,7 @@ export const getRecurringEventInstances = async (req: Request, res: Response) =>
         group: {
           members: {
             some: {
-              userId: (req.user as any).id
+              userId: req.user!.id
             }
           }
         }
@@ -918,7 +918,7 @@ export const addRecurringEventException = async (req: Request, res: Response) =>
     }
 
     // Check if user has permission to manage this event
-    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
     if (!isAuthorized) {
       return res.status(403).json({ error: 'Only the event creator or group admins can add exceptions' });
     }
@@ -973,7 +973,7 @@ export const removeRecurringEventException = async (req: Request, res: Response)
     }
 
     // Check if user has permission to manage this event
-    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
     if (!isAuthorized) {
       return res.status(403).json({ error: 'Only the event creator or group admins can remove exceptions' });
     }
@@ -1005,7 +1005,7 @@ export const removeRecurringEventException = async (req: Request, res: Response)
 // Get user event statistics
 export const getUserStatistics = async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as any).id;
+    const userId = req.user!.id;
     const now = new Date();
 
     // Get all events where user is a participant
@@ -1109,7 +1109,7 @@ export const archiveEvent = async (req: Request, res: Response) => {
     }
 
     // Check if user has permission to manage this event
-    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
     if (!isAuthorized) {
       return res.status(403).json({ error: 'Only the event creator or group admins can archive it' });
     }
@@ -1141,7 +1141,7 @@ export const unarchiveEvent = async (req: Request, res: Response) => {
     }
 
     // Check if user has permission to manage this event
-    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
     if (!isAuthorized) {
       return res.status(403).json({ error: 'Only the event creator or group admins can unarchive it' });
     }
@@ -1189,7 +1189,7 @@ export const updateEventStatus = async (req: Request, res: Response) => {
     }
 
     // Check if user has permission to manage this event
-    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
     if (!isAuthorized) {
       return res.status(403).json({ error: 'Only the event creator or group admins can update event status' });
     }
@@ -1201,7 +1201,7 @@ export const updateEventStatus = async (req: Request, res: Response) => {
 
     // Create notifications for participants about status change
     const participantIds = event.participants
-      .filter(p => p.userId !== (req.user as any).id)
+      .filter(p => p.userId !== req.user!.id)
       .map(p => p.userId);
     
     await Promise.all(participantIds.map(userId =>
@@ -1211,7 +1211,7 @@ export const updateEventStatus = async (req: Request, res: Response) => {
           userId,
           type: 'status_change',
           params: {
-            name: (req.user as any).name,
+            name: req.user!.name,
             eventTitle: event.title,
             newStatus: status,
             oldStatus: event.status
@@ -1241,7 +1241,7 @@ export const getEventActivityFeed = async (req: Request, res: Response) => {
         group: {
           members: {
             some: {
-              userId: (req.user as any).id
+              userId: req.user!.id
             }
           }
         }
@@ -1348,7 +1348,7 @@ export const generateInviteToken = async (req: Request, res: Response) => {
     }
 
     // Check if user has permission to manage this event
-    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
+    const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
     if (!isAuthorized) {
       return res.status(403).json({ error: 'Only the event creator or group admins can generate invite links' });
     }
@@ -1536,7 +1536,7 @@ export const getNearbyEvents = async (req: Request, res: Response) => {
  */
 export const exportEvents = async (req: Request, res: Response) => {
   try {
-    const userId = (req.user as any).id;
+    const userId = req.user!.id;
     const format = (req.query.format as string)?.toLowerCase() || 'csv';
     
     // Validate format
@@ -1669,7 +1669,7 @@ export const getEventParticipantsByStatus = async (req: Request, res: Response) 
         group: {
           members: {
             some: {
-              userId: (req.user as any).id
+              userId: req.user!.id
             }
           }
         }
@@ -1787,7 +1787,7 @@ export const updateGuestParticipant = async (req: Request, res: Response) => {
     }
 
     // Verify authorization and get guest
-    const authResult = await verifyGuestManagementAuth(id, guestId, (req.user as any).id);
+    const authResult = await verifyGuestManagementAuth(id, guestId, req.user!.id);
     if ('error' in authResult) {
       return res.status(authResult.status).json({ error: authResult.error });
     }
@@ -1823,7 +1823,7 @@ export const updateGuestParticipantStatus = async (req: Request, res: Response) 
     }
 
     // Verify authorization and get guest
-    const authResult = await verifyGuestManagementAuth(id, guestId, (req.user as any).id);
+    const authResult = await verifyGuestManagementAuth(id, guestId, req.user!.id);
     if ('error' in authResult) {
       return res.status(authResult.status).json({ error: authResult.error });
     }
@@ -1850,7 +1850,7 @@ export const removeGuestParticipant = async (req: Request, res: Response) => {
     const { id, guestId } = req.params;
 
     // Verify authorization and get guest
-    const authResult = await verifyGuestManagementAuth(id, guestId, (req.user as any).id);
+    const authResult = await verifyGuestManagementAuth(id, guestId, req.user!.id);
     if ('error' in authResult) {
       return res.status(authResult.status).json({ error: authResult.error });
     }
@@ -1885,7 +1885,7 @@ export const getGuestParticipants = async (req: Request, res: Response) => {
         group: {
           members: {
             some: {
-              userId: (req.user as any).id
+              userId: req.user!.id
             }
           }
         }
