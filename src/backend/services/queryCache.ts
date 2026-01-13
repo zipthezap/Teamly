@@ -45,7 +45,7 @@ export const CACHE_TTL = {
 /**
  * Generate cache key for a query
  */
-export function generateCacheKey(prefix: string, params: Record<string, any>): string {
+export function generateCacheKey(prefix: string, params: Record<string, string | number | boolean | null | undefined>): string {
   // Sort keys for consistent cache keys
   const sortedParams = Object.keys(params)
     .sort()
@@ -68,7 +68,7 @@ export function generateCacheKey(prefix: string, params: Record<string, any>): s
  */
 export async function cachedQuery<T>(
   prefix: string,
-  params: Record<string, any>,
+  params: Record<string, string | number | boolean | null | undefined>,
   ttl: number,
   queryFn: () => Promise<T>
 ): Promise<T> {
@@ -109,7 +109,7 @@ export async function cachedQuery<T>(
  * @example
  * await invalidateQueryCache('user', { id: userId });
  */
-export async function invalidateQueryCache(prefix: string, params?: Record<string, any>): Promise<void> {
+export async function invalidateQueryCache(prefix: string, params?: Record<string, string | number | boolean | null | undefined>): Promise<void> {
   try {
     if (params) {
       const cacheKey = generateCacheKey(prefix, params);
@@ -135,7 +135,7 @@ export async function invalidateQueryCache(prefix: string, params?: Record<strin
  * ]);
  */
 export async function invalidateMultiple(
-  items: Array<{ prefix: string; params?: Record<string, any> }>
+  items: Array<{ prefix: string; params?: Record<string, string | number | boolean | null | undefined> }>
 ): Promise<void> {
   await Promise.all(
     items.map(item => invalidateQueryCache(item.prefix, item.params))
@@ -163,7 +163,7 @@ export const UserQueryCache = {
   /**
    * Cache user events
    */
-  async getEvents(userId: string, filters: Record<string, any>, queryFn: () => Promise<any>) {
+  async getEvents(userId: string, filters: Record<string, string | number | boolean | null | undefined>, queryFn: () => Promise<any>) {
     return cachedQuery('user:events', { userId, ...filters }, CACHE_TTL.USER_EVENTS, queryFn);
   },
   
@@ -229,7 +229,7 @@ export const EventQueryCache = {
   /**
    * Cache event list for a group
    */
-  async getList(groupId: string, filters: Record<string, any>, queryFn: () => Promise<any>) {
+  async getList(groupId: string, filters: Record<string, string | number | boolean | null | undefined>, queryFn: () => Promise<any>) {
     return cachedQuery('event:list', { groupId, ...filters }, CACHE_TTL.EVENT_LIST, queryFn);
   },
   

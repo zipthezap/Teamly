@@ -195,11 +195,10 @@ export async function streamPaginatedJson<T>(
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Transfer-Encoding', 'chunked');
     
-    // Start JSON object with metadata
-    res.write(JSON.stringify({
-      metadata,
-      data: '__PLACEHOLDER__'
-    }).replace('"__PLACEHOLDER__"', ''));
+    // Start JSON object with metadata - write each part separately
+    res.write('{"metadata":');
+    res.write(JSON.stringify(metadata));
+    res.write(',"data":');
     
     // Start array
     res.write('[');

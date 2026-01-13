@@ -28,8 +28,8 @@ interface CircuitBreakerStats {
   failures: number;
   successes: number;
   totalRequests: number;
-  lastFailureTime?: number;
-  lastSuccessTime?: number;
+  lastFailureTime?: number; // Unix timestamp in milliseconds
+  lastSuccessTime?: number; // Unix timestamp in milliseconds
 }
 
 export class CircuitBreaker {
