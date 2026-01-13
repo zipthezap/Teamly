@@ -6,11 +6,17 @@
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import { checkRedisHealth, isRedisEnabled } from '../config/redis';
+import { getPool } from '../config/database';
 
 export interface DatabaseHealthDetails {
   connected: boolean;
   responseTime?: number;
   error?: string;
+  pool?: {
+    total: number;
+    idle: number;
+    active: number;
+  };
 }
 
 export interface RedisHealthDetails {
@@ -45,9 +51,18 @@ export const checkDatabaseHealth = async (): Promise<DatabaseHealthDetails> => {
     await prisma.$queryRaw`SELECT 1`;
     const responseTime = Date.now() - startTime;
     
+    // Get connection pool statistics
+    const pool = getPool();
+    const poolStats = {
+      total: pool.totalCount,
+      idle: pool.idleCount,
+      active: pool.totalCount - pool.idleCount,
+    };
+    
     return {
       connected: true,
       responseTime,
+      pool: poolStats,
     };
   } catch (error) {
     logger.error('Database health check failed', 'DatabaseHealth', { error });

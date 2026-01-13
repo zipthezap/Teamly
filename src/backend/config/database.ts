@@ -101,4 +101,9 @@ export const closeDatabaseConnections = async (): Promise<void> => {
   }
 };
 
+/**
+ * Get connection pool for monitoring
+ */
+export const getPool = () => pool;
+
 export default prisma;
