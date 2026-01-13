@@ -8,7 +8,7 @@
     "allowSyntheticDefaultImports": true,
     "strict": false,
     "noImplicitAny": false,
-    "forceConsistentCasingInFileNames": false,
+    "forceConsistentCasingInFileNames": true, // ✓ Enabled - ensures consistent file naming
     "noFallthroughCasesInSwitch": true,
     "module": "esnext",
     "moduleResolution": "node",

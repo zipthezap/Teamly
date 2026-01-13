@@ -1,6 +1,7 @@
 import prisma from '../config/database';
 import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/asyncHandler';
+import { UpdateEmailPreferenceData } from '../../shared/types/email.types';
 
 export const getNotificationPreferences = asyncHandler(async (req: Request, res: Response) => {
   let prefs = await prisma.emailPreference.findUnique({
@@ -13,9 +14,10 @@ export const getNotificationPreferences = asyncHandler(async (req: Request, res:
 });
 
 export const updateNotificationPreferences = asyncHandler(async (req: Request, res: Response) => {
+  const data: UpdateEmailPreferenceData = req.body;
   const prefs = await prisma.emailPreference.update({
     where: { userId: req.user!.id },
-    data: req.body,
+    data,
   });
   res.json(prefs);
 });
