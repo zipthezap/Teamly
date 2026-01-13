@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { teamUpAPI } from '../../services/api';
 import { LoadingSpinner } from '../common';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
-import { TeamUpRequest, TeamUpResponse } from '../../types/teamup';
+import { TeamUpRequest, TeamUpResponse, TeamUpRequestWithDetails } from '../../types/teamup';
 import { getTeamUpStatusColor } from '../../utils/statusHelpers';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
@@ -43,7 +43,7 @@ const ManageResponsesTab = () => {
       const response = await teamUpAPI.getMyRequests();
       // Filter to only show requests with responses
       const requestsWithResponses = response.data.filter(
-        (req: TeamUpRequest) => req.responses && req.responses.length > 0
+        (req: TeamUpRequestWithDetails) => req.responses && req.responses.length > 0
       );
       setRequests(requestsWithResponses);
     } catch (err) {

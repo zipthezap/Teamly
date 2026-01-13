@@ -55,6 +55,11 @@ const EventRequests = () => {
   }, [groupId]);
 
   const fetchData = async () => {
+    if (!groupId) {
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     try {
       const [requestsRes, groupRes] = await Promise.all([
@@ -167,18 +172,22 @@ const EventRequests = () => {
           return;
         }
       }
+      
+      if (!groupId) {
+        setSnackbar({ open: true, message: t('eventRequests.groupIdRequired'), severity: 'error' });
+        return;
+      }
+      
       const data = {
-        ...formData,
         groupId,
+        title: formData.title,
+        description: formData.description,
+        eventType: formData.eventType,
+        location: formData.location,
         startTime: startDateTime.toISOString(),
-        endTime: endDateTime ? endDateTime.toISOString() : null,
-        maxPlayers: formData.maxPlayers ? parseInt(formData.maxPlayers) : null,
+        endTime: endDateTime ? endDateTime.toISOString() : undefined,
+        maxPlayers: formData.maxPlayers ? parseInt(formData.maxPlayers) : undefined,
       };
-      delete data.startDate;
-      delete data.startHour;
-      delete data.startMinute;
-      delete data.endHour;
-      delete data.endMinute;
       await eventRequestsAPI.create(data);
       await fetchData();
       setCreateDialogOpen(false);

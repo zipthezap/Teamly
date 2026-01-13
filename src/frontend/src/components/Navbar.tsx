@@ -59,13 +59,18 @@ const Navbar = () => {
               <LanguageSwitcher />
               <NotificationsPopover />
               <Link to="/profile" className="flex items-center gap-2 px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-white transition no-underline">
-                <span className="w-8 h-8 rounded-full flex items-center justify-center font-bold bg-blue-400 text-white text-base overflow-hidden">
-                  {getImageUrl(user.profilePicture) ? (
-                    <img src={getImageUrl(user.profilePicture)} alt={user.name} className="w-full h-full object-cover" />
-                  ) : (
-                    getInitials(user.name)
-                  )}
-                </span>
+                {(() => {
+                  const profilePictureUrl = getImageUrl(user.profilePicture);
+                  return (
+                    <span className="w-8 h-8 rounded-full flex items-center justify-center font-bold bg-blue-400 text-white text-base overflow-hidden">
+                      {profilePictureUrl ? (
+                        <img src={profilePictureUrl} alt={user.name} className="w-full h-full object-cover" />
+                      ) : (
+                        getInitials(user.name)
+                      )}
+                    </span>
+                  );
+                })()}
                 <span className="font-medium text-white text-sm">{user.name}</span>
               </Link>
               <button

@@ -56,7 +56,7 @@ const BrowseRequestsTab = () => {
       const response = await teamUpAPI.getAll(params);
       
       // Sort by urgency: soonest events first, then by spots left
-      const sortedRequests = response.data.sort((a: TeamUpRequest, TeamUpRequestWithDetails, b: TeamUpRequest) => {
+      const sortedRequests = response.data.sort((a: TeamUpRequest, b: TeamUpRequest) => {
         const aDate = new Date(a.dateTime).getTime();
         const bDate = new Date(b.dateTime).getTime();
         const now = Date.now();

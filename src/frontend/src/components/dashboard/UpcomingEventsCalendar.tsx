@@ -1,21 +1,10 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { EventParticipant } from '../../../../shared/types';
+import { EventWithDetails } from '../../../../shared/types';
 // Removed all MUI imports; using Tailwind and SVGs
 
-interface Event {
-  id: string;
-  title: string;
-  eventType: string;
-  startTime: string;
-  location?: string;
-  participants?: EventParticipant[];
-  maxPlayers?: number;
-  creatorId?: string;
-}
-
 interface UpcomingEventsCalendarProps {
-  events: Event[];
+  events: EventWithDetails[];
   onEventClick: (eventId: string) => void;
   userId?: string;
 }

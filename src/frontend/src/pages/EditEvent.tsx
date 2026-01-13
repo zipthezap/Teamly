@@ -55,6 +55,12 @@ const EditEvent = () => {
   }, [id]);
 
   const fetchEvent = async () => {
+    if (!id) {
+      setError('Event ID is required');
+      setLoading(false);
+      return;
+    }
+    
     try {
       const response = await eventsAPI.getById(id);
       const event = response.data;
@@ -161,9 +167,15 @@ const EditEvent = () => {
         eventType: formData.eventType,
         location: formData.location,
         startTime: startDateTime.toISOString(),
-        endTime: endDateTime ? endDateTime.toISOString() : null,
-        maxPlayers: formData.maxPlayers ? parseInt(formData.maxPlayers) : null,
+        endTime: endDateTime ? endDateTime.toISOString() : undefined,
+        maxPlayers: formData.maxPlayers ? parseInt(formData.maxPlayers) : undefined,
       };
+
+      if (!id) {
+        setError('Event ID is required');
+        setSubmitting(false);
+        return;
+      }
 
       await eventsAPI.update(id, data);
       navigate(`/events/${id}`);

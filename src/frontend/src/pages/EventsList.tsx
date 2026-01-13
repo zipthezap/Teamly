@@ -55,7 +55,7 @@ const EventsList = () => {
   const [searchFilters, setSearchFilters] = useState<EventSearchParams>({});
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editEvent, setEditEvent] = useState<EventWithDetails | null>(null);
+  const [editEvent, setEditEvent] = useState<EventWithDetails | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<EventWithDetails | null>(null);
   const [visibleCount, setVisibleCount] = useState(12);

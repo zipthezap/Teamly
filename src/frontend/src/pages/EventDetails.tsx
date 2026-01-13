@@ -22,9 +22,14 @@ const EventDetails = () => {
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
   const [copySuccess, setCopySuccess] = useState('');
 
+  // Guard for missing ID
+  if (!id) {
+    return <div className="p-4 text-red-600">{t('eventDetails.invalidEventId')}</div>;
+  }
+
   const fetchEvent = useCallback(async () => {
     try {
-      const response = await eventsAPI.getById(id);
+      const response = await eventsAPI.getById(id!);
       setEvent(response.data);
     } catch (error) {
       console.error('Error fetching event:', error);
@@ -42,7 +47,7 @@ const EventDetails = () => {
     setError('');
     setSuccess('');
     try {
-      await eventsAPI.join(id);
+      await eventsAPI.join(id!);
       setSuccess(t('eventDetails.joined'));
       fetchEvent();
     } catch (err: unknown) {
@@ -59,7 +64,7 @@ const EventDetails = () => {
     setError('');
     setSuccess('');
     try {
-      await eventsAPI.leave(id);
+      await eventsAPI.leave(id!);
       setSuccess(t('eventDetails.left'));
       fetchEvent();
     } catch (err: unknown) {
@@ -89,7 +94,7 @@ const EventDetails = () => {
     if (!window.confirm(t('eventDetails.confirmDelete'))) return;
     
     try {
-      await eventsAPI.delete(id);
+      await eventsAPI.delete(id!);
       navigate('/events');
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
@@ -103,7 +108,7 @@ const EventDetails = () => {
     setLateError('');
     setLateSuccess('');
     try {
-      await groupChatAPI.markLate(id);
+      await groupChatAPI.markLate(id!);
       setLateSuccess(t('eventDetails.markedLate'));
       fetchEvent();
     } catch (err) {
@@ -115,7 +120,7 @@ const EventDetails = () => {
     setLateError('');
     setLateSuccess('');
     try {
-      await groupChatAPI.unmarkLate(id);
+      await groupChatAPI.unmarkLate(id!);
       setLateSuccess(t('eventDetails.lateUndone'));
       fetchEvent();
     } catch (err) {
@@ -127,7 +132,7 @@ const EventDetails = () => {
     setError('');
     setCopySuccess('');
     try {
-      const response = await eventsAPI.generateInviteToken(id);
+      const response = await eventsAPI.generateInviteToken(id!);
       const inviteUrl = `${window.location.origin}/events/join/${response.data.inviteToken}`;
       await navigator.clipboard.writeText(inviteUrl);
       setCopySuccess('Invite link copied to clipboard!');
@@ -331,7 +336,7 @@ const EventDetails = () => {
             
             {/* Invite Link Section - Only for creator */}
             <InviteLinkCard
-              inviteToken={event.inviteToken}
+              inviteToken={event.inviteToken ?? null}
               eventTitle={event.title}
               eventDate={new Date(event.startTime).toLocaleDateString('en-US', { 
                 weekday: 'short', 
@@ -358,7 +363,7 @@ const EventDetails = () => {
                   </div>
                 </div>
               ) : (
-                event.eventNotifications.map((n, idx) => {
+                event.eventNotifications && event.eventNotifications.map((n, idx) => {
                   let action = '';
                   switch (n.type) {
                     case 'join':

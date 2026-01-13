@@ -44,10 +44,19 @@ const JoinEventByInvite = () => {
   const [success, setSuccess] = useState('');
   const [guestName, setGuestName] = useState('');
 
+  // Guard for missing token
+  if (!token) {
+    return (
+      <Container maxWidth="sm" sx={{ mt: 4 }}>
+        <Alert severity="error">Invalid invite link</Alert>
+      </Container>
+    );
+  }
+
   useEffect(() => {
     const fetchEvent = async () => {
       try {
-        const response = await eventsAPI.getByInviteToken(token);
+        const response = await eventsAPI.getByInviteToken(token!);
         setEvent(response.data);
       } catch (err: unknown) {
         const errorMessage = err instanceof AxiosError 
@@ -74,11 +83,11 @@ const JoinEventByInvite = () => {
     setError('');
     
     try {
-      await eventsAPI.joinAsGuest(token, guestName);
+      await eventsAPI.joinAsGuest(token!, guestName);
       setSuccess('Successfully joined the event! The organizer will have your details.');
       setGuestName('');
       // Refresh event data to show updated participant count
-      const response = await eventsAPI.getByInviteToken(token);
+      const response = await eventsAPI.getByInviteToken(token!);
       setEvent(response.data);
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 

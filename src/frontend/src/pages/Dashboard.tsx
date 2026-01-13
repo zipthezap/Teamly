@@ -48,7 +48,7 @@ const Dashboard = () => {
       setGroups(groupsArray);
       // Ensure eventsRes.data is always an array
       const eventsArray = Array.isArray(eventsRes.data) ? eventsRes.data : (eventsRes.data?.data ?? []);
-      const sortedEvents = eventsArray.sort((a, b) => 
+      const sortedEvents = eventsArray.sort((a: EventWithDetails, b: EventWithDetails) => 
         new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
       );
       setEvents(sortedEvents);
@@ -182,7 +182,7 @@ const Dashboard = () => {
             >
               {upcomingEvents.slice(0, 4).map((event) => {
                 const isParticipating = event.participants?.some(p => p.userId === user?.id);
-                const isFull = event.maxPlayers && event.participants?.length >= event.maxPlayers;
+                const isFull = event.maxPlayers && event.participants && event.participants.length >= event.maxPlayers;
                 return (
                   <Card key={event.id} sx={{ height: 340, minHeight: 340, display: 'flex', flexDirection: 'column', transition: 'all 0.3s', background: 'rgba(51,65,85,0.98)', borderRadius: 2, boxShadow: 2, border: '1.5px solid #2d3a53', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6, borderColor: 'primary.main' } }}>
                     <CardContent sx={{ flexGrow: 1, p: 3 }}>
@@ -241,8 +241,8 @@ const Dashboard = () => {
                           if (!participant) return null;
                           if (participant.status === 'confirmed') {
                             return <Chip label={t('common.confirmed')} size="small" color="success" />;
-                          } else if (participant.status === 'refused') {
-                            return <Chip label={t('common.refused')} size="small" color="error" />;
+                          } else if (participant.status === 'declined') {
+                            return <Chip label={t('common.declined')} size="small" color="error" />;
                           }
                           return null;
                         })()}
