@@ -55,13 +55,13 @@ const NotificationsPopover: React.FC = () => {
       console.error('Failed to mark notification as read:', err);
     }
 
-    // Navigate based on metadata or fallback to type
-    if (notif.metadata?.actionUrl) {
-      navigate(notif.metadata.actionUrl);
-    } else if (notif.notificationType === 'event' && notif.event?.id) {
-      navigate(`/events/${notif.event.id}`);
-    } else if (notif.notificationType === 'group' && notif.group?.id) {
-      navigate(`/groups/${notif.group.id}`);
+    // Navigate based on notification type
+    if ('eventId' in notif && notif.eventId) {
+      navigate(`/events/${notif.eventId}`);
+    } else if ('groupId' in notif && notif.groupId) {
+      navigate(`/groups/${notif.groupId}`);
+    } else if ('teamUpRequestId' in notif && notif.teamUpRequestId) {
+      navigate(`/teamup/${notif.teamUpRequestId}`);
     }
     handleClose();
   };
@@ -176,7 +176,7 @@ const NotificationsPopover: React.FC = () => {
                   <React.Fragment key={notif.id || idx}>
                     {idx > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />}
                     <ListItemButton
-                      onClick={() => handleNotificationClick(notif)}
+                      onClick={() => handleNotificationClick(notif as unknown as Notification)}
                       disabled={!isClickable}
                       sx={{
                         cursor: isClickable ? 'pointer' : 'default',

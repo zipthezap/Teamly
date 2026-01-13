@@ -7,6 +7,10 @@ interface JoinRequest {
   id: string | number;
   groupId?: string | number;
   groupName?: string;
+  user?: {
+    name?: string;
+    email?: string;
+  };
   [key: string]: unknown;
 }
 

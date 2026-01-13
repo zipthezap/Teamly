@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction as TranslateFunction } from 'i18next';
 import {
   Paper,
   Typography,
@@ -32,10 +33,8 @@ interface EventActivityFeedProps {
   onCloseDialog: () => void;
 }
 
-type TranslationFunction = (key: string, params?: Record<string, unknown>) => string;
-
-const getActivityMessage = (notif: EventNotification, t: TranslationFunction) => {
-  const userName = notif.user?.name || t('activityFeed.someone', 'Someone');
+const getActivityMessage = (notif: EventNotification, t: TranslateFunction) => {
+  const userName = notif.user?.name || t('activityFeed.someone');
   const metadata = notif.metadata || {};
   switch (notif.type) {
     case 'join':
@@ -49,7 +48,7 @@ const getActivityMessage = (notif: EventNotification, t: TranslationFunction) =>
     case 'declined':
       return t('activityFeed.declined', { userName });
     case 'status_change':
-      return t('activityFeed.statusChange', { newStatus: metadata.newStatus || t('activityFeed.updated', 'updated') });
+      return t('activityFeed.statusChange', { newStatus: metadata.newStatus || t('activityFeed.updated') });
     case 'comment':
       return t('activityFeed.commented', { userName });
     default:

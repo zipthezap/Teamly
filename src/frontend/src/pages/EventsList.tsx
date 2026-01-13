@@ -46,6 +46,7 @@ import EventSearchFilters from '../components/event/EventSearchFilters';
 import { LoadingSpinner, EmptyState } from '../components/common';
 import { StatusBadge, StatusType } from '../components/common/StatusBadge';
 import { EventWithDetails, EventSearchParams, GroupWithDetails, EventParticipant, GroupMember } from '../../../shared/types';
+import { AxiosError } from 'axios';
 
 
 const EventsList = () => {
@@ -61,11 +62,14 @@ const EventsList = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
   const [page, setPage] = useState(1);
+  const [error, setError] = useState<string | null>(null);
+  const visibleCount = 12; // Items per page
   const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [, setSearchParams] = useSearchParams();
 
   // Fetch all groups on mount
   useEffect(() => {

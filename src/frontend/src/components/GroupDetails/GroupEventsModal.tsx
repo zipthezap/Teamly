@@ -9,7 +9,7 @@ interface GroupEventsModalProps {
   t: (key: string, defaultText?: string) => string;
 }
 
-const formatEventDate = (dateString: string) => {
+const formatEventDate = (dateString: string | Date) => {
   return new Date(dateString).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -45,9 +45,9 @@ const GroupEventsModal: React.FC<GroupEventsModalProps> = ({ open, onClose, even
             ) : (
               <ul className="space-y-4">
                 {pagedEvents.map((event) => {
-                  const eventDate = event.startTime || event.date;
-                  const eventType = event.eventType || event.type;
-                  const organizerName = event.creator?.name || event.organizer || 'Unknown';
+                  const eventDate = event.startTime || event.date || new Date().toISOString();
+                  const eventType = event.eventType;
+                  const organizerName = event.creator?.name || 'Unknown';
                   return (
                     <li
                       key={event.id}
