@@ -54,20 +54,10 @@ interface Group {
 }
 
 // Helper to validate lat/lng objects
-function isValidLatLng(obj: Location | LatLng | null): obj is LatLng {
+function isValidLatLng(obj: LatLng | null): obj is LatLng {
   if (!obj) return false;
   
-  // Check if it's a Location object and convert it
-  if ('latitude' in obj && 'longitude' in obj) {
-    return (
-      typeof obj.latitude === 'number' &&
-      typeof obj.longitude === 'number' &&
-      isFinite(obj.latitude) &&
-      isFinite(obj.longitude)
-    );
-  }
-  
-  // Check if it's already a LatLng object
+  // Check if it's a LatLng object with finite coordinates
   return (
     'lat' in obj &&
     'lng' in obj &&
@@ -75,6 +65,18 @@ function isValidLatLng(obj: Location | LatLng | null): obj is LatLng {
     typeof obj.lng === 'number' &&
     isFinite(obj.lat) &&
     isFinite(obj.lng)
+  );
+}
+
+// Helper to validate Location objects
+function isValidLocation(obj: Location | null): obj is Location {
+  if (!obj) return false;
+  
+  return (
+    typeof obj.latitude === 'number' &&
+    typeof obj.longitude === 'number' &&
+    isFinite(obj.latitude) &&
+    isFinite(obj.longitude)
   );
 }
 
@@ -129,6 +131,8 @@ const PublicGroups = () => {
   const clearMarkers = () => {
     if (markersRef.current && markersRef.current.length) {
       markersRef.current.forEach((marker) => {
+        // Note: AdvancedMarkerElement uses the 'map' property, not setMap() method
+        // Setting map to null removes the marker from the map
         marker.map = null;
       });
       markersRef.current = [];
