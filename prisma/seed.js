@@ -171,6 +171,75 @@ async function main() {
   });
   console.log('Seeded group:', group3.name, '(Charlie as admin, private)');
 
+  // Add two public groups in Sherbrooke, QC that Alice is NOT part of
+  const group4 = await prisma.group.upsert({
+    where: { id: 'seed-group-sherbrooke-hockey' },
+    update: {},
+    create: {
+      id: 'seed-group-sherbrooke-hockey',
+      name: "Sherbrooke Ice Hockey League",
+      description: 'Weekly ice hockey games and tournaments in Sherbrooke. All skill levels welcome!',
+      isPublic: true,
+      city: 'Sherbrooke',
+      country: 'Canada',
+      latitude: 45.4042,
+      longitude: -71.8929,
+      locationName: 'Sherbrooke, QC',
+      creatorId: user2.id,
+      members: {
+        create: [
+          {
+            userId: user2.id,
+            role: 'admin'
+          },
+          {
+            userId: user3.id,
+            role: 'member'
+          },
+          {
+            userId: user4.id,
+            role: 'member'
+          }
+        ]
+      }
+    }
+  });
+  console.log('Seeded group:', group4.name, '(Bob as admin, Sherbrooke)');
+
+  const group5 = await prisma.group.upsert({
+    where: { id: 'seed-group-sherbrooke-soccer' },
+    update: {},
+    create: {
+      id: 'seed-group-sherbrooke-soccer',
+      name: "Sherbrooke Soccer Community",
+      description: 'Outdoor soccer matches and friendly games in beautiful Sherbrooke parks',
+      isPublic: true,
+      city: 'Sherbrooke',
+      country: 'Canada',
+      latitude: 45.4042,
+      longitude: -71.8929,
+      locationName: 'Sherbrooke, QC',
+      creatorId: user4.id,
+      members: {
+        create: [
+          {
+            userId: user4.id,
+            role: 'admin'
+          },
+          {
+            userId: user2.id,
+            role: 'member'
+          },
+          {
+            userId: user3.id,
+            role: 'moderator'
+          }
+        ]
+      }
+    }
+  });
+  console.log('Seeded group:', group5.name, '(Diana as admin, Sherbrooke)');
+
   // Create multiple events across different groups
   const events = [
     // Group 1 (Alice's Sports Club) events
@@ -1343,7 +1412,8 @@ async function main() {
   console.log('========================================');
   console.log('Summary:');
   console.log('- Users: 4');
-  console.log('- Groups: 3 (2 public, 1 private)');
+  console.log('- Groups: 5 (4 public, 1 private)');
+  console.log('  - 2 groups in Sherbrooke, QC (Alice is NOT a member)');
   console.log('- Events: 7 (across all groups)');
   console.log('- Group Notifications: 3');
   console.log('- Event Notifications: 4');

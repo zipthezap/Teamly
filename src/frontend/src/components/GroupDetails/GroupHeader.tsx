@@ -55,12 +55,12 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
         </div>
       </div>
       <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
-        {isAdmin && onEdit && (
+        {onEdit && (
           <Button color="primary" onClick={onEdit} className="rounded-full p-2 min-w-0 w-14 h-14 flex items-center justify-center" aria-label={t('groupDetails.editGroup')}>
             <EditIcon className="w-8 h-8" />
           </Button>
         )}
-        {isAdmin && onDelete && (
+        {onDelete && (
           <Button color="danger" onClick={onDelete} className="rounded-full p-2 min-w-0 w-14 h-14 flex items-center justify-center" aria-label={t('groupDetails.deleteGroup')}>
             <TrashIcon className="w-8 h-8" />
           </Button>
