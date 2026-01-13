@@ -11,168 +11,168 @@ import { EventParticipantStatus, GuestParticipantStatus, SportType } from '../..
 import * as groupService from '../services/groupService';
 import * as locationService from '../services/locationService';
 import { exportToCSV, exportToICalendar, exportToJSON } from '../services/exportService';
+import { asyncHandler } from '../middleware/asyncHandler';
+import { BadRequestError, ForbiddenError } from '../utils/errors';
+import { isRequired } from '../utils/validation';
+import { ensureResourceExists } from '../utils/controllerHelpers';
 
-export const createEvent = async (req: Request, res: Response) => {
-  try {
-    const { 
-      groupId, title, description, eventType, location, startTime, endTime, maxPlayers,
-      isRecurring, recurrenceRule, recurrenceEnd, isPublic,
-      latitude, longitude, locationName, city, country
-    } = req.body;
+export const createEvent = asyncHandler(async (req: Request, res: Response) => {
+  const { 
+    groupId, title, description, eventType, location, startTime, endTime, maxPlayers,
+    isRecurring, recurrenceRule, recurrenceEnd, isPublic,
+    latitude, longitude, locationName, city, country
+  } = req.body;
 
-    if (!groupId || !title || !eventType || !startTime) {
-      return res.status(400).json({ error: 'Group ID, title, event type, and start time are required' });
-    }
+  // Validate required fields
+  isRequired(groupId, 'Group ID');
+  isRequired(title, 'Title');
+  isRequired(eventType, 'Event type');
+  isRequired(startTime, 'Start time');
 
-    // Sanitize text inputs
-    const sanitized = eventService.sanitizeEventData({
-      title,
-      description,
-      eventType,
-      location
-    });
+  // Sanitize text inputs
+  const sanitized = eventService.sanitizeEventData({
+    title,
+    description,
+    eventType,
+    location
+  });
 
-    // Validate sanitized required fields are not empty
-    if (!sanitized.title || !sanitized.eventType) {
-      return res.status(400).json({ error: 'Title and event type cannot be empty or whitespace-only' });
-    }
-
-    // Validate coordinates if provided
-    if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
-      const coordValidation = locationService.validateCoordinates(parseFloat(latitude), parseFloat(longitude));
-      if (!coordValidation.valid) {
-        return res.status(400).json({ error: coordValidation.error });
-      }
-    }
-
-    // Validate event times
-    const timeValidation = eventService.validateEventTimes(startTime, endTime);
-    if (!timeValidation.valid) {
-      return res.status(400).json({ error: timeValidation.error });
-    }
-
-    // Validate recurrence rule if provided
-    const recurrenceValidation = eventService.validateRecurrence(isRecurring, recurrenceRule);
-    if (!recurrenceValidation.valid) {
-      return res.status(400).json({ error: recurrenceValidation.error });
-    }
-
-    // Check if user is admin of the group
-    const isAdmin = await groupService.checkGroupAdmin(groupId, (req.user as any).id);
-    if (!isAdmin) {
-      return res.status(403).json({ error: 'Only group admins can create events for this group' });
-    }
-
-    // Determine event status
-    const eventStatus = eventService.determineEventStatus(startTime, endTime);
-
-    // Get group members for notifications
-    const group = await eventService.getGroupWithMembers(groupId);
-
-    // Generate invite token if event is public
-    const inviteToken = isPublic ? createInviteToken() : null;
-
-    const event = await prisma.event.create({
-      data: {
-        groupId,
-        creatorId: (req.user as any).id,
-        title: sanitized.title!,
-        description: sanitized.description,
-        eventType: sanitized.eventType! as SportType,
-        location: sanitized.location,
-        latitude: latitude ? parseFloat(latitude) : null,
-        longitude: longitude ? parseFloat(longitude) : null,
-        locationName: locationName || null,
-        city: city || null,
-        country: country || null,
-        startTime: new Date(startTime),
-        endTime: endTime ? new Date(endTime) : null,
-        maxPlayers: maxPlayers ? parseInt(maxPlayers) : null,
-        isRecurring: isRecurring || false,
-        recurrenceRule: isRecurring ? recurrenceRule : null,
-        recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : null,
-        status: eventStatus,
-        isPublic: isPublic || false,
-        inviteToken,
-        participants: {
-          create: {
-            userId: (req.user as any).id,
-            status: EventParticipantStatus.confirmed
-          }
-        }
-      },
-      include: {
-        creator: {
-          select: { id: true, name: true, email: true, profilePicture: true }
-        },
-        group: {
-          select: { id: true, name: true }
-        },
-        participants: {
-          select: {
-            id: true,
-            userId: true,
-            status: true,
-            joinedAt: true,
-            user: {
-              select: { name: true }
-            }
-          }
-        }
-      }
-    });
-
-    // Enrich event with location info if coordinates are available
-    const enrichedEvent = locationService.enrichWithLocationInfo(event);
-
-    // Send global notification to group members (except creator)
-    const memberIds = group.members.map(m => m.user.id).filter(uid => uid !== (req.user as any).id);
-    await eventService.createEventNotifications(group.id, event.title, (req.user as any).name, group.name, memberIds);
-
-    res.status(201).json(enrichedEvent);
-  } catch (error) {
-    logger.error('Create event error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to create event' });
+  // Validate sanitized required fields are not empty
+  if (!sanitized.title || !sanitized.eventType) {
+    throw new BadRequestError('Title and event type cannot be empty or whitespace-only');
   }
-};
 
-export const getEvents = async (req: Request, res: Response) => {
-  try {
-    const { 
-      groupId, search, eventType, startDate, endDate, location, status, archived,
-      limit = '50', offset = '0', cursor
-    } = req.query;
-
-    const userId = (req.user as any).id;
-    
-    // Parse and validate pagination parameters
-    const parsedLimit = parseInt(limit as string, 10);
-    const parsedOffset = parseInt(offset as string, 10);
-    
-    // Validate parsed values and apply defaults/caps
-    const validatedLimit = isNaN(parsedLimit) ? 50 : Math.min(Math.max(parsedLimit, 1), 100);
-    const validatedOffset = isNaN(parsedOffset) ? 0 : Math.max(parsedOffset, 0);
-
-    // Build where filter using service
-    const where = eventService.buildEventFilters(userId, {
-      groupId: groupId as string,
-      search: search as string,
-      eventType: eventType as string,
-      startDate: startDate as string,
-      endDate: endDate as string,
-      location: location as string,
-      status: status as string,
-      archived: archived as string
-    });
-
-    // Add cursor-based pagination if cursor is provided
-    if (cursor) {
-      where.id = { gt: cursor as string };
+  // Validate coordinates if provided
+  if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
+    const coordValidation = locationService.validateCoordinates(parseFloat(latitude), parseFloat(longitude));
+    if (!coordValidation.valid) {
+      throw new BadRequestError(coordValidation.error!);
     }
+  }
 
-    // Optimize query - get participant info separately for large result sets
-    const events = await prisma.event.findMany({
-      where,
+  // Validate event times
+  const timeValidation = eventService.validateEventTimes(startTime, endTime);
+  if (!timeValidation.valid) {
+    throw new BadRequestError(timeValidation.error!);
+  }
+
+  // Validate recurrence rule if provided
+  const recurrenceValidation = eventService.validateRecurrence(isRecurring, recurrenceRule);
+  if (!recurrenceValidation.valid) {
+    throw new BadRequestError(recurrenceValidation.error!);
+  }
+
+  // Check if user is admin of the group
+  const isAdmin = await groupService.checkGroupAdmin(groupId, (req.user as any).id);
+  if (!isAdmin) {
+    throw new ForbiddenError('Only group admins can create events for this group');
+  }
+
+  // Determine event status
+  const eventStatus = eventService.determineEventStatus(startTime, endTime);
+
+  // Get group members for notifications
+  const group = await eventService.getGroupWithMembers(groupId);
+
+  // Generate invite token if event is public
+  const inviteToken = isPublic ? createInviteToken() : null;
+
+  const event = await prisma.event.create({
+    data: {
+      groupId,
+      creatorId: (req.user as any).id,
+      title: sanitized.title!,
+      description: sanitized.description,
+      eventType: sanitized.eventType! as SportType,
+      location: sanitized.location,
+      latitude: latitude ? parseFloat(latitude) : null,
+      longitude: longitude ? parseFloat(longitude) : null,
+      locationName: locationName || null,
+      city: city || null,
+      country: country || null,
+      startTime: new Date(startTime),
+      endTime: endTime ? new Date(endTime) : null,
+      maxPlayers: maxPlayers ? parseInt(maxPlayers) : null,
+      isRecurring: isRecurring || false,
+      recurrenceRule: isRecurring ? recurrenceRule : null,
+      recurrenceEnd: recurrenceEnd ? new Date(recurrenceEnd) : null,
+      status: eventStatus,
+      isPublic: isPublic || false,
+      inviteToken,
+      participants: {
+        create: {
+          userId: (req.user as any).id,
+          status: EventParticipantStatus.confirmed
+        }
+      }
+    },
+    include: {
+      creator: {
+        select: { id: true, name: true, email: true, profilePicture: true }
+      },
+      group: {
+        select: { id: true, name: true }
+      },
+      participants: {
+        select: {
+          id: true,
+          userId: true,
+          status: true,
+          joinedAt: true,
+          user: {
+            select: { name: true }
+          }
+        }
+      }
+    }
+  });
+
+  // Enrich event with location info if coordinates are available
+  const enrichedEvent = locationService.enrichWithLocationInfo(event);
+
+  // Send global notification to group members (except creator)
+  const memberIds = group.members.map(m => m.user.id).filter(uid => uid !== (req.user as any).id);
+  await eventService.createEventNotifications(group.id, event.title, (req.user as any).name, group.name, memberIds);
+
+  res.status(201).json(enrichedEvent);
+});
+
+export const getEvents = asyncHandler(async (req: Request, res: Response) => {
+  const { 
+    groupId, search, eventType, startDate, endDate, location, status, archived,
+    limit = '50', offset = '0', cursor
+  } = req.query;
+
+  const userId = (req.user as any).id;
+  
+  // Parse and validate pagination parameters
+  const parsedLimit = parseInt(limit as string, 10);
+  const parsedOffset = parseInt(offset as string, 10);
+  
+  // Validate parsed values and apply defaults/caps
+  const validatedLimit = isNaN(parsedLimit) ? 50 : Math.min(Math.max(parsedLimit, 1), 100);
+  const validatedOffset = isNaN(parsedOffset) ? 0 : Math.max(parsedOffset, 0);
+
+  // Build where filter using service
+  const where = eventService.buildEventFilters(userId, {
+    groupId: groupId as string,
+    search: search as string,
+    eventType: eventType as string,
+    startDate: startDate as string,
+    endDate: endDate as string,
+    location: location as string,
+    status: status as string,
+    archived: archived as string
+  });
+
+  // Add cursor-based pagination if cursor is provided
+  if (cursor) {
+    where.id = { gt: cursor as string };
+  }
+
+  // Optimize query - get participant info separately for large result sets
+  const events = await prisma.event.findMany({
+    where,
       include: {
         creator: {
           select: { id: true, name: true, email: true, profilePicture: true }
@@ -304,274 +304,249 @@ export const getEvents = async (req: Request, res: Response) => {
         nextCursor
       }
     });
-  } catch (error) {
-    logger.error('Get events error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to get events' });
-  }
-};
+});
 
-export const getEvent = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
+export const getEvent = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
 
-    const event = await prisma.event.findFirst({
-      where: {
-        id,
-        group: {
-          members: {
-            some: {
-              userId: (req.user as any).id
-            }
+  const event = await prisma.event.findFirst({
+    where: {
+      id,
+      group: {
+        members: {
+          some: {
+            userId: (req.user as any).id
           }
+        }
+      }
+    },
+    include: {
+      creator: {
+        select: { id: true, name: true, email: true, profilePicture: true }
+      },
+      group: {
+        select: { id: true, name: true }
+      },
+      participants: {
+        select: {
+          id: true,
+          userId: true,
+          status: true,
+          joinedAt: true,
+          user: {
+            select: { name: true, email: true, profilePicture: true }
+          }
+        },
+        orderBy: {
+          joinedAt: 'asc'  // Sort by when they joined, leveraging the joinedAt index
         }
       },
-      include: {
-        creator: {
-          select: { id: true, name: true, email: true, profilePicture: true }
+      guestParticipants: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          joinedAt: true
         },
-        group: {
-          select: { id: true, name: true }
-        },
-        participants: {
-          select: {
-            id: true,
-            userId: true,
-            status: true,
-            joinedAt: true,
-            user: {
-              select: { name: true, email: true, profilePicture: true }
-            }
-          },
-          orderBy: {
-            joinedAt: 'asc'  // Sort by when they joined, leveraging the joinedAt index
-          }
-        },
-        guestParticipants: {
-          select: {
-            id: true,
-            name: true,
-            status: true,
-            joinedAt: true
-          },
-          orderBy: {
-            joinedAt: 'asc'  // Sort by when they joined
-          }
-        },
-        eventAttendances: {
-          select: {
-            id: true,
-            userId: true,
-            status: true,
-            updatedAt: true
-          }
-        },
-        eventNotifications: {
-          select: {
-            id: true,
-            userId: true,
-            type: true,
-            createdAt: true,
-            user: {
-              select: { name: true }
-            }
-          },
-          orderBy: {
-            createdAt: 'desc'
-          }
+        orderBy: {
+          joinedAt: 'asc'  // Sort by when they joined
         }
-      }
-    });
-
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
-
-    const enrichedEvent = locationService.enrichWithLocationInfo(event);
-
-    res.json(enrichedEvent);
-  } catch (error) {
-    logger.error('Get event error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to get event' });
-  }
-};
-
-export const updateEvent = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { title, description, eventType, location, startTime, endTime, maxPlayers, isPublic,
-            latitude, longitude, locationName, city, country } = req.body;
-
-    // Sanitize text inputs
-    const sanitized = eventService.sanitizeEventData({
-      title,
-      description,
-      eventType,
-      location
-    });
-
-    // Validate coordinates if provided
-    if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
-      const coordValidation = locationService.validateCoordinates(parseFloat(latitude), parseFloat(longitude));
-      if (!coordValidation.valid) {
-        return res.status(400).json({ error: coordValidation.error });
-      }
-    }
-
-    // Validate that events are single-day only if both times are provided
-    if (startTime && endTime) {
-      const timeValidation = eventService.validateEventTimes(startTime, endTime);
-      if (!timeValidation.valid) {
-        return res.status(400).json({ error: timeValidation.error });
-      }
-    }
-
-    // Check if user is the creator of the event or a group admin
-    const event = await prisma.event.findUnique({
-      where: { id },
-      include: {
-        group: {
-          select: { id: true, name: true }
-        },
-        participants: {
-          include: {
-            user: {
-              select: { id: true, name: true, email: true, profilePicture: true }
-            }
-          }
-        }
-      }
-    });
-
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
-
-    // Check if user has permission to manage this event
-    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
-    if (!isAuthorized) {
-      return res.status(403).json({ error: 'Only the event creator or group admins can update it' });
-    }
-
-    const updatedEvent = await prisma.event.update({
-      where: { id },
-      data: {
-        ...(sanitized.title && { title: sanitized.title }),
-        ...(sanitized.description !== undefined && { description: sanitized.description }),
-        ...(sanitized.eventType && { eventType: sanitized.eventType as SportType }),
-        ...(sanitized.location !== undefined && { location: sanitized.location }),
-        ...(latitude !== undefined && { latitude: latitude ? parseFloat(latitude) : null }),
-        ...(longitude !== undefined && { longitude: longitude ? parseFloat(longitude) : null }),
-        ...(locationName !== undefined && { locationName: locationName || null }),
-        ...(city !== undefined && { city: city || null }),
-        ...(country !== undefined && { country: country || null }),
-        ...(startTime && { startTime: new Date(startTime) }),
-        ...(endTime !== undefined && { endTime: endTime ? new Date(endTime) : null }),
-        ...(maxPlayers !== undefined && { maxPlayers: maxPlayers ? parseInt(maxPlayers) : null }),
-        ...(isPublic !== undefined && { isPublic }),
-        ...(isPublic === false && { inviteToken: null })
       },
-      include: {
-        creator: {
-          select: { id: true, name: true, email: true, profilePicture: true }
+      eventAttendances: {
+        select: {
+          id: true,
+          userId: true,
+          status: true,
+          updatedAt: true
+        }
+      },
+      eventNotifications: {
+        select: {
+          id: true,
+          userId: true,
+          type: true,
+          createdAt: true,
+          user: {
+            select: { name: true }
+          }
         },
-        group: {
-          select: { id: true, name: true }
-        },
-        participants: {
-          select: {
-            id: true,
-            userId: true,
-            status: true,
-            joinedAt: true,
-            user: {
-              select: { 
-                id: true,
-                name: true, 
-                email: true,
-                emailNotifications: true
-              }
+        orderBy: {
+          createdAt: 'desc'
+        }
+      }
+    }
+  });
+
+  ensureResourceExists(event, 'Event');
+
+  const enrichedEvent = locationService.enrichWithLocationInfo(event!);
+
+  res.json(enrichedEvent);
+});
+
+export const updateEvent = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { title, description, eventType, location, startTime, endTime, maxPlayers, isPublic,
+          latitude, longitude, locationName, city, country } = req.body;
+
+  // Sanitize text inputs
+  const sanitized = eventService.sanitizeEventData({
+    title,
+    description,
+    eventType,
+    location
+  });
+
+  // Validate coordinates if provided
+  if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
+    const coordValidation = locationService.validateCoordinates(parseFloat(latitude), parseFloat(longitude));
+    if (!coordValidation.valid) {
+      throw new BadRequestError(coordValidation.error!);
+    }
+  }
+
+  // Validate that events are single-day only if both times are provided
+  if (startTime && endTime) {
+    const timeValidation = eventService.validateEventTimes(startTime, endTime);
+    if (!timeValidation.valid) {
+      throw new BadRequestError(timeValidation.error!);
+    }
+  }
+
+  // Check if user is the creator of the event or a group admin
+  const event = await prisma.event.findUnique({
+    where: { id },
+    include: {
+      group: {
+        select: { id: true, name: true }
+      },
+      participants: {
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, profilePicture: true }
+          }
+        }
+      }
+    }
+  });
+
+  ensureResourceExists(event, 'Event');
+
+  // Check if user has permission to manage this event
+  const { isAuthorized } = await eventService.checkEventManagementPermission(event!, (req.user as any).id);
+  if (!isAuthorized) {
+    throw new ForbiddenError('Only the event creator or group admins can update it');
+  }
+
+  const updatedEvent = await prisma.event.update({
+    where: { id },
+    data: {
+      ...(sanitized.title && { title: sanitized.title }),
+      ...(sanitized.description !== undefined && { description: sanitized.description }),
+      ...(sanitized.eventType && { eventType: sanitized.eventType as SportType }),
+      ...(sanitized.location !== undefined && { location: sanitized.location }),
+      ...(latitude !== undefined && { latitude: latitude ? parseFloat(latitude) : null }),
+      ...(longitude !== undefined && { longitude: longitude ? parseFloat(longitude) : null }),
+      ...(locationName !== undefined && { locationName: locationName || null }),
+      ...(city !== undefined && { city: city || null }),
+      ...(country !== undefined && { country: country || null }),
+      ...(startTime && { startTime: new Date(startTime) }),
+      ...(endTime !== undefined && { endTime: endTime ? new Date(endTime) : null }),
+      ...(maxPlayers !== undefined && { maxPlayers: maxPlayers ? parseInt(maxPlayers) : null }),
+      ...(isPublic !== undefined && { isPublic }),
+      ...(isPublic === false && { inviteToken: null })
+    },
+    include: {
+      creator: {
+        select: { id: true, name: true, email: true, profilePicture: true }
+      },
+      group: {
+        select: { id: true, name: true }
+      },
+      participants: {
+        select: {
+          id: true,
+          userId: true,
+          status: true,
+          joinedAt: true,
+          user: {
+            select: { 
+              id: true,
+              name: true, 
+              email: true,
+              emailNotifications: true
             }
           }
         }
       }
-    });
+    }
+  });
 
-    // Enrich event with location info if coordinates are available
-    const enrichedEvent = locationService.enrichWithLocationInfo(updatedEvent);
+  // Enrich event with location info if coordinates are available
+  const enrichedEvent = locationService.enrichWithLocationInfo(updatedEvent);
 
-    // Send email notifications to participants
-    await eventService.sendEventEmailNotifications(
-      (updatedEvent as any).participants,
-      (req.user as any).id,
-      'eventUpdates',
-      'eventUpdate',
-      updatedEvent.title,
-      event.group.name
-    );
+  // Send email notifications to participants
+  await eventService.sendEventEmailNotifications(
+    (updatedEvent as any).participants,
+    (req.user as any).id,
+    'eventUpdates',
+    'eventUpdate',
+    updatedEvent.title,
+    event!.group.name
+  );
 
-    res.json(enrichedEvent);
-  } catch (error) {
-    logger.error('Failed to update event', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to update event' });
-  }
-};
+  res.json(enrichedEvent);
+});
 
-export const deleteEvent = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
+export const deleteEvent = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
 
-    // Check if user is the creator of the event or a group admin
-    const event = await prisma.event.findUnique({
-      where: { id },
-      include: {
-        group: {
-          select: { id: true, name: true }
-        },
-        participants: {
-          include: {
-            user: {
-              select: { 
-                id: true, 
-                name: true, 
-                email: true,
-                emailNotifications: true
-              }
+  // Check if user is the creator of the event or a group admin
+  const event = await prisma.event.findUnique({
+    where: { id },
+    include: {
+      group: {
+        select: { id: true, name: true }
+      },
+      participants: {
+        include: {
+          user: {
+            select: { 
+              id: true, 
+              name: true, 
+              email: true,
+              emailNotifications: true
             }
           }
         }
       }
-    });
-
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found' });
     }
+  });
 
-    // Check if user has permission to manage this event
-    const { isAuthorized } = await eventService.checkEventManagementPermission(event, (req.user as any).id);
-    if (!isAuthorized) {
-      return res.status(403).json({ error: 'Only the event creator or group admins can delete it' });
-    }
+  ensureResourceExists(event, 'Event');
 
-    // Send email notifications to participants
-    await eventService.sendEventEmailNotifications(
-      event.participants,
-      (req.user as any).id,
-      'eventCancellations',
-      'eventCancellation',
-      event.title,
-      event.group.name
-    );
-
-    await prisma.event.delete({
-      where: { id }
-    });
-
-    res.json({ message: 'Event deleted successfully' });
-  } catch (error) {
-    logger.error('Delete event error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to delete event' });
+  // Check if user has permission to manage this event
+  const { isAuthorized } = await eventService.checkEventManagementPermission(event!, (req.user as any).id);
+  if (!isAuthorized) {
+    throw new ForbiddenError('Only the event creator or group admins can delete it');
   }
-};
+
+  // Send email notifications to participants
+  await eventService.sendEventEmailNotifications(
+    event!.participants,
+    (req.user as any).id,
+    'eventCancellations',
+    'eventCancellation',
+    event!.title,
+    event!.group.name
+  );
+
+  await prisma.event.delete({
+    where: { id }
+  });
+
+  res.json({ message: 'Event deleted successfully' });
+});
 
 export const joinEvent = async (req: Request, res: Response) => {
   try {
