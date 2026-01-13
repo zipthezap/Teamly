@@ -227,13 +227,18 @@ export default function GroupDetailsPage() {
 
   // Simulate typing indicator (for demo)
   React.useEffect(() => {
+    let timeout: NodeJS.Timeout | undefined;
     if (message) {
       setIsTyping(true);
-      const timeout = setTimeout(() => setIsTyping(false), 1200);
-      return () => clearTimeout(timeout);
+      timeout = setTimeout(() => setIsTyping(false), 1200);
+    } else {
+      setIsTyping(false);
     }
-    setIsTyping(false);
-    return undefined;
+    return () => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
   }, [message]);
 
   // Remove member handler with confirmation

@@ -73,7 +73,20 @@ const CreateEvent = () => {
         }
       }
 
-      const data = {
+      const data: {
+        groupId: string;
+        title: string;
+        description: string;
+        eventType: string;
+        location: string;
+        startTime: string;
+        endTime?: string;
+        maxPlayers?: number;
+        isRecurring: boolean;
+        isPublic?: boolean;
+        recurrenceRule?: string;
+        recurrenceEnd?: string;
+      } = {
         groupId: formData.groupId!,
         title: formData.title,
         description: formData.description,
@@ -87,9 +100,9 @@ const CreateEvent = () => {
       };
 
       if (formData.isRecurring && recurrenceRule) {
-        (data as any).recurrenceRule = recurrenceRule;
+        data.recurrenceRule = recurrenceRule;
         if (formData.recurrenceEnd) {
-          (data as any).recurrenceEnd = new Date(formData.recurrenceEnd).toISOString();
+          data.recurrenceEnd = new Date(formData.recurrenceEnd).toISOString();
         }
       }
 
