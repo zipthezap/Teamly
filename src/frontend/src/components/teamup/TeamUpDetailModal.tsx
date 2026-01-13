@@ -320,272 +320,79 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
             {/* Activity Tab - Combined Responses and Chat */}
             <TabPanel value={tabValue} index={1}>
               <Box sx={{ px: 3, display: 'flex', flexDirection: 'column' }}>
-                {/* Pending Responses Alert */}
-                {pendingResponses > 0 && (
-                  <Alert severity="info" sx={{ mb: 2 }}>
-                    {pendingResponses} {t('teamup.pendingResponses')}
-                  </Alert>
-                )}
-
-                {/* Responses Section */}
                 {request?.responses && request.responses.length > 0 && (
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600 }}>
-                      <PeopleIcon sx={{ color: '#667eea' }} /> {t('teamup.responses')} ({request.responses.length})
-                    </Typography>
-                    <Stack spacing={2}>
-                      {request.responses.map((response: TeamUpResponse) => (
-                        <Card 
-                          key={response.id} 
-                          variant="outlined"
-                          sx={{
-                            borderRadius: 2,
-                            borderColor: response.status === 'accepted' 
-                              ? 'success.light' 
-                              : response.status === 'declined'
-                              ? 'error.light'
-                              : 'divider',
-                            borderWidth: 2,
-                            transition: 'all 0.3s ease',
-                            '&:hover': {
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                            }
-                          }}
-                        >
-                          <CardContent sx={{ p: 2.5 }}>
-                            <Box sx={{ display: 'flex', gap: 2 }}>
-                              <Avatar
-                                src={getImageUrl(response.user?.profilePicture)}
-                                sx={{ 
-                                  width: 48, 
-                                  height: 48,
-                                  border: '3px solid',
-                                  borderColor: response.status === 'accepted' 
-                                    ? 'success.light' 
-                                    : response.status === 'declined'
-                                    ? 'error.light'
-                                    : 'primary.light'
-                                }}
-                              >
-                                {getInitials(response.user?.name || 'User')}
-                              </Avatar>
-                              <Box sx={{ flex: 1 }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                  <Typography variant="subtitle1" fontWeight="bold">
-                                    {response.user?.name}
-                                  </Typography>
-                                  <Chip
-                                    label={t(`teamup.responseStatus.${response.status}`)}
-                                    color={getTeamUpStatusColor(response.status)}
-                                    size="small"
-                                    sx={{ fontWeight: 600 }}
-                                  />
-                                </Box>
-                                {response.message && (
-                                  <Box sx={{ 
-                                    mb: 1, 
-                                    p: 1.5, 
-                                    bgcolor: 'grey.50', 
-                                    borderRadius: 2,
-                                    borderLeft: 3,
-                                    borderColor: '#667eea'
-                                  }}>
-                                    <Typography variant="body2">
-                                      "{response.message}"
-                                    </Typography>
-                                  </Box>
-                                )}
-                                <Typography variant="caption" color="text.secondary" fontWeight={500}>
-                                  {new Date(response.createdAt).toLocaleString()}
-                                </Typography>
-                                {isOwnRequest && response.status === 'pending' && (
-                                  <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-                                    <Button
-                                      size="small"
-                                      variant="contained"
-                                      color="success"
-                                      startIcon={<CheckCircleIcon />}
-                                      onClick={() => handleResponseAction(response.id, 'accept')}
-                                      disabled={spotsLeft === 0}
-                                      sx={{
-                                        textTransform: 'none',
-                                        fontWeight: 600,
-                                        boxShadow: '0 2px 8px rgba(76, 175, 80, 0.3)',
-                                        '&:hover': {
-                                          boxShadow: '0 4px 12px rgba(76, 175, 80, 0.4)'
-                                        }
-                                      }}
-                                    >
-                                      {t('teamup.acceptResponse')}
-                                    </Button>
-                                    <Button
-                                      size="small"
-                                      variant="outlined"
-                                      color="error"
-                                      startIcon={<CancelIcon />}
-                                      onClick={() => handleResponseAction(response.id, 'decline')}
-                                      sx={{
-                                        textTransform: 'none',
-                                        fontWeight: 600
-                                      }}
-                                    >
-                                      {t('teamup.declineResponse')}
-                                    </Button>
-                                  </Stack>
-                                )}
-                              </Box>
-                            </Box>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </Stack>
-                  </Box>
+                  <ResponsesList
+                    responses={request.responses}
+                    pendingCount={pendingResponses}
+                    isCreator={isOwnRequest}
+                    onAccept={(responseId) => handleResponseAction(responseId, 'accept')}
+                    onDecline={(responseId) => handleResponseAction(responseId, 'decline')}
+                    processingResponseId={processingResponseId}
+                  />
                 )}
 
-                {/* Chat/Comments Section */}
-                <Box>
-                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600 }}>
-                    <ChatIcon sx={{ color: '#667eea' }} /> {t('teamup.chat')} ({comments.length})
-                  </Typography>
-                  <List sx={{ mb: 2, maxHeight: 300, overflow: 'auto' }}>
-                    {comments.length > 0 ? (
-                      comments.map((comment) => (
-                        <ListItem
-                          key={comment.id}
-                          alignItems="flex-start"
-                          sx={{ 
-                            bgcolor: comment.userId === user?.id ? 'rgba(102, 126, 234, 0.08)' : 'transparent',
-                            borderRadius: 2,
-                            mb: 1,
-                            border: '1px solid',
-                            borderColor: comment.userId === user?.id ? 'rgba(102, 126, 234, 0.2)' : 'transparent',
-                            transition: 'all 0.2s ease',
-                            '&:hover': {
-                              backgroundColor: comment.userId === user?.id ? 'rgba(102, 126, 234, 0.12)' : 'grey.50'
-                            }
-                          }}
-                          secondaryAction={
-                            comment.userId === user?.id && (
-                              <IconButton 
-                                edge="end" 
-                                aria-label="delete"
-                                onClick={() => handleDeleteComment(comment.id)}
-                                size="small"
-                                sx={{
-                                  color: 'error.main',
-                                  '&:hover': {
-                                    backgroundColor: 'error.light',
-                                    color: 'white'
-                                  }
-                                }}
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            )
-                          }
-                        >
-                          <ListItemAvatar>
-                            <Avatar 
-                              src={getImageUrl(comment.user?.profilePicture)}
-                              sx={{
-                                border: '2px solid',
-                                borderColor: comment.userId === user?.id ? '#667eea' : 'grey.300'
-                              }}
-                            >
-                              {getInitials(comment.user?.name || 'User')}
-                            </Avatar>
-                          </ListItemAvatar>
-                          <ListItemText
-                            primary={
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                <Typography variant="subtitle2" fontWeight="bold">
-                                  {comment.user?.name}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  {new Date(comment.createdAt).toLocaleString()}
-                                </Typography>
-                              </Box>
-                            }
-                            secondary={
-                              <Typography variant="body2" sx={{ mt: 0.5, color: 'text.primary' }}>
-                                {comment.content}
-                              </Typography>
-                            }
-                          />
-                        </ListItem>
-                      ))
-                    ) : (
-                      <Box sx={{ 
-                        textAlign: 'center', 
-                        py: 4,
-                        backgroundColor: 'grey.50',
-                        borderRadius: 2
-                      }}>
-                        <Typography variant="h4" sx={{ mb: 1, fontSize: '2rem' }}>💬</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {t('teamup.noComments')}
-                        </Typography>
-                      </Box>
-                    )}
-                  </List>
-                  
-                  {/* Add Comment Input */}
-                  <Box sx={{ 
-                    pt: 2, 
-                    borderTop: 1, 
-                    borderColor: 'divider',
-                    backgroundColor: 'grey.50',
-                    borderRadius: 2,
-                    p: 2,
-                    mt: 2
-                  }}>
-                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        placeholder={t('teamup.typeMessage')}
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleAddComment();
-                          }
-                        }}
-                        multiline
-                        maxRows={3}
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            backgroundColor: 'white',
-                            '&:hover fieldset': {
-                              borderColor: '#667eea'
-                            },
-                            '&.Mui-focused fieldset': {
-                              borderColor: '#667eea'
-                            }
-                          }
-                        }}
-                      />
-                      <IconButton 
-                        onClick={handleAddComment}
-                        disabled={!newComment.trim() || submittingComment}
-                        sx={{
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                          color: 'white',
-                          boxShadow: '0 2px 8px rgba(102, 126, 234, 0.4)',
-                          '&:hover': {
-                            background: 'linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)',
-                            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.5)'
+                <CommentsList
+                  comments={comments}
+                  currentUserId={user?.id}
+                  onDeleteComment={handleDeleteComment}
+                />
+
+                {/* Add Comment Input */}
+                <Box sx={{ 
+                  pt: 2, 
+                  borderTop: 1, 
+                  borderColor: 'divider',
+                  backgroundColor: 'grey.50',
+                  borderRadius: 2,
+                  p: 2,
+                  mt: 2
+                }}>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder={t('teamup.typeMessage')}
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleAddComment();
+                        }
+                      }}
+                      multiline
+                      maxRows={3}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          backgroundColor: 'white',
+                          '&:hover fieldset': {
+                            borderColor: '#667eea'
                           },
-                          '&:disabled': {
-                            background: 'grey.300',
-                            color: 'grey.500'
+                          '&.Mui-focused fieldset': {
+                            borderColor: '#667eea'
                           }
-                        }}
-                      >
-                        <SendIcon />
-                      </IconButton>
-                    </Box>
+                        }
+                      }}
+                    />
+                    <IconButton 
+                      onClick={handleAddComment}
+                      disabled={!newComment.trim() || submittingComment}
+                      sx={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        color: 'white',
+                        boxShadow: '0 2px 8px rgba(102, 126, 234, 0.4)',
+                        '&:hover': {
+                          background: 'linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)',
+                          boxShadow: '0 4px 12px rgba(102, 126, 234, 0.5)'
+                        },
+                        '&:disabled': {
+                          background: 'grey.300',
+                          color: 'grey.500'
+                        }
+                      }}
+                    >
+                      <SendIcon />
+                    </IconButton>
                   </Box>
                 </Box>
 
