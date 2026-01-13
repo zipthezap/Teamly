@@ -12,7 +12,7 @@ export interface GroupSettingsModalProps {
   onPictureUpload: (file: File) => Promise<void>;
   onPictureDelete: () => Promise<void>;
   isSubmitting?: boolean;
-  t: (key: string, params?: any) => string;
+  t: (key: string, params?: Record<string, unknown>) => string;
 }
 
 const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({

@@ -47,7 +47,7 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = ({ onSearch }) => 
         acc[key] = value;
       }
       return acc;
-    }, {} as any);
+    }, {} as Record<string, string>);
     
     onSearch(activeFilters);
   };

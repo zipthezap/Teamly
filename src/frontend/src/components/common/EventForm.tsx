@@ -183,7 +183,7 @@ const EventForm: React.FC<EventFormProps> = ({
       </TextField>
       <LocationAutocomplete
         value={formData.location}
-        onChange={(value) => handleChange({ target: { name: 'location', value } } as any)}
+        onChange={(value) => handleChange({ target: { name: 'location', value } } as React.ChangeEvent<HTMLInputElement>)}
         label={t('events.location')}
       />
       <TextField

@@ -14,15 +14,25 @@ import {
 } from '@mui/material';
 import HistoryIcon from '@mui/icons-material/History';
 import CloseIcon from '@mui/icons-material/Close';
+import { EventWithDetails, PublicUser } from '../../../../shared/types';
+
+interface EventNotification {
+  id: string;
+  type: string;
+  userId: string;
+  user?: PublicUser;
+  createdAt: Date | string;
+  metadata?: Record<string, unknown>;
+}
 
 interface EventActivityFeedProps {
-  event: any;
+  event: EventWithDetails;
   activityDialogOpen: boolean;
   onOpenDialog: () => void;
   onCloseDialog: () => void;
 }
 
-const getActivityMessage = (notif: any, t: any) => {
+const getActivityMessage = (notif: EventNotification, t: (key: string, params?: Record<string, unknown>) => string) => {
   const userName = notif.user?.name || t('activityFeed.someone', 'Someone');
   const metadata = notif.metadata || {};
   switch (notif.type) {
@@ -206,8 +216,8 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
           <Stack spacing={1.5}>
             {event.eventNotifications && event.eventNotifications.length > 0 ? (
               event.eventNotifications
-                .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                .map((notif: any, idx: number) => (
+                .sort((a: EventNotification, b: EventNotification) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                .map((notif: EventNotification, idx: number) => (
                   <Box 
                     key={notif.id || idx}
                     sx={{

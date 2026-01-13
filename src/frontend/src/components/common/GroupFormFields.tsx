@@ -8,7 +8,7 @@ export interface GroupFormFieldsProps {
   setDescription: (v: string) => void;
   isPublic: boolean;
   setIsPublic: (v: boolean) => void;
-  t: (key: string, params?: any) => string;
+  t: (key: string, params?: Record<string, unknown>) => string;
 }
 
 const GroupFormFields: React.FC<GroupFormFieldsProps> = ({
