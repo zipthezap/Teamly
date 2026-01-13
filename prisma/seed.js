@@ -266,28 +266,118 @@ async function main() {
         { userId: user3.id, status: 'pending' }
       ]
     },
-    {
-      title: 'Tennis Doubles Tournament',
-      description: 'Compete in our tennis doubles tournament!',
-      eventType: 'tennis',
-      location: 'Riverside Tennis Courts',
-      city: 'New York',
-      country: 'USA',
-      latitude: 40.7589,
-      longitude: -73.9851,
-      locationName: 'Riverside Courts',
-      startTime: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
-      endTime: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000), // 3 hours duration
-      maxPlayers: 16,
-      isPublic: true,
-      status: 'upcoming',
-      creatorId: user2.id,
-      groupId: group1.id,
-      participants: [
-        { userId: user2.id, status: 'confirmed' },
-        { userId: user3.id, status: 'confirmed' }
-      ]
-    },
+      // Additional upcoming events for Alice's Sports Club
+      {
+        title: 'Spring Soccer Kickoff',
+        description: 'Start the season with a friendly soccer match!',
+        eventType: 'soccer',
+        location: 'East Meadow Field',
+        city: 'New York',
+        country: 'USA',
+        latitude: 40.7851,
+        longitude: -73.9683,
+        locationName: 'East Meadow',
+        startTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+        endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
+        maxPlayers: 18,
+        isPublic: true,
+        status: 'upcoming',
+        creatorId: user1.id,
+        groupId: group1.id,
+        participants: [
+          { userId: user1.id, status: 'confirmed' },
+          { userId: user2.id, status: 'pending' }
+        ]
+      },
+      {
+        title: 'Ultimate Frisbee Challenge',
+        description: 'Join us for a fast-paced frisbee game!',
+        eventType: 'frisbee',
+        location: 'Great Lawn',
+        city: 'New York',
+        country: 'USA',
+        latitude: 40.7712,
+        longitude: -73.9742,
+        locationName: 'Great Lawn',
+        startTime: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000), // 10 days from now
+        endTime: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000 + 1.5 * 60 * 60 * 1000),
+        maxPlayers: 14,
+        isPublic: true,
+        status: 'upcoming',
+        creatorId: user1.id,
+        groupId: group1.id,
+        participants: [
+          { userId: user1.id, status: 'confirmed' },
+          { userId: user3.id, status: 'pending' }
+        ]
+      },
+      {
+        title: 'Volleyball Night',
+        description: 'Evening volleyball games for all skill levels.',
+        eventType: 'volleyball',
+        location: 'Pier 25 Volleyball Courts',
+        city: 'New York',
+        country: 'USA',
+        latitude: 40.7209,
+        longitude: -74.0113,
+        locationName: 'Pier 25',
+        startTime: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000), // 12 days from now
+        endTime: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
+        maxPlayers: 12,
+        isPublic: true,
+        status: 'upcoming',
+        creatorId: user1.id,
+        groupId: group1.id,
+        participants: [
+          { userId: user1.id, status: 'confirmed' },
+          { userId: user2.id, status: 'confirmed' }
+        ]
+      },
+      // Additional past events for Alice's Sports Club
+      {
+        title: 'Winter Indoor Soccer',
+        description: 'Indoor soccer to keep warm during winter!',
+        eventType: 'soccer',
+        location: 'Chelsea Piers',
+        city: 'New York',
+        country: 'USA',
+        latitude: 40.7465,
+        longitude: -74.0071,
+        locationName: 'Chelsea Piers',
+        startTime: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // 10 days ago
+        endTime: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
+        maxPlayers: 16,
+        isPublic: true,
+        status: 'completed',
+        creatorId: user1.id,
+        groupId: group1.id,
+        participants: [
+          { userId: user1.id, status: 'confirmed' },
+          { userId: user2.id, status: 'confirmed' }
+        ]
+      },
+      {
+        title: 'Autumn Running Meetup',
+        description: 'Group run through Central Park to enjoy the fall colors.',
+        eventType: 'running',
+        location: 'Central Park',
+        city: 'New York',
+        country: 'USA',
+        latitude: 40.7829,
+        longitude: -73.9654,
+        locationName: 'Central Park',
+        startTime: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000), // 20 days ago
+        endTime: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000 + 1 * 60 * 60 * 1000),
+        maxPlayers: 10,
+        isPublic: true,
+        status: 'completed',
+        creatorId: user1.id,
+        groupId: group1.id,
+        participants: [
+          { userId: user1.id, status: 'confirmed' },
+          { userId: user3.id, status: 'confirmed' }
+        ]
+      },
     {
       title: 'Morning Yoga Session',
       description: 'Relaxing morning yoga session at the park',

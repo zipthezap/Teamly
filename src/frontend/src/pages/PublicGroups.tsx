@@ -17,7 +17,7 @@ import { GoogleMap, LoadScript, Autocomplete, Circle } from '@react-google-maps/
 import { groupsAPI } from '../services/api';
 import { getErrorMessage } from '../utils/errorHandler';
 import { useTranslation } from 'react-i18next';
-import { getImageUrl } from '../utils/imageUtils';
+import { getImageUrl, getInitials,  } from '../utils/imageUtils';
 import { GroupWithDetails } from '../types/group';
 import { Coordinates } from '../../../shared/types/common.types';
 
@@ -597,7 +597,7 @@ const PublicGroups = () => {
                       onClick={() => handleRequestJoin(group.id)}
                       disabled={requesting[group.id]}
                     >
-                      {requesting[group.id] ? t('groups.publicGroups.requesting') : t('common.viewDetails')}
+                      {requesting[group.id] ? t('groups.publicGroups.requesting') : t('groups.publicGroups.applyToJoin')}
                     </Button>
                   </CardActions>
                 </Card>

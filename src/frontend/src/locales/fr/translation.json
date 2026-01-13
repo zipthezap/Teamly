@@ -1,6 +1,5 @@
 {
   "common": {
-    "teamup": "TeamUp",
     "tournament": "Tournoi",
     "teamup.title": "TeamUp",
     "tournament.title": "Tournoi",
@@ -111,7 +110,9 @@
     "status_change": "Statut de l'événement changé",
     "teamup_response": "{{name}} a postulé à votre demande TeamUp \"{{title}}\"",
     "teamup_accepted": "Votre réponse à \"{{title}}\" a été acceptée ! Préparez-vous pour {{sportType}}",
-    "teamup_declined": "Votre réponse à \"{{title}}\" n'a pas été acceptée"
+    "teamup_declined": "Votre réponse à \"{{title}}\" n'a pas été acceptée",
+    "teamup_nearby": "Un TeamUp a lieu près de chez vous !",
+    "invited": "Vous avez été invité à rejoindre !"
   },
   "auth": {
     "loginTitle": "Se connecter à Teamly",
@@ -428,6 +429,7 @@
       "kmAway": "à {{count}} km",
       "requesting": "Demande en cours...",
       "requestToJoin": "Demander à rejoindre",
+      "applyToJoin": "Postuler pour rejoindre",
       "customPoint": "point personnalisé",
       "yourLocation": "votre position"
     }

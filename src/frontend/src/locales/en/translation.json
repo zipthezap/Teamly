@@ -1,6 +1,5 @@
 {
   "common": {
-    "teamup": "TeamUp",
     "tournament": "Tournament",
     "teamup.title": "TeamUp",
     "tournament.title": "Tournament",
@@ -112,7 +111,9 @@
     "status_change": "Event status changed",
     "teamup_response": "{{name}} applied to your TeamUp request \"{{title}}\"",
     "teamup_accepted": "Your response to \"{{title}}\" was accepted! Get ready for {{sportType}}",
-    "teamup_declined": "Your response to \"{{title}}\" was not accepted"
+    "teamup_declined": "Your response to \"{{title}}\" was not accepted",
+    "teamup_nearby": "A TeamUp is happening near you!",
+    "invited": "You have been invited to join!"
   },
   "auth": {
     "loginTitle": "Sign in to Teamly",
@@ -429,6 +430,7 @@
       "kmAway": "{{count}} km away",
       "requesting": "Requesting...",
       "requestToJoin": "Request to Join",
+      "applyToJoin": "Apply to Join",
       "customPoint": "custom point",
       "yourLocation": "your location"
     }

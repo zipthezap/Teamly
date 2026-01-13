@@ -1,3 +1,4 @@
+import { getInitials } from '../utils/imageUtils';
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { Tabs, Tab } from '@mui/material';
@@ -107,6 +108,9 @@ const EventsList = () => {
   }, [fetchEvents]);
 
   // Delete event
+    const handlePageChange = (value: number) => {
+      setPage(value);
+    };
   const handleDeleteEvent = async (eventId: string | number) => {
     try {
       await eventsAPI.delete(eventId);
@@ -237,19 +241,7 @@ const EventsList = () => {
     return <LoadingSpinner message={t('events.loadingEvents')} />;
   }
 
-  if (error) {
-    return (
-      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-        <EmptyState
-          icon={<EventIcon />}
-          title={t('common.errorLoadingEvents')}
-          description=""
-          actions={[{ label: t('common.retry'), onClick: () => fetchEvents() }]}
-          gradient="linear-gradient(135deg, rgba(244, 67, 54, 0.05) 0%, rgba(244, 67, 54, 0.02) 100%)"
-        />
-      </Container>
-    );
-  }
+  // No 'error' variable in scope; error handling is done via toast and isLoading above.
 
   // Enhanced event filtering and sorting logic
   const now = new Date();

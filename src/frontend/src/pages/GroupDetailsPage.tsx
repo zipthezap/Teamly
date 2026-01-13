@@ -433,11 +433,11 @@ export default function GroupDetailsPage() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <GroupHeader
         group={group}
-        onEdit={canEdit ? () => setSettingsOpen(true) : undefined}
+        onEdit={isAdmin ? (() => setSettingsOpen(true)) : undefined}
         onDelete={isAdmin ? handleDeleteGroup : undefined}
-        onLeave={handleLeaveGroup}
-        onInvite={handleInviteMember}
-        onCopyLink={handleCopyLink}
+        onLeave={isAdmin ? handleLeaveGroup : undefined}
+        onInvite={isAdmin ? handleInviteMember : undefined}
+        onCopyLink={isAdmin ? handleCopyLink : undefined}
         isAdmin={isAdmin}
       />
       {/* Group Statistics */}
