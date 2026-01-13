@@ -43,7 +43,7 @@ const TwoFactorSetup = () => {
     try {
       const response = await twoFactorAPI.getStatus();
       setStatus(response.data);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error checking 2FA status:', error);
     }
   };
@@ -55,14 +55,17 @@ const TwoFactorSetup = () => {
       const response = await twoFactorAPI.setup();
       setSetupData(response.data);
       setActiveStep(1);
-    } catch (error) {
-      setError(error.response?.data?.error || 'Failed to initialize 2FA setup');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error && 'response' in error 
+        ? ((error as any).response?.data?.error || 'Failed to initialize 2FA setup')
+        : 'Failed to initialize 2FA setup';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerify = async (e) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -70,14 +73,17 @@ const TwoFactorSetup = () => {
       await twoFactorAPI.verify(token);
       setSuccess('Two-factor authentication enabled successfully!');
       setActiveStep(3);
-    } catch (error) {
-      setError(error.response?.data?.error || 'Invalid verification code');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error && 'response' in error 
+        ? ((error as any).response?.data?.error || 'Invalid verification code')
+        : 'Invalid verification code';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDisable2FA = async (e) => {
+  const handleDisable2FA = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -86,8 +92,11 @@ const TwoFactorSetup = () => {
       setSuccess('Two-factor authentication disabled successfully!');
       checkStatus();
       setPassword('');
-    } catch (error) {
-      setError(error.response?.data?.error || 'Failed to disable 2FA');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error && 'response' in error 
+        ? ((error as any).response?.data?.error || 'Failed to disable 2FA')
+        : 'Failed to disable 2FA';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -97,7 +106,7 @@ const TwoFactorSetup = () => {
     try {
       await navigator.clipboard.writeText(setupData.secret);
       setSuccess('Secret copied to clipboard!');
-    } catch (error) {
+    } catch (error: unknown) {
       setError('Failed to copy to clipboard. Please copy manually.');
     }
   };

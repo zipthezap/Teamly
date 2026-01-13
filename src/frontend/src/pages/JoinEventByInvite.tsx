@@ -44,10 +44,19 @@ const JoinEventByInvite = () => {
   const [success, setSuccess] = useState('');
   const [guestName, setGuestName] = useState('');
 
+  // Guard for missing token
+  if (!token) {
+    return (
+      <Container maxWidth="sm" sx={{ mt: 4 }}>
+        <Alert severity="error">Invalid invite link</Alert>
+      </Container>
+    );
+  }
+
   useEffect(() => {
     const fetchEvent = async () => {
       try {
-        const response = await eventsAPI.getByInviteToken(token);
+        const response = await eventsAPI.getByInviteToken(token!);
         setEvent(response.data);
       } catch (err: unknown) {
         const errorMessage = err instanceof AxiosError 
@@ -74,11 +83,11 @@ const JoinEventByInvite = () => {
     setError('');
     
     try {
-      await eventsAPI.joinAsGuest(token, guestName);
+      await eventsAPI.joinAsGuest(token!, guestName);
       setSuccess('Successfully joined the event! The organizer will have your details.');
       setGuestName('');
       // Refresh event data to show updated participant count
-      const response = await eventsAPI.getByInviteToken(token);
+      const response = await eventsAPI.getByInviteToken(token!);
       setEvent(response.data);
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
@@ -199,7 +208,7 @@ const JoinEventByInvite = () => {
           </Typography>
 
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                 <SportsSoccer color="action" />
                 <Box>
@@ -211,7 +220,7 @@ const JoinEventByInvite = () => {
               </Box>
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                 <AccessTime color="action" />
                 <Box>
@@ -227,7 +236,7 @@ const JoinEventByInvite = () => {
             </Grid>
 
             {event.location && (
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                   <LocationOn color="action" />
                   <Box>
@@ -241,7 +250,7 @@ const JoinEventByInvite = () => {
             )}
 
             {event.description && (
-              <Grid item xs={12}>
+              <Grid size={{ xs: 12 }}>
                 <Divider sx={{ my: 1 }} />
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
                   {event.description}

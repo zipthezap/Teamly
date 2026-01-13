@@ -26,6 +26,9 @@ export interface Group {
 export interface GroupWithDetails extends Group {
   creator?: PublicUser;
   members?: GroupMember[];
+  events?: Array<{ id: string; startTime: Date | string }>;  // Optional for some API responses
+  memberCount?: number;  // Legacy/optional field
+  eventCount?: number;   // Legacy/optional field
   _count?: {
     members: number;
     events: number;

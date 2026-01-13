@@ -27,13 +27,13 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PeopleIcon from '@mui/icons-material/People';
 import { useAuth } from '../../contexts/AuthContext';
-import { TeamUpRequest, CreateTeamUpRequestData, UpdateTeamUpRequestData } from '../../types/teamup';
+import { TeamUpRequest, TeamUpRequestWithDetails, CreateTeamUpRequestData, UpdateTeamUpRequestData } from '../../types/teamup';
 import { SPORT_TYPES, SKILL_LEVELS } from '../../constants/teamup';
 
 const SubmitRequestTab = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const [myRequests, setMyRequests] = useState<TeamUpRequest[]>([]);
+  const [myRequests, setMyRequests] = useState<TeamUpRequestWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -80,8 +80,8 @@ const SubmitRequestTab = () => {
         description: request.description || '',
         sportType: request.sportType,
         location: request.location || '',
-        latitude: request.latitude,
-        longitude: request.longitude,
+        latitude: request.latitude ?? null,
+        longitude: request.longitude ?? null,
         locationName: request.locationName || '',
         city: request.city || '',
         country: request.country || '',
@@ -122,11 +122,18 @@ const SubmitRequestTab = () => {
     setSuccess('');
 
     try {
+      // Convert null to undefined for API compatibility
+      const apiData = {
+        ...formData,
+        latitude: formData.latitude ?? undefined,
+        longitude: formData.longitude ?? undefined,
+      };
+      
       if (editingRequest) {
-        await teamUpAPI.update(editingRequest.id, formData);
+        await teamUpAPI.update(editingRequest.id, apiData);
         setSuccess(t('teamup.updateRequestSuccess'));
       } else {
-        await teamUpAPI.create(formData);
+        await teamUpAPI.create(apiData);
         setSuccess(t('teamup.createRequestSuccess'));
       }
       handleCloseDialog();
@@ -158,7 +165,13 @@ const SubmitRequestTab = () => {
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
-      await teamUpAPI.update(id, { status: newStatus });
+      // Validate status before sending
+      const validStatuses = ['open', 'filled', 'cancelled', 'expired'] as const;
+      if (!validStatuses.includes(newStatus as any)) {
+        setError('Invalid status');
+        return;
+      }
+      await teamUpAPI.update(id, { status: newStatus as 'open' | 'filled' | 'cancelled' | 'expired' });
       fetchMyRequests();
     } catch (err) {
       console.error('Error updating status:', err);
@@ -203,7 +216,7 @@ const SubmitRequestTab = () => {
       ) : (
         <Grid container spacing={3}>
           {myRequests.map((request) => (
-            <Grid item xs={12} md={6} lg={4} key={request.id}>
+            <Grid size={{ xs: 12, md: 6, lg: 4 }} key={request.id}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
@@ -241,7 +254,7 @@ const SubmitRequestTab = () => {
                   <Typography variant="body2" color="text.secondary">
                     👥 {t('teamup.fillersNeeded', { count: request.playersNeeded })}
                   </Typography>
-                  {request._count?.responses > 0 && (
+                  {request._count?.responses && request._count.responses > 0 && (
                     <Box sx={{ mt: 1 }}>
                       <Badge 
                         badgeContent={request._count.responses} 

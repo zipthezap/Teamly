@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { teamUpAPI } from '../../services/api';
 import { LoadingSpinner } from '../common';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
-import { TeamUpRequest } from '../../types/teamup';
+import { TeamUpRequest, TeamUpResponse, TeamUpRequestWithDetails } from '../../types/teamup';
 import { getTeamUpStatusColor } from '../../utils/statusHelpers';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
@@ -27,7 +27,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 const ManageResponsesTab = () => {
   const { t } = useTranslation();
-  const [requests, setRequests] = useState<TeamUpRequest[]>([]);
+  const [requests, setRequests] = useState<TeamUpRequestWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -43,7 +43,7 @@ const ManageResponsesTab = () => {
       const response = await teamUpAPI.getMyRequests();
       // Filter to only show requests with responses
       const requestsWithResponses = response.data.filter(
-        (req: TeamUpRequest) => req.responses && req.responses.length > 0
+        (req: TeamUpRequestWithDetails) => req.responses && req.responses.length > 0
       );
       setRequests(requestsWithResponses);
     } catch (err) {
@@ -83,7 +83,7 @@ const ManageResponsesTab = () => {
     setExpandedRequests(newExpanded);
   };
 
-  const getResponseStats = (request: TeamUpRequest) => {
+  const getResponseStats = (request: TeamUpRequestWithDetails) => {
     const responses = request.responses || [];
     const pending = responses.filter(r => r.status === 'pending').length;
     const accepted = responses.filter(r => r.status === 'accepted').length;
@@ -125,7 +125,7 @@ const ManageResponsesTab = () => {
             const spotsLeft = request.playersNeeded - stats.accepted;
 
             return (
-              <Grid item xs={12} key={request.id}>
+              <Grid size={{ xs: 12 }} key={request.id}>
                 <Card>
                   <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

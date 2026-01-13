@@ -40,12 +40,13 @@ const ParticipantsList: React.FC<ParticipantsListProps> = ({ event, participantC
           {event.participants.map((participant: any, idx: number) => {
             const attendance = event.eventAttendances?.find((a: any) => a.userId === participant.userId);
             const isLate = attendance?.status === 'late';
+            const profilePictureUrl = getImageUrl(participant.user?.profilePicture);
             return (
               <li key={participant.id} className="flex items-center py-3 gap-4 hover:bg-gray-50 dark:hover:bg-white/5 rounded-lg transition">
                 {/* Avatar */}
                 <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-white overflow-hidden" style={{ background: getAvatarColor(idx) }}>
-                  {getImageUrl(participant.user?.profilePicture) ? (
-                    <img src={getImageUrl(participant.user?.profilePicture)} alt={participant.user?.name} className="w-full h-full object-cover" />
+                  {profilePictureUrl ? (
+                    <img src={profilePictureUrl} alt={participant.user?.name} className="w-full h-full object-cover" />
                   ) : (
                     getInitials(participant.user?.name)
                   )}

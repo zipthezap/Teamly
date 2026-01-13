@@ -14,7 +14,7 @@ export const StyledLink: React.FC<StyledLinkProps> = ({ to, children, className,
   return (
     <RouterLink
       to={to}
-      className={`text-blue-600 hover:text-blue-800 transition underline-offset-2 hover:underline font-medium ${props.className || ''}`}
+      className={`text-blue-600 hover:text-blue-800 transition underline-offset-2 hover:underline font-medium ${className || ''}`}
       {...props}
     >
       {children}

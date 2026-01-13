@@ -2,11 +2,11 @@
  * Constructs a full image URL from a relative path or returns the URL as-is if it's already absolute
  * @param picture - The picture path (relative or absolute URL)
  * @param fallback - Optional fallback image URL if picture is not provided
- * @returns Full image URL or fallback
+ * @returns Full image URL or fallback (undefined if no picture or fallback)
  */
-export const getImageUrl = (picture?: string, fallback?: string | null): string | null => {
+export const getImageUrl = (picture?: string | null, fallback?: string | null): string | undefined => {
   if (!picture) {
-    return fallback ?? null;
+    return fallback ?? undefined;
   }
   
   // If picture is already a full URL, return it as is

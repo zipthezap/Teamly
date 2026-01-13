@@ -44,11 +44,14 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
     events.forEach(event => {
       // Event creation
       if (event.creatorId === userId) {
+        const timestamp = typeof event.createdAt === 'string' ? event.createdAt : 
+                         event.createdAt ? new Date(event.createdAt).toISOString() :
+                         typeof event.startTime === 'string' ? event.startTime : new Date(event.startTime).toISOString();
         activities.push({
           id: event.id,
           type: 'event_created',
           title: t('dashboard.activity.createdEvent', { title: event.title }),
-          timestamp: event.createdAt || event.startTime,
+          timestamp,
           relatedEntityName: event.group?.name,
           relatedEntityType: event.eventType,
         });
@@ -57,11 +60,13 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
       // Event joins
       const userParticipation = event.participants?.find((p: EventParticipant) => p.userId === userId);
       if (userParticipation && event.creatorId !== userId) {
+        const timestamp = typeof userParticipation.joinedAt === 'string' ? userParticipation.joinedAt : 
+                         new Date(userParticipation.joinedAt).toISOString();
         activities.push({
           id: event.id,
           type: 'event_joined',
           title: t('dashboard.activity.joinedEvent', { title: event.title }),
-          timestamp: userParticipation.joinedAt,
+          timestamp,
           relatedEntityName: event.group?.name,
           relatedEntityType: event.eventType,
         });
@@ -71,12 +76,14 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
     // Add group-related activities (simplified - in real scenario, we'd need group join/create timestamps)
     groups.slice(0, 3).forEach(group => {
       const isCreator = group.members?.find((m: GroupMember) => m.userId === userId && m.role === 'admin');
+      const timestamp = typeof group.createdAt === 'string' ? group.createdAt :
+                       group.createdAt ? new Date(group.createdAt).toISOString() : new Date().toISOString();
       if (isCreator) {
         activities.push({
           id: group.id,
           type: 'group_created',
           title: t('dashboard.activity.createdGroup', { name: group.name }),
-          timestamp: group.createdAt || new Date().toISOString(),
+          timestamp,
           relatedEntityName: `${group.members?.length || 0} members`,
           relatedEntityType: group.isPublic ? 'Public' : 'Private',
         });
@@ -85,7 +92,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
           id: group.id,
           type: 'group_joined',
           title: t('dashboard.activity.joinedGroup', { name: group.name }),
-          timestamp: group.createdAt || new Date().toISOString(),
+          timestamp,
           relatedEntityName: `${group.members?.length || 0} members`,
           relatedEntityType: group.isPublic ? 'Public' : 'Private',
         });

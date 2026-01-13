@@ -68,7 +68,10 @@ const TournamentsList: React.FC = () => {
       const data = await tournamentAPI.getTournaments();
       setTournaments(data);
     } catch (err: unknown) {
-      setError(err.response?.data?.error || 'Failed to load tournaments');
+      const errorMessage = err instanceof Error && 'response' in err 
+        ? ((err as any).response?.data?.error || 'Failed to load tournaments')
+        : 'Failed to load tournaments';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -350,7 +353,7 @@ const TournamentsList: React.FC = () => {
       ) : (
         <Grid container spacing={3}>
           {filteredTournaments.map((tournament) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={tournament.id}>
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={tournament.id}>
               <TournamentCard tournament={tournament} />
             </Grid>
           ))}

@@ -286,11 +286,11 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
     return location.city || location.country || location.locationName;
   };
 
-  const hasValidCoordinate = (coord: number | string): boolean => {
+  const hasValidCoordinate = (coord: number | string | undefined): boolean => {
     return coord !== undefined && coord !== null && coord !== '';
   };
 
-  const formatCoordinate = (coord: number | string): string => {
+  const formatCoordinate = (coord: number | string | undefined): string => {
     if (coord === undefined || coord === null || coord === '') return 'N/A';
     const num = Number(coord);
     if (isNaN(num)) return 'N/A';

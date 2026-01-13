@@ -4,6 +4,7 @@ import EventForm, { EventFormData } from '../components/common/EventForm';
 import { useParams } from 'react-router-dom';
 import { eventRequestsAPI, groupsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { EventRequestWithDetails, GroupWithDetails } from '../../../shared/types';
 
 const EVENT_TYPES = [
   'football',
@@ -27,10 +28,10 @@ const EventRequests = () => {
   const { groupId } = useParams();
   const { user } = useAuth();
   const { t } = useTranslation();
-  const [requests, setRequests] = useState([]);
-  const [group, setGroup] = useState(null);
+  const [requests, setRequests] = useState<EventRequestWithDetails[]>([]);
+  const [group, setGroup] = useState<GroupWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const [voting, setVoting] = useState({});
+  const [voting, setVoting] = useState<Record<string, boolean>>({});
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
   const [newRequest, setNewRequest] = useState<EventFormData>({
@@ -54,6 +55,11 @@ const EventRequests = () => {
   }, [groupId]);
 
   const fetchData = async () => {
+    if (!groupId) {
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     try {
       const [requestsRes, groupRes] = await Promise.all([
@@ -62,11 +68,14 @@ const EventRequests = () => {
       ]);
       setRequests(requestsRes.data);
       setGroup(groupRes.data);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching data:', error);
+      const errorMessage = error instanceof Error && 'response' in error 
+        ? ((error as any).response?.data?.error || t('eventRequests.failedToLoad'))
+        : t('eventRequests.failedToLoad');
       setSnackbar({
         open: true,
-        message: error.response?.data?.error || t('eventRequests.failedToLoad'),
+        message: (error as any).response?.data?.error || t('eventRequests.failedToLoad'),
         severity: 'error',
       });
     } finally {
@@ -74,7 +83,7 @@ const EventRequests = () => {
     }
   };
 
-  const handleVote = async (requestId, vote) => {
+  const handleVote = async (requestId: string, vote: 'yes' | 'no') => {
     setVoting((prev) => ({ ...prev, [requestId]: true }));
     try {
       await eventRequestsAPI.vote(requestId, vote);
@@ -84,11 +93,14 @@ const EventRequests = () => {
         message: t('eventRequests.voteRecorded'),
         severity: 'success',
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error voting:', error);
+      const errorMessage = error instanceof Error && 'response' in error 
+        ? ((error as any).response?.data?.error || t('eventRequests.failedToVote'))
+        : t('eventRequests.failedToVote');
       setSnackbar({
         open: true,
-        message: error.response?.data?.error || t('eventRequests.failedToVote'),
+        message: (error as any).response?.data?.error || t('eventRequests.failedToVote'),
         severity: 'error',
       });
     } finally {
@@ -96,7 +108,7 @@ const EventRequests = () => {
     }
   };
 
-  const handleFinalize = async (requestId) => {
+  const handleFinalize = async (requestId: string) => {
     try {
       await eventRequestsAPI.finalize(requestId);
       await fetchData();
@@ -105,17 +117,20 @@ const EventRequests = () => {
         message: t('eventRequests.finalized'),
         severity: 'success',
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error finalizing:', error);
+      const errorMessage = error instanceof Error && 'response' in error 
+        ? ((error as any).response?.data?.error || t('eventRequests.failedToFinalize'))
+        : t('eventRequests.failedToFinalize');
       setSnackbar({
         open: true,
-        message: error.response?.data?.error || t('eventRequests.failedToFinalize'),
+        message: (error as any).response?.data?.error || t('eventRequests.failedToFinalize'),
         severity: 'error',
       });
     }
   };
 
-  const handleCancel = async (requestId) => {
+  const handleCancel = async (requestId: string) => {
     try {
       await eventRequestsAPI.cancel(requestId);
       await fetchData();
@@ -124,11 +139,14 @@ const EventRequests = () => {
         message: t('eventRequests.cancelled'),
         severity: 'success',
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error cancelling:', error);
+      const errorMessage = error instanceof Error && 'response' in error 
+        ? ((error as any).response?.data?.error || t('eventRequests.failedToCancel'))
+        : t('eventRequests.failedToCancel');
       setSnackbar({
         open: true,
-        message: error.response?.data?.error || t('eventRequests.failedToCancel'),
+        message: (error as any).response?.data?.error || t('eventRequests.failedToCancel'),
         severity: 'error',
       });
     }
@@ -154,18 +172,22 @@ const EventRequests = () => {
           return;
         }
       }
+      
+      if (!groupId) {
+        setSnackbar({ open: true, message: t('eventRequests.groupIdRequired'), severity: 'error' });
+        return;
+      }
+      
       const data = {
-        ...formData,
         groupId,
+        title: formData.title,
+        description: formData.description,
+        eventType: formData.eventType,
+        location: formData.location,
         startTime: startDateTime.toISOString(),
-        endTime: endDateTime ? endDateTime.toISOString() : null,
-        maxPlayers: formData.maxPlayers ? parseInt(formData.maxPlayers) : null,
+        endTime: endDateTime ? endDateTime.toISOString() : undefined,
+        maxPlayers: formData.maxPlayers ? parseInt(formData.maxPlayers) : undefined,
       };
-      delete data.startDate;
-      delete data.startHour;
-      delete data.startMinute;
-      delete data.endHour;
-      delete data.endMinute;
       await eventRequestsAPI.create(data);
       await fetchData();
       setCreateDialogOpen(false);
@@ -187,11 +209,14 @@ const EventRequests = () => {
         message: t('eventRequests.created'),
         severity: 'success',
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error creating request:', error);
+      const errorMessage = error instanceof Error && 'response' in error 
+        ? ((error as any).response?.data?.error || t('eventRequests.failedToCreate'))
+        : t('eventRequests.failedToCreate');
       setSnackbar({
         open: true,
-        message: error.response?.data?.error || t('eventRequests.failedToCreate'),
+        message: errorMessage,
         severity: 'error',
       });
     }
@@ -205,13 +230,13 @@ const EventRequests = () => {
     (m) => m.userId === user?.id
   );
 
-  const getVotePercentage = (request) => {
-    const total = request.yesVotes + request.noVotes;
+  const getVotePercentage = (request: EventRequestWithDetails) => {
+    const total = (request.yesVotes || 0) + (request.noVotes || 0);
     if (total === 0) return 0;
-    return (request.yesVotes / total) * 100;
+    return ((request.yesVotes || 0) / total) * 100;
   };
 
-  const getUserVote = (request) => {
+  const getUserVote = (request: EventRequestWithDetails) => {
     return request.votes?.find((v) => v.userId === user?.id)?.vote;
   };
 

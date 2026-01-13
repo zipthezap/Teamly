@@ -19,14 +19,14 @@ import { teamUpAPI } from '../../services/api';
 import { LoadingSpinner } from '../common';
 import { useAuth } from '../../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
-import { TeamUpRequest, TeamUpRequestFilters } from '../../types/teamup';
+import { TeamUpRequest, TeamUpRequestWithDetails, TeamUpRequestFilters } from '../../types/teamup';
 import TeamUpDetailModal from './TeamUpDetailModal';
 import { SPORT_TYPES } from '../../constants/teamup';
 
 const BrowseRequestsTab = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const [requests, setRequests] = useState<TeamUpRequest[]>([]);
+  const [requests, setRequests] = useState<TeamUpRequestWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -95,11 +95,11 @@ const BrowseRequestsTab = () => {
     fetchRequests();
   };
 
-  const isOwnRequest = (request: TeamUpRequest) => {
+  const isOwnRequest = (request: TeamUpRequestWithDetails) => {
     return request.creator?.id === user?.id;
   };
 
-  const hasResponded = (request: TeamUpRequest) => {
+  const hasResponded = (request: TeamUpRequestWithDetails) => {
     return request.responses?.some((r) => r.userId === user?.id);
   };
 
@@ -122,7 +122,7 @@ const BrowseRequestsTab = () => {
 
       <Box sx={{ mb: 3 }}>
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={4}>
+          <Grid size={{ xs: 12, sm: 4 }}>
             <TextField
               fullWidth
               select
@@ -138,7 +138,7 @@ const BrowseRequestsTab = () => {
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid size={{ xs: 12, sm: 4 }}>
             <TextField
               fullWidth
               label={t('teamup.filterByLocation')}
@@ -147,7 +147,7 @@ const BrowseRequestsTab = () => {
               placeholder="City"
             />
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid size={{ xs: 12, sm: 4 }}>
             <TextField
               fullWidth
               select
@@ -187,7 +187,7 @@ const BrowseRequestsTab = () => {
             const isUrgent = hoursUntil <= 48 && hoursUntil > 0;
 
             return (
-              <Grid item xs={12} md={6} lg={4} key={request.id}>
+              <Grid size={{ xs: 12, md: 6, lg: 4 }} key={request.id}>
                 <Card sx={{ 
                   position: 'relative',
                   cursor: 'pointer',

@@ -44,7 +44,7 @@ const Register = () => {
     window.location.href = authUrl.toString();
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
 
@@ -84,7 +84,10 @@ const Register = () => {
         }
       }
     } catch (err) {
-      setError(err.response?.data?.error || t('auth.registerFailed'));
+      const errorMessage = err instanceof Error && 'response' in err 
+        ? ((err as any).response?.data?.error || t('auth.registerFailed'))
+        : t('auth.registerFailed');
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
