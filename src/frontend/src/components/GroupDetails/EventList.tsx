@@ -8,7 +8,7 @@ import { EventWithDetails } from "../../../../shared/types";
 
 interface EventListProps {
   events: EventWithDetails[];
-  onEventClick: (eventId: number) => void;
+  onEventClick: (eventId: string) => void;
   onCreate?: () => void;
   onEdit?: (event: EventWithDetails) => void;
   onDelete?: (event: EventWithDetails) => void;

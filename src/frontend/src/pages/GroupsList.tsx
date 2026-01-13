@@ -82,8 +82,8 @@ const GroupsList = () => {
     }
   };
 
-  const getUserRole = (group) => {
-    const member = group.members?.find(m => m.userId === user?.id);
+  const getUserRole = (group: GroupWithDetails) => {
+    const member = group.members?.find((m: { userId: string }) => m.userId === user?.id);
     return member?.role || 'member';
   };
 
@@ -207,15 +207,11 @@ const GroupsList = () => {
           icon={<GroupIcon />}
           title={searchTerm || filter !== 'all' ? t('groups.noGroupsMatch') : t('groups.noGroupsYet')}
           description={!searchTerm && filter === 'all' ? t('groups.createFirstGroupDesc') : ''}
-          actionLabel={!searchTerm && filter === 'all' ? t('groups.createFirstGroup') : (searchTerm || filter !== 'all' ? t('groups.allGroups') : '')}
-          onAction={() => {
-            if (!searchTerm && filter === 'all') {
-              navigate('/groups/new');
-            } else {
-              setSearchTerm('');
-              setFilter('all');
-            }
-          }}
+          actions={!searchTerm && filter === 'all' ? [
+            { label: t('groups.createFirstGroup'), onClick: () => navigate('/groups/new') }
+          ] : (searchTerm || filter !== 'all' ? [
+            { label: t('groups.allGroups'), onClick: () => { setSearchTerm(''); setFilter('all'); } }
+          ] : [])}
           gradient="linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(156, 39, 176, 0.05) 100%)"
         />
       ) : (

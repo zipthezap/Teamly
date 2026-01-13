@@ -102,7 +102,7 @@ export default function GroupDetailsPage() {
         description: group.description || '',
         privacy: group.isPublic ? 'public' : 'private',
       });
-      setGroupPicture(group.picture);
+      setGroupPicture(group.picture ?? undefined);
     }
   }, [group]);
 
@@ -142,7 +142,7 @@ export default function GroupDetailsPage() {
   // Remove member mutation (optimistic UI)
   const removeMemberMutation = useMutation({
     mutationFn: async (email: string) => {
-      const member = group?.members.find((m: GroupMember) => m.userId === email);
+      const member = group?.members?.find((m: GroupMember) => m.userId === email);
       if (!member) throw new Error("Member not found");
       await groupsAPI.removeMember(groupId!, member.userId);
       return email;
@@ -151,9 +151,7 @@ export default function GroupDetailsPage() {
       // Optimistically update group members
       await queryClient.cancelQueries({ queryKey: ["groupDetails", groupId] });
       const prevGroup = queryClient.getQueryData(["groupDetails", groupId]);
-      const membersArray = Array.isArray((prevGroup as GroupWithDetails).members)
-        ? (prevGroup as GroupWithDetails).members
-        : [];
+      const membersArray = (prevGroup as GroupWithDetails)?.members || [];
       if (prevGroup) {
         queryClient.setQueryData(["groupDetails", groupId], {
           ...(prevGroup as GroupWithDetails),
@@ -233,9 +231,9 @@ export default function GroupDetailsPage() {
       setIsTyping(true);
       const timeout = setTimeout(() => setIsTyping(false), 1200);
       return () => clearTimeout(timeout);
-    } else {
-      setIsTyping(false);
     }
+    setIsTyping(false);
+    return undefined;
   }, [message]);
 
   // Remove member handler with confirmation
@@ -251,7 +249,7 @@ export default function GroupDetailsPage() {
 
   // Event card click handler
   const navigate = useNavigate();
-  const handleEventClick = (eventId: number) => {
+  const handleEventClick = (eventId: string) => {
     navigate(`/events/${eventId}`);
   };
 
@@ -425,7 +423,6 @@ export default function GroupDetailsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white p-2 sm:p-4 md:p-6">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      {console.log('[GroupDetailsPage] isAdmin:', isAdmin, 'onEdit:', isAdmin ? () => setSettingsOpen(true) : undefined, 'onDelete:', isAdmin ? handleDeleteGroup : undefined)}
       <GroupHeader
         group={group}
         onEdit={isAdmin ? () => setSettingsOpen(true) : undefined}
@@ -436,7 +433,6 @@ export default function GroupDetailsPage() {
         isAdmin={isAdmin}
       />
       {/* Group Statistics */}
-      {console.log('[GroupDetailsPage] events passed to GroupStats/EventList:', eventsArray)}
       <GroupStats memberCount={group.members?.length || 0} events={eventsArray} />
       {/* Group Settings Modal (shared component) */}
       <GroupSettingsModal
@@ -456,7 +452,7 @@ export default function GroupDetailsPage() {
         <EventList
           events={eventsArray}
           onEventClick={handleEventClick}
-          onCreate={isAdmin ? () => { setEditEvent(null); setEventModalOpen(true); } : undefined}
+          onCreate={isAdmin ? () => { setEditEvent(undefined); setEventModalOpen(true); } : undefined}
           onEdit={isAdmin ? (event) => { setEditEvent(event); setEventModalOpen(true); } : undefined}
           onDelete={isAdmin ? (event) => deleteEventMutation.mutate(Number(event.id)) : undefined}
           isAdmin={isAdmin}

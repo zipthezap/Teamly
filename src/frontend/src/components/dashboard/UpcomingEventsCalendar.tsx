@@ -37,7 +37,7 @@ const UpcomingEventsCalendar: React.FC<UpcomingEventsCalendarProps> = ({ events,
     return t(`event.type.${eventType.toLowerCase()}`, eventType);
   };
 
-  const getDayInfo = (dateString: string) => {
+  const getDayInfo = (dateString: string | Date) => {
     const date = new Date(dateString);
     const today = new Date();
     const tomorrow = new Date(today);

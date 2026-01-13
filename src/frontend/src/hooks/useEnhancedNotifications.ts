@@ -87,7 +87,7 @@ export const useEnhancedNotifications = (options: UseEnhancedNotificationsOption
   const [offset, setOffset] = useState(0);
   const limit = 50;
 
-  const refreshIntervalRef = useRef<NodeJS.Timeout>();
+  const refreshIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Fetch notifications
   const fetchNotifications = useCallback(
@@ -200,13 +200,13 @@ export const useEnhancedNotifications = (options: UseEnhancedNotificationsOption
           fetchNotifications(true);
         }
       }, refreshInterval);
-
-      return () => {
-        if (refreshIntervalRef.current) {
-          clearInterval(refreshIntervalRef.current);
-        }
-      };
     }
+    
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
   }, [autoRefresh, refreshInterval, filters.includeRead, fetchNotifications, fetchStats]);
 
   // Load more when offset changes

@@ -4,7 +4,7 @@ interface GroupEventsModalProps {
   open: boolean;
   onClose: () => void;
   events: any[];
-  onEventClick: (eventId: number) => void;
+  onEventClick: (eventId: string) => void;
   t: (key: string, defaultText?: string) => string;
 }
 
