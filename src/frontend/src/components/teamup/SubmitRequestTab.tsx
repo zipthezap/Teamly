@@ -29,6 +29,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import { useAuth } from '../../contexts/AuthContext';
 import { TeamUpRequest, TeamUpRequestWithDetails } from '../../types/teamup';
 import { SPORT_TYPES, SKILL_LEVELS } from '../../constants/teamup';
+import { getErrorMessage } from '../../utils/errorHandler';
 
 const SubmitRequestTab = () => {
   const { t } = useTranslation();
@@ -138,7 +139,7 @@ const SubmitRequestTab = () => {
       }
       handleCloseDialog();
       fetchMyRequests();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error submitting request:', err);
       setError(
         editingRequest
@@ -167,7 +168,8 @@ const SubmitRequestTab = () => {
     try {
       // Validate status before sending
       const validStatuses = ['open', 'filled', 'cancelled', 'expired'] as const;
-      if (!validStatuses.includes(newStatus as any)) {
+      type ValidStatus = typeof validStatuses[number];
+      if (!validStatuses.includes(newStatus as ValidStatus)) {
         setError('Invalid status');
         return;
       }

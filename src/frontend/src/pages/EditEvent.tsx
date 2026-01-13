@@ -12,6 +12,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { eventsAPI } from '../services/api';
+import { getErrorMessage } from '../utils/errorHandler';
 
 const EVENT_TYPES = [
   'football',
@@ -180,10 +181,7 @@ const EditEvent = () => {
       await eventsAPI.update(id, data);
       navigate(`/events/${id}`);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error && 'response' in err 
-        ? ((err as any).response?.data?.error || 'Failed to update event')
-        : 'Failed to update event';
-      setError(errorMessage);
+      setError(getErrorMessage(err) || 'Failed to update event');
     } finally {
       setSubmitting(false);
     }

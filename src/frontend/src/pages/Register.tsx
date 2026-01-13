@@ -17,6 +17,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import GoogleIcon from '@mui/icons-material/Google';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import { StyledLink } from '../components/common';
+import { getErrorMessage } from '../utils/errorHandler';
 
 const Register = () => {
   const [name, setName] = useState('');
@@ -84,10 +85,7 @@ const Register = () => {
         }
       }
     } catch (err) {
-      const errorMessage = err instanceof Error && 'response' in err 
-        ? ((err as any).response?.data?.error || t('auth.registerFailed'))
-        : t('auth.registerFailed');
-      setError(errorMessage);
+      setError(getErrorMessage(err) || t('auth.registerFailed'));
     } finally {
       setLoading(false);
     }

@@ -24,6 +24,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import { getErrorMessage } from '../../utils/errorHandler';
 
 const ManageResponsesTab = () => {
   const { t } = useTranslation();
@@ -63,7 +64,7 @@ const ManageResponsesTab = () => {
           : t('teamup.declineResponseSuccess')
       );
       fetchRequestsWithResponses();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error handling response:', err);
       setError(
         action === 'accept'

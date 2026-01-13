@@ -21,6 +21,7 @@ import SecurityIcon from '@mui/icons-material/Security';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DownloadIcon from '@mui/icons-material/Download';
 import { twoFactorAPI } from '../services/api';
+import { getErrorMessage } from '../utils/errorHandler';
 
 interface TwoFactorSetupData {
   secret: string;
@@ -66,10 +67,7 @@ const TwoFactorSetup = () => {
       setSetupData(response.data);
       setActiveStep(1);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error && 'response' in error 
-        ? ((error as any).response?.data?.error || 'Failed to initialize 2FA setup')
-        : 'Failed to initialize 2FA setup';
-      setError(errorMessage);
+      setError(getErrorMessage(error) || 'Failed to initialize 2FA setup');
     } finally {
       setLoading(false);
     }
@@ -84,10 +82,7 @@ const TwoFactorSetup = () => {
       setSuccess('Two-factor authentication enabled successfully!');
       setActiveStep(3);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error && 'response' in error 
-        ? ((error as any).response?.data?.error || 'Invalid verification code')
-        : 'Invalid verification code';
-      setError(errorMessage);
+      setError(getErrorMessage(error) || 'Invalid verification code');
     } finally {
       setLoading(false);
     }
@@ -103,10 +98,7 @@ const TwoFactorSetup = () => {
       checkStatus();
       setPassword('');
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error && 'response' in error 
-        ? ((error as any).response?.data?.error || 'Failed to disable 2FA')
-        : 'Failed to disable 2FA';
-      setError(errorMessage);
+      setError(getErrorMessage(error) || 'Failed to disable 2FA');
     } finally {
       setLoading(false);
     }

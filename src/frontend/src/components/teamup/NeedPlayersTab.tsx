@@ -33,6 +33,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { TeamUpRequest, TeamUpRequestWithDetails } from '../../types/teamup';
 import TeamUpDetailModal from './TeamUpDetailModal';
 import { SPORT_TYPES, SKILL_LEVELS } from '../../constants/teamup';
+import { getErrorMessage } from '../../utils/errorHandler';
 
 const NeedPlayersTab = () => {
   const { t } = useTranslation();
@@ -149,7 +150,7 @@ const NeedPlayersTab = () => {
       }
       handleCloseDialog();
       fetchMyRequests();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error submitting request:', err);
       setError(
         editingRequest
@@ -178,7 +179,8 @@ const NeedPlayersTab = () => {
     try {
       // Validate status before sending
       const validStatuses = ['open', 'filled', 'cancelled', 'expired'] as const;
-      if (!validStatuses.includes(newStatus as any)) {
+      type ValidStatus = typeof validStatuses[number];
+      if (!validStatuses.includes(newStatus as ValidStatus)) {
         setError('Invalid status');
         return;
       }

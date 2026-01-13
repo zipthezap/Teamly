@@ -18,6 +18,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import { GoogleMap, LoadScript, Autocomplete, Circle } from '@react-google-maps/api';
 import { groupsAPI } from '../services/api';
+import { getErrorMessage } from '../utils/errorHandler';
 import { useTranslation } from 'react-i18next';
 import { getImageUrl } from '../utils/imageUtils';
 import { GroupWithDetails } from '../types/group';
@@ -378,9 +379,7 @@ const PublicGroups = () => {
       });
       fetchPublicGroups();
     } catch (error: unknown) {
-      const message = error instanceof Error && 'response' in error 
-        ? ((error as any).response?.data?.error || t('groups.publicGroups.failedToSendJoinRequest'))
-        : t('groups.publicGroups.failedToSendJoinRequest');
+      const message = getErrorMessage(error) || t('groups.publicGroups.failedToSendJoinRequest');
       setSnackbar({
         open: true,
         message,

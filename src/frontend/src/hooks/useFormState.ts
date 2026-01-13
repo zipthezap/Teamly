@@ -4,6 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { getErrorMessage } from '../utils/errorHandler';
 
 interface UseFormStateOptions<T> {
   initialValues: T;
@@ -113,9 +114,9 @@ export const useFormState = <T extends Record<string, unknown>>({
     setFormState((prev) => ({ ...prev, isSubmitting: true, errors: {} }));
     try {
       await onSubmit(formState.values);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Handle submission errors
-      const errorMessage = error.response?.data?.error || error.message || 'Submission failed';
+      const errorMessage = getErrorMessage(error) || 'Submission failed';
       setFormState((prev) => ({
         ...prev,
         errors: { submit: errorMessage },

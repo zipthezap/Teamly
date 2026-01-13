@@ -16,6 +16,7 @@ import { GroupWithDetails, GroupMember, ChatMessage } from "../types/group";
 import { groupsAPI, eventsAPI, groupChatAPI } from "../services/api";
 import { EventWithDetails, UpdateGroupData } from "../../../shared/types";
 import { AxiosError } from "axios";
+import { getErrorMessage } from "../utils/errorHandler";
 
 // Simple toast system
 function Toast({ message, type, onClose }: { message: string; type: "success" | "error"; onClose: () => void }) {
@@ -279,8 +280,8 @@ export default function GroupDetailsPage() {
         navigate('/groups');
       }, 1000);
     },
-    onError: (err: any) => {
-      setToast({ message: err?.response?.data?.error || t('groupDetails.failedToDelete'), type: "error" });
+    onError: (err: unknown) => {
+      setToast({ message: getErrorMessage(err) || t('groupDetails.failedToDelete'), type: "error" });
     },
   });
 
@@ -304,8 +305,8 @@ export default function GroupDetailsPage() {
         navigate('/groups');
       }, 1000);
     },
-    onError: (err: any) => {
-      setToast({ message: err?.response?.data?.error || t('groupDetails.failedToLeave'), type: "error" });
+    onError: (err: unknown) => {
+      setToast({ message: getErrorMessage(err) || t('groupDetails.failedToLeave'), type: "error" });
     },
   });
 
