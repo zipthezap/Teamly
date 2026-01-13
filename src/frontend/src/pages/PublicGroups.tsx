@@ -1,13 +1,3 @@
-// Helper to validate lat/lng objects
-function isValidLatLng(obj: any): obj is { lat: number, lng: number } {
-  return (
-    obj &&
-    typeof obj.lat === 'number' &&
-    typeof obj.lng === 'number' &&
-    isFinite(obj.lat) &&
-    isFinite(obj.lng)
-  );
-}
 import EventIcon from '@mui/icons-material/Event';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -31,6 +21,58 @@ import { GoogleMap, LoadScript, Autocomplete, Circle } from '@react-google-maps/
 import { groupsAPI } from '../services/api';
 import { useTranslation } from 'react-i18next';
 import { getImageUrl } from '../utils/imageUtils';
+import { GroupWithDetails } from '../types/group';
+import { Coordinates } from '../../../shared/types/common.types';
+
+// Type definitions
+// Using Coordinates from shared types for consistency
+type Location = Coordinates;
+
+interface LatLng {
+  lat: number;
+  lng: number;
+}
+
+// Extended Group interface for public groups with distance calculation
+interface PublicGroup extends GroupWithDetails {
+  distance?: number | null;
+}
+
+// Helper to validate lat/lng objects
+function isValidLatLng(obj: LatLng | null): obj is LatLng {
+  if (!obj) return false;
+  
+  // Check if it's a LatLng object with finite coordinates
+  return (
+    'lat' in obj &&
+    'lng' in obj &&
+    typeof obj.lat === 'number' &&
+    typeof obj.lng === 'number' &&
+    isFinite(obj.lat) &&
+    isFinite(obj.lng)
+  );
+}
+
+// Helper to validate Location objects
+function isValidLocation(obj: Location | null): obj is Location {
+  if (!obj) return false;
+  
+  return (
+    typeof obj.latitude === 'number' &&
+    typeof obj.longitude === 'number' &&
+    isFinite(obj.latitude) &&
+    isFinite(obj.longitude)
+  );
+}
+
+// Helper to convert Location to LatLng
+function toLatLng(location: Location | null): LatLng | null {
+  if (!isValidLocation(location)) return null;
+  return {
+    lat: location.latitude,
+    lng: location.longitude
+  };
+}
 
 const GOOGLE_MAPS_API_KEY = typeof import.meta.env.VITE_GOOGLE_MAPS_API_KEY !== 'undefined' ? import.meta.env.VITE_GOOGLE_MAPS_API_KEY : '';
 const libraries: ("places")[] = ["places"];
@@ -43,18 +85,18 @@ const mapContainerStyle = {
 
 const PublicGroups = () => {
   // Store marker instances so we can clean them up
-  const markersRef = useRef([]);
+  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
   const { user } = useAuth();
-  const [groups, setGroups] = useState([]);
-  const [filteredGroups, setFilteredGroups] = useState([]);
+  const [groups, setGroups] = useState<PublicGroup[]>([]);
+  const [filteredGroups, setFilteredGroups] = useState<PublicGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [requesting, setRequesting] = useState({});
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [userLocation, setUserLocation] = useState(null);
+  const [requesting, setRequesting] = useState<Record<string, boolean>>({});
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' }>({ open: false, message: '', severity: 'success' });
+  const [userLocation, setUserLocation] = useState<Location | null>(null);
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [distanceRadius, setDistanceRadius] = useState(25); // km
-  const [mapCenter, setMapCenter] = useState(null);
-  const [customSearchLocation, setCustomSearchLocation] = useState(null);
+  const [mapCenter, setMapCenter] = useState<Location | null>(null);
+  const [customSearchLocation, setCustomSearchLocation] = useState<Location | null>(null);
   const [searchAddress, setSearchAddress] = useState('');
   const [mapZoom, setMapZoom] = useState(2);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
@@ -65,7 +107,11 @@ const PublicGroups = () => {
   // Helper to clear all markers from the map
   const clearMarkers = () => {
     if (markersRef.current && markersRef.current.length) {
-      markersRef.current.forEach(marker => marker.setMap(null));
+      markersRef.current.forEach((marker) => {
+        // Note: AdvancedMarkerElement uses the 'map' property, not setMap() method
+        // Setting map to null removes the marker from the map
+        marker.map = null;
+      });
       markersRef.current = [];
     }
   };
@@ -132,7 +178,7 @@ const PublicGroups = () => {
   }, []);
 
   // Calculate distance between two coordinates using Haversine formula
-  const calculateDistance = useCallback((lat1, lon1, lat2, lon2) => {
+  const calculateDistance = useCallback((lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371; // Earth's radius in km
     const dLat = (lat2 - lat1) * (Math.PI / 180);
     const dLon = (lon2 - lon1) * (Math.PI / 180);
@@ -257,7 +303,9 @@ const PublicGroups = () => {
     );
   };
 
-  const handleMapClick = (e) => {
+  const handleMapClick = (e: google.maps.MapMouseEvent) => {
+    if (!e.latLng) return;
+    
     const lat = e.latLng.lat();
     const lng = e.latLng.lng();
     if (
@@ -266,7 +314,7 @@ const PublicGroups = () => {
       isFinite(lat) &&
       isFinite(lng)
     ) {
-      const clickedLocation = {
+      const clickedLocation: Location = {
         latitude: lat,
         longitude: lng,
       };
@@ -335,7 +383,7 @@ const PublicGroups = () => {
     }
   };
 
-  const handleRequestJoin = async (groupId) => {
+  const handleRequestJoin = async (groupId: string) => {
     setRequesting(prev => ({ ...prev, [groupId]: true }));
     try {
       await groupsAPI.requestJoin(groupId);
@@ -411,8 +459,8 @@ const PublicGroups = () => {
               <div className="text-xs text-gray-400 mb-1">{t('groups.publicGroups.clickMapToSetLocation')}</div>
               <GoogleMap
                 mapContainerStyle={mapContainerStyle}
-                center={isValidLatLng(mapCenter) ? mapCenter : { lat: 0, lng: 0 }}
-                zoom={isValidLatLng(mapCenter) ? mapZoom : 2}
+                center={toLatLng(mapCenter) || { lat: 0, lng: 0 }}
+                zoom={mapCenter ? mapZoom : 2}
                 onClick={handleMapClick}
                 onLoad={(map) => { mapRef.current = map; }}
               >
@@ -495,8 +543,12 @@ const PublicGroups = () => {
           }
           title={locationEnabled ? t('groups.publicGroups.noGroupsInRadius') : t('groups.publicGroups.noGroupsAvailable')}
           description={locationEnabled ? t('groups.publicGroups.tryIncreasingRadius') : t('groups.publicGroups.checkBackOrCreate')}
-          actionLabel={t('groups.createPublicGroup')}
-          onAction={() => navigate('/groups/new')}
+          actions={[
+            {
+              label: t('groups.createPublicGroup'),
+              onClick: () => navigate('/groups/new')
+            }
+          ]}
         />
       ) : (
         <>
@@ -542,12 +594,12 @@ const PublicGroups = () => {
                         </Typography>
                       </Box>
                       {/* Google Maps Directions Button for group location */}
-                      {(group.latitude && group.longitude) || group.location || group.address ? (
+                      {(group.latitude && group.longitude) || group.locationName ? (
                         <a
                           href={
                             group.latitude && group.longitude
                               ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(group.latitude + ',' + group.longitude)}`
-                              : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(group.location || group.address || group.name)}`
+                              : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(group.locationName || group.name)}`
                           }
                           target="_blank"
                           rel="noopener noreferrer"
