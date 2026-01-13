@@ -33,6 +33,8 @@ import {
 } from '@mui/icons-material';
 import { tournamentAPI } from '../services/tournamentAPI';
 import { Tournament, TournamentStatus } from '../../../shared/types';
+import { TabPanel } from '../components/common';
+import { getTournamentStatusColor } from '../utils/statusHelpers';
 
 interface TournamentWithCount extends Tournament {
   _count?: {
@@ -45,20 +47,6 @@ interface TournamentWithCount extends Tournament {
     email: string;
   };
 }
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => {
-  return (
-    <div hidden={value !== index}>
-      {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
-    </div>
-  );
-};
 
 const TournamentsList: React.FC = () => {
   const navigate = useNavigate();
@@ -83,23 +71,6 @@ const TournamentsList: React.FC = () => {
       setError(err.response?.data?.error || 'Failed to load tournaments');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const getStatusColor = (status: TournamentStatus) => {
-    switch (status) {
-      case TournamentStatus.DRAFT:
-        return 'default';
-      case TournamentStatus.REGISTRATION:
-        return 'info';
-      case TournamentStatus.IN_PROGRESS:
-        return 'warning';
-      case TournamentStatus.COMPLETED:
-        return 'success';
-      case TournamentStatus.CANCELLED:
-        return 'error';
-      default:
-        return 'default';
     }
   };
 
@@ -201,7 +172,7 @@ const TournamentsList: React.FC = () => {
           </Box>
           <Chip
             label={tournament.status.replace('_', ' ').toUpperCase()}
-            color={getStatusColor(tournament.status)}
+            color={getTournamentStatusColor(tournament.status)}
             size="small"
           />
         </Box>

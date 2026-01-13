@@ -39,7 +39,7 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import DataObjectIcon from '@mui/icons-material/DataObject';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { eventsAPI } from '../services/api';
+import { eventsAPI, groupsAPI } from '../services/api';
 import EventFormModal from '../components/event/EventFormModal';
 import { useAuth } from '../contexts/AuthContext';
 import EventSearchFilters from '../components/event/EventSearchFilters';
@@ -77,7 +77,7 @@ const EventsList = () => {
   useEffect(() => {
     async function fetchGroups() {
       try {
-        const response = await (await import('../services/api')).groupsAPI.getAll();
+        const response = await groupsAPI.getAll();
         setGroups(response.data);
       } catch (err) {
         // Optionally handle error
@@ -94,7 +94,6 @@ const EventsList = () => {
       } else {
         setIsFetching(true);
       }
-      setIsLoading(true);
       const offset = (page - 1) * visibleCount;
       const params: EventSearchParams = { ...searchFilters, offset, limit: visibleCount };
       const response = await eventsAPI.getAll(params);
@@ -261,16 +260,9 @@ const EventsList = () => {
   const now = new Date();
   let filteredEvents: EventWithDetails[] = [];
   // Get group IDs where user is a member
-  // Debug: log groups and user memberships
-  // eslint-disable-next-line no-console
-  console.log('[EventsList] groups:', groups);
-  // eslint-disable-next-line no-console
-  console.log('[EventsList] current user:', user);
   const userGroupIds = groups
     .filter(g => g.members?.some((m: GroupMember) => m.id === user?.id))
     .map(g => g.id);
-  // eslint-disable-next-line no-console
-  console.log('[EventsList] userGroupIds:', userGroupIds);
 
   // Ensure events is always an array
   const eventsArray = Array.isArray(events) ? events : [];

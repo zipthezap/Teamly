@@ -5,28 +5,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import LookingForPlayTab from '../components/teamup/LookingForPlayTab';
 import NeedPlayersTab from '../components/teamup/NeedPlayersTab';
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`teamup-tabpanel-${index}`}
-      aria-labelledby={`teamup-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
-    </div>
-  );
-}
+import { TabPanel } from '../components/common';
 
 const TeamUp = () => {
   const [tabValue, setTabValue] = useState(0);

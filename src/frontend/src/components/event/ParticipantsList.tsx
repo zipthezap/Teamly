@@ -2,6 +2,7 @@ import React from 'react';
 // All MUI imports removed; using Tailwind and SVGs only
 import { getAvatarColor } from '../../utils/colors';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
+import { getParticipantStatusColor } from '../../utils/statusHelpers';
 
 interface ParticipantsListProps {
   event: any;
@@ -22,17 +23,6 @@ const getStatusIcon = (status: string) => {
       return (
         <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" /><path d="M12 8v4m0 4h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
       );
-  }
-};
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'confirmed':
-      return 'bg-green-100 text-green-700';
-    case 'declined':
-      return 'bg-red-100 text-red-700';
-    default:
-      return 'bg-gray-100 text-gray-700';
   }
 };
 
@@ -74,7 +64,7 @@ const ParticipantsList: React.FC<ParticipantsListProps> = ({ event, participantC
                   <div className="text-xs text-gray-400 truncate">{participant.user?.email}</div>
                 </div>
                 {/* Status chip */}
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${getStatusColor(participant.status)}`}
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${getParticipantStatusColor(participant.status)}`}
                   style={{ minWidth: 80, justifyContent: 'center' }}
                 >
                   {getStatusIcon(participant.status)}

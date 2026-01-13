@@ -32,26 +32,8 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useAuth } from '../../contexts/AuthContext';
 import { TeamUpRequest, CreateTeamUpRequestData, UpdateTeamUpRequestData } from '../../types/teamup';
 import TeamUpDetailModal from './TeamUpDetailModal';
-
-const SPORT_TYPES = [
-  '⚽ Soccer (Football)',
-  '🏀 Basketball',
-  '🏏 Cricket',
-  '🏈 American Football',
-  '🏒 Ice Hockey',
-  '⚾ Baseball',
-  '🏐 Volleyball',
-  '🏉 Rugby',
-  '🤾 Handball',
-  '🏑 Field Hockey',
-  'Tennis',
-  'Running',
-  'Cycling',
-  'Swimming',
-  'Other',
-];
-
-const SKILL_LEVELS = ['any', 'beginner', 'intermediate', 'advanced'];
+import { SPORT_TYPES, SKILL_LEVELS } from '../../constants/teamup';
+import { getTeamUpStatusColor } from '../../utils/statusHelpers';
 
 const NeedPlayersTab = () => {
   const { t } = useTranslation();
@@ -217,17 +199,6 @@ const NeedPlayersTab = () => {
     const accepted = responses.filter(r => r.status === 'accepted').length;
     const declined = responses.filter(r => r.status === 'declined').length;
     return { pending, accepted, declined, total: responses.length };
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'accepted':
-        return 'success';
-      case 'declined':
-        return 'error';
-      default:
-        return 'default';
-    }
   };
 
   const handleViewChange = (_event: React.MouseEvent<HTMLElement>, newView: 'myRequests' | 'manageResponses' | null) => {
