@@ -36,10 +36,6 @@ interface LatLng {
 interface PublicGroup extends GroupWithDetails {
   distance?: number | null;
 }
-    isFinite(obj.lat) &&
-    isFinite(obj.lng)
-  );
-}
 
 // Helper to validate Location objects
 function isValidLocation(obj: Location | null): obj is Location {

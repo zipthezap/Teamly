@@ -32,7 +32,9 @@ interface EventActivityFeedProps {
   onCloseDialog: () => void;
 }
 
-const getActivityMessage = (notif: EventNotification, t: (key: string, params?: Record<string, unknown>) => string) => {
+type TranslationFunction = (key: string, params?: Record<string, unknown>) => string;
+
+const getActivityMessage = (notif: EventNotification, t: TranslationFunction) => {
   const userName = notif.user?.name || t('activityFeed.someone', 'Someone');
   const metadata = notif.metadata || {};
   switch (notif.type) {

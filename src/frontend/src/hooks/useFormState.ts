@@ -50,11 +50,15 @@ export const useFormState = <T extends Record<string, unknown>>({
   });
 
   const handleChange = useCallback((field: keyof T) => (e: React.ChangeEvent<HTMLInputElement> | unknown) => {
-    const value = (e as React.ChangeEvent<HTMLInputElement>).target 
-      ? ((e as React.ChangeEvent<HTMLInputElement>).target.type === 'checkbox' 
-        ? (e as React.ChangeEvent<HTMLInputElement>).target.checked 
-        : (e as React.ChangeEvent<HTMLInputElement>).target.value) 
+    // Type guard to check if it's a proper change event
+    const isChangeEvent = (evt: unknown): evt is React.ChangeEvent<HTMLInputElement> => {
+      return typeof evt === 'object' && evt !== null && 'target' in evt;
+    };
+    
+    const value = isChangeEvent(e) 
+      ? (e.target.type === 'checkbox' ? e.target.checked : e.target.value) 
       : e;
+      
     setFormState((prev) => ({
       ...prev,
       values: { ...prev.values, [field]: value },
