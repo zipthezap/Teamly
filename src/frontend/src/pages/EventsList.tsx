@@ -62,7 +62,6 @@ const EventsList = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
   const [page, setPage] = useState(1);
-  const [error, setError] = useState<string | null>(null);
   const visibleCount = 12; // Items per page
   const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -77,7 +76,7 @@ const EventsList = () => {
       try {
         const response = await groupsAPI.getAll();
         setGroups(response.data);
-      } catch (err) {
+      } catch {
         // Optionally handle error
       }
     }
@@ -214,10 +213,7 @@ const EventsList = () => {
     setSearchParams(paramsObj, { replace: false });
   };
 
-  // Handle page change
-  const handlePageChange = (newPage: number) => {
-    // Removed pagination controls
-  };
+  // Handle page change - pagination removed
 
   // Get event status
   const getEventStatus = (event: EventWithDetails): { label: string; status: StatusType } => {
@@ -409,7 +405,7 @@ const EventsList = () => {
         />
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
-          {filteredEvents.map((event: EventWithDetails, idx: number) => {
+          {filteredEvents.map((event: EventWithDetails) => {
             const status = getEventStatus(event);
             const participantCount = event.participants?.length || 0;
             const spotsLeft = event.maxPlayers ? event.maxPlayers - participantCount : null;

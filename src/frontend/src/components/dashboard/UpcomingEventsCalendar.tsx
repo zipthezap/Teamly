@@ -96,7 +96,7 @@ const UpcomingEventsCalendar: React.FC<UpcomingEventsCalendarProps> = ({ events,
           <div className="text-center py-8 text-sm text-gray-400">{t('dashboard.noUpcomingEvents', 'No upcoming events scheduled')}</div>
         ) : (
           <ul className="divide-y divide-[#232946]">
-            {upcomingEvents.map((event, index) => {
+            {upcomingEvents.map((event, _index) => {
               const dayInfo = getDayInfo(event.startTime);
               const eventDate = new Date(event.startTime);
               const participantCount = event.participants?.length || 0;

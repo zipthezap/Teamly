@@ -33,8 +33,8 @@ import {
 } from '@mui/icons-material';
 import { tournamentAPI } from '../services/tournamentAPI';
 import { Tournament, TournamentStatus } from '../../../shared/types';
-import { TabPanel } from '../components/common';
 import { getTournamentStatusColor } from '../utils/statusHelpers';
+import { getErrorMessage } from '../utils/errorHandler';
 
 interface TournamentWithCount extends Tournament {
   _count?: {
@@ -68,10 +68,7 @@ const TournamentsList: React.FC = () => {
       const data = await tournamentAPI.getTournaments();
       setTournaments(data);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error && 'response' in err 
-        ? ((err as any).response?.data?.error || 'Failed to load tournaments')
-        : 'Failed to load tournaments';
-      setError(errorMessage);
+      setError(getErrorMessage(err) || 'Failed to load tournaments');
     } finally {
       setLoading(false);
     }

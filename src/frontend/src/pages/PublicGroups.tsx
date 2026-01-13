@@ -9,15 +9,13 @@ import {
   Avatar,
   Typography,
   Box,
-  Grid
 } from '@mui/material';
 import GroupIcon from '@mui/icons-material/Group';
-import { useAuth } from '../contexts/AuthContext';
-import { getInitials } from '../utils/imageUtils';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import { GoogleMap, LoadScript, Autocomplete, Circle } from '@react-google-maps/api';
 import { groupsAPI } from '../services/api';
+import { getErrorMessage } from '../utils/errorHandler';
 import { useTranslation } from 'react-i18next';
 import { getImageUrl } from '../utils/imageUtils';
 import { GroupWithDetails } from '../types/group';
@@ -70,7 +68,6 @@ const mapContainerStyle = {
 const PublicGroups = () => {
   // Store marker instances so we can clean them up
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
-  const { user } = useAuth();
   const [groups, setGroups] = useState<PublicGroup[]>([]);
   const [filteredGroups, setFilteredGroups] = useState<PublicGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -378,9 +375,7 @@ const PublicGroups = () => {
       });
       fetchPublicGroups();
     } catch (error: unknown) {
-      const message = error instanceof Error && 'response' in error 
-        ? ((error as any).response?.data?.error || t('groups.publicGroups.failedToSendJoinRequest'))
-        : t('groups.publicGroups.failedToSendJoinRequest');
+      const message = getErrorMessage(error) || t('groups.publicGroups.failedToSendJoinRequest');
       setSnackbar({
         open: true,
         message,
@@ -542,9 +537,9 @@ const PublicGroups = () => {
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
             {filteredGroups.map((group) => {
               const memberCount = group._count?.members ?? group.memberCount ?? group.members?.length ?? 0;
-              const eventCount = group._count?.events ?? group.eventCount ?? group.events?.length ?? 0;
+              const _eventCount = group._count?.events ?? group.eventCount ?? group.events?.length ?? 0;
               // Don't show member avatars in public groups page since user hasn't joined
-              const recentMembers = [];
+              const _recentMembers = [];
               return (
                 <Card key={group.id} sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'all 0.3s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 } }}>
                   <CardContent sx={{ flexGrow: 1, p: 3 }}>

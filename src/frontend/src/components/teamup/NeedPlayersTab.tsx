@@ -149,7 +149,7 @@ const NeedPlayersTab = () => {
       }
       handleCloseDialog();
       fetchMyRequests();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error submitting request:', err);
       setError(
         editingRequest
@@ -178,11 +178,15 @@ const NeedPlayersTab = () => {
     try {
       // Validate status before sending
       const validStatuses = ['open', 'filled', 'cancelled', 'expired'] as const;
-      if (!validStatuses.includes(newStatus as any)) {
+      type ValidStatus = typeof validStatuses[number];
+      const isValidStatus = (status: string): status is ValidStatus => {
+        return validStatuses.includes(status as ValidStatus);
+      };
+      if (!isValidStatus(newStatus)) {
         setError('Invalid status');
         return;
       }
-      await teamUpAPI.update(id, { status: newStatus as 'open' | 'filled' | 'cancelled' | 'expired' });
+      await teamUpAPI.update(id, { status: newStatus });
       setSuccess(t('teamup.statusUpdateSuccess'));
       fetchMyRequests();
     } catch (err) {

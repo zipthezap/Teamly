@@ -28,6 +28,7 @@ import { TabPanel } from '../common';
 import { RequestDetailsTab } from './detail/RequestDetailsTab';
 import { ResponsesList } from './detail/ResponsesList';
 import { CommentsList } from './detail/CommentsList';
+import { getErrorMessage } from '../../utils/errorHandler';
 import { ResponseForm } from './detail/ResponseForm';
 
 interface TeamUpDetailModalProps {
@@ -81,9 +82,9 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
       setComments([...comments, response.data]);
       setNewComment('');
       setSuccess(t('teamup.commentAdded'));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error adding comment:', err);
-      setError(err.response?.data?.error || t('teamup.commentError'));
+      setError(getErrorMessage(err) || t('teamup.commentError'));
     } finally {
       setSubmittingComment(false);
     }
@@ -96,9 +97,9 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
       await teamUpAPI.deleteComment(requestId, commentId);
       setComments(comments.filter(c => c.id !== commentId));
       setSuccess(t('teamup.commentDeleted'));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deleting comment:', err);
-      setError(err.response?.data?.error || t('teamup.commentDeleteError'));
+      setError(getErrorMessage(err) || t('teamup.commentDeleteError'));
     }
   };
 
@@ -112,9 +113,9 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
       setResponseMessage('');
       fetchRequestDetails();
       if (onUpdate) onUpdate();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error responding:', err);
-      setError(err.response?.data?.error || t('teamup.respondError'));
+      setError(getErrorMessage(err) || t('teamup.respondError'));
     } finally {
       setSubmittingResponse(false);
     }
@@ -131,7 +132,7 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
       );
       fetchRequestDetails();
       if (onUpdate) onUpdate();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error handling response:', err);
       setError(
         action === 'accept'

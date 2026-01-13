@@ -123,7 +123,7 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
         >
           <Stack spacing={0.5}>
             {recentActivity.length > 0 ? (
-              recentActivity.map((notif: any, idx: number) => (
+              recentActivity.map((notif: EventNotification, idx: number) => (
                 <Box
                   key={notif.id || idx}
                   sx={{
@@ -155,7 +155,7 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
                 </Box>
               ))
             ) : recentParticipants.length > 0 ? (
-              recentParticipants.map((p: any, idx: number) => (
+              recentParticipants.map((p: EventParticipant, idx: number) => (
                 <Box
                   key={p.id || idx}
                   sx={{

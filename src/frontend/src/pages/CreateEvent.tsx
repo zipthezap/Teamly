@@ -18,7 +18,7 @@ const CreateEvent = () => {
       try {
         const response = await groupsAPI.getAll();
         setGroups(response.data);
-      } catch (error) {
+      } catch (_error) {
         setError('Error fetching groups');
       }
     };

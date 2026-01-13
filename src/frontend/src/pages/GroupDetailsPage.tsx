@@ -3,7 +3,7 @@ import AdminTransferDialog from "../components/GroupDetails/AdminTransferDialog"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
 import GroupSettingsModal from "../components/common/GroupSettingsModal";
 import { useAuth } from "../contexts/AuthContext";
 import GroupHeader from "../components/GroupDetails/GroupHeader";
@@ -16,6 +16,7 @@ import { GroupWithDetails, GroupMember, ChatMessage } from "../types/group";
 import { groupsAPI, eventsAPI, groupChatAPI } from "../services/api";
 import { EventWithDetails, UpdateGroupData } from "../../../shared/types";
 import { AxiosError } from "axios";
+import { getErrorMessage } from "../utils/errorHandler";
 
 // Simple toast system
 function Toast({ message, type, onClose }: { message: string; type: "success" | "error"; onClose: () => void }) {
@@ -59,7 +60,7 @@ export default function GroupDetailsPage() {
   });
 
   // Fetch events for this group
-  const { data: events, isLoading: eventsLoading, error: eventsError, refetch: refetchEvents } = useQuery({
+  const { data: events, isLoading: eventsLoading, refetch: refetchEvents } = useQuery({
     queryKey: ["groupEvents", groupId],
     queryFn: async () => {
       const res = await eventsAPI.getAll({ groupId });
@@ -70,7 +71,7 @@ export default function GroupDetailsPage() {
   });
 
   // Fetch chat messages for this group
-  const { data: chatMessages, isLoading: chatLoading, error: chatError, refetch: refetchChat } = useQuery({
+  const { data: chatMessages, isLoading: chatLoading } = useQuery({
     queryKey: ["groupChat", groupId],
     queryFn: async () => {
       const res = await groupChatAPI.getMessages(groupId!);
@@ -279,8 +280,8 @@ export default function GroupDetailsPage() {
         navigate('/groups');
       }, 1000);
     },
-    onError: (err: any) => {
-      setToast({ message: err?.response?.data?.error || t('groupDetails.failedToDelete'), type: "error" });
+    onError: (err: unknown) => {
+      setToast({ message: getErrorMessage(err) || t('groupDetails.failedToDelete'), type: "error" });
     },
   });
 
@@ -304,8 +305,8 @@ export default function GroupDetailsPage() {
         navigate('/groups');
       }, 1000);
     },
-    onError: (err: any) => {
-      setToast({ message: err?.response?.data?.error || t('groupDetails.failedToLeave'), type: "error" });
+    onError: (err: unknown) => {
+      setToast({ message: getErrorMessage(err) || t('groupDetails.failedToLeave'), type: "error" });
     },
   });
 

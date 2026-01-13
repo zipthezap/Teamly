@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { getErrorMessage, getUserFriendlyMessage, logError } from '../utils/errorHandler';
+import { getUserFriendlyMessage, logError } from '../utils/errorHandler';
 
 interface UseErrorHandlerOptions {
   showToast?: (message: string) => void;
