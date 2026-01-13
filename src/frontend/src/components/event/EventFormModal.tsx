@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
 import { eventsAPI } from '../../services/api';
 import EventForm, { EventFormData } from '../common/EventForm';
-import { SportType } from '../../../../shared/types/event.types';
+import { SportType, EventWithDetails } from '../../../../shared/types/event.types';
 
 interface EventFormModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess?: () => void;
-  initialData?: any;
+  initialData?: Partial<EventWithDetails>;
   groups?: Array<{ id: string; name: string }>;
   groupId?: string | number;
   submitLabel?: string;
@@ -126,8 +126,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({
       if (onSuccess) {
         onSuccess();
       }
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to save event');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || 'Failed to save event');
       setLoading(false);
     }
   };

@@ -67,7 +67,7 @@ const TournamentsList: React.FC = () => {
       setLoading(true);
       const data = await tournamentAPI.getTournaments();
       setTournaments(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.response?.data?.error || 'Failed to load tournaments');
     } finally {
       setLoading(false);

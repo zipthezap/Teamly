@@ -96,6 +96,9 @@ export interface Event {
 
   creatorId: string;
   groupId: string;
+  
+  // Legacy alias for startTime
+  date?: Date | string;
 }
 
 export interface EventWithDetails extends Event {
@@ -103,6 +106,7 @@ export interface EventWithDetails extends Event {
   group?: Group;
   participants?: EventParticipant[];
   guestParticipants?: GuestParticipant[];
+  eventAttendances?: EventAttendance[];
   _count?: {
     participants: number;
     guestParticipants: number;

@@ -12,6 +12,7 @@ export interface Group {
   createdAt: Date | string;
   updatedAt: Date | string;
   isPublic: boolean;
+  privacy?: 'public' | 'private'; // Derived from isPublic for backwards compatibility
   latitude?: number | null;
   longitude?: number | null;
   locationName?: string | null;
@@ -39,6 +40,11 @@ export interface GroupMember {
   userId: string;
   groupId: string;
   user?: PublicUser;
+  // Legacy inline fields (when user object not populated)
+  name?: string;
+  email?: string;
+  profilePicture?: string;
+  online?: boolean;
 }
 
 // Group Join Request
@@ -60,6 +66,10 @@ export interface GroupMessage {
   userId: string;
   groupId: string;
   user?: PublicUser;
+  // Legacy fields for backwards compatibility
+  sender?: string;
+  time?: string;
+  text?: string;
 }
 
 // Create Group data

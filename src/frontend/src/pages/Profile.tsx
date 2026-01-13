@@ -147,7 +147,7 @@ const Profile = () => {
 
     try {
       // If user doesn't have a password (OAuth-only), don't require current password
-      const payload: any = {
+      const payload: { newPassword: string; currentPassword?: string } = {
         newPassword: passwordData.newPassword,
       };
       

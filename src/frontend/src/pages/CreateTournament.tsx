@@ -118,7 +118,7 @@ const CreateTournament: React.FC = () => {
 
       const tournament = await tournamentAPI.createTournament(dto);
       navigate(`/tournaments/${tournament.id}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.response?.data?.error || 'Failed to create tournament');
     } finally {
       setLoading(false);

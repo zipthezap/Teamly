@@ -248,7 +248,7 @@ const EventDetails = () => {
           <div className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3 mb-4">
             <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center text-lg font-bold flex-shrink-0 overflow-hidden">
               {(() => {
-                const currentPic = event.creator?.profilePictures?.find((p: any) => p.isCurrent && !p.deletedAt);
+                const currentPic = event.creator?.profilePictures?.find((p) => p.isCurrent && !p.deletedAt);
                 const url = getImageUrl(currentPic?.url || event.creator?.profilePicture);
                 return url ? (
                   <img src={url} alt={event.creator?.name} className="w-full h-full object-cover" />
@@ -384,7 +384,7 @@ const EventDetails = () => {
                       <div className="flex items-start gap-2">
                         <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden">
                           {(() => {
-                            const currentPic = n.user?.profilePictures?.find((p: any) => p.isCurrent && !p.deletedAt);
+                            const currentPic = n.user?.profilePictures?.find((p) => p.isCurrent && !p.deletedAt);
                             const url = getImageUrl(currentPic?.url || n.user?.profilePicture);
                             return url ? (
                               <img src={url} alt={n.user?.name} className="w-full h-full object-cover" />
@@ -416,7 +416,7 @@ const EventDetails = () => {
             <div key={p.id || idx} className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3">
               <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden">
                 {(() => {
-                  const currentPic = p.user?.profilePictures?.find((pic: any) => pic.isCurrent && !pic.deletedAt);
+                  const currentPic = p.user?.profilePictures?.find((pic) => pic.isCurrent && !pic.deletedAt);
                   const url = getImageUrl(currentPic?.url || p.user?.profilePicture);
                   return url ? (
                     <img src={url} alt={p.user?.name} className="w-full h-full object-cover" />

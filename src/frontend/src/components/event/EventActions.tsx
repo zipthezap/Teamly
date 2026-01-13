@@ -9,9 +9,10 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { EventWithDetails } from '../../../../shared/types';
 
 interface EventActionsProps {
-  event: any;
+  event: EventWithDetails;
   isParticipant: boolean;
   isCreator: boolean;
   isFull: boolean;
@@ -72,7 +73,7 @@ const EventActions: React.FC<EventActionsProps> = ({
               fullWidth
               size="medium"
               onClick={() => onUpdateStatus('confirmed')}
-              disabled={event.participants?.find((p: any) => p.userId === user?.id)?.status === 'confirmed'}
+              disabled={event.participants?.find((p) => p.userId === user?.id)?.status === 'confirmed'}
             >
               Confirm Attendance
             </Button>
@@ -83,12 +84,12 @@ const EventActions: React.FC<EventActionsProps> = ({
               fullWidth
               size="medium"
               onClick={() => onUpdateStatus('declined')}
-              disabled={event.participants?.find((p: any) => p.userId === user?.id)?.status === 'declined'}
+              disabled={event.participants?.find((p) => p.userId === user?.id)?.status === 'declined'}
             >
               Decline
             </Button>
 
-            {event.eventAttendances?.find((a: any) => a.userId === user?.id && a.status === 'late') ? (
+            {event.eventAttendances?.find((a) => a.userId === user?.id && a.status === 'late') ? (
               <Button
                 variant="outlined"
                 color="info"

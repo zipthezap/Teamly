@@ -307,7 +307,7 @@ const GroupsList = () => {
                       <AvatarGroup max={4} sx={{ justifyContent: 'flex-start' }}>
                         {recentMembers.map((member, idx) => {
                           // Prefer current profile picture from history if available
-                          const currentPic = member.user?.profilePictures?.find((p: any) => p.isCurrent && !p.deletedAt);
+                          const currentPic = member.user?.profilePictures?.find((p) => p.isCurrent && !p.deletedAt);
                           const profilePictureUrl = getImageUrl(currentPic?.url || member.user?.profilePicture);
                           return (
                             <Avatar 

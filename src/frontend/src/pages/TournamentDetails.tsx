@@ -49,6 +49,7 @@ import ManualBracketManager from '../components/ManualBracketManager';
 import PoolManager from '../components/PoolManager';
 import { TabPanel } from '../components/common';
 import { getTournamentStatusColor } from '../utils/statusHelpers';
+import { getErrorMessage } from '../utils/errorHandler';
 
 const TournamentDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -81,8 +82,8 @@ const TournamentDetails: React.FC = () => {
       setLoading(true);
       const data = await tournamentAPI.getTournament(id);
       setTournament(data);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to load tournament');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -96,8 +97,8 @@ const TournamentDetails: React.FC = () => {
       setAddTeamOpen(false);
       setNewTeam({ name: '', captainName: '', captainEmail: '' });
       loadTournament();
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to add team');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err));
     }
   };
 
@@ -111,8 +112,8 @@ const TournamentDetails: React.FC = () => {
     try {
       await tournamentAPI.generateBrackets(id);
       loadTournament();
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to generate brackets');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err));
     }
   };
 
@@ -133,8 +134,8 @@ const TournamentDetails: React.FC = () => {
       setScoreDialogOpen(false);
       setSelectedMatch(null);
       loadTournament();
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to submit score');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err));
     }
   };
 
@@ -200,8 +201,8 @@ const TournamentDetails: React.FC = () => {
                           useManualBrackets: e.target.checked
                         });
                         loadTournament();
-                      } catch (err: any) {
-                        alert(err.response?.data?.error || 'Failed to update tournament');
+                      } catch (err: unknown) {
+                        alert(getErrorMessage(err));
                       }
                     }}
                   />
@@ -704,7 +705,7 @@ const TournamentDetails: React.FC = () => {
               <Grid container spacing={2} alignItems="center">
                 <Grid item xs={5}>
                   <Typography variant="h6" align="center">
-                    {(selectedMatch as any).homeTeam?.name}
+                    {selectedMatch.homeTeam?.name || 'Home Team'}
                   </Typography>
                   <TextField
                     fullWidth
@@ -723,7 +724,7 @@ const TournamentDetails: React.FC = () => {
                 </Grid>
                 <Grid item xs={5}>
                   <Typography variant="h6" align="center">
-                    {(selectedMatch as any).awayTeam?.name}
+                    {selectedMatch.awayTeam?.name || 'Away Team'}
                   </Typography>
                   <TextField
                     fullWidth

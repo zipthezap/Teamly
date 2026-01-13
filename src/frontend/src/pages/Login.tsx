@@ -35,13 +35,13 @@ const Login = () => {
     window.location.href = `${apiUrl}/auth/${provider}`;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      const credentials = { email, password };
+      const credentials: { email: string; password: string; twoFactorToken?: string } = { email, password };
       if (requires2FA && twoFactorToken) {
         credentials.twoFactorToken = twoFactorToken;
       }
@@ -49,16 +49,17 @@ const Login = () => {
       const result = await login(credentials);
       
       // Check if 2FA is required
-      if (result && result.requires2FA) {
+      if (result && (result as { requires2FA?: boolean }).requires2FA) {
         setRequires2FA(true);
         setError('');
       } else {
         // Navigate to returnTo location if provided, otherwise dashboard
-        const returnTo = location.state?.returnTo || '/dashboard';
+        const returnTo = (location.state as { returnTo?: string })?.returnTo || '/dashboard';
         navigate(returnTo);
       }
-    } catch (err) {
-      setError(err.response?.data?.error || t('auth.loginFailed'));
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || t('auth.loginFailed'));
     } finally {
       setLoading(false);
     }
