@@ -6,6 +6,7 @@ import authMiddleware from '../middleware/auth';
 import { authenticatedLimiter } from '../middleware/rateLimiter';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { cacheControl, noCache } from '../middleware/cacheControl';
+import { etagMiddleware } from '../middleware/etag';
 
 const router = Router();
 
@@ -18,18 +19,18 @@ router.use(authMiddleware);
 router.use(authenticatedLimiter);
 
 router.post('/', noCache, asyncHandler(eventController.createEvent));
-// Cache event list for 60 seconds - short cache for frequently changing data
-router.get('/', cacheControl(60, { private: true, staleWhileRevalidate: 30 }), asyncHandler(eventController.getEvents));
+// Add ETag support with cache control for read endpoints
+router.get('/', etagMiddleware({ weak: true }), cacheControl(60, { private: true, staleWhileRevalidate: 30 }), asyncHandler(eventController.getEvents));
 router.get('/export', noCache, asyncHandler(eventController.exportEvents));
 // Cache nearby events for 5 minutes since location-based queries are expensive
-router.get('/nearby', cacheControl(300, { private: true, staleWhileRevalidate: 60 }), asyncHandler(eventController.getNearbyEvents));
+router.get('/nearby', etagMiddleware({ weak: true }), cacheControl(300, { private: true, staleWhileRevalidate: 60 }), asyncHandler(eventController.getNearbyEvents));
 // Cache statistics for 5 minutes
-router.get('/statistics', cacheControl(300, { private: true, staleWhileRevalidate: 60 }), asyncHandler(eventController.getUserStatistics));
+router.get('/statistics', etagMiddleware({ weak: true }), cacheControl(300, { private: true, staleWhileRevalidate: 60 }), asyncHandler(eventController.getUserStatistics));
 // Cache individual event details for 2 minutes
-router.get('/:id', cacheControl(120, { private: true, staleWhileRevalidate: 30 }), asyncHandler(eventController.getEvent));
-router.get('/:id/participants', cacheControl(60, { private: true }), asyncHandler(eventController.getEventParticipantsByStatus));
-router.get('/:id/guests', cacheControl(60, { private: true }), asyncHandler(eventController.getGuestParticipants));
-router.get('/:id/activity', cacheControl(60, { private: true }), asyncHandler(eventController.getEventActivityFeed));
+router.get('/:id', etagMiddleware({ weak: true }), cacheControl(120, { private: true, staleWhileRevalidate: 30 }), asyncHandler(eventController.getEvent));
+router.get('/:id/participants', etagMiddleware({ weak: true }), cacheControl(60, { private: true }), asyncHandler(eventController.getEventParticipantsByStatus));
+router.get('/:id/guests', etagMiddleware({ weak: true }), cacheControl(60, { private: true }), asyncHandler(eventController.getGuestParticipants));
+router.get('/:id/activity', etagMiddleware({ weak: true }), cacheControl(60, { private: true }), asyncHandler(eventController.getEventActivityFeed));
 router.post('/:id/generate-invite', noCache, asyncHandler(eventController.generateInviteToken));
 router.put('/:id', noCache, asyncHandler(eventController.updateEvent));
 router.delete('/:id', noCache, asyncHandler(eventController.deleteEvent));

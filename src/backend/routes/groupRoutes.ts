@@ -4,6 +4,7 @@ import authMiddleware, { optionalAuthMiddleware } from '../middleware/auth';
 import { distributedAuthenticatedLimiter, distributedUploadLimiter } from '../middleware/distributedRateLimiter';
 import { uploadGroupPicture } from '../middleware/upload';
 import { asyncHandler } from '../middleware/asyncHandler';
+import { etagMiddleware, privateCache } from '../middleware/etag';
 
 const router = Router();
 
@@ -17,9 +18,10 @@ router.use(authMiddleware);
 router.use(distributedAuthenticatedLimiter);
 
 router.post('/', asyncHandler(groupController.createGroup));
-router.get('/', asyncHandler(groupController.getGroups));
+// Add ETag and cache control for frequently accessed read endpoints
+router.get('/', etagMiddleware({ weak: true }), privateCache(60), asyncHandler(groupController.getGroups));
 router.get('/nearby', asyncHandler(groupController.getNearbyGroups));
-router.get('/:id', asyncHandler(groupController.getGroup));
+router.get('/:id', etagMiddleware({ weak: true }), privateCache(30), asyncHandler(groupController.getGroup));
 
 // Delete group (admin only)
 router.delete('/:id', asyncHandler(groupController.deleteGroup));
