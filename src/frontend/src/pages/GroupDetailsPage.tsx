@@ -461,8 +461,6 @@ export default function GroupDetailsPage() {
           events={eventsArray}
           onEventClick={handleEventClick}
           onCreate={isMember ? () => { setEditEvent(undefined); setEventModalOpen(true); } : undefined}
-          onEdit={isAdmin ? (event) => { setEditEvent(event); setEventModalOpen(true); } : undefined}
-          onDelete={isAdmin ? (event) => deleteEventMutation.mutate(Number(event.id)) : undefined}
           isAdmin={isAdmin}
           groupId={groupId}
           isMember={isMember}
