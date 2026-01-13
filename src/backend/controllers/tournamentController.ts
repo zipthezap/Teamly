@@ -10,7 +10,7 @@ import {
 } from '../../shared/types/tournament.types';
 import * as locationService from '../services/locationService';
 import { asyncHandler } from '../middleware/asyncHandler';
-import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors';
+import { BadRequestError, ForbiddenError } from '../utils/errors';
 import { isRequired } from '../utils/validation';
 import { ensureResourceExists } from '../utils/controllerHelpers';
 
@@ -446,38 +446,37 @@ export const addTeam = asyncHandler(async (req: Request, res: Response) => {
     throw new BadRequestError('Tournament has reached maximum number of teams');
   }
 
-  try {
-    const team = await prisma.tournamentTeam.create({
-      data: {
-        name,
-        captainName,
-        captainEmail,
-        captainUserId: captainUserId || undefined,
-        tournamentId: id,
-        poolNumber: poolNumber || undefined,
-        poolName: poolName || undefined,
-        seedNumber: seedNumber || undefined
-      },
-      include: {
-        captainUser: {
-          select: { id: true, name: true, email: true }
-        }
-      }
-    });
-
-    logger.info('Team added to tournament', 'TournamentController', {
+  const team = await prisma.tournamentTeam.create({
+    data: {
+      name,
+      captainName,
+      captainEmail,
+      captainUserId: captainUserId || undefined,
       tournamentId: id,
-      teamId: team.id,
-      userId
-    });
-
-    res.status(201).json(team);
-  } catch (error: any) {
+      poolNumber: poolNumber || undefined,
+      poolName: poolName || undefined,
+      seedNumber: seedNumber || undefined
+    },
+    include: {
+      captainUser: {
+        select: { id: true, name: true, email: true }
+      }
+    }
+  }).catch((error: any) => {
+    // Handle unique constraint violation
     if (error.code === 'P2002') {
       throw new BadRequestError('A team with this name already exists in the tournament');
     }
     throw error;
-  }
+  });
+
+  logger.info('Team added to tournament', 'TournamentController', {
+    tournamentId: id,
+    teamId: team.id,
+    userId
+  });
+
+  res.status(201).json(team);
 });
 
 /**
