@@ -294,6 +294,11 @@ This project follows best practices for code quality and maintainability:
 
 - **Structured Logging**: Uses a custom logger utility (`src/backend/utils/logger.ts`) for consistent, timestamped logging with different levels (ERROR, WARN, INFO, DEBUG)
 - **Type Safety**: TypeScript with enabled compiler checks for unused locals/parameters and consistent casing
+- **ESLint**: Comprehensive linting setup for both backend and frontend code
+  - Backend: TypeScript ESLint rules for Node.js
+  - Frontend: TypeScript + React ESLint rules with hooks validation
+  - Run `npm run lint` in root for backend, or in `src/frontend` for frontend
+  - Run `npm run lint:fix` to automatically fix fixable issues
 - **Input Validation**: Validation utilities in `src/backend/utils/validation.ts` for consistent data validation
 - **Environment Validation**: Automatic validation of required environment variables on startup
 - **Backend Improvements**: 

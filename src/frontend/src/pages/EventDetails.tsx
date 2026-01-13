@@ -22,14 +22,10 @@ const EventDetails = () => {
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
   const [copySuccess, setCopySuccess] = useState('');
 
-  // Guard for missing ID
-  if (!id) {
-    return <div className="p-4 text-red-600">{t('eventDetails.invalidEventId')}</div>;
-  }
-
   const fetchEvent = useCallback(async () => {
+    if (!id) return;
     try {
-      const response = await eventsAPI.getById(id!);
+      const response = await eventsAPI.getById(id);
       setEvent(response.data);
     } catch (error) {
       console.error('Error fetching event:', error);
@@ -42,6 +38,11 @@ const EventDetails = () => {
   useEffect(() => {
     fetchEvent();
   }, [fetchEvent]);
+
+  // Guard for missing ID
+  if (!id) {
+    return <div className="p-4 text-red-600">{t('eventDetails.invalidEventId')}</div>;
+  }
 
   const handleJoin = async () => {
     setError('');
