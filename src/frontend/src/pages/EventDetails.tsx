@@ -336,7 +336,7 @@ const EventDetails = () => {
             
             {/* Invite Link Section - Only for creator */}
             <InviteLinkCard
-              inviteToken={event.inviteToken}
+              inviteToken={event.inviteToken ?? null}
               eventTitle={event.title}
               eventDate={new Date(event.startTime).toLocaleDateString('en-US', { 
                 weekday: 'short', 
@@ -363,7 +363,7 @@ const EventDetails = () => {
                   </div>
                 </div>
               ) : (
-                event.eventNotifications.map((n, idx) => {
+                event.eventNotifications && event.eventNotifications.map((n, idx) => {
                   let action = '';
                   switch (n.type) {
                     case 'join':
