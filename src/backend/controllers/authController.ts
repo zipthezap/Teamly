@@ -247,7 +247,7 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
   try {
     // Include authProvider and OAuth status in profile response
     const user = await prisma.user.findUnique({
-      where: { id: req.user!!.id },
+      where: { id: req.user!.id },
       select: {
         id: true,
         email: true,
@@ -309,7 +309,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     }
 
     const updatedUser = await prisma.user.update({
-      where: { id: req.user!!.id },
+      where: { id: req.user!.id },
       data: { 
         name, 
         email,
@@ -363,7 +363,7 @@ export const updatePassword = async (req: Request, res: Response): Promise<void>
 
     // Get user with password
     const user = await prisma.user.findUnique({
-      where: { id: req.user!!.id },
+      where: { id: req.user!.id },
       select: { id: true, password: true, authProvider: true }
     });
 
@@ -395,14 +395,14 @@ export const updatePassword = async (req: Request, res: Response): Promise<void>
     // This preserves the information about how the user originally signed up
     // The user can now authenticate with either OAuth or password
     await prisma.user.update({
-      where: { id: req.user!!.id },
+      where: { id: req.user!.id },
       data: { password: hashedPassword }
     });
 
     // Revoke all existing tokens for security (except current one for convenience)
-    await revokeAllUserTokens(req.user!!.id, 'password_change');
+    await revokeAllUserTokens(req.user!.id, 'password_change');
 
-    logger.info('Password changed', 'AuthController', { userId: req.user!!.id });
+    logger.info('Password changed', 'AuthController', { userId: req.user!.id });
     res.json({ message: 'Password updated successfully. You have been logged out from other devices for security.' });
   } catch (error) {
     logger.error('Failed to update password', 'AuthController', { error });

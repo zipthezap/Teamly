@@ -562,7 +562,7 @@ export const updateMemberRole = async (req: Request, res: Response) => {
 // Get all public groups (for discovery)
 export const getPublicGroups = async (req: Request, res: Response) => {
   try {
-    const userId = req.user!?.id;
+    const userId = req.user!.id;
     
     // Build where clause to exclude groups user is already a member of
     const whereClause: any = {
