@@ -107,6 +107,13 @@ export interface EventWithDetails extends Event {
   participants?: EventParticipant[];
   guestParticipants?: GuestParticipant[];
   eventAttendances?: EventAttendance[];
+  eventNotifications?: Array<{
+    id: string;
+    type: string;
+    userId: string;
+    user?: PublicUser;
+    createdAt: Date | string;
+  }>;
   _count?: {
     participants: number;
     guestParticipants: number;

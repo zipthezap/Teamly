@@ -23,11 +23,11 @@ import GroupIcon from '@mui/icons-material/Group';
 import EventIcon from '@mui/icons-material/Event';
 import { useAuth } from '../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../utils/imageUtils';
-import { Event, GroupWithDetails, EventParticipant } from '../../../shared/types';
+import { EventWithDetails, GroupWithDetails, EventParticipant } from '../../../shared/types';
 
 const Dashboard = () => {
   const [groups, setGroups] = useState<GroupWithDetails[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<EventWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { user } = useAuth();
