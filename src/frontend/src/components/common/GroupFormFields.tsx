@@ -1,5 +1,5 @@
 import React from "react";
-import { TextField, FormControlLabel, Checkbox, Box } from "@mui/material";
+import { TextField, FormControlLabel, Checkbox } from "@mui/material";
 
 export interface GroupFormFieldsProps {
   name: string;

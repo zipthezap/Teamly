@@ -3,10 +3,6 @@ import { useTranslation } from 'react-i18next';
 // Removed all MUI imports; using Tailwind and SVGs
 import { 
   GridIcon, 
-  UsersIcon, 
-  CalendarIcon, 
-  GlobeIcon, 
-  UserIcon,
   ChevronDownIcon,
   ChevronUpIcon
 } from '../icons';

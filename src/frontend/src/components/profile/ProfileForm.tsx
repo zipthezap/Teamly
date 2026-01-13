@@ -7,7 +7,6 @@ import {
   TextField,
   Button,
   Grid,
-  Stack,
 } from '@mui/material';
 import ImageUpload from '../ImageUpload';
 

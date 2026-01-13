@@ -7,12 +7,10 @@ import {
   Alert,
   Chip,
   Grid,
-  Avatar,
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { teamUpAPI } from '../../services/api';
 import { LoadingSpinner } from '../common';
-import { getImageUrl, getInitials } from '../../utils/imageUtils';
 import { TeamUpResponse } from '../../types/teamup';
 import { getTeamUpStatusColor } from '../../utils/statusHelpers';
 

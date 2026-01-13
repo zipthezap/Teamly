@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent } from '@mui/material';
 import { eventsAPI } from '../../services/api';
 import EventForm, { EventFormData } from '../common/EventForm';
 import { SportType, EventWithDetails } from '../../../../shared/types/event.types';

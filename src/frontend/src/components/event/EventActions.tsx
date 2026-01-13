@@ -3,10 +3,7 @@ import {
   Box,
   Button,
   Stack,
-  IconButton,
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { EventWithDetails } from '../../../../shared/types';
@@ -32,12 +29,10 @@ const EventActions: React.FC<EventActionsProps> = ({
   onJoin,
   onLeave,
   onUpdateStatus,
-  onDelete,
   onMarkLate,
   onUnmarkLate,
 }) => {
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   return (
     <Box>

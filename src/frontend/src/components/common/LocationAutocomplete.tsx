@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { TextField, Box } from '@mui/material';
+import { TextField } from '@mui/material';
 import { Autocomplete, LoadScript } from '@react-google-maps/api';
 import { useTranslation } from 'react-i18next';
 
