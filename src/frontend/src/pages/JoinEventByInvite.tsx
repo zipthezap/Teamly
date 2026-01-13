@@ -44,19 +44,12 @@ const JoinEventByInvite = () => {
   const [success, setSuccess] = useState('');
   const [guestName, setGuestName] = useState('');
 
-  // Guard for missing token
-  if (!token) {
-    return (
-      <Container maxWidth="sm" sx={{ mt: 4 }}>
-        <Alert severity="error">Invalid invite link</Alert>
-      </Container>
-    );
-  }
-
   useEffect(() => {
+    if (!token) return;
+    
     const fetchEvent = async () => {
       try {
-        const response = await eventsAPI.getByInviteToken(token!);
+        const response = await eventsAPI.getByInviteToken(token);
         setEvent(response.data);
       } catch (err: unknown) {
         const errorMessage = err instanceof AxiosError 
@@ -70,6 +63,15 @@ const JoinEventByInvite = () => {
 
     fetchEvent();
   }, [token]);
+
+  // Guard for missing token
+  if (!token) {
+    return (
+      <Container maxWidth="sm" sx={{ mt: 4 }}>
+        <Alert severity="error">Invalid invite link</Alert>
+      </Container>
+    );
+  }
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
