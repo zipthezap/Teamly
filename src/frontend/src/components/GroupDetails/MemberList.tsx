@@ -9,7 +9,7 @@ interface MemberListProps {
   onRemove?: (email: string) => void;
 }
 
-const MemberList: React.FC<MemberListProps> = ({ members, onRemove }) => {
+const MemberList: React.FC<MemberListProps> = React.memo(({ members, onRemove }) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   
@@ -75,6 +75,8 @@ const MemberList: React.FC<MemberListProps> = ({ members, onRemove }) => {
       </ul>
     </section>
   );
-};
+});
+
+MemberList.displayName = 'MemberList';
 
 export default MemberList;

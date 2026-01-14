@@ -21,7 +21,7 @@ interface GroupHeaderProps {
 }
 
 const DEFAULT_COVER = "/default-group-cover.jpg";
-const GroupHeader: React.FC<GroupHeaderProps> = ({ 
+const GroupHeader: React.FC<GroupHeaderProps> = React.memo(({ 
   group, 
   onEdit, 
   onDelete, 
@@ -83,6 +83,8 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
       </div>
     </div>
   );
-};
+});
+
+GroupHeader.displayName = 'GroupHeader';
 
 export default GroupHeader;

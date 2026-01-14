@@ -20,7 +20,7 @@ const formatTime = (timeString: string) => {
   }
 };
 
-const ChatBox: React.FC<ChatBoxProps> = ({ chat, message, setMessage, onSend, isTyping }) => {
+const ChatBox: React.FC<ChatBoxProps> = React.memo(({ chat, message, setMessage, onSend, isTyping }) => {
   const { t } = useTranslation();
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   
@@ -143,6 +143,8 @@ const ChatBox: React.FC<ChatBoxProps> = ({ chat, message, setMessage, onSend, is
       </div>
     </section>
   );
-};
+});
+
+ChatBox.displayName = 'ChatBox';
 
 export default ChatBox;
