@@ -26,6 +26,7 @@ import TeamUp from './pages/TeamUp';
 import TournamentsList from './pages/TournamentsList';
 import CreateTournament from './pages/CreateTournament';
 import TournamentDetails from './pages/TournamentDetails';
+import TournamentTeamDetails from './pages/TournamentTeamDetails';
 
 function App() {
   return (
@@ -173,6 +174,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <TournamentDetails />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/tournaments/:id/teams/:teamId"
+              element={
+                <PrivateRoute>
+                  <TournamentTeamDetails />
                 </PrivateRoute>
               }
             />
