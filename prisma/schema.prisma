@@ -37,6 +37,15 @@ enum TeamUpNotificationType {
   teamup_accepted
   teamup_declined
   teamup_nearby
+  teamup_comment
+}
+
+enum TournamentNotificationType {
+  team_registered
+  tournament_updated
+  tournament_cancelled
+  match_scheduled
+  score_submitted
 }
 enum EventParticipantStatus {
   pending
@@ -138,6 +147,25 @@ model TeamUpNotification {
   @@index([userId, read]) // Composite for unread user notifications
   @@index([createdAt]) // For chronological sorting
 }
+
+model TournamentNotification {
+  id           String   @id @default(uuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  type         TournamentNotificationType
+  params       Json?    // Parameters for frontend translation (e.g., { tournamentName, teamName })
+  metadata     Json?    // Additional data for the notification
+  createdAt    DateTime @default(now())
+  read         Boolean  @default(false)
+  
+  @@index([userId]) // For user notifications queries
+  @@index([tournamentId]) // For tournament notifications
+  @@index([read]) // For unread filtering
+  @@index([userId, read]) // Composite for unread user notifications
+  @@index([createdAt]) // For chronological sorting
+}
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -208,6 +236,7 @@ model User {
   eventNotifications EventNotification[]
   groupNotifications GroupNotification[]
   teamUpNotifications TeamUpNotification[]
+  tournamentNotifications TournamentNotification[]
   groupJoinRequests GroupJoinRequest[]
   createdEventRequests EventRequest[]   @relation("EventRequestCreator")
   eventVotes        EventVote[]
@@ -725,6 +754,7 @@ model Tournament {
   matches     TournamentMatch[]
   standings   TournamentStanding[]
   pools       TournamentPool[]
+  notifications TournamentNotification[]
   
   @@index([organizerId])
   @@index([groupId])
