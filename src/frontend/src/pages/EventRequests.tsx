@@ -191,11 +191,11 @@ const EventRequests = () => {
   };
 
   const isAdmin = group?.members?.some(
-    (m) => m.userId === user?.id && m.role === 'admin'
+    (m) => m.id === user?.id && m.role === 'admin'
   );
 
   const isMember = group?.members?.some(
-    (m) => m.userId === user?.id
+    (m) => m.id === user?.id
   );
 
   const getVotePercentage = (request: EventRequestWithDetails) => {
@@ -205,7 +205,7 @@ const EventRequests = () => {
   };
 
   const getUserVote = (request: EventRequestWithDetails) => {
-    return request.votes?.find((v) => v.userId === user?.id)?.vote;
+    return request.votes?.find((v) => v.id === user?.id)?.vote;
   };
 
   if (loading) {

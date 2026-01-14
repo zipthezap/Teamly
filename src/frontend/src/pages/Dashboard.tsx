@@ -339,7 +339,7 @@ const Dashboard = () => {
                 } else if (typeof group.eventCount === 'number') {
                   eventCount = group.eventCount;
                 }
-                const hasJoined = group.members?.some(m => m.userId === user?.id);
+                const hasJoined = group.members?.some(m => m.id === user?.id);
                 const recentMembers = hasJoined ? (group.members?.slice(0, 4) || []) : [];
                 return (
                   <Card key={group.id} sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'all 0.3s', background: 'rgba(51,65,85,0.98)', borderRadius: 2, boxShadow: 2, border: '1.5px solid #2d3a53', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6, borderColor: 'primary.main' } }}>

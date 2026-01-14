@@ -155,7 +155,7 @@ const EventDetails = () => {
     }
   };
 
-  const isParticipant = event?.participants?.find((p: EventParticipant) => p.userId === user?.id);
+  const isParticipant = event?.participants?.find((p: EventParticipant) => p.id === user?.id);
   const isCreator = event?.creatorId === user?.id;
   const totalParticipants = 
     ((event?.participants?.filter((p: EventParticipant) => p.status === EventParticipantStatus.confirmed).length) || 0) +

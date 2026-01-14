@@ -44,7 +44,7 @@ export const CommentsList: React.FC<CommentsListProps> = ({ comments, currentUse
                 }
               }}
               secondaryAction={
-                comment.userId === currentUserId ? (
+                comment.id === currentUserId ? (
                   <IconButton
                     edge="end"
                     aria-label="delete"

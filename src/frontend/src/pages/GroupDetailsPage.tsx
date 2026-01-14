@@ -80,22 +80,34 @@ export default function GroupDetailsPage() {
     enabled: !!groupId,
   });
 
+  // Debug logs for membership and admin logic
+  React.useEffect(() => {
+    console.log('[DEBUG] user:', user);
+    console.log('[DEBUG] group:', group);
+    if (group && group.members) {
+      console.log('[DEBUG] group.members:', group.members);
+      const admin = group.members.some((m) => m.role && user && m.userId === user.id && m.role === "admin");
+      const member = group.members.some((m) => user && m.userId === user.id);
+      console.log('[DEBUG] isAdmin:', admin);
+      console.log('[DEBUG] isMember:', member);
+    }
+  }, [user, group]);
   // Improved admin check: use AuthContext for user email
   const userEmail = user?.email || null;
 
   // Fallback: if member emails are missing, check if user is group creator
   let isAdmin = false;
-  if (group?.members?.some((m: GroupMember) => m.role && user && m.userId === user.id && m.role === "admin")) {
+  if (group?.members?.some((m: GroupMember) => m.role && user && m.id === user.id && m.role === "admin")) {
     isAdmin = true;
   } else if ((!group?.members || group.members.length === 0) && group?.creator?.email && userEmail) {
     isAdmin = group.creator.email === userEmail;
   }
 
   // Check if user is a moderator or admin (can edit but not delete)
-  const canEdit = group?.members?.some((m: GroupMember) => user && m.userId === user.id && (m.role === "admin" || m.role === "moderator"));
+  const canEdit = group?.members?.some((m: GroupMember) => user && m.id === user.id && (m.role === "admin" || m.role === "moderator"));
 
   // Check if user is a member of the group (admins are always considered members)
-  const isMember = isAdmin || group?.members?.some((m: GroupMember) => user && m.userId === user.id);
+  const isMember = isAdmin || group?.members?.some((m: GroupMember) => user && m.id === user.id);
 
   // Update group settings when group data loads
   React.useEffect(() => {
@@ -145,9 +157,9 @@ export default function GroupDetailsPage() {
   // Remove member mutation (optimistic UI)
   const removeMemberMutation = useMutation({
     mutationFn: async (email: string) => {
-      const member = group?.members?.find((m: GroupMember) => m.userId === email);
+      const member = group?.members?.find((m: GroupMember) => m.email === email);
       if (!member) throw new Error("Member not found");
-      await groupsAPI.removeMember(groupId!, member.userId);
+      await groupsAPI.removeMember(groupId!, member.id);
       return email;
     },
     onMutate: async (email) => {
@@ -158,7 +170,7 @@ export default function GroupDetailsPage() {
       if (prevGroup) {
         queryClient.setQueryData(["groupDetails", groupId], {
           ...(prevGroup as GroupWithDetails),
-          members: membersArray.filter((m: GroupMember) => m.userId !== email),
+          members: membersArray.filter((m: GroupMember) => m.email !== email),
         });
       }
       return { prevGroup };

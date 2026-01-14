@@ -67,7 +67,7 @@ const EventActions: React.FC<EventActionsProps> = ({
               fullWidth
               size="medium"
               onClick={() => onUpdateStatus('confirmed')}
-              disabled={event.participants?.find((p) => p.userId === user?.id)?.status === 'confirmed'}
+              disabled={event.participants?.find((p) => p.id === user?.id)?.status === 'confirmed'}
             >
               Confirm Attendance
             </Button>
@@ -78,12 +78,12 @@ const EventActions: React.FC<EventActionsProps> = ({
               fullWidth
               size="medium"
               onClick={() => onUpdateStatus('declined')}
-              disabled={event.participants?.find((p) => p.userId === user?.id)?.status === 'declined'}
+              disabled={event.participants?.find((p) => p.id === user?.id)?.status === 'declined'}
             >
               Decline
             </Button>
 
-            {event.eventAttendances?.find((a) => a.userId === user?.id && a.status === 'late') ? (
+            {event.eventAttendances?.find((a) => a.id === user?.id && a.status === 'late') ? (
               <Button
                 variant="outlined"
                 color="info"

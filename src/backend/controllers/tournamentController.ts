@@ -1211,7 +1211,7 @@ export const addPlayer = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  const _team = ensureResourceExists(
+  await ensureResourceExists(
     await prisma.tournamentTeam.findFirst({
       where: { id: teamId, tournamentId: id }
     }),
@@ -2043,12 +2043,12 @@ export const getTeamInvitations = async (req: Request, res: Response) => {
   const { id, teamId } = req.params;
   const userId = req.user!.id;
 
-  const _tournament = ensureResourceExists(
+  await ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
     'Tournament'
   );
 
-  const _team = ensureResourceExists(
+  await ensureResourceExists(
     await prisma.tournamentTeam.findFirst({
       where: { id: teamId, tournamentId: id }
     }),
@@ -2157,12 +2157,12 @@ export const cancelTeamInvitation = async (req: Request, res: Response) => {
   const { id, teamId, invitationId } = req.params;
   const userId = req.user!.id;
 
-  const _tournament = ensureResourceExists(
+  await ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
     'Tournament'
   );
 
-  const _team = ensureResourceExists(
+  await ensureResourceExists(
     await prisma.tournamentTeam.findFirst({
       where: { id: teamId, tournamentId: id }
     }),

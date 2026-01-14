@@ -149,7 +149,7 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
   };
 
   const isOwnRequest = request?.creator?.id === user?.id;
-  const hasResponded = request?.responses?.some((r) => r.userId === user?.id);
+  const hasResponded = request?.responses?.some((r) => r.id === user?.id);
   const acceptedResponses = request?.responses?.filter((r: TeamUpResponse) => r.status === 'accepted').length || 0;
   const pendingResponses = request?.responses?.filter((r: TeamUpResponse) => r.status === 'pending').length || 0;
   const spotsLeft = (request?.playersNeeded || 0) - acceptedResponses;

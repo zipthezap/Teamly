@@ -59,7 +59,7 @@ const GroupsList = () => {
       filtered = filtered.filter(group => !group.isPublic);
     } else if (filter === 'admin') {
       filtered = filtered.filter(group =>
-        group.members?.some(m => m.userId === user?.id && m.role === 'admin')
+        group.members?.some(m => m.id === user?.id && m.role === 'admin')
       );
     }
 
@@ -82,7 +82,7 @@ const GroupsList = () => {
   };
 
   const getUserRole = (group: GroupWithDetails) => {
-    const member = group.members?.find((m: { userId: string }) => m.userId === user?.id);
+    const member = group.members?.find((m: { id: string }) => m.id === user?.id);
     return member?.role || 'member';
   };
 
@@ -155,7 +155,7 @@ const GroupsList = () => {
           <Card sx={{ background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)' }}>
             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
               <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
-                {groups.filter(g => g.members?.some(m => m.userId === user?.id && m.role === 'admin')).length}
+                {groups.filter(g => g.members?.some(m => m.id === user?.id && m.role === 'admin')).length}
               </Typography>
               <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
                 {t('groups.admin')}
@@ -223,7 +223,7 @@ const GroupsList = () => {
             const eventCount = Array.isArray(group.events)
               ? group.events.filter(e => new Date(e.startTime) >= now).length
               : 0;
-            const hasJoined = group.members?.some(m => m.userId === user?.id);
+            const hasJoined = group.members?.some(m => m.id === user?.id);
             const recentMembers = hasJoined ? (group.members?.slice(0, 4) || []) : [];
             return (
               <Card 

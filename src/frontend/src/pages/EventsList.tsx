@@ -224,7 +224,7 @@ const EventsList = () => {
     const now = new Date();
     const eventDate = new Date(event.startTime);
     const isFull = event.maxPlayers && event.participants && event.participants.length >= event.maxPlayers;
-    const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user?.id);
+    const isJoined = event.participants?.some((p: EventParticipant) => p.id === user?.id);
     if (eventDate < now) return { label: t('common.past'), status: 'default' };
     if (isFull) return { label: t('common.full'), status: 'warning' };
     if (isJoined) return { label: t('common.joined'), status: 'success' };
@@ -258,7 +258,7 @@ const EventsList = () => {
     // Only events the user is joined in (participant or creator), upcoming only
     filteredEvents = eventsArray.filter(event => {
       const eventDate = new Date(event.startTime);
-      const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user?.id);
+      const isJoined = event.participants?.some((p: EventParticipant) => p.id === user?.id);
       const isCreator = event.creatorId === user?.id;
       return eventDate >= now && (isJoined || isCreator);
     });
@@ -267,7 +267,7 @@ const EventsList = () => {
     filteredEvents = eventsArray.filter(event => {
       const eventDate = new Date(event.startTime);
       const isUserGroup = event.group && userGroupIds.includes(event.group.id);
-      const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user?.id);
+      const isJoined = event.participants?.some((p: EventParticipant) => p.id === user?.id);
       // Show if:
       // - Upcoming
       // - (User is group member and not joined) OR (public event and not joined)
@@ -281,7 +281,7 @@ const EventsList = () => {
     // Past events where user is a participant or creator
     filteredEvents = eventsArray.filter(event => {
       const eventDate = new Date(event.startTime);
-      const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user?.id);
+      const isJoined = event.participants?.some((p: EventParticipant) => p.id === user?.id);
       const isCreator = event.creatorId === user?.id;
       return eventDate < now && (isJoined || isCreator);
     });
@@ -401,7 +401,7 @@ const EventsList = () => {
             const status = getEventStatus(event);
             const participantCount = event.participants?.length || 0;
             const spotsLeft = event.maxPlayers ? event.maxPlayers - participantCount : null;
-            const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user?.id);
+            const isJoined = event.participants?.some((p: EventParticipant) => p.id === user?.id);
             const isAdmin = event.creatorId === user?.id;
             return (
               <Card 

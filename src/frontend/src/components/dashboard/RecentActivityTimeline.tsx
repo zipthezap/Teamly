@@ -75,7 +75,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
 
     // Add group-related activities (simplified - in real scenario, we'd need group join/create timestamps)
     groups.slice(0, 3).forEach(group => {
-      const isCreator = group.members?.find((m: GroupMember) => m.userId === userId && m.role === 'admin');
+      const isCreator = group.members?.find((m: GroupMember) => m.id === userId && m.role === 'admin');
       const timestamp = typeof group.createdAt === 'string' ? group.createdAt :
                        group.createdAt ? new Date(group.createdAt).toISOString() : new Date().toISOString();
       if (isCreator) {

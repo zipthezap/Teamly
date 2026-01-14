@@ -31,6 +31,9 @@ CREATE TYPE "MatchStatus" AS ENUM ('scheduled', 'in_progress', 'completed', 'can
 -- CreateEnum
 CREATE TYPE "BracketStage" AS ENUM ('group_stage', 'round_of_32', 'round_of_16', 'quarter_finals', 'semi_finals', 'third_place', 'finals');
 
+-- CreateEnum
+CREATE TYPE "InvitationStatus" AS ENUM ('pending', 'accepted', 'declined', 'expired', 'cancelled');
+
 -- CreateTable
 CREATE TABLE "UserProfilePicture" (
     "id" TEXT NOT NULL,
@@ -466,6 +469,7 @@ CREATE TABLE "Tournament" (
     "prizesDescription" TEXT,
     "rulesDescription" TEXT,
     "contactEmail" TEXT,
+    "sportConfig" JSONB,
     "isRecurring" BOOLEAN NOT NULL DEFAULT false,
     "recurrenceRule" TEXT,
     "parentTournamentId" TEXT,
@@ -570,6 +574,24 @@ CREATE TABLE "TournamentPoolWaitlist" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "TournamentPoolWaitlist_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "TournamentTeamInvitation" (
+    "id" TEXT NOT NULL,
+    "teamId" TEXT NOT NULL,
+    "inviteeEmail" TEXT NOT NULL,
+    "inviteeName" TEXT,
+    "inviteeUserId" TEXT,
+    "inviterId" TEXT NOT NULL,
+    "inviteToken" TEXT NOT NULL,
+    "status" "InvitationStatus" NOT NULL DEFAULT 'pending',
+    "message" TEXT,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "TournamentTeamInvitation_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -953,6 +975,30 @@ CREATE INDEX "TournamentPoolWaitlist_poolId_position_idx" ON "TournamentPoolWait
 -- CreateIndex
 CREATE UNIQUE INDEX "TournamentPoolWaitlist_poolId_teamId_key" ON "TournamentPoolWaitlist"("poolId", "teamId");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "TournamentTeamInvitation_inviteToken_key" ON "TournamentTeamInvitation"("inviteToken");
+
+-- CreateIndex
+CREATE INDEX "TournamentTeamInvitation_teamId_idx" ON "TournamentTeamInvitation"("teamId");
+
+-- CreateIndex
+CREATE INDEX "TournamentTeamInvitation_inviteeEmail_idx" ON "TournamentTeamInvitation"("inviteeEmail");
+
+-- CreateIndex
+CREATE INDEX "TournamentTeamInvitation_inviteeUserId_idx" ON "TournamentTeamInvitation"("inviteeUserId");
+
+-- CreateIndex
+CREATE INDEX "TournamentTeamInvitation_inviteToken_idx" ON "TournamentTeamInvitation"("inviteToken");
+
+-- CreateIndex
+CREATE INDEX "TournamentTeamInvitation_status_idx" ON "TournamentTeamInvitation"("status");
+
+-- CreateIndex
+CREATE INDEX "TournamentTeamInvitation_expiresAt_idx" ON "TournamentTeamInvitation"("expiresAt");
+
+-- CreateIndex
+CREATE INDEX "TournamentTeamInvitation_teamId_inviteeEmail_status_idx" ON "TournamentTeamInvitation"("teamId", "inviteeEmail", "status");
+
 -- AddForeignKey
 ALTER TABLE "UserProfilePicture" ADD CONSTRAINT "UserProfilePicture_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -1129,3 +1175,12 @@ ALTER TABLE "TournamentPoolWaitlist" ADD CONSTRAINT "TournamentPoolWaitlist_pool
 
 -- AddForeignKey
 ALTER TABLE "TournamentPoolWaitlist" ADD CONSTRAINT "TournamentPoolWaitlist_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "TournamentTeam"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TournamentTeamInvitation" ADD CONSTRAINT "TournamentTeamInvitation_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "TournamentTeam"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TournamentTeamInvitation" ADD CONSTRAINT "TournamentTeamInvitation_inviteeUserId_fkey" FOREIGN KEY ("inviteeUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TournamentTeamInvitation" ADD CONSTRAINT "TournamentTeamInvitation_inviterId_fkey" FOREIGN KEY ("inviterId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

@@ -98,7 +98,7 @@ const BrowseRequestsTab = () => {
   };
 
   const hasResponded = (request: TeamUpRequestWithDetails) => {
-    return request.responses?.some((r) => r.userId === user?.id);
+    return request.responses?.some((r) => r.id === user?.id);
   };
 
   if (loading) {

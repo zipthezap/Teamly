@@ -42,7 +42,7 @@ export const useJoinRequests = (groupId: string | number | null = null): UseJoin
         
         // Find groups where user is admin
         const adminGroups = allGroups.filter((group: GroupWithDetails) => 
-          group.members?.some((m: GroupMember) => m.userId === user.id && m.role === 'admin')
+          group.members?.some((m: GroupMember) => m.id === user.id && m.role === 'admin')
         );
         
         // Fetch join requests for each admin group
