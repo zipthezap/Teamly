@@ -496,6 +496,31 @@ export const addTeam = async (req: Request, res: Response) => {
     throw error;
   });
 
+  // Create notification for tournament organizer
+  if (userId !== tournament!.organizerId) {
+    try {
+      await prisma.tournamentNotification.create({
+        data: {
+          userId: tournament!.organizerId,
+          tournamentId: id,
+          type: 'team_registered',
+          params: {
+            tournamentName: tournament!.name,
+            teamName: name,
+            captainName: captainName || 'Unknown',
+          },
+          metadata: {
+            teamId: team.id,
+            registeredBy: userId,
+          }
+        }
+      });
+    } catch (notifError) {
+      logger.error('Failed to create tournament registration notification', 'TournamentController', { error: notifError });
+      // Don't fail the team registration if notification fails
+    }
+  }
+
   logger.info('Team added to tournament', 'TournamentController', {
     tournamentId: id,
     teamId: team.id,

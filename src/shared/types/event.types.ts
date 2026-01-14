@@ -23,6 +23,7 @@ export enum TeamUpNotificationType {
   teamup_accepted = 'teamup_accepted',
   teamup_declined = 'teamup_declined',
   teamup_nearby = 'teamup_nearby',
+  teamup_comment = 'teamup_comment',
 }
 export enum EventParticipantStatus {
   pending = 'pending',
