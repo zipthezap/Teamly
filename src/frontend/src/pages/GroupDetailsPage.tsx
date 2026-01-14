@@ -435,7 +435,7 @@ export default function GroupDetailsPage() {
         group={group}
         onEdit={isAdmin ? (() => setSettingsOpen(true)) : undefined}
         onDelete={isAdmin ? handleDeleteGroup : undefined}
-        onLeave={isAdmin ? handleLeaveGroup : undefined}
+        onLeave={isMember ? handleLeaveGroup : undefined}
         onInvite={isAdmin ? handleInviteMember : undefined}
         onCopyLink={isAdmin ? handleCopyLink : undefined}
         isAdmin={isAdmin}
