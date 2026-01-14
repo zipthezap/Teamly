@@ -99,7 +99,7 @@ const TournamentTeamDetails: React.FC = () => {
     const teamScore = isHome ? match.homeScore : match.awayScore;
     const opponentScore = isHome ? match.awayScore : match.homeScore;
 
-    if (teamScore === null || opponentScore === null) return '-';
+    if (teamScore === null || teamScore === undefined || opponentScore === null || opponentScore === undefined) return '-';
     
     if (teamScore > opponentScore) return 'W';
     if (teamScore < opponentScore) return 'L';
