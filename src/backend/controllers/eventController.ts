@@ -1228,23 +1228,24 @@ export const updateEventStatus = async (req: Request, res: Response) => {
   }
 
   // Check if user is the creator of the event or a group admin
-  const event = await prisma.event.findUnique({
-    where: { id },
-    include: {
-      participants: {
-        include: {
-          user: {
-            select: { id: true, name: true, email: true, profilePicture: true }
+  const event = ensureResourceExists(
+    await prisma.event.findUnique({
+      where: { id },
+      include: {
+        participants: {
+          include: {
+            user: {
+              select: { id: true, name: true, email: true, profilePicture: true }
+            }
           }
         }
       }
-    }
-  });
-
-  ensureResourceExists(event, 'Event');
+    }),
+    'Event'
+  );
 
   // Check if user has permission to manage this event
-  const { isAuthorized } = await eventService.checkEventManagementPermission(event!, req.user!.id);
+  const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
   if (!isAuthorized) {
     throw new ForbiddenError('Only the event creator or group admins can update event status');
   }
@@ -1255,7 +1256,7 @@ export const updateEventStatus = async (req: Request, res: Response) => {
   });
 
   // Create notifications for participants about status change
-  const participantIds = event!.participants
+  const participantIds = event.participants
     .filter(p => p.userId !== req.user!.id)
     .map(p => p.userId);
   
@@ -1267,11 +1268,11 @@ export const updateEventStatus = async (req: Request, res: Response) => {
         type: 'status_change',
         params: {
           name: req.user!.name,
-          eventTitle: event!.title,
+          eventTitle: event.title,
           newStatus: status,
-          oldStatus: event!.status
+          oldStatus: event.status
         },
-        metadata: { newStatus: status, oldStatus: event!.status }
+        metadata: { newStatus: status, oldStatus: event.status }
       }
     })
   ));

@@ -1124,13 +1124,12 @@ export const assignTeamToPool = async (req: Request, res: Response) => {
   const userId = req.user!.id;
   const { poolNumber, poolName } = req.body;
 
-  const tournament = await prisma.tournament.findUnique({
-    where: { id }
-  });
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
 
-  ensureResourceExists(tournament, 'Tournament');
-
-  if (!tournamentService.isOrganizer(tournament!, userId)) {
+  if (!tournamentService.isOrganizer(tournament, userId)) {
     throw new ForbiddenError('Only the organizer can assign teams to pools');
   }
 
@@ -1220,11 +1219,6 @@ export const addPlayer = async (req: Request, res: Response) => {
         select: { id: true, name: true, email: true }
       }
     }
-  }).catch((error: any) => {
-    if (error.code === 'P2002') {
-      throw new BadRequestError('This player is already registered on this team');
-    }
-    throw error;
   });
 
   logger.info('Player added to team', 'TournamentController', {
