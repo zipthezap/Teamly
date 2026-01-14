@@ -113,6 +113,24 @@ export const emailTemplates = {
       <a href="${escapeHtml(verificationUrl)}">Verify Email</a>
       <p>If you didn't create a Teamly account, you can safely ignore this email.</p>
     `
+  }),
+
+  tournamentTeamInvitation: (inviteeName, inviterName, teamName, tournamentName, inviteUrl, message) => ({
+    subject: `You're invited to join ${teamName} in ${tournamentName}`,
+    html: `
+      <h2>Hi ${escapeHtml(inviteeName || 'there')},</h2>
+      <p>${escapeHtml(inviterName)} has invited you to join their tournament team!</p>
+      <h3>Team: ${escapeHtml(teamName)}</h3>
+      <h4>Tournament: ${escapeHtml(tournamentName)}</h4>
+      ${message ? `<p><strong>Message:</strong> ${escapeHtml(message)}</p>` : ''}
+      <p>To accept this invitation:</p>
+      <ol>
+        <li>Create a Teamly account or log in if you already have one</li>
+        <li>Click this link: <a href="${escapeHtml(inviteUrl)}">Accept Invitation</a></li>
+      </ol>
+      <p>This invitation will expire in 7 days.</p>
+      <p>If you don't want to join this team, you can safely ignore this email.</p>
+    `
   })
 };
 

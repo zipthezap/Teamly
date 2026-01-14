@@ -67,6 +67,28 @@ router.delete(
   asyncHandler(tournamentController.removePlayer)
 );
 
+// Team invitations
+router.post(
+  '/:id/teams/:teamId/invitations',
+  requireTeamPermission(Permission.TEAM_MANAGE_PLAYERS),
+  asyncHandler(tournamentController.sendTeamInvitation)
+);
+router.get(
+  '/:id/teams/:teamId/invitations',
+  requireTeamPermission(Permission.TEAM_MANAGE_PLAYERS),
+  asyncHandler(tournamentController.getTeamInvitations)
+);
+router.delete(
+  '/:id/teams/:teamId/invitations/:invitationId',
+  requireTeamPermission(Permission.TEAM_MANAGE_PLAYERS),
+  asyncHandler(tournamentController.cancelTeamInvitation)
+);
+
+// User invitations (no team permission needed, just authentication)
+router.get('/invitations/my', asyncHandler(tournamentController.getUserInvitations));
+router.post('/invitations/:inviteToken/accept', asyncHandler(tournamentController.acceptTeamInvitation));
+router.post('/invitations/:inviteToken/decline', asyncHandler(tournamentController.declineTeamInvitation));
+
 // Bracket and match management
 router.post(
   '/:id/generate-brackets',

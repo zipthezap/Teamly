@@ -223,6 +223,8 @@ model User {
   tournaments       Tournament[]     @relation("TournamentOrganizer")
   captainedTeams    TournamentTeam[] @relation("TeamCaptain")
   tournamentPlayers TournamentPlayer[] @relation("TournamentPlayer")
+  receivedTeamInvitations TournamentTeamInvitation[] @relation("TeamInvitations")
+  sentTeamInvitations     TournamentTeamInvitation[] @relation("SentTeamInvitations")
   
   @@index([email]) // For faster email lookups
   @@index([emailVerificationToken]) // For email verification
@@ -761,6 +763,7 @@ model TournamentTeam {
   standings    TournamentStanding[]
   players      TournamentPlayer[]
   waitlistEntries TournamentPoolWaitlist[]
+  invitations  TournamentTeamInvitation[]
   
   @@unique([tournamentId, name])
   @@index([tournamentId])
@@ -902,4 +905,52 @@ model TournamentPoolWaitlist {
   @@index([poolId])
   @@index([teamId])
   @@index([poolId, position])
+}
+
+// Tournament team invitations - captains can invite players to join their team
+enum InvitationStatus {
+  pending
+  accepted
+  declined
+  expired
+  cancelled
+}
+
+model TournamentTeamInvitation {
+  id        String   @id @default(uuid())
+  
+  teamId    String
+  team      TournamentTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  // Email of the person being invited (they may or may not have an account)
+  inviteeEmail String
+  inviteeName  String?  // Optional: name of the invitee
+  
+  // If the invitee has an account, link to their user
+  inviteeUserId String?
+  inviteeUser   User?    @relation("TeamInvitations", fields: [inviteeUserId], references: [id], onDelete: SetNull)
+  
+  // Who sent the invitation
+  inviterId String
+  inviter   User     @relation("SentTeamInvitations", fields: [inviterId], references: [id])
+  
+  // Unique invitation token for secure acceptance
+  inviteToken String   @unique
+  
+  status      InvitationStatus @default(pending)
+  
+  // Message from the inviter
+  message     String?
+  
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([teamId, inviteeEmail]) // One pending invite per email per team
+  @@index([teamId])
+  @@index([inviteeEmail])
+  @@index([inviteeUserId])
+  @@index([inviteToken])
+  @@index([status])
+  @@index([expiresAt])
 }
