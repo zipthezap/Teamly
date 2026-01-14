@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Card,
   CardContent,
@@ -83,6 +83,7 @@ const PublicGroups = () => {
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
 
   // Helper to clear all markers from the map
@@ -142,7 +143,7 @@ const PublicGroups = () => {
 
   useEffect(() => {
     fetchPublicGroups();
-  }, []);
+  }, [location.key]);
 
   // Calculate appropriate zoom level based on radius
   const calculateZoomLevel = useCallback((radiusKm: number) => {
