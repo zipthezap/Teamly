@@ -328,13 +328,13 @@ model TournamentTeamInvitation {
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
   
-  @@unique([teamId, inviteeEmail])
   @@index([teamId])
   @@index([inviteeEmail])
   @@index([inviteeUserId])
   @@index([inviteToken])
   @@index([status])
   @@index([expiresAt])
+  @@index([teamId, inviteeEmail, status]) // Composite index for efficient duplicate checking
 }
 ```
 

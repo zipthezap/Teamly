@@ -1991,8 +1991,8 @@ export const sendTeamInvitation = async (req: Request, res: Response) => {
     'tournamentTeamInvitation',
     inviteeName || inviteeEmail,
     req.user!.name,
-    team!.name,
-    tournament!.name,
+    team.name,
+    tournament.name,
     inviteUrl,
     message
   );
@@ -2147,7 +2147,7 @@ export const cancelTeamInvitation = async (req: Request, res: Response) => {
     'Invitation'
   );
 
-  if (invitation!.teamId !== teamId) {
+  if (invitation.teamId !== teamId) {
     throw new BadRequestError('Invitation does not belong to this team');
   }
 
