@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -34,6 +34,7 @@ const GroupsList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all');
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { t } = useTranslation();
 
@@ -47,8 +48,7 @@ const GroupsList = () => {
 
   useEffect(() => {
     fetchGroups();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [location.key]);
 
   useEffect(() => {
     let filtered = [...groups];
