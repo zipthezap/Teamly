@@ -138,6 +138,12 @@ export const tournamentAPI = {
       params: groupName ? { groupName } : undefined
     });
     return response.data;
+  },
+
+  // Get players for a team
+  getPlayers: async (tournamentId: string, teamId: string) => {
+    const response = await api.get(`/tournaments/${tournamentId}/teams/${teamId}/players`);
+    return response.data;
   }
 };
 

@@ -490,12 +490,21 @@ const TournamentDetails: React.FC = () => {
                   <TableCell>Captain</TableCell>
                   <TableCell>Email</TableCell>
                   {isOrganizer && tournament.useManualBrackets && <TableCell>Pool</TableCell>}
+                  <TableCell>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {tournament.teams?.map((team) => (
                   <TableRow key={team.id}>
-                    <TableCell>{team.name}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="text"
+                        onClick={() => navigate(`/tournaments/${tournament.id}/teams/${team.id}`)}
+                        sx={{ textTransform: 'none', fontWeight: 'bold' }}
+                      >
+                        {team.name}
+                      </Button>
+                    </TableCell>
                     <TableCell>{team.captainName || '-'}</TableCell>
                     <TableCell>{team.captainEmail || '-'}</TableCell>
                     {isOrganizer && tournament.useManualBrackets && (
@@ -503,11 +512,20 @@ const TournamentDetails: React.FC = () => {
                         {team.poolName || (team.poolNumber ? `Pool ${team.poolNumber}` : '-')}
                       </TableCell>
                     )}
+                    <TableCell>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => navigate(`/tournaments/${tournament.id}/teams/${team.id}`)}
+                      >
+                        View Details
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
                 {(!tournament.teams || tournament.teams.length === 0) && (
                   <TableRow>
-                    <TableCell colSpan={isOrganizer && tournament.useManualBrackets ? 4 : 3} align="center">
+                    <TableCell colSpan={isOrganizer && tournament.useManualBrackets ? 5 : 4} align="center">
                       No teams added yet
                     </TableCell>
                   </TableRow>
@@ -536,7 +554,8 @@ const TournamentDetails: React.FC = () => {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Stage</TableCell>
+                    <TableCell>Date & Time</TableCell>
+                    <TableCell>Stage/Pool</TableCell>
                     <TableCell>Home Team</TableCell>
                     <TableCell align="center">Score</TableCell>
                     <TableCell>Away Team</TableCell>
@@ -546,19 +565,75 @@ const TournamentDetails: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {tournament.matches.map((match) => (
+                  {tournament.matches
+                    .sort((a, b) => {
+                      // Sort by scheduled time, with unscheduled matches at the end
+                      if (!a.scheduledAt && !b.scheduledAt) return 0;
+                      if (!a.scheduledAt) return 1;
+                      if (!b.scheduledAt) return -1;
+                      return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
+                    })
+                    .map((match) => (
                     <TableRow key={match.id}>
                       <TableCell>
-                        {match.stage?.replace('_', ' ').toUpperCase() || 
-                         (match.groupName ? `Group ${match.groupName}` : 'Round ' + match.roundNumber)}
+                        {match.scheduledAt ? (
+                          <Box>
+                            <Typography variant="body2" fontWeight="bold">
+                              {new Date(match.scheduledAt).toLocaleDateString()}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {new Date(match.scheduledAt).toLocaleTimeString([], { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              })}
+                            </Typography>
+                          </Box>
+                        ) : (
+                          <Typography variant="caption" color="text.secondary">
+                            TBD
+                          </Typography>
+                        )}
                       </TableCell>
-                      <TableCell>{match.homeTeam?.name || 'TBD'}</TableCell>
+                      <TableCell>
+                        {match.groupName ? (
+                          <Chip label={match.groupName} size="small" variant="outlined" />
+                        ) : (
+                          <Typography variant="body2">
+                            {match.stage?.replace('_', ' ').toUpperCase() || `Round ${match.roundNumber}`}
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="small"
+                          variant="text"
+                          onClick={() => {
+                            // Navigate to team details (will be implemented)
+                            navigate(`/tournaments/${tournament.id}/teams/${match.homeTeam?.id}`);
+                          }}
+                          sx={{ textTransform: 'none', justifyContent: 'flex-start' }}
+                        >
+                          {match.homeTeam?.name || 'TBD'}
+                        </Button>
+                      </TableCell>
                       <TableCell align="center">
-                        <Typography variant="h6">
+                        <Typography variant="h6" fontWeight="bold">
                           {match.homeScore ?? '-'} : {match.awayScore ?? '-'}
                         </Typography>
                       </TableCell>
-                      <TableCell>{match.awayTeam?.name || 'TBD'}</TableCell>
+                      <TableCell>
+                        <Button
+                          size="small"
+                          variant="text"
+                          onClick={() => {
+                            // Navigate to team details (will be implemented)
+                            navigate(`/tournaments/${tournament.id}/teams/${match.awayTeam?.id}`);
+                          }}
+                          sx={{ textTransform: 'none', justifyContent: 'flex-start' }}
+                        >
+                          {match.awayTeam?.name || 'TBD'}
+                        </Button>
+                      </TableCell>
                       {isOrganizer && tournament.useManualBrackets && (
                         <TableCell>
                           {match.refereeTeam ? (
@@ -616,40 +691,122 @@ const TournamentDetails: React.FC = () => {
         {/* Standings Tab */}
         <TabPanel value={tabValue} index={isOrganizer && tournament.useManualBrackets ? 5 : 3}>
           {tournament.standings && tournament.standings.length > 0 ? (
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Rank</TableCell>
-                    <TableCell>Team</TableCell>
-                    <TableCell align="center">Points</TableCell>
-                    <TableCell align="center">W</TableCell>
-                    <TableCell align="center">D</TableCell>
-                    <TableCell align="center">L</TableCell>
-                    <TableCell align="center">GF</TableCell>
-                    <TableCell align="center">GA</TableCell>
-                    <TableCell align="center">GD</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {tournament.standings.map((standing, index: number) => (
-                    <TableRow key={standing.id}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell>{standing.team?.name || 'TBD'}</TableCell>
-                      <TableCell align="center"><strong>{standing.points}</strong></TableCell>
-                      <TableCell align="center">{standing.wins}</TableCell>
-                      <TableCell align="center">{standing.draws}</TableCell>
-                      <TableCell align="center">{standing.losses}</TableCell>
-                      <TableCell align="center">{standing.goalsFor}</TableCell>
-                      <TableCell align="center">{standing.goalsAgainst}</TableCell>
-                      <TableCell align="center">
-                        {standing.goalsFor - standing.goalsAgainst}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <>
+              {/* Group standings by pool/group */}
+              {(() => {
+                // Group standings by groupName
+                const groupedStandings = tournament.standings.reduce((acc, standing) => {
+                  const groupName = standing.groupName || 'Overall';
+                  if (!acc[groupName]) {
+                    acc[groupName] = [];
+                  }
+                  acc[groupName].push(standing);
+                  return acc;
+                }, {} as Record<string, typeof tournament.standings>);
+
+                // Sort each group by points (descending), then by goal difference
+                Object.keys(groupedStandings).forEach(groupName => {
+                  groupedStandings[groupName].sort((a, b) => {
+                    if (b.points !== a.points) return b.points - a.points;
+                    const gdA = a.goalsFor - a.goalsAgainst;
+                    const gdB = b.goalsFor - b.goalsAgainst;
+                    if (gdB !== gdA) return gdB - gdA;
+                    return b.goalsFor - a.goalsFor;
+                  });
+                });
+
+                return Object.entries(groupedStandings).map(([groupName, standings]) => (
+                  <Box key={groupName} sx={{ mb: 4 }}>
+                    <Typography variant="h6" gutterBottom sx={{ 
+                      mt: 2, 
+                      mb: 2, 
+                      fontWeight: 'bold',
+                      borderBottom: '2px solid',
+                      borderColor: 'primary.main',
+                      pb: 1
+                    }}>
+                      {groupName}
+                    </Typography>
+                    <TableContainer component={Paper} variant="outlined">
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow sx={{ bgcolor: 'action.hover' }}>
+                            <TableCell><strong>Rank</strong></TableCell>
+                            <TableCell><strong>Team</strong></TableCell>
+                            <TableCell align="center"><strong>Played</strong></TableCell>
+                            <TableCell align="center"><strong>Points</strong></TableCell>
+                            <TableCell align="center"><strong>W</strong></TableCell>
+                            <TableCell align="center"><strong>D</strong></TableCell>
+                            <TableCell align="center"><strong>L</strong></TableCell>
+                            <TableCell align="center"><strong>GF</strong></TableCell>
+                            <TableCell align="center"><strong>GA</strong></TableCell>
+                            <TableCell align="center"><strong>GD</strong></TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {standings.map((standing, index: number) => {
+                            const gamesPlayed = standing.wins + standing.draws + standing.losses;
+                            const goalDiff = standing.goalsFor - standing.goalsAgainst;
+                            
+                            return (
+                              <TableRow 
+                                key={standing.id}
+                                sx={{
+                                  '&:hover': { bgcolor: 'action.hover' },
+                                  bgcolor: index === 0 ? 'success.light' : 
+                                          index === 1 ? 'info.light' : 
+                                          'inherit',
+                                  opacity: index === 0 || index === 1 ? 0.9 : 1
+                                }}
+                              >
+                                <TableCell>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    {index + 1}
+                                    {index === 0 && <Typography variant="caption">🥇</Typography>}
+                                    {index === 1 && <Typography variant="caption">🥈</Typography>}
+                                    {index === 2 && <Typography variant="caption">🥉</Typography>}
+                                  </Box>
+                                </TableCell>
+                                <TableCell>
+                                  <Button
+                                    size="small"
+                                    variant="text"
+                                    onClick={() => navigate(`/tournaments/${tournament.id}/teams/${standing.team?.id}`)}
+                                    sx={{ textTransform: 'none', fontWeight: 'medium' }}
+                                  >
+                                    {standing.team?.name || 'TBD'}
+                                  </Button>
+                                </TableCell>
+                                <TableCell align="center">{gamesPlayed}</TableCell>
+                                <TableCell align="center">
+                                  <Typography variant="body2" fontWeight="bold" color="primary">
+                                    {standing.points}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell align="center">{standing.wins}</TableCell>
+                                <TableCell align="center">{standing.draws}</TableCell>
+                                <TableCell align="center">{standing.losses}</TableCell>
+                                <TableCell align="center">{standing.goalsFor}</TableCell>
+                                <TableCell align="center">{standing.goalsAgainst}</TableCell>
+                                <TableCell align="center">
+                                  <Typography 
+                                    variant="body2" 
+                                    color={goalDiff > 0 ? 'success.main' : goalDiff < 0 ? 'error.main' : 'text.primary'}
+                                    fontWeight="medium"
+                                  >
+                                    {goalDiff > 0 ? '+' : ''}{goalDiff}
+                                  </Typography>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
+                ));
+              })()}
+            </>
           ) : (
             <Alert severity="info">
               No standings available yet. Standings will be generated after matches are played.

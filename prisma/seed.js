@@ -240,6 +240,45 @@ async function main() {
   });
   console.log('Seeded group:', group5.name, '(Diana as admin, Sherbrooke)');
 
+  // Add a public group in Montreal with Charlie as owner
+  const group6 = await prisma.group.upsert({
+    where: { id: 'seed-group-montreal-charlie' },
+    update: {},
+    create: {
+      id: 'seed-group-montreal-charlie',
+      name: "Montreal Sports League",
+      description: 'Public sports league in Montreal for all types of sports and tournaments',
+      isPublic: true,
+      city: 'Montreal',
+      country: 'Canada',
+      latitude: 45.5017,
+      longitude: -73.5673,
+      locationName: 'Montreal, QC',
+      creatorId: user3.id,
+      members: {
+        create: [
+          {
+            userId: user3.id,
+            role: 'admin'
+          },
+          {
+            userId: user1.id,
+            role: 'member'
+          },
+          {
+            userId: user2.id,
+            role: 'member'
+          },
+          {
+            userId: user4.id,
+            role: 'moderator'
+          }
+        ]
+      }
+    }
+  });
+  console.log('Seeded group:', group6.name, '(Charlie as admin, Montreal)');
+
   // Create multiple events across different groups
   const events = [
     // Group 1 (Alice's Sports Club) events
@@ -1497,13 +1536,520 @@ async function main() {
 
   console.log('Created tournament 3 teams and waitlists');
 
+  // Tournament 4: Montreal Hockey Tournament (in_progress with scheduled matches)
+  const tournament4 = await prisma.tournament.upsert({
+    where: { id: 'seed-tournament-4' },
+    update: {},
+    create: {
+      id: 'seed-tournament-4',
+      name: 'Montreal Winter Hockey Championship',
+      description: 'Annual winter hockey tournament in Montreal with multiple divisions and competitive play',
+      sportType: 'iceHockey',
+      format: 'groups_knockout',
+      status: 'in_progress',
+      startDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
+      endDate: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000), // 12 days from now
+      registrationDeadline: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago (closed)
+      maxTeams: 16,
+      location: 'Bell Centre',
+      city: 'Montreal',
+      country: 'Canada',
+      latitude: 45.4960,
+      longitude: -73.5693,
+      locationName: 'Bell Centre, Montreal',
+      organizerId: user3.id,
+      groupId: group6.id,
+      isPublic: true,
+      allowLateRegistration: false,
+      autoGenerateBrackets: false,
+      useManualBrackets: true,
+      prizesDescription: 'Winner: $5000 CAD, Runner-up: $2500 CAD, Third Place: $1000 CAD',
+      rulesDescription: 'IIHF international ice hockey rules apply. Three 20-minute periods.'
+    }
+  });
+
+  // Create pools for Montreal tournament
+  const pool4A = await prisma.tournamentPool.upsert({
+    where: { id: 'seed-pool-4a' },
+    update: {},
+    create: {
+      id: 'seed-pool-4a',
+      name: 'Pool A - Elite Division',
+      description: 'Top tier teams with advanced players',
+      maxTeams: 4,
+      tournamentId: tournament4.id
+    }
+  });
+
+  const pool4B = await prisma.tournamentPool.upsert({
+    where: { id: 'seed-pool-4b' },
+    update: {},
+    create: {
+      id: 'seed-pool-4b',
+      name: 'Pool B - Championship Division',
+      description: 'Competitive teams with intermediate to advanced skills',
+      maxTeams: 4,
+      tournamentId: tournament4.id
+    }
+  });
+
+  const pool4C = await prisma.tournamentPool.upsert({
+    where: { id: 'seed-pool-4c' },
+    update: {},
+    create: {
+      id: 'seed-pool-4c',
+      name: 'Pool C - Recreational Division',
+      description: 'Fun and friendly competitive teams',
+      maxTeams: 4,
+      tournamentId: tournament4.id
+    }
+  });
+
+  const pool4D = await prisma.tournamentPool.upsert({
+    where: { id: 'seed-pool-4d' },
+    update: {},
+    create: {
+      id: 'seed-pool-4d',
+      name: 'Pool D - Youth Division',
+      description: 'Teams for players under 18',
+      maxTeams: 4,
+      tournamentId: tournament4.id
+    }
+  });
+
+  console.log('Created Montreal tournament with 4 pools');
+
+  // Create teams for Pool A (Elite Division) - 4 teams (FULL)
+  const teamNamesPool4A = [
+    'Montreal Canadiens Jr', 'Quebec Nordiques Legacy', 'Ottawa Senators Elite', 'Toronto Maple Leafs Youth'
+  ];
+  const pool4ATeams = [];
+  for (let i = 0; i < teamNamesPool4A.length; i++) {
+    const team = await prisma.tournamentTeam.upsert({
+      where: { id: `seed-team-4a-${i}` },
+      update: {},
+      create: {
+        id: `seed-team-4a-${i}`,
+        name: teamNamesPool4A[i],
+        captainName: `Captain ${teamNamesPool4A[i]}`,
+        captainEmail: `captain.elite.${i}@montreal.hockey`,
+        captainUserId: [user1.id, user2.id, user3.id, user4.id][i % 4],
+        tournamentId: tournament4.id,
+        poolId: pool4A.id,
+        poolNumber: 1,
+        poolName: pool4A.name,
+        registrationOrder: i + 1
+      }
+    });
+    pool4ATeams.push(team);
+  }
+
+  // Create teams for Pool B (Championship Division) - 4 teams (FULL)
+  const teamNamesPool4B = [
+    'Laval Rockets', 'Gatineau Olympiques', 'Sherbrooke Phoenix', 'Trois-Rivières Lions'
+  ];
+  const pool4BTeams = [];
+  for (let i = 0; i < teamNamesPool4B.length; i++) {
+    const team = await prisma.tournamentTeam.upsert({
+      where: { id: `seed-team-4b-${i}` },
+      update: {},
+      create: {
+        id: `seed-team-4b-${i}`,
+        name: teamNamesPool4B[i],
+        captainName: `Captain ${teamNamesPool4B[i]}`,
+        captainEmail: `captain.championship.${i}@montreal.hockey`,
+        captainUserId: [user1.id, user2.id, user3.id, user4.id][i % 4],
+        tournamentId: tournament4.id,
+        poolId: pool4B.id,
+        poolNumber: 2,
+        poolName: pool4B.name,
+        registrationOrder: i + 1
+      }
+    });
+    pool4BTeams.push(team);
+  }
+
+  // Create teams for Pool C (Recreational Division) - 4 teams (FULL)
+  const teamNamesPool4C = [
+    'Weekend Warriors', 'Ice Breakers', 'Puck Hogs', 'Stick Handlers'
+  ];
+  const pool4CTeams = [];
+  for (let i = 0; i < teamNamesPool4C.length; i++) {
+    const team = await prisma.tournamentTeam.upsert({
+      where: { id: `seed-team-4c-${i}` },
+      update: {},
+      create: {
+        id: `seed-team-4c-${i}`,
+        name: teamNamesPool4C[i],
+        captainName: `Captain ${teamNamesPool4C[i]}`,
+        captainEmail: `captain.rec.${i}@montreal.hockey`,
+        captainUserId: [user1.id, user2.id, user3.id, user4.id][i % 4],
+        tournamentId: tournament4.id,
+        poolId: pool4C.id,
+        poolNumber: 3,
+        poolName: pool4C.name,
+        registrationOrder: i + 1
+      }
+    });
+    pool4CTeams.push(team);
+  }
+
+  // Create teams for Pool D (Youth Division) - 4 teams (FULL)
+  const teamNamesPool4D = [
+    'Young Guns', 'Future Stars', 'Junior Aces', 'Youth Thunder'
+  ];
+  const pool4DTeams = [];
+  for (let i = 0; i < teamNamesPool4D.length; i++) {
+    const team = await prisma.tournamentTeam.upsert({
+      where: { id: `seed-team-4d-${i}` },
+      update: {},
+      create: {
+        id: `seed-team-4d-${i}`,
+        name: teamNamesPool4D[i],
+        captainName: `Captain ${teamNamesPool4D[i]}`,
+        captainEmail: `captain.youth.${i}@montreal.hockey`,
+        captainUserId: [user1.id, user2.id, user3.id, user4.id][i % 4],
+        tournamentId: tournament4.id,
+        poolId: pool4D.id,
+        poolNumber: 4,
+        poolName: pool4D.name,
+        registrationOrder: i + 1
+      }
+    });
+    pool4DTeams.push(team);
+  }
+
+  // Add players to some teams
+  await prisma.tournamentPlayer.create({
+    data: {
+      id: 'seed-player-4-1',
+      teamId: pool4ATeams[0].id,
+      userId: user1.id,
+      playerName: 'Alice',
+      playerEmail: user1.email
+    }
+  });
+
+  await prisma.tournamentPlayer.create({
+    data: {
+      id: 'seed-player-4-2',
+      teamId: pool4ATeams[0].id,
+      playerName: 'Marc Johnson',
+      playerEmail: 'marc.johnson@montreal.hockey'
+    }
+  });
+
+  await prisma.tournamentPlayer.create({
+    data: {
+      id: 'seed-player-4-3',
+      teamId: pool4ATeams[0].id,
+      userId: user3.id,
+      playerName: 'Charlie',
+      playerEmail: user3.email
+    }
+  });
+
+  await prisma.tournamentPlayer.create({
+    data: {
+      id: 'seed-player-4-4',
+      teamId: pool4BTeams[0].id,
+      userId: user2.id,
+      playerName: 'Bob',
+      playerEmail: user2.email
+    }
+  });
+
+  await prisma.tournamentPlayer.create({
+    data: {
+      id: 'seed-player-4-5',
+      teamId: pool4BTeams[1].id,
+      userId: user4.id,
+      playerName: 'Diana',
+      playerEmail: user4.email
+    }
+  });
+
+  // Create matches for Pool A with different timestamps
+  const baseDate = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000); // 5 days from now
+  
+  // Pool A Match 1: Day 1, 10:00 AM
+  await prisma.tournamentMatch.create({
+    data: {
+      id: 'seed-match-4a-1',
+      tournamentId: tournament4.id,
+      homeTeamId: pool4ATeams[0].id,
+      awayTeamId: pool4ATeams[1].id,
+      stage: 'group_stage',
+      roundNumber: 1,
+      groupName: pool4A.name,
+      status: 'scheduled',
+      scheduledAt: new Date(baseDate.getTime() + 10 * 60 * 60 * 1000), // 10:00 AM
+      matchOrder: 1
+    }
+  });
+
+  // Pool A Match 2: Day 1, 2:00 PM
+  await prisma.tournamentMatch.create({
+    data: {
+      id: 'seed-match-4a-2',
+      tournamentId: tournament4.id,
+      homeTeamId: pool4ATeams[2].id,
+      awayTeamId: pool4ATeams[3].id,
+      stage: 'group_stage',
+      roundNumber: 1,
+      groupName: pool4A.name,
+      status: 'scheduled',
+      scheduledAt: new Date(baseDate.getTime() + 14 * 60 * 60 * 1000), // 2:00 PM
+      matchOrder: 2
+    }
+  });
+
+  // Pool A Match 3: Day 2, 11:00 AM
+  await prisma.tournamentMatch.create({
+    data: {
+      id: 'seed-match-4a-3',
+      tournamentId: tournament4.id,
+      homeTeamId: pool4ATeams[0].id,
+      awayTeamId: pool4ATeams[2].id,
+      refereeTeamId: pool4ATeams[1].id, // Team on break acts as referee
+      stage: 'group_stage',
+      roundNumber: 2,
+      groupName: pool4A.name,
+      status: 'scheduled',
+      scheduledAt: new Date(baseDate.getTime() + 25 * 60 * 60 * 1000), // Day 2, 11:00 AM
+      matchOrder: 3
+    }
+  });
+
+  // Pool A Match 4: Day 2, 3:00 PM
+  await prisma.tournamentMatch.create({
+    data: {
+      id: 'seed-match-4a-4',
+      tournamentId: tournament4.id,
+      homeTeamId: pool4ATeams[1].id,
+      awayTeamId: pool4ATeams[3].id,
+      refereeTeamId: pool4ATeams[2].id,
+      stage: 'group_stage',
+      roundNumber: 2,
+      groupName: pool4A.name,
+      status: 'scheduled',
+      scheduledAt: new Date(baseDate.getTime() + 29 * 60 * 60 * 1000), // Day 2, 3:00 PM
+      matchOrder: 4
+    }
+  });
+
+  // Pool A Match 5: Day 3, 12:00 PM (with scores - completed)
+  await prisma.tournamentMatch.create({
+    data: {
+      id: 'seed-match-4a-5',
+      tournamentId: tournament4.id,
+      homeTeamId: pool4ATeams[0].id,
+      awayTeamId: pool4ATeams[3].id,
+      refereeTeamId: pool4ATeams[1].id,
+      homeScore: 4,
+      awayScore: 2,
+      stage: 'group_stage',
+      roundNumber: 3,
+      groupName: pool4A.name,
+      status: 'completed',
+      scheduledAt: new Date(baseDate.getTime() + 50 * 60 * 60 * 1000), // Day 3, 12:00 PM
+      startedAt: new Date(baseDate.getTime() + 50 * 60 * 60 * 1000),
+      completedAt: new Date(baseDate.getTime() + 52 * 60 * 60 * 1000),
+      matchOrder: 5
+    }
+  });
+
+  // Pool A Match 6: Day 3, 4:00 PM
+  await prisma.tournamentMatch.create({
+    data: {
+      id: 'seed-match-4a-6',
+      tournamentId: tournament4.id,
+      homeTeamId: pool4ATeams[1].id,
+      awayTeamId: pool4ATeams[2].id,
+      refereeTeamId: pool4ATeams[3].id,
+      stage: 'group_stage',
+      roundNumber: 3,
+      groupName: pool4A.name,
+      status: 'scheduled',
+      scheduledAt: new Date(baseDate.getTime() + 54 * 60 * 60 * 1000), // Day 3, 4:00 PM
+      matchOrder: 6
+    }
+  });
+
+  // Create matches for Pool B
+  // Pool B Match 1: Day 1, 11:30 AM
+  await prisma.tournamentMatch.create({
+    data: {
+      id: 'seed-match-4b-1',
+      tournamentId: tournament4.id,
+      homeTeamId: pool4BTeams[0].id,
+      awayTeamId: pool4BTeams[1].id,
+      stage: 'group_stage',
+      roundNumber: 1,
+      groupName: pool4B.name,
+      status: 'scheduled',
+      scheduledAt: new Date(baseDate.getTime() + 11.5 * 60 * 60 * 1000), // 11:30 AM
+      matchOrder: 1
+    }
+  });
+
+  // Pool B Match 2: Day 1, 3:30 PM
+  await prisma.tournamentMatch.create({
+    data: {
+      id: 'seed-match-4b-2',
+      tournamentId: tournament4.id,
+      homeTeamId: pool4BTeams[2].id,
+      awayTeamId: pool4BTeams[3].id,
+      stage: 'group_stage',
+      roundNumber: 1,
+      groupName: pool4B.name,
+      status: 'scheduled',
+      scheduledAt: new Date(baseDate.getTime() + 15.5 * 60 * 60 * 1000), // 3:30 PM
+      matchOrder: 2
+    }
+  });
+
+  // Pool B Match 3: Day 2, 12:30 PM
+  await prisma.tournamentMatch.create({
+    data: {
+      id: 'seed-match-4b-3',
+      tournamentId: tournament4.id,
+      homeTeamId: pool4BTeams[0].id,
+      awayTeamId: pool4BTeams[2].id,
+      stage: 'group_stage',
+      roundNumber: 2,
+      groupName: pool4B.name,
+      status: 'scheduled',
+      scheduledAt: new Date(baseDate.getTime() + 26.5 * 60 * 60 * 1000), // Day 2, 12:30 PM
+      matchOrder: 3
+    }
+  });
+
+  // Create standings for Pool A teams
+  await prisma.tournamentStanding.create({
+    data: {
+      id: 'seed-standing-4a-1',
+      tournamentId: tournament4.id,
+      teamId: pool4ATeams[0].id,
+      points: 3,
+      wins: 1,
+      losses: 0,
+      draws: 0,
+      goalsFor: 4,
+      goalsAgainst: 2,
+      groupName: pool4A.name
+    }
+  });
+
+  await prisma.tournamentStanding.create({
+    data: {
+      id: 'seed-standing-4a-2',
+      tournamentId: tournament4.id,
+      teamId: pool4ATeams[1].id,
+      points: 0,
+      wins: 0,
+      losses: 0,
+      draws: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      groupName: pool4A.name
+    }
+  });
+
+  await prisma.tournamentStanding.create({
+    data: {
+      id: 'seed-standing-4a-3',
+      tournamentId: tournament4.id,
+      teamId: pool4ATeams[2].id,
+      points: 0,
+      wins: 0,
+      losses: 0,
+      draws: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      groupName: pool4A.name
+    }
+  });
+
+  await prisma.tournamentStanding.create({
+    data: {
+      id: 'seed-standing-4a-4',
+      tournamentId: tournament4.id,
+      teamId: pool4ATeams[3].id,
+      points: 0,
+      wins: 0,
+      losses: 1,
+      draws: 0,
+      goalsFor: 2,
+      goalsAgainst: 4,
+      groupName: pool4A.name
+    }
+  });
+
+  // Create standings for Pool B teams (all zeros - no matches completed yet)
+  for (let i = 0; i < pool4BTeams.length; i++) {
+    await prisma.tournamentStanding.create({
+      data: {
+        id: `seed-standing-4b-${i + 1}`,
+        tournamentId: tournament4.id,
+        teamId: pool4BTeams[i].id,
+        points: 0,
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        groupName: pool4B.name
+      }
+    });
+  }
+
+  // Create standings for Pool C teams
+  for (let i = 0; i < pool4CTeams.length; i++) {
+    await prisma.tournamentStanding.create({
+      data: {
+        id: `seed-standing-4c-${i + 1}`,
+        tournamentId: tournament4.id,
+        teamId: pool4CTeams[i].id,
+        points: 0,
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        groupName: pool4C.name
+      }
+    });
+  }
+
+  // Create standings for Pool D teams
+  for (let i = 0; i < pool4DTeams.length; i++) {
+    await prisma.tournamentStanding.create({
+      data: {
+        id: `seed-standing-4d-${i + 1}`,
+        tournamentId: tournament4.id,
+        teamId: pool4DTeams[i].id,
+        points: 0,
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        groupName: pool4D.name
+      }
+    });
+  }
+
+  console.log('Created Montreal tournament with teams, matches, and standings');
+
   console.log('\n========================================');
   console.log('Seeding completed successfully!');
   console.log('========================================');
   console.log('Summary (for display purposes only - counts may vary):');
   console.log('- Users: 4');
-  console.log('- Groups: 5 (4 public, 1 private)');
+  console.log('- Groups: 6 (5 public, 1 private)');
   console.log('  - 2 groups in Sherbrooke, QC (Alice is NOT a member)');
+  console.log('  - 1 group in Montreal, QC (Charlie as admin)');
   console.log('- Events: 7 (across all groups)');
   console.log('- Group Notifications: 3');
   console.log('- Event Notifications: 4');
@@ -1513,11 +2059,14 @@ async function main() {
   console.log('- Event Reminders: 3');
   console.log('- Event Comments: 4');
   console.log('- Guest Participants: 3');
-  console.log('- Tournaments: 3 (upcoming only)');
-  console.log('- Tournament Pools: 9 (with varying team capacities)');
-  console.log('- Tournament Teams: 30+');
+  console.log('- Tournaments: 4 (3 upcoming, 1 in progress)');
+  console.log('  - Montreal Winter Hockey Championship (in_progress) with 4 pools and scheduled matches');
+  console.log('- Tournament Pools: 13 (with varying team capacities)');
+  console.log('- Tournament Teams: 46+');
+  console.log('- Tournament Matches: 9+ (with different timestamps and referee assignments)');
   console.log('- Waitlist Entries: 5 (across multiple pools)');
-  console.log('- Tournament Players: 3+');
+  console.log('- Tournament Players: 8+');
+  console.log('- Tournament Standings: 16+ (with stats)');
   console.log('========================================');
 }
 
