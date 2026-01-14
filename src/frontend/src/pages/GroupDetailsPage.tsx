@@ -94,8 +94,8 @@ export default function GroupDetailsPage() {
   // Check if user is a moderator or admin (can edit but not delete)
   const canEdit = group?.members?.some((m: GroupMember) => user && m.userId === user.id && (m.role === "admin" || m.role === "moderator"));
 
-  // Check if user is a member of the group
-  const isMember = group?.members?.some((m: GroupMember) => user && m.userId === user.id);
+  // Check if user is a member of the group (admins are always considered members)
+  const isMember = isAdmin || group?.members?.some((m: GroupMember) => user && m.userId === user.id);
 
   // Update group settings when group data loads
   React.useEffect(() => {
