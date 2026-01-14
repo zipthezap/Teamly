@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogTitle, DialogContent } from '@mui/material';
 import { eventsAPI } from '../../services/api';
 import EventForm, { EventFormData } from '../common/EventForm';
@@ -14,7 +14,7 @@ interface EventFormModalProps {
   submitLabel?: string;
 }
 
-const EventFormModal: React.FC<EventFormModalProps> = ({ 
+const EventFormModal: React.FC<EventFormModalProps> = React.memo(({ 
   open, 
   onClose, 
   onSuccess,
@@ -66,7 +66,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({
     }
   }, [initialData, groupId]);
 
-  const handleSubmit = async (formData: EventFormData) => {
+  const handleSubmit = useCallback(async (formData: EventFormData) => {
     setError('');
     setLoading(true);
     
@@ -131,7 +131,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({
       setError(error.response?.data?.error || 'Failed to save event');
       setLoading(false);
     }
-  };
+  }, [initialData, onClose, onSuccess]);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -149,6 +149,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({
       </DialogContent>
     </Dialog>
   );
-};
+});
+
+EventFormModal.displayName = 'EventFormModal';
 
 export default EventFormModal;

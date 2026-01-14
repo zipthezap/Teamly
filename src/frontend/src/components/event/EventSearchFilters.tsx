@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -22,7 +22,7 @@ interface EventSearchFiltersProps {
   }) => void;
 }
 
-const EventSearchFilters: React.FC<EventSearchFiltersProps> = ({ onSearch }) => {
+const EventSearchFilters: React.FC<EventSearchFiltersProps> = React.memo(({ onSearch }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     search: '',
@@ -32,15 +32,14 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = ({ onSearch }) => 
     location: '',
   });
 
-  const handleChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newFilters = {
-      ...filters,
+  const handleChange = useCallback((field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    setFilters(prevFilters => ({
+      ...prevFilters,
       [field]: event.target.value,
-    };
-    setFilters(newFilters);
-  };
+    }));
+  }, []);
 
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     // Remove empty values
     const activeFilters = Object.entries(filters).reduce((acc, [key, value]) => {
       if (value) {
@@ -50,9 +49,9 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = ({ onSearch }) => 
     }, {} as Record<string, string>);
     
     onSearch(activeFilters);
-  };
+  }, [filters, onSearch]);
 
-  const handleClear = () => {
+  const handleClear = useCallback(() => {
     const clearedFilters = {
       search: '',
       eventType: '',
@@ -62,7 +61,7 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = ({ onSearch }) => 
     };
     setFilters(clearedFilters);
     onSearch({});
-  };
+  }, [onSearch]);
 
   return (
     <Paper sx={{ p: 2, mb: 3 }}>
@@ -156,6 +155,8 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = ({ onSearch }) => 
       </Stack>
     </Paper>
   );
-};
+});
+
+EventSearchFilters.displayName = 'EventSearchFilters';
 
 export default EventSearchFilters;

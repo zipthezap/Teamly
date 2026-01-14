@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -36,6 +36,14 @@ const GroupsList = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useTranslation();
+
+  // Memoize group statistics to prevent unnecessary recalculations
+  const groupStats = useMemo(() => ({
+    total: groups.length,
+    public: groups.filter(g => g.isPublic).length,
+    private: groups.filter(g => !g.isPublic).length,
+    admin: groups.filter(g => g.members?.some(m => m.id === user?.id && m.role === 'admin')).length,
+  }), [groups, user?.id]);
 
   useEffect(() => {
     fetchGroups();
@@ -122,7 +130,7 @@ const GroupsList = () => {
           <Card sx={{ background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)' }}>
             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
               <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
-                {groups.length}
+                {groupStats.total}
               </Typography>
               <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
                 {t('groups.allGroups')}
@@ -132,7 +140,7 @@ const GroupsList = () => {
           <Card sx={{ background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)' }}>
             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
               <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
-                {groups.filter(g => g.isPublic).length}
+                {groupStats.public}
               </Typography>
               <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
                 {t('groups.public')}
@@ -142,7 +150,7 @@ const GroupsList = () => {
           <Card sx={{ background: 'linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%)' }}>
             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
               <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
-                {groups.filter(g => !g.isPublic).length}
+                {groupStats.private}
               </Typography>
               <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
                 {t('groups.private')}
@@ -152,7 +160,7 @@ const GroupsList = () => {
           <Card sx={{ background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)' }}>
             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
               <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
-                {groups.filter(g => g.members?.some(m => m.id === user?.id && m.role === 'admin')).length}
+                {groupStats.admin}
               </Typography>
               <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
                 {t('groups.admin')}

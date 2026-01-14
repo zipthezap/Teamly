@@ -214,14 +214,33 @@ const EventsList = () => {
   };
 
   // Handle search/filter
-  const handleSearch = (filters: EventSearchParams) => {
+  const handleSearch = useCallback((filters: EventSearchParams) => {
     setSearchFilters(filters);
     setPage(1);
     const paramsObj = Object.entries({ ...filters, page: '1' })
       .filter(([_, v]) => v !== undefined && v !== null)
       .reduce((acc, [k, v]) => { acc[k] = String(v); return acc; }, {} as Record<string, string>);
     setSearchParams(paramsObj, { replace: false });
-  };
+  }, [setSearchParams]);
+
+  // Modal handlers
+  const handleModalClose = useCallback(() => {
+    setModalOpen(false);
+  }, []);
+
+  const handleModalSuccess = useCallback(() => {
+    fetchEvents();
+  }, [fetchEvents]);
+
+  const handleCreateEvent = useCallback(() => {
+    setEditEvent(undefined);
+    setModalOpen(true);
+  }, []);
+
+  const handleEditEvent = useCallback((event: EventWithDetails) => {
+    setEditEvent(event);
+    setModalOpen(true);
+  }, []);
 
   // Handle page change - pagination removed
 
@@ -339,7 +358,7 @@ const EventsList = () => {
             variant="contained"
             color="secondary"
             startIcon={<AddIcon />}
-            onClick={() => { setEditEvent(undefined); setModalOpen(true); }}
+            onClick={handleCreateEvent}
           >
             {t('events.createEvent')}
           </Button>
@@ -400,7 +419,7 @@ const EventsList = () => {
           title={Object.keys(searchFilters).length > 0 ? t('events.noEventsMatch') : t('events.noEventsAvailable')}
           description={Object.keys(searchFilters).length === 0 ? t('events.createFirstEventDesc') : ''}
           actions={Object.keys(searchFilters).length === 0 ? [
-            { label: t('events.createFirstEvent'), onClick: () => { setEditEvent(undefined); setModalOpen(true); } }
+            { label: t('events.createFirstEvent'), onClick: handleCreateEvent }
           ] : []}
           gradient="linear-gradient(135deg, rgba(245, 0, 87, 0.05) 0%, rgba(245, 0, 87, 0.02) 100%)"
         />
@@ -440,7 +459,7 @@ const EventsList = () => {
                           <>
                             <IconButton 
                               size="small" 
-                              onClick={() => { setEditEvent(event); setModalOpen(true); }}
+                              onClick={() => handleEditEvent(event)}
                               sx={{ ml: 0.5 }}
                             >
                               <EditIcon fontSize="small" />
@@ -572,8 +591,8 @@ const EventsList = () => {
       {/* Event create/edit modal */}
       <EventFormModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSuccess={() => fetchEvents()}
+        onClose={handleModalClose}
+        onSuccess={handleModalSuccess}
         initialData={editEvent}
         groups={groups}
       />

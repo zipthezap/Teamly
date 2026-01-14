@@ -441,6 +441,14 @@ export default function GroupDetailsPage() {
     setEventModalOpen(true);
   }, []);
 
+  const handleEventModalClose = useCallback(() => {
+    setEventModalOpen(false);
+  }, []);
+
+  const handleEventModalSuccess = useCallback(() => {
+    refetchEvents();
+  }, [refetchEvents]);
+
   if (groupLoading || eventsLoading || chatLoading) return <div className="text-center text-slate-300 mt-10">{t('groupDetails.loadingGroupDetails')}</div>;
   if (groupError || !group) return <div className="text-center text-red-400 mt-10">{t('groupDetails.failedToLoad')}</div>;
 
@@ -489,8 +497,8 @@ export default function GroupDetailsPage() {
       {/* Event create/edit modal */}
       <EventFormModal
         open={eventModalOpen}
-        onClose={() => setEventModalOpen(false)}
-        onSuccess={() => refetchEvents()}
+        onClose={handleEventModalClose}
+        onSuccess={handleEventModalSuccess}
         initialData={editEvent}
         groupId={groupId}
       />
