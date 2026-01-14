@@ -887,6 +887,15 @@ export const joinGroupByInvite = async (req: Request, res: Response) => {
     await prisma.groupMember.create({
       data: { userId, groupId, role: 'member' }
     });
+
+    // Invalidate group cache for all affected users
+    await CacheService.invalidate('group', groupId);
+    // Invalidate user groups cache for the joining user
+    await CacheService.deletePattern(`user:${userId}:groups:*`);
+    // Invalidate events cache since user now has access to group events
+    await CacheService.deletePattern(`events:user:${userId}:group:${groupId}:*`);
+    await CacheService.deletePattern(`events:user:${userId}:group:all:*`);
+
     res.status(201).json({ message: 'Joined group successfully' });
   } catch (error) {
     logger.error('Failed to join group by invite', 'GroupController', { error });
@@ -930,6 +939,14 @@ export const leaveGroup = async (req: Request, res: Response) => {
     await prisma.groupMember.delete({
       where: { id: membership.id }
     });
+
+    // Invalidate group cache for all affected users
+    await CacheService.invalidate('group', id);
+    // Invalidate user groups cache for the leaving user
+    await CacheService.deletePattern(`user:${userId}:groups:*`);
+    // Invalidate events cache since user no longer has access to group events
+    await CacheService.deletePattern(`events:user:${userId}:group:${id}:*`);
+    await CacheService.deletePattern(`events:user:${userId}:group:all:*`);
 
     res.json({ message: 'Left group successfully' });
   } catch (error) {
