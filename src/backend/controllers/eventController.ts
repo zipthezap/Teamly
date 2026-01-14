@@ -23,7 +23,7 @@ import { EventParticipantStatus, GuestParticipantStatus, SportType } from '../..
 import * as groupService from '../services/groupService';
 import * as locationService from '../services/locationService';
 import { exportToCSV, exportToICalendar, exportToJSON } from '../services/exportService';
-import { BadRequestError, ForbiddenError } from '../utils/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '../utils/errors';
 import { isRequired } from '../utils/validation';
 import { ensureResourceExists } from '../utils/controllerHelpers';
 import { CacheService } from '../services/cacheService';
@@ -1168,189 +1168,163 @@ export const getUserStatistics = async (req: Request, res: Response) => {
 
 // Archive an event
 export const archiveEvent = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
+  const { id } = req.params;
 
-    // Check if user is the creator of the event or a group admin
-    const event = await prisma.event.findUnique({
-      where: { id }
-    });
+  // Check if user is the creator of the event or a group admin
+  const event = await prisma.event.findUnique({
+    where: { id }
+  });
 
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
+  ensureResourceExists(event, 'Event');
 
-    // Check if user has permission to manage this event
-    const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
-    if (!isAuthorized) {
-      return res.status(403).json({ error: 'Only the event creator or group admins can archive it' });
-    }
-
-    const updatedEvent = await prisma.event.update({
-      where: { id },
-      data: { archived: true }
-    });
-
-    res.json({ message: 'Event archived successfully', event: updatedEvent });
-  } catch (error) {
-    logger.error('Archive event error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to archive event' });
+  // Check if user has permission to manage this event
+  const { isAuthorized } = await eventService.checkEventManagementPermission(event!, req.user!.id);
+  if (!isAuthorized) {
+    throw new ForbiddenError('Only the event creator or group admins can archive it');
   }
+
+  const updatedEvent = await prisma.event.update({
+    where: { id },
+    data: { archived: true }
+  });
+
+  res.json({ message: 'Event archived successfully', event: updatedEvent });
 };
 
 // Unarchive an event
 export const unarchiveEvent = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
+  const { id } = req.params;
 
-    // Check if user is the creator of the event or a group admin
-    const event = await prisma.event.findUnique({
-      where: { id }
-    });
+  // Check if user is the creator of the event or a group admin
+  const event = await prisma.event.findUnique({
+    where: { id }
+  });
 
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
+  ensureResourceExists(event, 'Event');
 
-    // Check if user has permission to manage this event
-    const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
-    if (!isAuthorized) {
-      return res.status(403).json({ error: 'Only the event creator or group admins can unarchive it' });
-    }
-
-    const updatedEvent = await prisma.event.update({
-      where: { id },
-      data: { archived: false }
-    });
-
-    res.json({ message: 'Event unarchived successfully', event: updatedEvent });
-  } catch (error) {
-    logger.error('Unarchive event error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to unarchive event' });
+  // Check if user has permission to manage this event
+  const { isAuthorized } = await eventService.checkEventManagementPermission(event!, req.user!.id);
+  if (!isAuthorized) {
+    throw new ForbiddenError('Only the event creator or group admins can unarchive it');
   }
+
+  const updatedEvent = await prisma.event.update({
+    where: { id },
+    data: { archived: false }
+  });
+
+  res.json({ message: 'Event unarchived successfully', event: updatedEvent });
 };
 
 // Update event status
 export const updateEventStatus = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
+  const { id } = req.params;
+  const { status } = req.body;
 
-    // Validate status using the centralized validation function
-    const statusValidation = validateEventStatus(status);
-    if (!statusValidation.isValid) {
-      return res.status(400).json({ error: statusValidation.error });
-    }
+  // Validate status using the centralized validation function
+  const statusValidation = validateEventStatus(status);
+  if (!statusValidation.isValid) {
+    throw new BadRequestError(statusValidation.error!);
+  }
 
-    // Check if user is the creator of the event or a group admin
-    const event = await prisma.event.findUnique({
-      where: { id },
-      include: {
-        participants: {
-          include: {
-            user: {
-              select: { id: true, name: true, email: true, profilePicture: true }
-            }
+  // Check if user is the creator of the event or a group admin
+  const event = await prisma.event.findUnique({
+    where: { id },
+    include: {
+      participants: {
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, profilePicture: true }
           }
         }
       }
-    });
-
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found' });
     }
+  });
 
-    // Check if user has permission to manage this event
-    const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
-    if (!isAuthorized) {
-      return res.status(403).json({ error: 'Only the event creator or group admins can update event status' });
-    }
+  ensureResourceExists(event, 'Event');
 
-    const updatedEvent = await prisma.event.update({
-      where: { id },
-      data: { status }
-    });
-
-    // Create notifications for participants about status change
-    const participantIds = event.participants
-      .filter(p => p.userId !== req.user!.id)
-      .map(p => p.userId);
-    
-    await Promise.all(participantIds.map(userId =>
-      prisma.eventNotification.create({
-        data: {
-          eventId: id,
-          userId,
-          type: 'status_change',
-          params: {
-            name: req.user!.name,
-            eventTitle: event.title,
-            newStatus: status,
-            oldStatus: event.status
-          },
-          metadata: { newStatus: status, oldStatus: event.status }
-        }
-      })
-    ));
-
-    res.json({ message: 'Event status updated successfully', event: updatedEvent });
-  } catch (error) {
-    logger.error('Update event status error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to update event status' });
+  // Check if user has permission to manage this event
+  const { isAuthorized } = await eventService.checkEventManagementPermission(event!, req.user!.id);
+  if (!isAuthorized) {
+    throw new ForbiddenError('Only the event creator or group admins can update event status');
   }
+
+  const updatedEvent = await prisma.event.update({
+    where: { id },
+    data: { status }
+  });
+
+  // Create notifications for participants about status change
+  const participantIds = event!.participants
+    .filter(p => p.userId !== req.user!.id)
+    .map(p => p.userId);
+  
+  await Promise.all(participantIds.map(userId =>
+    prisma.eventNotification.create({
+      data: {
+        eventId: id,
+        userId,
+        type: 'status_change',
+        params: {
+          name: req.user!.name,
+          eventTitle: event!.title,
+          newStatus: status,
+          oldStatus: event!.status
+        },
+        metadata: { newStatus: status, oldStatus: event!.status }
+      }
+    })
+  ));
+
+  res.json({ message: 'Event status updated successfully', event: updatedEvent });
 };
 
 // Get event activity with optional filtering
 export const getEventActivityFeed = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { type, limit, startDate, endDate } = req.query;
+  const { id } = req.params;
+  const { type, limit, startDate, endDate } = req.query;
 
-    // Check if user has access to the event
-    const event = await prisma.event.findFirst({
-      where: {
-        id,
-        group: {
-          members: {
-            some: {
-              userId: req.user!.id
-            }
+  // Check if user has access to the event
+  const event = await prisma.event.findFirst({
+    where: {
+      id,
+      group: {
+        members: {
+          some: {
+            userId: req.user!.id
           }
         }
       }
-    });
-
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found or access denied' });
     }
+  });
 
-    const options: any = {
-      limit: limit ? parseInt(limit as string) : 50
-    };
-
-    if (type && typeof type === 'string') {
-      options.type = type;
-    }
-
-    if (startDate && typeof startDate === 'string') {
-      options.startDate = new Date(startDate);
-    }
-
-    if (endDate && typeof endDate === 'string') {
-      options.endDate = new Date(endDate);
-    }
-
-    const activity = await getEventActivity(id, prisma, options);
-
-    res.json({
-      eventId: id,
-      total: activity.length,
-      activity
-    });
-  } catch (error) {
-    logger.error('Failed to get event activity', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to get event activity' });
+  if (!event) {
+    throw new NotFoundError('Event not found or access denied');
   }
+
+  const options: any = {
+    limit: limit ? parseInt(limit as string) : 50
+  };
+
+  if (type && typeof type === 'string') {
+    options.type = type;
+  }
+
+  if (startDate && typeof startDate === 'string') {
+    options.startDate = new Date(startDate);
+  }
+
+  if (endDate && typeof endDate === 'string') {
+    options.endDate = new Date(endDate);
+  }
+
+  const activity = await getEventActivity(id, prisma, options);
+
+  res.json({
+    eventId: id,
+    total: activity.length,
+    activity
+  });
 };
 
 // ==================== GUEST PARTICIPANT MANAGEMENT ====================
@@ -1360,94 +1334,82 @@ export const getEventActivityFeed = async (req: Request, res: Response) => {
 // This is intentional - private events with invite tokens are shared privately via the link,
 // which provides controlled access without making the event publicly discoverable.
 export const getEventByInviteToken = async (req: Request, res: Response) => {
-  try {
-    const { token } = req.params;
+  const { token } = req.params;
 
-    const event = await prisma.event.findFirst({
-      where: {
-        inviteToken: token
-        // Both public and private events can be accessed via valid invite token
-        // Private events remain unlisted but accessible to those with the link
+  const event = await prisma.event.findFirst({
+    where: {
+      inviteToken: token
+      // Both public and private events can be accessed via valid invite token
+      // Private events remain unlisted but accessible to those with the link
+    },
+    include: {
+      creator: {
+        select: { id: true, name: true }
       },
-      include: {
-        creator: {
-          select: { id: true, name: true }
-        },
-        group: {
-          select: { id: true, name: true }
-        },
-        participants: {
-          select: {
-            id: true,
-            status: true,
-            user: {
-              select: { name: true }
-            }
-          }
-        },
-        guestParticipants: {
-          select: {
-            id: true,
-            name: true,
-            status: true,
-            joinedAt: true
+      group: {
+        select: { id: true, name: true }
+      },
+      participants: {
+        select: {
+          id: true,
+          status: true,
+          user: {
+            select: { name: true }
           }
         }
+      },
+      guestParticipants: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          joinedAt: true
+        }
       }
-    });
-
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found or invite link is invalid' });
     }
+  });
 
-    res.json(event);
-  } catch (error) {
-    logger.error('Get event by invite token error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to get event' });
+  if (!event) {
+    throw new NotFoundError('Event not found or invite link is invalid');
   }
+
+  res.json(event);
 };
 
 // Generate or regenerate invite token for an event
 export const generateInviteToken = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
+  const { id } = req.params;
 
-    // Check if user is the creator of the event or a group admin
-    const event = await prisma.event.findUnique({
-      where: { id }
-    });
+  // Check if user is the creator of the event or a group admin
+  const event = await prisma.event.findUnique({
+    where: { id }
+  });
 
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
+  ensureResourceExists(event, 'Event');
 
-    // Check if user has permission to manage this event
-    const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
-    if (!isAuthorized) {
-      return res.status(403).json({ error: 'Only the event creator or group admins can generate invite links' });
-    }
-
-    // Generate new token
-    const inviteToken = createInviteToken();
-
-    // For private events, keep them private but allow invite link access
-    // For public events, ensure they stay public
-    const updatedEvent = await prisma.event.update({
-      where: { id },
-      data: { 
-        inviteToken
-      }
-    });
-
-    res.json({ 
-      inviteToken: updatedEvent.inviteToken,
-      inviteUrl: `/events/join/${updatedEvent.inviteToken}`,
-      isPublic: updatedEvent.isPublic
-    });
-  } catch (error) {
-    logger.error('Generate invite token error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to generate invite token' });
+  // Check if user has permission to manage this event
+  const { isAuthorized } = await eventService.checkEventManagementPermission(event!, req.user!.id);
+  if (!isAuthorized) {
+    throw new ForbiddenError('Only the event creator or group admins can generate invite links');
   }
+
+  // Generate new token
+  const inviteToken = createInviteToken();
+
+  // For private events, keep them private but allow invite link access
+  // For public events, ensure they stay public
+  const updatedEvent = await prisma.event.update({
+    where: { id },
+    data: { 
+      inviteToken
+    }
+  });
+
+  res.json({ 
+    inviteToken: updatedEvent.inviteToken,
+    inviteUrl: `/events/join/${updatedEvent.inviteToken}`,
+    isPublic: updatedEvent.isPublic
+  });
 };
 
 // Join event as guest (no authentication required)
@@ -1868,35 +1830,33 @@ const verifyGuestManagementAuth = async (
  * Allows the event creator to update a guest's name
  */
 export const updateGuestParticipant = async (req: Request, res: Response) => {
-  try {
-    const { id, guestId } = req.params;
-    const { name } = req.body;
+  const { id, guestId } = req.params;
+  const { name } = req.body;
 
-    if (!name || name.trim().length === 0) {
-      return res.status(400).json({ error: 'Name is required' });
-    }
-
-    // Verify authorization and get guest
-    const authResult = await verifyGuestManagementAuth(id, guestId, req.user!.id);
-    if ('error' in authResult) {
-      return res.status(authResult.status).json({ error: authResult.error });
-    }
-
-    // Update guest participant name
-    const updatedGuest = await prisma.guestParticipant.update({
-      where: { id: guestId },
-      data: { name: name.trim() }
-    });
-
-    // Invalidate events cache for all group members
-    await CacheService.deletePattern(`events:user:*:group:${authResult.event.groupId}:*`);
-    await CacheService.deletePattern(`events:user:*:group:all:*`);
-
-    res.json(updatedGuest);
-  } catch (error) {
-    logger.error('Update guest participant error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to update guest participant' });
+  if (!name || name.trim().length === 0) {
+    throw new BadRequestError('Name is required');
   }
+
+  // Verify authorization and get guest
+  const authResult = await verifyGuestManagementAuth(id, guestId, req.user!.id);
+  if ('error' in authResult) {
+    if (authResult.status === 404) {
+      throw new NotFoundError(authResult.error);
+    }
+    throw new ForbiddenError(authResult.error);
+  }
+
+  // Update guest participant name
+  const updatedGuest = await prisma.guestParticipant.update({
+    where: { id: guestId },
+    data: { name: name.trim() }
+  });
+
+  // Invalidate events cache for all group members
+  await CacheService.deletePattern(`events:user:*:group:${authResult.event.groupId}:*`);
+  await CacheService.deletePattern(`events:user:*:group:all:*`);
+
+  res.json(updatedGuest);
 };
 
 /**
@@ -1904,39 +1864,35 @@ export const updateGuestParticipant = async (req: Request, res: Response) => {
  * Allows the event creator to update a guest's status (confirmed/declined)
  */
 export const updateGuestParticipantStatus = async (req: Request, res: Response) => {
-  try {
-    const { id, guestId } = req.params;
-    const { status } = req.body;
+  const { id, guestId } = req.params;
+  const { status } = req.body;
 
-    // Validate status
-    const validStatuses = Object.values(GuestParticipantStatus);
-    if (!status || !validStatuses.includes(status as GuestParticipantStatus)) {
-      return res.status(400).json({ 
-        error: 'Invalid status. Must be one of: confirmed, declined' 
-      });
-    }
-
-    // Verify authorization and get guest
-    const authResult = await verifyGuestManagementAuth(id, guestId, req.user!.id);
-    if ('error' in authResult) {
-      return res.status(authResult.status).json({ error: authResult.error });
-    }
-
-    // Update guest participant status
-    const updatedGuest = await prisma.guestParticipant.update({
-      where: { id: guestId },
-      data: { status: status as GuestParticipantStatus }
-    });
-
-    // Invalidate events cache for all group members
-    await CacheService.deletePattern(`events:user:*:group:${authResult.event.groupId}:*`);
-    await CacheService.deletePattern(`events:user:*:group:all:*`);
-
-    res.json(updatedGuest);
-  } catch (error) {
-    logger.error('Update guest participant status error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to update guest participant status' });
+  // Validate status
+  const validStatuses = Object.values(GuestParticipantStatus);
+  if (!status || !validStatuses.includes(status as GuestParticipantStatus)) {
+    throw new BadRequestError('Invalid status. Must be one of: confirmed, declined');
   }
+
+  // Verify authorization and get guest
+  const authResult = await verifyGuestManagementAuth(id, guestId, req.user!.id);
+  if ('error' in authResult) {
+    if (authResult.status === 404) {
+      throw new NotFoundError(authResult.error);
+    }
+    throw new ForbiddenError(authResult.error);
+  }
+
+  // Update guest participant status
+  const updatedGuest = await prisma.guestParticipant.update({
+    where: { id: guestId },
+    data: { status: status as GuestParticipantStatus }
+  });
+
+  // Invalidate events cache for all group members
+  await CacheService.deletePattern(`events:user:*:group:${authResult.event.groupId}:*`);
+  await CacheService.deletePattern(`events:user:*:group:all:*`);
+
+  res.json(updatedGuest);
 };
 
 /**
@@ -1944,29 +1900,27 @@ export const updateGuestParticipantStatus = async (req: Request, res: Response) 
  * Allows the event creator to remove a guest participant
  */
 export const removeGuestParticipant = async (req: Request, res: Response) => {
-  try {
-    const { id, guestId } = req.params;
+  const { id, guestId } = req.params;
 
-    // Verify authorization and get guest
-    const authResult = await verifyGuestManagementAuth(id, guestId, req.user!.id);
-    if ('error' in authResult) {
-      return res.status(authResult.status).json({ error: authResult.error });
+  // Verify authorization and get guest
+  const authResult = await verifyGuestManagementAuth(id, guestId, req.user!.id);
+  if ('error' in authResult) {
+    if (authResult.status === 404) {
+      throw new NotFoundError(authResult.error);
     }
-
-    // Delete guest participant
-    await prisma.guestParticipant.delete({
-      where: { id: guestId }
-    });
-
-    // Invalidate events cache for all group members
-    await CacheService.deletePattern(`events:user:*:group:${authResult.event.groupId}:*`);
-    await CacheService.deletePattern(`events:user:*:group:all:*`);
-
-    res.json({ message: 'Guest participant removed successfully' });
-  } catch (error) {
-    logger.error('Remove guest participant error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to remove guest participant' });
+    throw new ForbiddenError(authResult.error);
   }
+
+  // Delete guest participant
+  await prisma.guestParticipant.delete({
+    where: { id: guestId }
+  });
+
+  // Invalidate events cache for all group members
+  await CacheService.deletePattern(`events:user:*:group:${authResult.event.groupId}:*`);
+  await CacheService.deletePattern(`events:user:*:group:all:*`);
+
+  res.json({ message: 'Guest participant removed successfully' });
 };
 
 /**
@@ -1975,66 +1929,61 @@ export const removeGuestParticipant = async (req: Request, res: Response) => {
  * Note: Uses group membership check (not event creator) to allow all group members to see guests
  */
 export const getGuestParticipants = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.query;
+  const { id } = req.params;
+  const { status } = req.query;
 
-    // Verify user is a member of the group that owns this event
-    // This allows any group member to view guests, not just the creator
-    const event = await prisma.event.findFirst({
-      where: {
-        id,
-        group: {
-          members: {
-            some: {
-              userId: req.user!.id
-            }
+  // Verify user is a member of the group that owns this event
+  // This allows any group member to view guests, not just the creator
+  const event = await prisma.event.findFirst({
+    where: {
+      id,
+      group: {
+        members: {
+          some: {
+            userId: req.user!.id
           }
         }
       }
-    });
-
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found' });
     }
+  });
 
-    // Build where clause
-    const where: any = { eventId: id };
-    const validStatuses = Object.values(GuestParticipantStatus);
-    if (status && validStatuses.includes(status as GuestParticipantStatus)) {
-      where.status = status;
-    }
-
-    // Get guest participants
-    const guestParticipants = await prisma.guestParticipant.findMany({
-      where,
-      orderBy: {
-        joinedAt: 'asc'  // Use joinedAt index for sorting
-      }
-    });
-
-    // Get counts by status for summary
-    const statusCounts = await prisma.guestParticipant.groupBy({
-      by: ['status'],
-      where: { eventId: id },
-      _count: true
-    });
-
-    const summary = {
-      total: statusCounts.reduce((sum, sc) => sum + sc._count, 0),
-      filtered: guestParticipants.length,
-      byStatus: Object.fromEntries(
-        statusCounts.map(sc => [sc.status, sc._count])
-      )
-    };
-
-    res.json({
-      guestParticipants,
-      summary,
-      filter: status || 'all'
-    });
-  } catch (error) {
-    logger.error('Get guest participants error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to get guest participants' });
+  if (!event) {
+    throw new NotFoundError('Event not found');
   }
+
+  // Build where clause
+  const where: any = { eventId: id };
+  const validStatuses = Object.values(GuestParticipantStatus);
+  if (status && validStatuses.includes(status as GuestParticipantStatus)) {
+    where.status = status;
+  }
+
+  // Get guest participants
+  const guestParticipants = await prisma.guestParticipant.findMany({
+    where,
+    orderBy: {
+      joinedAt: 'asc'  // Use joinedAt index for sorting
+    }
+  });
+
+  // Get counts by status for summary
+  const statusCounts = await prisma.guestParticipant.groupBy({
+    by: ['status'],
+    where: { eventId: id },
+    _count: true
+  });
+
+  const summary = {
+    total: statusCounts.reduce((sum, sc) => sum + sc._count, 0),
+    filtered: guestParticipants.length,
+    byStatus: Object.fromEntries(
+      statusCounts.map(sc => [sc.status, sc._count])
+    )
+  };
+
+  res.json({
+    guestParticipants,
+    summary,
+    filter: status || 'all'
+  });
 };

@@ -21,7 +21,7 @@ import {
   BracketStage 
 } from '../../shared/types/tournament.types';
 import * as locationService from '../services/locationService';
-import { BadRequestError, ForbiddenError } from '../utils/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '../utils/errors';
 import { isRequired } from '../utils/validation';
 import { ensureResourceExists } from '../utils/controllerHelpers';
 
@@ -751,32 +751,27 @@ export const submitScore = async (req: Request, res: Response) => {
  * Get tournament standings
  */
 export const getStandings = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { groupName } = req.query;
+  const { id } = req.params;
+  const { groupName } = req.query;
 
-    const where: any = { tournamentId: id };
-    if (groupName) {
-      where.groupName = groupName as string;
-    }
-
-    const standings = await prisma.tournamentStanding.findMany({
-      where,
-      include: {
-        team: true
-      },
-      orderBy: [
-        { points: 'desc' },
-        { goalsFor: 'desc' },
-        { goalsAgainst: 'asc' }
-      ]
-    });
-
-    res.json(standings);
-  } catch (error) {
-    logger.error('Error fetching standings', 'TournamentController', { error });
-    res.status(500).json({ error: 'Failed to fetch standings' });
+  const where: any = { tournamentId: id };
+  if (groupName) {
+    where.groupName = groupName as string;
   }
+
+  const standings = await prisma.tournamentStanding.findMany({
+    where,
+    include: {
+      team: true
+    },
+    orderBy: [
+      { points: 'desc' },
+      { goalsFor: 'desc' },
+      { goalsAgainst: 'asc' }
+    ]
+  });
+
+  res.json(standings);
 };
 
 /**
