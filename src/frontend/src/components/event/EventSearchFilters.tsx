@@ -33,12 +33,11 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = React.memo(({ onSe
   });
 
   const handleChange = useCallback((field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newFilters = {
-      ...filters,
+    setFilters(prevFilters => ({
+      ...prevFilters,
       [field]: event.target.value,
-    };
-    setFilters(newFilters);
-  }, [filters]);
+    }));
+  }, []);
 
   const handleSearch = useCallback(() => {
     // Remove empty values
