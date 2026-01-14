@@ -1,5 +1,13 @@
 // Tournament type definitions
 
+export enum TournamentNotificationType {
+  team_registered = 'team_registered',
+  tournament_updated = 'tournament_updated',
+  tournament_cancelled = 'tournament_cancelled',
+  match_scheduled = 'match_scheduled',
+  score_submitted = 'score_submitted',
+}
+
 export enum TournamentFormat {
   SINGLE_ELIMINATION = 'single_elimination',
   DOUBLE_ELIMINATION = 'double_elimination',

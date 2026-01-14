@@ -5,11 +5,12 @@
 
 import prisma from '../config/database';
 import { EventNotificationType, GroupNotificationType, TeamUpNotificationType } from '../../shared/types/event.types';
+import { TournamentNotificationType } from '../../shared/types/tournament.types';
 
 export interface NotificationMetadata {
   actionUrl?: string;
   actionText?: string;
-  category?: 'event' | 'group' | 'teamup' | 'system' | 'social';
+  category?: 'event' | 'group' | 'teamup' | 'tournament' | 'system' | 'social';
   priority?: 'low' | 'medium' | 'high';
   imageUrl?: string;
   relatedUserId?: string;
@@ -20,7 +21,7 @@ export interface UnifiedNotification {
   id: string;
   userId: string;
   type: string;
-  notificationType: 'event' | 'group' | 'teamup';
+  notificationType: 'event' | 'group' | 'teamup' | 'tournament';
   params?: Record<string, any>; // parameters for translation
   read: boolean;
   createdAt: Date;
@@ -36,6 +37,10 @@ export interface UnifiedNotification {
   teamUpRequest?: {
     id: string;
     title: string;
+  };
+  tournament?: {
+    id: string;
+    name: string;
   };
   user?: {
     id: string;
@@ -53,7 +58,7 @@ export const getUserNotifications = async (
     limit?: number;
     offset?: number;
     type?: string;
-    notificationType?: 'event' | 'group' | 'teamup';
+    notificationType?: 'event' | 'group' | 'teamup' | 'tournament';
     startDate?: Date;
     endDate?: Date;
     searchQuery?: string;
@@ -102,9 +107,11 @@ export const getUserNotifications = async (
   let eventNotifications: any[] = [];
   let groupNotifications: any[] = [];
   let teamUpNotifications: any[] = [];
+  let tournamentNotifications: any[] = [];
   let eventCount = 0;
   let groupCount = 0;
   let teamUpCount = 0;
+  let tournamentCount = 0;
 
   if (!notificationType || notificationType === 'event') {
     [eventNotifications, eventCount] = await Promise.all([
@@ -162,6 +169,34 @@ export const getUserNotifications = async (
         skip: offset,
       }),
       prisma.teamUpNotification.count({ where: teamUpWhere }),
+    ]);
+  }
+
+  if (!notificationType || notificationType === 'tournament') {
+    const tournamentWhere: any = { userId };
+    if (!includeRead) {
+      tournamentWhere.read = false;
+    }
+    if (type) {
+      tournamentWhere.type = type as TournamentNotificationType;
+    }
+    if (startDate || endDate) {
+      tournamentWhere.createdAt = {};
+      if (startDate) tournamentWhere.createdAt.gte = startDate;
+      if (endDate) tournamentWhere.createdAt.lte = endDate;
+    }
+
+    [tournamentNotifications, tournamentCount] = await Promise.all([
+      prisma.tournamentNotification.findMany({
+        where: tournamentWhere,
+        include: {
+          tournament: { select: { id: true, name: true, sportType: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.tournamentNotification.count({ where: tournamentWhere }),
     ]);
   }
 
@@ -223,8 +258,27 @@ export const getUserNotifications = async (
     };
   });
 
+  const enrichedTournamentNotifications: UnifiedNotification[] = tournamentNotifications.map((n) => {
+    const metadata = enrichNotificationMetadata('tournament', n.type, null, null, null, null, n.tournament);
+    return {
+      id: n.id,
+      userId: n.userId,
+      type: n.type as TournamentNotificationType,
+      notificationType: 'tournament' as const,
+      params: n.params || {
+        tournamentName: n.tournament?.name,
+        sportType: n.tournament?.sportType,
+        // add more as needed
+      },
+      read: n.read,
+      createdAt: n.createdAt,
+      metadata,
+      tournament: n.tournament,
+    };
+  });
+
   // Merge and sort all notifications
-  let allNotifications = [...enrichedEventNotifications, ...enrichedGroupNotifications, ...enrichedTeamUpNotifications].sort(
+  let allNotifications = [...enrichedEventNotifications, ...enrichedGroupNotifications, ...enrichedTeamUpNotifications, ...enrichedTournamentNotifications].sort(
     (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
   );
 
@@ -243,7 +297,7 @@ export const getUserNotifications = async (
 
   return {
     notifications: allNotifications.slice(0, limit),
-    total: searchQuery ? allNotifications.length : eventCount + groupCount + teamUpCount,
+    total: searchQuery ? allNotifications.length : eventCount + groupCount + teamUpCount + tournamentCount,
   };
 };
 
@@ -251,21 +305,22 @@ export const getUserNotifications = async (
  * Enrich notification with metadata for enhanced UI
  */
 function enrichNotificationMetadata(
-  notificationType: 'event' | 'group' | 'teamup',
+  notificationType: 'event' | 'group' | 'teamup' | 'tournament',
   type: string,
   event?: any,
   user?: any,
   group?: any,
-  teamUpRequest?: any
+  teamUpRequest?: any,
+  tournament?: any
 ): NotificationMetadata {
   const metadata: NotificationMetadata = {
     category: notificationType,
   };
 
   // Set priority based on type
-  if (['late', 'declined', 'cancelled', 'teamup_declined'].includes(type)) {
+  if (['late', 'declined', 'cancelled', 'teamup_declined', 'tournament_cancelled'].includes(type)) {
     metadata.priority = 'high';
-  } else if (['join', 'accepted', 'created', 'teamup_accepted', 'teamup_response'].includes(type)) {
+  } else if (['join', 'accepted', 'created', 'teamup_accepted', 'teamup_response', 'teamup_comment', 'team_registered', 'score_submitted'].includes(type)) {
     metadata.priority = 'medium';
   } else {
     metadata.priority = 'low';
@@ -286,8 +341,19 @@ function enrichNotificationMetadata(
     metadata.actionUrl = `/teamup/${teamUpRequest.id}`;
     if (type === 'teamup_response') {
       metadata.actionText = 'Review Response';
+    } else if (type === 'teamup_comment') {
+      metadata.actionText = 'View Comment';
     } else {
       metadata.actionText = 'View Request';
+    }
+  } else if (notificationType === 'tournament' && tournament?.id) {
+    metadata.actionUrl = `/tournaments/${tournament.id}`;
+    if (type === 'team_registered') {
+      metadata.actionText = 'View Team';
+    } else if (type === 'score_submitted') {
+      metadata.actionText = 'Review Score';
+    } else {
+      metadata.actionText = 'View Tournament';
     }
   }
 
@@ -322,6 +388,10 @@ export const markNotificationsAsRead = async (
         where: { id: { in: notificationIds }, userId },
         data: { read: true },
       }),
+      prisma.tournamentNotification.updateMany({
+        where: { id: { in: notificationIds }, userId },
+        data: { read: true },
+      }),
     ]);
   } else {
     // Mark all as read
@@ -338,6 +408,10 @@ export const markNotificationsAsRead = async (
         where: { userId, read: false },
         data: { read: true },
       }),
+      prisma.tournamentNotification.updateMany({
+        where: { userId, read: false },
+        data: { read: true },
+      }),
     ]);
   }
 };
@@ -346,13 +420,15 @@ export const markNotificationsAsRead = async (
  * Get notification statistics for a user
  */
 export const getNotificationStats = async (userId: string) => {
-  const [unreadEvent, unreadGroup, unreadTeamUp, totalEvent, totalGroup, totalTeamUp, recentActivity] = await Promise.all([
+  const [unreadEvent, unreadGroup, unreadTeamUp, unreadTournament, totalEvent, totalGroup, totalTeamUp, totalTournament, recentActivity] = await Promise.all([
     prisma.eventNotification.count({ where: { userId, read: false } }),
     prisma.groupNotification.count({ where: { userId, read: false } }),
     prisma.teamUpNotification.count({ where: { userId, read: false } }),
+    prisma.tournamentNotification.count({ where: { userId, read: false } }),
     prisma.eventNotification.count({ where: { userId } }),
     prisma.groupNotification.count({ where: { userId } }),
     prisma.teamUpNotification.count({ where: { userId } }),
+    prisma.tournamentNotification.count({ where: { userId } }),
     prisma.eventNotification.findMany({
       where: {
         userId,
@@ -369,14 +445,16 @@ export const getNotificationStats = async (userId: string) => {
   });
 
   return {
-    unread: unreadEvent + unreadGroup + unreadTeamUp,
+    unread: unreadEvent + unreadGroup + unreadTeamUp + unreadTournament,
     unreadEvent,
     unreadGroup,
     unreadTeamUp,
-    total: totalEvent + totalGroup + totalTeamUp,
+    unreadTournament,
+    total: totalEvent + totalGroup + totalTeamUp + totalTournament,
     totalEvent,
     totalGroup,
     totalTeamUp,
+    totalTournament,
     last7Days: recentActivity.length,
     typeCounts,
   };
@@ -393,7 +471,7 @@ export const deleteNotifications = async (
     return { deletedCount: 0 };
   }
 
-  const [eventDeleted, groupDeleted, teamUpDeleted] = await Promise.all([
+  const [eventDeleted, groupDeleted, teamUpDeleted, tournamentDeleted] = await Promise.all([
     prisma.eventNotification.deleteMany({
       where: { id: { in: notificationIds }, userId },
     }),
@@ -403,9 +481,12 @@ export const deleteNotifications = async (
     prisma.teamUpNotification.deleteMany({
       where: { id: { in: notificationIds }, userId },
     }),
+    prisma.tournamentNotification.deleteMany({
+      where: { id: { in: notificationIds }, userId },
+    }),
   ]);
 
-  return { deletedCount: eventDeleted.count + groupDeleted.count + teamUpDeleted.count };
+  return { deletedCount: eventDeleted.count + groupDeleted.count + teamUpDeleted.count + tournamentDeleted.count };
 };
 
 /**
@@ -414,7 +495,7 @@ export const deleteNotifications = async (
 export const deleteAllReadNotifications = async (
   userId: string
 ): Promise<{ deletedCount: number }> => {
-  const [eventDeleted, groupDeleted, teamUpDeleted] = await Promise.all([
+  const [eventDeleted, groupDeleted, teamUpDeleted, tournamentDeleted] = await Promise.all([
     prisma.eventNotification.deleteMany({
       where: { userId, read: true },
     }),
@@ -424,7 +505,10 @@ export const deleteAllReadNotifications = async (
     prisma.teamUpNotification.deleteMany({
       where: { userId, read: true },
     }),
+    prisma.tournamentNotification.deleteMany({
+      where: { userId, read: true },
+    }),
   ]);
 
-  return { deletedCount: eventDeleted.count + groupDeleted.count + teamUpDeleted.count };
+  return { deletedCount: eventDeleted.count + groupDeleted.count + teamUpDeleted.count + tournamentDeleted.count };
 };

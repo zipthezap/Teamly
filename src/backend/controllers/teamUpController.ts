@@ -992,7 +992,13 @@ export const addTeamUpComment = async (req: Request, res: Response) => {
 
     const teamUpRequest = await prisma.teamUpRequest.findUnique({
       where: { id },
-      select: { id: true, status: true }
+      select: { 
+        id: true, 
+        status: true,
+        title: true,
+        sportType: true,
+        creatorId: true
+      }
     });
 
     if (!teamUpRequest) {
@@ -1016,6 +1022,27 @@ export const addTeamUpComment = async (req: Request, res: Response) => {
         }
       }
     });
+
+    // Create notification for TeamUp creator if commenter is not the creator
+    if (req.user!.id !== teamUpRequest.creatorId) {
+      await prisma.teamUpNotification.create({
+        data: {
+          userId: teamUpRequest.creatorId,
+          teamUpRequestId: id,
+          type: 'teamup_comment',
+          params: {
+            name: req.user!.name,
+            title: teamUpRequest.title,
+            sportType: teamUpRequest.sportType,
+          },
+          metadata: {
+            commentId: comment.id,
+            commenterId: req.user!.id,
+            commenterName: req.user!.name,
+          }
+        }
+      });
+    }
 
     res.status(201).json(comment);
   } catch (error) {
