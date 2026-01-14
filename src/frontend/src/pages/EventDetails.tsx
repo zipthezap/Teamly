@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { eventsAPI, groupChatAPI } from '../services/api';
@@ -13,137 +14,157 @@ const EventDetails = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useTranslation();
-  const [event, setEvent] = useState<EventWithDetails | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [lateSuccess, setLateSuccess] = useState('');
   const [lateError, setLateError] = useState('');
   const [copySuccess, setCopySuccess] = useState('');
+  const queryClient = useQueryClient();
 
-  const fetchEvent = useCallback(async () => {
-    if (!id) return;
-    try {
-      const response = await eventsAPI.getById(id);
-      setEvent(response.data);
-    } catch (error) {
-      console.error('Error fetching event:', error);
-      setError(t('eventDetails.failedToLoad'));
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    fetchEvent();
-  }, [fetchEvent]);
+  const {
+    data: event,
+    isLoading: loading,
+    refetch: refetchEvent,
+  } = useQuery({
+    queryKey: ['eventDetails', id],
+    queryFn: async () => {
+      const response = await eventsAPI.getById(id!);
+      return response.data;
+    },
+    enabled: !!id,
+  });
 
   // Guard for missing ID
   if (!id) {
     return <div className="p-4 text-red-600">{t('eventDetails.invalidEventId')}</div>;
   }
 
-  const handleJoin = async () => {
-    setError('');
-    setSuccess('');
-    try {
-      await eventsAPI.join(id!);
+  const joinMutation = useMutation({
+    mutationFn: async () => eventsAPI.join(id!),
+    onSuccess: () => {
       setSuccess(t('eventDetails.joined'));
-      fetchEvent();
-    } catch (err: unknown) {
+      queryClient.invalidateQueries({ queryKey: ['eventDetails', id] });
+    },
+    onError: (err: unknown) => {
       const errorMessage = err instanceof AxiosError 
         ? err.response?.data?.error || t('eventDetails.failedToJoin')
         : t('eventDetails.failedToJoin');
       setError(errorMessage);
-    }
-  };
-
-  const handleLeave = async () => {
-    if (!window.confirm(t('eventDetails.confirmLeave'))) return;
-    
+    },
+  });
+  const handleJoin = () => {
     setError('');
     setSuccess('');
-    try {
-      await eventsAPI.leave(id!);
+    joinMutation.mutate();
+  };
+
+  const leaveMutation = useMutation({
+    mutationFn: async () => eventsAPI.leave(id!),
+    onSuccess: () => {
       setSuccess(t('eventDetails.left'));
-      fetchEvent();
-    } catch (err: unknown) {
+      queryClient.invalidateQueries({ queryKey: ['eventDetails', id] });
+    },
+    onError: (err: unknown) => {
       const errorMessage = err instanceof AxiosError 
         ? err.response?.data?.error || t('eventDetails.failedToLeave')
         : t('eventDetails.failedToLeave');
       setError(errorMessage);
-    }
-  };
-
-  const handleUpdateStatus = async (status: string) => {
+    },
+  });
+  const handleLeave = () => {
+    if (!window.confirm(t('eventDetails.confirmLeave'))) return;
     setError('');
     setSuccess('');
-    try {
-      await eventsAPI.updateStatus(id, status);
+    leaveMutation.mutate();
+  };
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async (status: string) => eventsAPI.updateStatus(id!, status),
+    onSuccess: (_data, status) => {
       setSuccess(t('eventDetails.statusUpdated', { status }));
-      fetchEvent();
-    } catch (err: unknown) {
+      queryClient.invalidateQueries({ queryKey: ['eventDetails', id] });
+    },
+    onError: (err: unknown) => {
       const errorMessage = err instanceof AxiosError 
         ? err.response?.data?.error || t('eventDetails.failedToUpdateStatus')
         : t('eventDetails.failedToUpdateStatus');
       setError(errorMessage);
-    }
+    },
+  });
+  const handleUpdateStatus = (status: string) => {
+    setError('');
+    setSuccess('');
+    updateStatusMutation.mutate(status);
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm(t('eventDetails.confirmDelete'))) return;
-    
-    try {
-      await eventsAPI.delete(id!);
+  const deleteMutation = useMutation({
+    mutationFn: async () => eventsAPI.delete(id!),
+    onSuccess: () => {
       navigate('/events');
-    } catch (err: unknown) {
+    },
+    onError: (err: unknown) => {
       const errorMessage = err instanceof AxiosError 
         ? err.response?.data?.error || t('eventDetails.failedToDelete')
         : t('eventDetails.failedToDelete');
       setError(errorMessage);
-    }
+    },
+  });
+  const handleDelete = () => {
+    if (!window.confirm(t('eventDetails.confirmDelete'))) return;
+    deleteMutation.mutate();
   };
 
-  const handleMarkLate = async () => {
-    setLateError('');
-    setLateSuccess('');
-    try {
-      await groupChatAPI.markLate(id!);
+  const markLateMutation = useMutation({
+    mutationFn: async () => groupChatAPI.markLate(id!),
+    onSuccess: () => {
       setLateSuccess(t('eventDetails.markedLate'));
-      fetchEvent();
-    } catch {
+      queryClient.invalidateQueries({ queryKey: ['eventDetails', id] });
+    },
+    onError: () => {
       setLateError(t('eventDetails.failedToMarkLate'));
-    }
-  };
-
-  const handleUnmarkLate = async () => {
+    },
+  });
+  const handleMarkLate = () => {
     setLateError('');
     setLateSuccess('');
-    try {
-      await groupChatAPI.unmarkLate(id!);
-      setLateSuccess(t('eventDetails.lateUndone'));
-      fetchEvent();
-    } catch {
-      setLateError(t('eventDetails.failedToUndoLate'));
-    }
+    markLateMutation.mutate();
   };
 
-  const handleGenerateInviteLink = async () => {
-    setError('');
-    setCopySuccess('');
-    try {
-      const response = await eventsAPI.generateInviteToken(id!);
+  const unmarkLateMutation = useMutation({
+    mutationFn: async () => groupChatAPI.unmarkLate(id!),
+    onSuccess: () => {
+      setLateSuccess(t('eventDetails.lateUndone'));
+      queryClient.invalidateQueries({ queryKey: ['eventDetails', id] });
+    },
+    onError: () => {
+      setLateError(t('eventDetails.failedToUndoLate'));
+    },
+  });
+  const handleUnmarkLate = () => {
+    setLateError('');
+    setLateSuccess('');
+    unmarkLateMutation.mutate();
+  };
+
+  const generateInviteLinkMutation = useMutation({
+    mutationFn: async () => eventsAPI.generateInviteToken(id!),
+    onSuccess: (response: any) => {
       const inviteUrl = `${window.location.origin}/events/join/${response.data.inviteToken}`;
-      await navigator.clipboard.writeText(inviteUrl);
+      navigator.clipboard.writeText(inviteUrl);
       setCopySuccess('Invite link copied to clipboard!');
-      // Refresh event to show updated inviteToken
-      fetchEvent();
-    } catch (err: unknown) {
+      queryClient.invalidateQueries({ queryKey: ['eventDetails', id] });
+    },
+    onError: (err: unknown) => {
       const errorMessage = err instanceof AxiosError 
         ? err.response?.data?.error || 'Failed to generate invite link'
         : 'Failed to generate invite link';
       setError(errorMessage);
-    }
+    },
+  });
+  const handleGenerateInviteLink = () => {
+    setError('');
+    setCopySuccess('');
+    generateInviteLinkMutation.mutate();
   };
 
   const handleCopyInviteLink = async () => {
@@ -155,7 +176,7 @@ const EventDetails = () => {
     }
   };
 
-  const isParticipant = event?.participants?.find((p: EventParticipant) => p.id === user?.id);
+  const isParticipant = event?.participants?.some((p: EventParticipant) => p.id === user?.id || p.userId === user?.id);
   const isCreator = event?.creatorId === user?.id;
   const totalParticipants = 
     ((event?.participants?.filter((p: EventParticipant) => p.status === EventParticipantStatus.confirmed).length) || 0) +
@@ -253,7 +274,7 @@ const EventDetails = () => {
           <div className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3 mb-4">
             <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center text-lg font-bold flex-shrink-0 overflow-hidden">
               {(() => {
-                const currentPic = event.creator?.profilePictures?.find((p) => p.isCurrent && !p.deletedAt);
+                const currentPic = event.creator?.profilePictures?.find((p: any) => p.isCurrent && !p.deletedAt);
                 const url = getImageUrl(currentPic?.url || event.creator?.profilePicture);
                 return url ? (
                   <img src={url} alt={event.creator?.name} className="w-full h-full object-cover" />
@@ -345,14 +366,17 @@ const EventDetails = () => {
                 year: 'numeric'
               })}
               isCreator={isCreator}
-              onGenerateLink={handleGenerateInviteLink}
+              onGenerateLink={async () => { handleGenerateInviteLink(); }}
               isPublic={event.isPublic}
               isPast={new Date(event.startTime) < new Date()}
             />
           </div>
           
           {/* Right Column: Activity Feed - Fixed Height */}
-          <div className="bg-[#1a2233] rounded-lg p-5 flex flex-col max-h-[500px]">
+          <div
+            className="bg-[#1a2233] rounded-lg p-5 flex flex-col max-h-[500px]"
+            key={event.eventNotifications?.length || 0}
+          >
             <div className="font-semibold mb-3 text-lg flex-shrink-0">{t('eventDetails.activityFeed')}</div>
             <div className="flex-1 overflow-y-auto text-sm text-[#a1a6b4] pr-2">
               {(event.eventNotifications || []).length === 0 ? (
@@ -363,7 +387,7 @@ const EventDetails = () => {
                   </div>
                 </div>
               ) : (
-                event.eventNotifications && event.eventNotifications.map((n, idx) => {
+                event.eventNotifications && event.eventNotifications.map((n: any, idx: number) => {
                   let action = '';
                   switch (n.type) {
                     case 'join':
@@ -389,7 +413,7 @@ const EventDetails = () => {
                       <div className="flex items-start gap-2">
                         <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden">
                           {(() => {
-                            const currentPic = n.user?.profilePictures?.find((p) => p.isCurrent && !p.deletedAt);
+                            const currentPic = n.user?.profilePictures?.find((p: any) => p.isCurrent && !p.deletedAt);
                             const url = getImageUrl(currentPic?.url || n.user?.profilePicture);
                             return url ? (
                               <img src={url} alt={n.user?.name} className="w-full h-full object-cover" />
@@ -417,11 +441,11 @@ const EventDetails = () => {
       <div className="bg-[#232946] rounded-xl shadow-md p-6 mt-8">
         <div className="font-semibold mb-4 text-xl">{t('eventDetails.participantsList', { count: participantCount })}</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {event?.participants?.map((p, idx) => (
+          {event?.participants?.map((p: any, idx: number) => (
             <div key={p.id || idx} className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3">
               <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden">
                 {(() => {
-                  const currentPic = p.user?.profilePictures?.find((pic) => pic.isCurrent && !pic.deletedAt);
+                  const currentPic = p.user?.profilePictures?.find((pic: any) => pic.isCurrent && !pic.deletedAt);
                   const url = getImageUrl(currentPic?.url || p.user?.profilePicture);
                   return url ? (
                     <img src={url} alt={p.user?.name} className="w-full h-full object-cover" />
@@ -445,7 +469,7 @@ const EventDetails = () => {
               </div>
             </div>
           ))}
-          {event.guestParticipants?.map((g, idx) => (
+          {event.guestParticipants?.map((g: any, idx: number) => (
             <div key={g.id || `guest-${idx}`} className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3 border border-purple-500/30">
               <div className="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">{getInitials(g.name)}</div>
               <div className="flex-1 min-w-0">

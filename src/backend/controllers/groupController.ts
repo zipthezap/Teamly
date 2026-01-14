@@ -46,9 +46,23 @@ export const transferAdmin = async (req: Request, res: Response) => {
 export const deleteGroup = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    // Check if user has permission to delete the group
+    // Debug log for permission check
+    logger.info('Attempting to delete group', 'GroupController', {
+      userId: req.user!.id,
+      groupId: id,
+      action: 'GROUP_DELETE',
+    });
     const canDelete = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_DELETE);
+    logger.info('Delete group permission result', 'GroupController', {
+      userId: req.user!.id,
+      groupId: id,
+      canDelete,
+    });
     if (!canDelete) {
+      logger.warn('403 Forbidden: User lacks GROUP_DELETE permission', 'GroupController', {
+        userId: req.user!.id,
+        groupId: id,
+      });
       return res.status(403).json({ error: 'Only admins can delete the group' });
     }
     // Delete group and cascade related data (members, events, etc.)
@@ -240,7 +254,7 @@ export const getGroups = async (req: Request, res: Response) => {
     const mappedGroups = groups.map((group: any) => ({
       ...group,
       members: group.members.map((member: any) => ({
-        id: member.user.id,
+        id: member.userId,
         name: member.user.name,
         email: member.user.email,
         profilePicture: member.user.profilePicture,
@@ -336,7 +350,7 @@ export const getGroup = async (req: Request, res: Response) => {
     const mappedGroup = {
       ...group,
       members: group.members.map((member: any) => ({
-        id: member.user.id,
+        id: member.userId,
         name: member.user.name,
         email: member.user.email,
         profilePicture: member.user.profilePicture,
@@ -515,9 +529,26 @@ export const removeMember = async (req: Request, res: Response) => {
   try {
     const { id, memberId } = req.params;
 
-    // Check if user has permission to remove members
+    // Debug log for permission check
+    logger.info('Attempting to remove member', 'GroupController', {
+      userId: req.user!.id,
+      groupId: id,
+      memberId,
+      action: 'GROUP_REMOVE_MEMBERS',
+    });
     const canRemove = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_REMOVE_MEMBERS);
+    logger.info('Remove member permission result', 'GroupController', {
+      userId: req.user!.id,
+      groupId: id,
+      memberId,
+      canRemove,
+    });
     if (!canRemove) {
+      logger.warn('403 Forbidden: User lacks GROUP_REMOVE_MEMBERS permission', 'GroupController', {
+        userId: req.user!.id,
+        groupId: id,
+        memberId,
+      });
       return res.status(403).json({ error: 'Only admins can remove members' });
     }
 

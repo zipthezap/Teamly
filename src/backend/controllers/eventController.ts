@@ -145,7 +145,7 @@ export const createEvent = async (req: Request, res: Response) => {
   const enrichedEvent = locationService.enrichWithLocationInfo(event);
 
   // Send global notification to group members (except creator)
-  const memberIds = group.members.map(m => m.user.id).filter(uid => uid !== req.user!.id);
+  const memberIds = group.members.map(m => m.userId).filter(uid => uid !== req.user!.id);
   await eventService.createEventNotifications(group.id, event.title, req.user!.name, group.name, memberIds);
 
   // Invalidate events cache for all group members
