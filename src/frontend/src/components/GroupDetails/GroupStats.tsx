@@ -7,7 +7,7 @@ interface GroupStatsProps {
   events: Event[];
 }
 
-const GroupStats: React.FC<GroupStatsProps> = ({ memberCount, events }) => {
+const GroupStats: React.FC<GroupStatsProps> = React.memo(({ memberCount, events }) => {
   const { t } = useTranslation();
   
   const now = new Date();
@@ -45,6 +45,8 @@ const GroupStats: React.FC<GroupStatsProps> = ({ memberCount, events }) => {
       </div>
     </section>
   );
-};
+});
+
+GroupStats.displayName = 'GroupStats';
 
 export default GroupStats;

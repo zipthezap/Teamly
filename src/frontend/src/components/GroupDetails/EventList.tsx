@@ -27,7 +27,7 @@ const formatEventDate = (dateString: string) => {
 };
 
 
-const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, isAdmin, groupId, isMember }) => {
+const EventList: React.FC<EventListProps> = React.memo(({ events, onEventClick, onCreate, isAdmin, groupId, isMember }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [viewAllOpen, setViewAllOpen] = useState(false);
@@ -163,6 +163,8 @@ const EventList: React.FC<EventListProps> = ({ events, onEventClick, onCreate, i
             )}
     </section>
   );
-};
+});
+
+EventList.displayName = 'EventList';
 
 export default EventList;

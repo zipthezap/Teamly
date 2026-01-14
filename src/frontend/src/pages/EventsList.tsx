@@ -1,6 +1,6 @@
 import { getInitials } from '../utils/imageUtils';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Tabs, Tab } from '@mui/material';
 import {
   Container,
@@ -106,17 +106,18 @@ const EventsList = () => {
       setIsLoading(false);
       setIsFetching(false);
     }
-  }, [searchFilters, page, t]);
+  }, [searchFilters, page]);
 
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
 
   // Delete event
-    const handlePageChange = (value: number) => {
-      setPage(value);
-    };
-  const handleDeleteEvent = async (eventId: string | number) => {
+  const handlePageChange = useCallback((value: number) => {
+    setPage(value);
+  }, []);
+
+  const handleDeleteEvent = useCallback(async (eventId: string | number) => {
     try {
       await eventsAPI.delete(eventId);
       setToast({ message: t('events.eventDeleted'), type: 'success' });
@@ -129,10 +130,10 @@ const EventsList = () => {
         : t('events.errorDeletingEvent');
       setToast({ message: errorMessage, type: 'error' });
     }
-  };
+  }, [t, fetchEvents]);
 
   // Join event
-  const handleJoinEvent = async (eventId: string | number) => {
+  const handleJoinEvent = useCallback(async (eventId: string | number) => {
     try {
       await eventsAPI.join(eventId);
       setToast({ message: t('events.eventJoined'), type: 'success' });
@@ -143,10 +144,10 @@ const EventsList = () => {
         : t('events.errorJoiningEvent');
       setToast({ message: errorMessage, type: 'error' });
     }
-  };
+  }, [t, fetchEvents]);
 
   // Leave event
-  const handleLeaveEvent = async (eventId: string | number) => {
+  const handleLeaveEvent = useCallback(async (eventId: string | number) => {
     try {
       await eventsAPI.leave(eventId);
       setToast({ message: t('events.leftEvent'), type: 'success' });
@@ -157,7 +158,7 @@ const EventsList = () => {
         : t('events.failedToLeaveEvent');
       setToast({ message: errorMessage, type: 'error' });
     }
-  };
+  }, [t, fetchEvents]);
 
   // Export events
   const handleExportEvents = async (format: 'csv' | 'ical' | 'json') => {
@@ -249,54 +250,57 @@ const EventsList = () => {
   // No 'error' variable in scope; error handling is done via toast and isLoading above.
 
   // Enhanced event filtering and sorting logic
-  const now = new Date();
-  let filteredEvents: EventWithDetails[] = [];
-  // Get group IDs where user is a member
-  const userGroupIds = groups
-    .filter(g => g.members?.some((m: GroupMember) => m.id === user?.id))
-    .map(g => g.id);
+  const filteredEvents = useMemo(() => {
+    const now = new Date();
+    // Get group IDs where user is a member
+    const userGroupIds = groups
+      .filter(g => g.members?.some((m: GroupMember) => m.id === user?.id))
+      .map(g => g.id);
 
-  // Ensure events is always an array
-  const eventsArray = Array.isArray(events) ? events : [];
+    // Ensure events is always an array
+    const eventsArray = Array.isArray(events) ? events : [];
 
-  if (tab === 'my') {
-    // Only events the user is joined in (participant or creator), upcoming only
-    filteredEvents = eventsArray.filter(event => {
-      const eventDate = new Date(event.startTime);
-      const isJoined = event.participants?.some((p: EventParticipant) => p.id === user?.id);
-      const isCreator = event.creatorId === user?.id;
-      return eventDate >= now && (isJoined || isCreator);
-    });
-  } else if (tab === 'upcoming') {
-    // Only events the user has NOT joined yet, from their groups (public or private) or public events from other groups
-    filteredEvents = eventsArray.filter(event => {
-      const eventDate = new Date(event.startTime);
-      const isUserGroup = event.group && userGroupIds.includes(event.group.id);
-      const isJoined = event.participants?.some((p: EventParticipant) => p.id === user?.id);
-      // Show if:
-      // - Upcoming
-      // - (User is group member and not joined) OR (public event and not joined)
-      return (
-        eventDate >= now &&
-        !isJoined &&
-        ((isUserGroup) || (!isUserGroup && event.isPublic))
-      );
-    });
-  } else {
-    // Past events where user is a participant or creator
-    filteredEvents = eventsArray.filter(event => {
-      const eventDate = new Date(event.startTime);
-      const isJoined = event.participants?.some((p: EventParticipant) => p.id === user?.id);
-      const isCreator = event.creatorId === user?.id;
-      return eventDate < now && (isJoined || isCreator);
-    });
-  }
+    let filtered: EventWithDetails[] = [];
 
-  // All group members should see all group events in the list (not just joined)
-  // (Handled above for upcoming tab; for other tabs, user must be participant or creator)
+    if (tab === 'my') {
+      // Only events the user is joined in (participant or creator), upcoming only
+      filtered = eventsArray.filter(event => {
+        const eventDate = new Date(event.startTime);
+        const isJoined = event.participants?.some((p: EventParticipant) => p.id === user?.id);
+        const isCreator = event.creatorId === user?.id;
+        return eventDate >= now && (isJoined || isCreator);
+      });
+    } else if (tab === 'upcoming') {
+      // Only events the user has NOT joined yet, from their groups (public or private) or public events from other groups
+      filtered = eventsArray.filter(event => {
+        const eventDate = new Date(event.startTime);
+        const isUserGroup = event.group && userGroupIds.includes(event.group.id);
+        const isJoined = event.participants?.some((p: EventParticipant) => p.id === user?.id);
+        // Show if:
+        // - Upcoming
+        // - (User is group member and not joined) OR (public event and not joined)
+        return (
+          eventDate >= now &&
+          !isJoined &&
+          ((isUserGroup) || (!isUserGroup && event.isPublic))
+        );
+      });
+    } else {
+      // Past events where user is a participant or creator
+      filtered = eventsArray.filter(event => {
+        const eventDate = new Date(event.startTime);
+        const isJoined = event.participants?.some((p: EventParticipant) => p.id === user?.id);
+        const isCreator = event.creatorId === user?.id;
+        return eventDate < now && (isJoined || isCreator);
+      });
+    }
 
-  // Sort all tabs by soonest event
-  filteredEvents = filteredEvents.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    // All group members should see all group events in the list (not just joined)
+    // (Handled above for upcoming tab; for other tabs, user must be participant or creator)
+
+    // Sort all tabs by soonest event
+    return filtered.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+  }, [events, groups, tab, user?.id]);
 
   // Main render
   return (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -39,9 +39,10 @@ const GroupsList = () => {
 
   useEffect(() => {
     fetchGroups();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const filterGroups = useCallback(() => {
+  useEffect(() => {
     let filtered = [...groups];
 
     // Search filter
@@ -65,10 +66,6 @@ const GroupsList = () => {
 
     setFilteredGroups(filtered);
   }, [groups, searchTerm, filter, user?.id]);
-
-  useEffect(() => {
-    filterGroups();
-  }, [filterGroups]);
 
   const fetchGroups = async () => {
     try {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import AdminTransferDialog from "../components/GroupDetails/AdminTransferDialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
@@ -257,29 +257,30 @@ export default function GroupDetailsPage() {
   }, [message]);
 
   // Remove member handler with confirmation
-  const handleRemoveMember = (email: string) => {
+  const handleRemoveMember = useCallback((email: string) => {
     setShowConfirm({ open: true, email });
-  };
-  const confirmRemove = () => {
+  }, []);
+
+  const confirmRemove = useCallback(() => {
     if (showConfirm.email) {
       removeMemberMutation.mutate(showConfirm.email);
     }
     setShowConfirm({ open: false, email: null });
-  };
+  }, [showConfirm.email, removeMemberMutation]);
 
   // Event card click handler
   const navigate = useNavigate();
-  const handleEventClick = (eventId: string) => {
+  const handleEventClick = useCallback((eventId: string) => {
     navigate(`/events/${eventId}`);
-  };
+  }, [navigate]);
 
   // Chat send handler
-  const handleSend = () => {
+  const handleSend = useCallback(() => {
     if (message.trim()) {
       sendMessageMutation.mutate(message);
       setMessage("");
     }
-  };
+  }, [message, sendMessageMutation]);
 
   // Delete group handler
   const deleteGroupMutation = useMutation({
@@ -434,6 +435,12 @@ export default function GroupDetailsPage() {
     }
   };
 
+  // Create event handler
+  const handleCreateEvent = useCallback(() => {
+    setEditEvent(undefined);
+    setEventModalOpen(true);
+  }, []);
+
   if (groupLoading || eventsLoading || chatLoading) return <div className="text-center text-slate-300 mt-10">{t('groupDetails.loadingGroupDetails')}</div>;
   if (groupError || !group) return <div className="text-center text-red-400 mt-10">{t('groupDetails.failedToLoad')}</div>;
 
@@ -472,7 +479,7 @@ export default function GroupDetailsPage() {
         <EventList
           events={eventsArray}
           onEventClick={handleEventClick}
-          onCreate={isMember ? () => { setEditEvent(undefined); setEventModalOpen(true); } : undefined}
+          onCreate={isMember ? handleCreateEvent : undefined}
           isAdmin={isAdmin}
           groupId={groupId}
           isMember={isMember}
