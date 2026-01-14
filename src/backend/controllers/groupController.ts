@@ -972,7 +972,7 @@ export const leaveGroup = async (req: Request, res: Response) => {
     const userId = req.user!.id;
 
     // SECURITY FIX: Use transaction to prevent race condition where last admin could leave
-    const result = await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx) => {
       // Find the membership
       const membership = await tx.groupMember.findFirst({
         where: {
@@ -1003,8 +1003,6 @@ export const leaveGroup = async (req: Request, res: Response) => {
       await tx.groupMember.delete({
         where: { id: membership.id }
       });
-
-      return membership;
     });
 
     // Invalidate group cache for all affected users
