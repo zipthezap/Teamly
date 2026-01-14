@@ -157,10 +157,10 @@ const EventDetails = () => {
 
   const isParticipant = event?.participants?.find((p: EventParticipant) => p.userId === user?.id);
   const isCreator = event?.creatorId === user?.id;
-  const isFull = event?.maxPlayers && (event?.participants?.length || 0) >= event?.maxPlayers;
   const totalParticipants = 
     ((event?.participants?.filter((p: EventParticipant) => p.status === EventParticipantStatus.confirmed).length) || 0) +
     ((event?.guestParticipants?.filter((g: GuestParticipant) => g.status === GuestParticipantStatus.confirmed).length) || 0);
+  const isFull = event?.maxPlayers && totalParticipants >= event?.maxPlayers;
 
   if (loading) {
     return (
