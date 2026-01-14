@@ -8,8 +8,9 @@ import { etagMiddleware, privateCache } from '../middleware/etag';
 
 const router = Router();
 
-// Public join via invite link (no auth)
-router.post('/join', asyncHandler(groupController.joinGroupByInvite));
+// Join via invite link - requires authentication to ensure user identity
+// Changed from public to authenticated to prevent privilege escalation
+router.post('/join/:groupId', authMiddleware, asyncHandler(groupController.joinGroupByInvite));
 
 // Public route to get all public groups (with optional auth to filter out user's groups)
 router.get('/public', optionalAuthMiddleware, asyncHandler(groupController.getPublicGroups));

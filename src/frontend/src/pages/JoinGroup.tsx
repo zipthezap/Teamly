@@ -60,7 +60,7 @@ const JoinGroup = () => {
     setError('');
     
     try {
-      await groupsAPI.joinByInvite(user.id, groupId);
+      await groupsAPI.joinByInvite(groupId);
       setSuccess(t('groups.joinGroup.successfullyJoined'));
       setTimeout(() => {
         navigate(`/groups/${groupId}`);
