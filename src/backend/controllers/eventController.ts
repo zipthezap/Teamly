@@ -758,19 +758,18 @@ export const leaveEvent = async (req: Request, res: Response) => {
         throw new Error('NOT_PARTICIPATING');
       }
 
-      // Delete participant and attendance records
-      await Promise.all([
-        tx.eventParticipant.delete({
-          where: { id: participant.id }
-        }),
-        // Also delete the attendance record (late status) when leaving
-        tx.eventAttendance.deleteMany({
-          where: {
-            eventId: id,
-            userId: req.user!.id
-          }
-        })
-      ]);
+      // Delete participant and attendance records sequentially for proper transaction handling
+      await tx.eventParticipant.delete({
+        where: { id: participant.id }
+      });
+      
+      // Also delete the attendance record (late status) when leaving
+      await tx.eventAttendance.deleteMany({
+        where: {
+          eventId: id,
+          userId: req.user!.id
+        }
+      });
 
       // Log activity for the user who left
       await tx.eventNotification.create({
