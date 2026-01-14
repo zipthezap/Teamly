@@ -23,6 +23,10 @@ A sports event organization app that allows individuals to set and organize smal
     - Custom pool creation: Build pools exactly how you want them
     - Referee assignment: Assign teams to referee matches when on break
     - Flexible scheduling: Change match times and stages anytime
+  - **👥 Easy Team Registration**: Team captains can invite players via email
+    - Send invitations to players who need to create accounts first
+    - Track invitation status (pending, accepted, declined)
+    - Automatic team membership upon acceptance
   - Team management with captain assignment
   - Automatic OR manual bracket generation
   - Score tracking and submission (by organizers and team captains)
@@ -50,6 +54,7 @@ A sports event organization app that allows individuals to set and organize smal
 
 For detailed documentation on these features, see:
 - [docs/guides/FEATURES.md](docs/guides/FEATURES.md) - Core features
+- [docs/guides/TOURNAMENT_TEAM_INVITATIONS.md](docs/guides/TOURNAMENT_TEAM_INVITATIONS.md) - Tournament team invitation system
 - [docs/features/ENHANCED_NOTIFICATIONS.md](docs/features/ENHANCED_NOTIFICATIONS.md) - Enhanced notification system
 - [docs/features/EVENT_EXPORT.md](docs/features/EVENT_EXPORT.md) - Event data export feature
 - [docs/guides/PICTURE_UPLOAD.md](docs/guides/PICTURE_UPLOAD.md) - Secure picture upload feature
