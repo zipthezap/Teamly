@@ -690,12 +690,16 @@ export const joinEvent = async (req: Request, res: Response) => {
         }
       });
 
-      return { participant, eventTitle: event.title };
+      return { participant, eventTitle: event.title, groupId: event.groupId };
     }, {
       isolationLevel: 'Serializable', // Highest isolation level to prevent race conditions
       maxWait: TRANSACTION.MAX_WAIT_MS,
       timeout: TRANSACTION.TIMEOUT_MS
     });
+
+    // Invalidate events cache for all group members
+    await CacheService.deletePattern(`events:user:*:group:${result.groupId}:*`);
+    await CacheService.deletePattern(`events:user:*:group:all:*`);
 
     res.status(201).json(result.participant);
   } catch (error: any) {
@@ -725,75 +729,85 @@ export const leaveEvent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // Get event to find the organizer
-    const event = await prisma.event.findUnique({
-      where: { id },
-      select: { creatorId: true }
-    });
+    // Use a transaction to ensure atomicity
+    const result = await prisma.$transaction(async (tx) => {
+      // Get event details
+      const event = await tx.event.findUnique({
+        where: { id },
+        select: { 
+          creatorId: true,
+          title: true, 
+          eventType: true, 
+          startTime: true,
+          groupId: true 
+        }
+      });
 
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found' });
-    }
-
-    const participant = await prisma.eventParticipant.findFirst({
-      where: {
-        eventId: id,
-        userId: req.user!.id
+      if (!event) {
+        throw new Error('EVENT_NOT_FOUND');
       }
-    });
 
-    if (!participant) {
-      return res.status(404).json({ error: 'Not participating in this event' });
-    }
-
-    // Delete participant and attendance records
-    await prisma.$transaction([
-      prisma.eventParticipant.delete({
-        where: { id: participant.id }
-      }),
-      // Also delete the attendance record (late status) when leaving
-      prisma.eventAttendance.deleteMany({
+      const participant = await tx.eventParticipant.findFirst({
         where: {
           eventId: id,
           userId: req.user!.id
         }
-      })
-    ]);
+      });
 
-    // Log activity for the user who left
-    // First get the event details
-    const leftEvent = await prisma.event.findUnique({
-      where: { id },
-      select: { 
-        title: true, 
-        eventType: true, 
-        startTime: true,
-        groupId: true 
+      if (!participant) {
+        throw new Error('NOT_PARTICIPATING');
       }
-    });
 
-    if (leftEvent) {
-      await prisma.eventNotification.create({
+      // Delete participant and attendance records sequentially for proper transaction handling
+      await tx.eventParticipant.delete({
+        where: { id: participant.id }
+      });
+      
+      // Also delete the attendance record (late status) when leaving
+      await tx.eventAttendance.deleteMany({
+        where: {
+          eventId: id,
+          userId: req.user!.id
+        }
+      });
+
+      // Log activity for the user who left
+      await tx.eventNotification.create({
         data: {
           eventId: id,
           userId: req.user!.id,
           type: 'leave',
           params: {
             name: req.user!.name,
-            eventTitle: leftEvent.title
+            eventTitle: event.title
           },
           metadata: {
-            eventType: leftEvent.eventType,
-            eventStartTime: leftEvent.startTime,
-            groupId: leftEvent.groupId
+            eventType: event.eventType,
+            eventStartTime: event.startTime,
+            groupId: event.groupId
           }
         }
       });
-    }
+
+      return { groupId: event.groupId };
+    });
+
+    // Invalidate events cache for all group members
+    await CacheService.deletePattern(`events:user:*:group:${result.groupId}:*`);
+    await CacheService.deletePattern(`events:user:*:group:all:*`);
 
     res.json({ message: 'Left event successfully' });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Failed to leave event', 'EventController', { error });
+    
+    // Handle specific error cases
+    if (error.message === 'EVENT_NOT_FOUND') {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    if (error.message === 'NOT_PARTICIPATING') {
+      return res.status(404).json({ error: 'Not participating in this event' });
+    }
+    
     res.status(500).json({ error: 'Failed to leave event' });
   }
 };
@@ -857,6 +871,10 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
             }
           }
         });
+
+        // Invalidate events cache when status changes
+        await CacheService.deletePattern(`events:user:*:group:${statusEvent.groupId}:*`);
+        await CacheService.deletePattern(`events:user:*:group:all:*`);
       }
     }
 
