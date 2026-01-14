@@ -37,8 +37,8 @@ export const calculateVolleyballWinner = (
     // Check who won the set
     if (set.home > set.away) {
       // Home team won - must reach required points and win by minimum difference
-      if (set.home < requiredPoints && set.away < requiredPoints - 1) {
-        return { homeWins: 0, awayWins: 0, isValid: false, error: `Set ${i + 1}: Neither team reached required points` };
+      if (set.home < requiredPoints) {
+        return { homeWins: 0, awayWins: 0, isValid: false, error: `Set ${i + 1}: Winning team must reach at least ${requiredPoints} points` };
       }
       if (set.home - set.away < config.minimumPointDifference) {
         return { homeWins: 0, awayWins: 0, isValid: false, error: `Set ${i + 1}: Must win by at least ${config.minimumPointDifference} points` };
@@ -46,8 +46,8 @@ export const calculateVolleyballWinner = (
       homeSetWins++;
     } else if (set.away > set.home) {
       // Away team won
-      if (set.away < requiredPoints && set.home < requiredPoints - 1) {
-        return { homeWins: 0, awayWins: 0, isValid: false, error: `Set ${i + 1}: Neither team reached required points` };
+      if (set.away < requiredPoints) {
+        return { homeWins: 0, awayWins: 0, isValid: false, error: `Set ${i + 1}: Winning team must reach at least ${requiredPoints} points` };
       }
       if (set.away - set.home < config.minimumPointDifference) {
         return { homeWins: 0, awayWins: 0, isValid: false, error: `Set ${i + 1}: Must win by at least ${config.minimumPointDifference} points` };
