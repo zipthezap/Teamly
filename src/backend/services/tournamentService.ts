@@ -1,9 +1,71 @@
 import prisma from '../config/database';
 import { 
   MatchStatus, 
-  BracketStage
+  BracketStage,
+  VolleyballConfig,
+  TennisConfig,
+  DetailedScore
 } from '../../shared/types/tournament.types';
 import { BadRequestError } from '../utils/errors';
+
+/**
+ * Calculate winner for volleyball based on sets
+ * Returns: { homeWins: number, awayWins: number, isValid: boolean, error?: string }
+ */
+export const calculateVolleyballWinner = (
+  detailedScore: DetailedScore,
+  config: VolleyballConfig
+): { homeWins: number; awayWins: number; isValid: boolean; error?: string } => {
+  if (!detailedScore.sets || detailedScore.sets.length === 0) {
+    return { homeWins: 0, awayWins: 0, isValid: false, error: 'Sets are required for volleyball scoring' };
+  }
+
+  let homeSetWins = 0;
+  let awaySetWins = 0;
+  const sets = detailedScore.sets;
+  const setsToWin = Math.ceil(config.bestOfSets / 2); // e.g., 2 for best of 3, 3 for best of 5
+
+  for (let i = 0; i < sets.length; i++) {
+    const set = sets[i];
+    const isDecidingSet = (homeSetWins === setsToWin - 1 && awaySetWins === setsToWin - 1);
+    const requiredPoints = isDecidingSet ? config.decidingSetPoints : config.regularSetPoints;
+
+    // Validate set scores
+    if (set.home < 0 || set.away < 0) {
+      return { homeWins: 0, awayWins: 0, isValid: false, error: `Set ${i + 1}: Scores cannot be negative` };
+    }
+
+    // Check who won the set
+    if (set.home > set.away) {
+      // Home team won - must reach required points and win by minimum difference
+      if (set.home < requiredPoints && set.away < requiredPoints - 1) {
+        return { homeWins: 0, awayWins: 0, isValid: false, error: `Set ${i + 1}: Neither team reached required points` };
+      }
+      if (set.home - set.away < config.minimumPointDifference) {
+        return { homeWins: 0, awayWins: 0, isValid: false, error: `Set ${i + 1}: Must win by at least ${config.minimumPointDifference} points` };
+      }
+      homeSetWins++;
+    } else if (set.away > set.home) {
+      // Away team won
+      if (set.away < requiredPoints && set.home < requiredPoints - 1) {
+        return { homeWins: 0, awayWins: 0, isValid: false, error: `Set ${i + 1}: Neither team reached required points` };
+      }
+      if (set.away - set.home < config.minimumPointDifference) {
+        return { homeWins: 0, awayWins: 0, isValid: false, error: `Set ${i + 1}: Must win by at least ${config.minimumPointDifference} points` };
+      }
+      awaySetWins++;
+    } else {
+      return { homeWins: 0, awayWins: 0, isValid: false, error: `Set ${i + 1}: Sets cannot be tied` };
+    }
+
+    // Check if match is already decided
+    if (homeSetWins === setsToWin || awaySetWins === setsToWin) {
+      break;
+    }
+  }
+
+  return { homeWins: homeSetWins, awayWins: awaySetWins, isValid: true };
+};
 
 /**
  * Sanitize tournament data to prevent XSS attacks
@@ -265,36 +327,47 @@ export const generateGroupsKnockoutBrackets = async (
 /**
  * Update tournament standings after a match
  */
-export const updateStandings = async (matchId: string) => {
+export const updateStandings = async (matchId: string, tournament?: any) => {
   const match = await prisma.tournamentMatch.findUnique({
     where: { id: matchId },
-    include: { homeTeam: true, awayTeam: true }
+    include: { homeTeam: true, awayTeam: true, tournament: true }
   });
   
   if (!match || match.homeScore === null || match.awayScore === null) {
     return;
   }
   
+  // Use provided tournament or fetch from match
+  const tournamentData = tournament || match.tournament;
+  
   const { homeTeamId, awayTeamId, homeScore, awayScore, groupName } = match;
   
-  // Determine match outcome
+  // Determine match outcome based on sport configuration
   let homeWin = 0, homeDraw = 0, homeLoss = 0;
   let awayWin = 0, awayDraw = 0, awayLoss = 0;
   let homePoints = 0, awayPoints = 0;
   
+  // Get sport-specific configuration
+  const sportConfig = tournamentData?.sportConfig as any;
+  const defaultWinPoints = sportConfig?.type === 'default' ? sportConfig.winPoints : 3;
+  const defaultDrawPoints = sportConfig?.type === 'default' ? sportConfig.drawPoints : 1;
+  const defaultLossPoints = sportConfig?.type === 'default' ? sportConfig.lossPoints : 0;
+  
   if (homeScore > awayScore) {
     homeWin = 1;
     awayLoss = 1;
-    homePoints = 3;
+    homePoints = defaultWinPoints;
+    awayPoints = defaultLossPoints;
   } else if (homeScore < awayScore) {
     homeLoss = 1;
     awayWin = 1;
-    awayPoints = 3;
+    awayPoints = defaultWinPoints;
+    homePoints = defaultLossPoints;
   } else {
     homeDraw = 1;
     awayDraw = 1;
-    homePoints = 1;
-    awayPoints = 1;
+    homePoints = defaultDrawPoints;
+    awayPoints = defaultDrawPoints;
   }
   
   // Update or create standings for home team

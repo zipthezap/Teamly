@@ -711,6 +711,9 @@ model Tournament {
   rulesDescription    String?
   contactEmail        String?
   
+  // Sport-specific scoring configuration
+  sportConfig         Json?    // JSON field for sport-specific scoring rules
+  
   // Recurring tournament support
   isRecurring         Boolean  @default(false)
   recurrenceRule      String?  // RRule format

@@ -44,6 +44,36 @@ export interface DetailedScore {
   innings?: SetScore[];  // For baseball, cricket
 }
 
+// Sport-specific scoring configuration
+export interface VolleyballConfig {
+  type: 'volleyball';
+  regularSetPoints: number;  // e.g., 25 points for regular sets
+  decidingSetPoints: number; // e.g., 15 points for deciding set (if tied)
+  bestOfSets: number;        // e.g., 3 or 5 (best of 3 means first to 2 sets wins)
+  minimumPointDifference: number; // e.g., 2 points (must win by 2)
+}
+
+export interface TennisConfig {
+  type: 'tennis';
+  bestOfSets: number;        // e.g., 3 or 5
+  gamesPerSet: number;       // e.g., 6
+  tiebreakPoints: number;    // e.g., 7
+  decidingSetType: 'advantage' | 'tiebreak' | 'super_tiebreak';
+}
+
+export interface DefaultScoringConfig {
+  type: 'default';
+  winPoints: number;         // Points awarded for a win (default: 3)
+  drawPoints: number;        // Points awarded for a draw (default: 1)
+  lossPoints: number;        // Points awarded for a loss (default: 0)
+}
+
+export type SportScoringConfig = VolleyballConfig | TennisConfig | DefaultScoringConfig;
+
+export interface TournamentSportConfig {
+  scoringConfig?: SportScoringConfig;
+}
+
 export interface Tournament {
   id: string;
   name: string;
@@ -71,6 +101,8 @@ export interface Tournament {
   prizesDescription?: string;
   rulesDescription?: string;
   contactEmail?: string;
+  // Sport-specific configuration
+  sportConfig?: SportScoringConfig;
   // Recurring tournament support
   isRecurring?: boolean;
   recurrenceRule?: string;
@@ -189,6 +221,8 @@ export interface CreateTournamentDto {
   prizesDescription?: string;
   rulesDescription?: string;
   contactEmail?: string;
+  // Sport-specific configuration
+  sportConfig?: SportScoringConfig;
   // Recurring tournament support
   isRecurring?: boolean;
   recurrenceRule?: string;
@@ -216,6 +250,8 @@ export interface UpdateTournamentDto {
   prizesDescription?: string;
   rulesDescription?: string;
   contactEmail?: string;
+  // Sport-specific configuration
+  sportConfig?: SportScoringConfig;
 }
 
 export interface CreateTeamDto {
@@ -241,6 +277,7 @@ export interface UpdateTeamDto {
 export interface SubmitScoreDto {
   homeScore: number;
   awayScore: number;
+  detailedScore?: DetailedScore; // For sports with sets/periods
 }
 
 export interface GenerateBracketsDto {

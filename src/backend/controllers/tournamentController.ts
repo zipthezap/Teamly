@@ -55,6 +55,8 @@ export const createTournament = async (req: Request, res: Response) => {
     prizesDescription,
     rulesDescription,
     contactEmail,
+    // Sport-specific configuration
+    sportConfig,
     // Recurring tournament
     isRecurring,
     recurrenceRule
@@ -150,6 +152,8 @@ export const createTournament = async (req: Request, res: Response) => {
       prizesDescription: sanitized.prizesDescription || undefined,
       rulesDescription: sanitized.rulesDescription || undefined,
       contactEmail: contactEmail || undefined,
+      // Sport-specific configuration
+      sportConfig: sportConfig || undefined,
       // Recurring tournament
       isRecurring: isRecurring || false,
       recurrenceRule: recurrenceRule || undefined
@@ -283,7 +287,9 @@ export const updateTournament = async (req: Request, res: Response) => {
     location, locationName, city, country, latitude, longitude,
     // Admin controls
     registrationDeadline, isPublic, allowLateRegistration,
-    autoGenerateBrackets, useManualBrackets, prizesDescription, rulesDescription, contactEmail
+    autoGenerateBrackets, useManualBrackets, prizesDescription, rulesDescription, contactEmail,
+    // Sport-specific configuration
+    sportConfig
   } = req.body;
 
   const tournament = await prisma.tournament.findUnique({
@@ -378,6 +384,9 @@ export const updateTournament = async (req: Request, res: Response) => {
   }
   if (contactEmail !== undefined) {
     updateData.contactEmail = contactEmail || null;
+  }
+  if (sportConfig !== undefined) {
+    updateData.sportConfig = sportConfig || null;
   }
 
   const updatedTournament = await prisma.tournament.update({
@@ -674,7 +683,7 @@ export const submitScore = async (req: Request, res: Response) => {
   try {
     const { id, matchId } = req.params;
     const userId = req.user!.id;
-    const { homeScore, awayScore } = req.body;
+    const { homeScore, awayScore, detailedScore } = req.body;
 
     if (homeScore === undefined || awayScore === undefined) {
       return res.status(400).json({
@@ -711,12 +720,30 @@ export const submitScore = async (req: Request, res: Response) => {
       });
     }
 
+    // Validate sport-specific scoring if detailed score is provided
+    const sportConfig = tournament.sportConfig as any;
+    if (sportConfig && detailedScore) {
+      if (sportConfig.type === 'volleyball') {
+        const result = tournamentService.calculateVolleyballWinner(detailedScore, sportConfig);
+        if (!result.isValid) {
+          return res.status(400).json({ error: result.error });
+        }
+        // The homeScore and awayScore should match the set wins
+        if (homeScore !== result.homeWins || awayScore !== result.awayWins) {
+          return res.status(400).json({
+            error: `Score mismatch: Based on sets, score should be ${result.homeWins}-${result.awayWins}`
+          });
+        }
+      }
+    }
+
     // Update match with score
     const updatedMatch = await prisma.tournamentMatch.update({
       where: { id: matchId },
       data: {
         homeScore,
         awayScore,
+        detailedScore: detailedScore || undefined,
         status: MatchStatus.COMPLETED,
         completedAt: new Date()
       },
@@ -727,7 +754,7 @@ export const submitScore = async (req: Request, res: Response) => {
     });
 
     // Update standings
-    await tournamentService.updateStandings(matchId);
+    await tournamentService.updateStandings(matchId, tournament);
 
     // If this is a knockout stage match, check if we should advance winners
     if (match.stage && match.stage !== BracketStage.FINALS) {
