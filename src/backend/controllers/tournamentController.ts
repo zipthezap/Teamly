@@ -1120,59 +1120,48 @@ export const assignReferee = async (req: Request, res: Response) => {
  * Assign team to pool (admin only)
  */
 export const assignTeamToPool = async (req: Request, res: Response) => {
-  try {
-    const { id, teamId } = req.params;
-    const userId = req.user!.id;
-    const { poolNumber, poolName } = req.body;
+  const { id, teamId } = req.params;
+  const userId = req.user!.id;
+  const { poolNumber, poolName } = req.body;
 
-    const tournament = await prisma.tournament.findUnique({
-      where: { id }
-    });
+  const tournament = await prisma.tournament.findUnique({
+    where: { id }
+  });
 
-    if (!tournament) {
-      return res.status(404).json({ error: 'Tournament not found' });
-    }
+  ensureResourceExists(tournament, 'Tournament');
 
-    if (!tournamentService.isOrganizer(tournament, userId)) {
-      return res.status(403).json({
-        error: 'Only the organizer can assign teams to pools'
-      });
-    }
-
-    const team = await prisma.tournamentTeam.findFirst({
-      where: { id: teamId, tournamentId: id }
-    });
-
-    if (!team) {
-      return res.status(404).json({ error: 'Team not found' });
-    }
-
-    const updatedTeam = await prisma.tournamentTeam.update({
-      where: { id: teamId },
-      data: {
-        poolNumber: poolNumber || null,
-        poolName: poolName || null
-      },
-      include: {
-        captainUser: {
-          select: { id: true, name: true, email: true }
-        }
-      }
-    });
-
-    logger.info('Team assigned to pool', 'TournamentController', {
-      tournamentId: id,
-      teamId,
-      poolNumber,
-      poolName,
-      userId
-    });
-
-    res.json(updatedTeam);
-  } catch (error) {
-    logger.error('Error assigning team to pool', 'TournamentController', { error });
-    res.status(500).json({ error: 'Failed to assign team to pool' });
+  if (!tournamentService.isOrganizer(tournament!, userId)) {
+    throw new ForbiddenError('Only the organizer can assign teams to pools');
   }
+
+  const team = await prisma.tournamentTeam.findFirst({
+    where: { id: teamId, tournamentId: id }
+  });
+
+  ensureResourceExists(team, 'Team');
+
+  const updatedTeam = await prisma.tournamentTeam.update({
+    where: { id: teamId },
+    data: {
+      poolNumber: poolNumber || null,
+      poolName: poolName || null
+    },
+    include: {
+      captainUser: {
+        select: { id: true, name: true, email: true }
+      }
+    }
+  });
+
+  logger.info('Team assigned to pool', 'TournamentController', {
+    tournamentId: id,
+    teamId,
+    poolNumber,
+    poolName,
+    userId
+  });
+
+  res.json(updatedTeam);
 };
 
 // ==================== PLAYER MANAGEMENT ====================
@@ -1181,114 +1170,96 @@ export const assignTeamToPool = async (req: Request, res: Response) => {
  * Add a player to a team (captain only)
  */
 export const addPlayer = async (req: Request, res: Response) => {
-  try {
-    const { id, teamId } = req.params;
-    const userId = req.user!.id;
-    const { playerName, playerEmail, userId: playerId } = req.body;
+  const { id, teamId } = req.params;
+  const userId = req.user!.id;
+  const { playerName, playerEmail, userId: playerId } = req.body;
 
-    if (!playerName) {
-      return res.status(400).json({ error: 'Player name is required' });
-    }
-
-    const tournament = await prisma.tournament.findUnique({
-      where: { id }
-    });
-
-    if (!tournament) {
-      return res.status(404).json({ error: 'Tournament not found' });
-    }
-
-    const team = await prisma.tournamentTeam.findFirst({
-      where: { id: teamId, tournamentId: id }
-    });
-
-    if (!team) {
-      return res.status(404).json({ error: 'Team not found' });
-    }
-
-    // Check permissions - only organizer or team captain can add players
-    const isOrg = tournamentService.isOrganizer(tournament, userId);
-    const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
-
-    if (!isOrg && !isCaptain) {
-      return res.status(403).json({
-        error: 'Only the organizer or team captain can add players'
-      });
-    }
-
-    // If userId is provided, verify the user exists
-    if (playerId) {
-      const user = await prisma.user.findUnique({
-        where: { id: playerId }
-      });
-      if (!user) {
-        return res.status(400).json({ error: 'User not found' });
-      }
-    }
-
-    const player = await prisma.tournamentPlayer.create({
-      data: {
-        teamId,
-        userId: playerId,
-        playerName,
-        playerEmail
-      },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true }
-        }
-      }
-    });
-
-    logger.info('Player added to team', 'TournamentController', {
-      tournamentId: id,
-      teamId,
-      playerId: player.id,
-      userId
-    });
-
-    res.status(201).json(player);
-  } catch (error: any) {
-    if (error.code === 'P2002') {
-      return res.status(400).json({
-        error: 'This player is already registered on this team'
-      });
-    }
-    logger.error('Error adding player', 'TournamentController', { error });
-    res.status(500).json({ error: 'Failed to add player' });
+  if (!playerName) {
+    throw new BadRequestError('Player name is required');
   }
+
+  const tournament = await prisma.tournament.findUnique({
+    where: { id }
+  });
+
+  ensureResourceExists(tournament, 'Tournament');
+
+  const team = await prisma.tournamentTeam.findFirst({
+    where: { id: teamId, tournamentId: id }
+  });
+
+  ensureResourceExists(team, 'Team');
+
+  // Check permissions - only organizer or team captain can add players
+  const isOrg = tournamentService.isOrganizer(tournament!, userId);
+  const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
+
+  if (!isOrg && !isCaptain) {
+    throw new ForbiddenError('Only the organizer or team captain can add players');
+  }
+
+  // If userId is provided, verify the user exists
+  if (playerId) {
+    const user = await prisma.user.findUnique({
+      where: { id: playerId }
+    });
+    if (!user) {
+      throw new BadRequestError('User not found');
+    }
+  }
+
+  const player = await prisma.tournamentPlayer.create({
+    data: {
+      teamId,
+      userId: playerId,
+      playerName,
+      playerEmail
+    },
+    include: {
+      user: {
+        select: { id: true, name: true, email: true }
+      }
+    }
+  }).catch((error: any) => {
+    if (error.code === 'P2002') {
+      throw new BadRequestError('This player is already registered on this team');
+    }
+    throw error;
+  });
+
+  logger.info('Player added to team', 'TournamentController', {
+    tournamentId: id,
+    teamId,
+    playerId: player.id,
+    userId
+  });
+
+  res.status(201).json(player);
 };
 
 /**
  * Get players for a team
  */
 export const getPlayers = async (req: Request, res: Response) => {
-  try {
-    const { id, teamId } = req.params;
+  const { id, teamId } = req.params;
 
-    const team = await prisma.tournamentTeam.findFirst({
-      where: { id: teamId, tournamentId: id }
-    });
+  const team = await prisma.tournamentTeam.findFirst({
+    where: { id: teamId, tournamentId: id }
+  });
 
-    if (!team) {
-      return res.status(404).json({ error: 'Team not found' });
-    }
+  ensureResourceExists(team, 'Team');
 
-    const players = await prisma.tournamentPlayer.findMany({
-      where: { teamId },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true }
-        }
-      },
-      orderBy: { createdAt: 'asc' }
-    });
+  const players = await prisma.tournamentPlayer.findMany({
+    where: { teamId },
+    include: {
+      user: {
+        select: { id: true, name: true, email: true }
+      }
+    },
+    orderBy: { createdAt: 'asc' }
+  });
 
-    res.json(players);
-  } catch (error) {
-    logger.error('Error fetching players', 'TournamentController', { error });
-    res.status(500).json({ error: 'Failed to fetch players' });
-  }
+  res.json(players);
 };
 
 /**
