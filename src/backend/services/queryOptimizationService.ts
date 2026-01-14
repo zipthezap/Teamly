@@ -266,6 +266,8 @@ export class CachedAggregations {
       matchCount,
       completedMatchCount,
       // Calculate in-progress matches (avoid extra query)
+      // Using Math.max to handle data inconsistencies gracefully
+      // (e.g., if completed count somehow exceeds total count)
       inProgressMatchCount: Math.max(0, matchCount - completedMatchCount),
     };
 
@@ -412,6 +414,11 @@ export class OptimizedQueries {
   ): Promise<any[]> {
     const startTime = Date.now();
 
+    // Geographic constants
+    // 1 degree of latitude is approximately 111 kilometers
+    // This is used to calculate bounding box for initial filtering
+    const KM_PER_DEGREE_LAT = 111;
+
     // Validate numeric inputs to prevent SQL injection
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(radiusKm)) {
       throw new Error('Invalid coordinates or radius');
@@ -426,9 +433,9 @@ export class OptimizedQueries {
     const safeLimit = Math.min(Math.max(1, Math.floor(limit)), 100);
 
     // Calculate bounding box for initial filter (much faster than distance calculation)
-    // 1 degree latitude ≈ 111 km
-    const latDelta = radiusKm / 111;
-    const lonDelta = radiusKm / (111 * Math.cos((latitude * Math.PI) / 180));
+    // At the equator, 1 degree longitude = 111km, but this decreases as you move toward poles
+    const latDelta = radiusKm / KM_PER_DEGREE_LAT;
+    const lonDelta = radiusKm / (KM_PER_DEGREE_LAT * Math.cos((latitude * Math.PI) / 180));
 
     const events = await prisma.$queryRaw<any[]>`
       SELECT 

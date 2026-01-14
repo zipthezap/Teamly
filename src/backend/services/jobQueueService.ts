@@ -18,6 +18,7 @@ import { getRedisClient, isRedisEnabled } from '../config/redis';
 import { logger } from '../utils/logger';
 import { createBulkEventNotifications, createBulkGroupNotifications } from './bulkNotificationService';
 import { CacheService } from './cacheService';
+import crypto from 'crypto';
 
 /**
  * Job types
@@ -300,8 +301,12 @@ export async function enqueueJob(
   data: any,
   maxAttempts: number = 3
 ): Promise<string> {
+  // Generate cryptographically secure unique ID for the job
+  // Using crypto.randomUUID() ensures uniqueness even in high-concurrency scenarios
+  const jobId = `${type}-${Date.now()}-${crypto.randomUUID()}`;
+  
   const job: Job = {
-    id: `${type}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+    id: jobId,
     type,
     data,
     createdAt: new Date(),
