@@ -3,7 +3,6 @@ import {
   MatchStatus, 
   BracketStage,
   VolleyballConfig,
-  TennisConfig,
   DetailedScore
 } from '../../shared/types/tournament.types';
 import { BadRequestError } from '../utils/errors';
