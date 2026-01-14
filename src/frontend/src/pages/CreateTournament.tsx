@@ -26,7 +26,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { RRule } from 'rrule';
 import { tournamentAPI } from '../services/tournamentAPI';
-import { CreateTournamentDto, TournamentFormat } from '../../../shared/types';
+import { CreateTournamentDto, TournamentFormat, SportScoringConfig, VolleyballConfig } from '../../../shared/types';
 
 const CreateTournament: React.FC = () => {
   const navigate = useNavigate();
@@ -56,7 +56,14 @@ const CreateTournament: React.FC = () => {
     // Recurring
     isRecurring: false,
     recurringFrequency: 'weekly' as 'weekly' | 'monthly',
-    recurringCount: 4
+    recurringCount: 4,
+    // Sport-specific configuration
+    useSportConfig: false,
+    // Volleyball config
+    volleyballRegularSetPoints: 25,
+    volleyballDecidingSetPoints: 15,
+    volleyballBestOfSets: 3,
+    volleyballMinPointDifference: 2
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,6 +98,21 @@ const CreateTournament: React.FC = () => {
     setLoading(true);
 
     try {
+      // Build sport-specific config
+      let sportConfig: SportScoringConfig | undefined = undefined;
+      if (formData.useSportConfig) {
+        if (formData.sportType === 'volleyball') {
+          sportConfig = {
+            type: 'volleyball',
+            regularSetPoints: formData.volleyballRegularSetPoints,
+            decidingSetPoints: formData.volleyballDecidingSetPoints,
+            bestOfSets: formData.volleyballBestOfSets,
+            minimumPointDifference: formData.volleyballMinPointDifference
+          } as VolleyballConfig;
+        }
+        // Add more sport types here as needed
+      }
+
       const dto: CreateTournamentDto = {
         name: formData.name,
         description: formData.description || undefined,
@@ -111,6 +133,8 @@ const CreateTournament: React.FC = () => {
         prizesDescription: formData.prizesDescription || undefined,
         rulesDescription: formData.rulesDescription || undefined,
         contactEmail: formData.contactEmail || undefined,
+        // Sport-specific configuration
+        sportConfig: sportConfig,
         // Recurring
         isRecurring: formData.isRecurring,
         recurrenceRule: generateRecurrenceRule()
@@ -227,6 +251,94 @@ const CreateTournament: React.FC = () => {
               </TextField>
             </Grid>
           </Grid>
+
+          {/* Sport-Specific Configuration */}
+          <Accordion sx={{ mt: 2 }}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography>Sport-Specific Scoring Configuration (Optional)</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    name="useSportConfig"
+                    checked={formData.useSportConfig}
+                    onChange={handleChange}
+                  />
+                }
+                label="Enable sport-specific scoring rules"
+              />
+
+              {formData.useSportConfig && formData.sportType === 'volleyball' && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Volleyball Configuration
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <TextField
+                        fullWidth
+                        type="number"
+                        label="Regular Set Points"
+                        name="volleyballRegularSetPoints"
+                        value={formData.volleyballRegularSetPoints}
+                        onChange={handleChange}
+                        margin="normal"
+                        helperText="Points needed to win regular sets (e.g., 25)"
+                        inputProps={{ min: 1 }}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <TextField
+                        fullWidth
+                        type="number"
+                        label="Deciding Set Points"
+                        name="volleyballDecidingSetPoints"
+                        value={formData.volleyballDecidingSetPoints}
+                        onChange={handleChange}
+                        margin="normal"
+                        helperText="Points for deciding set when tied (e.g., 15)"
+                        inputProps={{ min: 1 }}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <TextField
+                        fullWidth
+                        type="number"
+                        label="Best of Sets"
+                        name="volleyballBestOfSets"
+                        value={formData.volleyballBestOfSets}
+                        onChange={handleChange}
+                        margin="normal"
+                        helperText="Total sets to play (e.g., 3 or 5)"
+                        inputProps={{ min: 1, max: 7 }}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <TextField
+                        fullWidth
+                        type="number"
+                        label="Minimum Point Difference"
+                        name="volleyballMinPointDifference"
+                        value={formData.volleyballMinPointDifference}
+                        onChange={handleChange}
+                        margin="normal"
+                        helperText="Minimum points to win by (usually 2)"
+                        inputProps={{ min: 1 }}
+                      />
+                    </Grid>
+                  </Grid>
+                </Box>
+              )}
+
+              {formData.useSportConfig && formData.sportType !== 'volleyball' && (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  Sport-specific configuration for {formData.sportType} is not yet available. 
+                  Default scoring rules will be used.
+                </Alert>
+              )}
+            </AccordionDetails>
+          </Accordion>
 
           {/* Date and Time */}
           <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
