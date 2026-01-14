@@ -1505,16 +1505,20 @@ export const joinEventAsGuest = async (req: Request, res: Response) => {
         }
       });
 
-      return guestParticipant;
+      return { guestParticipant, groupId: event.groupId };
     }, {
       isolationLevel: 'Serializable', // Highest isolation level to prevent race conditions
       maxWait: TRANSACTION.MAX_WAIT_MS,
       timeout: TRANSACTION.TIMEOUT_MS
     });
 
+    // Invalidate events cache for all group members
+    await CacheService.deletePattern(`events:user:*:group:${result.groupId}:*`);
+    await CacheService.deletePattern(`events:user:*:group:all:*`);
+
     res.status(201).json({ 
       message: 'Successfully joined event',
-      participant: result
+      participant: result.guestParticipant
     });
   } catch (error: any) {
     logger.error('Join event as guest error', 'EventController', { error });
@@ -1884,6 +1888,10 @@ export const updateGuestParticipant = async (req: Request, res: Response) => {
       data: { name: name.trim() }
     });
 
+    // Invalidate events cache for all group members
+    await CacheService.deletePattern(`events:user:*:group:${authResult.event.groupId}:*`);
+    await CacheService.deletePattern(`events:user:*:group:all:*`);
+
     res.json(updatedGuest);
   } catch (error) {
     logger.error('Update guest participant error', 'EventController', { error });
@@ -1920,6 +1928,10 @@ export const updateGuestParticipantStatus = async (req: Request, res: Response) 
       data: { status: status as GuestParticipantStatus }
     });
 
+    // Invalidate events cache for all group members
+    await CacheService.deletePattern(`events:user:*:group:${authResult.event.groupId}:*`);
+    await CacheService.deletePattern(`events:user:*:group:all:*`);
+
     res.json(updatedGuest);
   } catch (error) {
     logger.error('Update guest participant status error', 'EventController', { error });
@@ -1945,6 +1957,10 @@ export const removeGuestParticipant = async (req: Request, res: Response) => {
     await prisma.guestParticipant.delete({
       where: { id: guestId }
     });
+
+    // Invalidate events cache for all group members
+    await CacheService.deletePattern(`events:user:*:group:${authResult.event.groupId}:*`);
+    await CacheService.deletePattern(`events:user:*:group:all:*`);
 
     res.json({ message: 'Guest participant removed successfully' });
   } catch (error) {
