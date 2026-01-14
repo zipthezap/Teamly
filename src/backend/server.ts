@@ -35,7 +35,7 @@ import { setupGracefulShutdown, performHealthCheck } from './utils/databaseHealt
 import { startEmailQueueProcessor, stopEmailQueueProcessor } from './services/emailQueueService';
 import { startScheduledJobs, stopScheduledJobs } from './services/scheduledJobs';
 import { ensureUploadDirectories } from './utils/imageProcessor';
-import { closeDatabaseConnections } from './config/database';
+import { closeDatabaseConnections, initializePoolMonitoring } from './config/database';
 import { initializeRedis, closeRedis, getRedisClient, isRedisEnabled } from './config/redis';
 import { cleanupCache } from './services/cacheService';
 import { metricsMiddleware, getMetrics } from './services/metricsService';
@@ -339,6 +339,9 @@ ensureUploadDirectories()
     const server = app.listen(PORT, () => {
       logger.info(`Server is running on port ${PORT}`, 'Server');
       logger.info(`API available at http://localhost:${PORT}`, 'Server');
+      
+      // Initialize database connection pool monitoring
+      initializePoolMonitoring();
       
       // Start email queue processor
       emailQueueInterval = startEmailQueueProcessor();
