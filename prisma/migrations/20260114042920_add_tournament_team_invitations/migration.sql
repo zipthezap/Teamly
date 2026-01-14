@@ -23,9 +23,6 @@ CREATE TABLE "TournamentTeamInvitation" (
 CREATE UNIQUE INDEX "TournamentTeamInvitation_inviteToken_key" ON "TournamentTeamInvitation"("inviteToken");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "TournamentTeamInvitation_teamId_inviteeEmail_key" ON "TournamentTeamInvitation"("teamId", "inviteeEmail");
-
--- CreateIndex
 CREATE INDEX "TournamentTeamInvitation_teamId_idx" ON "TournamentTeamInvitation"("teamId");
 
 -- CreateIndex
@@ -42,6 +39,9 @@ CREATE INDEX "TournamentTeamInvitation_status_idx" ON "TournamentTeamInvitation"
 
 -- CreateIndex
 CREATE INDEX "TournamentTeamInvitation_expiresAt_idx" ON "TournamentTeamInvitation"("expiresAt");
+
+-- CreateIndex
+CREATE INDEX "TournamentTeamInvitation_teamId_inviteeEmail_status_idx" ON "TournamentTeamInvitation"("teamId", "inviteeEmail", "status");
 
 -- AddForeignKey
 ALTER TABLE "TournamentTeamInvitation" ADD CONSTRAINT "TournamentTeamInvitation_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "TournamentTeam"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -946,11 +946,11 @@ model TournamentTeamInvitation {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
-  @@unique([teamId, inviteeEmail]) // One pending invite per email per team
   @@index([teamId])
   @@index([inviteeEmail])
   @@index([inviteeUserId])
   @@index([inviteToken])
   @@index([status])
   @@index([expiresAt])
+  @@index([teamId, inviteeEmail, status])
 }
