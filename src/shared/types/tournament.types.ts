@@ -70,10 +70,6 @@ export interface DefaultScoringConfig {
 
 export type SportScoringConfig = VolleyballConfig | TennisConfig | DefaultScoringConfig;
 
-export interface TournamentSportConfig {
-  scoringConfig?: SportScoringConfig;
-}
-
 export interface Tournament {
   id: string;
   name: string;

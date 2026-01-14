@@ -3,6 +3,7 @@ import {
   MatchStatus, 
   BracketStage,
   VolleyballConfig,
+  SportScoringConfig,
   DetailedScore
 } from '../../shared/types/tournament.types';
 import { BadRequestError } from '../utils/errors';
@@ -326,7 +327,7 @@ export const generateGroupsKnockoutBrackets = async (
 /**
  * Update tournament standings after a match
  */
-export const updateStandings = async (matchId: string, tournament?: any) => {
+export const updateStandings = async (matchId: string, tournament?: { sportConfig?: unknown }) => {
   const match = await prisma.tournamentMatch.findUnique({
     where: { id: matchId },
     include: { homeTeam: true, awayTeam: true, tournament: true }
@@ -347,7 +348,7 @@ export const updateStandings = async (matchId: string, tournament?: any) => {
   let homePoints = 0, awayPoints = 0;
   
   // Get sport-specific configuration
-  const sportConfig = tournamentData?.sportConfig as any;
+  const sportConfig = tournamentData?.sportConfig as unknown as SportScoringConfig | undefined;
   const defaultWinPoints = sportConfig?.type === 'default' ? sportConfig.winPoints : 3;
   const defaultDrawPoints = sportConfig?.type === 'default' ? sportConfig.drawPoints : 1;
   const defaultLossPoints = sportConfig?.type === 'default' ? sportConfig.lossPoints : 0;

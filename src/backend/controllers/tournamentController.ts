@@ -18,7 +18,9 @@ import {
   TournamentFormat, 
   TournamentStatus, 
   MatchStatus,
-  BracketStage 
+  BracketStage,
+  SportScoringConfig,
+  VolleyballConfig
 } from '../../shared/types/tournament.types';
 import * as locationService from '../services/locationService';
 import { BadRequestError, ForbiddenError, NotFoundError } from '../utils/errors';
@@ -721,10 +723,10 @@ export const submitScore = async (req: Request, res: Response) => {
     }
 
     // Validate sport-specific scoring if detailed score is provided
-    const sportConfig = tournament.sportConfig as any;
+    const sportConfig = tournament.sportConfig as unknown as SportScoringConfig | undefined;
     if (sportConfig && detailedScore) {
       if (sportConfig.type === 'volleyball') {
-        const result = tournamentService.calculateVolleyballWinner(detailedScore, sportConfig);
+        const result = tournamentService.calculateVolleyballWinner(detailedScore, sportConfig as VolleyballConfig);
         if (!result.isValid) {
           return res.status(400).json({ error: result.error });
         }
