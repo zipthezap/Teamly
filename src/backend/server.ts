@@ -34,8 +34,9 @@ import { errorHandler } from './middleware/errorHandler';
 import { setupGracefulShutdown, performHealthCheck } from './utils/databaseHealth';
 import { startEmailQueueProcessor, stopEmailQueueProcessor } from './services/emailQueueService';
 import { startScheduledJobs, stopScheduledJobs } from './services/scheduledJobs';
+import { initializeJobQueue, shutdownJobQueue } from './services/jobQueueService';
 import { ensureUploadDirectories } from './utils/imageProcessor';
-import { closeDatabaseConnections } from './config/database';
+import { closeDatabaseConnections, initializePoolMonitoring } from './config/database';
 import { initializeRedis, closeRedis, getRedisClient, isRedisEnabled } from './config/redis';
 import { cleanupCache } from './services/cacheService';
 import { metricsMiddleware, getMetrics } from './services/metricsService';
@@ -340,6 +341,12 @@ ensureUploadDirectories()
       logger.info(`Server is running on port ${PORT}`, 'Server');
       logger.info(`API available at http://localhost:${PORT}`, 'Server');
       
+      // Initialize database connection pool monitoring
+      initializePoolMonitoring();
+      
+      // Initialize background job queue
+      initializeJobQueue();
+      
       // Start email queue processor
       emailQueueInterval = startEmailQueueProcessor();
       
@@ -362,6 +369,13 @@ ensureUploadDirectories()
           stopEmailQueueProcessor(emailQueueInterval);
         }
         stopScheduledJobs();
+        
+        // Shutdown job queue
+        try {
+          shutdownJobQueue();
+        } catch (error) {
+          logger.error('Error shutting down job queue', 'Server', { error });
+        }
         
         // Close Redis connection
         try {

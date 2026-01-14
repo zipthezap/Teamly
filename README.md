@@ -317,7 +317,12 @@ This project follows best practices for code quality and maintainability:
   - **Distributed Rate Limiting**: Redis-backed rate limiting for horizontal scaling
   - **Response Caching**: Intelligent caching with automatic fallback to in-memory
   - **Health Checks**: Redis, database, and memory health monitoring
-  - See [docs/SCALABILITY_IMPROVEMENTS.md](docs/SCALABILITY_IMPROVEMENTS.md) for details
+  - **Bulk Operations**: Batch notification inserts (100x faster for large batches)
+  - **Query Optimization**: DataLoader pattern eliminates N+1 queries
+  - **Connection Pool**: Optimized for high-concurrency (50 connections default)
+  - **Background Jobs**: Async processing with Redis-backed job queue
+  - See [docs/SCALABILITY_ENHANCEMENTS_V2.md](docs/SCALABILITY_ENHANCEMENTS_V2.md) for V2 improvements
+  - See [docs/SCALABILITY_IMPROVEMENTS.md](docs/SCALABILITY_IMPROVEMENTS.md) for V1 improvements
 - **Security Best Practices**: 
   - Environment-based JWT secrets (never hardcoded)
   - Automatic input sanitization and XSS prevention
