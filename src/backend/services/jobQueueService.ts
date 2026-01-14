@@ -301,7 +301,7 @@ export async function enqueueJob(
   maxAttempts: number = 3
 ): Promise<string> {
   const job: Job = {
-    id: `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: `${type}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
     type,
     data,
     createdAt: new Date(),

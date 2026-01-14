@@ -265,7 +265,8 @@ export class CachedAggregations {
       teamCount,
       matchCount,
       completedMatchCount,
-      inProgressMatchCount: matchCount - completedMatchCount,
+      // Calculate in-progress matches (avoid extra query)
+      inProgressMatchCount: Math.max(0, matchCount - completedMatchCount),
     };
 
     const duration = Date.now() - startTime;
@@ -359,9 +360,15 @@ export class OptimizedQueries {
   /**
    * Get user's groups with member counts
    * Uses efficient aggregation instead of loading all members
+   * Note: userId is validated by Prisma's UUID type system
    */
   static async getUserGroupsWithCounts(userId: string): Promise<any[]> {
     const startTime = Date.now();
+
+    // Validate userId format to prevent SQL injection
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      throw new Error('Invalid userId format');
+    }
 
     // Use raw query for complex aggregation (much faster)
     const groups = await prisma.$queryRaw<any[]>`
@@ -395,6 +402,7 @@ export class OptimizedQueries {
   /**
    * Get nearby events efficiently using spatial indexing
    * Limited result set to prevent performance issues
+   * Note: Coordinates are validated before calling this function
    */
   static async getNearbyEvents(
     latitude: number,
@@ -403,6 +411,19 @@ export class OptimizedQueries {
     limit: number = 50
   ): Promise<any[]> {
     const startTime = Date.now();
+
+    // Validate numeric inputs to prevent SQL injection
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(radiusKm)) {
+      throw new Error('Invalid coordinates or radius');
+    }
+    
+    // Validate coordinate ranges
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      throw new Error('Coordinates out of valid range');
+    }
+    
+    // Validate limit
+    const safeLimit = Math.min(Math.max(1, Math.floor(limit)), 100);
 
     // Calculate bounding box for initial filter (much faster than distance calculation)
     // 1 degree latitude ≈ 111 km
@@ -439,7 +460,7 @@ export class OptimizedQueries {
         )
       ) <= ${radiusKm}
       ORDER BY distance
-      LIMIT ${limit}
+      LIMIT ${safeLimit}
     `;
 
     const duration = Date.now() - startTime;

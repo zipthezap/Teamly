@@ -126,7 +126,10 @@ export const getPoolMetrics = () => {
     waitingClients: pool.waitingCount,
     maxConnections: poolConfig.max,
     minConnections: poolConfig.min,
-    utilizationPercent: poolConfig.max ? Math.round((pool.totalCount / poolConfig.max) * 100) : 0,
+    // Safe division: only calculate if max > 0, otherwise 0%
+    utilizationPercent: (poolConfig.max && poolConfig.max > 0) 
+      ? Math.round((pool.totalCount / poolConfig.max) * 100) 
+      : 0,
   };
 };
 
