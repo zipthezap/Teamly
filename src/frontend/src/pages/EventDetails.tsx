@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -34,11 +34,6 @@ const EventDetails = () => {
     enabled: !!id,
   });
 
-  // Guard for missing ID
-  if (!id) {
-    return <div className="p-4 text-red-600">{t('eventDetails.invalidEventId')}</div>;
-  }
-
   const joinMutation = useMutation({
     mutationFn: async () => eventsAPI.join(id!),
     onSuccess: () => {
@@ -52,11 +47,11 @@ const EventDetails = () => {
       setError(errorMessage);
     },
   });
-  const handleJoin = () => {
+  const handleJoin = useCallback(() => {
     setError('');
     setSuccess('');
     joinMutation.mutate();
-  };
+  }, [joinMutation]);
 
   const leaveMutation = useMutation({
     mutationFn: async () => eventsAPI.leave(id!),
@@ -71,12 +66,12 @@ const EventDetails = () => {
       setError(errorMessage);
     },
   });
-  const handleLeave = () => {
+  const handleLeave = useCallback(() => {
     if (!window.confirm(t('eventDetails.confirmLeave'))) return;
     setError('');
     setSuccess('');
     leaveMutation.mutate();
-  };
+  }, [leaveMutation, t]);
 
   const updateStatusMutation = useMutation({
     mutationFn: async (status: string) => eventsAPI.updateStatus(id!, status),
@@ -91,11 +86,11 @@ const EventDetails = () => {
       setError(errorMessage);
     },
   });
-  const handleUpdateStatus = (status: string) => {
+  const handleUpdateStatus = useCallback((status: string) => {
     setError('');
     setSuccess('');
     updateStatusMutation.mutate(status);
-  };
+  }, [updateStatusMutation]);
 
   const deleteMutation = useMutation({
     mutationFn: async () => eventsAPI.delete(id!),
@@ -109,10 +104,10 @@ const EventDetails = () => {
       setError(errorMessage);
     },
   });
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     if (!window.confirm(t('eventDetails.confirmDelete'))) return;
     deleteMutation.mutate();
-  };
+  }, [deleteMutation, t]);
 
   const markLateMutation = useMutation({
     mutationFn: async () => groupChatAPI.markLate(id!),
@@ -124,11 +119,11 @@ const EventDetails = () => {
       setLateError(t('eventDetails.failedToMarkLate'));
     },
   });
-  const handleMarkLate = () => {
+  const handleMarkLate = useCallback(() => {
     setLateError('');
     setLateSuccess('');
     markLateMutation.mutate();
-  };
+  }, [markLateMutation]);
 
   const unmarkLateMutation = useMutation({
     mutationFn: async () => groupChatAPI.unmarkLate(id!),
@@ -140,11 +135,11 @@ const EventDetails = () => {
       setLateError(t('eventDetails.failedToUndoLate'));
     },
   });
-  const handleUnmarkLate = () => {
+  const handleUnmarkLate = useCallback(() => {
     setLateError('');
     setLateSuccess('');
     unmarkLateMutation.mutate();
-  };
+  }, [unmarkLateMutation]);
 
   const generateInviteLinkMutation = useMutation({
     mutationFn: async () => eventsAPI.generateInviteToken(id!),
@@ -161,27 +156,50 @@ const EventDetails = () => {
       setError(errorMessage);
     },
   });
-  const handleGenerateInviteLink = () => {
+  const handleGenerateInviteLink = useCallback(() => {
     setError('');
     setCopySuccess('');
     generateInviteLinkMutation.mutate();
-  };
+  }, [generateInviteLinkMutation]);
 
-  const handleCopyInviteLink = async () => {
+  const handleCopyInviteLink = useCallback(async () => {
     if (event?.inviteToken) {
       const inviteUrl = `${window.location.origin}/events/join/${event.inviteToken}`;
       await navigator.clipboard.writeText(inviteUrl);
       setCopySuccess('Invite link copied to clipboard!');
       setTimeout(() => setCopySuccess(''), 3000);
     }
-  };
+  }, [event?.inviteToken]);
 
-  const isParticipant = event?.participants?.some((p: EventParticipant) => p.id === user?.id || p.userId === user?.id);
-  const isCreator = event?.creatorId === user?.id;
-  const totalParticipants = 
-    ((event?.participants?.filter((p: EventParticipant) => p.status === EventParticipantStatus.confirmed).length) || 0) +
-    ((event?.guestParticipants?.filter((g: GuestParticipant) => g.status === GuestParticipantStatus.confirmed).length) || 0);
-  const isFull = event?.maxPlayers && totalParticipants >= event?.maxPlayers;
+  // Guard for missing ID - must be after all hooks
+  if (!id) {
+    return <div className="p-4 text-red-600">{t('eventDetails.invalidEventId')}</div>;
+  }
+
+  // Memoize computed values to prevent unnecessary recalculations
+  const eventStats = useMemo(() => {
+    const isParticipant = event?.participants?.some((p: EventParticipant) => p.id === user?.id || p.userId === user?.id);
+    const isCreator = event?.creatorId === user?.id;
+    const totalParticipants = 
+      ((event?.participants?.filter((p: EventParticipant) => p.status === EventParticipantStatus.confirmed).length) || 0) +
+      ((event?.guestParticipants?.filter((g: GuestParticipant) => g.status === GuestParticipantStatus.confirmed).length) || 0);
+    const isFull = event?.maxPlayers && totalParticipants >= event?.maxPlayers;
+    const confirmedCount = event?.participants?.filter((p: EventParticipant) => p.status === EventParticipantStatus.confirmed).length || 0;
+    const declinedCount = event?.participants?.filter((p: EventParticipant) => p.status === EventParticipantStatus.declined).length || 0;
+    const pendingCount = (event?.participants?.length || 0) - confirmedCount - declinedCount;
+    const fillPercentage = event?.maxPlayers ? (totalParticipants / event.maxPlayers) * 100 : 0;
+
+    return {
+      isParticipant,
+      isCreator,
+      totalParticipants,
+      isFull,
+      confirmedCount,
+      declinedCount,
+      pendingCount,
+      fillPercentage,
+    };
+  }, [event, user?.id]);
 
   if (loading) {
     return (
@@ -199,12 +217,6 @@ const EventDetails = () => {
     );
   }
 
-  const participantCount = totalParticipants;
-  const confirmedCount = event?.participants?.filter((p: EventParticipant) => p.status === EventParticipantStatus.confirmed).length || 0;
-  const declinedCount = event?.participants?.filter((p: EventParticipant) => p.status === EventParticipantStatus.declined).length || 0;
-  const pendingCount = (event?.participants?.length || 0) - confirmedCount - declinedCount;
-  const fillPercentage = event?.maxPlayers ? (participantCount / event.maxPlayers) * 100 : 0;
-
   return (
     <div className="max-w-5xl mx-auto mt-8 mb-8 px-2">
       {/* Alerts */}
@@ -216,7 +228,7 @@ const EventDetails = () => {
 
       <div className="relative bg-[#232946] rounded-xl shadow-md p-6 mb-8">
         {/* Admin icon buttons in top right */}
-        {isCreator && (
+        {eventStats.eventStats.isCreator && (
           <div className="absolute top-4 right-4 flex gap-2 z-10">
             <button onClick={() => navigate(`/events/${event.id}/edit`)} className="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2 transition-colors" title="Edit Event">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19.5 3 21l1.5-4L16.5 3.5z" /></svg>
@@ -300,16 +312,16 @@ const EventDetails = () => {
             {/* Capacity Section */}
             <div className="bg-[#1a2233] rounded-lg p-5">
               <div className="font-semibold mb-3 text-lg">{t('eventDetails.capacity')}</div>
-              <div className="text-sm text-[#a1a6b4] mb-3">{event.maxPlayers ? t('eventDetails.participantsCount', { count: participantCount, max: event.maxPlayers }) : t('eventDetails.participants', { count: participantCount })}</div>
+              <div className="text-sm text-[#a1a6b4] mb-3">{event.maxPlayers ? t('eventDetails.participantsCount', { count: eventStats.totalParticipants, max: event.maxPlayers }) : t('eventDetails.participants', { count: eventStats.totalParticipants })}</div>
               {event.maxPlayers && (
                 <div className="w-full bg-gray-700 rounded-full h-3 mb-3">
-                  <div className="bg-blue-600 h-3 rounded-full transition-all" style={{ width: `${fillPercentage}%` }}></div>
+                  <div className="bg-blue-600 h-3 rounded-full transition-all" style={{ width: `${eventStats.fillPercentage}%` }}></div>
                 </div>
               )}
               <div className="flex flex-wrap gap-3 text-xs text-[#a1a6b4]">
-                <span className="bg-[#232946] px-2 py-1 rounded">✅ {confirmedCount} {t('eventDetails.confirmed')}</span>
-                <span className="bg-[#232946] px-2 py-1 rounded">❌ {declinedCount} {t('eventDetails.declined')}</span>
-                <span className="bg-[#232946] px-2 py-1 rounded">⏳ {pendingCount} {t('eventDetails.pending')}</span>
+                <span className="bg-[#232946] px-2 py-1 rounded">✅ {eventStats.confirmedCount} {t('eventDetails.confirmed')}</span>
+                <span className="bg-[#232946] px-2 py-1 rounded">❌ {eventStats.declinedCount} {t('eventDetails.declined')}</span>
+                <span className="bg-[#232946] px-2 py-1 rounded">⏳ {eventStats.pendingCount} {t('eventDetails.pending')}</span>
               </div>
             </div>
             
@@ -318,12 +330,12 @@ const EventDetails = () => {
               <div className="bg-[#1a2233] rounded-lg p-5">
                 <div className="font-semibold mb-3 text-lg">{t('eventDetails.yourAttendance')}</div>
                 <div className="flex flex-col gap-2">
-                  {!isParticipant && !isFull && (
+                  {!eventStats.isParticipant && !eventStats.isFull && (
                     <button onClick={handleJoin} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
                       {t('eventDetails.join')}
                     </button>
                   )}
-                  {isParticipant && (
+                  {eventStats.isParticipant && (
                     <>
                       <button onClick={() => handleUpdateStatus(EventParticipantStatus.confirmed)} className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
                         ✓ {t('eventDetails.confirmAttendance')}
@@ -339,7 +351,7 @@ const EventDetails = () => {
                           ↩ {t('eventDetails.undoLate')}
                         </button>
                       </div>
-                      {!isCreator && (
+                      {!eventStats.isCreator && (
                         <button onClick={handleLeave} className="bg-pink-600 hover:bg-pink-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full mt-2">
                           {t('eventDetails.leave')}
                         </button>
@@ -365,7 +377,7 @@ const EventDetails = () => {
                 day: 'numeric',
                 year: 'numeric'
               })}
-              isCreator={isCreator}
+              isCreator={eventStats.isCreator}
               onGenerateLink={async () => { handleGenerateInviteLink(); }}
               isPublic={event.isPublic}
               isPast={new Date(event.startTime) < new Date()}
@@ -439,7 +451,7 @@ const EventDetails = () => {
       
       {/* Participants List */}
       <div className="bg-[#232946] rounded-xl shadow-md p-6 mt-8">
-        <div className="font-semibold mb-4 text-xl">{t('eventDetails.participantsList', { count: participantCount })}</div>
+        <div className="font-semibold mb-4 text-xl">{t('eventDetails.participantsList', { count: eventStats.totalParticipants })}</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {event?.participants?.map((p: any, idx: number) => (
             <div key={p.id || idx} className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3">
