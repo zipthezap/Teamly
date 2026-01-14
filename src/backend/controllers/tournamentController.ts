@@ -1177,20 +1177,20 @@ export const addPlayer = async (req: Request, res: Response) => {
     throw new BadRequestError('Player name is required');
   }
 
-  const tournament = await prisma.tournament.findUnique({
-    where: { id }
-  });
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
 
-  ensureResourceExists(tournament, 'Tournament');
-
-  const team = await prisma.tournamentTeam.findFirst({
-    where: { id: teamId, tournamentId: id }
-  });
-
-  ensureResourceExists(team, 'Team');
+  const team = ensureResourceExists(
+    await prisma.tournamentTeam.findFirst({
+      where: { id: teamId, tournamentId: id }
+    }),
+    'Team'
+  );
 
   // Check permissions - only organizer or team captain can add players
-  const isOrg = tournamentService.isOrganizer(tournament!, userId);
+  const isOrg = tournamentService.isOrganizer(tournament, userId);
   const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
 
   if (!isOrg && !isCaptain) {
@@ -1207,6 +1207,8 @@ export const addPlayer = async (req: Request, res: Response) => {
     }
   }
 
+  // Note: Prisma P2002 error (duplicate player) will be caught by error middleware
+  // which will return: "A record with this field already exists" (409 Conflict)
   const player = await prisma.tournamentPlayer.create({
     data: {
       teamId,

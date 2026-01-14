@@ -1171,14 +1171,13 @@ export const archiveEvent = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   // Check if user is the creator of the event or a group admin
-  const event = await prisma.event.findUnique({
-    where: { id }
-  });
-
-  ensureResourceExists(event, 'Event');
+  const event = ensureResourceExists(
+    await prisma.event.findUnique({ where: { id } }),
+    'Event'
+  );
 
   // Check if user has permission to manage this event
-  const { isAuthorized } = await eventService.checkEventManagementPermission(event!, req.user!.id);
+  const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
   if (!isAuthorized) {
     throw new ForbiddenError('Only the event creator or group admins can archive it');
   }
@@ -1196,14 +1195,13 @@ export const unarchiveEvent = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   // Check if user is the creator of the event or a group admin
-  const event = await prisma.event.findUnique({
-    where: { id }
-  });
-
-  ensureResourceExists(event, 'Event');
+  const event = ensureResourceExists(
+    await prisma.event.findUnique({ where: { id } }),
+    'Event'
+  );
 
   // Check if user has permission to manage this event
-  const { isAuthorized } = await eventService.checkEventManagementPermission(event!, req.user!.id);
+  const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
   if (!isAuthorized) {
     throw new ForbiddenError('Only the event creator or group admins can unarchive it');
   }
@@ -1382,14 +1380,13 @@ export const generateInviteToken = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   // Check if user is the creator of the event or a group admin
-  const event = await prisma.event.findUnique({
-    where: { id }
-  });
-
-  ensureResourceExists(event, 'Event');
+  const event = ensureResourceExists(
+    await prisma.event.findUnique({ where: { id } }),
+    'Event'
+  );
 
   // Check if user has permission to manage this event
-  const { isAuthorized } = await eventService.checkEventManagementPermission(event!, req.user!.id);
+  const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
   if (!isAuthorized) {
     throw new ForbiddenError('Only the event creator or group admins can generate invite links');
   }
