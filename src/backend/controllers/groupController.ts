@@ -1,80 +1,3 @@
-// Transfer admin rights to another member
-export const transferAdmin = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { newAdminEmail } = req.body;
-    // Check if user is current admin
-    const currentAdmin = await prisma.groupMember.findFirst({
-      where: { groupId: id, userId: req.user!.id, role: 'admin' }
-    });
-    if (!currentAdmin) {
-      return res.status(403).json({ error: 'Only current admin can transfer admin rights.' });
-    }
-    // Find new admin member
-    const newAdminUser = await prisma.user.findUnique({ where: { email: newAdminEmail } });
-    if (!newAdminUser) {
-      return res.status(404).json({ error: 'Selected user not found.' });
-    }
-    const newAdminMembership = await prisma.groupMember.findFirst({
-      where: { groupId: id, userId: newAdminUser.id }
-    });
-    if (!newAdminMembership) {
-      return res.status(404).json({ error: 'Selected user is not a member of the group.' });
-    }
-    // Use transaction to update roles
-    await prisma.$transaction([
-      prisma.groupMember.update({
-        where: { id: newAdminMembership.id },
-        data: { role: 'admin' }
-      }),
-      prisma.groupMember.update({
-        where: { id: currentAdmin.id },
-        data: { role: 'member' }
-      })
-    ]);
-    
-    // Invalidate group cache after role changes
-    await CacheService.invalidate('group', id);
-    
-    res.json({ message: 'Admin rights transferred successfully.' });
-  } catch (error) {
-    logger.error('Failed to transfer admin rights', 'GroupController', { error });
-    res.status(500).json({ error: 'Failed to transfer admin rights.' });
-  }
-};
-// Delete a group (admin only)
-export const deleteGroup = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    // Debug log for permission check
-    logger.info('Attempting to delete group', 'GroupController', {
-      userId: req.user!.id,
-      groupId: id,
-      action: 'GROUP_DELETE',
-    });
-    const canDelete = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_DELETE);
-    logger.info('Delete group permission result', 'GroupController', {
-      userId: req.user!.id,
-      groupId: id,
-      canDelete,
-    });
-    if (!canDelete) {
-      logger.warn('403 Forbidden: User lacks GROUP_DELETE permission', 'GroupController', {
-        userId: req.user!.id,
-        groupId: id,
-      });
-      return res.status(403).json({ error: 'Only admins can delete the group' });
-    }
-    // Delete group and cascade related data (members, events, etc.)
-    await prisma.group.delete({
-      where: { id },
-    });
-    res.json({ message: 'Group deleted successfully' });
-  } catch (error) {
-    logger.error('Failed to delete group', 'GroupController', { error });
-    res.status(500).json({ error: 'Failed to delete group' });
-  }
-};
 import prisma from '../config/database';
 import { sendEmailWithQueue } from '../services/emailQueueService';
 import { shouldSendEmailNotification } from '../utils/notificationHelper';
@@ -100,7 +23,6 @@ import { Permission } from '../../shared/types/permissions.types';
 // Time constants for event queries
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-
 
 export const createGroup = async (req: Request, res: Response) => {
   try {
@@ -1306,5 +1228,83 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Get nearby groups error', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to get nearby groups' });
+  }
+};
+
+// Transfer admin rights to another member
+export const transferAdmin = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { newAdminEmail } = req.body;
+    // Check if user is current admin
+    const currentAdmin = await prisma.groupMember.findFirst({
+      where: { groupId: id, userId: req.user!.id, role: 'admin' }
+    });
+    if (!currentAdmin) {
+      return res.status(403).json({ error: 'Only current admin can transfer admin rights.' });
+    }
+    // Find new admin member
+    const newAdminUser = await prisma.user.findUnique({ where: { email: newAdminEmail } });
+    if (!newAdminUser) {
+      return res.status(404).json({ error: 'Selected user not found.' });
+    }
+    const newAdminMembership = await prisma.groupMember.findFirst({
+      where: { groupId: id, userId: newAdminUser.id }
+    });
+    if (!newAdminMembership) {
+      return res.status(404).json({ error: 'Selected user is not a member of the group.' });
+    }
+    // Use transaction to update roles
+    await prisma.$transaction([
+      prisma.groupMember.update({
+        where: { id: newAdminMembership.id },
+        data: { role: 'admin' }
+      }),
+      prisma.groupMember.update({
+        where: { id: currentAdmin.id },
+        data: { role: 'member' }
+      })
+    ]);
+    
+    // Invalidate group cache after role changes
+    await CacheService.invalidate('group', id);
+    
+    res.json({ message: 'Admin rights transferred successfully.' });
+  } catch (error) {
+    logger.error('Failed to transfer admin rights', 'GroupController', { error });
+    res.status(500).json({ error: 'Failed to transfer admin rights.' });
+  }
+};
+// Delete a group (admin only)
+export const deleteGroup = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    // Debug log for permission check
+    logger.info('Attempting to delete group', 'GroupController', {
+      userId: req.user!.id,
+      groupId: id,
+      action: 'GROUP_DELETE',
+    });
+    const canDelete = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_DELETE);
+    logger.info('Delete group permission result', 'GroupController', {
+      userId: req.user!.id,
+      groupId: id,
+      canDelete,
+    });
+    if (!canDelete) {
+      logger.warn('403 Forbidden: User lacks GROUP_DELETE permission', 'GroupController', {
+        userId: req.user!.id,
+        groupId: id,
+      });
+      return res.status(403).json({ error: 'Only admins can delete the group' });
+    }
+    // Delete group and cascade related data (members, events, etc.)
+    await prisma.group.delete({
+      where: { id },
+    });
+    res.json({ message: 'Group deleted successfully' });
+  } catch (error) {
+    logger.error('Failed to delete group', 'GroupController', { error });
+    res.status(500).json({ error: 'Failed to delete group' });
   }
 };
