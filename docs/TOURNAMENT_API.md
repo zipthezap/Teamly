@@ -435,3 +435,102 @@ All endpoints may return the following error responses:
    PUT /api/tournaments/:id
    { "status": "completed" }
    ```
+
+## Team Invitations
+
+The Tournament Team Invitations feature allows team captains to invite players to join their tournament teams. See [TOURNAMENT_TEAM_INVITATIONS.md](guides/TOURNAMENT_TEAM_INVITATIONS.md) for detailed documentation.
+
+### Send Team Invitation
+
+Invite a player to join your tournament team.
+
+**Endpoint:** `POST /api/tournaments/:id/teams/:teamId/invitations`
+
+**Authorization:** Team captain or tournament organizer
+
+**Request Body:**
+```json
+{
+  "inviteeEmail": "player@example.com",
+  "inviteeName": "John Doe",
+  "message": "Would love to have you on our team!"
+}
+```
+
+**Response:** `201 Created` - Returns the created invitation object
+
+### Get Team Invitations
+
+View all invitations for a specific team.
+
+**Endpoint:** `GET /api/tournaments/:id/teams/:teamId/invitations`
+
+**Authorization:** Team captain or tournament organizer
+
+**Response:** `200 OK` - Returns array of invitation objects
+
+### Get User's Pending Invitations
+
+View all pending invitations for the logged-in user.
+
+**Endpoint:** `GET /api/tournaments/invitations/my`
+
+**Authorization:** Authenticated user
+
+**Response:** `200 OK` - Returns array of pending invitations
+
+### Accept Team Invitation
+
+Accept an invitation to join a tournament team.
+
+**Endpoint:** `POST /api/tournaments/invitations/:inviteToken/accept`
+
+**Authorization:** Authenticated user (email must match invitation)
+
+**Response:** `200 OK`
+```json
+{
+  "message": "Invitation accepted successfully",
+  "team": { ... }
+}
+```
+
+### Decline Team Invitation
+
+Decline an invitation to join a tournament team.
+
+**Endpoint:** `POST /api/tournaments/invitations/:inviteToken/decline`
+
+**Authorization:** Authenticated user (email must match invitation)
+
+**Response:** `200 OK`
+```json
+{
+  "message": "Invitation declined"
+}
+```
+
+### Cancel Team Invitation
+
+Cancel a pending invitation (captain/organizer only).
+
+**Endpoint:** `DELETE /api/tournaments/:id/teams/:teamId/invitations/:invitationId`
+
+**Authorization:** Team captain or tournament organizer
+
+**Response:** `200 OK`
+```json
+{
+  "message": "Invitation cancelled successfully"
+}
+```
+
+## Invitation Status
+
+Invitations can have one of the following statuses:
+- `pending` - Awaiting response from invitee
+- `accepted` - Invitee has accepted and joined the team
+- `declined` - Invitee has declined the invitation
+- `expired` - Invitation expired after 7 days
+- `cancelled` - Captain/organizer cancelled the invitation
+

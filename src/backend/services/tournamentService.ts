@@ -416,3 +416,216 @@ export const advanceWinners = async (tournamentId: string, currentStage: Bracket
     });
   }
 };
+
+/**
+ * Check if user can manage team invitations
+ * User can manage invitations if they are organizer or team captain
+ */
+export const canManageTeamInvitations = async (
+  teamId: string,
+  tournamentId: string,
+  userId: string
+): Promise<boolean> => {
+  // Get tournament to check organizer
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: tournamentId },
+    select: { organizerId: true }
+  });
+  
+  if (!tournament) {
+    return false;
+  }
+  
+  // Check if organizer
+  if (tournament.organizerId === userId) {
+    return true;
+  }
+  
+  // Check if team captain
+  return await isTeamCaptain(teamId, userId);
+};
+
+/**
+ * Create a team invitation
+ */
+export const createTeamInvitation = async (
+  teamId: string,
+  inviterId: string,
+  inviteeEmail: string,
+  inviteeName?: string,
+  message?: string
+): Promise<any> => {
+  const crypto = await import('crypto');
+  const inviteToken = crypto.randomBytes(32).toString('hex');
+  
+  // Check if user with this email exists
+  const existingUser = await prisma.user.findUnique({
+    where: { email: inviteeEmail }
+  });
+  
+  // Set expiration to 7 days from now
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7);
+  
+  // Create invitation
+  const invitation = await prisma.tournamentTeamInvitation.create({
+    data: {
+      teamId,
+      inviterId,
+      inviteeEmail,
+      inviteeName,
+      inviteeUserId: existingUser?.id,
+      inviteToken,
+      message,
+      expiresAt,
+      status: 'pending'
+    },
+    include: {
+      team: {
+        include: {
+          tournament: true
+        }
+      },
+      inviter: {
+        select: { id: true, name: true, email: true }
+      },
+      inviteeUser: {
+        select: { id: true, name: true, email: true }
+      }
+    }
+  });
+  
+  return invitation;
+};
+
+/**
+ * Get team invitations
+ */
+export const getTeamInvitations = async (teamId: string) => {
+  return await prisma.tournamentTeamInvitation.findMany({
+    where: { teamId },
+    include: {
+      inviter: {
+        select: { id: true, name: true, email: true }
+      },
+      inviteeUser: {
+        select: { id: true, name: true, email: true }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+};
+
+/**
+ * Get pending invitations for a user
+ */
+export const getUserPendingInvitations = async (userEmail: string) => {
+  return await prisma.tournamentTeamInvitation.findMany({
+    where: {
+      inviteeEmail: userEmail,
+      status: 'pending',
+      expiresAt: {
+        gt: new Date()
+      }
+    },
+    include: {
+      team: {
+        include: {
+          tournament: true
+        }
+      },
+      inviter: {
+        select: { id: true, name: true, email: true }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+};
+
+/**
+ * Accept a team invitation
+ */
+export const acceptTeamInvitation = async (inviteToken: string, userId: string) => {
+  const invitation = await prisma.tournamentTeamInvitation.findUnique({
+    where: { inviteToken },
+    include: {
+      team: {
+        include: {
+          tournament: true
+        }
+      }
+    }
+  });
+  
+  if (!invitation) {
+    throw new BadRequestError('Invalid invitation token');
+  }
+  
+  if (invitation.status !== 'pending') {
+    throw new BadRequestError('Invitation has already been processed');
+  }
+  
+  if (new Date() > new Date(invitation.expiresAt)) {
+    // Mark as expired
+    await prisma.tournamentTeamInvitation.update({
+      where: { id: invitation.id },
+      data: { status: 'expired' }
+    });
+    throw new BadRequestError('Invitation has expired');
+  }
+  
+  // Get user to verify email matches
+  const user = await prisma.user.findUnique({
+    where: { id: userId }
+  });
+  
+  if (!user || user.email !== invitation.inviteeEmail) {
+    throw new BadRequestError('This invitation is for a different email address');
+  }
+  
+  // Add user as a player to the team
+  await prisma.tournamentPlayer.create({
+    data: {
+      teamId: invitation.teamId,
+      userId: userId,
+      playerName: user.name,
+      playerEmail: user.email
+    }
+  });
+  
+  // Mark invitation as accepted
+  await prisma.tournamentTeamInvitation.update({
+    where: { id: invitation.id },
+    data: {
+      status: 'accepted',
+      inviteeUserId: userId
+    }
+  });
+  
+  return invitation;
+};
+
+/**
+ * Cancel a team invitation
+ */
+export const cancelTeamInvitation = async (invitationId: string) => {
+  return await prisma.tournamentTeamInvitation.update({
+    where: { id: invitationId },
+    data: { status: 'cancelled' }
+  });
+};
+
+/**
+ * Expire old invitations (should be run periodically)
+ */
+export const expireOldInvitations = async () => {
+  return await prisma.tournamentTeamInvitation.updateMany({
+    where: {
+      status: 'pending',
+      expiresAt: {
+        lt: new Date()
+      }
+    },
+    data: { status: 'expired' }
+  });
+};

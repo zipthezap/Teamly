@@ -1182,7 +1182,7 @@ export const addPlayer = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  const team = ensureResourceExists(
+  const _team = ensureResourceExists(
     await prisma.tournamentTeam.findFirst({
       where: { id: teamId, tournamentId: id }
     }),
@@ -1907,3 +1907,264 @@ export const removeTeamFromWaitlist = async (req: Request, res: Response) => {
 };
 
 
+
+// ==================== TEAM INVITATION MANAGEMENT ====================
+
+/**
+ * Send a team invitation
+ */
+export const sendTeamInvitation = async (req: Request, res: Response) => {
+  const { id, teamId } = req.params;
+  const userId = req.user!.id;
+  const { inviteeEmail, inviteeName, message } = req.body;
+
+  if (!inviteeEmail) {
+    throw new BadRequestError('Invitee email is required');
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(inviteeEmail)) {
+    throw new BadRequestError('Invalid email format');
+  }
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+
+  const team = ensureResourceExists(
+    await prisma.tournamentTeam.findFirst({
+      where: { id: teamId, tournamentId: id }
+    }),
+    'Team'
+  );
+
+  // Check permissions - only organizer or team captain can send invitations
+  const canManage = await tournamentService.canManageTeamInvitations(teamId, id, userId);
+  if (!canManage) {
+    throw new ForbiddenError('Only the organizer or team captain can send invitations');
+  }
+
+  // Check if user is already a player on this team
+  const existingPlayer = await prisma.tournamentPlayer.findFirst({
+    where: {
+      teamId,
+      OR: [
+        { playerEmail: inviteeEmail },
+        { user: { email: inviteeEmail } }
+      ]
+    }
+  });
+
+  if (existingPlayer) {
+    throw new BadRequestError('This user is already a player on this team');
+  }
+
+  // Check if there's already a pending invitation
+  const existingInvitation = await prisma.tournamentTeamInvitation.findFirst({
+    where: {
+      teamId,
+      inviteeEmail,
+      status: 'pending'
+    }
+  });
+
+  if (existingInvitation) {
+    throw new BadRequestError('An invitation has already been sent to this email');
+  }
+
+  // Create invitation
+  const invitation = await tournamentService.createTeamInvitation(
+    teamId,
+    userId,
+    inviteeEmail,
+    inviteeName,
+    message
+  );
+
+  // Send email notification
+  const inviteUrl = `${process.env.FRONTEND_URL}/tournaments/${id}/teams/${teamId}/invitations/${invitation.inviteToken}/accept`;
+  const { sendEmail } = await import('../utils/emailService');
+  await sendEmail(
+    inviteeEmail,
+    'tournamentTeamInvitation',
+    inviteeName || inviteeEmail,
+    req.user!.name,
+    team.name,
+    tournament.name,
+    inviteUrl,
+    message
+  );
+
+  logger.info('Team invitation sent', 'TournamentController', {
+    tournamentId: id,
+    teamId,
+    inviteeEmail,
+    userId
+  });
+
+  res.status(201).json(invitation);
+};
+
+/**
+ * Get team invitations
+ */
+export const getTeamInvitations = async (req: Request, res: Response) => {
+  const { id, teamId } = req.params;
+  const userId = req.user!.id;
+
+  const _tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+
+  const _team = ensureResourceExists(
+    await prisma.tournamentTeam.findFirst({
+      where: { id: teamId, tournamentId: id }
+    }),
+    'Team'
+  );
+
+  // Check permissions
+  const canManage = await tournamentService.canManageTeamInvitations(teamId, id, userId);
+  if (!canManage) {
+    throw new ForbiddenError('Only the organizer or team captain can view invitations');
+  }
+
+  const invitations = await tournamentService.getTeamInvitations(teamId);
+
+  res.json(invitations);
+};
+
+/**
+ * Get user's pending invitations
+ */
+export const getUserInvitations = async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true }
+  });
+
+  if (!user) {
+    throw new NotFoundError('User not found');
+  }
+
+  const invitations = await tournamentService.getUserPendingInvitations(user.email);
+
+  res.json(invitations);
+};
+
+/**
+ * Accept a team invitation
+ */
+export const acceptTeamInvitation = async (req: Request, res: Response) => {
+  const { inviteToken } = req.params;
+  const userId = req.user!.id;
+
+  const invitation = await tournamentService.acceptTeamInvitation(inviteToken, userId);
+
+  logger.info('Team invitation accepted', 'TournamentController', {
+    invitationId: invitation.id,
+    teamId: invitation.teamId,
+    userId
+  });
+
+  res.json({
+    message: 'Invitation accepted successfully',
+    team: invitation.team
+  });
+};
+
+/**
+ * Decline a team invitation
+ */
+export const declineTeamInvitation = async (req: Request, res: Response) => {
+  const { inviteToken } = req.params;
+  const userId = req.user!.id;
+
+  const invitation = await prisma.tournamentTeamInvitation.findUnique({
+    where: { inviteToken }
+  });
+
+  if (!invitation) {
+    throw new NotFoundError('Invitation not found');
+  }
+
+  if (invitation.status !== 'pending') {
+    throw new BadRequestError('Invitation has already been processed');
+  }
+
+  // Get user to verify email matches
+  const user = await prisma.user.findUnique({
+    where: { id: userId }
+  });
+
+  if (!user || user.email !== invitation.inviteeEmail) {
+    throw new ForbiddenError('This invitation is for a different email address');
+  }
+
+  // Mark invitation as declined
+  await prisma.tournamentTeamInvitation.update({
+    where: { id: invitation.id },
+    data: { status: 'declined' }
+  });
+
+  logger.info('Team invitation declined', 'TournamentController', {
+    invitationId: invitation.id,
+    teamId: invitation.teamId,
+    userId
+  });
+
+  res.json({ message: 'Invitation declined' });
+};
+
+/**
+ * Cancel a team invitation (captain only)
+ */
+export const cancelTeamInvitation = async (req: Request, res: Response) => {
+  const { id, teamId, invitationId } = req.params;
+  const userId = req.user!.id;
+
+  const _tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+
+  const _team = ensureResourceExists(
+    await prisma.tournamentTeam.findFirst({
+      where: { id: teamId, tournamentId: id }
+    }),
+    'Team'
+  );
+
+  const invitation = ensureResourceExists(
+    await prisma.tournamentTeamInvitation.findUnique({
+      where: { id: invitationId }
+    }),
+    'Invitation'
+  );
+
+  if (invitation.teamId !== teamId) {
+    throw new BadRequestError('Invitation does not belong to this team');
+  }
+
+  // Check permissions
+  const canManage = await tournamentService.canManageTeamInvitations(teamId, id, userId);
+  if (!canManage) {
+    throw new ForbiddenError('Only the organizer or team captain can cancel invitations');
+  }
+
+  await tournamentService.cancelTeamInvitation(invitationId);
+
+  logger.info('Team invitation cancelled', 'TournamentController', {
+    tournamentId: id,
+    teamId,
+    invitationId,
+    userId
+  });
+
+  res.json({ message: 'Invitation cancelled successfully' });
+};

@@ -293,3 +293,54 @@ export interface UpdatePlayerDto {
   userId?: string;
 }
 
+// Team invitation types
+export enum InvitationStatus {
+  PENDING = 'pending',
+  ACCEPTED = 'accepted',
+  DECLINED = 'declined',
+  EXPIRED = 'expired',
+  CANCELLED = 'cancelled'
+}
+
+export interface TournamentTeamInvitation {
+  id: string;
+  teamId: string;
+  inviteeEmail: string;
+  inviteeName?: string;
+  inviteeUserId?: string;
+  inviterId: string;
+  inviteToken: string;
+  status: InvitationStatus;
+  message?: string;
+  expiresAt: Date | string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  team?: TournamentTeam;
+  inviter?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  inviteeUser?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
+export interface SendTeamInvitationDto {
+  inviteeEmail: string;
+  inviteeName?: string;
+  message?: string;
+}
+
+export interface AcceptTeamInvitationDto {
+  inviteToken: string;
+}
+
+export interface TeamInviteLink {
+  inviteUrl: string;
+  inviteToken: string;
+  expiresAt: Date | string;
+}
+
