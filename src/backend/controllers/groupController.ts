@@ -814,6 +814,11 @@ export const updateMemberRole = async (req: Request, res: Response) => {
     return updatedMember;
   });
 
+  // Invalidate group cache for all affected users
+  await CacheService.invalidate('group', id);
+  // Invalidate user groups cache for the member whose role was updated
+  await CacheService.deletePattern(`user:${result.userId}:groups:*`);
+
   res.json(result);
 };
 
@@ -1558,6 +1563,11 @@ export const deleteGroup = async (req: Request, res: Response) => {
   await prisma.group.delete({
     where: { id },
   });
+
+  // Invalidate all group-related caches
+  await CacheService.invalidate('group', id);
+  // Invalidate user groups cache for all members
+  await CacheService.deletePattern(`user:*:groups:*`);
 
   res.json({ message: 'Group deleted successfully' });
 };
