@@ -1,4 +1,5 @@
 import prisma from '../config/database';
+import { Prisma } from '@prisma/client';
 import { 
   MatchStatus, 
   BracketStage,
@@ -327,7 +328,7 @@ export const generateGroupsKnockoutBrackets = async (
 /**
  * Update tournament standings after a match
  */
-export const updateStandings = async (matchId: string, tournament?: { sportConfig?: unknown }) => {
+export const updateStandings = async (matchId: string, tournament?: { sportConfig?: Prisma.JsonValue }) => {
   const match = await prisma.tournamentMatch.findUnique({
     where: { id: matchId },
     include: { homeTeam: true, awayTeam: true, tournament: true }
@@ -527,7 +528,21 @@ export const createTeamInvitation = async (
   inviteeEmail: string,
   inviteeName?: string,
   message?: string
-): Promise<any> => {
+): Promise<Prisma.TournamentTeamInvitationGetPayload<{
+  include: {
+    team: {
+      include: {
+        tournament: true;
+      };
+    };
+    inviter: {
+      select: { id: true; name: true; email: true };
+    };
+    inviteeUser: {
+      select: { id: true; name: true; email: true };
+    };
+  };
+}>> => {
   const crypto = await import('crypto');
   const inviteToken = crypto.randomBytes(32).toString('hex');
   

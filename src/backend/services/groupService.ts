@@ -126,11 +126,11 @@ export const sanitizeGroupData = (data: {
  * Validates group coordinates
  * Returns validation result with error message if invalid
  */
-export const validateGroupCoordinates = async (latitude: any, longitude: any) => {
+export const validateGroupCoordinates = async (latitude: unknown, longitude: unknown) => {
   if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
     // Dynamic import to avoid circular dependency
     const { validateCoordinates } = await import('./locationService');
-    return validateCoordinates(parseFloat(latitude), parseFloat(longitude));
+    return validateCoordinates(parseFloat(String(latitude)), parseFloat(String(longitude)));
   }
   return { valid: true };
 };
@@ -298,7 +298,7 @@ export const buildGroupFilters = (
     isPublic?: string;
   }
 ) => {
-  const where: any = {
+  const where: Record<string, unknown> = {
     members: {
       some: {
         userId

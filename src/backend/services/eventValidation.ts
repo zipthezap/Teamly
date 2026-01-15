@@ -69,7 +69,13 @@ export const validateRequiredFields = (data: {
 export const validateGroupMembership = async (
   groupId: string,
   userId: string,
-  prisma: any
+  prisma: {
+    groupMember: {
+      findFirst: (args: {
+        where: { groupId: string; userId: string };
+      }) => Promise<unknown>;
+    };
+  }
 ): Promise<ValidationResult> => {
   const membership = await prisma.groupMember.findFirst({
     where: {
@@ -94,7 +100,11 @@ export const validateGroupMembership = async (
 export const validateEventCreator = async (
   eventId: string,
   userId: string,
-  prisma: any
+  prisma: {
+    event: {
+      findUnique: (args: { where: { id: string } }) => Promise<{ creatorId: string } | null>;
+    };
+  }
 ): Promise<ValidationResult> => {
   const event = await prisma.event.findUnique({
     where: { id: eventId }

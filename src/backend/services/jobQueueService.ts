@@ -18,6 +18,7 @@ import { getRedisClient, isRedisEnabled } from '../config/redis';
 import { logger } from '../utils/logger';
 import { createBulkEventNotifications, createBulkGroupNotifications } from './bulkNotificationService';
 import { CacheService } from './cacheService';
+import { Prisma } from '@prisma/client';
 import crypto from 'crypto';
 
 /**
@@ -45,8 +46,8 @@ export interface BulkNotificationJobData {
   groupId?: string;
   userIds: string[];
   notificationType: string;
-  params?: Record<string, unknown>;
-  metadata?: Record<string, unknown>;
+  params?: Prisma.JsonObject;
+  metadata?: Prisma.JsonObject;
 }
 
 export interface CacheInvalidationJobData {

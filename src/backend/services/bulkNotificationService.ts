@@ -16,6 +16,7 @@
 
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
+import { Prisma } from '@prisma/client';
 
 // Import types from Prisma client
 type EventNotificationType = 'join' | 'leave' | 'late' | 'confirmed' | 'declined' | 'status_change' | 'comment' | 'event_updated' | 'event_cancelled';
@@ -41,8 +42,8 @@ export async function createBulkEventNotifications(
   eventId: string,
   userIds: string[],
   type: EventNotificationType,
-  params?: Record<string, any>,
-  metadata?: Record<string, any>
+  params?: Prisma.JsonObject,
+  metadata?: Prisma.JsonObject
 ): Promise<void> {
   if (userIds.length === 0) {
     return;
@@ -98,7 +99,7 @@ export async function createBulkGroupNotifications(
   groupId: string,
   userIds: string[],
   type: GroupNotificationType,
-  params?: Record<string, any>
+  params?: Prisma.JsonObject
 ): Promise<void> {
   if (userIds.length === 0) {
     return;
@@ -152,8 +153,8 @@ export async function createBulkTeamUpNotifications(
   teamUpRequestId: string,
   userIds: string[],
   type: TeamUpNotificationType,
-  params?: Record<string, any>,
-  metadata?: Record<string, any>
+  params?: Prisma.JsonObject,
+  metadata?: Prisma.JsonObject
 ): Promise<void> {
   if (userIds.length === 0) {
     return;

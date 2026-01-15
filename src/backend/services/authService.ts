@@ -77,7 +77,7 @@ export const generatePasswordResetToken = () => {
 /**
  * Checks if account is locked due to failed login attempts
  */
-export const isAccountLocked = (user: any) => {
+export const isAccountLocked = (user: { accountLockedUntil: Date | null }) => {
   if (!user.accountLockedUntil) {
     return false;
   }
@@ -89,7 +89,10 @@ export const isAccountLocked = (user: any) => {
  */
 export const recordFailedLoginAttempt = async (userId: string, currentFailedAttempts: number) => {
   const newFailedAttempts = currentFailedAttempts + 1;
-  const updateData: any = {
+  const updateData: {
+    failedLoginAttempts: number;
+    accountLockedUntil?: Date;
+  } = {
     failedLoginAttempts: newFailedAttempts
   };
 
@@ -252,7 +255,10 @@ export const getUserProfile = async (userId: string) => {
  * Updates user profile
  */
 export const updateUserProfile = async (userId: string, updates: { name?: string; emailNotifications?: boolean }) => {
-  const updateData: any = {};
+  const updateData: {
+    name?: string;
+    emailNotifications?: boolean;
+  } = {};
   
   if (updates.name !== undefined) {
     updateData.name = sanitizeString(updates.name);
