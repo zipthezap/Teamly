@@ -1080,7 +1080,7 @@ export const removeRecurringEventException = async (req: Request, res: Response)
 
     // Remove exception
     const updatedExceptions = existingExceptions.filter(
-      d => new Date(d).toISOString() !== new Date(exceptionDate).toISOString()
+      (d: string | Date) => new Date(d).toISOString() !== new Date(exceptionDate).toISOString()
     );
 
     const updatedEvent = await prisma.event.update({

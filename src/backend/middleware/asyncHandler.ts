@@ -18,7 +18,7 @@ type AsyncRequestHandler<ReqType extends Request = Request> = (
  * @returns Wrapped handler that catches errors
  */
 export const asyncHandler = <ReqType extends Request = Request>(fn: AsyncRequestHandler<ReqType>) => {
-  return (req: ReqType, res: Response, next: NextFunction): void => {
-    Promise.resolve(fn(req, res, next)).catch(next);
+  return (req: Request, res: Response, next: NextFunction): void => {
+    Promise.resolve(fn(req as ReqType, res, next)).catch(next);
   };
 };
