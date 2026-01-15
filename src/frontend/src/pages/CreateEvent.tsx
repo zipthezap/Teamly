@@ -5,6 +5,7 @@ import EventForm, { EventFormData } from '../components/common/EventForm';
 import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
+import { useQueryClient } from '@tanstack/react-query';
 
 const CreateEvent = () => {
   const location = useLocation();
@@ -12,6 +13,7 @@ const CreateEvent = () => {
   const [groups, setGroups] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const fetchGroups = async () => {
@@ -107,6 +109,14 @@ const CreateEvent = () => {
       }
 
       const response = await eventsAPI.create(data);
+      
+      // Invalidate caches so the new event appears
+      queryClient.invalidateQueries({ queryKey: ['eventsList'] });
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      if (data.groupId) {
+        queryClient.invalidateQueries({ queryKey: ['groupEvents', data.groupId] });
+      }
+      
       navigate(`/events/${response.data.id}`);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };

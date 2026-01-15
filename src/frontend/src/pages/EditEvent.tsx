@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { eventsAPI } from '../services/api';
 import { getErrorMessage } from '../utils/errorHandler';
+import { useQueryClient } from '@tanstack/react-query';
 
 const EVENT_TYPES = [
   'football',
@@ -35,7 +36,9 @@ const EVENT_TYPES = [
 const EditEvent = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
+  const [groupId, setGroupId] = useState<string | number | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -92,6 +95,11 @@ const EditEvent = () => {
         endMinute,
         maxPlayers: event.maxPlayers?.toString() || '',
       });
+      
+      // Store groupId for cache invalidation
+      if (event.groupId) {
+        setGroupId(event.groupId);
+      }
     } catch (error) {
       console.error('Error fetching event:', error);
       setError('Failed to load event');
@@ -179,6 +187,16 @@ const EditEvent = () => {
       }
 
       await eventsAPI.update(id, data);
+      
+      // Invalidate caches so the updated event is reflected
+      queryClient.invalidateQueries({ queryKey: ['eventDetails', id] });
+      queryClient.invalidateQueries({ queryKey: ['eventsList'] });
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      // Invalidate group events if this event belongs to a group
+      if (groupId) {
+        queryClient.invalidateQueries({ queryKey: ['groupEvents', groupId] });
+      }
+      
       navigate(`/events/${id}`);
     } catch (err: unknown) {
       setError(getErrorMessage(err) || 'Failed to update event');

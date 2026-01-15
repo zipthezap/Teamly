@@ -4,12 +4,14 @@ import { Container, CircularProgress, Box, Typography, Alert } from '@mui/materi
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { groupsAPI } from '../services/api';
+import { useQueryClient } from '@tanstack/react-query';
 
 const AuthCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { setTokens } = useAuth();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -52,6 +54,13 @@ const AuthCallback = () => {
           
           if (profileResponse.ok) {
             await groupsAPI.joinByInvite(inviteGroupId);
+            
+            // Invalidate caches so the joined group appears
+            queryClient.invalidateQueries({ queryKey: ['groupsList'] });
+            queryClient.invalidateQueries({ queryKey: ['groups'] });
+            queryClient.invalidateQueries({ queryKey: ['groupDetails', inviteGroupId] });
+            queryClient.invalidateQueries({ queryKey: ['groupMembers', inviteGroupId] });
+            
             navigate(`/groups/${inviteGroupId}`);
           } else {
             navigate('/dashboard');
@@ -66,7 +75,7 @@ const AuthCallback = () => {
     };
 
     handleCallback();
-  }, [searchParams, navigate, setTokens, t]);
+  }, [searchParams, navigate, setTokens, t, queryClient]);
 
   return (
     <Container maxWidth="sm" sx={{ mt: 8 }}>
