@@ -25,6 +25,8 @@ export interface Group {
   maxMembers?: number | null;
   autoApproveJoinRequests?: boolean;
   tags?: string | null;
+  allowMemberInvites?: boolean;
+  allowMemberCopyLink?: boolean;
 }
 
 // Group with relations
@@ -95,6 +97,8 @@ export interface CreateGroupData {
   maxMembers?: number;
   autoApproveJoinRequests?: boolean;
   tags?: string;
+  allowMemberInvites?: boolean;
+  allowMemberCopyLink?: boolean;
 }
 
 // Update Group data
@@ -111,6 +115,8 @@ export interface UpdateGroupData {
   maxMembers?: number;
   autoApproveJoinRequests?: boolean;
   tags?: string;
+  allowMemberInvites?: boolean;
+  allowMemberCopyLink?: boolean;
 }
 
 // Group search/filter params

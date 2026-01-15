@@ -39,7 +39,9 @@ export const createGroup = async (req: Request, res: Response) => {
     sportType,
     maxMembers,
     autoApproveJoinRequests,
-    tags
+    tags,
+    allowMemberInvites,
+    allowMemberCopyLink
   } = req.body;
 
   if (!name) {
@@ -82,6 +84,8 @@ export const createGroup = async (req: Request, res: Response) => {
       maxMembers: maxMembers ? parseInt(maxMembers as string) : null,
       autoApproveJoinRequests: autoApproveJoinRequests || false,
       tags: sanitized.tags,
+      allowMemberInvites: allowMemberInvites !== undefined ? allowMemberInvites : false,
+      allowMemberCopyLink: allowMemberCopyLink !== undefined ? allowMemberCopyLink : true,
       creatorId: req.user!.id,
       members: {
         create: {
@@ -432,7 +436,9 @@ export const updateGroup = async (req: Request, res: Response) => {
     sportType,
     maxMembers,
     autoApproveJoinRequests,
-    tags
+    tags,
+    allowMemberInvites,
+    allowMemberCopyLink
   } = req.body;
 
   // Check if user has permission to update the group
@@ -477,7 +483,9 @@ export const updateGroup = async (req: Request, res: Response) => {
       ...(sportType !== undefined && { sportType: sportType || null }),
       ...(maxMembers !== undefined && { maxMembers: maxMembers ? parseInt(maxMembers as string) : null }),
       ...(autoApproveJoinRequests !== undefined && { autoApproveJoinRequests }),
-      ...(sanitized.tags !== undefined && { tags: sanitized.tags })
+      ...(sanitized.tags !== undefined && { tags: sanitized.tags }),
+      ...(allowMemberInvites !== undefined && { allowMemberInvites }),
+      ...(allowMemberCopyLink !== undefined && { allowMemberCopyLink })
     },
     include: {
       creator: {
@@ -512,12 +520,6 @@ export const inviteMember = async (req: Request, res: Response) => {
     throw new BadRequestError('Invalid email format');
   }
 
-  // Check if user has permission to invite members (admins and moderators)
-  const canInvite = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_INVITE_MEMBERS);
-  if (!canInvite) {
-    throw new ForbiddenError('Only admins and moderators can invite members');
-  }
-
   // Get group info - FIX: Return 404 if group doesn't exist
   const group = await prisma.group.findUnique({
     where: { id }
@@ -525,6 +527,29 @@ export const inviteMember = async (req: Request, res: Response) => {
 
   if (!group) {
     throw new NotFoundError('Group not found');
+  }
+
+  // Check if user has permission to invite members
+  // First check if they're an admin/moderator with GROUP_INVITE_MEMBERS permission
+  const isAdminOrModerator = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_INVITE_MEMBERS);
+  
+  // If not admin/moderator, check if regular members are allowed to invite
+  if (!isAdminOrModerator) {
+    if (!group.allowMemberInvites) {
+      throw new ForbiddenError('Only admins and moderators can invite members');
+    }
+    
+    // Check if user is at least a member
+    const membership = await prisma.groupMember.findFirst({
+      where: {
+        groupId: id,
+        userId: req.user!.id
+      }
+    });
+    
+    if (!membership) {
+      throw new ForbiddenError('You must be a member to invite others');
+    }
   }
 
   // Find user to invite
@@ -1231,6 +1256,15 @@ export const leaveGroup = async (req: Request, res: Response) => {
 export const getInviteLink = async (req: Request, res: Response) => {
   const { id } = req.params;
 
+  // Get group info
+  const group = await prisma.group.findUnique({
+    where: { id }
+  });
+
+  if (!group) {
+    throw new NotFoundError('Group not found');
+  }
+
   // Check if user is a member of the group
   const membership = await prisma.groupMember.findFirst({
     where: {
@@ -1241,6 +1275,14 @@ export const getInviteLink = async (req: Request, res: Response) => {
 
   if (!membership) {
     throw new ForbiddenError('Only group members can get invite links');
+  }
+
+  // Check if user has permission to get invite link
+  // Admins and moderators can always get the link
+  const isAdminOrModerator = membership.role === 'admin' || membership.role === 'moderator';
+  
+  if (!isAdminOrModerator && !group.allowMemberCopyLink) {
+    throw new ForbiddenError('Only admins and moderators can copy the invite link');
   }
 
   // Return the group ID which can be used to construct the invite link on the frontend
