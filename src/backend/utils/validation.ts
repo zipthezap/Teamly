@@ -272,6 +272,29 @@ export function sanitizeUserInput(value: string): string {
 }
 
 /**
+ * Validates that a string doesn't contain CRLF characters
+ * Used to prevent email header injection attacks
+ */
+export function validateNoCRLF(value: string, fieldName: string): void {
+  if (/[\r\n]/.test(value)) {
+    throw new ValidationError(
+      `${fieldName} must not contain line breaks`,
+      fieldName,
+      'INVALID_CHARACTERS'
+    );
+  }
+}
+
+/**
+ * Validates and sanitizes email subject to prevent header injection
+ */
+export function validateEmailSubject(subject: string): void {
+  isRequired(subject, 'Email subject');
+  validateNoCRLF(subject, 'Email subject');
+  validateStringLength(subject, 'Email subject', 1, 255);
+}
+
+/**
  * Validates and sanitizes string fields in an object based on provided validators.
  * Only validates fields that have validators provided. All string values are sanitized (trimmed).
  */

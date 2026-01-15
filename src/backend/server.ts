@@ -167,10 +167,29 @@ app.use(express.urlencoded({ extended: true, limit: config.requestBodySizeLimit 
 const SESSION_TTL_SECONDS = 60 * 60; // 1 hour
 const SESSION_COOKIE_MAX_AGE = SESSION_TTL_SECONDS * 1000; // Convert to milliseconds
 
+// Get session secret with production validation
+const getSessionSecret = (): string => {
+  if (process.env.SESSION_SECRET) {
+    return process.env.SESSION_SECRET;
+  }
+  
+  // In production, require a separate session secret
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('SESSION_SECRET must be set in production for security');
+  }
+  
+  // In development, allow fallback but log warning
+  if (process.env.NODE_ENV === 'development') {
+    logger.warn('Using JWT_SECRET for session secret. Set SESSION_SECRET in production.', 'Server');
+  }
+  
+  return process.env.JWT_SECRET || 'your-session-secret';
+};
+
 // Session middleware for OAuth (required by passport)
 // Use Redis for session storage if available, otherwise fall back to in-memory
 const sessionConfig: session.SessionOptions = {
-  secret: process.env.SESSION_SECRET || process.env.JWT_SECRET || 'your-session-secret',
+  secret: getSessionSecret(),
   resave: false,
   saveUninitialized: false,
   cookie: {
