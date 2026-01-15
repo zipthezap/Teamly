@@ -1,6 +1,4 @@
-import rateLimit from 'express-rate-limit';
-// Use the ipKeyGenerator helper from express-rate-limit for IPv6-safe IP keys
-const { ipKeyGenerator } = require('express-rate-limit');
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { Request, Response } from 'express';
 import { logger } from '../utils/logger';
 

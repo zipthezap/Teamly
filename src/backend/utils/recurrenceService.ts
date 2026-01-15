@@ -8,7 +8,7 @@ const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000; // Milliseconds in one year
 const parseRecurrenceRule = (ruleString: string) => {
   try {
     return rrulestr(ruleString);
-  } catch (error) {
+  } catch {
     throw new Error('Invalid recurrence rule format');
   }
 };
@@ -18,7 +18,7 @@ export const validateRecurrenceRule = (ruleString: string): boolean => {
   try {
     parseRecurrenceRule(ruleString);
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
 };

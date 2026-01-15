@@ -19,7 +19,7 @@ const REFRESH_SECRET_KEY = (() => {
   
   // In development, allow fallback but log warning
   if (process.env.NODE_ENV === 'development') {
-    console.warn('WARNING: Using JWT_SECRET for refresh tokens. Set JWT_REFRESH_SECRET in production.');
+    logger.warn('Using JWT_SECRET for refresh tokens. Set JWT_REFRESH_SECRET in production.', 'JWT');
   }
   
   return process.env.JWT_SECRET || 'your-refresh-secret-key-here';
@@ -113,7 +113,7 @@ export const generateTokenPair = async (userId: string, deviceInfo?: string, ipA
 export const verifyToken = (token: string): TokenPayload | null => {
   try {
     return jwt.verify(token, SECRET_KEY) as TokenPayload;
-  } catch (error) {
+  } catch {
     return null;
   }
 };
@@ -124,7 +124,7 @@ export const verifyToken = (token: string): TokenPayload | null => {
 export const verifyRefreshToken = (token: string): TokenPayload | null => {
   try {
     return jwt.verify(token, REFRESH_SECRET_KEY) as TokenPayload;
-  } catch (error) {
+  } catch {
     return null;
   }
 };
