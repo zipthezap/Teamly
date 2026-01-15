@@ -820,7 +820,9 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
     // Validate status using enum
     const validStatuses = Object.values(EventParticipantStatus);
     if (!status || !validStatuses.includes(status as EventParticipantStatus)) {
-      return res.status(400).json({ error: 'Invalid status. Must be one of: pending, confirmed, declined' });
+      return res.status(400).json({ 
+        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` 
+      });
     }
 
     const participant = await prisma.eventParticipant.findFirst({

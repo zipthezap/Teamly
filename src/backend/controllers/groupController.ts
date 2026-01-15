@@ -2,7 +2,7 @@ import prisma from '../config/database';
 import { sendEmailWithQueue } from '../services/emailQueueService';
 import { shouldSendEmailNotification } from '../utils/notificationHelper';
 import { logger } from '../utils/logger';
-import { escapeHtml } from '../utils/validation';
+import { escapeHtml, isValidEmail } from '../utils/validation';
 import { Request, Response } from 'express';
 import path from 'path';
 import { 
@@ -42,7 +42,7 @@ export const createGroup = async (req: Request, res: Response) => {
     });
 
     // Validate coordinates if provided
-    const coordValidation = groupService.validateGroupCoordinates(latitude, longitude);
+    const coordValidation = await groupService.validateGroupCoordinates(latitude, longitude);
     if (!coordValidation.valid) {
       return res.status(400).json({ error: coordValidation.error });
     }
@@ -332,7 +332,7 @@ export const updateGroup = async (req: Request, res: Response) => {
     });
 
     // Validate coordinates if provided
-    const coordValidation = groupService.validateGroupCoordinates(latitude, longitude);
+    const coordValidation = await groupService.validateGroupCoordinates(latitude, longitude);
     if (!coordValidation.valid) {
       return res.status(400).json({ error: coordValidation.error });
     }
@@ -383,8 +383,7 @@ export const inviteMember = async (req: Request, res: Response) => {
     }
 
     // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!isValidEmail(email)) {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 

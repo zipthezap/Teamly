@@ -124,12 +124,11 @@ export const sanitizeGroupData = (data: {
  * Validates group coordinates
  * Returns validation result with error message if invalid
  */
-export const validateGroupCoordinates = (latitude: any, longitude: any) => {
-  // Import at runtime to avoid circular dependency
-  const locationService = require('./locationService');
-  
+export const validateGroupCoordinates = async (latitude: any, longitude: any) => {
   if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
-    return locationService.validateCoordinates(parseFloat(latitude), parseFloat(longitude));
+    // Dynamic import to avoid circular dependency
+    const { validateCoordinates } = await import('./locationService');
+    return validateCoordinates(parseFloat(latitude), parseFloat(longitude));
   }
   return { valid: true };
 };
