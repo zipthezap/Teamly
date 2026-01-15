@@ -818,6 +818,9 @@ export const updateMemberRole = async (req: Request, res: Response) => {
   await CacheService.invalidate('group', id);
   // Invalidate user groups cache for the member whose role was updated
   await CacheService.deletePattern(`user:${result.userId}:groups:*`);
+  // Invalidate events cache since role changes may affect access to group events
+  await CacheService.deletePattern(`events:user:${result.userId}:group:${id}:*`);
+  await CacheService.deletePattern(`events:user:${result.userId}:group:all:*`);
 
   res.json(result);
 };
@@ -1539,10 +1542,15 @@ export const transferAdmin = async (req: Request, res: Response) => {
 export const deleteGroup = async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  // Verify group exists first
+  // Verify group exists first and get members for cache invalidation
   const group = await prisma.group.findUnique({
     where: { id },
-    select: { id: true }
+    select: { 
+      id: true,
+      members: {
+        select: { userId: true }
+      }
+    }
   });
 
   if (!group) {
@@ -1566,8 +1574,13 @@ export const deleteGroup = async (req: Request, res: Response) => {
 
   // Invalidate all group-related caches
   await CacheService.invalidate('group', id);
-  // Invalidate user groups cache for all members
-  await CacheService.deletePattern(`user:*:groups:*`);
+  // Invalidate user groups cache for each member
+  for (const member of group.members) {
+    await CacheService.deletePattern(`user:${member.userId}:groups:*`);
+    // Invalidate events cache since they no longer have access to group events
+    await CacheService.deletePattern(`events:user:${member.userId}:group:${id}:*`);
+    await CacheService.deletePattern(`events:user:${member.userId}:group:all:*`);
+  }
 
   res.json({ message: 'Group deleted successfully' });
 };
