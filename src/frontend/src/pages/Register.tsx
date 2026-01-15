@@ -75,7 +75,7 @@ const Register = () => {
         if (inviteGroupId && newUser?.id) {
           // Call backend to join group
           try {
-            await groupsAPI.joinByInvite(newUser.id, inviteGroupId);
+            await groupsAPI.joinByInvite(inviteGroupId);
           } catch {
             // Optionally handle join error
           }
