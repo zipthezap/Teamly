@@ -42,7 +42,7 @@ const createTransporter = () => {
 
 // Email templates with HTML escaping for security
 export const emailTemplates = {
-  eventInvitation: (userName, eventTitle, eventDate, groupName) => ({
+  eventInvitation: (userName: string, eventTitle: string, eventDate: string | Date, groupName: string) => ({
     subject: `You're invited to ${eventTitle}`,
     html: `
       <h2>Hi ${escapeHtml(userName)},</h2>
@@ -53,7 +53,7 @@ export const emailTemplates = {
     `
   }),
 
-  eventUpdate: (userName, eventTitle, groupName) => ({
+  eventUpdate: (userName: string, eventTitle: string, groupName: string) => ({
     subject: `Event Updated: ${eventTitle}`,
     html: `
       <h2>Hi ${escapeHtml(userName)},</h2>
@@ -63,7 +63,7 @@ export const emailTemplates = {
     `
   }),
 
-  eventCancellation: (userName, eventTitle, groupName) => ({
+  eventCancellation: (userName: string, eventTitle: string, groupName: string) => ({
     subject: `Event Cancelled: ${eventTitle}`,
     html: `
       <h2>Hi ${escapeHtml(userName)},</h2>
@@ -73,7 +73,7 @@ export const emailTemplates = {
     `
   }),
 
-  eventReminder: (userName, eventTitle, eventDate, location) => ({
+  eventReminder: (userName: string, eventTitle: string, eventDate: string | Date, location: string) => ({
     subject: `Reminder: ${eventTitle} is coming up soon`,
     html: `
       <h2>Hi ${escapeHtml(userName)},</h2>
@@ -85,7 +85,7 @@ export const emailTemplates = {
     `
   }),
 
-  groupInvitation: (userName, groupName, inviterName) => ({
+  groupInvitation: (userName: string, groupName: string, inviterName: string) => ({
     subject: `You've been invited to join ${groupName}`,
     html: `
       <h2>Hi ${escapeHtml(userName)},</h2>
@@ -95,7 +95,7 @@ export const emailTemplates = {
     `
   }),
 
-  commentMention: (userName, commenterName, eventTitle, commentContent) => ({
+  commentMention: (userName: string, commenterName: string, eventTitle: string, commentContent: string) => ({
     subject: `${commenterName} mentioned you in a comment`,
     html: `
       <h2>Hi ${escapeHtml(userName)},</h2>
@@ -105,7 +105,7 @@ export const emailTemplates = {
     `
   }),
 
-  emailVerification: (userName, verificationUrl) => ({
+  emailVerification: (userName: string, verificationUrl: string) => ({
     subject: 'Verify your email address',
     html: `
       <h2>Hi ${escapeHtml(userName)},</h2>
@@ -115,7 +115,7 @@ export const emailTemplates = {
     `
   }),
 
-  tournamentTeamInvitation: (inviteeName, inviterName, teamName, tournamentName, inviteUrl, message) => ({
+  tournamentTeamInvitation: (inviteeName: string, inviterName: string, teamName: string, tournamentName: string, inviteUrl: string, message: string) => ({
     subject: `You're invited to join ${teamName} in ${tournamentName}`,
     html: `
       <h2>Hi ${escapeHtml(inviteeName || 'there')},</h2>
