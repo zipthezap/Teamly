@@ -46,7 +46,7 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
   const parsedOffset = parseInt(offset as string, 10) || 0;
   const parsedIncludeRead = includeRead === 'true';
 
-  const options: any = {
+  const options: Record<string, unknown> = {
     includeRead: parsedIncludeRead,
     limit: parsedLimit,
     offset: parsedOffset,

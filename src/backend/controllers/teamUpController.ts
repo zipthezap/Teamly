@@ -148,7 +148,7 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
   const validatedOffset = isNaN(parsedOffset) ? 0 : Math.max(parsedOffset, 0);
 
   // Build where clause - optimized to use composite indexes
-  const where: any = {
+  const where: Record<string, unknown> = {
     status: status as string  // First part of composite index
   };
 
@@ -267,7 +267,7 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
 export const getMyTeamUpRequests = async (req: Request, res: Response) => {
   const { status } = req.query;
 
-  const where: any = {
+  const where: Record<string, unknown> = {
     creatorId: req.user!.id
   };
 
@@ -419,7 +419,7 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
     skillLevel
   });
 
-  const updateData: any = {};
+  const updateData: Record<string, unknown> = {};
 
   if (sanitized.title !== undefined) updateData.title = sanitized.title;
   if (sanitized.description !== undefined) updateData.description = sanitized.description;
