@@ -520,36 +520,32 @@ export const inviteMember = async (req: Request, res: Response) => {
     throw new BadRequestError('Invalid email format');
   }
 
-  // Get group info - FIX: Return 404 if group doesn't exist
-  const group = await prisma.group.findUnique({
-    where: { id }
-  });
+  // Get group and user's membership in a single query
+  const [group, membership] = await Promise.all([
+    prisma.group.findUnique({
+      where: { id }
+    }),
+    prisma.groupMember.findFirst({
+      where: {
+        groupId: id,
+        userId: req.user!.id
+      }
+    })
+  ]);
 
   if (!group) {
     throw new NotFoundError('Group not found');
   }
 
+  if (!membership) {
+    throw new ForbiddenError('You must be a member to invite others');
+  }
+
   // Check if user has permission to invite members
-  // First check if they're an admin/moderator with GROUP_INVITE_MEMBERS permission
-  const isAdminOrModerator = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_INVITE_MEMBERS);
+  const isAdminOrModerator = membership.role === 'admin' || membership.role === 'moderator';
   
-  // If not admin/moderator, check if regular members are allowed to invite
-  if (!isAdminOrModerator) {
-    if (!group.allowMemberInvites) {
-      throw new ForbiddenError('Only admins and moderators can invite members');
-    }
-    
-    // Check if user is at least a member
-    const membership = await prisma.groupMember.findFirst({
-      where: {
-        groupId: id,
-        userId: req.user!.id
-      }
-    });
-    
-    if (!membership) {
-      throw new ForbiddenError('You must be a member to invite others');
-    }
+  if (!isAdminOrModerator && !group.allowMemberInvites) {
+    throw new ForbiddenError('Only admins and moderators can invite members');
   }
 
   // Find user to invite
