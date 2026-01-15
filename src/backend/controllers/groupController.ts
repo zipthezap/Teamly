@@ -46,11 +46,9 @@ export const createGroup = async (req: Request, res: Response) => {
   }
 
   // Validate maxMembers if provided
-  if (maxMembers !== undefined && maxMembers !== null) {
-    const maxMembersNum = parseInt(maxMembers as string);
-    if (isNaN(maxMembersNum) || maxMembersNum < 2 || maxMembersNum > 10000) {
-      throw new BadRequestError('Max members must be between 2 and 10,000');
-    }
+  const maxMembersValidation = groupService.validateMaxMembers(maxMembers);
+  if (!maxMembersValidation.valid) {
+    throw new BadRequestError(maxMembersValidation.error || 'Invalid max members value');
   }
 
   // Sanitize text inputs
@@ -347,11 +345,9 @@ export const updateGroup = async (req: Request, res: Response) => {
   }
 
   // Validate maxMembers if provided
-  if (maxMembers !== undefined && maxMembers !== null) {
-    const maxMembersNum = parseInt(maxMembers as string);
-    if (isNaN(maxMembersNum) || maxMembersNum < 2 || maxMembersNum > 10000) {
-      throw new BadRequestError('Max members must be between 2 and 10,000');
-    }
+  const maxMembersValidation = groupService.validateMaxMembers(maxMembers);
+  if (!maxMembersValidation.valid) {
+    throw new BadRequestError(maxMembersValidation.error || 'Invalid max members value');
   }
 
   // Sanitize text inputs

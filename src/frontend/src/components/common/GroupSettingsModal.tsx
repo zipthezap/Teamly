@@ -21,6 +21,7 @@ import {
   Tab
 } from '@mui/material';
 import ImageUpload from "../ImageUpload";
+import { SPORT_TYPES } from "../../constants/sportTypes";
 
 export interface GroupSettingsModalProps {
   open: boolean;
@@ -58,25 +59,6 @@ export interface GroupSettingsModalProps {
   isSubmitting?: boolean;
   t: (key: string, params?: Record<string, unknown>) => string;
 }
-
-const SPORT_TYPES = [
-  { value: '', label: 'None / Mixed' },
-  { value: 'football', label: 'Football' },
-  { value: 'basketball', label: 'Basketball' },
-  { value: 'tennis', label: 'Tennis' },
-  { value: 'volleyball', label: 'Volleyball' },
-  { value: 'running', label: 'Running' },
-  { value: 'cycling', label: 'Cycling' },
-  { value: 'swimming', label: 'Swimming' },
-  { value: 'cricket', label: 'Cricket' },
-  { value: 'americanFootball', label: 'American Football' },
-  { value: 'iceHockey', label: 'Ice Hockey' },
-  { value: 'baseball', label: 'Baseball' },
-  { value: 'rugby', label: 'Rugby' },
-  { value: 'handball', label: 'Handball' },
-  { value: 'fieldHockey', label: 'Field Hockey' },
-  { value: 'other', label: 'Other' }
-];
 
 const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
   open,
@@ -214,22 +196,24 @@ const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
                 {t('groups.privacySettings') || 'Privacy & Access'}
               </Typography>
 
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={form.privacy === 'public'}
-                    onChange={e => setForm({ ...form, privacy: e.target.checked ? 'public' : 'private' })}
-                    color="primary"
-                  />
-                }
-                label={t('groups.makePublic')}
-              />
-              <FormHelperText sx={{ ml: 4, mb: 2 }}>
-                {t('groups.makePublicHelp') || 'Public groups can be discovered by anyone and appear in search results'}
-              </FormHelperText>
+              <Box>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={form.privacy === 'public'}
+                      onChange={e => setForm({ ...form, privacy: e.target.checked ? 'public' : 'private' })}
+                      color="primary"
+                    />
+                  }
+                  label={t('groups.makePublic')}
+                />
+                <FormHelperText sx={{ ml: 4, mb: 2 }}>
+                  {t('groups.makePublicHelp') || 'Public groups can be discovered by anyone and appear in search results'}
+                </FormHelperText>
+              </Box>
 
               {form.privacy === 'public' && (
-                <>
+                <Box>
                   <FormControlLabel
                     control={
                       <Checkbox
@@ -243,7 +227,7 @@ const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
                   <FormHelperText sx={{ ml: 4, mb: 2 }}>
                     {t('groups.autoApproveHelp') || 'New members can join immediately without admin approval'}
                   </FormHelperText>
-                </>
+                </Box>
               )}
             </Box>
           )}

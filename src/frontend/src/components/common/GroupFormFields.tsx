@@ -13,6 +13,7 @@ import {
   Typography,
   Divider
 } from "@mui/material";
+import { SPORT_TYPES } from "../../constants/sportTypes";
 
 export interface GroupFormFieldsProps {
   name: string;
@@ -31,25 +32,6 @@ export interface GroupFormFieldsProps {
   setTags?: (v: string) => void;
   t: (key: string, params?: Record<string, unknown>) => string;
 }
-
-const SPORT_TYPES = [
-  { value: '', label: 'None / Mixed' },
-  { value: 'football', label: 'Football' },
-  { value: 'basketball', label: 'Basketball' },
-  { value: 'tennis', label: 'Tennis' },
-  { value: 'volleyball', label: 'Volleyball' },
-  { value: 'running', label: 'Running' },
-  { value: 'cycling', label: 'Cycling' },
-  { value: 'swimming', label: 'Swimming' },
-  { value: 'cricket', label: 'Cricket' },
-  { value: 'americanFootball', label: 'American Football' },
-  { value: 'iceHockey', label: 'Ice Hockey' },
-  { value: 'baseball', label: 'Baseball' },
-  { value: 'rugby', label: 'Rugby' },
-  { value: 'handball', label: 'Handball' },
-  { value: 'fieldHockey', label: 'Field Hockey' },
-  { value: 'other', label: 'Other' }
-];
 
 const GroupFormFields: React.FC<GroupFormFieldsProps> = ({
   name,
@@ -178,38 +160,40 @@ const GroupFormFields: React.FC<GroupFormFieldsProps> = ({
         {t('groups.privacySettings') || 'Privacy & Access'}
       </Typography>
 
-      <FormControlLabel
-        control={
-          <Checkbox
-            checked={isPublic}
-            onChange={e => setIsPublic(e.target.checked)}
-            color="primary"
-          />
-        }
-        label={t('groups.makePublic')}
-        sx={{ mt: 1 }}
-      />
-      <FormHelperText sx={{ ml: 4, mb: 2 }}>
-        {t('groups.makePublicHelp') || 'Public groups can be discovered by anyone and appear in search results'}
-      </FormHelperText>
-
-      {isPublic && setAutoApproveJoinRequests && (
+      <Box>
         <FormControlLabel
           control={
             <Checkbox
-              checked={autoApproveJoinRequests || false}
-              onChange={e => setAutoApproveJoinRequests(e.target.checked)}
+              checked={isPublic}
+              onChange={e => setIsPublic(e.target.checked)}
               color="primary"
             />
           }
-          label={t('groups.autoApproveJoinRequests') || 'Auto-approve join requests'}
+          label={t('groups.makePublic')}
           sx={{ mt: 1 }}
         />
-      )}
-      {isPublic && setAutoApproveJoinRequests && (
         <FormHelperText sx={{ ml: 4, mb: 2 }}>
-          {t('groups.autoApproveHelp') || 'New members can join immediately without admin approval'}
+          {t('groups.makePublicHelp') || 'Public groups can be discovered by anyone and appear in search results'}
         </FormHelperText>
+      </Box>
+
+      {isPublic && setAutoApproveJoinRequests && (
+        <Box>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={autoApproveJoinRequests || false}
+                onChange={e => setAutoApproveJoinRequests(e.target.checked)}
+                color="primary"
+              />
+            }
+            label={t('groups.autoApproveJoinRequests') || 'Auto-approve join requests'}
+            sx={{ mt: 1 }}
+          />
+          <FormHelperText sx={{ ml: 4, mb: 2 }}>
+            {t('groups.autoApproveHelp') || 'New members can join immediately without admin approval'}
+          </FormHelperText>
+        </Box>
       )}
     </Box>
   );

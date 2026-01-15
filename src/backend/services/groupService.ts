@@ -136,6 +136,23 @@ export const validateGroupCoordinates = async (latitude: any, longitude: any) =>
 };
 
 /**
+ * Validates maxMembers value
+ * Returns validation result with error message if invalid
+ */
+export const validateMaxMembers = (maxMembers: any) => {
+  if (maxMembers !== undefined && maxMembers !== null && maxMembers !== '') {
+    const maxMembersNum = parseInt(maxMembers as string);
+    if (isNaN(maxMembersNum) || maxMembersNum < 2 || maxMembersNum > 10000) {
+      return {
+        valid: false,
+        error: 'Max members must be between 2 and 10,000'
+      };
+    }
+  }
+  return { valid: true };
+};
+
+/**
  * Creates group join request notification
  */
 export const createJoinRequestNotification = async (
