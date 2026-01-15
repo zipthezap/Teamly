@@ -3,6 +3,7 @@
  * Handles all event-related email notifications and activity tracking
  */
 
+import { PrismaClient, Prisma, EventNotification, EventNotificationType } from '@prisma/client';
 import { sendEmailWithQueue } from './emailQueueService';
 import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
 import { escapeHtml } from '../utils/validation';
@@ -12,6 +13,10 @@ interface User {
   name: string;
   email: string;
   emailNotifications?: boolean;
+}
+
+interface EventParticipantWithUser {
+  user: User;
 }
 
 /**
@@ -68,7 +73,7 @@ export const sendEventInvitations = async (
  * Send event update notifications to participants
  */
 export const sendEventUpdateNotifications = async (
-  participants: any[],
+  participants: EventParticipantWithUser[],
   creatorId: string,
   eventTitle: string,
   groupName: string
@@ -115,7 +120,7 @@ export const sendEventUpdateNotifications = async (
  * Send event cancellation notifications to participants
  */
 export const sendEventCancellationNotifications = async (
-  participants: any[],
+  participants: EventParticipantWithUser[],
   creatorId: string,
   eventTitle: string,
   groupName: string
@@ -164,10 +169,10 @@ export const sendEventCancellationNotifications = async (
 export const createEventNotifications = async (
   eventId: string,
   userIds: string[],
-  type: string,
-  prisma: any,
-  metadata?: any,
-  params?: any
+  type: EventNotificationType,
+  prisma: PrismaClient,
+  metadata?: Prisma.InputJsonValue,
+  params?: Prisma.InputJsonValue
 ): Promise<void> => {
   await Promise.all(
     userIds.map(userId =>
@@ -190,10 +195,10 @@ export const createEventNotifications = async (
 export const createActivityNotification = async (
   eventId: string,
   userId: string,
-  type: string,
-  metadata: any,
-  prisma: any,
-  params?: any
+  type: EventNotificationType,
+  metadata: Prisma.InputJsonValue,
+  prisma: PrismaClient,
+  params?: Prisma.InputJsonValue
 ): Promise<void> => {
   await prisma.eventNotification.create({
     data: {
@@ -211,15 +216,15 @@ export const createActivityNotification = async (
  */
 export const getEventActivity = async (
   eventId: string,
-  prisma: any,
+  prisma: PrismaClient,
   options?: {
     limit?: number;
-    type?: string;
+    type?: EventNotificationType;
     startDate?: Date;
     endDate?: Date;
   }
-): Promise<any[]> => {
-  const where: any = { eventId };
+): Promise<(EventNotification & { user: { id: string; name: string; email: string } })[]> => {
+  const where: Prisma.EventNotificationWhereInput = { eventId };
   
   if (options?.type) {
     where.type = options.type;
