@@ -30,6 +30,10 @@ export interface GroupFormFieldsProps {
   setAutoApproveJoinRequests?: (v: boolean) => void;
   tags?: string;
   setTags?: (v: string) => void;
+  allowMemberInvites?: boolean;
+  setAllowMemberInvites?: (v: boolean) => void;
+  allowMemberCopyLink?: boolean;
+  setAllowMemberCopyLink?: (v: boolean) => void;
   t: (key: string, params?: Record<string, unknown>) => string;
 }
 
@@ -48,6 +52,10 @@ const GroupFormFields: React.FC<GroupFormFieldsProps> = ({
   setAutoApproveJoinRequests,
   tags,
   setTags,
+  allowMemberInvites,
+  setAllowMemberInvites,
+  allowMemberCopyLink,
+  setAllowMemberCopyLink,
   t,
 }) => {
   const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,6 +200,51 @@ const GroupFormFields: React.FC<GroupFormFieldsProps> = ({
           />
           <FormHelperText sx={{ ml: 4, mb: 2 }}>
             {t('groups.autoApproveHelp') || 'New members can join immediately without admin approval'}
+          </FormHelperText>
+        </Box>
+      )}
+
+      <Divider sx={{ my: 3 }} />
+
+      {/* Member Permissions Section */}
+      <Typography variant="h6" sx={{ mb: 2 }}>
+        {t('groups.memberPermissions') || 'Member Permissions'}
+      </Typography>
+
+      {setAllowMemberInvites && (
+        <Box>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={allowMemberInvites || false}
+                onChange={e => setAllowMemberInvites(e.target.checked)}
+                color="primary"
+              />
+            }
+            label={t('groups.allowMemberInvites') || 'Allow members to invite others'}
+            sx={{ mt: 1 }}
+          />
+          <FormHelperText sx={{ ml: 4, mb: 2 }}>
+            {t('groups.allowMemberInvitesHelp') || 'When disabled, only admins and moderators can invite new members'}
+          </FormHelperText>
+        </Box>
+      )}
+
+      {setAllowMemberCopyLink && (
+        <Box>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={allowMemberCopyLink !== false}
+                onChange={e => setAllowMemberCopyLink(e.target.checked)}
+                color="primary"
+              />
+            }
+            label={t('groups.allowMemberCopyLink') || 'Allow members to copy invite link'}
+            sx={{ mt: 1 }}
+          />
+          <FormHelperText sx={{ ml: 4, mb: 2 }}>
+            {t('groups.allowMemberCopyLinkHelp') || 'When disabled, only admins and moderators can copy the group invite link'}
           </FormHelperText>
         </Box>
       )}
