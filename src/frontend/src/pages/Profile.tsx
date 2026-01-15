@@ -44,6 +44,15 @@ const Profile = () => {
     groupInvites: true,
     commentMentions: true,
     nearbyTeamUps: true,
+    muteEventInvites: false,
+    muteEventReminders: false,
+    muteEventUpdates: false,
+    muteEventCancellations: false,
+    muteGroupInvites: false,
+    muteGroupRequests: false,
+    muteNearbyGroups: false,
+    muteEventCreated: false,
+    muteNearbyTeamUps: false,
   });
   const [allNotificationsMuted, setAllNotificationsMuted] = useState(false);
   const [error, setError] = useState('');
@@ -84,7 +93,11 @@ const Profile = () => {
   const fetchEmailPreferences = async () => {
     try {
       const response = await emailAPI.getPreferences();
-      setEmailPreferences(response.data);
+      // Merge API response with defaults to ensure all fields are present
+      setEmailPreferences(prev => ({
+        ...prev,
+        ...response.data,
+      }));
     } catch (err) {
       console.error('Failed to fetch email preferences:', err);
     } finally {

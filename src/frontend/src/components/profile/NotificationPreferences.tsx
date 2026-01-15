@@ -21,6 +21,15 @@ interface NotificationPreferencesProps {
     groupInvites: boolean;
     commentMentions: boolean;
     nearbyTeamUps: boolean;
+    muteEventInvites?: boolean;
+    muteEventReminders?: boolean;
+    muteEventUpdates?: boolean;
+    muteEventCancellations?: boolean;
+    muteGroupInvites?: boolean;
+    muteGroupRequests?: boolean;
+    muteNearbyGroups?: boolean;
+    muteEventCreated?: boolean;
+    muteNearbyTeamUps?: boolean;
   };
   loading: boolean;
   onMuteToggle: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -150,6 +159,107 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
               />
             }
             label={t('common.notificationPreferences.nearbyTeamUps') || 'Nearby TeamUp Opportunities'}
+          />
+        </FormGroup>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
+          {t('notifications.muteInAppNotifications') || 'Mute In-App Notifications'}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          {t('notifications.muteInAppDescription') || 'Control which in-app notifications you want to see'}
+        </Typography>
+        <FormGroup>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={emailPreferences.muteEventInvites || false}
+                onChange={onPreferenceChange('muteEventInvites')}
+                disabled={allNotificationsMuted}
+              />
+            }
+            label={t('notifications.mute.eventInvites') || 'Mute Event Invites'}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={emailPreferences.muteEventReminders || false}
+                onChange={onPreferenceChange('muteEventReminders')}
+                disabled={allNotificationsMuted}
+              />
+            }
+            label={t('notifications.mute.eventReminders') || 'Mute Event Reminders'}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={emailPreferences.muteEventUpdates || false}
+                onChange={onPreferenceChange('muteEventUpdates')}
+                disabled={allNotificationsMuted}
+              />
+            }
+            label={t('notifications.mute.eventUpdates') || 'Mute Event Updates'}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={emailPreferences.muteEventCancellations || false}
+                onChange={onPreferenceChange('muteEventCancellations')}
+                disabled={allNotificationsMuted}
+              />
+            }
+            label={t('notifications.mute.eventCancellations') || 'Mute Event Cancellations'}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={emailPreferences.muteGroupInvites || false}
+                onChange={onPreferenceChange('muteGroupInvites')}
+                disabled={allNotificationsMuted}
+              />
+            }
+            label={t('notifications.mute.groupInvites') || 'Mute Group Invites'}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={emailPreferences.muteGroupRequests || false}
+                onChange={onPreferenceChange('muteGroupRequests')}
+                disabled={allNotificationsMuted}
+              />
+            }
+            label={t('notifications.mute.groupRequests') || 'Mute Group Join Requests'}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={emailPreferences.muteNearbyGroups || false}
+                onChange={onPreferenceChange('muteNearbyGroups')}
+                disabled={allNotificationsMuted}
+              />
+            }
+            label={t('notifications.mute.nearbyGroups') || 'Mute Nearby Groups'}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={emailPreferences.muteEventCreated || false}
+                onChange={onPreferenceChange('muteEventCreated')}
+                disabled={allNotificationsMuted}
+              />
+            }
+            label={t('notifications.mute.eventCreated') || 'Mute Event Created'}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={emailPreferences.muteNearbyTeamUps || false}
+                onChange={onPreferenceChange('muteNearbyTeamUps')}
+                disabled={allNotificationsMuted}
+              />
+            }
+            label={t('notifications.mute.nearbyTeamUps') || 'Mute Nearby TeamUps'}
           />
         </FormGroup>
       </Box>

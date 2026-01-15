@@ -1,13 +1,40 @@
 import prisma from '../config/database';
 import { logger } from './logger';
+import { EmailPreference } from '../../shared/types/email.types';
+
+/**
+ * Safely get boolean value from preferences object
+ * Returns the value if it's a boolean, otherwise returns the default
+ */
+const getBooleanValue = (value: any, defaultValue: boolean): boolean => {
+  return typeof value === 'boolean' ? value : defaultValue;
+};
+
+/**
+ * Type guard to safely check boolean properties on preferences for email notifications
+ * Defaults to true (enabled) if preference not set
+ */
+const getPreferenceValue = (preferences: EmailPreference | null, field: keyof EmailPreference): boolean => {
+  if (!preferences) return true; // Default to enabled if no preferences
+  return getBooleanValue(preferences[field], true);
+};
+
+/**
+ * Type guard to safely check boolean properties on preferences for mute settings
+ * Defaults to false (not muted) if preference not set
+ */
+const getMuteValue = (preferences: EmailPreference | null, field: keyof EmailPreference): boolean => {
+  if (!preferences) return false; // Default to not muted if no preferences
+  return getBooleanValue(preferences[field], false);
+};
 
 /**
  * Check if a user should receive a specific type of email notification
  * @param {string} userId - The user ID
- * @param {string} notificationType - The type of notification (eventInvites, eventUpdates, etc.)
+ * @param {keyof EmailPreference} notificationType - The type of notification (eventInvites, eventUpdates, etc.)
  * @returns {Promise<boolean>} - Whether the user should receive the notification
  */
-export const shouldSendEmailNotification = async (userId: string, notificationType: string): Promise<boolean> => {
+export const shouldSendEmailNotification = async (userId: string, notificationType: keyof EmailPreference): Promise<boolean> => {
   try {
     // Get user's global email notification setting
     const user = await prisma.user.findUnique({
@@ -25,13 +52,8 @@ export const shouldSendEmailNotification = async (userId: string, notificationTy
       where: { userId }
     });
 
-    // If no preferences set, default to enabled
-    if (!preferences) {
-      return true;
-    }
-
-    // Check the specific notification type
-    return (preferences as any)[notificationType] !== false;
+    // Check the specific notification type using type-safe helper
+    return getPreferenceValue(preferences, notificationType);
   } catch (error) {
     logger.error('Error checking email notification preference', 'NotificationHelper', { 
       userId, 
@@ -43,12 +65,87 @@ export const shouldSendEmailNotification = async (userId: string, notificationTy
 };
 
 /**
+ * Check if a user has muted a specific type of in-app notification
+ * @param {string} userId - The user ID
+ * @param {keyof EmailPreference} muteField - The mute field name (muteEventInvites, muteEventUpdates, etc.)
+ * @returns {Promise<boolean>} - Whether the notification type is muted
+ */
+export const isNotificationMuted = async (userId: string, muteField: keyof EmailPreference): Promise<boolean> => {
+  try {
+    const preferences = await prisma.emailPreference.findUnique({
+      where: { userId }
+    });
+
+    // Check if the specific notification type is muted using type-safe helper
+    return getMuteValue(preferences, muteField);
+  } catch (error) {
+    logger.error('Error checking notification mute status', 'NotificationHelper', { 
+      userId, 
+      muteField, 
+      error 
+    });
+    return false;
+  }
+};
+
+/**
+ * Batch check if multiple users have muted a specific type of in-app notification
+ * @param {string[]} userIds - Array of user IDs
+ * @param {keyof EmailPreference} muteField - The mute field name (muteEventInvites, muteEventUpdates, etc.)
+ * @returns {Promise<Map<string, boolean>>} - Map of userId to boolean indicating if notification is muted
+ */
+export const batchIsNotificationMuted = async (userIds: string[], muteField: keyof EmailPreference): Promise<Map<string, boolean>> => {
+  try {
+    const preferences = await prisma.emailPreference.findMany({
+      where: { userId: { in: userIds } }
+    });
+    const preferencesMap = new Map(preferences.map(p => [p.userId, p]));
+
+    const result = new Map();
+    for (const userId of userIds) {
+      const userPrefs = preferencesMap.get(userId);
+      // Check if the notification type is muted using type-safe helper
+      result.set(userId, getMuteValue(userPrefs || null, muteField));
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Error batch checking notification mute status', 'NotificationHelper', { 
+      muteField, 
+      userCount: userIds.length, 
+      error 
+    });
+    return new Map();
+  }
+};
+
+/**
+ * Filter out users who have muted a specific type of in-app notification
+ * @param {string[]} userIds - Array of user IDs
+ * @param {keyof EmailPreference} muteField - The mute field name (muteEventInvites, muteEventUpdates, etc.)
+ * @returns {Promise<string[]>} - Array of user IDs who have not muted this notification type
+ */
+export const filterUnmutedUsers = async (userIds: string[], muteField: keyof EmailPreference): Promise<string[]> => {
+  try {
+    const muteMap = await batchIsNotificationMuted(userIds, muteField);
+    return userIds.filter(userId => !muteMap.get(userId));
+  } catch (error) {
+    logger.error('Error filtering unmuted users', 'NotificationHelper', { 
+      muteField, 
+      userCount: userIds.length, 
+      error 
+    });
+    return userIds; // In case of error, don't filter out any users
+  }
+};
+
+/**
  * Batch check if multiple users should receive a specific type of email notification
  * @param {string[]} userIds - Array of user IDs
- * @param {string} notificationType - The type of notification
+ * @param {keyof EmailPreference} notificationType - The type of notification
  * @returns {Promise<Map<string, boolean>>} - Map of userId to boolean indicating if they should receive notification
  */
-export const batchShouldSendEmailNotification = async (userIds: string[], notificationType: string): Promise<Map<string, boolean>> => {
+export const batchShouldSendEmailNotification = async (userIds: string[], notificationType: keyof EmailPreference): Promise<Map<string, boolean>> => {
   try {
     // Get all users' global settings
     const users = await prisma.user.findMany({
@@ -75,14 +172,8 @@ export const batchShouldSendEmailNotification = async (userIds: string[], notifi
 
       const userPrefs = preferencesMap.get(userId);
       
-      // If no preferences set, default to enabled
-      if (!userPrefs) {
-        result.set(userId, true);
-        continue;
-      }
-
-      // Check the specific notification type
-      result.set(userId, (userPrefs as any)[notificationType] !== false);
+      // Check the specific notification type using type-safe helper
+      result.set(userId, getPreferenceValue(userPrefs || null, notificationType));
     }
 
     return result;
