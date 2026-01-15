@@ -1092,6 +1092,14 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
         }
       });
     }
+
+    // Invalidate group cache for all affected users
+    await CacheService.invalidate('group', id);
+    // Invalidate user groups cache for the joining user
+    await CacheService.deletePattern(`user:${joinRequest.userId}:groups:*`);
+    // Invalidate events cache since user now has access to group events
+    await CacheService.deletePattern(`events:user:${joinRequest.userId}:group:${id}:*`);
+    await CacheService.deletePattern(`events:user:${joinRequest.userId}:group:all:*`);
   }
 
   res.json({ 
