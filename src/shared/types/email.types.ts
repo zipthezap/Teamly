@@ -54,7 +54,7 @@ export interface EmailQueue {
   htmlContent: string;
   textContent?: string | null;
   templateType?: string | null;
-  templateData?: Record<string, any> | null;
+  templateData?: Record<string, unknown> | null;
   status: 'pending' | 'sent' | 'failed' | 'retry';
   attempts: number;
   maxAttempts: number;
@@ -71,6 +71,6 @@ export interface CreateEmailQueueData {
   htmlContent: string;
   textContent?: string;
   templateType?: string;
-  templateData?: Record<string, any>;
+  templateData?: Record<string, unknown>;
   scheduledAt?: Date | string;
 }

@@ -18,16 +18,24 @@ import { CacheService } from './cacheService';
 import { logger } from '../utils/logger';
 import { CACHE_TTL } from './queryCache';
 
+// Type for user batch loader result
+type UserBatchResult = {
+  id: string;
+  name: string;
+  email: string;
+  profilePicture: string | null;
+} | null;
+
 /**
  * Batch loader for user profiles
  * Loads multiple users in a single query to avoid N+1 problem
  */
 export class UserBatchLoader {
-  private batchQueue: Map<string, (user: any) => void> = new Map();
+  private batchQueue: Map<string, (user: UserBatchResult) => void> = new Map();
   private batchTimer: NodeJS.Timeout | null = null;
   private readonly batchWindow = 10; // milliseconds
 
-  async load(userId: string): Promise<any> {
+  async load(userId: string): Promise<UserBatchResult> {
     return new Promise((resolve) => {
       this.batchQueue.set(userId, resolve);
 
@@ -72,16 +80,31 @@ export class UserBatchLoader {
   }
 }
 
+// Type for event participant with user details
+type EventParticipantWithUser = {
+  id: string;
+  status: string;
+  joinedAt: Date;
+  eventId: string;
+  userId: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    profilePicture: string | null;
+  };
+};
+
 /**
  * Batch loader for event participants
  * Loads participants for multiple events in a single query
  */
 export class EventParticipantBatchLoader {
-  private batchQueue: Map<string, (participants: any[]) => void> = new Map();
+  private batchQueue: Map<string, (participants: EventParticipantWithUser[]) => void> = new Map();
   private batchTimer: NodeJS.Timeout | null = null;
   private readonly batchWindow = 10;
 
-  async load(eventId: string): Promise<any[]> {
+  async load(eventId: string): Promise<EventParticipantWithUser[]> {
     return new Promise((resolve) => {
       this.batchQueue.set(eventId, resolve);
 
@@ -115,7 +138,7 @@ export class EventParticipantBatchLoader {
       });
 
       // Group participants by event
-      const participantsByEvent = new Map<string, any[]>();
+      const participantsByEvent = new Map<string, EventParticipantWithUser[]>();
       for (const participant of participants) {
         const eventParticipants = participantsByEvent.get(participant.eventId) || [];
         eventParticipants.push(participant);
@@ -134,6 +157,29 @@ export class EventParticipantBatchLoader {
   }
 }
 
+// Type for user event statistics
+type UserEventStats = {
+  totalEvents: number;
+  upcomingEvents: number;
+  completedEvents: number;
+  createdEvents: number;
+};
+
+// Type for group statistics
+type GroupStats = {
+  memberCount: number;
+  eventCount: number;
+  upcomingEventCount: number;
+};
+
+// Type for tournament statistics
+type TournamentStats = {
+  teamCount: number;
+  matchCount: number;
+  completedMatchCount: number;
+  inProgressMatchCount: number;
+};
+
 /**
  * Cached aggregation queries
  * These are expensive queries that benefit from caching
@@ -142,9 +188,9 @@ export class CachedAggregations {
   /**
    * Get user event statistics with caching
    */
-  static async getUserEventStats(userId: string): Promise<any> {
+  static async getUserEventStats(userId: string): Promise<UserEventStats> {
     const cacheKey = `stats:user:${userId}:events`;
-    const cached = await CacheService.get<any>(cacheKey);
+    const cached = await CacheService.get<UserEventStats>(cacheKey);
     
     if (cached !== null) {
       return cached;
@@ -193,9 +239,9 @@ export class CachedAggregations {
   /**
    * Get group statistics with caching
    */
-  static async getGroupStats(groupId: string): Promise<any> {
+  static async getGroupStats(groupId: string): Promise<GroupStats> {
     const cacheKey = `stats:group:${groupId}`;
-    const cached = await CacheService.get<any>(cacheKey);
+    const cached = await CacheService.get<GroupStats>(cacheKey);
     
     if (cached !== null) {
       return cached;
@@ -236,9 +282,9 @@ export class CachedAggregations {
   /**
    * Get tournament statistics with caching
    */
-  static async getTournamentStats(tournamentId: string): Promise<any> {
+  static async getTournamentStats(tournamentId: string): Promise<TournamentStats> {
     const cacheKey = `stats:tournament:${tournamentId}`;
-    const cached = await CacheService.get<any>(cacheKey);
+    const cached = await CacheService.get<TournamentStats>(cacheKey);
     
     if (cached !== null) {
       return cached;
@@ -305,6 +351,86 @@ export class CachedAggregations {
   }
 }
 
+// Type for event with participants and creator
+type EventWithParticipants = {
+  id: string;
+  title: string;
+  description: string | null;
+  eventType: string;
+  location: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  locationName: string | null;
+  city: string | null;
+  country: string | null;
+  startTime: Date;
+  endTime: Date | null;
+  maxPlayers: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+  archived: boolean;
+  status: string;
+  isPublic: boolean;
+  inviteToken: string | null;
+  isRecurring: boolean;
+  recurrenceRule: string | null;
+  recurrenceEnd: Date | null;
+  parentEventId: string | null;
+  exceptionDates: unknown;
+  creatorId: string;
+  groupId: string;
+  participants: EventParticipantWithUser[];
+  creator: {
+    id: string;
+    name: string;
+    email: string;
+    profilePicture: string | null;
+  };
+};
+
+// Type for user groups with member and event counts from raw SQL query
+type UserGroupWithCounts = {
+  id: string;
+  name: string;
+  description: string | null;
+  createdAt: Date;
+  isPublic: boolean;
+  role: string;
+  memberCount: number;
+  eventCount: number;
+};
+
+// Type for nearby event from raw SQL query
+type NearbyEvent = {
+  id: string;
+  title: string;
+  description: string | null;
+  eventType: string;
+  location: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  locationName: string | null;
+  city: string | null;
+  country: string | null;
+  startTime: Date;
+  endTime: Date | null;
+  maxPlayers: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+  archived: boolean;
+  status: string;
+  isPublic: boolean;
+  inviteToken: string | null;
+  isRecurring: boolean;
+  recurrenceRule: string | null;
+  recurrenceEnd: Date | null;
+  parentEventId: string | null;
+  exceptionDates: unknown;
+  creatorId: string;
+  groupId: string;
+  distance: number;
+};
+
 /**
  * Optimized query execution patterns
  */
@@ -317,7 +443,7 @@ export class OptimizedQueries {
     groupId: string,
     limit: number = 50,
     offset: number = 0
-  ): Promise<any[]> {
+  ): Promise<EventWithParticipants[]> {
     const startTime = Date.now();
 
     const events = await prisma.event.findMany({
@@ -364,7 +490,7 @@ export class OptimizedQueries {
    * Uses efficient aggregation instead of loading all members
    * Note: userId is validated by Prisma's UUID type system
    */
-  static async getUserGroupsWithCounts(userId: string): Promise<any[]> {
+  static async getUserGroupsWithCounts(userId: string): Promise<UserGroupWithCounts[]> {
     const startTime = Date.now();
 
     // Validate userId format to prevent SQL injection
@@ -373,7 +499,7 @@ export class OptimizedQueries {
     }
 
     // Use raw query for complex aggregation (much faster)
-    const groups = await prisma.$queryRaw<any[]>`
+    const groups = await prisma.$queryRaw<UserGroupWithCounts[]>`
       SELECT 
         g.id,
         g.name,
@@ -411,7 +537,7 @@ export class OptimizedQueries {
     longitude: number,
     radiusKm: number,
     limit: number = 50
-  ): Promise<any[]> {
+  ): Promise<NearbyEvent[]> {
     const startTime = Date.now();
 
     // Geographic constants
@@ -437,7 +563,7 @@ export class OptimizedQueries {
     const latDelta = radiusKm / KM_PER_DEGREE_LAT;
     const lonDelta = radiusKm / (KM_PER_DEGREE_LAT * Math.cos((latitude * Math.PI) / 180));
 
-    const events = await prisma.$queryRaw<any[]>`
+    const events = await prisma.$queryRaw<NearbyEvent[]>`
       SELECT 
         e.*,
         (

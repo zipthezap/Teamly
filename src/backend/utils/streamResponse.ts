@@ -121,7 +121,7 @@ export async function streamNdjson<T>(
 export async function streamCsv(
   res: Response,
   headers: string[],
-  generator: () => AsyncGenerator<any[], void, unknown>
+  generator: () => AsyncGenerator<unknown[], void, unknown>
 ): Promise<void> {
   try {
     // Set headers for CSV streaming
@@ -154,7 +154,7 @@ export async function streamCsv(
 /**
  * Escape CSV field (handle quotes and commas)
  */
-function escapeCSV(field: any): string {
+function escapeCSV(field: unknown): string {
   if (field === null || field === undefined) {
     return '';
   }
