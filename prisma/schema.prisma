@@ -30,6 +30,7 @@ enum GroupNotificationType {
   join_request
   event_created
   nearby_created
+  removed
 }
 
 enum TeamUpNotificationType {

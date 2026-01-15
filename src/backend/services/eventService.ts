@@ -26,6 +26,15 @@ export const sanitizeEventData = (data: {
 };
 
 /**
+ * Sanitizes guest participant name
+ * Returns sanitized name or falls back to trimmed name
+ */
+export const sanitizeGuestName = (name: string): string => {
+  const sanitized = sanitizeString(name);
+  return sanitized.length > 0 ? sanitized : name.trim();
+};
+
+/**
  * Validates event time constraints
  */
 export const validateEventTimes = (startTime: string, endTime?: string): ValidationResult => {
@@ -230,7 +239,7 @@ export const buildEventFilters = (
   // - The event is in a group the user is a member of
   // - OR the user is a participant
   // - OR the user is the creator
-  where.OR = [
+  const accessControlOR = [
     // Event is in a group the user is a member of
     {
       group: {
@@ -255,12 +264,20 @@ export const buildEventFilters = (
     }
   ];
 
-  // Search filter
+  // Search filter - combine with access control using AND
   if (filters.search) {
-    where.OR = [
-      { title: { contains: filters.search, mode: 'insensitive' } },
-      { description: { contains: filters.search, mode: 'insensitive' } },
+    where.AND = [
+      { OR: accessControlOR },
+      {
+        OR: [
+          { title: { contains: filters.search, mode: 'insensitive' } },
+          { description: { contains: filters.search, mode: 'insensitive' } },
+        ]
+      }
     ];
+  } else {
+    // No search filter, just apply access control
+    where.OR = accessControlOR;
   }
 
   // Event type filter

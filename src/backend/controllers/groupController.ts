@@ -2,7 +2,7 @@ import prisma from '../config/database';
 import { sendEmailWithQueue } from '../services/emailQueueService';
 import { shouldSendEmailNotification } from '../utils/notificationHelper';
 import { logger } from '../utils/logger';
-import { escapeHtml } from '../utils/validation';
+import { escapeHtml, isValidEmail } from '../utils/validation';
 import { Request, Response } from 'express';
 import path from 'path';
 import { 
@@ -40,6 +40,12 @@ export const createGroup = async (req: Request, res: Response) => {
       city,
       country
     });
+
+    // Validate coordinates if provided
+    const coordValidation = await groupService.validateGroupCoordinates(latitude, longitude);
+    if (!coordValidation.valid) {
+      return res.status(400).json({ error: coordValidation.error });
+    }
 
     const group = await prisma.group.create({
       data: {
@@ -95,19 +101,32 @@ export const createGroup = async (req: Request, res: Response) => {
       //   return R * c < 10; // 10km
       // };
       const nearbyUserIds = users.map(u => u.id);
-      await Promise.all(nearbyUserIds.map(userId =>
-        prisma.groupNotification.create({
-          data: {
-            groupId: group.id,
-            userId,
-            type: GroupNotificationType.nearby_created,
-            params: {
-              groupName: group.name,
-              name: req.user!.name
+      
+      // Use Promise.allSettled to handle individual notification failures gracefully
+      const notificationResults = await Promise.allSettled(
+        nearbyUserIds.map(userId =>
+          prisma.groupNotification.create({
+            data: {
+              groupId: group.id,
+              userId,
+              type: GroupNotificationType.nearby_created,
+              params: {
+                groupName: group.name,
+                name: req.user!.name
+              }
             }
-          }
-        })
-      ));
+          })
+        )
+      );
+
+      // Log any failures but don't block group creation
+      const failures = notificationResults.filter(r => r.status === 'rejected');
+      if (failures.length > 0) {
+        logger.warn('Some nearby user notifications failed', 'GroupController', { 
+          failureCount: failures.length,
+          totalUsers: nearbyUserIds.length 
+        });
+      }
     }
     res.status(201).json(group);
   } catch (error) {
@@ -312,6 +331,12 @@ export const updateGroup = async (req: Request, res: Response) => {
       country
     });
 
+    // Validate coordinates if provided
+    const coordValidation = await groupService.validateGroupCoordinates(latitude, longitude);
+    if (!coordValidation.valid) {
+      return res.status(400).json({ error: coordValidation.error });
+    }
+
     const group = await prisma.group.update({
       where: { id },
       data: {
@@ -355,6 +380,11 @@ export const inviteMember = async (req: Request, res: Response) => {
 
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Validate email format
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
     }
 
     // Check if user has permission to invite members (admins and moderators)
@@ -410,6 +440,11 @@ export const inviteMember = async (req: Request, res: Response) => {
     const inviterUser = await prisma.user.findUnique({
       where: { id: req.user!.id }
     });
+
+    // Check if inviter user exists (should always exist since authenticated, but safety check)
+    if (!inviterUser) {
+      return res.status(500).json({ error: 'Inviter user not found' });
+    }
 
     const shouldSend = await shouldSendEmailNotification(userToInvite.id, 'groupInvites');
 
@@ -480,21 +515,52 @@ export const removeMember = async (req: Request, res: Response) => {
 
     // Prevent admin from removing itself
     const memberToRemove = await prisma.groupMember.findUnique({
-      where: { id: memberId }
+      where: { id: memberId },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true }
+        }
+      }
     });
-    if (memberToRemove && memberToRemove.userId === req.user!.id && memberToRemove.role === 'admin') {
+    
+    if (!memberToRemove) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+    
+    if (memberToRemove.userId === req.user!.id && memberToRemove.role === 'admin') {
       return res.status(403).json({ error: 'Admins cannot remove themselves from the group.' });
     }
+
+    // Get group name for notification
+    const group = await prisma.group.findUnique({
+      where: { id },
+      select: { name: true }
+    });
 
     await prisma.groupMember.delete({
       where: { id: memberId }
     });
 
+    // Notify the removed member
+    if (group) {
+      await prisma.groupNotification.create({
+        data: {
+          groupId: id,
+          userId: memberToRemove.userId,
+          type: GroupNotificationType.removed,
+          params: {
+            groupName: group.name,
+            name: req.user!.name
+          }
+        }
+      }).catch(error => {
+        logger.error('Failed to send removal notification', 'GroupController', { error });
+      });
+    }
+
     // Invalidate group cache for all affected users
     await CacheService.invalidate('group', id);
-    if (memberToRemove) {
-      await CacheService.deletePattern(`user:${memberToRemove.userId}:groups:*`);
-    }
+    await CacheService.deletePattern(`user:${memberToRemove.userId}:groups:*`);
 
     res.json({ message: 'Member removed successfully' });
   } catch (error) {
