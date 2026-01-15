@@ -282,18 +282,18 @@ const JoinEventByInvite = () => {
           {totalParticipants > 0 && (
             <Box sx={{ mb: 2 }}>
               <AvatarGroup max={8} sx={{ justifyContent: 'flex-start' }}>
-                {event.participants?.filter((p: EventParticipant) => p.status === 'confirmed').map((p: EventParticipant, idx: number) => {
+                {event.participants?.filter((p: EventParticipant) => p.status === 'confirmed').map((p: EventParticipant) => {
                   // Prefer current profile picture from history if available
                   const currentPic = p.user?.profilePictures?.find((pic) => pic.isCurrent && !pic.deletedAt);
                   const profilePictureUrl = getImageUrl(currentPic?.url || p.user?.profilePicture);
                   return (
-                    <Avatar key={idx} sx={{ bgcolor: 'primary.main' }} src={profilePictureUrl || undefined}>
+                    <Avatar key={p.id} sx={{ bgcolor: 'primary.main' }} src={profilePictureUrl || undefined}>
                       {!profilePictureUrl && getInitials(p.user?.name)}
                     </Avatar>
                   );
                 })}
-                {event.guestParticipants?.filter((g: GuestParticipant) => g.status === 'confirmed').map((g: GuestParticipant, idx: number) => (
-                  <Avatar key={`guest-${idx}`} sx={{ bgcolor: 'secondary.main' }}>
+                {event.guestParticipants?.filter((g: GuestParticipant) => g.status === 'confirmed').map((g: GuestParticipant) => (
+                  <Avatar key={g.id} sx={{ bgcolor: 'secondary.main' }}>
                     {getInitials(g.name)}
                   </Avatar>
                 ))}

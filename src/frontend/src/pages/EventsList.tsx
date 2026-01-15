@@ -77,8 +77,8 @@ const EventsList = () => {
       try {
         const response = await groupsAPI.getAll();
         setGroups(response.data);
-      } catch {
-        // Optionally handle error
+      } catch (error) {
+        console.error('Failed to fetch groups:', error);
       }
     }
     fetchGroups();
@@ -95,12 +95,6 @@ const EventsList = () => {
       const offset = (page - 1) * visibleCount;
       const params: EventSearchParams = { ...searchFilters, offset, limit: visibleCount };
       const response = await eventsAPI.getAll(params);
-      console.log('Fetched events:', response.data);
-      if (Array.isArray(response.data)) {
-        response.data.forEach((event, idx) => {
-          console.log(`[EventList] Event #${idx}:`, event);
-        });
-      }
       setEvents(Array.isArray(response.data) ? response.data : response.data?.data ?? []);
     } finally {
       setIsLoading(false);

@@ -64,7 +64,6 @@ export default function GroupDetailsPage() {
     queryKey: ["groupEvents", groupId],
     queryFn: async () => {
       const res = await eventsAPI.getAll({ groupId });
-      console.log('[GroupDetailsPage] API events response:', res.data);
       return res.data;
     },
     enabled: !!groupId,
@@ -80,18 +79,7 @@ export default function GroupDetailsPage() {
     enabled: !!groupId,
   });
 
-  // Debug logs for membership and admin logic
-  React.useEffect(() => {
-    console.log('[DEBUG] user:', user);
-    console.log('[DEBUG] group:', group);
-    if (group && group.members) {
-      console.log('[DEBUG] group.members:', group.members);
-      const admin = group.members.some((m) => m.role && user && m.userId === user.id && m.role === "admin");
-      const member = group.members.some((m) => user && m.userId === user.id);
-      console.log('[DEBUG] isAdmin:', admin);
-      console.log('[DEBUG] isMember:', member);
-    }
-  }, [user, group]);
+
   // Improved admin check: use AuthContext for user email
   const userEmail = user?.email || null;
 

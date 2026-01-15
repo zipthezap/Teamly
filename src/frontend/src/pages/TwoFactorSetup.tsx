@@ -246,8 +246,8 @@ const TwoFactorSetup = () => {
             </Alert>
             <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
               <List dense>
-                {setupData?.backupCodes.map((code: string, index: number) => (
-                  <ListItem key={index}>
+                {setupData?.backupCodes.map((code: string) => (
+                  <ListItem key={code}>
                     <ListItemText
                       primary={code}
                       primaryTypographyProps={{
