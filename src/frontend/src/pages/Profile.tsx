@@ -44,6 +44,15 @@ const Profile = () => {
     groupInvites: true,
     commentMentions: true,
     nearbyTeamUps: true,
+    muteEventInvites: false,
+    muteEventReminders: false,
+    muteEventUpdates: false,
+    muteEventCancellations: false,
+    muteGroupInvites: false,
+    muteGroupRequests: false,
+    muteNearbyGroups: false,
+    muteEventCreated: false,
+    muteNearbyTeamUps: false,
   });
   const [allNotificationsMuted, setAllNotificationsMuted] = useState(false);
   const [error, setError] = useState('');

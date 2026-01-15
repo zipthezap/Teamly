@@ -43,6 +43,93 @@ export const shouldSendEmailNotification = async (userId: string, notificationTy
 };
 
 /**
+ * Check if a user has muted a specific type of in-app notification
+ * @param {string} userId - The user ID
+ * @param {string} muteField - The mute field name (muteEventInvites, muteEventUpdates, etc.)
+ * @returns {Promise<boolean>} - Whether the notification type is muted
+ */
+export const isNotificationMuted = async (userId: string, muteField: string): Promise<boolean> => {
+  try {
+    const preferences = await prisma.emailPreference.findUnique({
+      where: { userId }
+    });
+
+    // If no preferences set, default to not muted
+    if (!preferences) {
+      return false;
+    }
+
+    // Check if the specific notification type is muted
+    return (preferences as any)[muteField] === true;
+  } catch (error) {
+    logger.error('Error checking notification mute status', 'NotificationHelper', { 
+      userId, 
+      muteField, 
+      error 
+    });
+    return false;
+  }
+};
+
+/**
+ * Batch check if multiple users have muted a specific type of in-app notification
+ * @param {string[]} userIds - Array of user IDs
+ * @param {string} muteField - The mute field name (muteEventInvites, muteEventUpdates, etc.)
+ * @returns {Promise<Map<string, boolean>>} - Map of userId to boolean indicating if notification is muted
+ */
+export const batchIsNotificationMuted = async (userIds: string[], muteField: string): Promise<Map<string, boolean>> => {
+  try {
+    const preferences = await prisma.emailPreference.findMany({
+      where: { userId: { in: userIds } }
+    });
+    const preferencesMap = new Map(preferences.map(p => [p.userId, p]));
+
+    const result = new Map();
+    for (const userId of userIds) {
+      const userPrefs = preferencesMap.get(userId);
+      
+      // If no preferences set, default to not muted
+      if (!userPrefs) {
+        result.set(userId, false);
+        continue;
+      }
+
+      // Check if the notification type is muted
+      result.set(userId, (userPrefs as any)[muteField] === true);
+    }
+
+    return result;
+  } catch (error) {
+    logger.error('Error batch checking notification mute status', 'NotificationHelper', { 
+      muteField, 
+      userCount: userIds.length, 
+      error 
+    });
+    return new Map();
+  }
+};
+
+/**
+ * Filter out users who have muted a specific type of in-app notification
+ * @param {string[]} userIds - Array of user IDs
+ * @param {string} muteField - The mute field name (muteEventInvites, muteEventUpdates, etc.)
+ * @returns {Promise<string[]>} - Array of user IDs who have not muted this notification type
+ */
+export const filterUnmutedUsers = async (userIds: string[], muteField: string): Promise<string[]> => {
+  try {
+    const muteMap = await batchIsNotificationMuted(userIds, muteField);
+    return userIds.filter(userId => !muteMap.get(userId));
+  } catch (error) {
+    logger.error('Error filtering unmuted users', 'NotificationHelper', { 
+      muteField, 
+      userCount: userIds.length, 
+      error 
+    });
+    return userIds; // In case of error, don't filter out any users
+  }
+};
+
+/**
  * Batch check if multiple users should receive a specific type of email notification
  * @param {string[]} userIds - Array of user IDs
  * @param {string} notificationType - The type of notification
