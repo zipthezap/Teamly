@@ -1,80 +1,3 @@
-// Transfer admin rights to another member
-export const transferAdmin = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { newAdminEmail } = req.body;
-    // Check if user is current admin
-    const currentAdmin = await prisma.groupMember.findFirst({
-      where: { groupId: id, userId: req.user!.id, role: 'admin' }
-    });
-    if (!currentAdmin) {
-      return res.status(403).json({ error: 'Only current admin can transfer admin rights.' });
-    }
-    // Find new admin member
-    const newAdminUser = await prisma.user.findUnique({ where: { email: newAdminEmail } });
-    if (!newAdminUser) {
-      return res.status(404).json({ error: 'Selected user not found.' });
-    }
-    const newAdminMembership = await prisma.groupMember.findFirst({
-      where: { groupId: id, userId: newAdminUser.id }
-    });
-    if (!newAdminMembership) {
-      return res.status(404).json({ error: 'Selected user is not a member of the group.' });
-    }
-    // Use transaction to update roles
-    await prisma.$transaction([
-      prisma.groupMember.update({
-        where: { id: newAdminMembership.id },
-        data: { role: 'admin' }
-      }),
-      prisma.groupMember.update({
-        where: { id: currentAdmin.id },
-        data: { role: 'member' }
-      })
-    ]);
-    
-    // Invalidate group cache after role changes
-    await CacheService.invalidate('group', id);
-    
-    res.json({ message: 'Admin rights transferred successfully.' });
-  } catch (error) {
-    logger.error('Failed to transfer admin rights', 'GroupController', { error });
-    res.status(500).json({ error: 'Failed to transfer admin rights.' });
-  }
-};
-// Delete a group (admin only)
-export const deleteGroup = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    // Debug log for permission check
-    logger.info('Attempting to delete group', 'GroupController', {
-      userId: req.user!.id,
-      groupId: id,
-      action: 'GROUP_DELETE',
-    });
-    const canDelete = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_DELETE);
-    logger.info('Delete group permission result', 'GroupController', {
-      userId: req.user!.id,
-      groupId: id,
-      canDelete,
-    });
-    if (!canDelete) {
-      logger.warn('403 Forbidden: User lacks GROUP_DELETE permission', 'GroupController', {
-        userId: req.user!.id,
-        groupId: id,
-      });
-      return res.status(403).json({ error: 'Only admins can delete the group' });
-    }
-    // Delete group and cascade related data (members, events, etc.)
-    await prisma.group.delete({
-      where: { id },
-    });
-    res.json({ message: 'Group deleted successfully' });
-  } catch (error) {
-    logger.error('Failed to delete group', 'GroupController', { error });
-    res.status(500).json({ error: 'Failed to delete group' });
-  }
-};
 import prisma from '../config/database';
 import { sendEmailWithQueue } from '../services/emailQueueService';
 import { shouldSendEmailNotification } from '../utils/notificationHelper';
@@ -100,7 +23,6 @@ import { Permission } from '../../shared/types/permissions.types';
 // Time constants for event queries
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-
 
 export const createGroup = async (req: Request, res: Response) => {
   try {
@@ -441,10 +363,14 @@ export const inviteMember = async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Only admins and moderators can invite members' });
     }
 
-    // Get group info
+    // Get group info - FIX: Return 404 if group doesn't exist
     const group = await prisma.group.findUnique({
       where: { id }
     });
+
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
 
     // Find user to invite
     const userToInvite = await prisma.user.findUnique({
@@ -664,7 +590,8 @@ export const updateMemberRole = async (req: Request, res: Response) => {
 // Get all public groups (for discovery)
 export const getPublicGroups = async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.id;
+    // SECURITY FIX: Use optional chaining since this endpoint uses optionalAuthMiddleware
+    const userId = req.user?.id;
     
     // Build where clause to exclude groups user is already a member of
     const whereClause: any = {
@@ -903,18 +830,44 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
   }
 };
 
-// Join group by invite (public, for invite link)
+// Join group by invite link - now requires authentication
+// SECURITY FIX: Changed to use authenticated user's ID instead of accepting userId from request body
+// This prevents privilege escalation where attackers could join as any user
 export const joinGroupByInvite = async (req: Request, res: Response) => {
   try {
-    const { userId, groupId } = req.body;
-    if (!userId || !groupId) {
-      return res.status(400).json({ error: 'userId and groupId are required' });
+    const { groupId } = req.params;
+    const userId = req.user!.id; // Use authenticated user's ID, not from request body
+    
+    if (!groupId) {
+      return res.status(400).json({ error: 'Group ID is required' });
     }
+
+    // Verify the group exists and is public (or implement invite token validation here)
+    const group = await prisma.group.findUnique({
+      where: { id: groupId },
+      select: { id: true, name: true, isPublic: true }
+    });
+
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+
+    // For now, only allow joining public groups via invite link
+    // TODO: Implement proper invite token system for private groups
+    if (!group.isPublic) {
+      return res.status(403).json({ error: 'Cannot join private group without proper invitation' });
+    }
+
     // Check if already a member
-    const existing = await prisma.groupMember.findFirst({ where: { userId, groupId } });
+    const existing = await prisma.groupMember.findFirst({ 
+      where: { userId, groupId } 
+    });
+    
     if (existing) {
       return res.status(200).json({ message: 'Already a member' });
     }
+
+    // Create membership
     await prisma.groupMember.create({
       data: { userId, groupId, role: 'member' }
     });
@@ -940,35 +893,38 @@ export const leaveGroup = async (req: Request, res: Response) => {
     const { id } = req.params;
     const userId = req.user!.id;
 
-    // Find the membership
-    const membership = await prisma.groupMember.findFirst({
-      where: {
-        groupId: id,
-        userId: userId
+    // SECURITY FIX: Use transaction to prevent race condition where last admin could leave
+    await prisma.$transaction(async (tx) => {
+      // Find the membership
+      const membership = await tx.groupMember.findFirst({
+        where: {
+          groupId: id,
+          userId: userId
+        }
+      });
+
+      if (!membership) {
+        throw new Error('NOT_MEMBER');
       }
-    });
 
-    if (!membership) {
-      return res.status(404).json({ error: 'Not a member of this group' });
-    }
+      // If user is admin, check if they're the only admin
+      if (membership.role === 'admin') {
+        const adminCount = await tx.groupMember.count({
+          where: {
+            groupId: id,
+            role: 'admin'
+          }
+        });
 
-    // Check if user is the creator/admin and the only admin
-    const group = await prisma.group.findUnique({
-      where: { id },
-      include: {
-        members: {
-          where: { role: 'admin' }
+        if (adminCount <= 1) {
+          throw new Error('LAST_ADMIN');
         }
       }
-    });
 
-    if (membership.role === 'admin' && group.members.length === 1 && group.members[0].userId === userId) {
-      return res.status(400).json({ error: 'Cannot leave group as the only admin. Please assign another admin first or delete the group.' });
-    }
-
-    // Delete the membership
-    await prisma.groupMember.delete({
-      where: { id: membership.id }
+      // Delete the membership atomically
+      await tx.groupMember.delete({
+        where: { id: membership.id }
+      });
     });
 
     // Invalidate group cache for all affected users
@@ -980,8 +936,16 @@ export const leaveGroup = async (req: Request, res: Response) => {
     await CacheService.deletePattern(`events:user:${userId}:group:all:*`);
 
     res.json({ message: 'Left group successfully' });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Failed to leave group', 'GroupController', { error });
+    
+    if (error.message === 'NOT_MEMBER') {
+      return res.status(404).json({ error: 'Not a member of this group' });
+    }
+    if (error.message === 'LAST_ADMIN') {
+      return res.status(400).json({ error: 'Cannot leave group as the only admin. Please assign another admin first or delete the group.' });
+    }
+    
     res.status(500).json({ error: 'Failed to leave group' });
   }
 };
@@ -1264,5 +1228,83 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Get nearby groups error', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to get nearby groups' });
+  }
+};
+
+// Transfer admin rights to another member
+export const transferAdmin = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { newAdminEmail } = req.body;
+    // Check if user is current admin
+    const currentAdmin = await prisma.groupMember.findFirst({
+      where: { groupId: id, userId: req.user!.id, role: 'admin' }
+    });
+    if (!currentAdmin) {
+      return res.status(403).json({ error: 'Only current admin can transfer admin rights.' });
+    }
+    // Find new admin member
+    const newAdminUser = await prisma.user.findUnique({ where: { email: newAdminEmail } });
+    if (!newAdminUser) {
+      return res.status(404).json({ error: 'Selected user not found.' });
+    }
+    const newAdminMembership = await prisma.groupMember.findFirst({
+      where: { groupId: id, userId: newAdminUser.id }
+    });
+    if (!newAdminMembership) {
+      return res.status(404).json({ error: 'Selected user is not a member of the group.' });
+    }
+    // Use transaction to update roles
+    await prisma.$transaction([
+      prisma.groupMember.update({
+        where: { id: newAdminMembership.id },
+        data: { role: 'admin' }
+      }),
+      prisma.groupMember.update({
+        where: { id: currentAdmin.id },
+        data: { role: 'member' }
+      })
+    ]);
+    
+    // Invalidate group cache after role changes
+    await CacheService.invalidate('group', id);
+    
+    res.json({ message: 'Admin rights transferred successfully.' });
+  } catch (error) {
+    logger.error('Failed to transfer admin rights', 'GroupController', { error });
+    res.status(500).json({ error: 'Failed to transfer admin rights.' });
+  }
+};
+// Delete a group (admin only)
+export const deleteGroup = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    // Debug log for permission check
+    logger.info('Attempting to delete group', 'GroupController', {
+      userId: req.user!.id,
+      groupId: id,
+      action: 'GROUP_DELETE',
+    });
+    const canDelete = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_DELETE);
+    logger.info('Delete group permission result', 'GroupController', {
+      userId: req.user!.id,
+      groupId: id,
+      canDelete,
+    });
+    if (!canDelete) {
+      logger.warn('403 Forbidden: User lacks GROUP_DELETE permission', 'GroupController', {
+        userId: req.user!.id,
+        groupId: id,
+      });
+      return res.status(403).json({ error: 'Only admins can delete the group' });
+    }
+    // Delete group and cascade related data (members, events, etc.)
+    await prisma.group.delete({
+      where: { id },
+    });
+    res.json({ message: 'Group deleted successfully' });
+  } catch (error) {
+    logger.error('Failed to delete group', 'GroupController', { error });
+    res.status(500).json({ error: 'Failed to delete group' });
   }
 };

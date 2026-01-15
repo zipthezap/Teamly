@@ -1,18 +1,21 @@
 import { Router } from 'express';
 import * as groupController from '../controllers/groupController';
 import authMiddleware, { optionalAuthMiddleware } from '../middleware/auth';
-import { distributedAuthenticatedLimiter, distributedUploadLimiter } from '../middleware/distributedRateLimiter';
+import { distributedAuthenticatedLimiter, distributedUploadLimiter, distributedApiLimiter } from '../middleware/distributedRateLimiter';
 import { uploadGroupPicture } from '../middleware/upload';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { etagMiddleware, privateCache } from '../middleware/etag';
 
 const router = Router();
 
-// Public join via invite link (no auth)
-router.post('/join', asyncHandler(groupController.joinGroupByInvite));
+// Join via invite link - requires authentication to ensure user identity
+// Changed from public to authenticated to prevent privilege escalation
+// SECURITY: Added rate limiting to prevent abuse
+router.post('/join/:groupId', authMiddleware, distributedAuthenticatedLimiter, asyncHandler(groupController.joinGroupByInvite));
 
 // Public route to get all public groups (with optional auth to filter out user's groups)
-router.get('/public', optionalAuthMiddleware, asyncHandler(groupController.getPublicGroups));
+// SECURITY: Added rate limiting to prevent abuse of public discovery endpoint
+router.get('/public', optionalAuthMiddleware, distributedApiLimiter, asyncHandler(groupController.getPublicGroups));
 
 router.use(authMiddleware);
 router.use(distributedAuthenticatedLimiter);
