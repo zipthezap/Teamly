@@ -1423,7 +1423,7 @@ export const joinEventAsGuest = async (req: Request, res: Response) => {
     }
 
     // Sanitize guest name
-    const sanitizedName = eventService.sanitizeEventData({ title: name }).title || name.trim();
+    const sanitizedName = eventService.sanitizeGuestName(name);
 
     // Use a transaction with serializable isolation to prevent race conditions
     const result = await prisma.$transaction(async (tx) => {
@@ -1841,7 +1841,7 @@ export const updateGuestParticipant = async (req: Request, res: Response) => {
   }
 
   // Sanitize guest name
-  const sanitizedName = eventService.sanitizeEventData({ title: name }).title || name.trim();
+  const sanitizedName = eventService.sanitizeGuestName(name);
 
   // Verify authorization and get guest
   const authResult = await verifyGuestManagementAuth(id, guestId, req.user!.id);

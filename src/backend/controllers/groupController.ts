@@ -42,11 +42,9 @@ export const createGroup = async (req: Request, res: Response) => {
     });
 
     // Validate coordinates if provided
-    if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
-      const coordValidation = locationService.validateCoordinates(parseFloat(latitude), parseFloat(longitude));
-      if (!coordValidation.valid) {
-        return res.status(400).json({ error: coordValidation.error });
-      }
+    const coordValidation = groupService.validateGroupCoordinates(latitude, longitude);
+    if (!coordValidation.valid) {
+      return res.status(400).json({ error: coordValidation.error });
     }
 
     const group = await prisma.group.create({
@@ -334,11 +332,9 @@ export const updateGroup = async (req: Request, res: Response) => {
     });
 
     // Validate coordinates if provided
-    if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
-      const coordValidation = locationService.validateCoordinates(parseFloat(latitude), parseFloat(longitude));
-      if (!coordValidation.valid) {
-        return res.status(400).json({ error: coordValidation.error });
-      }
+    const coordValidation = groupService.validateGroupCoordinates(latitude, longitude);
+    if (!coordValidation.valid) {
+      return res.status(400).json({ error: coordValidation.error });
     }
 
     const group = await prisma.group.update({

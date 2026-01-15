@@ -26,6 +26,15 @@ export const sanitizeEventData = (data: {
 };
 
 /**
+ * Sanitizes guest participant name
+ * Returns sanitized name or falls back to trimmed name
+ */
+export const sanitizeGuestName = (name: string): string => {
+  const sanitized = sanitizeString(name);
+  return sanitized.length > 0 ? sanitized : name.trim();
+};
+
+/**
  * Validates event time constraints
  */
 export const validateEventTimes = (startTime: string, endTime?: string): ValidationResult => {
