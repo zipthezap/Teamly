@@ -7,8 +7,16 @@ import { useAuth } from '../contexts/AuthContext';
 import InviteLinkCard from '../components/InviteLinkCard';
 import { getImageUrl, getInitials } from '../utils/imageUtils';
 import { EventWithDetails, EventParticipant, GuestParticipant, EventParticipantStatus, GuestParticipantStatus } from '../../../shared/types/event.types';
-import { UserProfilePicture } from '../../../shared/types/user.types';
+import { UserProfilePicture, PublicUser } from '../../../shared/types/user.types';
 import { AxiosError } from 'axios';
+
+interface EventNotification {
+  id: string;
+  type: string;
+  userId: string;
+  user?: PublicUser;
+  createdAt: Date | string;
+}
 
 const EventDetails = () => {
   const { id } = useParams();
@@ -400,7 +408,7 @@ const EventDetails = () => {
                   </div>
                 </div>
               ) : (
-                event.eventNotifications && event.eventNotifications.map((n: { id: string; type: string; userId: string; user?: { name?: string; profilePicture?: string; profilePictures?: UserProfilePicture[] }; createdAt: Date | string }) => {
+                event.eventNotifications && event.eventNotifications.map((n: EventNotification) => {
                   let action = '';
                   switch (n.type) {
                     case 'join':
@@ -422,7 +430,7 @@ const EventDetails = () => {
                       action = n.type;
                   }
                   return (
-                    <div key={n.id || `notif-${idx}`} className="mb-3 pb-3 border-b border-[#232946] last:border-b-0">
+                    <div key={n.id} className="mb-3 pb-3 border-b border-[#232946] last:border-b-0">
                       <div className="flex items-start gap-2">
                         <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden">
                           {(() => {
