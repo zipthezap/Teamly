@@ -4,6 +4,7 @@ import { Request, Response } from 'express';
 import * as eventService from '../services/eventService';
 import { SportType } from '../../shared/types/event.types';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors';
+import { logger } from '../utils/logger';
 
 // Create event request (any group member can create, admins approve)
 export const createEventRequest = async (req: Request, res: Response) => {

@@ -15,12 +15,12 @@
 import bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
 import prisma from '../config/database';
-import { ACCOUNT_LOCKOUT, PASSWORD_RESET } from '../config/security';
+import { PASSWORD_RESET } from '../config/security';
 import { generateTokenPair, revokeToken, revokeAllUserTokens, refreshAccessToken } from '../utils/jwt';
 import { validate2FAToken } from './twoFactorController';
 import { logger } from '../utils/logger';
 import { validateEmail, validateStrongPassword, isRequired, ValidationError, sanitizeString } from '../utils/validation';
-import { BadRequestError, NotFoundError, UnauthorizedError, LockedError } from '../utils/errors';
+import { BadRequestError, NotFoundError, UnauthorizedError } from '../utils/errors';
 import crypto from 'crypto';
 import { sendEmail } from '../utils/emailService';
 import path from 'path';
@@ -38,8 +38,7 @@ import * as authService from '../services/authService';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   res.setHeader('Cache-Control', 'no-store');
-  try {
-    const { email, password, name } = req.body;
+  const { email, password, name } = req.body;
 
   // Validate and sanitize inputs
   const validation = authService.validateRegistrationInputs(email, password, name);
@@ -124,74 +123,42 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   const sanitizedEmail = sanitizeString(email).toLowerCase();
 
   const user = await prisma.user.findUnique({
-    // Validate and sanitize inputs
-    const validation = authService.validateRegistrationInputs(email, password, name);
-    if (!validation.valid) {
-      throw new BadRequestError(validation.error!);
-    }
+    where: { email: sanitizedEmail }
+  });
 
-    // Sanitize string inputs
-    const sanitized = authService.sanitizeUserInputs(email, name);
+  if (!user) {
+    throw new UnauthorizedError('Invalid credentials');
+  }
 
-    const existingUser = await authService.findUserByEmail(sanitized.email);
+  // Check if account is locked
+  if (user.accountLockedUntil && user.accountLockedUntil > new Date()) {
+    throw new UnauthorizedError('Account is temporarily locked due to too many failed login attempts');
+  }
 
-    if (existingUser) {
-      throw new BadRequestError('User already exists');
-    }
+  // Validate password
+  const isValidPassword = await bcrypt.compare(password, user.password);
 
-    const hashedPassword = await authService.hashPassword(password);
+  if (!isValidPassword) {
+    // Increment failed login attempts
+    const failedAttempts = (user.failedLoginAttempts || 0) + 1;
+    const lockAccount = failedAttempts >= 5;
 
-    // Generate email verification token (returns plain and hashed versions)
-    const { token: emailVerificationToken, hashedToken: hashedEmailToken } = authService.generateEmailVerificationToken();
-
-    const user = await prisma.user.create({
+    await prisma.user.update({
+      where: { id: user.id },
       data: {
-        email: sanitized.email,
-        password: hashedPassword,
-        name: sanitized.name,
-        emailVerificationToken: hashedEmailToken // Store hashed token
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        createdAt: true,
-        emailVerified: true
+        failedLoginAttempts: failedAttempts,
+        accountLockedUntil: lockAccount ? new Date(Date.now() + 15 * 60 * 1000) : null // Lock for 15 minutes
       }
     });
 
-    // Send verification email with plain token
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
-    const verificationUrl = `${frontendUrl}/verify-email?token=${emailVerificationToken}`;
-    
-    await sendEmail(
-      user.email,
-      'Verify Your Email Address',
-      `
-        <h2>Welcome to Teamly!</h2>
-        <p>Hi ${user.name},</p>
-        <p>Thank you for registering. Please verify your email address by clicking the link below:</p>
-        <p><a href="${verificationUrl}">${verificationUrl}</a></p>
-        <p>This link will expire in 24 hours.</p>
-        <p>If you didn't register for Teamly, please ignore this email.</p>
-      `
-    );
-
-    // Generate tokens
-    const deviceInfo = req.headers['user-agent'];
-    const ipAddress = req.ip;
-    const tokens = await generateTokenPair(user.id, deviceInfo, ipAddress);
-
-    res.status(201).json({ 
-      user, 
-      ...tokens,
-      message: 'Registration successful. Please check your email to verify your account.' 
-    });
-  } catch (error) {
-    logger.error('User registration failed', 'AuthController', { error });
-    res.status(500).json({ error: 'Failed to register user' });
+    throw new UnauthorizedError('Invalid credentials');
   }
-};
+
+  // Reset failed login attempts on successful password validation
+  if (user.failedLoginAttempts && user.failedLoginAttempts > 0) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
         failedLoginAttempts: 0,
         accountLockedUntil: null
       }
