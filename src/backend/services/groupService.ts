@@ -110,13 +110,15 @@ export const sanitizeGroupData = (data: {
   locationName?: string;
   city?: string;
   country?: string;
+  tags?: string;
 }) => {
   return {
     name: data.name ? sanitizeString(data.name) : undefined,
     description: data.description ? sanitizeString(data.description) : undefined,
     locationName: data.locationName ? sanitizeString(data.locationName) : undefined,
     city: data.city ? sanitizeString(data.city) : undefined,
-    country: data.country ? sanitizeString(data.country) : undefined
+    country: data.country ? sanitizeString(data.country) : undefined,
+    tags: data.tags ? sanitizeString(data.tags) : undefined
   };
 };
 
@@ -129,6 +131,23 @@ export const validateGroupCoordinates = async (latitude: any, longitude: any) =>
     // Dynamic import to avoid circular dependency
     const { validateCoordinates } = await import('./locationService');
     return validateCoordinates(parseFloat(latitude), parseFloat(longitude));
+  }
+  return { valid: true };
+};
+
+/**
+ * Validates maxMembers value
+ * Returns validation result with error message if invalid
+ */
+export const validateMaxMembers = (maxMembers: string | number | undefined | null) => {
+  if (maxMembers !== undefined && maxMembers !== null && maxMembers !== '') {
+    const maxMembersNum = typeof maxMembers === 'number' ? maxMembers : parseInt(String(maxMembers));
+    if (isNaN(maxMembersNum) || maxMembersNum < 2 || maxMembersNum > 10000) {
+      return {
+        valid: false,
+        error: 'Max members must be between 2 and 10,000'
+      };
+    }
   }
   return { valid: true };
 };

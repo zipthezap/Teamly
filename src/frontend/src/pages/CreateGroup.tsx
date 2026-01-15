@@ -29,6 +29,10 @@ const CreateGroup = () => {
   const [isPublic, setIsPublic] = useState(false);
   const [location, setLocation] = useState<LocationValue>({});
   const [groupPicture, setGroupPicture] = useState<File | null>(null);
+  const [sportType, setSportType] = useState('');
+  const [maxMembers, setMaxMembers] = useState<number | string>('');
+  const [autoApproveJoinRequests, setAutoApproveJoinRequests] = useState(false);
+  const [tags, setTags] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -49,6 +53,10 @@ const CreateGroup = () => {
         ...(location.locationName && { locationName: location.locationName }),
         ...(location.city && { city: location.city }),
         ...(location.country && { country: location.country }),
+        sportType: sportType || null,
+        ...(maxMembers && { maxMembers: typeof maxMembers === 'string' ? parseInt(maxMembers) : maxMembers }),
+        autoApproveJoinRequests,
+        tags: tags || null,
       };
       const response = await groupsAPI.create(groupData);
       const groupId = response.data.id;
@@ -108,6 +116,14 @@ const CreateGroup = () => {
             setDescription={setDescription}
             isPublic={isPublic}
             setIsPublic={setIsPublic}
+            sportType={sportType}
+            setSportType={setSportType}
+            maxMembers={maxMembers}
+            setMaxMembers={setMaxMembers}
+            autoApproveJoinRequests={autoApproveJoinRequests}
+            setAutoApproveJoinRequests={setAutoApproveJoinRequests}
+            tags={tags}
+            setTags={setTags}
             t={t}
           />
           

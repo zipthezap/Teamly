@@ -46,6 +46,10 @@ export default function GroupDetailsPage() {
     name: '',
     description: '',
     privacy: 'public',
+    sportType: '',
+    maxMembers: '' as number | string,
+    autoApproveJoinRequests: false,
+    tags: '',
   });
   const [groupPicture, setGroupPicture] = useState<string | undefined>();
 
@@ -104,6 +108,10 @@ export default function GroupDetailsPage() {
         name: group.name || '',
         description: group.description || '',
         privacy: group.isPublic ? 'public' : 'private',
+        sportType: group.sportType || '',
+        maxMembers: group.maxMembers || '',
+        autoApproveJoinRequests: group.autoApproveJoinRequests || false,
+        tags: group.tags || '',
       });
       setGroupPicture(group.picture ?? undefined);
     }

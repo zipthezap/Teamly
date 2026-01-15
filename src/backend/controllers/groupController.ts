@@ -26,10 +26,29 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 export const createGroup = async (req: Request, res: Response) => {
-  const { name, description, isPublic, latitude, longitude, locationName, city, country } = req.body;
+  const { 
+    name, 
+    description, 
+    isPublic, 
+    latitude, 
+    longitude, 
+    locationName, 
+    city, 
+    country,
+    sportType,
+    maxMembers,
+    autoApproveJoinRequests,
+    tags
+  } = req.body;
 
   if (!name) {
     throw new BadRequestError('Group name is required');
+  }
+
+  // Validate maxMembers if provided
+  const maxMembersValidation = groupService.validateMaxMembers(maxMembers);
+  if (!maxMembersValidation.valid) {
+    throw new BadRequestError(maxMembersValidation.error || 'Invalid max members value');
   }
 
   // Sanitize text inputs
@@ -38,7 +57,8 @@ export const createGroup = async (req: Request, res: Response) => {
     description,
     locationName,
     city,
-    country
+    country,
+    tags
   });
 
   // Validate coordinates if provided
@@ -57,6 +77,10 @@ export const createGroup = async (req: Request, res: Response) => {
       locationName: sanitized.locationName,
       city: sanitized.city,
       country: sanitized.country,
+      sportType: sportType || null,
+      maxMembers: maxMembers ? parseInt(maxMembers as string) : null,
+      autoApproveJoinRequests: autoApproveJoinRequests || false,
+      tags: sanitized.tags,
       creatorId: req.user!.id,
       members: {
         create: {
@@ -299,12 +323,31 @@ export const getGroup = async (req: Request, res: Response) => {
 
 export const updateGroup = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { name, description, isPublic, latitude, longitude, locationName, city, country } = req.body;
+  const { 
+    name, 
+    description, 
+    isPublic, 
+    latitude, 
+    longitude, 
+    locationName, 
+    city, 
+    country,
+    sportType,
+    maxMembers,
+    autoApproveJoinRequests,
+    tags
+  } = req.body;
 
   // Check if user has permission to update the group
   const canUpdate = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_UPDATE);
   if (!canUpdate) {
     throw new ForbiddenError('Only admins and moderators can update the group');
+  }
+
+  // Validate maxMembers if provided
+  const maxMembersValidation = groupService.validateMaxMembers(maxMembers);
+  if (!maxMembersValidation.valid) {
+    throw new BadRequestError(maxMembersValidation.error || 'Invalid max members value');
   }
 
   // Sanitize text inputs
@@ -313,7 +356,8 @@ export const updateGroup = async (req: Request, res: Response) => {
     description,
     locationName,
     city,
-    country
+    country,
+    tags
   });
 
   // Validate coordinates if provided
@@ -332,7 +376,11 @@ export const updateGroup = async (req: Request, res: Response) => {
       ...(longitude !== undefined && { longitude: longitude ? parseFloat(longitude) : null }),
       ...(sanitized.locationName !== undefined && { locationName: sanitized.locationName }),
       ...(sanitized.city !== undefined && { city: sanitized.city }),
-      ...(sanitized.country !== undefined && { country: sanitized.country })
+      ...(sanitized.country !== undefined && { country: sanitized.country }),
+      ...(sportType !== undefined && { sportType: sportType || null }),
+      ...(maxMembers !== undefined && { maxMembers: maxMembers ? parseInt(maxMembers as string) : null }),
+      ...(autoApproveJoinRequests !== undefined && { autoApproveJoinRequests }),
+      ...(sanitized.tags !== undefined && { tags: sanitized.tags })
     },
     include: {
       creator: {
