@@ -44,7 +44,7 @@ export const createGroup = async (req: Request, res: Response) => {
   // Validate coordinates if provided
   const coordValidation = await groupService.validateGroupCoordinates(latitude, longitude);
   if (!coordValidation.valid) {
-    throw new BadRequestError(coordValidation.error!);
+    throw new BadRequestError(coordValidation.error || 'Invalid coordinates');
   }
 
   const group = await prisma.group.create({
@@ -319,7 +319,7 @@ export const updateGroup = async (req: Request, res: Response) => {
   // Validate coordinates if provided
   const coordValidation = await groupService.validateGroupCoordinates(latitude, longitude);
   if (!coordValidation.valid) {
-    throw new BadRequestError(coordValidation.error!);
+    throw new BadRequestError(coordValidation.error || 'Invalid coordinates');
   }
 
   const group = await prisma.group.update({
@@ -421,14 +421,9 @@ export const inviteMember = async (req: Request, res: Response) => {
     where: { id: req.user!.id }
   });
 
-  // Check if inviter user exists (should always exist since authenticated, but safety check)
-  if (!inviterUser) {
-    throw new NotFoundError('Inviter user not found');
-  }
-
   const shouldSend = await shouldSendEmailNotification(userToInvite.id, 'groupInvites');
 
-  if (shouldSend) {
+  if (shouldSend && inviterUser) {
     const htmlContent = `
       <h2>You've Been Invited to Join a Group!</h2>
       <p>Hi ${escapeHtml(userToInvite.name)},</p>
@@ -1152,7 +1147,7 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
   // Validate coordinates
   const coordValidation = locationService.validateCoordinates(lat, lon);
   if (!coordValidation.valid) {
-    throw new BadRequestError(coordValidation.error!);
+    throw new BadRequestError(coordValidation.error || 'Invalid coordinates');
   }
 
   // Get all public groups with location data
