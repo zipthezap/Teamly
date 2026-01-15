@@ -817,8 +817,10 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!['pending', 'confirmed', 'declined'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' });
+    // Validate status using enum
+    const validStatuses = Object.values(EventParticipantStatus);
+    if (!status || !validStatuses.includes(status as EventParticipantStatus)) {
+      return res.status(400).json({ error: 'Invalid status. Must be one of: pending, confirmed, declined' });
     }
 
     const participant = await prisma.eventParticipant.findFirst({
@@ -1420,6 +1422,9 @@ export const joinEventAsGuest = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Name is required' });
     }
 
+    // Sanitize guest name
+    const sanitizedName = eventService.sanitizeEventData({ title: name }).title || name.trim();
+
     // Use a transaction with serializable isolation to prevent race conditions
     const result = await prisma.$transaction(async (tx) => {
       // Find event by invite token
@@ -1460,7 +1465,7 @@ export const joinEventAsGuest = async (req: Request, res: Response) => {
       const guestParticipant = await tx.guestParticipant.create({
         data: {
           eventId: event.id,
-          name: name.trim(),
+          name: sanitizedName,
           status: GuestParticipantStatus.confirmed
         }
       });
@@ -1835,6 +1840,9 @@ export const updateGuestParticipant = async (req: Request, res: Response) => {
     throw new BadRequestError('Name is required');
   }
 
+  // Sanitize guest name
+  const sanitizedName = eventService.sanitizeEventData({ title: name }).title || name.trim();
+
   // Verify authorization and get guest
   const authResult = await verifyGuestManagementAuth(id, guestId, req.user!.id);
   if ('error' in authResult) {
@@ -1847,7 +1855,7 @@ export const updateGuestParticipant = async (req: Request, res: Response) => {
   // Update guest participant name
   const updatedGuest = await prisma.guestParticipant.update({
     where: { id: guestId },
-    data: { name: name.trim() }
+    data: { name: sanitizedName }
   });
 
   // Invalidate events cache for all group members

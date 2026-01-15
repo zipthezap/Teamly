@@ -41,6 +41,14 @@ export const createGroup = async (req: Request, res: Response) => {
       country
     });
 
+    // Validate coordinates if provided
+    if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
+      const coordValidation = locationService.validateCoordinates(parseFloat(latitude), parseFloat(longitude));
+      if (!coordValidation.valid) {
+        return res.status(400).json({ error: coordValidation.error });
+      }
+    }
+
     const group = await prisma.group.create({
       data: {
         name: sanitized.name,
@@ -312,6 +320,14 @@ export const updateGroup = async (req: Request, res: Response) => {
       country
     });
 
+    // Validate coordinates if provided
+    if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
+      const coordValidation = locationService.validateCoordinates(parseFloat(latitude), parseFloat(longitude));
+      if (!coordValidation.valid) {
+        return res.status(400).json({ error: coordValidation.error });
+      }
+    }
+
     const group = await prisma.group.update({
       where: { id },
       data: {
@@ -355,6 +371,12 @@ export const inviteMember = async (req: Request, res: Response) => {
 
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
     }
 
     // Check if user has permission to invite members (admins and moderators)
@@ -410,6 +432,11 @@ export const inviteMember = async (req: Request, res: Response) => {
     const inviterUser = await prisma.user.findUnique({
       where: { id: req.user!.id }
     });
+
+    // Check if inviter user exists (should always exist since authenticated, but safety check)
+    if (!inviterUser) {
+      return res.status(500).json({ error: 'Inviter user not found' });
+    }
 
     const shouldSend = await shouldSendEmailNotification(userToInvite.id, 'groupInvites');
 
