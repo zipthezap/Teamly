@@ -387,12 +387,12 @@ const Dashboard = () => {
                       </Box>
                       {recentMembers.length > 0 && (
                         <AvatarGroup max={4} sx={{ justifyContent: 'flex-start' }}>
-                          {recentMembers.map((member, idx) => {
+                          {recentMembers.map((member) => {
                             const currentPic = member.user?.profilePictures?.find((p) => p.isCurrent && !p.deletedAt);
                             const profilePictureUrl = getImageUrl(currentPic?.url || member.user?.profilePicture);
                             return (
                               <Avatar
-                                key={idx}
+                                key={member.id}
                                 src={profilePictureUrl || undefined}
                                 sx={{ width: 32, height: 32, fontSize: '0.75rem', bgcolor: 'primary.main' }}
                               >

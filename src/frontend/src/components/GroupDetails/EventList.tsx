@@ -49,12 +49,6 @@ const EventList: React.FC<EventListProps> = React.memo(({ events, onEventClick, 
     : [];
 
 
-  // Debug: Log filtered events
-  if (typeof window !== 'undefined') {
-    // eslint-disable-next-line no-console
-    console.debug('[Group EventList] Filtered events:', filteredEvents);
-  }
-
   // Wrap t to match GroupEventsModal's required signature
   const tModal = (key: string, defaultText?: string) => t(key, defaultText ?? "");
 
