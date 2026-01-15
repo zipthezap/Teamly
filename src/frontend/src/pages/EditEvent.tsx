@@ -38,6 +38,7 @@ const EditEvent = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
+  const [groupId, setGroupId] = useState<string | number | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -94,6 +95,11 @@ const EditEvent = () => {
         endMinute,
         maxPlayers: event.maxPlayers?.toString() || '',
       });
+      
+      // Store groupId for cache invalidation
+      if (event.groupId) {
+        setGroupId(event.groupId);
+      }
     } catch (error) {
       console.error('Error fetching event:', error);
       setError('Failed to load event');
@@ -186,8 +192,10 @@ const EditEvent = () => {
       queryClient.invalidateQueries({ queryKey: ['eventDetails', id] });
       queryClient.invalidateQueries({ queryKey: ['eventsList'] });
       queryClient.invalidateQueries({ queryKey: ['events'] });
-      // Also invalidate group events if this event belongs to a group
-      queryClient.invalidateQueries({ queryKey: ['groupEvents'] });
+      // Invalidate group events if this event belongs to a group
+      if (groupId) {
+        queryClient.invalidateQueries({ queryKey: ['groupEvents', groupId] });
+      }
       
       navigate(`/events/${id}`);
     } catch (err: unknown) {
