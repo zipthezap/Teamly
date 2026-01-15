@@ -901,30 +901,35 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
 
   // If auto-approve is enabled, directly add user as member
   if (group.autoApproveJoinRequests) {
-    // Create approved join request for record keeping
-    const joinRequest = await prisma.groupJoinRequest.create({
-      data: {
-        groupId: id,
-        userId: req.user!.id,
-        status: 'approved'
-      },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true }
+    // Use transaction to ensure atomicity
+    const result = await prisma.$transaction(async (tx: typeof prisma) => {
+      // Create approved join request for record keeping
+      const joinRequest = await tx.groupJoinRequest.create({
+        data: {
+          groupId: id,
+          userId: req.user!.id,
+          status: 'approved'
         },
-        group: {
-          select: { id: true, name: true, description: true }
+        include: {
+          user: {
+            select: { id: true, name: true, email: true }
+          },
+          group: {
+            select: { id: true, name: true, description: true }
+          }
         }
-      }
-    });
+      });
 
-    // Add user as member
-    await prisma.groupMember.create({
-      data: {
-        groupId: id,
-        userId: req.user!.id,
-        role: 'member'
-      }
+      // Add user as member
+      await tx.groupMember.create({
+        data: {
+          groupId: id,
+          userId: req.user!.id,
+          role: 'member'
+        }
+      });
+
+      return joinRequest;
     });
 
     // Notify the user that they were accepted
@@ -935,7 +940,7 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
         type: 'accepted',
         params: {
           groupName: group.name,
-          name: 'Auto-approved'
+          name: group.name // Use group name to indicate automatic approval
         }
       }
     }).catch((error: Error) => {
@@ -947,7 +952,7 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
     await CacheService.deletePattern(`user:${req.user!.id}:groups:*`);
 
     res.status(201).json({
-      ...joinRequest,
+      ...result,
       autoApproved: true,
       message: 'Automatically approved and joined group'
     });
