@@ -93,7 +93,25 @@ const Profile = () => {
   const fetchEmailPreferences = async () => {
     try {
       const response = await emailAPI.getPreferences();
-      setEmailPreferences(response.data);
+      // Merge with defaults to ensure all mute fields are present
+      setEmailPreferences({
+        eventInvites: response.data.eventInvites ?? true,
+        eventReminders: response.data.eventReminders ?? true,
+        eventUpdates: response.data.eventUpdates ?? true,
+        eventCancellations: response.data.eventCancellations ?? true,
+        groupInvites: response.data.groupInvites ?? true,
+        commentMentions: response.data.commentMentions ?? true,
+        nearbyTeamUps: response.data.nearbyTeamUps ?? true,
+        muteEventInvites: response.data.muteEventInvites ?? false,
+        muteEventReminders: response.data.muteEventReminders ?? false,
+        muteEventUpdates: response.data.muteEventUpdates ?? false,
+        muteEventCancellations: response.data.muteEventCancellations ?? false,
+        muteGroupInvites: response.data.muteGroupInvites ?? false,
+        muteGroupRequests: response.data.muteGroupRequests ?? false,
+        muteNearbyGroups: response.data.muteNearbyGroups ?? false,
+        muteEventCreated: response.data.muteEventCreated ?? false,
+        muteNearbyTeamUps: response.data.muteNearbyTeamUps ?? false,
+      });
     } catch (err) {
       console.error('Failed to fetch email preferences:', err);
     } finally {
