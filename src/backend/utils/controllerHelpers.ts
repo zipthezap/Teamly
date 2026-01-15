@@ -56,8 +56,8 @@ export const sendError = (
 /**
  * Extracts user ID from request
  */
-export const getUserId = (req: any): string => {
-  return req.user?.id;
+export const getUserId = (req: { user?: { id?: string } }): string => {
+  return req.user?.id ?? '';
 };
 
 /**
@@ -65,7 +65,7 @@ export const getUserId = (req: any): string => {
  * @throws BadRequestError if validation fails
  */
 export const validateRequiredFields = (
-  body: any,
+  body: Record<string, unknown>,
   requiredFields: string[]
 ): { valid: boolean; missing?: string[] } => {
   const missing = requiredFields.filter(field => !body[field]);
@@ -81,7 +81,7 @@ export const validateRequiredFields = (
  * Validates required fields and throws error if missing
  * @throws BadRequestError if validation fails
  */
-export const requireFields = (body: any, requiredFields: string[]): void => {
+export const requireFields = (body: Record<string, unknown>, requiredFields: string[]): void => {
   const missing = requiredFields.filter(field => !body[field]);
   
   if (missing.length > 0) {
@@ -110,7 +110,7 @@ export const ensureResourceExists = <T>(
  * Validates user authorization
  * @throws UnauthorizedError if user is not authenticated
  */
-export const ensureAuthenticated = (userId: any): void => {
+export const ensureAuthenticated = (userId: string | undefined): void => {
   if (!userId) {
     throw new UnauthorizedError('Authentication required', 'NOT_AUTHENTICATED');
   }
@@ -129,16 +129,16 @@ export const ensurePermission = (hasPermission: boolean, message: string = 'Insu
 /**
  * Parses integer from string safely
  */
-export const parseIntSafe = (value: any, defaultValue: number = 0): number => {
-  const parsed = parseInt(value);
+export const parseIntSafe = (value: unknown, defaultValue: number = 0): number => {
+  const parsed = parseInt(String(value));
   return isNaN(parsed) ? defaultValue : parsed;
 };
 
 /**
  * Parses float from string safely
  */
-export const parseFloatSafe = (value: any, defaultValue: number = 0): number => {
-  const parsed = parseFloat(value);
+export const parseFloatSafe = (value: unknown, defaultValue: number = 0): number => {
+  const parsed = parseFloat(String(value));
   return isNaN(parsed) ? defaultValue : parsed;
 };
 

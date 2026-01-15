@@ -25,7 +25,7 @@ export interface ErrorContext {
   resource?: string;
   resourceId?: string;
   operation?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**

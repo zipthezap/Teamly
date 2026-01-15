@@ -212,9 +212,29 @@ export const getGroups = async (req: Request, res: Response) => {
   });
 
   // Map each group to flatten member user fields
-  const mappedGroups = groups.map((group: any) => ({
+  interface GroupMember {
+    userId: string;
+    user: {
+      name: string;
+      email: string;
+      profilePicture: string | null;
+    };
+    role: string;
+  }
+
+  interface GroupWithMembers {
+    members: GroupMember[];
+    latitude?: number | null;
+    longitude?: number | null;
+    locationName?: string | null;
+    city?: string | null;
+    country?: string | null;
+    [key: string]: unknown;
+  }
+
+  const mappedGroups = groups.map((group: GroupWithMembers) => ({
     ...group,
-    members: group.members.map((member: any) => ({
+    members: group.members.map((member: GroupMember) => ({
       id: member.userId,
       name: member.user.name,
       email: member.user.email,
@@ -224,9 +244,20 @@ export const getGroups = async (req: Request, res: Response) => {
   }));
 
   // Enrich with location info
-  const enrichedGroups = mappedGroups.map(group => 
-    locationService.enrichWithLocationInfo(group)
-  );
+  const enrichedGroups = mappedGroups.map(group => {
+    // Only enrich if group has coordinates
+    if (group.latitude && group.longitude) {
+      return locationService.enrichWithLocationInfo(group as { 
+        latitude: number; 
+        longitude: number; 
+        locationName?: string | null; 
+        city?: string | null; 
+        country?: string | null;
+        [key: string]: unknown;
+      });
+    }
+    return group;
+  });
 
   // Cache for 2 minutes
   await CacheService.set(cacheKey, enrichedGroups, 120);
@@ -303,9 +334,19 @@ export const getGroup = async (req: Request, res: Response) => {
   }
 
   // Map members to flatten user fields
+  interface GroupMemberWithUser {
+    userId: string;
+    user: {
+      name: string;
+      email: string;
+      profilePicture: string | null;
+    };
+    role: string;
+  }
+
   const mappedGroup = {
     ...group,
-    members: group.members.map((member: any) => ({
+    members: group.members.map((member: GroupMemberWithUser) => ({
       id: member.userId,
       name: member.user.name,
       email: member.user.email,
@@ -345,13 +386,27 @@ export const getGroupMembers = async (req: Request, res: Response) => {
   }
   
   // Check if the requesting user is a member
-  const isMember = group.members.some((m: any) => m.userId === req.user?.id);
+  interface GroupMemberCheck {
+    userId: string;
+  }
+
+  const isMember = group.members.some((m: GroupMemberCheck) => m.userId === req.user?.id);
   if (!isMember) {
     throw new ForbiddenError('Only group members can view the member list');
   }
   
   // Flatten member user fields for frontend compatibility
-  const members = group.members.map((member: any) => ({
+  interface GroupMemberDetail {
+    userId: string;
+    user?: {
+      name: string;
+      email: string;
+      profilePicture: string | null;
+    };
+    role: string;
+  }
+
+  const members = group.members.map((member: GroupMemberDetail) => ({
     id: member.userId,
     name: member.user?.name,
     email: member.user?.email,
@@ -751,7 +806,7 @@ export const getPublicGroups = async (req: Request, res: Response) => {
   const userId = req.user?.id;
   
   // Build where clause to exclude groups user is already a member of
-  const whereClause: any = {
+  const whereClause: Record<string, unknown> = {
     isPublic: true
   };
   

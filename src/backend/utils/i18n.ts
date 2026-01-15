@@ -1,7 +1,7 @@
 export type Locale = 'en' | 'fr';
 
 export interface I18n {
-  t: (key: string, params?: Record<string, any>, lang?: Locale) => string;
+  t: (key: string, params?: Record<string, unknown>, lang?: Locale) => string;
 }
 
 const translations: Record<string, Record<string, string>> = {
@@ -82,10 +82,10 @@ function interpolate(str: string, params: Record<string, string | number> = {}) 
 }
 
 export function createI18n(locale: Locale = 'en'): I18n {
-  function t(key: string, params?: Record<string, any>, lang: Locale = locale): string {
+  function t(key: string, params?: Record<string, unknown>, lang: Locale = locale): string {
     const dict = translations[lang] || translations['en'];
     const template = dict[key] || key;
-    return interpolate(template, params);
+    return interpolate(template, params as Record<string, string | number>);
   }
 
   return { t };

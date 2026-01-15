@@ -79,7 +79,7 @@ const upload = multer({
  */
 const multerErrorHandler = (uploadMiddleware: RequestHandler): RequestHandler => {
   return (req: Request, res: Response, next: NextFunction) => {
-    uploadMiddleware(req, res, (error: any) => {
+    uploadMiddleware(req, res, (error: unknown) => {
       if (error instanceof multer.MulterError) {
         logger.warn('Multer error', 'UploadMiddleware', { 
           error: error.message, 
@@ -105,8 +105,9 @@ const multerErrorHandler = (uploadMiddleware: RequestHandler): RequestHandler =>
       }
       
       if (error) {
+        const err = error as Error;
         logger.error('Upload error', 'UploadMiddleware', { error, userId: req.user?.id });
-        return res.status(400).json({ error: error.message || 'File upload failed.' });
+        return res.status(400).json({ error: err.message || 'File upload failed.' });
       }
       
       next();

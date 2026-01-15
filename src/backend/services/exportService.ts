@@ -45,7 +45,7 @@ export function exportToCSV(events: EventExportData[]): string {
   ];
 
   // Helper function to escape CSV fields
-  const escapeCSV = (field: any): string => {
+  const escapeCSV = (field: unknown): string => {
     if (field === null || field === undefined) {
       return '';
     }

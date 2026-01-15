@@ -721,22 +721,23 @@ export const joinEvent = async (req: Request, res: Response) => {
     await CacheService.deletePattern(`events:user:*:group:all:*`);
 
     res.status(201).json(result.participant);
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Join event error', 'EventController', { error });
     
     // Handle specific error cases
-    if (error.message === 'EVENT_NOT_FOUND') {
+    const errorMessage = (error as Error).message;
+    if (errorMessage === 'EVENT_NOT_FOUND') {
       return res.status(404).json({ error: 'Event not found' });
     }
-    if (error.message === 'ALREADY_JOINED') {
+    if (errorMessage === 'ALREADY_JOINED') {
       return res.status(400).json({ error: 'Already joined this event' });
     }
-    if (error.message === 'EVENT_FULL') {
+    if (errorMessage === 'EVENT_FULL') {
       return res.status(400).json({ error: 'Event is full' });
     }
     
     // Handle unique constraint violations
-    if (error.code === 'P2002') {
+    if ((error as { code?: string }).code === 'P2002') {
       return res.status(400).json({ error: 'Already joined this event' });
     }
     
@@ -816,14 +817,15 @@ export const leaveEvent = async (req: Request, res: Response) => {
     await CacheService.deletePattern(`events:user:*:group:all:*`);
 
     res.json({ message: 'Left event successfully' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Failed to leave event', 'EventController', { error });
     
     // Handle specific error cases
-    if (error.message === 'EVENT_NOT_FOUND') {
+    const errorMessage = (error as Error).message;
+    if (errorMessage === 'EVENT_NOT_FOUND') {
       return res.status(404).json({ error: 'Event not found' });
     }
-    if (error.message === 'NOT_PARTICIPATING') {
+    if (errorMessage === 'NOT_PARTICIPATING') {
       return res.status(404).json({ error: 'Not participating in this event' });
     }
     
@@ -948,7 +950,7 @@ export const getRecurringEventInstances = async (req: Request, res: Response) =>
       start = event.startTime;
     }
     // Ensure exceptionDates is defined and parsed
-    let exceptionDates: any = [];
+    let exceptionDates: string[] = [];
     if (event.exceptionDates) {
       exceptionDates = Array.isArray(event.exceptionDates)
         ? event.exceptionDates
@@ -1324,7 +1326,7 @@ export const getEventActivityFeed = async (req: Request, res: Response) => {
     throw new NotFoundError('Event not found or access denied');
   }
 
-  const options: any = {
+  const options: Record<string, unknown> = {
     limit: limit ? parseInt(limit as string) : 50
   };
 
@@ -1735,7 +1737,7 @@ export const getEventParticipantsByStatus = async (req: Request, res: Response) 
   }
 
   // Build where clause to leverage composite index [eventId, status]
-  const where: any = { eventId: id };
+  const where: Record<string, unknown> = { eventId: id };
   const validStatuses = Object.values(EventParticipantStatus);
   if (status && validStatuses.includes(status as EventParticipantStatus)) {
     where.status = status; // Uses composite index [eventId, status]
@@ -1794,7 +1796,7 @@ const verifyGuestManagementAuth = async (
   eventId: string,
   guestId: string,
   userId: string
-): Promise<{ event: any; guest: any } | { error: string; status: number }> => {
+): Promise<{ event: unknown; guest: unknown } | { error: string; status: number }> => {
   // Check if user is the creator of the event
   const event = await prisma.event.findUnique({
     where: { id: eventId }
@@ -1854,7 +1856,8 @@ export const updateGuestParticipant = async (req: Request, res: Response) => {
   });
 
   // Invalidate events cache for all group members
-  await CacheService.deletePattern(`events:user:*:group:${authResult.event.groupId}:*`);
+  const event = authResult.event as { groupId: string };
+  await CacheService.deletePattern(`events:user:*:group:${event.groupId}:*`);
   await CacheService.deletePattern(`events:user:*:group:all:*`);
 
   res.json(updatedGuest);
@@ -1890,7 +1893,8 @@ export const updateGuestParticipantStatus = async (req: Request, res: Response) 
   });
 
   // Invalidate events cache for all group members
-  await CacheService.deletePattern(`events:user:*:group:${authResult.event.groupId}:*`);
+  const event = authResult.event as { groupId: string };
+  await CacheService.deletePattern(`events:user:*:group:${event.groupId}:*`);
   await CacheService.deletePattern(`events:user:*:group:all:*`);
 
   res.json(updatedGuest);
@@ -1918,7 +1922,8 @@ export const removeGuestParticipant = async (req: Request, res: Response) => {
   });
 
   // Invalidate events cache for all group members
-  await CacheService.deletePattern(`events:user:*:group:${authResult.event.groupId}:*`);
+  const event = authResult.event as { groupId: string };
+  await CacheService.deletePattern(`events:user:*:group:${event.groupId}:*`);
   await CacheService.deletePattern(`events:user:*:group:all:*`);
 
   res.json({ message: 'Guest participant removed successfully' });
@@ -1953,7 +1958,7 @@ export const getGuestParticipants = async (req: Request, res: Response) => {
   }
 
   // Build where clause
-  const where: any = { eventId: id };
+  const where: Record<string, unknown> = { eventId: id };
   const validStatuses = Object.values(GuestParticipantStatus);
   if (status && validStatuses.includes(status as GuestParticipantStatus)) {
     where.status = status;

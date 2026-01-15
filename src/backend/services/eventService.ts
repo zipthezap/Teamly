@@ -227,7 +227,7 @@ export const buildEventFilters = (
     archived?: string;
   }
 ) => {
-  const where: any = {};
+  const where: Record<string, unknown> = {};
   
   if (filters.groupId) {
     where.groupId = filters.groupId;
@@ -287,13 +287,14 @@ export const buildEventFilters = (
 
   // Date range filter
   if (filters.startDate || filters.endDate) {
-    where.startTime = {};
+    const startTime: Record<string, Date> = {};
     if (filters.startDate) {
-      where.startTime.gte = new Date(filters.startDate);
+      startTime.gte = new Date(filters.startDate);
     }
     if (filters.endDate) {
-      where.startTime.lte = new Date(filters.endDate);
+      startTime.lte = new Date(filters.endDate);
     }
+    where.startTime = startTime;
   }
 
   // Location filter
@@ -384,14 +385,22 @@ export const getEventById = async (eventId: string) => {
 /**
  * Checks if user can modify event
  */
-export const canModifyEvent = (event: any, userId: string) => {
+export const canModifyEvent = (
+  event: {
+    creatorId: string;
+    group: {
+      members: Array<{ userId: string; role: string }>;
+    };
+  },
+  userId: string
+) => {
   // User must be the creator or a group admin
   if (event.creatorId === userId) {
     return true;
   }
   
   const isGroupAdmin = event.group.members.some(
-    (m: any) => m.userId === userId && m.role === 'admin'
+    (m) => m.userId === userId && m.role === 'admin'
   );
   
   return isGroupAdmin;
@@ -457,7 +466,13 @@ export const isEventFull = async (eventId: string, maxPlayers: number | null) =>
  * Sends email notifications to event participants (excluding sender)
  */
 export const sendEventEmailNotifications = async (
-  participants: any[],
+  participants: Array<{
+    user: {
+      id: string;
+      name: string;
+      email: string;
+    };
+  }>,
   senderId: string,
   notificationType: 'eventUpdates' | 'eventCancellations',
   emailType: 'eventUpdate' | 'eventCancellation',

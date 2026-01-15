@@ -186,7 +186,7 @@ export const createTournament = async (req: Request, res: Response) => {
 export const getTournaments = async (req: Request, res: Response) => {
   const { groupId, status, sportType } = req.query;
 
-  const where: any = {};
+  const where: Record<string, unknown> = {};
 
   if (groupId) {
     where.groupId = groupId as string;
@@ -305,7 +305,7 @@ export const updateTournament = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the organizer can update the tournament');
   }
 
-  const updateData: any = {};
+  const updateData: Record<string, unknown> = {};
 
   if (name !== undefined) {
     const sanitized = tournamentService.sanitizeTournamentData({ name });
@@ -489,9 +489,9 @@ export const addTeam = async (req: Request, res: Response) => {
         select: { id: true, name: true, email: true }
       }
     }
-  }).catch((error: any) => {
+  }).catch((error: unknown) => {
     // Handle unique constraint violation
-    if (error.code === 'P2002') {
+    if ((error as { code?: string }).code === 'P2002') {
       throw new BadRequestError('A team with this name already exists in the tournament');
     }
     throw error;
@@ -559,7 +559,7 @@ export const updateTeam = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the organizer or team captain can update the team');
   }
 
-  const updateData: any = {};
+  const updateData: Record<string, unknown> = {};
   if (name !== undefined) updateData.name = name;
   if (captainName !== undefined) updateData.captainName = captainName;
   if (captainEmail !== undefined) updateData.captainEmail = captainEmail;
@@ -696,10 +696,10 @@ export const generateBrackets = async (req: Request, res: Response) => {
       message: 'Brackets generated successfully',
       matchesCreated: result.count
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Error generating brackets', 'TournamentController', { error });
     res.status(500).json({
-      error: error.message || 'Failed to generate brackets'
+      error: (error as Error).message || 'Failed to generate brackets'
     });
   }
 };
@@ -809,7 +809,7 @@ export const getStandings = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { groupName } = req.query;
 
-  const where: any = { tournamentId: id };
+  const where: Record<string, unknown> = { tournamentId: id };
   if (groupName) {
     where.groupName = groupName as string;
   }
@@ -1009,7 +1009,7 @@ export const updateMatch = async (req: Request, res: Response) => {
       }
     }
 
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (homeTeamId !== undefined) updateData.homeTeamId = homeTeamId;
     if (awayTeamId !== undefined) updateData.awayTeamId = awayTeamId;
     if (refereeTeamId !== undefined) updateData.refereeTeamId = refereeTeamId || null;
@@ -1366,7 +1366,7 @@ export const updatePlayer = async (req: Request, res: Response) => {
       }
     }
 
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (playerName !== undefined) updateData.playerName = playerName;
     if (playerEmail !== undefined) updateData.playerEmail = playerEmail || null;
     if (newUserId !== undefined) updateData.userId = newUserId || null;
@@ -1389,8 +1389,8 @@ export const updatePlayer = async (req: Request, res: Response) => {
     });
 
     res.json(updatedPlayer);
-  } catch (error: any) {
-    if (error.code === 'P2002') {
+  } catch (error: unknown) {
+    if ((error as { code?: string }).code === 'P2002') {
       return res.status(400).json({
         error: 'This user is already registered on this team'
       });
@@ -1588,8 +1588,8 @@ export const createPool = async (req: Request, res: Response) => {
     });
 
     res.status(201).json(pool);
-  } catch (error: any) {
-    if (error.code === 'P2002') {
+  } catch (error: unknown) {
+    if ((error as { code?: string }).code === 'P2002') {
       return res.status(400).json({
         error: 'A pool with this name already exists in the tournament'
       });

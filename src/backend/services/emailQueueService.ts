@@ -3,6 +3,7 @@ import { sendEmail as sendEmailDirect } from '../utils/emailService';
 import { logger } from '../utils/logger';
 import { EMAIL_RETRY } from '../config/security';
 import { emailCircuitBreaker } from '../utils/circuitBreaker';
+import { Prisma } from '@prisma/client';
 
 /**
  * Email Queue Service
@@ -15,7 +16,7 @@ interface EmailOptions {
   htmlContent: string;
   textContent?: string;
   templateType?: string;
-  templateData?: Record<string, any>;
+  templateData?: Prisma.JsonObject;
   maxAttempts?: number;
   scheduledAt?: Date;
 }
@@ -143,10 +144,11 @@ export const processEmail = async (emailId: string): Promise<boolean> => {
       });
 
       return true;
-    } catch (sendError: any) {
+    } catch (sendError: unknown) {
       // Calculate next retry time with exponential backoff using configured values
       const delay = EMAIL_RETRY.BASE_DELAY_MS * Math.pow(EMAIL_RETRY.BACKOFF_MULTIPLIER, email.attempts);
       const nextScheduledAt = new Date(Date.now() + delay);
+      const errorMessage = sendError instanceof Error ? sendError.message : 'Unknown error';
 
       const newStatus = email.attempts + 1 >= email.maxAttempts ? 'failed' : 'retry';
 
@@ -154,7 +156,7 @@ export const processEmail = async (emailId: string): Promise<boolean> => {
         where: { id: emailId },
         data: {
           status: newStatus,
-          lastError: sendError.message || 'Unknown error',
+          lastError: errorMessage,
           scheduledAt: newStatus === 'retry' ? nextScheduledAt : email.scheduledAt
         }
       });
@@ -163,7 +165,7 @@ export const processEmail = async (emailId: string): Promise<boolean> => {
         emailId,
         recipient: email.recipient,
         attempts: email.attempts + 1,
-        error: sendError.message,
+        error: errorMessage,
         nextRetry: newStatus === 'retry' ? nextScheduledAt : null
       });
 
@@ -260,7 +262,7 @@ export const sendEmailWithQueue = async (
   options?: {
     textContent?: string;
     templateType?: string;
-    templateData?: Record<string, any>;
+    templateData?: Prisma.JsonObject;
     maxAttempts?: number;
     immediate?: boolean; // If true, send immediately without queue
   }

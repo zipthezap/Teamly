@@ -97,7 +97,7 @@ export function etagMiddleware(options: ETagOptions = {}) {
     const originalSend = res.send.bind(res);
 
     // Override res.json to add ETag
-    res.json = function (body: any): Response {
+    res.json = function (body: unknown): Response {
       // Serialize body to string
       const bodyString = JSON.stringify(body);
 
@@ -127,7 +127,7 @@ export function etagMiddleware(options: ETagOptions = {}) {
     };
 
     // Override res.send to add ETag for non-JSON responses
-    res.send = function (body?: any): Response {
+    res.send = function (body?: unknown): Response {
       // Only handle string and buffer responses
       if (typeof body === 'string' || Buffer.isBuffer(body)) {
         // Generate ETag
@@ -181,7 +181,7 @@ export function lastModifiedMiddleware() {
     }
 
     // Add helper method to set Last-Modified
-    (res as any).setLastModified = function (date: Date | string | number): void {
+    (res as unknown as Record<string, unknown>).setLastModified = function (date: Date | string | number): void {
       const lastModified = new Date(date);
       res.setHeader('Last-Modified', lastModified.toUTCString());
 

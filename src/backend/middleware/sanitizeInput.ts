@@ -9,7 +9,7 @@ import { Request, Response, NextFunction } from 'express';
 /**
  * Recursively sanitizes an object's string values by trimming whitespace
  */
-const sanitizeObject = (obj: any): any => {
+const sanitizeObject = (obj: unknown): unknown => {
   if (obj === null || obj === undefined) {
     return obj;
   }
@@ -23,10 +23,10 @@ const sanitizeObject = (obj: any): any => {
   }
 
   if (typeof obj === 'object') {
-    const sanitized: any = {};
+    const sanitized: Record<string, unknown> = {};
     for (const key in obj) {
       if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        sanitized[key] = sanitizeObject(obj[key]);
+        sanitized[key] = sanitizeObject((obj as Record<string, unknown>)[key]);
       }
     }
     return sanitized;
@@ -45,13 +45,14 @@ export const sanitizeInput = (req: Request, _res: Response, next: NextFunction):
   }
 
   if (req.query) {
-    const sanitizedQuery = sanitizeObject(req.query);
-    Object.keys(req.query).forEach(key => { delete (req.query as any)[key]; });
+    const sanitizedQuery = sanitizeObject(req.query) as Record<string, unknown>;
+    Object.keys(req.query).forEach(key => { delete (req.query as Record<string, unknown>)[key]; });
     Object.assign(req.query, sanitizedQuery);
   }
 
   if (req.params) {
-    req.params = sanitizeObject(req.params);
+    const sanitizedParams = sanitizeObject(req.params);
+    req.params = sanitizedParams as typeof req.params;
   }
 
   next();

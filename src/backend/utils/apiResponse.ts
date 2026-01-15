@@ -43,7 +43,7 @@ export const sendError = (
   error: {
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   },
   options?: {
     statusCode?: number;

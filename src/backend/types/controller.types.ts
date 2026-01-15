@@ -8,7 +8,7 @@ import { AuthenticatedUser } from './express';
 /**
  * Authenticated request with typed user
  */
-export interface AuthenticatedRequest<TBody = any, TParams = any, TQuery = any> extends Request<TParams, any, TBody, TQuery> {
+export interface AuthenticatedRequest<TBody = unknown, TParams = unknown, TQuery = unknown> extends Request<TParams, unknown, TBody, TQuery> {
   user: AuthenticatedUser;
   token?: string;
 }

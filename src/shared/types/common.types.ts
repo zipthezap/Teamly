@@ -3,7 +3,7 @@
  */
 
 // Generic API Success Response
-export interface ApiSuccessResponse<T = any> {
+export interface ApiSuccessResponse<T = unknown> {
   success: true;
   data: T;
   message?: string;
@@ -20,7 +20,7 @@ export interface ApiErrorResponse {
   error: {
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   };
   meta?: {
     timestamp: string;
@@ -29,7 +29,7 @@ export interface ApiErrorResponse {
 }
 
 // API Response type (can be success or error)
-export type ApiResponse<T = any> = ApiSuccessResponse<T> | ApiErrorResponse;
+export type ApiResponse<T = unknown> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 // Pagination metadata
 export interface PaginationMeta {
@@ -59,7 +59,7 @@ export interface SortParams {
 // Generic search params
 export interface SearchParams extends PaginationParams, SortParams {
   search?: string;
-  filter?: Record<string, any>;
+  filter?: Record<string, unknown>;
 }
 
 // Validation error
