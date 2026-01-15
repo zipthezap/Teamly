@@ -321,10 +321,15 @@ export default function GroupDetailsPage() {
       await groupsAPI.delete(groupId!);
     },
     onSuccess: () => {
+      // Invalidate all group-related queries to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ["groupsList"] });
+      queryClient.invalidateQueries({ queryKey: ["groupDetails"] });
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
       setToast({ message: t('groupDetails.groupDeleted'), type: "success" });
+      // Navigate immediately to groups page - cache invalidation ensures fresh data
       setTimeout(() => {
         navigate('/groups');
-      }, 1000);
+      }, 500);
     },
     onError: (err: unknown) => {
       setToast({ message: getErrorMessage(err) || t('groupDetails.failedToDelete'), type: "error" });
@@ -346,10 +351,15 @@ export default function GroupDetailsPage() {
       await groupsAPI.leave(groupId!);
     },
     onSuccess: () => {
+      // Invalidate all group-related queries to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ["groupsList"] });
+      queryClient.invalidateQueries({ queryKey: ["groupDetails"] });
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
       setToast({ message: t('groupDetails.leftGroup'), type: "success" });
+      // Navigate immediately to groups page - cache invalidation ensures fresh data
       setTimeout(() => {
         navigate('/groups');
-      }, 1000);
+      }, 500);
     },
     onError: (err: unknown) => {
       setToast({ message: getErrorMessage(err) || t('groupDetails.failedToLeave'), type: "error" });
@@ -372,11 +382,16 @@ export default function GroupDetailsPage() {
     try {
       await groupsAPI.transferAdmin(groupId!, selectedNewAdmin); // Assumes backend API exists
       await groupsAPI.leave(groupId!);
+      // Invalidate all group-related queries to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ["groupsList"] });
+      queryClient.invalidateQueries({ queryKey: ["groupDetails"] });
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
       setToast({ message: t('groupDetails.leftGroup'), type: "success" });
       setShowAdminTransfer(false);
+      // Navigate immediately to groups page - cache invalidation ensures fresh data
       setTimeout(() => {
         navigate('/groups');
-      }, 1000);
+      }, 500);
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
         ? err.response?.data?.error || t('groupDetails.failedToLeave')
