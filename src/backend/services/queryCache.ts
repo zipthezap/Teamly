@@ -149,21 +149,21 @@ export const UserQueryCache = {
   /**
    * Cache user profile
    */
-  async getProfile(userId: string, queryFn: () => Promise<any>) {
+  async getProfile<T = unknown>(userId: string, queryFn: () => Promise<T>) {
     return cachedQuery('user:profile', { userId }, CACHE_TTL.USER_PROFILE, queryFn);
   },
   
   /**
    * Cache user groups
    */
-  async getGroups(userId: string, queryFn: () => Promise<any>) {
+  async getGroups<T = unknown>(userId: string, queryFn: () => Promise<T>) {
     return cachedQuery('user:groups', { userId }, CACHE_TTL.USER_GROUPS, queryFn);
   },
   
   /**
    * Cache user events
    */
-  async getEvents(userId: string, filters: Record<string, string | number | boolean | null | undefined>, queryFn: () => Promise<any>) {
+  async getEvents<T = unknown>(userId: string, filters: Record<string, string | number | boolean | null | undefined>, queryFn: () => Promise<T>) {
     return cachedQuery('user:events', { userId, ...filters }, CACHE_TTL.USER_EVENTS, queryFn);
   },
   
@@ -186,14 +186,14 @@ export const GroupQueryCache = {
   /**
    * Cache group details
    */
-  async getDetails(groupId: string, queryFn: () => Promise<any>) {
+  async getDetails<T = unknown>(groupId: string, queryFn: () => Promise<T>) {
     return cachedQuery('group:details', { groupId }, CACHE_TTL.GROUP_DETAILS, queryFn);
   },
   
   /**
    * Cache group members
    */
-  async getMembers(groupId: string, queryFn: () => Promise<any>) {
+  async getMembers<T = unknown>(groupId: string, queryFn: () => Promise<T>) {
     return cachedQuery('group:members', { groupId }, CACHE_TTL.GROUP_MEMBERS, queryFn);
   },
   
@@ -215,21 +215,21 @@ export const EventQueryCache = {
   /**
    * Cache event details
    */
-  async getDetails(eventId: string, queryFn: () => Promise<any>) {
+  async getDetails<T = unknown>(eventId: string, queryFn: () => Promise<T>) {
     return cachedQuery('event:details', { eventId }, CACHE_TTL.EVENT_DETAILS, queryFn);
   },
   
   /**
    * Cache event participants
    */
-  async getParticipants(eventId: string, queryFn: () => Promise<any>) {
+  async getParticipants<T = unknown>(eventId: string, queryFn: () => Promise<T>) {
     return cachedQuery('event:participants', { eventId }, CACHE_TTL.EVENT_PARTICIPANTS, queryFn);
   },
   
   /**
    * Cache event list for a group
    */
-  async getList(groupId: string, filters: Record<string, string | number | boolean | null | undefined>, queryFn: () => Promise<any>) {
+  async getList<T = unknown>(groupId: string, filters: Record<string, string | number | boolean | null | undefined>, queryFn: () => Promise<T>) {
     return cachedQuery('event:list', { groupId, ...filters }, CACHE_TTL.EVENT_LIST, queryFn);
   },
   
@@ -252,14 +252,14 @@ export const TournamentQueryCache = {
   /**
    * Cache tournament details
    */
-  async getDetails(tournamentId: string, queryFn: () => Promise<any>) {
+  async getDetails<T = unknown>(tournamentId: string, queryFn: () => Promise<T>) {
     return cachedQuery('tournament:details', { tournamentId }, CACHE_TTL.TOURNAMENT_DETAILS, queryFn);
   },
   
   /**
    * Cache tournament standings
    */
-  async getStandings(tournamentId: string, queryFn: () => Promise<any>) {
+  async getStandings<T = unknown>(tournamentId: string, queryFn: () => Promise<T>) {
     return cachedQuery('tournament:standings', { tournamentId }, CACHE_TTL.TOURNAMENT_STANDINGS, queryFn);
   },
   
