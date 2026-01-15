@@ -15,6 +15,7 @@ import LocationPicker from '../components/LocationPicker';
 import ImageUpload from '../components/ImageUpload';
 import { useTranslation } from 'react-i18next';
 import { AxiosError } from 'axios';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface LocationValue {
   latitude?: number | string;
@@ -29,6 +30,7 @@ const EditGroup = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
@@ -107,6 +109,12 @@ const EditGroup = () => {
       }
       
       await groupsAPI.update(id, groupData);
+      
+      // Invalidate caches so the updated group data is reflected
+      queryClient.invalidateQueries({ queryKey: ['groupsList'] });
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['groupDetails', id] });
+      
       navigate(`/groups/${id}`);
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
@@ -123,6 +131,10 @@ const EditGroup = () => {
     try {
       const response = await groupsAPI.uploadGroupPicture(id!, file);
       setGroupPicture(response.data.group.picture);
+      
+      // Invalidate caches so the updated picture is reflected
+      queryClient.invalidateQueries({ queryKey: ['groupDetails', id] });
+      queryClient.invalidateQueries({ queryKey: ['groupsList'] });
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
         ? err.response?.data?.error || 'Failed to upload group picture'
@@ -137,6 +149,10 @@ const EditGroup = () => {
     try {
       const response = await groupsAPI.deleteGroupPicture(id!);
       setGroupPicture(response.data.group.picture);
+      
+      // Invalidate caches so the deleted picture is reflected
+      queryClient.invalidateQueries({ queryKey: ['groupDetails', id] });
+      queryClient.invalidateQueries({ queryKey: ['groupsList'] });
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
         ? err.response?.data?.error || 'Failed to delete group picture'

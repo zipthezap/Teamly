@@ -814,6 +814,17 @@ export const updateMemberRole = async (req: Request, res: Response) => {
     return updatedMember;
   });
 
+  // Invalidate group cache for all affected users
+  // Use Promise.allSettled to ensure all cache operations are attempted even if one fails
+  await Promise.allSettled([
+    CacheService.invalidate('group', id),
+    CacheService.deletePattern(`user:${result.userId}:groups:*`),
+    CacheService.deletePattern(`events:user:${result.userId}:group:${id}:*`),
+    CacheService.deletePattern(`events:user:${result.userId}:group:all:*`)
+  ]).catch((error: Error) => {
+    logger.error('Cache invalidation error in updateMemberRole', 'GroupController', { error });
+  });
+
   res.json(result);
 };
 
@@ -1092,6 +1103,17 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
         }
       });
     }
+
+    // Invalidate group cache for all affected users
+    // Use Promise.allSettled to ensure all cache operations are attempted even if one fails
+    await Promise.allSettled([
+      CacheService.invalidate('group', id),
+      CacheService.deletePattern(`user:${joinRequest.userId}:groups:*`),
+      CacheService.deletePattern(`events:user:${joinRequest.userId}:group:${id}:*`),
+      CacheService.deletePattern(`events:user:${joinRequest.userId}:group:all:*`)
+    ]).catch((error: Error) => {
+      logger.error('Cache invalidation error in handleJoinRequest', 'GroupController', { error });
+    });
   }
 
   res.json({ 
@@ -1526,10 +1548,15 @@ export const transferAdmin = async (req: Request, res: Response) => {
 export const deleteGroup = async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  // Verify group exists first
+  // Verify group exists first and get members for cache invalidation
   const group = await prisma.group.findUnique({
     where: { id },
-    select: { id: true }
+    select: { 
+      id: true,
+      members: {
+        select: { userId: true }
+      }
+    }
   });
 
   if (!group) {
@@ -1549,6 +1576,21 @@ export const deleteGroup = async (req: Request, res: Response) => {
   // Delete group and cascade related data (members, events, etc.)
   await prisma.group.delete({
     where: { id },
+  });
+
+  // Invalidate all group-related caches
+  // Use Promise.allSettled to ensure all cache operations are attempted even if one fails
+  const cacheOperations = [
+    CacheService.invalidate('group', id),
+    ...group.members.flatMap(member => [
+      CacheService.deletePattern(`user:${member.userId}:groups:*`),
+      CacheService.deletePattern(`events:user:${member.userId}:group:${id}:*`),
+      CacheService.deletePattern(`events:user:${member.userId}:group:all:*`)
+    ])
+  ];
+  
+  await Promise.allSettled(cacheOperations).catch((error: Error) => {
+    logger.error('Cache invalidation error in deleteGroup', 'GroupController', { error });
   });
 
   res.json({ message: 'Group deleted successfully' });

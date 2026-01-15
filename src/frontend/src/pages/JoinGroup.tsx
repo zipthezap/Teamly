@@ -13,12 +13,14 @@ import { groupsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { Group } from '../../../shared/types';
+import { useQueryClient } from '@tanstack/react-query';
 
 const JoinGroup = () => {
   const { groupId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -62,6 +64,13 @@ const JoinGroup = () => {
     try {
       await groupsAPI.joinByInvite(groupId);
       setSuccess(t('groups.joinGroup.successfullyJoined'));
+      
+      // Invalidate caches so the joined group appears in the user's groups
+      queryClient.invalidateQueries({ queryKey: ['groupsList'] });
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['groupDetails', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['groupMembers', groupId] });
+      
       setTimeout(() => {
         navigate(`/groups/${groupId}`);
       }, 1500);
@@ -75,7 +84,7 @@ const JoinGroup = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, groupId, navigate, t]);
+  }, [user, groupId, navigate, t, queryClient]);
 
   useEffect(() => {
     // Auto-join if user is logged in and hasn't attempted yet

@@ -18,6 +18,7 @@ import GoogleIcon from '@mui/icons-material/Google';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import { StyledLink } from '../components/common';
 import { getErrorMessage } from '../utils/errorHandler';
+import { useQueryClient } from '@tanstack/react-query';
 
 const Register = () => {
   const [name, setName] = useState('');
@@ -31,6 +32,7 @@ const Register = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
 
   const handleOAuthSignup = (provider: 'google' | 'facebook') => {
     const params = new URLSearchParams(location.search);
@@ -76,6 +78,12 @@ const Register = () => {
           // Call backend to join group
           try {
             await groupsAPI.joinByInvite(inviteGroupId);
+            
+            // Invalidate caches so the joined group appears
+            queryClient.invalidateQueries({ queryKey: ['groupsList'] });
+            queryClient.invalidateQueries({ queryKey: ['groups'] });
+            queryClient.invalidateQueries({ queryKey: ['groupDetails', inviteGroupId] });
+            queryClient.invalidateQueries({ queryKey: ['groupMembers', inviteGroupId] });
           } catch {
             // Optionally handle join error
           }
