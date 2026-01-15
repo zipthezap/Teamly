@@ -64,6 +64,14 @@ export const createEvent = async (req: Request, res: Response) => {
     }
   }
 
+  // Validate maxPlayers if provided
+  if (maxPlayers !== undefined && maxPlayers !== null) {
+    const parsedMaxPlayers = parseInt(maxPlayers);
+    if (isNaN(parsedMaxPlayers) || parsedMaxPlayers < 2 || parsedMaxPlayers > 1000) {
+      throw new BadRequestError('Max players must be a number between 2 and 1000');
+    }
+  }
+
   // Validate event times
   const timeValidation = eventService.validateEventTimes(startTime, endTime);
   if (!timeValidation.valid) {
@@ -441,6 +449,14 @@ export const updateEvent = async (req: Request, res: Response) => {
     const coordValidation = locationService.validateCoordinates(parseFloat(latitude), parseFloat(longitude));
     if (!coordValidation.valid) {
       throw new BadRequestError(coordValidation.error!);
+    }
+  }
+
+  // Validate maxPlayers if provided
+  if (maxPlayers !== undefined && maxPlayers !== null) {
+    const parsedMaxPlayers = parseInt(maxPlayers);
+    if (isNaN(parsedMaxPlayers) || parsedMaxPlayers < 2 || parsedMaxPlayers > 1000) {
+      throw new BadRequestError('Max players must be a number between 2 and 1000');
     }
   }
 
@@ -1416,112 +1432,102 @@ export const generateInviteToken = async (req: Request, res: Response) => {
 
 // Join event as guest (no authentication required)
 export const joinEventAsGuest = async (req: Request, res: Response) => {
-  try {
-    const { token } = req.params;
-    const { name } = req.body;
+  const { token } = req.params;
+  const { name } = req.body;
 
-    if (!name || name.trim().length === 0) {
-      return res.status(400).json({ error: 'Name is required' });
+  if (!name || name.trim().length === 0) {
+    throw new BadRequestError('Name is required');
+  }
+
+  // Sanitize guest name
+  const sanitizedName = eventService.sanitizeGuestName(name);
+
+  // Use a transaction with serializable isolation to prevent race conditions
+  const result = await prisma.$transaction(async (tx) => {
+    // Find event by invite token
+    const event = await tx.event.findFirst({
+      where: {
+        inviteToken: token
+      }
+    });
+
+    if (!event) {
+      throw new NotFoundError('Event not found or invite link is invalid');
     }
 
-    // Sanitize guest name
-    const sanitizedName = eventService.sanitizeGuestName(name);
-
-    // Use a transaction with serializable isolation to prevent race conditions
-    const result = await prisma.$transaction(async (tx) => {
-      // Find event by invite token
-      const event = await tx.event.findFirst({
+    // Check max players with accurate count within transaction
+    if (event.maxPlayers) {
+      const confirmedParticipants = await tx.eventParticipant.count({
         where: {
-          inviteToken: token
+          eventId: event.id,
+          status: EventParticipantStatus.confirmed
         }
       });
 
-      if (!event) {
-        throw new Error('EVENT_NOT_FOUND');
-      }
-
-      // Check max players with accurate count within transaction
-      if (event.maxPlayers) {
-        const confirmedParticipants = await tx.eventParticipant.count({
-          where: {
-            eventId: event.id,
-            status: EventParticipantStatus.confirmed
-          }
-        });
-
-        const confirmedGuests = await tx.guestParticipant.count({
-          where: {
-            eventId: event.id,
-            status: GuestParticipantStatus.confirmed
-          }
-        });
-
-        const totalConfirmed = confirmedParticipants + confirmedGuests;
-        
-        if (totalConfirmed >= event.maxPlayers) {
-          throw new Error('EVENT_FULL');
-        }
-      }
-
-      // Create guest participant
-      const guestParticipant = await tx.guestParticipant.create({
-        data: {
+      const confirmedGuests = await tx.guestParticipant.count({
+        where: {
           eventId: event.id,
-          name: sanitizedName,
           status: GuestParticipantStatus.confirmed
         }
       });
 
-      return { guestParticipant, groupId: event.groupId };
-    }, {
-      isolationLevel: 'Serializable', // Highest isolation level to prevent race conditions
-      maxWait: TRANSACTION.MAX_WAIT_MS,
-      timeout: TRANSACTION.TIMEOUT_MS
+      const totalConfirmed = confirmedParticipants + confirmedGuests;
+      
+      if (totalConfirmed >= event.maxPlayers) {
+        throw new BadRequestError('Event is full');
+      }
+    }
+
+    // Create guest participant
+    const guestParticipant = await tx.guestParticipant.create({
+      data: {
+        eventId: event.id,
+        name: sanitizedName,
+        status: GuestParticipantStatus.confirmed
+      }
     });
 
-    // Invalidate events cache for all group members
-    await CacheService.deletePattern(`events:user:*:group:${result.groupId}:*`);
-    await CacheService.deletePattern(`events:user:*:group:all:*`);
+    return { guestParticipant, groupId: event.groupId };
+  }, {
+    isolationLevel: 'Serializable', // Highest isolation level to prevent race conditions
+    maxWait: TRANSACTION.MAX_WAIT_MS,
+    timeout: TRANSACTION.TIMEOUT_MS
+  });
 
-    res.status(201).json({ 
-      message: 'Successfully joined event',
-      participant: result.guestParticipant
-    });
-  } catch (error: any) {
-    logger.error('Join event as guest error', 'EventController', { error });
-    
-    // Handle specific error cases
-    if (error.message === 'EVENT_NOT_FOUND') {
-      return res.status(404).json({ error: 'Event not found or invite link is invalid' });
-    }
-    if (error.message === 'EVENT_FULL') {
-      return res.status(400).json({ error: 'Event is full' });
-    }
-    
-    res.status(500).json({ error: 'Failed to join event' });
-  }
+  // Invalidate events cache for all group members
+  await CacheService.deletePattern(`events:user:*:group:${result.groupId}:*`);
+  await CacheService.deletePattern(`events:user:*:group:all:*`);
+
+  res.status(201).json({ 
+    message: 'Successfully joined event',
+    participant: result.guestParticipant
+  });
 };
 
 // Get nearby events based on location and radius
 export const getNearbyEvents = async (req: Request, res: Response) => {
-  try {
-    const { latitude, longitude, radius = 10, limit = 50 } = req.query;
+  const { latitude, longitude, radius = 10, limit = 50 } = req.query;
 
-    if (!latitude || !longitude) {
-      return res.status(400).json({ error: 'Latitude and longitude are required' });
-    }
+  if (!latitude || !longitude) {
+    throw new BadRequestError('Latitude and longitude are required');
+  }
 
-    const lat = parseFloat(latitude as string);
-    const lon = parseFloat(longitude as string);
-    const radiusKm = parseFloat(radius as string);
+  const lat = parseFloat(latitude as string);
+  const lon = parseFloat(longitude as string);
+  const radiusKm = parseFloat(radius as string);
 
-    // Validate coordinates
-    const coordValidation = locationService.validateCoordinates(lat, lon);
-    if (!coordValidation.valid) {
-      return res.status(400).json({ error: coordValidation.error });
-    }
+  // Validate coordinates
+  const coordValidation = locationService.validateCoordinates(lat, lon);
+  if (!coordValidation.valid) {
+    throw new BadRequestError(coordValidation.error!);
+  }
 
-    // Get all events with location data
+  // Validate radius (max 100km to prevent excessive queries)
+  if (isNaN(radiusKm) || radiusKm <= 0 || radiusKm > 100) {
+    throw new BadRequestError('Radius must be a number between 0 and 100 kilometers');
+  }
+
+  // Get all events with location data
     const events = await prisma.event.findMany({
       where: {
         latitude: { not: null },
@@ -1559,21 +1565,17 @@ export const getNearbyEvents = async (req: Request, res: Response) => {
       radiusKm
     ).slice(0, parseInt(limit as string)); // Limit after filtering
 
-    // Enrich with location info
-    const enrichedEvents = nearbyEvents.map(event => 
-      locationService.enrichWithLocationInfo(event)
-    );
+  // Enrich with location info
+  const enrichedEvents = nearbyEvents.map(event => 
+    locationService.enrichWithLocationInfo(event)
+  );
 
-    res.json({
-      results: enrichedEvents,
-      total: enrichedEvents.length,
-      center: { latitude: lat, longitude: lon },
-      radius: radiusKm
-    });
-  } catch (error) {
-    logger.error('Get nearby events error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to get nearby events' });
-  }
+  res.json({
+    results: enrichedEvents,
+    total: enrichedEvents.length,
+    center: { latitude: lat, longitude: lon },
+    radius: radiusKm
+  });
 };
 
 /**
