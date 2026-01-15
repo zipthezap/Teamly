@@ -103,19 +103,32 @@ export const createGroup = async (req: Request, res: Response) => {
       //   return R * c < 10; // 10km
       // };
       const nearbyUserIds = users.map(u => u.id);
-      await Promise.all(nearbyUserIds.map(userId =>
-        prisma.groupNotification.create({
-          data: {
-            groupId: group.id,
-            userId,
-            type: GroupNotificationType.nearby_created,
-            params: {
-              groupName: group.name,
-              name: req.user!.name
+      
+      // Use Promise.allSettled to handle individual notification failures gracefully
+      const notificationResults = await Promise.allSettled(
+        nearbyUserIds.map(userId =>
+          prisma.groupNotification.create({
+            data: {
+              groupId: group.id,
+              userId,
+              type: GroupNotificationType.nearby_created,
+              params: {
+                groupName: group.name,
+                name: req.user!.name
+              }
             }
-          }
-        })
-      ));
+          })
+        )
+      );
+
+      // Log any failures but don't block group creation
+      const failures = notificationResults.filter(r => r.status === 'rejected');
+      if (failures.length > 0) {
+        logger.warn('Some nearby user notifications failed', 'GroupController', { 
+          failureCount: failures.length,
+          totalUsers: nearbyUserIds.length 
+        });
+      }
     }
     res.status(201).json(group);
   } catch (error) {
@@ -507,21 +520,52 @@ export const removeMember = async (req: Request, res: Response) => {
 
     // Prevent admin from removing itself
     const memberToRemove = await prisma.groupMember.findUnique({
-      where: { id: memberId }
+      where: { id: memberId },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true }
+        }
+      }
     });
-    if (memberToRemove && memberToRemove.userId === req.user!.id && memberToRemove.role === 'admin') {
+    
+    if (!memberToRemove) {
+      return res.status(404).json({ error: 'Member not found' });
+    }
+    
+    if (memberToRemove.userId === req.user!.id && memberToRemove.role === 'admin') {
       return res.status(403).json({ error: 'Admins cannot remove themselves from the group.' });
     }
+
+    // Get group name for notification
+    const group = await prisma.group.findUnique({
+      where: { id },
+      select: { name: true }
+    });
 
     await prisma.groupMember.delete({
       where: { id: memberId }
     });
 
+    // Notify the removed member
+    if (group) {
+      await prisma.groupNotification.create({
+        data: {
+          groupId: id,
+          userId: memberToRemove.userId,
+          type: GroupNotificationType.removed,
+          params: {
+            groupName: group.name,
+            name: req.user!.name
+          }
+        }
+      }).catch(error => {
+        logger.error('Failed to send removal notification', 'GroupController', { error });
+      });
+    }
+
     // Invalidate group cache for all affected users
     await CacheService.invalidate('group', id);
-    if (memberToRemove) {
-      await CacheService.deletePattern(`user:${memberToRemove.userId}:groups:*`);
-    }
+    await CacheService.deletePattern(`user:${memberToRemove.userId}:groups:*`);
 
     res.json({ message: 'Member removed successfully' });
   } catch (error) {
