@@ -29,6 +29,28 @@ export interface NotificationParams {
   [key: string]: string | number | boolean | undefined;
 }
 
+/**
+ * Type guard to safely convert Prisma Json to NotificationParams
+ */
+function toNotificationParams(params: Prisma.JsonValue | null | undefined): NotificationParams | undefined {
+  if (!params || typeof params !== 'object' || Array.isArray(params)) {
+    return undefined;
+  }
+  
+  const result: NotificationParams = {};
+  const obj = params as Record<string, unknown>;
+  
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      result[key] = value;
+    } else if (value === null || value === undefined) {
+      result[key] = undefined;
+    }
+  }
+  
+  return result;
+}
+
 // Types for notification query results with includes
 type EventNotificationWithRelations = Prisma.EventNotificationGetPayload<{
   include: {
@@ -246,7 +268,7 @@ export const getUserNotifications = async (
       userId: n.userId,
       type: n.type as EventNotificationType,
       notificationType: 'event' as const,
-      params: (n.params as NotificationParams) || {
+      params: toNotificationParams(n.params) || {
         name: n.user?.name,
         eventTitle: n.event?.title,
         // add more as needed
@@ -266,7 +288,7 @@ export const getUserNotifications = async (
       userId: n.userId,
       type: n.type as GroupNotificationType,
       notificationType: 'group' as const,
-      params: (n.params as NotificationParams) || {
+      params: toNotificationParams(n.params) || {
         groupName: n.group?.name,
         // add more as needed
       },
@@ -284,7 +306,7 @@ export const getUserNotifications = async (
       userId: n.userId,
       type: n.type as TeamUpNotificationType,
       notificationType: 'teamup' as const,
-      params: (n.params as NotificationParams) || {
+      params: toNotificationParams(n.params) || {
         title: n.teamUpRequest?.title,
         sportType: n.teamUpRequest?.sportType,
         // add more as needed
@@ -303,7 +325,7 @@ export const getUserNotifications = async (
       userId: n.userId,
       type: n.type as TournamentNotificationType,
       notificationType: 'tournament' as const,
-      params: (n.params as NotificationParams) || {
+      params: toNotificationParams(n.params) || {
         tournamentName: n.tournament?.name,
         sportType: n.tournament?.sportType,
         // add more as needed
