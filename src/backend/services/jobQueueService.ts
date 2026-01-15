@@ -31,12 +31,53 @@ export type JobType =
   | 'send_email_batch';
 
 /**
+ * Notification types
+ */
+type EventNotificationType = 'join' | 'leave' | 'late' | 'confirmed' | 'declined' | 'status_change' | 'comment' | 'event_updated' | 'event_cancelled';
+type GroupNotificationType = 'accepted' | 'invited' | 'join_request' | 'event_created' | 'nearby_created';
+
+/**
+ * Job data structures for each job type
+ */
+export interface BulkNotificationJobData {
+  type: 'event' | 'group';
+  eventId?: string;
+  groupId?: string;
+  userIds: string[];
+  notificationType: string;
+  params?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+}
+
+export interface CacheInvalidationJobData {
+  patterns: string[];
+}
+
+export interface EventUpdateJobData {
+  eventId: string;
+  groupId: string;
+}
+
+export interface DataCleanupJobData {
+  [key: string]: unknown;
+}
+
+/**
+ * Union type for all job data
+ */
+export type JobData =
+  | BulkNotificationJobData
+  | CacheInvalidationJobData
+  | EventUpdateJobData
+  | DataCleanupJobData;
+
+/**
  * Job data structure
  */
 export interface Job {
   id: string;
   type: JobType;
-  data: any;
+  data: JobData;
   createdAt: Date;
   attempts: number;
   maxAttempts: number;
@@ -48,7 +89,7 @@ export interface Job {
 export interface JobStatus {
   id: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
-  result?: any;
+  result?: unknown;
   error?: string;
 }
 
@@ -180,19 +221,19 @@ async function processJobInternal(job: Job): Promise<void> {
 
     switch (job.type) {
       case 'send_bulk_notifications':
-        await handleBulkNotifications(job.data);
+        await handleBulkNotifications(job.data as BulkNotificationJobData);
         break;
       
       case 'invalidate_cache':
-        await handleCacheInvalidation(job.data);
+        await handleCacheInvalidation(job.data as CacheInvalidationJobData);
         break;
       
       case 'process_event_update':
-        await handleEventUpdate(job.data);
+        await handleEventUpdate(job.data as EventUpdateJobData);
         break;
       
       case 'cleanup_old_data':
-        await handleDataCleanup(job.data);
+        await handleDataCleanup(job.data as DataCleanupJobData);
         break;
       
       default:
@@ -232,17 +273,17 @@ async function processJobInternal(job: Job): Promise<void> {
  * Job handlers
  */
 
-async function handleBulkNotifications(data: any): Promise<void> {
+async function handleBulkNotifications(data: BulkNotificationJobData): Promise<void> {
   const { type, eventId, groupId, userIds, notificationType, params, metadata } = data;
 
-  if (type === 'event') {
-    await createBulkEventNotifications(eventId, userIds, notificationType, params, metadata);
-  } else if (type === 'group') {
-    await createBulkGroupNotifications(groupId, userIds, notificationType, params);
+  if (type === 'event' && eventId) {
+    await createBulkEventNotifications(eventId, userIds, notificationType as EventNotificationType, params, metadata);
+  } else if (type === 'group' && groupId) {
+    await createBulkGroupNotifications(groupId, userIds, notificationType as GroupNotificationType, params);
   }
 }
 
-async function handleCacheInvalidation(data: any): Promise<void> {
+async function handleCacheInvalidation(data: CacheInvalidationJobData): Promise<void> {
   const { patterns } = data;
 
   for (const pattern of patterns) {
@@ -250,7 +291,7 @@ async function handleCacheInvalidation(data: any): Promise<void> {
   }
 }
 
-async function handleEventUpdate(data: any): Promise<void> {
+async function handleEventUpdate(data: EventUpdateJobData): Promise<void> {
   // Handle event updates that require cache invalidation
   const { eventId, groupId } = data;
 
@@ -260,7 +301,7 @@ async function handleEventUpdate(data: any): Promise<void> {
   ]);
 }
 
-async function handleDataCleanup(data: any): Promise<void> {
+async function handleDataCleanup(data: DataCleanupJobData): Promise<void> {
   // Implement data cleanup logic
   logger.info('Data cleanup job executed', 'JobQueue', data);
 }
@@ -298,7 +339,7 @@ export function shutdownJobQueue(): void {
  */
 export async function enqueueJob(
   type: JobType,
-  data: any,
+  data: JobData,
   maxAttempts: number = 3
 ): Promise<string> {
   // Generate cryptographically secure unique ID for the job
@@ -343,8 +384,8 @@ export async function queueBulkNotifications(
   groupId: string | undefined,
   userIds: string[],
   notificationType: string,
-  params?: any,
-  metadata?: any
+  params?: Record<string, unknown>,
+  metadata?: Record<string, unknown>
 ): Promise<string> {
   return await enqueueJob('send_bulk_notifications', {
     type,
