@@ -51,7 +51,7 @@ const GroupsList = () => {
   const [filter, setFilter] = useState('all');
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, loading: userLoading } = useAuth();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const {

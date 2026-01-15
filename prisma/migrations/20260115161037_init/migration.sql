@@ -2,10 +2,13 @@
 CREATE TYPE "EventNotificationType" AS ENUM ('join', 'leave', 'late', 'confirmed', 'declined', 'status_change', 'comment', 'event_updated', 'event_cancelled');
 
 -- CreateEnum
-CREATE TYPE "GroupNotificationType" AS ENUM ('accepted', 'invited', 'join_request', 'event_created', 'nearby_created');
+CREATE TYPE "GroupNotificationType" AS ENUM ('accepted', 'invited', 'join_request', 'event_created', 'nearby_created', 'removed');
 
 -- CreateEnum
-CREATE TYPE "TeamUpNotificationType" AS ENUM ('teamup_response', 'teamup_accepted', 'teamup_declined', 'teamup_nearby');
+CREATE TYPE "TeamUpNotificationType" AS ENUM ('teamup_response', 'teamup_accepted', 'teamup_declined', 'teamup_nearby', 'teamup_comment');
+
+-- CreateEnum
+CREATE TYPE "TournamentNotificationType" AS ENUM ('team_registered', 'tournament_updated', 'tournament_cancelled', 'match_scheduled', 'score_submitted');
 
 -- CreateEnum
 CREATE TYPE "EventParticipantStatus" AS ENUM ('pending', 'confirmed', 'declined');
@@ -124,6 +127,20 @@ CREATE TABLE "TeamUpNotification" (
 );
 
 -- CreateTable
+CREATE TABLE "TournamentNotification" (
+    "id" TEXT NOT NULL,
+    "tournamentId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "type" "TournamentNotificationType" NOT NULL,
+    "params" JSONB,
+    "metadata" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "read" BOOLEAN NOT NULL DEFAULT false,
+
+    CONSTRAINT "TournamentNotification_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
@@ -173,6 +190,10 @@ CREATE TABLE "Group" (
     "city" TEXT,
     "country" TEXT,
     "picture" TEXT,
+    "sportType" "SportType",
+    "maxMembers" INTEGER,
+    "autoApproveJoinRequests" BOOLEAN NOT NULL DEFAULT false,
+    "tags" TEXT,
     "creatorId" TEXT NOT NULL,
 
     CONSTRAINT "Group_pkey" PRIMARY KEY ("id")
@@ -185,6 +206,7 @@ CREATE TABLE "GroupJoinRequest" (
     "userId" TEXT NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'pending',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdBy" TEXT NOT NULL DEFAULT 'user',
 
     CONSTRAINT "GroupJoinRequest_pkey" PRIMARY KEY ("id")
 );
@@ -652,6 +674,21 @@ CREATE INDEX "TeamUpNotification_userId_read_idx" ON "TeamUpNotification"("userI
 CREATE INDEX "TeamUpNotification_createdAt_idx" ON "TeamUpNotification"("createdAt");
 
 -- CreateIndex
+CREATE INDEX "TournamentNotification_userId_idx" ON "TournamentNotification"("userId");
+
+-- CreateIndex
+CREATE INDEX "TournamentNotification_tournamentId_idx" ON "TournamentNotification"("tournamentId");
+
+-- CreateIndex
+CREATE INDEX "TournamentNotification_read_idx" ON "TournamentNotification"("read");
+
+-- CreateIndex
+CREATE INDEX "TournamentNotification_userId_read_idx" ON "TournamentNotification"("userId", "read");
+
+-- CreateIndex
+CREATE INDEX "TournamentNotification_createdAt_idx" ON "TournamentNotification"("createdAt");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
@@ -1037,6 +1074,12 @@ ALTER TABLE "TeamUpNotification" ADD CONSTRAINT "TeamUpNotification_teamUpReques
 
 -- AddForeignKey
 ALTER TABLE "TeamUpNotification" ADD CONSTRAINT "TeamUpNotification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TournamentNotification" ADD CONSTRAINT "TournamentNotification_tournamentId_fkey" FOREIGN KEY ("tournamentId") REFERENCES "Tournament"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TournamentNotification" ADD CONSTRAINT "TournamentNotification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Group" ADD CONSTRAINT "Group_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
