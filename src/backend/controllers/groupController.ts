@@ -594,6 +594,23 @@ export const inviteMember = async (req: Request, res: Response) => {
     );
   }
 
+  // Create in-app notification for the invited user
+  if (inviterUser) {
+    await prisma.groupNotification.create({
+      data: {
+        groupId: id,
+        userId: userToInvite.id,
+        type: 'invited',
+        params: {
+          groupName: group.name,
+          name: inviterUser.name
+        }
+      }
+    }).catch((error: Error) => {
+      logger.error('Failed to send invitation notification', 'GroupController', { error });
+    });
+  }
+
   // Invalidate group cache for all affected users
   await CacheService.invalidate('group', id);
   // Invalidate user groups cache for the invited user
@@ -882,6 +899,61 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
     throw new BadRequestError('Join request already pending');
   }
 
+  // If auto-approve is enabled, directly add user as member
+  if (group.autoApproveJoinRequests) {
+    // Create approved join request for record keeping
+    const joinRequest = await prisma.groupJoinRequest.create({
+      data: {
+        groupId: id,
+        userId: req.user!.id,
+        status: 'approved'
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true }
+        },
+        group: {
+          select: { id: true, name: true, description: true }
+        }
+      }
+    });
+
+    // Add user as member
+    await prisma.groupMember.create({
+      data: {
+        groupId: id,
+        userId: req.user!.id,
+        role: 'member'
+      }
+    });
+
+    // Notify the user that they were accepted
+    await prisma.groupNotification.create({
+      data: {
+        groupId: id,
+        userId: req.user!.id,
+        type: 'accepted',
+        params: {
+          groupName: group.name,
+          name: 'Auto-approved'
+        }
+      }
+    }).catch((error: Error) => {
+      logger.error('Failed to send auto-approval notification', 'GroupController', { error });
+    });
+
+    // Invalidate group cache for all affected users
+    await CacheService.invalidate('group', id);
+    await CacheService.deletePattern(`user:${req.user!.id}:groups:*`);
+
+    res.status(201).json({
+      ...joinRequest,
+      autoApproved: true,
+      message: 'Automatically approved and joined group'
+    });
+    return;
+  }
+
   // Create join request
   const joinRequest = await prisma.groupJoinRequest.create({
     data: {
@@ -904,7 +976,7 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
     where: { groupId: id, role: 'admin' },
     select: { userId: true }
   });
-  await Promise.all(admins.map(admin =>
+  await Promise.all(admins.map((admin: { userId: string }) =>
     prisma.groupNotification.create({
       data: {
         groupId: id,
