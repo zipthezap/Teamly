@@ -36,9 +36,9 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       <div className="text-base text-gray-400 mb-6 max-w-xl mx-auto">{description}</div>
       {actions.length > 0 && (
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          {actions.map((action, idx) => (
+          {actions.map((action) => (
             <button
-              key={idx}
+              key={action.label}
               className="inline-flex items-center justify-center px-8 py-3 rounded-md font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 bg-blue-600 text-white hover:bg-blue-700 text-base"
               onClick={action.onClick}
             >

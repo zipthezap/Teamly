@@ -34,6 +34,10 @@ const EditGroup = () => {
   const [isPublic, setIsPublic] = useState(false);
   const [location, setLocation] = useState<LocationValue>({});
   const [groupPicture, setGroupPicture] = useState<string | undefined>();
+  const [sportType, setSportType] = useState('');
+  const [maxMembers, setMaxMembers] = useState<number | string>('');
+  const [autoApproveJoinRequests, setAutoApproveJoinRequests] = useState(false);
+  const [tags, setTags] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -56,6 +60,10 @@ const EditGroup = () => {
       setDescription(group.description || '');
       setIsPublic(group.isPublic || false);
       setGroupPicture(group.picture);
+      setSportType(group.sportType || '');
+      setMaxMembers(group.maxMembers || '');
+      setAutoApproveJoinRequests(group.autoApproveJoinRequests || false);
+      setTags(group.tags || '');
       setLocation({
         latitude: group.latitude,
         longitude: group.longitude,
@@ -86,6 +94,10 @@ const EditGroup = () => {
         ...(location.locationName && { locationName: location.locationName }),
         ...(location.city && { city: location.city }),
         ...(location.country && { country: location.country }),
+        sportType: sportType || null,
+        maxMembers: maxMembers ? (typeof maxMembers === 'string' ? parseInt(maxMembers) : maxMembers) : null,
+        autoApproveJoinRequests,
+        tags: tags || null,
       };
       
       if (!id) {
@@ -174,6 +186,14 @@ const EditGroup = () => {
             setDescription={setDescription}
             isPublic={isPublic}
             setIsPublic={setIsPublic}
+            sportType={sportType}
+            setSportType={setSportType}
+            maxMembers={maxMembers}
+            setMaxMembers={setMaxMembers}
+            autoApproveJoinRequests={autoApproveJoinRequests}
+            setAutoApproveJoinRequests={setAutoApproveJoinRequests}
+            tags={tags}
+            setTags={setTags}
             t={t}
           />
 

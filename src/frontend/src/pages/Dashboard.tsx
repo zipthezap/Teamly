@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
@@ -29,12 +29,13 @@ const Dashboard = () => {
   const [events, setEvents] = useState<EventWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { t } = useTranslation();
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [location.key]);
 
   const fetchData = async () => {
     try {
@@ -386,12 +387,12 @@ const Dashboard = () => {
                       </Box>
                       {recentMembers.length > 0 && (
                         <AvatarGroup max={4} sx={{ justifyContent: 'flex-start' }}>
-                          {recentMembers.map((member, idx) => {
+                          {recentMembers.map((member) => {
                             const currentPic = member.user?.profilePictures?.find((p) => p.isCurrent && !p.deletedAt);
                             const profilePictureUrl = getImageUrl(currentPic?.url || member.user?.profilePicture);
                             return (
                               <Avatar
-                                key={idx}
+                                key={member.id}
                                 src={profilePictureUrl || undefined}
                                 sx={{ width: 32, height: 32, fontSize: '0.75rem', bgcolor: 'primary.main' }}
                               >

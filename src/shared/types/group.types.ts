@@ -20,6 +20,11 @@ export interface Group {
   country?: string | null;
   picture?: string | null;
   creatorId: string;
+  // Enhanced group settings
+  sportType?: string | null;
+  maxMembers?: number | null;
+  autoApproveJoinRequests?: boolean;
+  tags?: string | null;
 }
 
 // Group with relations
@@ -86,6 +91,10 @@ export interface CreateGroupData {
   locationName?: string;
   city?: string;
   country?: string;
+  sportType?: string;
+  maxMembers?: number;
+  autoApproveJoinRequests?: boolean;
+  tags?: string;
 }
 
 // Update Group data
@@ -98,6 +107,10 @@ export interface UpdateGroupData {
   locationName?: string;
   city?: string;
   country?: string;
+  sportType?: string;
+  maxMembers?: number;
+  autoApproveJoinRequests?: boolean;
+  tags?: string;
 }
 
 // Group search/filter params

@@ -105,19 +105,13 @@ const EventsList = () => {
       const offset = (page - 1) * visibleCount;
       const params: EventSearchParams = { ...searchFilters, offset, limit: visibleCount };
       const response = await eventsAPI.getAll(params);
-      console.log('[EventsList] Fetched events:', response.data);
-      if (Array.isArray(response.data?.data)) {
-        response.data.data.forEach((event, idx) => {
-          console.log(`[EventsList] [fetchEvents] Event #${idx}:`, event);
-        });
-      }
-      if (Array.isArray(response.data)) {
-        response.data.forEach((event, idx) => {
-          console.log(`[EventsList] Event #${idx}:`, event);
-        });
-      }
       // Always expect API response shape { data: [...] }
-      const newEvents = Array.isArray(response.data?.data) ? response.data.data : [];
+      let newEvents: EventWithDetails[] = [];
+      if (Array.isArray(response.data?.data)) {
+        newEvents = response.data.data;
+      } else if (Array.isArray(response.data)) {
+        newEvents = response.data;
+      }
       setEvents(newEvents);
       console.log('[EventsList] [fetchEvents] setEvents called, newEvents:', newEvents);
     } catch (err) {

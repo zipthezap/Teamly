@@ -44,8 +44,8 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ links, onNavigate }) => {
         aria-hidden={!open}
       >
         <ul>
-          {links.map((link, index) => (
-            <li key={index} className="mb-1">
+          {links.map((link) => (
+            <li key={link.path} className="mb-1">
               <button
                 onClick={() => onNavigate(link.path)}
                 className="flex items-center w-full rounded-lg py-2 px-3 transition hover:bg-[#232946] focus:outline-none"

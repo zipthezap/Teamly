@@ -46,6 +46,10 @@ export default function GroupDetailsPage() {
     name: '',
     description: '',
     privacy: 'public',
+    sportType: '',
+    maxMembers: '' as number | string,
+    autoApproveJoinRequests: false,
+    tags: '',
   });
   const [groupPicture, setGroupPicture] = useState<string | undefined>();
 
@@ -71,7 +75,6 @@ export default function GroupDetailsPage() {
     queryKey: ["groupEvents", groupId],
     queryFn: async () => {
       const res = await eventsAPI.getAll({ groupId });
-      console.log('[GroupDetailsPage] API events response:', res.data);
       return res.data;
     },
     enabled: !!groupId,
@@ -127,6 +130,10 @@ export default function GroupDetailsPage() {
         name: group.name || '',
         description: group.description || '',
         privacy: group.isPublic ? 'public' : 'private',
+        sportType: group.sportType || '',
+        maxMembers: group.maxMembers || '',
+        autoApproveJoinRequests: group.autoApproveJoinRequests || false,
+        tags: group.tags || '',
       });
       setGroupPicture(group.picture ?? undefined);
     }

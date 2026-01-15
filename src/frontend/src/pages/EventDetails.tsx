@@ -7,7 +7,16 @@ import { useAuth } from '../contexts/AuthContext';
 import InviteLinkCard from '../components/InviteLinkCard';
 import { getImageUrl, getInitials } from '../utils/imageUtils';
 import { EventWithDetails, EventParticipant, GuestParticipant, EventParticipantStatus, GuestParticipantStatus } from '../../../shared/types/event.types';
+import { UserProfilePicture, PublicUser } from '../../../shared/types/user.types';
 import { AxiosError } from 'axios';
+
+interface EventNotification {
+  id: string;
+  type: string;
+  userId: string;
+  user?: PublicUser;
+  createdAt: Date | string;
+}
 
 const EventDetails = () => {
   const { id } = useParams();
@@ -145,7 +154,7 @@ const EventDetails = () => {
 
   const generateInviteLinkMutation = useMutation({
     mutationFn: async () => eventsAPI.generateInviteToken(id!),
-    onSuccess: (response: any) => {
+    onSuccess: (response: { data: { inviteToken: string } }) => {
       const inviteUrl = `${window.location.origin}/events/join/${response.data.inviteToken}`;
       navigator.clipboard.writeText(inviteUrl);
       setCopySuccess('Invite link copied to clipboard!');
@@ -288,7 +297,7 @@ const EventDetails = () => {
           <div className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3 mb-4">
             <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center text-lg font-bold flex-shrink-0 overflow-hidden">
               {(() => {
-                const currentPic = event.creator?.profilePictures?.find((p: any) => p.isCurrent && !p.deletedAt);
+                const currentPic = event.creator?.profilePictures?.find((p: UserProfilePicture) => p.isCurrent && !p.deletedAt);
                 const url = getImageUrl(currentPic?.url || event.creator?.profilePicture);
                 return url ? (
                   <img src={url} alt={event.creator?.name} className="w-full h-full object-cover" />
@@ -401,7 +410,7 @@ const EventDetails = () => {
                   </div>
                 </div>
               ) : (
-                event.eventNotifications && event.eventNotifications.map((n: any, idx: number) => {
+                event.eventNotifications && event.eventNotifications.map((n: EventNotification) => {
                   let action = '';
                   switch (n.type) {
                     case 'join':
@@ -423,11 +432,11 @@ const EventDetails = () => {
                       action = n.type;
                   }
                   return (
-                    <div key={idx} className="mb-3 pb-3 border-b border-[#232946] last:border-b-0">
+                    <div key={n.id} className="mb-3 pb-3 border-b border-[#232946] last:border-b-0">
                       <div className="flex items-start gap-2">
                         <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden">
                           {(() => {
-                            const currentPic = n.user?.profilePictures?.find((p: any) => p.isCurrent && !p.deletedAt);
+                            const currentPic = n.user?.profilePictures?.find((p: UserProfilePicture) => p.isCurrent && !p.deletedAt);
                             const url = getImageUrl(currentPic?.url || n.user?.profilePicture);
                             return url ? (
                               <img src={url} alt={n.user?.name} className="w-full h-full object-cover" />
@@ -455,11 +464,11 @@ const EventDetails = () => {
       <div className="bg-[#232946] rounded-xl shadow-md p-6 mt-8">
         <div className="font-semibold mb-4 text-xl">{t('eventDetails.participantsList', { count: eventStats.totalParticipants })}</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {event?.participants?.map((p: any, idx: number) => (
-            <div key={p.id || idx} className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3">
+          {event?.participants?.map((p: EventParticipant) => (
+            <div key={p.id} className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3">
               <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden">
                 {(() => {
-                  const currentPic = p.user?.profilePictures?.find((pic: any) => pic.isCurrent && !pic.deletedAt);
+                  const currentPic = p.user?.profilePictures?.find((pic: UserProfilePicture) => pic.isCurrent && !pic.deletedAt);
                   const url = getImageUrl(currentPic?.url || p.user?.profilePicture);
                   return url ? (
                     <img src={url} alt={p.user?.name} className="w-full h-full object-cover" />
@@ -483,8 +492,8 @@ const EventDetails = () => {
               </div>
             </div>
           ))}
-          {event.guestParticipants?.map((g: any, idx: number) => (
-            <div key={g.id || `guest-${idx}`} className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3 border border-purple-500/30">
+          {event.guestParticipants?.map((g: GuestParticipant) => (
+            <div key={g.id} className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3 border border-purple-500/30">
               <div className="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">{getInitials(g.name)}</div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold text-white truncate">{g.name}</div>

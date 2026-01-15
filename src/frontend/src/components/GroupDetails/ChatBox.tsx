@@ -77,7 +77,7 @@ const ChatBox: React.FC<ChatBoxProps> = React.memo(({ chat, message, setMessage,
             const profilePictureUrl = getImageUrl(msg.user?.profilePicture);
             
             return (
-              <div key={idx} className="flex items-start gap-3 animate-fadein">
+              <div key={msg.id} className="flex items-start gap-3 animate-fadein">
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white shadow-lg flex-shrink-0 ring-2 ring-slate-700 overflow-hidden">
                   {profilePictureUrl ? (
                     <img src={profilePictureUrl} alt={senderName} className="w-full h-full object-cover" />

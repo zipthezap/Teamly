@@ -65,6 +65,14 @@ export const createEvent = async (req: Request, res: Response) => {
     }
   }
 
+  // Validate maxPlayers if provided
+  if (maxPlayers !== undefined && maxPlayers !== null) {
+    const parsedMaxPlayers = parseInt(maxPlayers);
+    if (isNaN(parsedMaxPlayers) || parsedMaxPlayers < 2 || parsedMaxPlayers > 1000) {
+      throw new BadRequestError('Max players must be a number between 2 and 1000');
+    }
+  }
+
   // Validate event times
   const timeValidation = eventService.validateEventTimes(startTime, endTime);
   if (!timeValidation.valid) {
@@ -447,6 +455,14 @@ export const updateEvent = async (req: Request, res: Response) => {
     }
   }
 
+  // Validate maxPlayers if provided
+  if (maxPlayers !== undefined && maxPlayers !== null) {
+    const parsedMaxPlayers = parseInt(maxPlayers);
+    if (isNaN(parsedMaxPlayers) || parsedMaxPlayers < 2 || parsedMaxPlayers > 1000) {
+      throw new BadRequestError('Max players must be a number between 2 and 1000');
+    }
+  }
+
   // Validate that events are single-day only if both times are provided
   if (startTime && endTime) {
     const timeValidation = eventService.validateEventTimes(startTime, endTime);
@@ -820,8 +836,12 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!['pending', 'confirmed', 'declined'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' });
+    // Validate status using enum
+    const validStatuses = Object.values(EventParticipantStatus);
+    if (!status || !validStatuses.includes(status as EventParticipantStatus)) {
+      return res.status(400).json({ 
+        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` 
+      });
     }
 
     const participant = await prisma.eventParticipant.findFirst({
@@ -1415,109 +1435,102 @@ export const generateInviteToken = async (req: Request, res: Response) => {
 
 // Join event as guest (no authentication required)
 export const joinEventAsGuest = async (req: Request, res: Response) => {
-  try {
-    const { token } = req.params;
-    const { name } = req.body;
+  const { token } = req.params;
+  const { name } = req.body;
 
-    if (!name || name.trim().length === 0) {
-      return res.status(400).json({ error: 'Name is required' });
+  if (!name || name.trim().length === 0) {
+    throw new BadRequestError('Name is required');
+  }
+
+  // Sanitize guest name
+  const sanitizedName = eventService.sanitizeGuestName(name);
+
+  // Use a transaction with serializable isolation to prevent race conditions
+  const result = await prisma.$transaction(async (tx) => {
+    // Find event by invite token
+    const event = await tx.event.findFirst({
+      where: {
+        inviteToken: token
+      }
+    });
+
+    if (!event) {
+      throw new NotFoundError('Event not found or invite link is invalid');
     }
 
-    // Use a transaction with serializable isolation to prevent race conditions
-    const result = await prisma.$transaction(async (tx) => {
-      // Find event by invite token
-      const event = await tx.event.findFirst({
+    // Check max players with accurate count within transaction
+    if (event.maxPlayers) {
+      const confirmedParticipants = await tx.eventParticipant.count({
         where: {
-          inviteToken: token
+          eventId: event.id,
+          status: EventParticipantStatus.confirmed
         }
       });
 
-      if (!event) {
-        throw new Error('EVENT_NOT_FOUND');
-      }
-
-      // Check max players with accurate count within transaction
-      if (event.maxPlayers) {
-        const confirmedParticipants = await tx.eventParticipant.count({
-          where: {
-            eventId: event.id,
-            status: EventParticipantStatus.confirmed
-          }
-        });
-
-        const confirmedGuests = await tx.guestParticipant.count({
-          where: {
-            eventId: event.id,
-            status: GuestParticipantStatus.confirmed
-          }
-        });
-
-        const totalConfirmed = confirmedParticipants + confirmedGuests;
-        
-        if (totalConfirmed >= event.maxPlayers) {
-          throw new Error('EVENT_FULL');
-        }
-      }
-
-      // Create guest participant
-      const guestParticipant = await tx.guestParticipant.create({
-        data: {
+      const confirmedGuests = await tx.guestParticipant.count({
+        where: {
           eventId: event.id,
-          name: name.trim(),
           status: GuestParticipantStatus.confirmed
         }
       });
 
-      return { guestParticipant, groupId: event.groupId };
-    }, {
-      isolationLevel: 'Serializable', // Highest isolation level to prevent race conditions
-      maxWait: TRANSACTION.MAX_WAIT_MS,
-      timeout: TRANSACTION.TIMEOUT_MS
+      const totalConfirmed = confirmedParticipants + confirmedGuests;
+      
+      if (totalConfirmed >= event.maxPlayers) {
+        throw new BadRequestError('Event is full');
+      }
+    }
+
+    // Create guest participant
+    const guestParticipant = await tx.guestParticipant.create({
+      data: {
+        eventId: event.id,
+        name: sanitizedName,
+        status: GuestParticipantStatus.confirmed
+      }
     });
 
-    // Invalidate events cache for all group members
-    await CacheService.deletePattern(`events:user:*:group:${result.groupId}:*`);
-    await CacheService.deletePattern(`events:user:*:group:all:*`);
+    return { guestParticipant, groupId: event.groupId };
+  }, {
+    isolationLevel: 'Serializable', // Highest isolation level to prevent race conditions
+    maxWait: TRANSACTION.MAX_WAIT_MS,
+    timeout: TRANSACTION.TIMEOUT_MS
+  });
 
-    res.status(201).json({ 
-      message: 'Successfully joined event',
-      participant: result.guestParticipant
-    });
-  } catch (error: any) {
-    logger.error('Join event as guest error', 'EventController', { error });
-    
-    // Handle specific error cases
-    if (error.message === 'EVENT_NOT_FOUND') {
-      return res.status(404).json({ error: 'Event not found or invite link is invalid' });
-    }
-    if (error.message === 'EVENT_FULL') {
-      return res.status(400).json({ error: 'Event is full' });
-    }
-    
-    res.status(500).json({ error: 'Failed to join event' });
-  }
+  // Invalidate events cache for all group members
+  await CacheService.deletePattern(`events:user:*:group:${result.groupId}:*`);
+  await CacheService.deletePattern(`events:user:*:group:all:*`);
+
+  res.status(201).json({ 
+    message: 'Successfully joined event',
+    participant: result.guestParticipant
+  });
 };
 
 // Get nearby events based on location and radius
 export const getNearbyEvents = async (req: Request, res: Response) => {
-  try {
-    const { latitude, longitude, radius = 10, limit = 50 } = req.query;
+  const { latitude, longitude, radius = 10, limit = 50 } = req.query;
 
-    if (!latitude || !longitude) {
-      return res.status(400).json({ error: 'Latitude and longitude are required' });
-    }
+  if (!latitude || !longitude) {
+    throw new BadRequestError('Latitude and longitude are required');
+  }
 
-    const lat = parseFloat(latitude as string);
-    const lon = parseFloat(longitude as string);
-    const radiusKm = parseFloat(radius as string);
+  const lat = parseFloat(latitude as string);
+  const lon = parseFloat(longitude as string);
+  const radiusKm = parseFloat(radius as string);
 
-    // Validate coordinates
-    const coordValidation = locationService.validateCoordinates(lat, lon);
-    if (!coordValidation.valid) {
-      return res.status(400).json({ error: coordValidation.error });
-    }
+  // Validate coordinates
+  const coordValidation = locationService.validateCoordinates(lat, lon);
+  if (!coordValidation.valid) {
+    throw new BadRequestError(coordValidation.error!);
+  }
 
-    // Get all events with location data
+  // Validate radius (max 100km to prevent excessive queries)
+  if (isNaN(radiusKm) || radiusKm <= 0 || radiusKm > 100) {
+    throw new BadRequestError('Radius must be a number between 0 and 100 kilometers');
+  }
+
+  // Get all events with location data
     const events = await prisma.event.findMany({
       where: {
         latitude: { not: null },
@@ -1555,155 +1568,144 @@ export const getNearbyEvents = async (req: Request, res: Response) => {
       radiusKm
     ).slice(0, parseInt(limit as string)); // Limit after filtering
 
-    // Enrich with location info
-    const enrichedEvents = nearbyEvents.map(event => 
-      locationService.enrichWithLocationInfo(event)
-    );
+  // Enrich with location info
+  const enrichedEvents = nearbyEvents.map(event => 
+    locationService.enrichWithLocationInfo(event)
+  );
 
-    res.json({
-      results: enrichedEvents,
-      total: enrichedEvents.length,
-      center: { latitude: lat, longitude: lon },
-      radius: radiusKm
-    });
-  } catch (error) {
-    logger.error('Get nearby events error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to get nearby events' });
-  }
+  res.json({
+    results: enrichedEvents,
+    total: enrichedEvents.length,
+    center: { latitude: lat, longitude: lon },
+    radius: radiusKm
+  });
 };
 
 /**
  * Export user's events to various formats
  */
 export const exportEvents = async (req: Request, res: Response) => {
-  try {
-    const userId = req.user!.id;
-    const format = (req.query.format as string)?.toLowerCase() || 'csv';
-    
-    // Validate format
-    if (!['csv', 'ical', 'json'].includes(format)) {
-      return res.status(400).json({ 
-        error: 'Invalid format. Supported formats: csv, ical, json' 
-      });
-    }
-
-    logger.info('Exporting events', 'EventController', { userId, format });
-
-    // Optimize query - only fetch fields needed for export
-    const events = await prisma.event.findMany({
-      where: {
-        participants: {
-          some: {
-            userId: userId
-          }
-        }
-      },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        eventType: true,
-        location: true,
-        startTime: true,
-        endTime: true,
-        status: true,
-        maxPlayers: true,
-        participants: {
-          where: {
-            userId: userId
-          },
-          select: {
-            status: true,
-            userId: true
-          }
-        },
-        _count: {
-          select: {
-            participants: true
-          }
-        },
-        group: {
-          select: {
-            name: true
-          }
-        },
-        creator: {
-          select: {
-            name: true,
-            email: true
-          }
-        }
-      },
-      orderBy: {
-        startTime: 'desc'
-      }
-    });
-
-    // Transform events to export format
-    const exportData = events.map(event => {
-      const userParticipant = event.participants.find(p => p.userId === userId);
-      
-      return {
-        id: event.id,
-        title: event.title,
-        description: event.description,
-        eventType: event.eventType,
-        location: event.location,
-        startTime: event.startTime,
-        endTime: event.endTime,
-        status: event.status,
-        participantStatus: userParticipant?.status || 'unknown',
-        groupName: event.group.name,
-        creatorName: event.creator.name,
-        participantCount: event._count.participants,
-        maxPlayers: event.maxPlayers
-      };
-    });
-
-    // Generate export content based on format
-    let content: string;
-    let filename: string;
-    let contentType: string;
-
-    switch (format) {
-      case 'csv':
-        content = exportToCSV(exportData);
-        filename = `teamly-events-${new Date().toISOString().split('T')[0]}.csv`;
-        contentType = 'text/csv';
-        break;
-      
-      case 'ical':
-        content = exportToICalendar(exportData);
-        filename = `teamly-events-${new Date().toISOString().split('T')[0]}.ics`;
-        contentType = 'text/calendar';
-        break;
-      
-      case 'json':
-        content = exportToJSON(exportData);
-        filename = `teamly-events-${new Date().toISOString().split('T')[0]}.json`;
-        contentType = 'application/json';
-        break;
-      
-      default:
-        return res.status(400).json({ error: 'Invalid format' });
-    }
-
-    // Set headers for file download
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', Buffer.byteLength(content));
-    
-    logger.info('Events exported successfully', 'EventController', { 
-      userId, 
-      format, 
-      eventCount: events.length 
-    });
-
-    res.send(content);
-  } catch (error) {
-    logger.error('Export events error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to export events' });
+  const userId = req.user!.id;
+  const format = (req.query.format as string)?.toLowerCase() || 'csv';
+  
+  // Validate format
+  if (!['csv', 'ical', 'json'].includes(format)) {
+    throw new BadRequestError('Invalid format. Supported formats: csv, ical, json');
   }
+
+  logger.debug('Exporting events', 'EventController', { userId, format });
+
+  // Optimize query - only fetch fields needed for export
+  const events = await prisma.event.findMany({
+    where: {
+      participants: {
+        some: {
+          userId: userId
+        }
+      }
+    },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      eventType: true,
+      location: true,
+      startTime: true,
+      endTime: true,
+      status: true,
+      maxPlayers: true,
+      participants: {
+        where: {
+          userId: userId
+        },
+        select: {
+          status: true,
+          userId: true
+        }
+      },
+      _count: {
+        select: {
+          participants: true
+        }
+      },
+      group: {
+        select: {
+          name: true
+        }
+      },
+      creator: {
+        select: {
+          name: true,
+          email: true
+        }
+      }
+    },
+    orderBy: {
+      startTime: 'desc'
+    }
+  });
+
+  // Transform events to export format
+  const exportData = events.map(event => {
+    const userParticipant = event.participants.find(p => p.userId === userId);
+    
+    return {
+      id: event.id,
+      title: event.title,
+      description: event.description,
+      eventType: event.eventType,
+      location: event.location,
+      startTime: event.startTime,
+      endTime: event.endTime,
+      status: event.status,
+      participantStatus: userParticipant?.status || 'unknown',
+      groupName: event.group.name,
+      creatorName: event.creator.name,
+      participantCount: event._count.participants,
+      maxPlayers: event.maxPlayers
+    };
+  });
+
+  // Generate export content based on format
+  let content: string;
+  let filename: string;
+  let contentType: string;
+
+  switch (format) {
+    case 'csv':
+      content = exportToCSV(exportData);
+      filename = `teamly-events-${new Date().toISOString().split('T')[0]}.csv`;
+      contentType = 'text/csv';
+      break;
+    
+    case 'ical':
+      content = exportToICalendar(exportData);
+      filename = `teamly-events-${new Date().toISOString().split('T')[0]}.ics`;
+      contentType = 'text/calendar';
+      break;
+    
+    case 'json':
+      content = exportToJSON(exportData);
+      filename = `teamly-events-${new Date().toISOString().split('T')[0]}.json`;
+      contentType = 'application/json';
+      break;
+    
+    default:
+      throw new BadRequestError('Invalid format');
+  }
+
+  // Set headers for file download
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.setHeader('Content-Length', Buffer.byteLength(content));
+  
+  logger.debug('Events exported successfully', 'EventController', { 
+    userId, 
+    format, 
+    eventCount: events.length 
+  });
+
+  res.send(content);
 };
 
 /**
@@ -1711,82 +1713,77 @@ export const exportEvents = async (req: Request, res: Response) => {
  * Leverages the composite index [eventId, status] for optimal performance
  */
 export const getEventParticipantsByStatus = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.query;
+  const { id } = req.params;
+  const { status } = req.query;
 
-    // Verify user is a member of the group that owns this event
-    const event = await prisma.event.findFirst({
-      where: {
-        id,
-        group: {
-          members: {
-            some: {
-              userId: req.user!.id
-            }
+  // Verify user is a member of the group that owns this event
+  const event = await prisma.event.findFirst({
+    where: {
+      id,
+      group: {
+        members: {
+          some: {
+            userId: req.user!.id
           }
         }
       }
-    });
-
-    if (!event) {
-      return res.status(404).json({ error: 'Event not found' });
     }
+  });
 
-    // Build where clause to leverage composite index [eventId, status]
-    const where: any = { eventId: id };
-    const validStatuses = Object.values(EventParticipantStatus);
-    if (status && validStatuses.includes(status as EventParticipantStatus)) {
-      where.status = status; // Uses composite index [eventId, status]
-    }
-
-    // Get participants with optimal query using composite index
-    const participants = await prisma.eventParticipant.findMany({
-      where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            profilePicture: true,
-            city: true,
-            country: true
-          }
-        }
-      },
-      orderBy: {
-        joinedAt: 'asc'  // Use joinedAt index for sorting
-      }
-    });
-
-    // Get counts by status for summary
-    const statusCounts = await prisma.eventParticipant.groupBy({
-      by: ['status'],
-      where: { eventId: id },
-      _count: true
-    });
-
-    // Calculate totals
-    const totalAllStatuses = statusCounts.reduce((sum, sc) => sum + sc._count, 0);
-    
-    const summary = {
-      total: totalAllStatuses,  // Total of ALL participants regardless of filter
-      filtered: participants.length,  // Number of participants matching the filter
-      byStatus: Object.fromEntries(
-        statusCounts.map(sc => [sc.status, sc._count])
-      )
-    };
-
-    res.json({
-      participants,
-      summary,
-      filter: status || 'all'
-    });
-  } catch (error) {
-    logger.error('Get event participants by status error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to get event participants' });
+  if (!event) {
+    throw new NotFoundError('Event not found');
   }
+
+  // Build where clause to leverage composite index [eventId, status]
+  const where: any = { eventId: id };
+  const validStatuses = Object.values(EventParticipantStatus);
+  if (status && validStatuses.includes(status as EventParticipantStatus)) {
+    where.status = status; // Uses composite index [eventId, status]
+  }
+
+  // Get participants with optimal query using composite index
+  const participants = await prisma.eventParticipant.findMany({
+    where,
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          profilePicture: true,
+          city: true,
+          country: true
+        }
+      }
+    },
+    orderBy: {
+      joinedAt: 'asc'  // Use joinedAt index for sorting
+    }
+  });
+
+  // Get counts by status for summary
+  const statusCounts = await prisma.eventParticipant.groupBy({
+    by: ['status'],
+    where: { eventId: id },
+    _count: true
+  });
+
+  // Calculate totals
+  const totalAllStatuses = statusCounts.reduce((sum, sc) => sum + sc._count, 0);
+  
+  const summary = {
+    total: totalAllStatuses,  // Total of ALL participants regardless of filter
+    filtered: participants.length,  // Number of participants matching the filter
+    byStatus: Object.fromEntries(
+      statusCounts.map(sc => [sc.status, sc._count])
+    )
+  };
+
+  res.json({
+    participants,
+    summary,
+    filter: status || 'all'
+  });
 };
 
 /**
@@ -1838,6 +1835,9 @@ export const updateGuestParticipant = async (req: Request, res: Response) => {
     throw new BadRequestError('Name is required');
   }
 
+  // Sanitize guest name
+  const sanitizedName = eventService.sanitizeGuestName(name);
+
   // Verify authorization and get guest
   const authResult = await verifyGuestManagementAuth(id, guestId, req.user!.id);
   if ('error' in authResult) {
@@ -1850,7 +1850,7 @@ export const updateGuestParticipant = async (req: Request, res: Response) => {
   // Update guest participant name
   const updatedGuest = await prisma.guestParticipant.update({
     where: { id: guestId },
-    data: { name: name.trim() }
+    data: { name: sanitizedName }
   });
 
   // Invalidate events cache for all group members

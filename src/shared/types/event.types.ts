@@ -16,6 +16,7 @@ export enum GroupNotificationType {
   join_request = 'join_request',
   event_created = 'event_created',
   nearby_created = 'nearby_created',
+  removed = 'removed',
 }
 
 export enum TeamUpNotificationType {

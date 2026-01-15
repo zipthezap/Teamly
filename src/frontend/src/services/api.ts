@@ -112,7 +112,7 @@ export const groupsAPI = {
   getMembers: (groupId: string | number) => api.get(`/groups/${groupId}/members`),
   leave: (groupId: string | number) => api.delete(`/groups/${groupId}/leave`),
   getInviteLink: (groupId: string | number) => api.get(`/groups/${groupId}/invite-link`),
-  joinByInvite: (userId: string | number, groupId: string | number) => api.post('/groups/join', { userId, groupId }),
+  joinByInvite: (groupId: string | number) => api.post(`/groups/join/${groupId}`),
   // Public groups and join requests
   getPublic: () => api.get('/groups/public'),
   requestJoin: (groupId: string | number) => api.post(`/groups/${groupId}/join-request`),

@@ -30,6 +30,7 @@ enum GroupNotificationType {
   join_request
   event_created
   nearby_created
+  removed
 }
 
 enum TeamUpNotificationType {
@@ -279,6 +280,12 @@ model Group {
   
   // Group picture
   picture     String?
+
+  // Enhanced group settings
+  sportType   SportType? // Primary sport type for the group
+  maxMembers  Int?       // Maximum number of members (null = unlimited)
+  autoApproveJoinRequests Boolean @default(false) // Auto-approve join requests for public groups
+  tags        String?    // Comma-separated tags/interests (e.g., "competitive,weekend-warriors,beginners-welcome")
 
   creatorId String
   creator   User   @relation("GroupCreator", fields: [creatorId], references: [id])
