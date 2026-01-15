@@ -6,6 +6,7 @@
 import prisma from '../config/database';
 import { EventNotificationType, GroupNotificationType, TeamUpNotificationType } from '../../shared/types/event.types';
 import { TournamentNotificationType } from '../../shared/types/tournament.types';
+import { Prisma } from '@prisma/client';
 
 export interface NotificationMetadata {
   actionUrl?: string;
@@ -17,12 +18,49 @@ export interface NotificationMetadata {
   relatedUserName?: string;
 }
 
+export interface NotificationParams {
+  name?: string;
+  eventTitle?: string;
+  groupName?: string;
+  title?: string;
+  sportType?: string;
+  tournamentName?: string;
+  teamName?: string;
+  [key: string]: string | number | boolean | undefined;
+}
+
+// Types for notification query results with includes
+type EventNotificationWithRelations = Prisma.EventNotificationGetPayload<{
+  include: {
+    event: { select: { id: true, title: true, startTime: true } };
+    user: { select: { id: true, name: true } };
+  };
+}>;
+
+type GroupNotificationWithRelations = Prisma.GroupNotificationGetPayload<{
+  include: {
+    group: { select: { id: true, name: true } };
+  };
+}>;
+
+type TeamUpNotificationWithRelations = Prisma.TeamUpNotificationGetPayload<{
+  include: {
+    teamUpRequest: { select: { id: true, title: true, sportType: true } };
+  };
+}>;
+
+type TournamentNotificationWithRelations = Prisma.TournamentNotificationGetPayload<{
+  include: {
+    tournament: { select: { id: true, name: true, sportType: true } };
+  };
+}>;
+
 export interface UnifiedNotification {
   id: string;
   userId: string;
   type: string;
   notificationType: 'event' | 'group' | 'teamup' | 'tournament';
-  params?: Record<string, any>; // parameters for translation
+  params?: NotificationParams;
   read: boolean;
   createdAt: Date;
   metadata?: NotificationMetadata;
@@ -76,7 +114,7 @@ export const getUserNotifications = async (
   } = options;
 
   // Build where clause for event notifications
-  const eventWhere: any = { userId };
+  const eventWhere: Prisma.EventNotificationWhereInput = { userId };
   if (!includeRead) {
     eventWhere.read = false;
   }
@@ -90,7 +128,7 @@ export const getUserNotifications = async (
   }
 
   // Build where clause for group notifications
-  const groupWhere: any = { userId };
+  const groupWhere: Prisma.GroupNotificationWhereInput = { userId };
   if (!includeRead) {
     groupWhere.read = false;
   }
@@ -104,10 +142,10 @@ export const getUserNotifications = async (
   }
 
   // Fetch notifications based on filter
-  let eventNotifications: any[] = [];
-  let groupNotifications: any[] = [];
-  let teamUpNotifications: any[] = [];
-  let tournamentNotifications: any[] = [];
+  let eventNotifications: EventNotificationWithRelations[] = [];
+  let groupNotifications: GroupNotificationWithRelations[] = [];
+  let teamUpNotifications: TeamUpNotificationWithRelations[] = [];
+  let tournamentNotifications: TournamentNotificationWithRelations[] = [];
   let eventCount = 0;
   let groupCount = 0;
   let teamUpCount = 0;
@@ -145,7 +183,7 @@ export const getUserNotifications = async (
   }
 
   if (!notificationType || notificationType === 'teamup') {
-    const teamUpWhere: any = { userId };
+    const teamUpWhere: Prisma.TeamUpNotificationWhereInput = { userId };
     if (!includeRead) {
       teamUpWhere.read = false;
     }
@@ -173,7 +211,7 @@ export const getUserNotifications = async (
   }
 
   if (!notificationType || notificationType === 'tournament') {
-    const tournamentWhere: any = { userId };
+    const tournamentWhere: Prisma.TournamentNotificationWhereInput = { userId };
     if (!includeRead) {
       tournamentWhere.read = false;
     }
@@ -208,7 +246,7 @@ export const getUserNotifications = async (
       userId: n.userId,
       type: n.type as EventNotificationType,
       notificationType: 'event' as const,
-      params: n.params || {
+      params: (n.params as NotificationParams) || {
         name: n.user?.name,
         eventTitle: n.event?.title,
         // add more as needed
@@ -222,13 +260,13 @@ export const getUserNotifications = async (
   });
 
   const enrichedGroupNotifications: UnifiedNotification[] = groupNotifications.map((n) => {
-    const metadata = enrichNotificationMetadata('group', n.type, null, null, n.group);
+    const metadata = enrichNotificationMetadata('group', n.type, undefined, undefined, n.group);
     return {
       id: n.id,
       userId: n.userId,
       type: n.type as GroupNotificationType,
       notificationType: 'group' as const,
-      params: n.params || {
+      params: (n.params as NotificationParams) || {
         groupName: n.group?.name,
         // add more as needed
       },
@@ -240,13 +278,13 @@ export const getUserNotifications = async (
   });
 
   const enrichedTeamUpNotifications: UnifiedNotification[] = teamUpNotifications.map((n) => {
-    const metadata = enrichNotificationMetadata('teamup', n.type, null, null, null, n.teamUpRequest);
+    const metadata = enrichNotificationMetadata('teamup', n.type, undefined, undefined, undefined, n.teamUpRequest);
     return {
       id: n.id,
       userId: n.userId,
       type: n.type as TeamUpNotificationType,
       notificationType: 'teamup' as const,
-      params: n.params || {
+      params: (n.params as NotificationParams) || {
         title: n.teamUpRequest?.title,
         sportType: n.teamUpRequest?.sportType,
         // add more as needed
@@ -259,13 +297,13 @@ export const getUserNotifications = async (
   });
 
   const enrichedTournamentNotifications: UnifiedNotification[] = tournamentNotifications.map((n) => {
-    const metadata = enrichNotificationMetadata('tournament', n.type, null, null, null, null, n.tournament);
+    const metadata = enrichNotificationMetadata('tournament', n.type, undefined, undefined, undefined, undefined, n.tournament);
     return {
       id: n.id,
       userId: n.userId,
       type: n.type as TournamentNotificationType,
       notificationType: 'tournament' as const,
-      params: n.params || {
+      params: (n.params as NotificationParams) || {
         tournamentName: n.tournament?.name,
         sportType: n.tournament?.sportType,
         // add more as needed
@@ -307,11 +345,11 @@ export const getUserNotifications = async (
 function enrichNotificationMetadata(
   notificationType: 'event' | 'group' | 'teamup' | 'tournament',
   type: string,
-  event?: any,
-  user?: any,
-  group?: any,
-  teamUpRequest?: any,
-  tournament?: any
+  event?: { id: string; title: string; startTime?: Date },
+  user?: { id: string; name: string },
+  group?: { id: string; name: string },
+  teamUpRequest?: { id: string; title: string; sportType?: string },
+  tournament?: { id: string; name: string; sportType?: string }
 ): NotificationMetadata {
   const metadata: NotificationMetadata = {
     category: notificationType,
