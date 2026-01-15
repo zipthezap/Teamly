@@ -460,22 +460,10 @@ export const inviteMember = async (req: Request, res: Response) => {
 export const removeMember = async (req: Request, res: Response) => {
   const { id, memberId } = req.params;
 
-  // Debug log for permission check
-  logger.info('Attempting to remove member', 'GroupController', {
-    userId: req.user!.id,
-    groupId: id,
-    memberId,
-    action: 'GROUP_REMOVE_MEMBERS',
-  });
   const canRemove = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_REMOVE_MEMBERS);
-  logger.info('Remove member permission result', 'GroupController', {
-    userId: req.user!.id,
-    groupId: id,
-    memberId,
-    canRemove,
-  });
+  
   if (!canRemove) {
-    logger.warn('403 Forbidden: User lacks GROUP_REMOVE_MEMBERS permission', 'GroupController', {
+    logger.debug('User lacks GROUP_REMOVE_MEMBERS permission', 'GroupController', {
       userId: req.user!.id,
       groupId: id,
       memberId,
@@ -837,7 +825,7 @@ export const joinGroupByInvite = async (req: Request, res: Response) => {
     throw new BadRequestError('Group ID is required');
   }
 
-  // Verify the group exists and is public (or implement invite token validation here)
+  // Verify the group exists
   const group = await prisma.group.findUnique({
     where: { id: groupId },
     select: { id: true, name: true, isPublic: true }
@@ -847,10 +835,13 @@ export const joinGroupByInvite = async (req: Request, res: Response) => {
     throw new NotFoundError('Group not found');
   }
 
-  // For now, only allow joining public groups via invite link
-  // TODO: Implement proper invite token system for private groups
+  // Only allow joining public groups via invite link
+  // LIMITATION: Private groups cannot be joined via invite link
+  // To enable this: Add inviteToken field to Group model in schema, 
+  // generate tokens in getInviteLink(), validate tokens here,
+  // and optionally add token expiration
   if (!group.isPublic) {
-    throw new ForbiddenError('Cannot join private group without proper invitation');
+    throw new ForbiddenError('Private groups can only be joined through direct invitations');
   }
 
   // Check if already a member
@@ -968,12 +959,12 @@ export const uploadGroupPicture = async (req: Request, res: Response) => {
     });
 
     if (!membership) {
-      return res.status(403).json({ error: 'Only group admins can update group picture' });
+      throw new ForbiddenError('Only group admins can update group picture');
     }
 
     // Check if file was uploaded
     if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      throw new BadRequestError('No file uploaded');
     }
 
     tempFilePath = req.file.path;
@@ -982,7 +973,18 @@ export const uploadGroupPicture = async (req: Request, res: Response) => {
     const validation = await validateImage(tempFilePath);
     if (!validation.valid) {
       await deleteFile(tempFilePath);
-      return res.status(400).json({ error: validation.error });
+      throw new BadRequestError(validation.error || 'Invalid image file');
+    }
+
+    // Verify group exists before processing
+    const groupExists = await prisma.group.findUnique({
+      where: { id },
+      select: { id: true, picture: true },
+    });
+
+    if (!groupExists) {
+      await deleteFile(tempFilePath);
+      throw new NotFoundError('Group not found');
     }
 
     // Generate unique filename for the processed image
@@ -1002,15 +1004,9 @@ export const uploadGroupPicture = async (req: Request, res: Response) => {
     await deleteFile(tempFilePath);
     tempFilePath = undefined;
 
-    // Get current group to check for existing picture
-    const currentGroup = await prisma.group.findUnique({
-      where: { id },
-      select: { picture: true },
-    });
-
     // Delete old picture if it exists
-    if (currentGroup?.picture) {
-      await deleteOldPicture(currentGroup.picture);
+    if (groupExists.picture) {
+      await deleteOldPicture(groupExists.picture);
     }
 
     // Generate the URL for the picture
@@ -1034,7 +1030,7 @@ export const uploadGroupPicture = async (req: Request, res: Response) => {
       }
     });
 
-    logger.info('Group picture uploaded successfully', 'GroupController', { 
+    logger.debug('Group picture uploaded successfully', 'GroupController', { 
       groupId: id,
       userId: req.user!.id 
     });
@@ -1054,7 +1050,8 @@ export const uploadGroupPicture = async (req: Request, res: Response) => {
       await deleteFile(finalFilePath);
     }
 
-    res.status(500).json({ error: 'Failed to upload group picture' });
+    // Re-throw the error so asyncHandler can handle it properly
+    throw error;
   }
 };
 
@@ -1108,7 +1105,7 @@ export const deleteGroupPicture = async (req: Request, res: Response) => {
     }
   });
 
-  logger.info('Group picture deleted successfully', 'GroupController', { 
+  logger.debug('Group picture deleted successfully', 'GroupController', { 
     groupId: id,
     userId: req.user!.id 
   });
@@ -1148,6 +1145,11 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
   const coordValidation = locationService.validateCoordinates(lat, lon);
   if (!coordValidation.valid) {
     throw new BadRequestError(coordValidation.error || 'Invalid coordinates');
+  }
+
+  // Validate radius (max 100km to prevent excessive queries)
+  if (radiusKm <= 0 || radiusKm > 100) {
+    throw new BadRequestError('Radius must be a number between 0 and 100 kilometers');
   }
 
   // Get all public groups with location data
@@ -1237,28 +1239,31 @@ export const transferAdmin = async (req: Request, res: Response) => {
 // Delete a group (admin only)
 export const deleteGroup = async (req: Request, res: Response) => {
   const { id } = req.params;
-  // Debug log for permission check
-  logger.info('Attempting to delete group', 'GroupController', {
-    userId: req.user!.id,
-    groupId: id,
-    action: 'GROUP_DELETE',
+
+  // Verify group exists first
+  const group = await prisma.group.findUnique({
+    where: { id },
+    select: { id: true }
   });
+
+  if (!group) {
+    throw new NotFoundError('Group not found');
+  }
+
   const canDelete = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_DELETE);
-  logger.info('Delete group permission result', 'GroupController', {
-    userId: req.user!.id,
-    groupId: id,
-    canDelete,
-  });
+  
   if (!canDelete) {
-    logger.warn('403 Forbidden: User lacks GROUP_DELETE permission', 'GroupController', {
+    logger.debug('User lacks GROUP_DELETE permission', 'GroupController', {
       userId: req.user!.id,
       groupId: id,
     });
     throw new ForbiddenError('Only admins can delete the group');
   }
+
   // Delete group and cascade related data (members, events, etc.)
   await prisma.group.delete({
     where: { id },
   });
+
   res.json({ message: 'Group deleted successfully' });
 };
