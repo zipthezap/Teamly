@@ -42,7 +42,7 @@ const poolConfig: PoolConfig = {
 const pool = new Pool(poolConfig);
 
 // Log pool errors
-pool.on('error', (err) => {
+pool.on('error', (err: Error) => {
   logger.error('Unexpected database pool error', 'Database', { error: err });
 });
 

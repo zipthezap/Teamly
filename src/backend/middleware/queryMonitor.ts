@@ -198,7 +198,7 @@ export async function getConnectionPoolStats(): Promise<{
     const pool = getPool();
     
     // Check if pool has the expected properties
-    const poolWithStats = pool as Record<string, unknown>;
+    const poolWithStats = pool as unknown as Record<string, unknown>;
     return {
       total: (typeof poolWithStats.totalCount === 'number' ? poolWithStats.totalCount : 0),
       idle: (typeof poolWithStats.idleCount === 'number' ? poolWithStats.idleCount : 0),

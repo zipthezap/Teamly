@@ -8,16 +8,17 @@ import { UpdateEmailPreferenceData } from '../../shared/types/email.types';
 import { AuthenticatedRequest, RouteParams } from '../types/controller.types';
 
 // Get user email preferences
-export const getEmailPreferences = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+export const getEmailPreferences = asyncHandler(async (req: Request, res: Response) => {
     res.setHeader('Cache-Control', 'no-store');
+  const authenticatedReq = req as AuthenticatedRequest;
   let preferences = await prisma.emailPreference.findUnique({
-    where: { userId: req.user.id }
+    where: { userId: authenticatedReq.user.id }
   });
 
   // Create default preferences if they don't exist
   if (!preferences) {
     preferences = await prisma.emailPreference.create({
-      data: { userId: req.user.id }
+      data: { userId: authenticatedReq.user.id }
     });
   }
 
@@ -25,11 +26,12 @@ export const getEmailPreferences = asyncHandler(async (req: AuthenticatedRequest
 });
 
 // Update user email preferences
-export const updateEmailPreferences = asyncHandler(async (req: AuthenticatedRequest<UpdateEmailPreferenceData>, res: Response) => {
-  const data = req.body;
+export const updateEmailPreferences = asyncHandler(async (req: Request, res: Response) => {
+  const authenticatedReq = req as AuthenticatedRequest<UpdateEmailPreferenceData>;
+  const data = authenticatedReq.body;
 
   const preferences = await prisma.emailPreference.upsert({
-    where: { userId: req.user.id },
+    where: { userId: authenticatedReq.user.id },
     update: {
       ...(data.eventInvites !== undefined && { eventInvites: data.eventInvites }),
       ...(data.eventReminders !== undefined && { eventReminders: data.eventReminders }),
@@ -49,7 +51,7 @@ export const updateEmailPreferences = asyncHandler(async (req: AuthenticatedRequ
       ...(data.muteNearbyTeamUps !== undefined && { muteNearbyTeamUps: data.muteNearbyTeamUps })
     },
     create: {
-      userId: req.user.id,
+      userId: authenticatedReq.user.id,
       eventInvites: data.eventInvites ?? true,
       eventReminders: data.eventReminders ?? true,
       eventUpdates: data.eventUpdates ?? true,
@@ -73,9 +75,10 @@ export const updateEmailPreferences = asyncHandler(async (req: AuthenticatedRequ
 });
 
 // Send email verification
-export const sendVerificationEmail = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+export const sendVerificationEmail = asyncHandler(async (req: Request, res: Response) => {
+  const authenticatedReq = req as AuthenticatedRequest;
   const user = await prisma.user.findUnique({
-    where: { id: req.user.id }
+    where: { id: authenticatedReq.user.id }
   });
 
   if (!user) {
@@ -91,7 +94,7 @@ export const sendVerificationEmail = asyncHandler(async (req: AuthenticatedReque
 
   // Update user with hashed token
   await prisma.user.update({
-    where: { id: req.user.id },
+    where: { id: authenticatedReq.user.id },
     data: { emailVerificationToken: hashedToken }
   });
 
@@ -133,11 +136,12 @@ interface ToggleEmailBody {
 }
 
 // Toggle email notifications on/off
-export const toggleEmailNotifications = asyncHandler(async (req: AuthenticatedRequest<ToggleEmailBody>, res: Response) => {
-  const { enabled } = req.body;
+export const toggleEmailNotifications = asyncHandler(async (req: Request, res: Response) => {
+  const authenticatedReq = req as AuthenticatedRequest<ToggleEmailBody>;
+  const { enabled } = authenticatedReq.body;
 
   const user = await prisma.user.update({
-    where: { id: req.user.id },
+    where: { id: authenticatedReq.user.id },
     data: { emailNotifications: enabled }
   });
 
