@@ -815,12 +815,15 @@ export const updateMemberRole = async (req: Request, res: Response) => {
   });
 
   // Invalidate group cache for all affected users
-  await CacheService.invalidate('group', id);
-  // Invalidate user groups cache for the member whose role was updated
-  await CacheService.deletePattern(`user:${result.userId}:groups:*`);
-  // Invalidate events cache since role changes may affect access to group events
-  await CacheService.deletePattern(`events:user:${result.userId}:group:${id}:*`);
-  await CacheService.deletePattern(`events:user:${result.userId}:group:all:*`);
+  // Use Promise.allSettled to ensure all cache operations are attempted even if one fails
+  await Promise.allSettled([
+    CacheService.invalidate('group', id),
+    CacheService.deletePattern(`user:${result.userId}:groups:*`),
+    CacheService.deletePattern(`events:user:${result.userId}:group:${id}:*`),
+    CacheService.deletePattern(`events:user:${result.userId}:group:all:*`)
+  ]).catch((error: Error) => {
+    logger.error('Cache invalidation error in updateMemberRole', 'GroupController', { error });
+  });
 
   res.json(result);
 };
@@ -1102,12 +1105,15 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
     }
 
     // Invalidate group cache for all affected users
-    await CacheService.invalidate('group', id);
-    // Invalidate user groups cache for the joining user
-    await CacheService.deletePattern(`user:${joinRequest.userId}:groups:*`);
-    // Invalidate events cache since user now has access to group events
-    await CacheService.deletePattern(`events:user:${joinRequest.userId}:group:${id}:*`);
-    await CacheService.deletePattern(`events:user:${joinRequest.userId}:group:all:*`);
+    // Use Promise.allSettled to ensure all cache operations are attempted even if one fails
+    await Promise.allSettled([
+      CacheService.invalidate('group', id),
+      CacheService.deletePattern(`user:${joinRequest.userId}:groups:*`),
+      CacheService.deletePattern(`events:user:${joinRequest.userId}:group:${id}:*`),
+      CacheService.deletePattern(`events:user:${joinRequest.userId}:group:all:*`)
+    ]).catch((error: Error) => {
+      logger.error('Cache invalidation error in handleJoinRequest', 'GroupController', { error });
+    });
   }
 
   res.json({ 
@@ -1573,14 +1579,19 @@ export const deleteGroup = async (req: Request, res: Response) => {
   });
 
   // Invalidate all group-related caches
-  await CacheService.invalidate('group', id);
-  // Invalidate user groups cache for each member
-  for (const member of group.members) {
-    await CacheService.deletePattern(`user:${member.userId}:groups:*`);
-    // Invalidate events cache since they no longer have access to group events
-    await CacheService.deletePattern(`events:user:${member.userId}:group:${id}:*`);
-    await CacheService.deletePattern(`events:user:${member.userId}:group:all:*`);
-  }
+  // Use Promise.allSettled to ensure all cache operations are attempted even if one fails
+  const cacheOperations = [
+    CacheService.invalidate('group', id),
+    ...group.members.flatMap(member => [
+      CacheService.deletePattern(`user:${member.userId}:groups:*`),
+      CacheService.deletePattern(`events:user:${member.userId}:group:${id}:*`),
+      CacheService.deletePattern(`events:user:${member.userId}:group:all:*`)
+    ])
+  ];
+  
+  await Promise.allSettled(cacheOperations).catch((error: Error) => {
+    logger.error('Cache invalidation error in deleteGroup', 'GroupController', { error });
+  });
 
   res.json({ message: 'Group deleted successfully' });
 };
