@@ -3,12 +3,29 @@ import { logger } from './logger';
 import { EmailPreference } from '../../shared/types/email.types';
 
 /**
- * Type guard to safely check boolean properties on preferences
+ * Safely get boolean value from preferences object
+ * Returns the value if it's a boolean, otherwise returns the default
+ */
+const getBooleanValue = (value: any, defaultValue: boolean): boolean => {
+  return typeof value === 'boolean' ? value : defaultValue;
+};
+
+/**
+ * Type guard to safely check boolean properties on preferences for email notifications
+ * Defaults to true (enabled) if preference not set
  */
 const getPreferenceValue = (preferences: EmailPreference | null, field: keyof EmailPreference): boolean => {
   if (!preferences) return true; // Default to enabled if no preferences
-  const value = preferences[field];
-  return typeof value === 'boolean' ? value : true;
+  return getBooleanValue(preferences[field], true);
+};
+
+/**
+ * Type guard to safely check boolean properties on preferences for mute settings
+ * Defaults to false (not muted) if preference not set
+ */
+const getMuteValue = (preferences: EmailPreference | null, field: keyof EmailPreference): boolean => {
+  if (!preferences) return false; // Default to not muted if no preferences
+  return getBooleanValue(preferences[field], false);
 };
 
 /**
@@ -59,14 +76,8 @@ export const isNotificationMuted = async (userId: string, muteField: keyof Email
       where: { userId }
     });
 
-    // If no preferences set, default to not muted
-    if (!preferences) {
-      return false;
-    }
-
-    // Check if the specific notification type is muted using type-safe access
-    const value = preferences[muteField];
-    return typeof value === 'boolean' ? value : false;
+    // Check if the specific notification type is muted using type-safe helper
+    return getMuteValue(preferences, muteField);
   } catch (error) {
     logger.error('Error checking notification mute status', 'NotificationHelper', { 
       userId, 
@@ -93,16 +104,8 @@ export const batchIsNotificationMuted = async (userIds: string[], muteField: key
     const result = new Map();
     for (const userId of userIds) {
       const userPrefs = preferencesMap.get(userId);
-      
-      // If no preferences set, default to not muted
-      if (!userPrefs) {
-        result.set(userId, false);
-        continue;
-      }
-
-      // Check if the notification type is muted using type-safe access
-      const value = userPrefs[muteField];
-      result.set(userId, typeof value === 'boolean' ? value : false);
+      // Check if the notification type is muted using type-safe helper
+      result.set(userId, getMuteValue(userPrefs || null, muteField));
     }
 
     return result;
