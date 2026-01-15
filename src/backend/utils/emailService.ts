@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 import { logger } from './logger';
-import { escapeHtml } from './validation';
+import { escapeHtml, validateNoCRLF } from './validation';
 
 // Create email transporter
 const createTransporter = () => {
@@ -149,6 +149,9 @@ export const sendEmail = async (to: string, template: string, ...args: unknown[]
     }
 
     const { subject, html } = emailTemplate(...args);
+    
+    // Validate email subject to prevent header injection
+    validateNoCRLF(subject, 'Email subject');
 
     const mailOptions = {
       from: process.env.EMAIL_FROM || 'noreply@teamly.app',
