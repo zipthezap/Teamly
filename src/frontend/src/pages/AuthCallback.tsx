@@ -52,8 +52,7 @@ const AuthCallback = () => {
           
           if (profileResponse.ok) {
             const profileData = await profileResponse.json();
-            const userId = profileData.user.id;
-            await groupsAPI.joinByInvite(userId, inviteGroupId);
+            await groupsAPI.joinByInvite(inviteGroupId);
             navigate(`/groups/${inviteGroupId}`);
           } else {
             navigate('/dashboard');
