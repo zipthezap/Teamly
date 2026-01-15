@@ -32,11 +32,13 @@ import {
 } from '@mui/icons-material';
 import { EventWithDetails, EventParticipant, GuestParticipant } from '../../../shared/types';
 import { AxiosError } from 'axios';
+import { useQueryClient } from '@tanstack/react-query';
 
 const JoinEventByInvite = () => {
   const { token } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [event, setEvent] = useState<EventWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
@@ -109,6 +111,12 @@ const JoinEventByInvite = () => {
       // Join as authenticated user
       await eventsAPI.join(event!.id);
       setSuccess('Successfully joined the event! Redirecting to event details...');
+      
+      // Invalidate caches so the joined event is reflected
+      queryClient.invalidateQueries({ queryKey: ['eventDetails', event!.id] });
+      queryClient.invalidateQueries({ queryKey: ['eventsList'] });
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      
       // Redirect to event details after a short delay
       setTimeout(() => {
         navigate(`/events/${event!.id}`);

@@ -14,6 +14,7 @@ import { groupsAPI } from '../services/api';
 import LocationPicker from '../components/LocationPicker';
 import ImageUpload from '../components/ImageUpload';
 import { AxiosError } from 'axios';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface LocationValue {
   latitude?: number | string;
@@ -37,6 +38,7 @@ const CreateGroup = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -70,6 +72,10 @@ const CreateGroup = () => {
           // Continue navigation even if picture upload fails
         }
       }
+      
+      // Invalidate groups list cache so the new group appears
+      queryClient.invalidateQueries({ queryKey: ['groupsList'] });
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
       
       navigate(`/groups/${groupId}`);
     } catch (err: unknown) {

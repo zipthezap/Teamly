@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { eventsAPI } from '../services/api';
 import { getErrorMessage } from '../utils/errorHandler';
+import { useQueryClient } from '@tanstack/react-query';
 
 const EVENT_TYPES = [
   'football',
@@ -35,6 +36,7 @@ const EVENT_TYPES = [
 const EditEvent = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     title: '',
@@ -179,6 +181,14 @@ const EditEvent = () => {
       }
 
       await eventsAPI.update(id, data);
+      
+      // Invalidate caches so the updated event is reflected
+      queryClient.invalidateQueries({ queryKey: ['eventDetails', id] });
+      queryClient.invalidateQueries({ queryKey: ['eventsList'] });
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      // Also invalidate group events if this event belongs to a group
+      queryClient.invalidateQueries({ queryKey: ['groupEvents'] });
+      
       navigate(`/events/${id}`);
     } catch (err: unknown) {
       setError(getErrorMessage(err) || 'Failed to update event');
