@@ -57,6 +57,7 @@ export interface GroupJoinRequest {
   userId: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: Date | string;
+  createdBy?: 'user' | 'invite';
   user?: PublicUser;
   group?: Group;
 }

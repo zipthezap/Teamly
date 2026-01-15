@@ -1,6 +1,5 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
 import Navbar from './components/Navbar';
 import PrivateRoute from './components/PrivateRoute';
 import Login from './pages/Login';
@@ -30,7 +29,6 @@ import TournamentTeamDetails from './pages/TournamentTeamDetails';
 
 function App() {
   return (
-    <AuthProvider>
       <Router>
         <Navbar />
           <Routes>
@@ -187,7 +185,6 @@ function App() {
             />
           </Routes>
         </Router>
-      </AuthProvider>
     );
   }
   

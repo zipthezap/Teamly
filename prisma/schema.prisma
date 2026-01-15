@@ -300,6 +300,7 @@ model GroupJoinRequest {
   user      User    @relation(fields: [userId], references: [id])
   status    String  @default("pending") // pending, approved, rejected
   createdAt DateTime @default(now())
+  createdBy String   @default("user") // 'user' or 'invite'
 }
 
 model GroupMember {

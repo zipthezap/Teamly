@@ -33,6 +33,7 @@ import { ensureResourceExists } from '../utils/controllerHelpers';
  * Create a new tournament
  */
 export const createTournament = async (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
   const {
     name,
     description,

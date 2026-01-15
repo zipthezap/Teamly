@@ -31,6 +31,7 @@
     "submit": "Submit",
     "accept": "Accept",
     "decline": "Decline",
+    "declined": "Declined",
     "viewAll": "View All",
     "viewDetails": "View Details",
     "participants": "participants",
@@ -548,7 +549,10 @@
     "location": "Location",
     "startTime": "Start Time",
     "endTime": "End Time",
-    "maxPlayers": "Max Players"
+    "maxPlayers": "Max Players",
+    "noRequests": "No event requests yet",
+    "noRequestsMember": "Create an event request for other members to vote on!",
+    "createRequest": "Create Event Request"
   },
   "locationPicker": {
     "title": "Location (Optional)",

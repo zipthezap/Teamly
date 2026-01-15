@@ -36,6 +36,9 @@ const JoinRequestsPopover: React.FC<JoinRequestsPopoverProps> = ({ groupId = nul
   const { joinRequests, loading, handleJoinRequest } = useJoinRequests(groupId);
   const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Only show actionable requests (createdBy !== 'invite') for admins
+  const actionableRequests = joinRequests.filter((req: any) => req.createdBy !== 'invite');
+
   useEffect(() => {
     // Cleanup timeout on unmount
     return () => {
@@ -79,7 +82,7 @@ const JoinRequestsPopover: React.FC<JoinRequestsPopoverProps> = ({ groupId = nul
 
   const open = Boolean(anchorEl);
   const id = open ? 'join-requests-popover' : undefined;
-  const requestCount = joinRequests.length;
+  const requestCount = actionableRequests.length;
 
   // Always show the icon, but only show popover if there are requests
   return (
@@ -174,12 +177,12 @@ const JoinRequestsPopover: React.FC<JoinRequestsPopoverProps> = ({ groupId = nul
                   🎉 All caught up!
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  No pending join requests at the moment
+                  No actionable join requests at the moment
                 </Typography>
               </Box>
             ) : (
               <List sx={{ maxHeight: 380, overflow: 'auto', p: 0 }}>
-                {joinRequests.map((request, index) => (
+                {actionableRequests.map((request, index) => (
                   <React.Fragment key={request.id}>
                     {index > 0 && <Divider />}
                     <ListItem

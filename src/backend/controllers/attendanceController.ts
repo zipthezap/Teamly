@@ -9,6 +9,7 @@ import { logger } from '../utils/logger';
  * POST /api/events/:eventId/attendance
  */
 export const markAttendance = asyncHandler(async (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
   const { eventId } = req.params;
   const { userId, status } = req.body;
   const currentUserId = req.user!.id;

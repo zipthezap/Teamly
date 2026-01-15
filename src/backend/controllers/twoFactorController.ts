@@ -10,6 +10,7 @@ import { logger } from '../utils/logger';
 
 // Setup 2FA - Generate secret and QR code
 export const setup2FA = asyncHandler(async (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
   const userId = req.user!.id;
 
   // Check if 2FA is already enabled

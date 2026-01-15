@@ -31,6 +31,7 @@ import { CacheService } from '../services/cacheService';
 // ==================== EVENT CRUD OPERATIONS ====================
 
 export const createEvent = async (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
   const { 
     groupId, title, description, eventType, location, startTime, endTime, maxPlayers,
     isRecurring, recurrenceRule, recurrenceEnd, isPublic,
@@ -156,6 +157,7 @@ export const createEvent = async (req: Request, res: Response) => {
 };
 
 export const getEvents = async (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
   const { 
     groupId, search, eventType, startDate, endDate, location, status, archived,
     limit = '50', offset = '0', cursor
@@ -346,6 +348,7 @@ export const getEvents = async (req: Request, res: Response) => {
 };
 
 export const getEvent = async (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
   const { id } = req.params;
 
   const event = await prisma.event.findFirst({

@@ -49,8 +49,8 @@ import { StatusBadge, StatusType } from '../components/common/StatusBadge';
 import { EventWithDetails, EventSearchParams, GroupWithDetails, EventParticipant, GroupMember } from '../../../shared/types';
 import { AxiosError } from 'axios';
 
-
 const EventsList = () => {
+  // All hooks at top level, before any conditional returns
   const [searchFilters, setSearchFilters] = useState<EventSearchParams>({});
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -67,9 +67,17 @@ const EventsList = () => {
   const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, loading: userLoading } = useAuth();
   const navigate = useNavigate();
   const [, setSearchParams] = useSearchParams();
+
+  // DEBUG: Log hook initialization order
+  React.useEffect(() => {
+    console.log('[EventsList] Hooks initialized');
+  }, []);
+
+  // Defensive: Ensure hooks are never called conditionally
+  // If you need to use a hook, declare it here at the top level only
 
   // Fetch all groups on mount
   useEffect(() => {
@@ -77,8 +85,8 @@ const EventsList = () => {
       try {
         const response = await groupsAPI.getAll();
         setGroups(response.data);
-      } catch {
-        // Optionally handle error
+      } catch (err) {
+        console.error('[EventsList] Error fetching groups:', err);
       }
     }
     fetchGroups();
@@ -86,6 +94,8 @@ const EventsList = () => {
 
   // Fetch events
   const fetchEvents = useCallback(async (isInitialLoad = false) => {
+    console.log('[EventsList] useCallback: fetchEvents called');
+    console.log('[EventsList] fetchEvents params:', { searchFilters, page });
     try {
       if (isInitialLoad) {
         setIsLoading(true);
@@ -95,13 +105,23 @@ const EventsList = () => {
       const offset = (page - 1) * visibleCount;
       const params: EventSearchParams = { ...searchFilters, offset, limit: visibleCount };
       const response = await eventsAPI.getAll(params);
-      console.log('Fetched events:', response.data);
-      if (Array.isArray(response.data)) {
-        response.data.forEach((event, idx) => {
-          console.log(`[EventList] Event #${idx}:`, event);
+      console.log('[EventsList] Fetched events:', response.data);
+      if (Array.isArray(response.data?.data)) {
+        response.data.data.forEach((event, idx) => {
+          console.log(`[EventsList] [fetchEvents] Event #${idx}:`, event);
         });
       }
-      setEvents(Array.isArray(response.data) ? response.data : response.data?.data ?? []);
+      if (Array.isArray(response.data)) {
+        response.data.forEach((event, idx) => {
+          console.log(`[EventsList] Event #${idx}:`, event);
+        });
+      }
+      // Always expect API response shape { data: [...] }
+      const newEvents = Array.isArray(response.data?.data) ? response.data.data : [];
+      setEvents(newEvents);
+      console.log('[EventsList] [fetchEvents] setEvents called, newEvents:', newEvents);
+    } catch (err) {
+      console.error('[EventsList] Error fetching events:', err);
     } finally {
       setIsLoading(false);
       setIsFetching(false);
@@ -114,10 +134,12 @@ const EventsList = () => {
 
   // Delete event
   const handlePageChange = useCallback((value: number) => {
+    console.log('[EventsList] useCallback: handlePageChange called');
     setPage(value);
   }, []);
 
   const handleDeleteEvent = useCallback(async (eventId: string | number) => {
+    console.log('[EventsList] useCallback: handleDeleteEvent called');
     try {
       await eventsAPI.delete(eventId);
       setToast({ message: t('events.eventDeleted'), type: 'success' });
@@ -134,9 +156,11 @@ const EventsList = () => {
 
   // Join event
   const handleJoinEvent = useCallback(async (eventId: string | number) => {
+    console.log('[EventsList] useCallback: handleJoinEvent called', { eventId });
     try {
       await eventsAPI.join(eventId);
       setToast({ message: t('events.eventJoined'), type: 'success' });
+      console.log('[EventsList] handleJoinEvent: calling fetchEvents after join');
       fetchEvents();
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
@@ -148,6 +172,7 @@ const EventsList = () => {
 
   // Leave event
   const handleLeaveEvent = useCallback(async (eventId: string | number) => {
+    console.log('[EventsList] useCallback: handleLeaveEvent called');
     try {
       await eventsAPI.leave(eventId);
       setToast({ message: t('events.leftEvent'), type: 'success' });
@@ -215,6 +240,7 @@ const EventsList = () => {
 
   // Handle search/filter
   const handleSearch = useCallback((filters: EventSearchParams) => {
+    console.log('[EventsList] useCallback: handleSearch called');
     setSearchFilters(filters);
     setPage(1);
     const paramsObj = Object.entries({ ...filters, page: '1' })
@@ -225,19 +251,23 @@ const EventsList = () => {
 
   // Modal handlers
   const handleModalClose = useCallback(() => {
+    console.log('[EventsList] useCallback: handleModalClose called');
     setModalOpen(false);
   }, []);
 
   const handleModalSuccess = useCallback(() => {
+    console.log('[EventsList] useCallback: handleModalSuccess called');
     fetchEvents();
   }, [fetchEvents]);
 
   const handleCreateEvent = useCallback(() => {
+    console.log('[EventsList] useCallback: handleCreateEvent called');
     setEditEvent(undefined);
     setModalOpen(true);
   }, []);
 
   const handleEditEvent = useCallback((event: EventWithDetails) => {
+    console.log('[EventsList] useCallback: handleEditEvent called');
     setEditEvent(event);
     setModalOpen(true);
   }, []);
@@ -262,65 +292,110 @@ const EventsList = () => {
     return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
   }
 
-  if (isLoading) {
-    return <LoadingSpinner message={t('events.loadingEvents')} />;
-  }
-
-  // No 'error' variable in scope; error handling is done via toast and isLoading above.
-
   // Enhanced event filtering and sorting logic
   const filteredEvents = useMemo(() => {
+    // Guards: always work with arrays, and require user to be defined
+    if (!user || !Array.isArray(events) || !Array.isArray(groups)) return [];
     const now = new Date();
     // Get group IDs where user is a member
     const userGroupIds = groups
-      .filter(g => g.members?.some((m: GroupMember) => m.id === user?.id))
+      .filter(g => Array.isArray(g.members) && g.members.some((m: GroupMember) => m.id === user.id))
       .map(g => g.id);
 
-    // Ensure events is always an array
+    // Always use events as an array
     const eventsArray = Array.isArray(events) ? events : [];
 
     let filtered: EventWithDetails[] = [];
 
     if (tab === 'my') {
-      // Only events the user is joined in (participant or creator), upcoming only
       filtered = eventsArray.filter(event => {
         const eventDate = new Date(event.startTime);
-        const isJoined = event.participants?.some((p: EventParticipant) => p.id === user?.id);
-        const isCreator = event.creatorId === user?.id;
-        return eventDate >= now && (isJoined || isCreator);
+        const isJoined = Array.isArray(event.participants) && event.participants.some((p: EventParticipant) => p.userId === user.id);
+        const isCreator = event.creatorId === user.id;
+        const result = eventDate >= now && (isJoined || isCreator);
+        if (!result) {
+          console.log('[filteredEvents][my] filtered out:', {
+            eventId: event.id,
+            eventDate,
+            isJoined,
+            isCreator,
+            now,
+            reason: 'Not future or not joined/creator'
+          });
+        }
+        return result;
       });
     } else if (tab === 'upcoming') {
-      // Only events the user has NOT joined yet, from their groups (public or private) or public events from other groups
       filtered = eventsArray.filter(event => {
         const eventDate = new Date(event.startTime);
         const isUserGroup = event.group && userGroupIds.includes(event.group.id);
-        const isJoined = event.participants?.some((p: EventParticipant) => p.id === user?.id);
-        // Show if:
-        // - Upcoming
-        // - (User is group member and not joined) OR (public event and not joined)
-        return (
+        const isJoined = Array.isArray(event.participants) && event.participants.some((p: EventParticipant) => p.userId === user.id);
+        const isCreator = event.creatorId === user.id;
+        const result = (
           eventDate >= now &&
           !isJoined &&
+          !isCreator &&
           ((isUserGroup) || (!isUserGroup && event.isPublic))
         );
+        if (!result) {
+          console.log('[filteredEvents][upcoming] filtered out:', {
+            eventId: event.id,
+            eventDate,
+            isUserGroup,
+            isJoined,
+            isCreator,
+            isPublic: event.isPublic,
+            now,
+            reason: 'Already joined/creator or not future or not visible'
+          });
+        }
+        return result;
       });
     } else {
-      // Past events where user is a participant or creator
       filtered = eventsArray.filter(event => {
         const eventDate = new Date(event.startTime);
-        const isJoined = event.participants?.some((p: EventParticipant) => p.id === user?.id);
-        const isCreator = event.creatorId === user?.id;
-        return eventDate < now && (isJoined || isCreator);
+        const isJoined = Array.isArray(event.participants) && event.participants.some((p: EventParticipant) => p.userId === user.id);
+        const isCreator = event.creatorId === user.id;
+        const result = eventDate < now && (isJoined || isCreator);
+        if (!result) {
+          console.log('[filteredEvents][past] filtered out:', {
+            eventId: event.id,
+            eventDate,
+            isJoined,
+            isCreator,
+            now,
+            reason: 'Not past or not joined/creator'
+          });
+        }
+        return result;
       });
     }
 
-    // All group members should see all group events in the list (not just joined)
-    // (Handled above for upcoming tab; for other tabs, user must be participant or creator)
-
-    // Sort all tabs by soonest event
     return filtered.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-  }, [events, groups, tab, user?.id]);
+  }, [events, groups, tab, user]);
 
+  // Robust loading and error handling
+  if (userLoading) {
+    console.log('[EventsList] userLoading true');
+    return <LoadingSpinner message={t('events.loadingUser')} />;
+  }
+  if (!user || !user.id) {
+    console.log('[EventsList] user not found or logged out');
+    return <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh"><Typography variant="h6">{t('events.userNotFoundOrLoggedOut')}</Typography></Box>;
+  }
+  if (isLoading) {
+    console.log('[EventsList] isLoading true');
+    return <LoadingSpinner message={t('events.loadingEvents')} />;
+  }
+
+  // DEBUG: Log every render and key data 
+  console.log('[EventsList] render');
+  console.log('[EventsList] user:', user);
+  console.log('[EventsList] events:', events);
+  console.log('[EventsList] groups:', groups);
+  console.log('[EventsList] filteredEvents:', filteredEvents);
+
+  // Defensive: Never call hooks inside any conditional, loop, or callback below this point
   // Main render
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
@@ -425,12 +500,14 @@ const EventsList = () => {
         />
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
-          {filteredEvents.map((event: EventWithDetails) => {
+          {filteredEvents.map((event: EventWithDetails, idx) => {
+            // DEBUG: Log each event in the map
+            console.log(`[EventsList] rendering event #${idx}:`, event);
             const status = getEventStatus(event);
             const participantCount = event.participants?.length || 0;
             const spotsLeft = event.maxPlayers ? event.maxPlayers - participantCount : null;
-            const isJoined = event.participants?.some((p: EventParticipant) => p.id === user?.id);
-            const isAdmin = event.creatorId === user?.id;
+            const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user.id);
+            const isAdmin = event.creatorId === user.id;
             return (
               <Card 
                 key={event.id}
@@ -538,27 +615,26 @@ const EventsList = () => {
                       {t('common.viewDetails')}
                     </Button>
                     {/* Join/Leave actions, only if not past */}
-                    {status.label !== t('common.past') && !isAdmin && (
-                      isJoined ? (
-                        <Button
-                          variant="outlined"
-                          fullWidth
-                          onClick={() => handleLeaveEvent(event.id)}
-                          disabled={isFetching}
-                        >
-                          {t('events.leaveEvent')}
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="contained"
-                          fullWidth
-                          color="success"
-                          onClick={() => handleJoinEvent(event.id)}
-                          disabled={isFetching || status.label === t('common.full')}
-                        >
-                          {t('events.joinEvent')}
-                        </Button>
-                      )
+                    {status.label !== t('common.past') && !isAdmin && !isJoined && (
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        color="success"
+                        onClick={() => handleJoinEvent(event.id)}
+                        disabled={isFetching || status.label === t('common.full')}
+                      >
+                        {t('events.joinEvent')}
+                      </Button>
+                    )}
+                    {status.label !== t('common.past') && !isAdmin && isJoined && (
+                      <Button
+                        variant="outlined"
+                        fullWidth
+                        onClick={() => handleLeaveEvent(event.id)}
+                        disabled={isFetching}
+                      >
+                        {t('events.leaveEvent')}
+                      </Button>
                     )}
                   </CardActions>
                 </Card>

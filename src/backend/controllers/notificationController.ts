@@ -28,6 +28,7 @@ import {
  *  - searchQuery: string (searches in title and message)
  */
 export const getNotifications = asyncHandler(async (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
   const userId = req.user!.id;
   const {
     includeRead = 'false',

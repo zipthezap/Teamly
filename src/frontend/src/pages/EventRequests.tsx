@@ -55,7 +55,7 @@ const EventRequests = () => {
       console.error('Error fetching data:', error);
       setSnackbar({
         open: true,
-        message: getErrorMessage(error) || t('eventRequests.failedToLoad'),
+        message: getErrorMessage(error) || t('events.eventRequests.failedToLoad'),
         severity: 'error',
       });
     } finally {
@@ -70,14 +70,14 @@ const EventRequests = () => {
       await fetchData();
       setSnackbar({
         open: true,
-        message: t('eventRequests.voteRecorded'),
+        message: t('events.eventRequests.voteRecorded'),
         severity: 'success',
       });
     } catch (error: unknown) {
       console.error('Error voting:', error);
       setSnackbar({
         open: true,
-        message: getErrorMessage(error) || t('eventRequests.failedToVote'),
+        message: getErrorMessage(error) || t('events.eventRequests.failedToVote'),
         severity: 'error',
       });
     } finally {
@@ -91,14 +91,14 @@ const EventRequests = () => {
       await fetchData();
       setSnackbar({
         open: true,
-        message: t('eventRequests.finalized'),
+        message: t('events.eventRequests.finalized'),
         severity: 'success',
       });
     } catch (error: unknown) {
       console.error('Error finalizing:', error);
       setSnackbar({
         open: true,
-        message: getErrorMessage(error) || t('eventRequests.failedToFinalize'),
+        message: getErrorMessage(error) || t('events.eventRequests.failedToFinalize'),
         severity: 'error',
       });
     }
@@ -110,14 +110,14 @@ const EventRequests = () => {
       await fetchData();
       setSnackbar({
         open: true,
-        message: t('eventRequests.cancelled'),
+        message: t('events.eventRequests.cancelled'),
         severity: 'success',
       });
     } catch (error: unknown) {
       console.error('Error cancelling:', error);
       setSnackbar({
         open: true,
-        message: getErrorMessage(error) || t('eventRequests.failedToCancel'),
+        message: getErrorMessage(error) || t('events.eventRequests.failedToCancel'),
         severity: 'error',
       });
     }
@@ -139,13 +139,13 @@ const EventRequests = () => {
       if (endTime) {
         endDateTime = new Date(`${formData.startDate}T${endTime}`);
         if (endDateTime <= startDateTime) {
-          setSnackbar({ open: true, message: t('eventRequests.endTimeAfterStart'), severity: 'error' });
+          setSnackbar({ open: true, message: t('events.eventRequests.endTimeAfterStart'), severity: 'error' });
           return;
         }
       }
       
       if (!groupId) {
-        setSnackbar({ open: true, message: t('eventRequests.groupIdRequired'), severity: 'error' });
+        setSnackbar({ open: true, message: t('events.eventRequests.groupIdRequired'), severity: 'error' });
         return;
       }
       
@@ -177,14 +177,14 @@ const EventRequests = () => {
       });
       setSnackbar({
         open: true,
-        message: t('eventRequests.created'),
+        message: t('events.eventRequests.created'),
         severity: 'success',
       });
     } catch (error: unknown) {
       console.error('Error creating request:', error);
       setSnackbar({
         open: true,
-        message: getErrorMessage(error) || t('eventRequests.failedToCreate'),
+        message: getErrorMessage(error) || t('events.eventRequests.failedToCreate'),
         severity: 'error',
       });
     }
@@ -220,7 +220,7 @@ const EventRequests = () => {
     <div className="max-w-5xl mx-auto mt-8 mb-8 px-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
-          <div className="text-2xl font-bold mb-1">{t('eventRequests.title')}</div>
+          <div className="text-2xl font-bold mb-1">{t('events.eventRequests.title')}</div>
           {group && (
             <div className="text-sm text-gray-400">{group.name}</div>
           )}
@@ -231,7 +231,7 @@ const EventRequests = () => {
             onClick={() => setCreateDialogOpen(true)}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 8v8M8 12h8" /></svg>
-            {t('eventRequests.createRequest')}
+            {t('events.eventRequests.createRequest')}
           </button>
         )}
       </div>
@@ -239,11 +239,11 @@ const EventRequests = () => {
       {requests.length === 0 ? (
         <div className="text-center py-16">
           <svg className="mx-auto mb-4 w-16 h-16 text-gray-300" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 17v-6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v6" /><path d="M12 19v2" /><circle cx="12" cy="12" r="10" /></svg>
-          <div className="text-lg text-gray-400 font-semibold mb-2">{t('eventRequests.noRequests')}</div>
+          <div className="text-lg text-gray-400 font-semibold mb-2">{t('events.eventRequests.noRequests')}</div>
           <div className="text-sm text-gray-400">
             {isMember
-              ? t('eventRequests.noRequestsMember')
-              : t('eventRequests.noRequestsUser')}
+              ? t('events.eventRequests.noRequestsMember')
+              : t('events.eventRequests.noRequestsUser')}
           </div>
         </div>
       ) : (
@@ -256,7 +256,7 @@ const EventRequests = () => {
               <div key={request.id} className="bg-[#1a202c] rounded-xl shadow-md p-6 border border-gray-700">
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-2">
                   <div className="text-lg font-semibold text-gray-100">{request.title}</div>
-                  <span className={`px-2 py-0.5 rounded text-xs font-semibold border ${request.status === 'voting' ? 'bg-blue-900/50 text-blue-300 border-blue-700' : request.status === 'finalized' ? 'bg-green-900/50 text-green-300 border-green-700' : 'bg-gray-700 text-gray-300 border-gray-600'}`}>{t(`eventRequests.status.${request.status}`)}</span>
+                  <span className={`px-2 py-0.5 rounded text-xs font-semibold border ${request.status === 'voting' ? 'bg-blue-900/50 text-blue-300 border-blue-700' : request.status === 'finalized' ? 'bg-green-900/50 text-green-300 border-green-700' : 'bg-gray-700 text-gray-300 border-gray-600'}`}>{t(`events.eventRequests.status.${request.status}`)}</span>
                 </div>
 
                 {request.description && (
@@ -265,7 +265,7 @@ const EventRequests = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2 text-xs text-gray-400">
                   <div>{t('events.eventType')}: {request.eventType}</div>
-                  <div>{t('events.location')}: {request.location || t('eventRequests.tbd')}</div>
+                  <div>{t('events.location')}: {request.location || t('events.eventRequests.tbd')}</div>
                   <div>{t('events.eventDate')}: {new Date(request.startTime).toLocaleString()}</div>
                   {request.maxPlayers && <div>{t('events.maxPlayers')}: {request.maxPlayers}</div>}
                 </div>
@@ -274,8 +274,8 @@ const EventRequests = () => {
                   <>
                     <div className="mb-2">
                       <div className="flex justify-between text-xs mb-1">
-                        <span>{t('eventRequests.yes')}: {request.yesVotes} | {t('eventRequests.no')}: {request.noVotes}</span>
-                        <span>{votePercentage.toFixed(0)}% {t('eventRequests.approval')}</span>
+                        <span>{t('events.eventRequests.yes')}: {request.yesVotes} | {t('events.eventRequests.no')}: {request.noVotes}</span>
+                        <span>{votePercentage.toFixed(0)}% {t('events.eventRequests.approval')}</span>
                       </div>
                       <div className="w-full h-2 bg-gray-200 rounded">
                         <div
@@ -285,7 +285,7 @@ const EventRequests = () => {
                       </div>
                     </div>
                     {userVote && (
-                      <div className="bg-blue-50 text-blue-700 px-3 py-2 rounded mb-2 text-xs font-semibold">{t('eventRequests.youVoted', { vote: t(`eventRequests.${userVote}`) })}</div>
+                      <div className="bg-blue-50 text-blue-700 px-3 py-2 rounded mb-2 text-xs font-semibold">{t('events.eventRequests.youVoted', { vote: t(`events.eventRequests.${userVote}`) })}</div>
                     )}
                   </>
                 )}
@@ -299,7 +299,7 @@ const EventRequests = () => {
                         disabled={voting[request.id]}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-6 0v4" /><path d="M5 12h14" /><path d="M7 12v7a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-7" /></svg>
-                        {t('eventRequests.yes')}
+                        {t('events.eventRequests.yes')}
                       </button>
                       <button
                         className={`inline-flex items-center gap-1 px-4 py-2 rounded font-semibold border transition text-sm ${userVote === 'no' ? 'bg-red-600 text-white border-red-600' : 'border-red-500 text-red-600 hover:bg-red-50'}`}
@@ -307,7 +307,7 @@ const EventRequests = () => {
                         disabled={voting[request.id]}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M10 15V5a3 3 0 0 1 6 0v10" /><path d="M19 12H5" /></svg>
-                        {t('eventRequests.no')}
+                        {t('events.eventRequests.no')}
                       </button>
                       {isAdmin && (
                         <>
@@ -316,7 +316,7 @@ const EventRequests = () => {
                             onClick={() => handleFinalize(request.id)}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M9 12l2 2l4-4" /></svg>
-                            {t('eventRequests.finalize')}
+                            {t('events.eventRequests.finalize')}
                           </button>
                           <button
                             className="inline-flex items-center gap-1 px-4 py-2 rounded font-semibold border border-red-500 text-red-600 hover:bg-red-50 transition text-sm"
@@ -330,10 +330,10 @@ const EventRequests = () => {
                     </>
                   )}
                   {request.status === 'finalized' && (
-                    <div className="bg-green-50 text-green-700 px-3 py-2 rounded text-xs font-semibold w-full">{t('eventRequests.eventCreated')}</div>
+                    <div className="bg-green-50 text-green-700 px-3 py-2 rounded text-xs font-semibold w-full">{t('events.eventRequests.eventCreated')}</div>
                   )}
                   {request.status === 'cancelled' && (
-                    <div className="bg-red-50 text-red-700 px-3 py-2 rounded text-xs font-semibold w-full">{t('eventRequests.cancelled')}</div>
+                    <div className="bg-red-50 text-red-700 px-3 py-2 rounded text-xs font-semibold w-full">{t('events.eventRequests.cancelled')}</div>
                   )}
                 </div>
               </div>
@@ -346,7 +346,7 @@ const EventRequests = () => {
       {createDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-[#1a202c] rounded-xl shadow-lg p-6 w-full max-w-md border border-gray-700">
-            <div className="text-lg font-semibold mb-4 text-gray-100">{t('eventRequests.createRequest')}</div>
+            <div className="text-lg font-semibold mb-4 text-gray-100">{t('events.eventRequests.createRequest')}</div>
             <EventForm
               initialData={{ ...newRequest, groupId: groupId || '' }}
               loading={false}

@@ -29,6 +29,7 @@
     "submit": "Soumettre",
     "accept": "Accepter",
     "decline": "Refuser",
+    "declined": "Refusé",
     "viewAll": "Voir tout",
     "confirmed": "Confirmé",
     "refused": "Refusé",
@@ -548,7 +549,10 @@
     "location": "Lieu",
     "startTime": "Heure de début",
     "endTime": "Heure de fin",
-    "maxPlayers": "Joueurs maximum"
+    "maxPlayers": "Joueurs maximum",
+    "noRequests": "Aucune demande d'événement pour le moment",
+    "noRequestsMember": "Créez une demande d'événement pour que les autres membres puissent voter !",
+    "createRequest": "Créer une demande d'événement"
   },
   "locationPicker": {
     "title": "Localisation (Optionnelle)",

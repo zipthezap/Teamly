@@ -8,6 +8,7 @@ import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors'
 
 // Create a comment
 export const createComment = asyncHandler(async (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
   const { eventId, content, parentId } = req.body;
 
   if (!eventId || !content) {

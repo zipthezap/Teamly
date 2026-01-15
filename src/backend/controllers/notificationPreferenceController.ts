@@ -4,6 +4,7 @@ import { asyncHandler } from '../middleware/asyncHandler';
 import { UpdateEmailPreferenceData } from '../../shared/types/email.types';
 
 export const getNotificationPreferences = asyncHandler(async (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
   let prefs = await prisma.emailPreference.findUnique({
     where: { userId: req.user!.id },
   });

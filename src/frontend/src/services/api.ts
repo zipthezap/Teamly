@@ -106,7 +106,10 @@ export const groupsAPI = {
   update: (id: string | number, data: UpdateGroupData) => api.put(`/groups/${id}`, data),
   delete: (id: string | number) => api.delete(`/groups/${id}`),
   invite: (id: string | number, email: string) => api.post(`/groups/${id}/invite`, { email }),
-  removeMember: (groupId: string | number, memberId: string | number) => api.delete(`/groups/${groupId}/members/${memberId}`),
+  // Updated to use the new backend endpoint: DELETE /groups/:id/members/user/:userId
+  removeMember: (groupId: string | number, userId: string | number) => api.delete(`/groups/${groupId}/members/user/${userId}`),
+  // Fetch all members for a group
+  getMembers: (groupId: string | number) => api.get(`/groups/${groupId}/members`),
   leave: (groupId: string | number) => api.delete(`/groups/${groupId}/leave`),
   getInviteLink: (groupId: string | number) => api.get(`/groups/${groupId}/invite-link`),
   joinByInvite: (userId: string | number, groupId: string | number) => api.post('/groups/join', { userId, groupId }),

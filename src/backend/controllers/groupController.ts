@@ -1,5 +1,108 @@
+// Get all members for a group
+export const getGroupMembers = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    // Only allow members of the group to view the member list
+    const group = await prisma.group.findUnique({
+      where: { id },
+      include: {
+        members: {
+          include: {
+            user: {
+              select: { id: true, name: true, email: true, profilePicture: true }
+            }
+          }
+        }
+      }
+    });
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+    // Optionally, check if the requesting user is a member
+    const isMember = group.members.some((m: any) => m.userId === req.user?.id);
+    if (!isMember) {
+      return res.status(403).json({ error: 'Only group members can view the member list' });
+    }
+    // Flatten member user fields for frontend compatibility
+    const members = group.members.map((member: any) => ({
+      id: member.userId,
+      name: member.user?.name,
+      email: member.user?.email,
+      profilePicture: member.user?.profilePicture,
+      role: member.role,
+    }));
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(members);
+  } catch (error) {
+    logger.error('Failed to get group members', 'GroupController', { error });
+    res.status(500).json({ error: 'Failed to get group members' });
+  }
+};
+// Remove a group member by userId (admin only)
+export const removeMemberByUserId = async (req: Request, res: Response) => {
+  try {
+    const { id, userId } = req.params;
+
+    logger.info('Attempting to remove member by userId', 'GroupController', {
+      userId: req.user!.id,
+      groupId: id,
+      targetUserId: userId,
+      action: 'GROUP_REMOVE_MEMBERS',
+    });
+    const canRemove = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_REMOVE_MEMBERS);
+    logger.info('Remove member by userId permission result', 'GroupController', {
+      userId: req.user!.id,
+      groupId: id,
+      targetUserId: userId,
+      canRemove,
+    });
+    if (!canRemove) {
+      logger.warn('403 Forbidden: User lacks GROUP_REMOVE_MEMBERS permission', 'GroupController', {
+        userId: req.user!.id,
+        groupId: id,
+        targetUserId: userId,
+      });
+      return res.status(403).json({ error: 'Only admins can remove members' });
+    }
+
+    // Find the group member record by groupId and userId
+    const memberToRemove = await prisma.groupMember.findFirst({
+      where: { groupId: id, userId: userId }
+    });
+    if (!memberToRemove) {
+      logger.warn('Attempted to remove non-existent group member by userId', 'GroupController', { groupId: id, userId });
+      return res.status(404).json({ error: 'Group member not found.' });
+    }
+    if (memberToRemove.userId === req.user!.id && memberToRemove.role === 'admin') {
+      return res.status(403).json({ error: 'Admins cannot remove themselves from the group.' });
+    }
+
+    await prisma.groupMember.delete({
+      where: { id: memberToRemove.id }
+    });
+
+    // Invalidate group cache for all affected users
+    await CacheService.invalidate('group', id);
+    await CacheService.deletePattern(`user:${memberToRemove.userId}:groups:*`);
+
+    // Set no-store header and return updated group
+    res.setHeader('Cache-Control', 'no-store');
+    const updatedGroup = await prisma.group.findUnique({
+      where: { id },
+      include: {
+        creator: { select: { id: true, name: true, email: true, profilePicture: true } },
+        members: { include: { user: { select: { id: true, name: true, email: true, profilePicture: true } } } }
+      }
+    });
+    res.json({ group: updatedGroup, message: 'Member removed successfully' });
+  } catch (error) {
+    logger.error('Failed to remove member by userId', 'GroupController', { error });
+    res.status(500).json({ error: 'Failed to remove member' });
+  }
+};
 // Transfer admin rights to another member
 export const transferAdmin = async (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
   try {
     const { id } = req.params;
     const { newAdminEmail } = req.body;
@@ -435,16 +538,21 @@ export const inviteMember = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    // Check if user has permission to invite members (admins and moderators)
-    const canInvite = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_INVITE_MEMBERS);
-    if (!canInvite) {
-      return res.status(403).json({ error: 'Only admins and moderators can invite members' });
-    }
-
     // Get group info
     const group = await prisma.group.findUnique({
       where: { id }
     });
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+
+    // If group is private, only allow admins/moderators to invite
+    if (!group.isPublic) {
+      const canInvite = await permissionService.hasGroupPermission(req.user!.id, id, Permission.GROUP_INVITE_MEMBERS);
+      if (!canInvite) {
+        return res.status(403).json({ error: 'Only admins and moderators can invite members to private groups' });
+      }
+    }
 
     // Find user to invite
     const userToInvite = await prisma.user.findUnique({
@@ -467,26 +575,35 @@ export const inviteMember = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'User is already a member' });
     }
 
-    const newMember = await prisma.groupMember.create({
+    // Do NOT add as member yet. Membership is granted when invite is accepted.
+
+    // Instead of adding as member, create a join request and notification
+    // 1. Create a join request for the invited user (status: pending)
+    const joinRequest = await prisma.groupJoinRequest.create({
       data: {
         groupId: id,
         userId: userToInvite.id,
-        role: 'member'
-      },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true }
+        status: 'pending',
+        createdBy: 'invite',
+      }
+    });
+
+    // 2. Create a group notification for the invited user
+    await prisma.groupNotification.create({
+      data: {
+        groupId: id,
+        userId: userToInvite.id,
+        type: 'invited',
+        params: {
+          groupName: group.name,
+          inviterName: req.user!.name
         }
       }
     });
 
-    // Send email notification
-    const inviterUser = await prisma.user.findUnique({
-      where: { id: req.user!.id }
-    });
-
+    // 3. Send email notification
+    const inviterUser = await prisma.user.findUnique({ where: { id: req.user!.id } });
     const shouldSend = await shouldSendEmailNotification(userToInvite.id, 'groupInvites');
-
     if (shouldSend) {
       const htmlContent = `
         <h2>You've Been Invited to Join a Group!</h2>
@@ -496,7 +613,6 @@ export const inviteMember = async (req: Request, res: Response) => {
         <p>${escapeHtml(group.description || '')}</p>
         <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/groups">View Group</a></p>
       `;
-      
       await sendEmailWithQueue(
         userToInvite.email,
         `Group Invitation: ${group.name}`,
@@ -515,10 +631,9 @@ export const inviteMember = async (req: Request, res: Response) => {
 
     // Invalidate group cache for all affected users
     await CacheService.invalidate('group', id);
-    // Invalidate user groups cache for the invited user
     await CacheService.deletePattern(`user:${userToInvite.id}:groups:*`);
 
-    res.status(201).json(newMember);
+    res.status(201).json({ joinRequest, notification: 'invite sent' });
   } catch (error) {
     logger.error('Failed to invite member', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to invite member' });
@@ -552,11 +667,15 @@ export const removeMember = async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Only admins can remove members' });
     }
 
-    // Prevent admin from removing itself
+    // Prevent admin from removing itself and check existence
     const memberToRemove = await prisma.groupMember.findUnique({
       where: { id: memberId }
     });
-    if (memberToRemove && memberToRemove.userId === req.user!.id && memberToRemove.role === 'admin') {
+    if (!memberToRemove) {
+      logger.warn('Attempted to remove non-existent group member', 'GroupController', { groupId: id, memberId });
+      return res.status(404).json({ error: 'Group member not found.' });
+    }
+    if (memberToRemove.userId === req.user!.id && memberToRemove.role === 'admin') {
       return res.status(403).json({ error: 'Admins cannot remove themselves from the group.' });
     }
 
@@ -566,11 +685,18 @@ export const removeMember = async (req: Request, res: Response) => {
 
     // Invalidate group cache for all affected users
     await CacheService.invalidate('group', id);
-    if (memberToRemove) {
-      await CacheService.deletePattern(`user:${memberToRemove.userId}:groups:*`);
-    }
+    await CacheService.deletePattern(`user:${memberToRemove.userId}:groups:*`);
 
-    res.json({ message: 'Member removed successfully' });
+    // Set no-store header and return updated group
+    res.setHeader('Cache-Control', 'no-store');
+    const updatedGroup = await prisma.group.findUnique({
+      where: { id },
+      include: {
+        creator: { select: { id: true, name: true, email: true, profilePicture: true } },
+        members: { include: { user: { select: { id: true, name: true, email: true, profilePicture: true } } } }
+      }
+    });
+    res.json({ group: updatedGroup, message: 'Member removed successfully' });
   } catch (error) {
     logger.error('Failed to remove member', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to remove member' });
@@ -927,7 +1053,16 @@ export const joinGroupByInvite = async (req: Request, res: Response) => {
     await CacheService.deletePattern(`events:user:${userId}:group:${groupId}:*`);
     await CacheService.deletePattern(`events:user:${userId}:group:all:*`);
 
-    res.status(201).json({ message: 'Joined group successfully' });
+    // Set no-store header and return updated group
+    res.setHeader('Cache-Control', 'no-store');
+    const updatedGroup = await prisma.group.findUnique({
+      where: { id: groupId },
+      include: {
+        creator: { select: { id: true, name: true, email: true, profilePicture: true } },
+        members: { include: { user: { select: { id: true, name: true, email: true, profilePicture: true } } } }
+      }
+    });
+    res.status(201).json({ group: updatedGroup, message: 'Joined group successfully' });
   } catch (error) {
     logger.error('Failed to join group by invite', 'GroupController', { error });
     res.status(500).json({ error: 'Failed to join group' });

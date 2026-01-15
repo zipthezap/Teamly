@@ -6,6 +6,7 @@ import { BadRequestError, NotFoundError } from '../utils/errors';
 
 // Get notifications for the current user (event and group notifications)
 export const getNotifications = asyncHandler(async (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
   const userId = req.user!.id;
   // Fetch both event and group notifications, ordered by createdAt desc
   const [eventNotifications, groupNotifications] = await Promise.all([

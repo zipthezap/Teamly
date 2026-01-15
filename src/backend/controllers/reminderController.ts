@@ -9,6 +9,7 @@ import { logger } from '../utils/logger';
  * POST /api/events/:eventId/reminders
  */
 export const createReminder = asyncHandler(async (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
   const { eventId } = req.params;
   const { remindAt } = req.body;
   const userId = req.user!.id;

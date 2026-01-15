@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { groupsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 import { GroupWithDetails, GroupMember } from '../../../shared/types';
 
 interface JoinRequest {
@@ -25,6 +26,7 @@ export const useJoinRequests = (groupId: string | number | null = null): UseJoin
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const fetchJoinRequests = useCallback(async () => {
     if (!user) return;
@@ -75,6 +77,10 @@ export const useJoinRequests = (groupId: string | number | null = null): UseJoin
       await groupsAPI.handleJoinRequest(requestGroupId, requestId, action);
       // Refresh the requests after handling
       await fetchJoinRequests();
+      // Invalidate groupMembers query for instant update
+      if (action === 'approve' || action === 'reject') {
+        queryClient.invalidateQueries({ queryKey: ["groupMembers", requestGroupId] });
+      }
       return { success: true, message: `Join request ${action === 'approve' ? 'approved' : 'rejected'}` };
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };

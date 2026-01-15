@@ -49,15 +49,22 @@ export default function GroupDetailsPage() {
   });
   const [groupPicture, setGroupPicture] = useState<string | undefined>();
 
-  // Fetch group details
-  const { data: group, isLoading: groupLoading, error: groupError } = useQuery({
+
+
+  // Fetch group details (with members)
+  const { data: group, isLoading: groupLoading, error: groupError, refetch: refetchGroup } = useQuery({
     queryKey: ["groupDetails", groupId],
     queryFn: async () => {
       const res = await groupsAPI.getById(groupId!);
       return res.data as GroupWithDetails;
     },
     enabled: !!groupId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
+
+  // Use group.members for MemberList
+  const members = Array.isArray(group?.members) ? group.members : [];
 
   // Fetch events for this group
   const { data: events, isLoading: eventsLoading, refetch: refetchEvents } = useQuery({
@@ -68,6 +75,8 @@ export default function GroupDetailsPage() {
       return res.data;
     },
     enabled: !!groupId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   // Fetch chat messages for this group
@@ -78,36 +87,38 @@ export default function GroupDetailsPage() {
       return res.data;
     },
     enabled: !!groupId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
-  // Debug logs for membership and admin logic
-  React.useEffect(() => {
-    console.log('[DEBUG] user:', user);
-    console.log('[DEBUG] group:', group);
-    if (group && group.members) {
-      console.log('[DEBUG] group.members:', group.members);
-      const admin = group.members.some((m) => m.role && user && m.userId === user.id && m.role === "admin");
-      const member = group.members.some((m) => user && m.userId === user.id);
-      console.log('[DEBUG] isAdmin:', admin);
-      console.log('[DEBUG] isMember:', member);
-    }
-  }, [user, group]);
+
   // Improved admin check: use AuthContext for user email
   const userEmail = user?.email || null;
 
   // Fallback: if member emails are missing, check if user is group creator
+
+  // Guards: ensure group, user, and group.members are defined before logic
+
   let isAdmin = false;
-  if (group?.members?.some((m: GroupMember) => m.role && user && m.id === user.id && m.role === "admin")) {
-    isAdmin = true;
-  } else if ((!group?.members || group.members.length === 0) && group?.creator?.email && userEmail) {
-    isAdmin = group.creator.email === userEmail;
+  if (group && user && Array.isArray(group.members)) {
+    // Always use m.id === user.id, since member objects have 'id' not 'userId'
+    if (group.members.some((m: GroupMember) => m.id === user.id && m.role === "admin")) {
+      console.log('[DEBUG] User %s is admin based on members list', user.email);
+      isAdmin = true;
+    } else if ((group.members.length === 0) && group.creator?.email && userEmail) {
+      isAdmin = group.creator.email === userEmail;
+    }
   }
 
   // Check if user is a moderator or admin (can edit but not delete)
-  const canEdit = group?.members?.some((m: GroupMember) => user && m.id === user.id && (m.role === "admin" || m.role === "moderator"));
+  const canEdit = group && user && Array.isArray(group.members)
+    ? group.members.some((m: GroupMember) => m.id === user.id && (m.role === "admin" || m.role === "moderator"))
+    : false;
 
   // Check if user is a member of the group (admins are always considered members)
-  const isMember = isAdmin || group?.members?.some((m: GroupMember) => user && m.id === user.id);
+  const isMember = isAdmin || (group && user && Array.isArray(group.members)
+    ? group.members.some((m: GroupMember) => m.id === user.id)
+    : false);
 
   // Update group settings when group data loads
   React.useEffect(() => {
@@ -156,13 +167,12 @@ export default function GroupDetailsPage() {
 
   // Remove member mutation (optimistic UI)
   const removeMemberMutation = useMutation({
-    mutationFn: async (email: string) => {
-      const member = group?.members?.find((m: GroupMember) => m.email === email);
-      if (!member) throw new Error("Member not found");
-      await groupsAPI.removeMember(groupId!, member.id);
-      return email;
+    mutationFn: async (memberId: string) => {
+      // Now uses userId instead of groupMemberId
+      await groupsAPI.removeMember(groupId!, memberId);
+      return memberId;
     },
-    onMutate: async (email) => {
+    onMutate: async (memberId) => {
       // Optimistically update group members
       await queryClient.cancelQueries({ queryKey: ["groupDetails", groupId] });
       const prevGroup = queryClient.getQueryData(["groupDetails", groupId]);
@@ -170,12 +180,12 @@ export default function GroupDetailsPage() {
       if (prevGroup) {
         queryClient.setQueryData(["groupDetails", groupId], {
           ...(prevGroup as GroupWithDetails),
-          members: membersArray.filter((m: GroupMember) => m.email !== email),
+          members: membersArray.filter((m: GroupMember) => m.userId !== memberId && m.id !== memberId),
         });
       }
       return { prevGroup };
     },
-    onError: (err: unknown, _email, context: { prevGroup?: unknown } | undefined) => {
+    onError: (err: unknown, _memberId, context: { prevGroup?: unknown } | undefined) => {
       const errorMessage = err instanceof Error ? err.message : t('groupDetails.failedToRemove');
       setToast({ message: errorMessage, type: "error" });
       if (context?.prevGroup) {
@@ -185,6 +195,11 @@ export default function GroupDetailsPage() {
     onSuccess: () => {
       setToast({ message: t('groupDetails.memberRemoved'), type: "success" });
       queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
+      queryClient.invalidateQueries({ queryKey: ["groupMembers", groupId] });
+      queryClient.refetchQueries({ queryKey: ["groupDetails", groupId] }); // Force immediate refetch
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ["groupDetails", groupId] });
+      }, 100);
     },
   });
 
@@ -218,10 +233,21 @@ export default function GroupDetailsPage() {
     },
   });
 
+    // Debug logs for membership and admin logic
+  React.useEffect(() => {
+    console.log('[DEBUG] user:', user);
+    console.log('[DEBUG] group:', group);
+    if (group && group.members) {
+      console.log('[DEBUG] group.members:', group.members);
+      console.log('[DEBUG] isAdmin:', isAdmin);
+      console.log('[DEBUG] isMember:', isMember);  
+    }
+  }, [user, group]);
+
   // Local state for chat input, confirmation dialog, and join requests
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [showConfirm, setShowConfirm] = useState<{ open: boolean; email: string | null }>({ open: false, email: null });
+  const [showConfirm, setShowConfirm] = useState<{ open: boolean; memberId: string | null }>({ open: false, memberId: null });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showAdminTransfer, setShowAdminTransfer] = useState(false);
@@ -257,16 +283,16 @@ export default function GroupDetailsPage() {
   }, [message]);
 
   // Remove member handler with confirmation
-  const handleRemoveMember = useCallback((email: string) => {
-    setShowConfirm({ open: true, email });
+  const handleRemoveMember = useCallback((memberId: string) => {
+    setShowConfirm({ open: true, memberId });
   }, []);
 
   const confirmRemove = useCallback(() => {
-    if (showConfirm.email) {
-      removeMemberMutation.mutate(showConfirm.email);
+    if (showConfirm.memberId) {
+      removeMemberMutation.mutate(showConfirm.memberId);
     }
-    setShowConfirm({ open: false, email: null });
-  }, [showConfirm.email, removeMemberMutation]);
+    setShowConfirm({ open: false, memberId: null });
+  }, [showConfirm.memberId, removeMemberMutation]);
 
   // Event card click handler
   const navigate = useNavigate();
@@ -455,6 +481,9 @@ export default function GroupDetailsPage() {
   const gridCols = "grid-cols-1 sm:grid-cols-2 md:grid-cols-3";
   const eventsArray = Array.isArray(events) ? events : (events?.data ?? []);
 
+  // Defensive: always use array for members
+  const groupMembersArray = Array.isArray(members) ? members : [];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white p-2 sm:p-4 md:p-6">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -463,7 +492,7 @@ export default function GroupDetailsPage() {
         onEdit={isAdmin ? (() => setSettingsOpen(true)) : undefined}
         onDelete={isAdmin ? handleDeleteGroup : undefined}
         onLeave={isMember ? handleLeaveGroup : undefined}
-        onInvite={isMember ? handleInviteMember : undefined}
+        onInvite={group?.isPublic && isMember ? handleInviteMember : isAdmin ? handleInviteMember : undefined}
         onCopyLink={isMember ? handleCopyLink : undefined}
         isAdmin={isAdmin}
       />
@@ -483,7 +512,9 @@ export default function GroupDetailsPage() {
         t={t}
       />
       <div className={`grid ${gridCols} gap-6`}>
-        <MemberList members={group.members as GroupMember[]} onRemove={isAdmin ? handleRemoveMember : undefined} />
+        {groupId && (
+          <MemberList groupId={groupId} isAdmin={isAdmin} onRemove={isAdmin ? handleRemoveMember : undefined} />
+        )}
         <EventList
           events={eventsArray}
           onEventClick={handleEventClick}
@@ -508,11 +539,16 @@ export default function GroupDetailsPage() {
           <div className="bg-slate-800 p-6 rounded shadow-lg w-80 text-center">
             <div className="mb-4 text-lg">{t('groupDetails.removeThisMember')}</div>
             <div className="mb-6 text-slate-400">
-              {t('groupDetails.confirmRemoveMemberDesc', { email: showConfirm.email })}
+              {(() => {
+                const member = group?.members?.find((m: GroupMember) => m.userId === showConfirm.memberId || m.id === showConfirm.memberId);
+                const name = member?.user?.name || member?.name || '';
+                const email = member?.user?.email || member?.email || '';
+                return t('groupDetails.confirmRemoveMemberDesc', { email: name ? `${name} (${email})` : email });
+              })()}
             </div>
             <div className="flex gap-4 justify-center">
               <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded" onClick={confirmRemove} disabled={removeMemberMutation.isPending}>{t('groupDetails.remove')}</button>
-              <button className="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded" onClick={() => setShowConfirm({ open: false, email: null })}>{t('common.cancel')}</button>
+              <button className="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded" onClick={() => setShowConfirm({ open: false, memberId: null })}>{t('common.cancel')}</button>
             </div>
           </div>
         </div>

@@ -36,6 +36,7 @@ import * as authService from '../services/authService';
 // ==================== REGISTRATION & LOGIN ====================
 
 export const register = async (req: Request, res: Response): Promise<void> => {
+    res.setHeader('Cache-Control', 'no-store');
   try {
     const { email, password, name } = req.body;
 

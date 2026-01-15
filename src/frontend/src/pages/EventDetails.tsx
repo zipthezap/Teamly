@@ -32,6 +32,8 @@ const EventDetails = () => {
       return response.data;
     },
     enabled: !!id,
+    staleTime: 0, // Always fetch fresh data
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
   });
 
   const joinMutation = useMutation({

@@ -7,6 +7,7 @@ import * as teamUpNotificationService from '../services/teamUpNotificationServic
 
 // Create a TeamUp request
 export const createTeamUpRequest = async (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
   try {
     const {
       title,

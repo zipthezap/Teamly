@@ -82,7 +82,7 @@ const EventList: React.FC<EventListProps> = React.memo(({ events, onEventClick, 
             t={tModal}
           />
           {/* Request Event button - available for all members including admins */}
-          {isMember && groupId && (
+          {isMember && !isAdmin && groupId && (
             <button
               onClick={handleRequestEvent}
               className="ml-2 flex items-center justify-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition shadow-none focus:outline-none"

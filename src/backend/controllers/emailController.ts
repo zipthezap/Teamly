@@ -9,6 +9,7 @@ import { AuthenticatedRequest, RouteParams } from '../types/controller.types';
 
 // Get user email preferences
 export const getEmailPreferences = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
   let preferences = await prisma.emailPreference.findUnique({
     where: { userId: req.user.id }
   });

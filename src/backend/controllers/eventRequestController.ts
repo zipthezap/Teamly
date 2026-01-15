@@ -7,6 +7,7 @@ import { SportType } from '../../shared/types/event.types';
 
 // Create event request (any group member can create, admins approve)
 export const createEventRequest = async (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
   try {
     const { 
       groupId, title, description, eventType, location, startTime, endTime, maxPlayers,

@@ -23,11 +23,16 @@ router.get('/', etagMiddleware({ weak: true }), privateCache(60), asyncHandler(g
 router.get('/nearby', asyncHandler(groupController.getNearbyGroups));
 router.get('/:id', etagMiddleware({ weak: true }), privateCache(30), asyncHandler(groupController.getGroup));
 
+
+// Get all members for a group
+router.get('/:id/members', asyncHandler(groupController.getGroupMembers));
 // Delete group (admin only)
 router.delete('/:id', asyncHandler(groupController.deleteGroup));
 router.put('/:id', asyncHandler(groupController.updateGroup));
 router.post('/:id/invite', asyncHandler(groupController.inviteMember));
 router.delete('/:id/members/:memberId', asyncHandler(groupController.removeMember));
+// Remove member by userId (admin only)
+router.delete('/:id/members/user/:userId', asyncHandler(groupController.removeMemberByUserId));
 router.put('/:id/members/:memberId/role', asyncHandler(groupController.updateMemberRole));
 router.delete('/:id/leave', asyncHandler(groupController.leaveGroup));
 // Transfer admin before leaving
