@@ -286,6 +286,8 @@ model Group {
   maxMembers  Int?       // Maximum number of members (null = unlimited)
   autoApproveJoinRequests Boolean @default(false) // Auto-approve join requests for public groups
   tags        String?    // Comma-separated tags/interests (e.g., "competitive,weekend-warriors,beginners-welcome")
+  allowMemberInvites Boolean @default(false) // Allow non-admin members to invite others to the group
+  allowMemberCopyLink Boolean @default(true) // Allow non-admin members to copy the group invite link
 
   creatorId String
   creator   User   @relation("GroupCreator", fields: [creatorId], references: [id])

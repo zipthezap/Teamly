@@ -50,6 +50,8 @@ export default function GroupDetailsPage() {
     maxMembers: '' as number | string,
     autoApproveJoinRequests: false,
     tags: '',
+    allowMemberInvites: false,
+    allowMemberCopyLink: true,
   });
   const [groupPicture, setGroupPicture] = useState<string | undefined>();
 
@@ -123,6 +125,14 @@ export default function GroupDetailsPage() {
     ? group.members.some((m: GroupMember) => m.id === user.id)
     : false);
 
+  // Check if user can invite members
+  const canInvite = group && user ? 
+    (canEdit || (isMember && group.allowMemberInvites)) : false;
+
+  // Check if user can copy invite link
+  const canCopyLink = group && user ? 
+    (canEdit || (isMember && group.allowMemberCopyLink)) : false;
+
   // Update group settings when group data loads
   React.useEffect(() => {
     if (group) {
@@ -134,6 +144,8 @@ export default function GroupDetailsPage() {
         maxMembers: group.maxMembers || '',
         autoApproveJoinRequests: group.autoApproveJoinRequests || false,
         tags: group.tags || '',
+        allowMemberInvites: group.allowMemberInvites || false,
+        allowMemberCopyLink: group.allowMemberCopyLink !== false,
       });
       setGroupPicture(group.picture ?? undefined);
     }
@@ -141,7 +153,19 @@ export default function GroupDetailsPage() {
 
   // Update group mutation
   const updateGroupMutation = useMutation({
-    mutationFn: async (data: UpdateGroupData) => {
+    mutationFn: async (formData: typeof settingsForm) => {
+      // Transform form data to match API expectations
+      const data: UpdateGroupData = {
+        name: formData.name,
+        description: formData.description,
+        isPublic: formData.privacy === 'public',
+        sportType: formData.sportType,
+        maxMembers: formData.maxMembers ? Number(formData.maxMembers) : undefined,
+        autoApproveJoinRequests: formData.autoApproveJoinRequests,
+        tags: formData.tags,
+        allowMemberInvites: formData.allowMemberInvites,
+        allowMemberCopyLink: formData.allowMemberCopyLink,
+      };
       await groupsAPI.update(groupId!, data);
       return data;
     },
@@ -350,6 +374,25 @@ export default function GroupDetailsPage() {
     mutationFn: async () => {
       await groupsAPI.leave(groupId!);
     },
+    onMutate: async () => {
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({ queryKey: ["groupDetails", groupId] });
+      
+      // Snapshot the previous value
+      const previousGroup = queryClient.getQueryData(["groupDetails", groupId]);
+      
+      // Optimistically update to remove current user from members
+      queryClient.setQueryData(["groupDetails", groupId], (old: any) => {
+        if (!old || !user) return old;
+        return {
+          ...old,
+          members: old.members?.filter((m: GroupMember) => m.userId !== user.id) || []
+        };
+      });
+      
+      // Return context with the snapshot
+      return { previousGroup };
+    },
     onSuccess: () => {
       // Invalidate all group-related queries to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ["groupsList"] });
@@ -361,7 +404,11 @@ export default function GroupDetailsPage() {
         navigate('/groups');
       }, 500);
     },
-    onError: (err: unknown) => {
+    onError: (err: unknown, variables, context) => {
+      // Rollback on error
+      if (context?.previousGroup) {
+        queryClient.setQueryData(["groupDetails", groupId], context.previousGroup);
+      }
       setToast({ message: getErrorMessage(err) || t('groupDetails.failedToLeave'), type: "error" });
     },
   });
@@ -514,8 +561,8 @@ export default function GroupDetailsPage() {
         onEdit={isAdmin ? (() => setSettingsOpen(true)) : undefined}
         onDelete={isAdmin ? handleDeleteGroup : undefined}
         onLeave={isMember ? handleLeaveGroup : undefined}
-        onInvite={group?.isPublic && isMember ? handleInviteMember : isAdmin ? handleInviteMember : undefined}
-        onCopyLink={isMember ? handleCopyLink : undefined}
+        onInvite={canInvite ? handleInviteMember : undefined}
+        onCopyLink={canCopyLink ? handleCopyLink : undefined}
         isAdmin={isAdmin}
       />
       {/* Group Statistics */}

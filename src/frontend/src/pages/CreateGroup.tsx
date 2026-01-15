@@ -34,6 +34,8 @@ const CreateGroup = () => {
   const [maxMembers, setMaxMembers] = useState<number | string>('');
   const [autoApproveJoinRequests, setAutoApproveJoinRequests] = useState(false);
   const [tags, setTags] = useState('');
+  const [allowMemberInvites, setAllowMemberInvites] = useState(false);
+  const [allowMemberCopyLink, setAllowMemberCopyLink] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -59,6 +61,8 @@ const CreateGroup = () => {
         ...(maxMembers && { maxMembers: typeof maxMembers === 'string' ? parseInt(maxMembers) : maxMembers }),
         autoApproveJoinRequests,
         tags: tags || null,
+        allowMemberInvites,
+        allowMemberCopyLink,
       };
       const response = await groupsAPI.create(groupData);
       const groupId = response.data.id;
@@ -130,6 +134,10 @@ const CreateGroup = () => {
             setAutoApproveJoinRequests={setAutoApproveJoinRequests}
             tags={tags}
             setTags={setTags}
+            allowMemberInvites={allowMemberInvites}
+            setAllowMemberInvites={setAllowMemberInvites}
+            allowMemberCopyLink={allowMemberCopyLink}
+            setAllowMemberCopyLink={setAllowMemberCopyLink}
             t={t}
           />
           
