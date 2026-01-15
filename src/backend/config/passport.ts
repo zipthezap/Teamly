@@ -115,7 +115,7 @@ if (process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET) {
         clientID: process.env.FACEBOOK_APP_ID,
         clientSecret: process.env.FACEBOOK_APP_SECRET,
         callbackURL: process.env.FACEBOOK_CALLBACK_URL || 'http://localhost:3000/api/auth/facebook/callback',
-        profileFields: ['id', 'emails', 'name', 'displayName']
+        profileFields: ['id', 'emails', 'name', 'displayName', 'picture']
       },
       async (_accessToken, _refreshToken, profile, done) => {
         try {
