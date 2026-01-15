@@ -57,11 +57,11 @@ export function queryMonitorMiddleware() {
     });
 
     // Attach request ID for tracking
-    (req as any).queryRequestId = requestId;
+    (req as unknown as Record<string, unknown>).queryRequestId = requestId;
 
     // Intercept response end to log metrics
     const originalEnd = res.end;
-    res.end = function (this: Response, ...args: any[]): Response {
+    res.end = function (this: Response, ...args: unknown[]): Response {
       const metrics = queryMetricsStore.get(requestId);
       const requestDuration = Date.now() - startTime;
 
@@ -91,7 +91,7 @@ export function queryMonitorMiddleware() {
         queryMetricsStore.delete(requestId);
       }
 
-      return originalEnd.apply(this, args as any);
+      return originalEnd.apply(this, args as [unknown?, BufferEncoding?, (() => void)?]);
     };
 
     next();
@@ -198,10 +198,11 @@ export async function getConnectionPoolStats(): Promise<{
     const pool = getPool();
     
     // Check if pool has the expected properties
+    const poolWithStats = pool as Record<string, unknown>;
     return {
-      total: (pool as any).totalCount || 0,
-      idle: (pool as any).idleCount || 0,
-      waiting: (pool as any).waitingCount || 0,
+      total: (typeof poolWithStats.totalCount === 'number' ? poolWithStats.totalCount : 0),
+      idle: (typeof poolWithStats.idleCount === 'number' ? poolWithStats.idleCount : 0),
+      waiting: (typeof poolWithStats.waitingCount === 'number' ? poolWithStats.waitingCount : 0),
     };
   } catch (error) {
     logger.error('Failed to get connection pool stats', 'QueryMonitor', { error });

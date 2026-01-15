@@ -68,7 +68,7 @@ export const noCache = (_req: Request, res: Response, next: NextFunction) => {
 export const setETag = (req: Request, res: Response, next: NextFunction) => {
   const originalSend = res.json.bind(res);
 
-  res.json = function (body: any) {
+  res.json = function (body: unknown) {
     // Generate ETag from response body
     const etag = generateETag(body);
     res.setHeader('ETag', etag);
@@ -88,7 +88,7 @@ export const setETag = (req: Request, res: Response, next: NextFunction) => {
 /**
  * Generates an ETag from response body using MD5 hash
  */
-function generateETag(body: any): string {
+function generateETag(body: unknown): string {
   const content = typeof body === 'string' ? body : JSON.stringify(body);
   const hash = crypto.createHash('md5').update(content).digest('hex');
   return `"${hash}"`;
