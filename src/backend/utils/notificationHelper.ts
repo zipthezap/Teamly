@@ -36,7 +36,7 @@ export const shouldSendEmailNotification = async (userId: string, notificationTy
     });
 
     // Check the specific notification type using type-safe helper
-    return getPreferenceValue(preferences, notificationType) !== false;
+    return getPreferenceValue(preferences, notificationType);
   } catch (error) {
     logger.error('Error checking email notification preference', 'NotificationHelper', { 
       userId, 
@@ -170,7 +170,7 @@ export const batchShouldSendEmailNotification = async (userIds: string[], notifi
       const userPrefs = preferencesMap.get(userId);
       
       // Check the specific notification type using type-safe helper
-      result.set(userId, getPreferenceValue(userPrefs || null, notificationType) !== false);
+      result.set(userId, getPreferenceValue(userPrefs || null, notificationType));
     }
 
     return result;
