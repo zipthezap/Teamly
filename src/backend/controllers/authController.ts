@@ -936,7 +936,7 @@ export const unlinkOAuthAccount = async (req: Request, res: Response): Promise<v
   }
 
   // Unlink the account
-  const updateData: any = {};
+  const updateData: Record<string, unknown> = {};
   if (provider === 'google') {
     updateData.googleId = null;
     // Update authProvider if Google was the primary

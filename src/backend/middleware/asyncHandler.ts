@@ -6,19 +6,19 @@
 
 import { Request, Response, NextFunction } from 'express';
 
-type AsyncRequestHandler = (
-  req: Request,
+type AsyncRequestHandler<ReqType extends Request = Request> = (
+  req: ReqType,
   res: Response,
   next: NextFunction
-) => Promise<void | Response | any>;
+) => Promise<void | Response>;
 
 /**
  * Wraps an async route handler to automatically catch errors
  * @param fn - Async route handler function
  * @returns Wrapped handler that catches errors
  */
-export const asyncHandler = (fn: AsyncRequestHandler) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
+export const asyncHandler = <ReqType extends Request = Request>(fn: AsyncRequestHandler<ReqType>) => {
+  return (req: ReqType, res: Response, next: NextFunction): void => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 };

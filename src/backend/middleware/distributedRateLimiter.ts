@@ -26,13 +26,13 @@ const createRateLimiter = (config: RateLimiterConfig) => {
     if (redisClient) {
       try {
         // Redis client is compatible with rate-limiter-flexible's expected interface
-        // Using type assertion here is safe as we control the Redis client type
+        // We need to cast to the expected type to avoid compile errors
         return new RateLimiterRedis({
-          storeClient: redisClient,
+          storeClient: redisClient as ConstructorParameters<typeof RateLimiterRedis>[0]['storeClient'],
           keyPrefix: config.keyPrefix || 'rl',
           points,
           duration,
-        } as any);
+        });
       } catch (error) {
         logger.error('Failed to create Redis rate limiter, falling back to memory', 'RateLimiter', { error });
       }

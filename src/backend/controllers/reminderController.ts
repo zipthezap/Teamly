@@ -155,7 +155,7 @@ export const getUserReminders = asyncHandler(async (req: Request, res: Response)
   const userId = req.user!.id;
   const { upcoming } = req.query;
 
-  const whereClause: any = {
+  const whereClause: Record<string, unknown> = {
     userId,
     event: {
       status: {

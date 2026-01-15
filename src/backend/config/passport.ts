@@ -5,8 +5,9 @@ import prisma from './database';
 import { logger } from '../utils/logger';
 
 // Serialize user for session
-passport.serializeUser((user: any, done) => {
-  done(null, user.id);
+passport.serializeUser((user: Express.User, done) => {
+  const userId = (user as { id: string }).id;
+  done(null, userId);
 });
 
 // Deserialize user from session

@@ -69,52 +69,59 @@ export const errorHandler = (
 /**
  * Check if error is a Prisma error
  */
-export const isPrismaError = (err: any): boolean => {
-  return (err.code && err.code.startsWith('P')) || err.name?.includes('Prisma');
+export const isPrismaError = (err: unknown): boolean => {
+  const error = err as Record<string, unknown>;
+  return (typeof error.code === 'string' && error.code.startsWith('P')) || 
+         (typeof error.name === 'string' && error.name.includes('Prisma'));
 };
 
 /**
  * Converts Prisma errors to ApiErrors
  */
-export const prismaErrorHandler = (err: any): ApiError => {
+export const prismaErrorHandler = (err: unknown): ApiError => {
+  const error = err as Record<string, unknown>;
+  const errorCode = error.code as string;
+  const errorName = error.name as string;
+  const errorMeta = error.meta as Record<string, unknown> | undefined;
+
   // Handle Prisma unique constraint violations
-  if (err.code === 'P2002') {
-    const target = err.meta?.target?.[0] || 'field';
+  if (errorCode === 'P2002') {
+    const target = (Array.isArray(errorMeta?.target) ? errorMeta.target[0] : 'field') as string;
     return new ApiError(`A record with this ${target} already exists`, 409, true, 'DUPLICATE_RECORD');
   }
 
   // Handle Prisma foreign key constraint violations
-  if (err.code === 'P2003') {
+  if (errorCode === 'P2003') {
     return new ApiError('Related record not found', 400, true, 'INVALID_REFERENCE');
   }
 
   // Handle Prisma record not found
-  if (err.code === 'P2025') {
+  if (errorCode === 'P2025') {
     return new ApiError('Record not found', 404, true, 'NOT_FOUND');
   }
 
   // Handle Prisma connection errors
-  if (err.code === 'P1001' || err.code === 'P1002') {
+  if (errorCode === 'P1001' || errorCode === 'P1002') {
     return new ApiError('Database connection error', 503, false, 'DATABASE_CONNECTION_ERROR');
   }
 
   // Handle Prisma timeout errors
-  if (err.code === 'P2024') {
+  if (errorCode === 'P2024') {
     return new ApiError('Database operation timed out', 504, false, 'DATABASE_TIMEOUT');
   }
 
   // Handle validation errors (check by name instead of import)
-  if (err.name === 'PrismaClientValidationError') {
+  if (errorName === 'PrismaClientValidationError') {
     return new ApiError('Invalid data provided', 400, true, 'VALIDATION_ERROR');
   }
 
   // Handle Prisma initialization errors
-  if (err.name === 'PrismaClientInitializationError') {
+  if (errorName === 'PrismaClientInitializationError') {
     return new ApiError('Database initialization error', 503, false, 'DATABASE_INIT_ERROR');
   }
 
   // Handle Prisma known request errors
-  if (err.name === 'PrismaClientKnownRequestError') {
+  if (errorName === 'PrismaClientKnownRequestError') {
     return new ApiError('Database request error', 500, false, 'DATABASE_REQUEST_ERROR');
   }
 

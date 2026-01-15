@@ -9,7 +9,7 @@ export interface BaseNotification {
   id: string;
   userId: string;
   type: string;
-  params?: Record<string, any> | null;
+  params?: Record<string, unknown> | null;
   createdAt: Date | string;
   read: boolean;
   user?: PublicUser;
@@ -22,7 +22,7 @@ export type Notification = EventNotification | GroupNotification | TeamUpNotific
 export interface EventNotification extends BaseNotification {
   eventId: string;
   type: 'join' | 'leave' | 'late' | 'confirmed' | 'declined' | 'status_change' | 'comment' | 'event_updated' | 'event_cancelled';
-  metadata?: Record<string, any> | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface GroupNotification extends BaseNotification {
@@ -33,7 +33,7 @@ export interface GroupNotification extends BaseNotification {
 export interface TeamUpNotification extends BaseNotification {
   teamUpRequestId: string;
   type: 'teamup_response' | 'teamup_accepted' | 'teamup_declined' | 'teamup_nearby';
-  metadata?: Record<string, any> | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 // Notification query parameters

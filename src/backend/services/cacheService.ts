@@ -6,7 +6,7 @@ import { recordCacheHit, recordCacheMiss, recordCacheOperation } from '../servic
  * In-memory cache for when Redis is not available
  */
 class InMemoryCache {
-  private cache = new Map<string, { value: any; expiry: number }>();
+  private cache = new Map<string, { value: string; expiry: number }>();
   private cleanupInterval: NodeJS.Timeout;
   private readonly MAX_CACHE_SIZE = parseInt(process.env.CACHE_MAX_SIZE || '10000', 10);
 
@@ -137,7 +137,7 @@ export class CacheService {
   /**
    * Get a value from cache
    */
-  static async get<T = any>(key: string): Promise<T | null> {
+  static async get<T = unknown>(key: string): Promise<T | null> {
     const startTime = Date.now();
     try {
       const cache = getCacheInstance();
@@ -167,7 +167,7 @@ export class CacheService {
   /**
    * Set a value in cache with TTL
    */
-  static async set(key: string, value: any, ttlSeconds: number = 60): Promise<void> {
+  static async set(key: string, value: unknown, ttlSeconds: number = 60): Promise<void> {
     const startTime = Date.now();
     try {
       const cache = getCacheInstance();

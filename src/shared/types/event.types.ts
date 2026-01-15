@@ -94,7 +94,7 @@ export interface Event {
   recurrenceRule?: string | null;
   recurrenceEnd?: Date | string | null;
   parentEventId?: string | null;
-  exceptionDates?: any | null;
+  exceptionDates?: string[] | null;
 
   creatorId: string;
   groupId: string;
