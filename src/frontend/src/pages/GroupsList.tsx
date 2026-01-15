@@ -50,15 +50,10 @@ const GroupsList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all');
   const navigate = useNavigate();
-<<<<<<< HEAD
-  const { user, loading: userLoading } = useAuth();
-=======
   const location = useLocation();
   const { user } = useAuth();
->>>>>>> e4fadaa8eda30c446c85d8117060255133b92903
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const location = useLocation();
   const {
     data: groups = [],
     isLoading: groupsLoading,
