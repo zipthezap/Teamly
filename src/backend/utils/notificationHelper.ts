@@ -1,5 +1,15 @@
 import prisma from '../config/database';
 import { logger } from './logger';
+import { EmailPreference } from '../../shared/types/email.types';
+
+/**
+ * Type guard to safely check boolean properties on preferences
+ */
+const getPreferenceValue = (preferences: EmailPreference | null, field: string): boolean => {
+  if (!preferences) return true; // Default to enabled if no preferences
+  const value = preferences[field as keyof EmailPreference];
+  return typeof value === 'boolean' ? value : true;
+};
 
 /**
  * Check if a user should receive a specific type of email notification
@@ -25,13 +35,8 @@ export const shouldSendEmailNotification = async (userId: string, notificationTy
       where: { userId }
     });
 
-    // If no preferences set, default to enabled
-    if (!preferences) {
-      return true;
-    }
-
-    // Check the specific notification type
-    return (preferences as any)[notificationType] !== false;
+    // Check the specific notification type using type-safe helper
+    return getPreferenceValue(preferences, notificationType) !== false;
   } catch (error) {
     logger.error('Error checking email notification preference', 'NotificationHelper', { 
       userId, 
@@ -59,8 +64,9 @@ export const isNotificationMuted = async (userId: string, muteField: string): Pr
       return false;
     }
 
-    // Check if the specific notification type is muted
-    return (preferences as any)[muteField] === true;
+    // Check if the specific notification type is muted using type-safe helper
+    const value = preferences[muteField as keyof EmailPreference];
+    return typeof value === 'boolean' ? value : false;
   } catch (error) {
     logger.error('Error checking notification mute status', 'NotificationHelper', { 
       userId, 
@@ -94,8 +100,9 @@ export const batchIsNotificationMuted = async (userIds: string[], muteField: str
         continue;
       }
 
-      // Check if the notification type is muted
-      result.set(userId, (userPrefs as any)[muteField] === true);
+      // Check if the notification type is muted using type-safe access
+      const value = userPrefs[muteField as keyof EmailPreference];
+      result.set(userId, typeof value === 'boolean' ? value : false);
     }
 
     return result;
@@ -162,14 +169,8 @@ export const batchShouldSendEmailNotification = async (userIds: string[], notifi
 
       const userPrefs = preferencesMap.get(userId);
       
-      // If no preferences set, default to enabled
-      if (!userPrefs) {
-        result.set(userId, true);
-        continue;
-      }
-
-      // Check the specific notification type
-      result.set(userId, (userPrefs as any)[notificationType] !== false);
+      // Check the specific notification type using type-safe helper
+      result.set(userId, getPreferenceValue(userPrefs || null, notificationType) !== false);
     }
 
     return result;
