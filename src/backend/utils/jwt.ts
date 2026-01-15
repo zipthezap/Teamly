@@ -155,8 +155,8 @@ export const revokeToken = async (token: string, userId: string, reason: string 
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     
     // Calculate when token would naturally expire
-    const decoded2 = jwt.decode(token) as any;
-    const expiresAt = new Date(decoded2.exp * 1000);
+    const decoded2 = jwt.decode(token) as { exp: number } | null;
+    const expiresAt = decoded2 ? new Date(decoded2.exp * 1000) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     await prisma.revokedToken.create({
       data: {

@@ -6,7 +6,7 @@ import { EmailPreference } from '../../shared/types/email.types';
  * Safely get boolean value from preferences object
  * Returns the value if it's a boolean, otherwise returns the default
  */
-const getBooleanValue = (value: any, defaultValue: boolean): boolean => {
+const getBooleanValue = (value: unknown, defaultValue: boolean): boolean => {
   return typeof value === 'boolean' ? value : defaultValue;
 };
 

@@ -5,9 +5,9 @@
     "lib": ["ES2020"],
     "outDir": "./dist",
     "rootDir": "./src",
-    // Strict mode gradually enabled - full strict mode requires extensive refactoring
+    // Strict mode gradually enabled
     "strict": false,
-    "noImplicitAny": false, // TODO: Enable after fixing all implicit any types
+    "noImplicitAny": true, // Now enabled - all any types have been fixed
     "strictNullChecks": false,
     "strictFunctionTypes": false,
     "strictPropertyInitialization": false,

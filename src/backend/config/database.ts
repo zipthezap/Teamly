@@ -75,24 +75,25 @@ const prisma = new PrismaClient({
 
 // Log slow queries in development
 if (process.env.NODE_ENV === 'development') {
-  prisma.$on('query' as never, (e: any) => {
-    if (e.duration > 1000) { // Log queries taking more than 1 second
+  prisma.$on('query' as never, (e: unknown) => {
+    const event = e as { duration: number; query: string; params: string };
+    if (event.duration > 1000) { // Log queries taking more than 1 second
       logger.warn('Slow query detected', 'Database', {
-        query: e.query,
-        duration: `${e.duration}ms`,
-        params: e.params,
+        query: event.query,
+        duration: `${event.duration}ms`,
+        params: event.params,
       });
     }
   });
 }
 
 // Log database errors
-prisma.$on('error' as never, (e: any) => {
+prisma.$on('error' as never, (e: unknown) => {
   logger.error('Database error', 'Database', { error: e });
 });
 
 // Log warnings
-prisma.$on('warn' as never, (e: any) => {
+prisma.$on('warn' as never, (e: unknown) => {
   logger.warn('Database warning', 'Database', { warning: e });
 });
 
