@@ -53,10 +53,10 @@ const CreateGroup = () => {
         ...(location.locationName && { locationName: location.locationName }),
         ...(location.city && { city: location.city }),
         ...(location.country && { country: location.country }),
-        ...(sportType && { sportType }),
+        sportType: sportType || null,
         ...(maxMembers && { maxMembers: typeof maxMembers === 'string' ? parseInt(maxMembers) : maxMembers }),
         autoApproveJoinRequests,
-        ...(tags && { tags }),
+        tags: tags || null,
       };
       const response = await groupsAPI.create(groupData);
       const groupId = response.data.id;

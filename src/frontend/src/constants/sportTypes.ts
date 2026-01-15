@@ -1,5 +1,6 @@
 /**
  * Shared constants for sport types used across the application
+ * Note: Empty string represents no sport type selected, which maps to null in the database
  */
 
 export const SPORT_TYPES = [
