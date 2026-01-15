@@ -20,7 +20,7 @@ import { generateTokenPair, revokeToken, revokeAllUserTokens, refreshAccessToken
 import { validate2FAToken } from './twoFactorController';
 import { logger } from '../utils/logger';
 import { validateEmail, validateStrongPassword, isRequired, ValidationError, sanitizeString } from '../utils/validation';
-import { BadRequestError, NotFoundError, UnauthorizedError, ForbiddenError } from '../utils/errors';
+import { BadRequestError, NotFoundError, UnauthorizedError, LockedError } from '../utils/errors';
 import crypto from 'crypto';
 import { sendEmail } from '../utils/emailService';
 import path from 'path';
@@ -147,7 +147,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   // Check if account is locked
   if (user.accountLockedUntil && user.accountLockedUntil > new Date()) {
     const minutesRemaining = Math.ceil((user.accountLockedUntil.getTime() - Date.now()) / 60000);
-    throw new ForbiddenError(`Account temporarily locked due to too many failed login attempts. Please try again in ${minutesRemaining} minute(s).`);
+    throw new LockedError(`Account temporarily locked due to too many failed login attempts. Please try again in ${minutesRemaining} minute(s).`);
   }
 
   if (!isValidPassword) {

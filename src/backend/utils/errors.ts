@@ -81,6 +81,15 @@ export class ValidationError extends ApiError {
 }
 
 /**
+ * 423 Locked
+ */
+export class LockedError extends ApiError {
+  constructor(message: string = 'Resource locked', code?: string) {
+    super(message, 423, true, code);
+  }
+}
+
+/**
  * 429 Too Many Requests
  */
 export class TooManyRequestsError extends ApiError {
