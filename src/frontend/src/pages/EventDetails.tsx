@@ -400,7 +400,7 @@ const EventDetails = () => {
                   </div>
                 </div>
               ) : (
-                event.eventNotifications && event.eventNotifications.map((n: any, idx: number) => {
+                event.eventNotifications && event.eventNotifications.map((n: { id: string; type: string; userId: string; user?: { name?: string; profilePicture?: string; profilePictures?: UserProfilePicture[] }; createdAt: Date | string }) => {
                   let action = '';
                   switch (n.type) {
                     case 'join':
