@@ -51,7 +51,7 @@ const GroupsList = () => {
   const [filter, setFilter] = useState('all');
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading: userLoading } = useAuth();
+  const { user, loading } = useAuth();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const {
@@ -132,7 +132,7 @@ const GroupsList = () => {
     const notif = groupInviteRequests.find(n => n.id === notifId);
     if (!notif || !notif.group?.id || !user?.id) return;
     try {
-      await groupsAPI.joinByInvite(user.id, notif.group.id);
+      await groupsAPI.joinByInvite(notif.group.id);
       await markInvitesAsRead([notifId]);
       await refetch(); // Refresh groups list
       // Invalidate group details cache so GroupDetailsPage is fresh
@@ -154,7 +154,7 @@ const GroupsList = () => {
   };
 
   // Robust loading and error handling
-  if (userLoading) {
+  if (loading) {
     return <LoadingSpinner message={t('groups.loadingUser')} />;
   }
   if (!user || !user.id) {

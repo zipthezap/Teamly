@@ -43,7 +43,7 @@ const AuthCallback = () => {
       // If there's an invite group ID, join the group
       if (inviteGroupId) {
         try {
-          // Fetch user profile from server
+          // Fetch user profile to validate authentication before joining group
           const profileResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/auth/profile`, {
             headers: {
               'Authorization': `Bearer ${token}`
@@ -51,9 +51,7 @@ const AuthCallback = () => {
           });
           
           if (profileResponse.ok) {
-            const profileData = await profileResponse.json();
-            const userId = profileData.user.id;
-            await groupsAPI.joinByInvite(userId, inviteGroupId);
+            await groupsAPI.joinByInvite(inviteGroupId);
             navigate(`/groups/${inviteGroupId}`);
           } else {
             navigate('/dashboard');
