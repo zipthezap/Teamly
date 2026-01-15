@@ -147,7 +147,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   // Check if account is locked
   if (user.accountLockedUntil && user.accountLockedUntil > new Date()) {
     const minutesRemaining = Math.ceil((user.accountLockedUntil.getTime() - Date.now()) / 60000);
-    throw new LockedError(`Account temporarily locked due to too many failed login attempts. Please try again in ${minutesRemaining} minute(s).`);
+    throw new LockedError(
+      `Account temporarily locked due to too many failed login attempts. Please try again in ${minutesRemaining} minute(s).`,
+      'ACCOUNT_LOCKED'
+    );
   }
 
   if (!isValidPassword) {
@@ -172,11 +175,14 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       data: updateData
     });
 
-    throw new UnauthorizedError(
-      newFailedAttempts >= ACCOUNT_LOCKOUT.MAX_ATTEMPTS 
-        ? `Account locked for ${ACCOUNT_LOCKOUT.LOCK_DURATION_MINUTES} minutes due to too many failed attempts` 
-        : 'Invalid credentials'
-    );
+    if (newFailedAttempts >= ACCOUNT_LOCKOUT.MAX_ATTEMPTS) {
+      throw new LockedError(
+        `Account locked for ${ACCOUNT_LOCKOUT.LOCK_DURATION_MINUTES} minutes due to too many failed attempts`,
+        'ACCOUNT_LOCKED'
+      );
+    } else {
+      throw new UnauthorizedError('Invalid credentials');
+    }
   }
 
   // Reset failed login attempts on successful password validation
@@ -263,7 +269,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
   }
 
   // Check if email is already taken by another user
-  if (email !== req.user!!.email) {
+  if (email !== req.user!.email) {
     const existingUser = await prisma.user.findUnique({
       where: { email }
     });
