@@ -37,7 +37,22 @@ export const updateNotificationPreferences = asyncHandler(async (req: Request, r
     },
     create: {
       userId: req.user!.id,
-      ...data
+      eventInvites: data.eventInvites ?? true,
+      eventReminders: data.eventReminders ?? true,
+      eventUpdates: data.eventUpdates ?? true,
+      eventCancellations: data.eventCancellations ?? true,
+      groupInvites: data.groupInvites ?? true,
+      commentMentions: data.commentMentions ?? true,
+      nearbyTeamUps: data.nearbyTeamUps ?? true,
+      muteEventInvites: data.muteEventInvites ?? false,
+      muteEventReminders: data.muteEventReminders ?? false,
+      muteEventUpdates: data.muteEventUpdates ?? false,
+      muteEventCancellations: data.muteEventCancellations ?? false,
+      muteGroupInvites: data.muteGroupInvites ?? false,
+      muteGroupRequests: data.muteGroupRequests ?? false,
+      muteNearbyGroups: data.muteNearbyGroups ?? false,
+      muteEventCreated: data.muteEventCreated ?? false,
+      muteNearbyTeamUps: data.muteNearbyTeamUps ?? false
     }
   });
   res.json(prefs);
