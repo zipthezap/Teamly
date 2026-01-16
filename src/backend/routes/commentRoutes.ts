@@ -6,19 +6,23 @@ import {
   deleteComment
 } from '../controllers/commentController';
 import authMiddleware from '../middleware/auth';
+import { noCache } from '../middleware/cacheControl';
+import { etagMiddleware } from '../middleware/etag';
 
 const router = Router();
 
 // Create a comment
-router.post('/', authMiddleware, createComment);
+router.post('/', authMiddleware, noCache, createComment);
 
 // Get comments for an event
-router.get('/event/:eventId', authMiddleware, getEventComments);
+// ETag enables 304 Not Modified responses for bandwidth optimization without HTTP caching
+// No Cache-Control max-age to avoid stale data
+router.get('/event/:eventId', authMiddleware, etagMiddleware({ weak: true }), getEventComments);
 
 // Update a comment
-router.put('/:commentId', authMiddleware, updateComment);
+router.put('/:commentId', authMiddleware, noCache, updateComment);
 
 // Delete a comment
-router.delete('/:commentId', authMiddleware, deleteComment);
+router.delete('/:commentId', authMiddleware, noCache, deleteComment);
 
 export default router;

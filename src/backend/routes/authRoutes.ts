@@ -5,6 +5,8 @@ import { distributedAuthLimiter, distributedUploadLimiter, distributedPasswordRe
 import { uploadProfilePicture } from '../middleware/upload';
 import { asyncHandler } from '../middleware/asyncHandler';
 import passport from '../config/passport';
+import { noCache } from '../middleware/cacheControl';
+import { etagMiddleware } from '../middleware/etag';
 
 // Extend session type to include inviteGroupId
 declare module 'express-session' {
@@ -16,11 +18,11 @@ declare module 'express-session' {
 const router = Router();
 
 // Apply strict rate limiting to auth endpoints
-router.post('/register', distributedAuthLimiter, asyncHandler(authController.register));
-router.post('/login', distributedAuthLimiter, asyncHandler(authController.login));
-router.post('/logout', authMiddleware, asyncHandler(authController.logout));
-router.post('/logout-all', authMiddleware, asyncHandler(authController.logoutAll));
-router.post('/refresh-token', distributedAuthLimiter, asyncHandler(authController.refreshToken));
+router.post('/register', distributedAuthLimiter, noCache, asyncHandler(authController.register));
+router.post('/login', distributedAuthLimiter, noCache, asyncHandler(authController.login));
+router.post('/logout', authMiddleware, noCache, asyncHandler(authController.logout));
+router.post('/logout-all', authMiddleware, noCache, asyncHandler(authController.logoutAll));
+router.post('/refresh-token', distributedAuthLimiter, noCache, asyncHandler(authController.refreshToken));
 
 // OAuth routes
 // Google OAuth
@@ -62,13 +64,15 @@ router.get(
 );
 
 // Email verification
-router.post('/verify-email', distributedEmailVerificationLimiter, asyncHandler(authController.verifyEmail));
-router.post('/resend-verification', distributedEmailVerificationLimiter, asyncHandler(authController.resendVerificationEmail));
+router.post('/verify-email', distributedEmailVerificationLimiter, noCache, asyncHandler(authController.verifyEmail));
+router.post('/resend-verification', distributedEmailVerificationLimiter, noCache, asyncHandler(authController.resendVerificationEmail));
 
 // Profile management
-router.get('/profile', authMiddleware, asyncHandler(authController.getProfile));
-router.put('/profile', authMiddleware, asyncHandler(authController.updateProfile));
-router.put('/password', authMiddleware, asyncHandler(authController.updatePassword));
+// ETag enables 304 Not Modified responses for bandwidth optimization without HTTP caching
+// No Cache-Control max-age to avoid stale data
+router.get('/profile', authMiddleware, etagMiddleware({ weak: true }), asyncHandler(authController.getProfile));
+router.put('/profile', authMiddleware, noCache, asyncHandler(authController.updateProfile));
+router.put('/password', authMiddleware, noCache, asyncHandler(authController.updatePassword));
 
 // Profile picture management
 
@@ -78,23 +82,24 @@ router.post(
   authMiddleware,
   distributedUploadLimiter,
   uploadProfilePicture,
+  noCache,
   asyncHandler(authController.uploadProfilePicture)
 );
-router.delete('/profile/picture', authMiddleware, asyncHandler(authController.deleteProfilePicture));
-router.get('/profile/pictures', authMiddleware, asyncHandler(authController.listProfilePictures));
-router.post('/profile/picture/restore', authMiddleware, asyncHandler(authController.restoreProfilePicture));
-router.post('/profile/picture/hard-delete', authMiddleware, asyncHandler(authController.hardDeleteProfilePicture));
+router.delete('/profile/picture', authMiddleware, noCache, asyncHandler(authController.deleteProfilePicture));
+router.get('/profile/pictures', authMiddleware, etagMiddleware({ weak: true }), asyncHandler(authController.listProfilePictures));
+router.post('/profile/picture/restore', authMiddleware, noCache, asyncHandler(authController.restoreProfilePicture));
+router.post('/profile/picture/hard-delete', authMiddleware, noCache, asyncHandler(authController.hardDeleteProfilePicture));
 
 // Session management
-router.get('/sessions', authMiddleware, asyncHandler(authController.getSessions));
+router.get('/sessions', authMiddleware, etagMiddleware({ weak: true }), asyncHandler(authController.getSessions));
 
 // OAuth account management
-router.get('/oauth/status', authMiddleware, asyncHandler(authController.getOAuthStatus));
-router.post('/oauth/unlink', authMiddleware, asyncHandler(authController.unlinkOAuthAccount));
-router.post('/oauth/sync-picture', authMiddleware, asyncHandler(authController.syncOAuthProfilePicture));
+router.get('/oauth/status', authMiddleware, etagMiddleware({ weak: true }), asyncHandler(authController.getOAuthStatus));
+router.post('/oauth/unlink', authMiddleware, noCache, asyncHandler(authController.unlinkOAuthAccount));
+router.post('/oauth/sync-picture', authMiddleware, noCache, asyncHandler(authController.syncOAuthProfilePicture));
 
 // Password reset routes (with rate limiting)
-router.post('/forgot-password', distributedPasswordResetLimiter, asyncHandler(authController.requestPasswordReset));
-router.post('/reset-password', distributedPasswordResetLimiter, asyncHandler(authController.resetPassword));
+router.post('/forgot-password', distributedPasswordResetLimiter, noCache, asyncHandler(authController.requestPasswordReset));
+router.post('/reset-password', distributedPasswordResetLimiter, noCache, asyncHandler(authController.resetPassword));
 
 export default router;
