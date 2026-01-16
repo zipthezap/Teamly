@@ -505,8 +505,13 @@ export const updateGroup = async (req: Request, res: Response) => {
     }
   });
 
-  // Invalidate group cache after update
-  await CacheService.invalidate('group', id);
+  // Invalidate group cache after update for all affected users
+  await Promise.allSettled([
+    CacheService.invalidate('group', id),
+    ...group.members.map(member => 
+      CacheService.deletePattern(`user:${member.userId}:groups:*`)
+    )
+  ]);
 
   res.json(group);
 };
@@ -1387,6 +1392,14 @@ export const uploadGroupPicture = async (req: Request, res: Response) => {
       userId: req.user!.id 
     });
 
+    // Invalidate group cache for all affected users
+    await Promise.allSettled([
+      CacheService.invalidate('group', id),
+      ...updatedGroup.members.map(member => 
+        CacheService.deletePattern(`user:${member.userId}:groups:*`)
+      )
+    ]);
+
     res.json({ 
       group: updatedGroup,
       message: 'Group picture uploaded successfully' 
@@ -1461,6 +1474,14 @@ export const deleteGroupPicture = async (req: Request, res: Response) => {
     groupId: id,
     userId: req.user!.id 
   });
+
+  // Invalidate group cache for all affected users
+  await Promise.allSettled([
+    CacheService.invalidate('group', id),
+    ...updatedGroup.members.map(member => 
+      CacheService.deletePattern(`user:${member.userId}:groups:*`)
+    )
+  ]);
 
   res.json({ 
     group: updatedGroup,
@@ -1552,6 +1573,22 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
 export const transferAdmin = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { newAdminEmail } = req.body;
+  
+  // Get group with members for cache invalidation
+  const group = await prisma.group.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      members: {
+        select: { userId: true }
+      }
+    }
+  });
+
+  if (!group) {
+    throw new NotFoundError('Group not found');
+  }
+
   // Check if user is current admin
   const currentAdmin = await prisma.groupMember.findFirst({
     where: { groupId: id, userId: req.user!.id, role: 'admin' }
@@ -1582,8 +1619,13 @@ export const transferAdmin = async (req: Request, res: Response) => {
     })
   ]);
   
-  // Invalidate group cache after role changes
-  await CacheService.invalidate('group', id);
+  // Invalidate group cache for all affected users (role changes affect all members)
+  await Promise.allSettled([
+    CacheService.invalidate('group', id),
+    ...group.members.map(member => 
+      CacheService.deletePattern(`user:${member.userId}:groups:*`)
+    )
+  ]);
   
   res.json({ message: 'Admin rights transferred successfully.' });
 };
