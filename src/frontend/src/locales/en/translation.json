@@ -513,6 +513,7 @@
     "copyLink": "Copy Link",
     "deleteGroup": "Delete",
     "editGroup": "Edit",
+    "viewEventRequests": "View Event Requests",
     "joinAccepted": "Join request accepted",
     "joinDeclined": "Join request declined",
     "loadingGroupDetails": "Loading group details...",

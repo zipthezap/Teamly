@@ -554,6 +554,13 @@ export default function GroupDetailsPage() {
     refetchEvents();
   }, [refetchEvents]);
 
+  // Navigate to event requests page
+  const handleViewEventRequests = useCallback(() => {
+    if (groupId) {
+      navigate(`/event-requests/${groupId}`);
+    }
+  }, [groupId, navigate]);
+
   if (groupLoading || eventsLoading || chatLoading) return <div className="text-center text-slate-300 mt-10">{t('groupDetails.loadingGroupDetails')}</div>;
   if (groupError || !group) return <div className="text-center text-red-400 mt-10">{t('groupDetails.failedToLoad')}</div>;
 
@@ -573,6 +580,7 @@ export default function GroupDetailsPage() {
         onLeave={isMember ? handleLeaveGroup : undefined}
         onInvite={canInvite ? handleInviteMember : undefined}
         onCopyLink={canCopyLink ? handleCopyLink : undefined}
+        onViewEventRequests={isAdmin ? handleViewEventRequests : undefined}
         isAdmin={isAdmin}
       />
       {/* Group Statistics */}
