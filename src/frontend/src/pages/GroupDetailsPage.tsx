@@ -352,7 +352,7 @@ export default function GroupDetailsPage() {
       setToast({ message: t('groupDetails.groupDeleted'), type: "success" });
       // Navigate immediately to groups page - cache invalidation ensures fresh data
       setTimeout(() => {
-        navigate('/groups');
+        navigate('/groups', { state: { justLeftGroup: true } });
       }, 500);
     },
     onError: (err: unknown) => {
@@ -401,7 +401,7 @@ export default function GroupDetailsPage() {
       setToast({ message: t('groupDetails.leftGroup'), type: "success" });
       // Navigate immediately to groups page - cache invalidation ensures fresh data
       setTimeout(() => {
-        navigate('/groups');
+        navigate('/groups', { state: { justLeftGroup: true } });
       }, 500);
     },
     onError: (err: unknown, variables, context) => {
@@ -437,7 +437,7 @@ export default function GroupDetailsPage() {
       setShowAdminTransfer(false);
       // Navigate immediately to groups page - cache invalidation ensures fresh data
       setTimeout(() => {
-        navigate('/groups');
+        navigate('/groups', { state: { justLeftGroup: true } });
       }, 500);
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
