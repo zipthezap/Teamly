@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { EventWithDetails } from '../../../../shared/types';
 
 interface GroupEventsModalProps {
@@ -19,15 +19,8 @@ const formatEventDate = (dateString: string | Date) => {
   });
 };
 
-const EVENTS_PER_PAGE = 8;
-
 const GroupEventsModal: React.FC<GroupEventsModalProps> = ({ open, onClose, events, onEventClick, t }) => {
-  const [page, setPage] = useState(1);
   if (!open) return null;
-
-  // Pagination logic
-  const totalPages = Math.ceil(events.length / EVENTS_PER_PAGE);
-  const pagedEvents = events.slice((page - 1) * EVENTS_PER_PAGE, page * EVENTS_PER_PAGE);
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
@@ -44,7 +37,7 @@ const GroupEventsModal: React.FC<GroupEventsModalProps> = ({ open, onClose, even
               <div className="text-slate-400 text-center py-8 text-lg">{t('groupDetails.noEvents', 'No events found.')}</div>
             ) : (
               <ul className="space-y-4">
-                {pagedEvents.map((event) => {
+                {events.map((event) => {
                   const eventDate = event.startTime || event.date || new Date().toISOString();
                   const eventType = event.eventType;
                   const organizerName = event.creator?.name || 'Unknown';
@@ -85,26 +78,6 @@ const GroupEventsModal: React.FC<GroupEventsModalProps> = ({ open, onClose, even
             )}
           </div>
         </div>
-        {/* Pagination */}
-        {events.length > EVENTS_PER_PAGE && (
-          <div className="flex items-center justify-center gap-4 py-4 border-t border-slate-800 bg-slate-900 rounded-b-2xl">
-            <button
-              className="px-4 py-2 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-50"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
-              {t('common.previous', 'Previous')}
-            </button>
-            <span className="text-slate-400 text-sm">{t('common.page', 'Page')} {page} / {totalPages}</span>
-            <button
-              className="px-4 py-2 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-50"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-            >
-              {t('common.next', 'Next')}
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
