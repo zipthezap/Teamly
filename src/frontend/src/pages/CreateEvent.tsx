@@ -115,6 +115,8 @@ const CreateEvent = () => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
       if (data.groupId) {
         queryClient.invalidateQueries({ queryKey: ['groupEvents', data.groupId] });
+        // Invalidate groupsList to update event counts displayed for groups
+        queryClient.invalidateQueries({ queryKey: ['groupsList'] });
       }
       
       navigate(`/events/${response.data.id}`);
