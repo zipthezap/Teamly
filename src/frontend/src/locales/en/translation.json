@@ -406,6 +406,11 @@
     "makePublicHelp": "Public groups can be discovered by anyone and appear in search results",
     "groupNameHelp": "Choose a descriptive name for your group",
     "descriptionHelp": "Describe what your group is about and what activities you do",
+    "memberPermissions": "Member Permissions",
+    "allowMemberInvites": "Allow members to invite others",
+    "allowMemberInvitesHelp": "When disabled, only admins and moderators can invite new members",
+    "allowMemberCopyLink": "Allow members to copy invite link",
+    "allowMemberCopyLinkHelp": "When disabled, only admins and moderators can copy the group invite link",
     "failedToLoad": "Failed to load group",
     "failedToUpdate": "Failed to update group",
     "joinGroup": {

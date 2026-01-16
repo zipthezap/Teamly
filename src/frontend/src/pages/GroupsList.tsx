@@ -75,9 +75,10 @@ const GroupsList = () => {
   // Invalidate groupsList cache if navigated from a group details page (after leave)
   useEffect(() => {
     if (location.state && location.state.justLeftGroup) {
-      queryClient.invalidateQueries({ queryKey: ['groupsList'] });
+      // Explicitly refetch the groups list when returning from group details after deletion/leave
+      refetch();
     }
-  }, [location.state, queryClient]);
+  }, [location.state, refetch]);
 
   // Filtered groups (search/filter)
   const filteredGroups = useMemo(() => {
