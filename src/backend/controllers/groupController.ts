@@ -1352,6 +1352,8 @@ export const getGroupForInvite = async (req: Request, res: Response) => {
       country: true,
       tags: true,
       createdAt: true,
+      latitude: true,
+      longitude: true,
       creator: {
         select: { id: true, name: true, profilePicture: true }
       },

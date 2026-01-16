@@ -101,7 +101,7 @@ export const authAPI = {
 // Groups API
 export const groupsAPI = {
   create: (data: CreateGroupData) => api.post('/groups', data),
-  getAll: () => api.get('/groups'),
+  getAll: (includeEvents?: boolean) => api.get(`/groups${includeEvents ? '?includeEvents=true' : ''}`),
   getById: (id: string | number) => api.get(`/groups/${id}`),
   update: (id: string | number, data: UpdateGroupData) => api.put(`/groups/${id}`, data),
   delete: (id: string | number) => api.delete(`/groups/${id}`),

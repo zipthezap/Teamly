@@ -62,9 +62,9 @@ const GroupsList = () => {
     refetch
   } = useQuery<GroupWithDetails[]>(
     {
-      queryKey: ['groupsList'],
+      queryKey: ['groupsList', 'withEvents'],
       queryFn: async () => {
-        const response = await groupsAPI.getAll();
+        const response = await groupsAPI.getAll(true);
         return response.data as GroupWithDetails[];
       },
       staleTime: 0,

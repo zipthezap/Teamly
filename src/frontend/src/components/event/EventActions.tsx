@@ -33,6 +33,13 @@ const EventActions: React.FC<EventActionsProps> = ({
 }) => {
   const { user } = useAuth();
 
+  // Find current user status
+  const myParticipant = event.participants?.find((p) => p.id === user?.id || p.userId === user?.id);
+  const myAttendance = event.eventAttendances?.find((a) => a.userId === user?.id);
+  const isConfirmed = myParticipant?.status === 'confirmed';
+  const isDeclined = myParticipant?.status === 'declined';
+  const isLate = myAttendance?.status === 'late';
+
   return (
     <Box>
       <Stack spacing={1.5}>
@@ -53,7 +60,7 @@ const EventActions: React.FC<EventActionsProps> = ({
             variant="outlined"
             fullWidth
             size="medium"
-            disabled
+            style={{ opacity: 0.5, pointerEvents: 'none' }}
           >
             Event Full
           </Button>
@@ -61,39 +68,35 @@ const EventActions: React.FC<EventActionsProps> = ({
 
         {isParticipant && (
           <>
-            <Button
-              variant="contained"
-              color="success"
-              fullWidth
-              size="medium"
-              onClick={() => onUpdateStatus('confirmed')}
-              disabled={event.participants?.find((p) => p.id === user?.id)?.status === 'confirmed'}
-            >
-              Confirm Attendance
-            </Button>
 
-            <Button
-              variant="contained"
-              color="error"
-              fullWidth
-              size="medium"
-              onClick={() => onUpdateStatus('declined')}
-              disabled={event.participants?.find((p) => p.id === user?.id)?.status === 'declined'}
-            >
-              Decline
-            </Button>
-
-            {event.eventAttendances?.find((a) => a.id === user?.id && a.status === 'late') ? (
+            {/* Confirm Attendance: show if not confirmed (including if declined) */}
+            {!isConfirmed && (
               <Button
-                variant="outlined"
-                color="info"
+                variant="contained"
+                color="success"
                 fullWidth
                 size="medium"
-                onClick={onUnmarkLate}
+                onClick={() => onUpdateStatus('confirmed')}
               >
-                Undo Late
+                Confirm Attendance
               </Button>
-            ) : (
+            )}
+
+            {/* Decline: only show if confirmed and not already declined */}
+            {isConfirmed && !isDeclined && (
+              <Button
+                variant="contained"
+                color="error"
+                fullWidth
+                size="medium"
+                onClick={() => onUpdateStatus('declined')}
+              >
+                Decline
+              </Button>
+            )}
+
+            {/* Mark Late: only if confirmed and not late */}
+            {isConfirmed && !isLate && (
               <Button
                 variant="outlined"
                 color="warning"
@@ -105,6 +108,20 @@ const EventActions: React.FC<EventActionsProps> = ({
               </Button>
             )}
 
+            {/* On Time: only if confirmed and late */}
+            {isConfirmed && isLate && (
+              <Button
+                variant="outlined"
+                color="info"
+                fullWidth
+                size="medium"
+                onClick={onUnmarkLate}
+              >
+                On Time
+              </Button>
+            )}
+
+            {/* Leave Event: always show for non-creator */}
             {!isCreator && (
               <Button
                 variant="outlined"

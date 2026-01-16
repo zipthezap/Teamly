@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
+import EventActions from '../components/event/EventActions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -58,10 +59,10 @@ const EventDetails = () => {
       setError(errorMessage);
     },
   });
-  const handleJoin = useCallback(() => {
+  const handleJoin = useCallback(async () => {
     setError('');
     setSuccess('');
-    joinMutation.mutate();
+    await joinMutation.mutateAsync();
   }, [joinMutation]);
 
   const leaveMutation = useMutation({
@@ -77,11 +78,11 @@ const EventDetails = () => {
       setError(errorMessage);
     },
   });
-  const handleLeave = useCallback(() => {
+  const handleLeave = useCallback(async () => {
     if (!window.confirm(t('eventDetails.confirmLeave'))) return;
     setError('');
     setSuccess('');
-    leaveMutation.mutate();
+    await leaveMutation.mutateAsync();
   }, [leaveMutation, t]);
 
   const updateStatusMutation = useMutation({
@@ -97,10 +98,10 @@ const EventDetails = () => {
       setError(errorMessage);
     },
   });
-  const handleUpdateStatus = useCallback((status: string) => {
+  const handleUpdateStatus = useCallback(async (status: string) => {
     setError('');
     setSuccess('');
-    updateStatusMutation.mutate(status);
+    await updateStatusMutation.mutateAsync(status);
   }, [updateStatusMutation]);
 
   const deleteMutation = useMutation({
@@ -115,9 +116,9 @@ const EventDetails = () => {
       setError(errorMessage);
     },
   });
-  const handleDelete = useCallback(() => {
+  const handleDelete = useCallback(async () => {
     if (!window.confirm(t('eventDetails.confirmDelete'))) return;
-    deleteMutation.mutate();
+    await deleteMutation.mutateAsync();
   }, [deleteMutation, t]);
 
   const markLateMutation = useMutation({
@@ -130,10 +131,10 @@ const EventDetails = () => {
       setLateError(t('eventDetails.failedToMarkLate'));
     },
   });
-  const handleMarkLate = useCallback(() => {
+  const handleMarkLate = useCallback(async () => {
     setLateError('');
     setLateSuccess('');
-    markLateMutation.mutate();
+    await markLateMutation.mutateAsync();
   }, [markLateMutation]);
 
   const unmarkLateMutation = useMutation({
@@ -146,10 +147,10 @@ const EventDetails = () => {
       setLateError(t('eventDetails.failedToUndoLate'));
     },
   });
-  const handleUnmarkLate = useCallback(() => {
+  const handleUnmarkLate = useCallback(async () => {
     setLateError('');
     setLateSuccess('');
-    unmarkLateMutation.mutate();
+    await unmarkLateMutation.mutateAsync();
   }, [unmarkLateMutation]);
 
   const generateInviteLinkMutation = useMutation({
@@ -332,7 +333,6 @@ const EventDetails = () => {
               <div className="flex flex-wrap gap-3 text-xs text-[#a1a6b4]">
                 <span className="bg-[#232946] px-2 py-1 rounded">✅ {eventStats.confirmedCount} {t('eventDetails.confirmed')}</span>
                 <span className="bg-[#232946] px-2 py-1 rounded">❌ {eventStats.declinedCount} {t('eventDetails.declined')}</span>
-                <span className="bg-[#232946] px-2 py-1 rounded">⏳ {eventStats.pendingCount} {t('eventDetails.pending')}</span>
               </div>
             </div>
             
@@ -340,36 +340,18 @@ const EventDetails = () => {
             {new Date(event.startTime) >= new Date() ? (
               <div className="bg-[#1a2233] rounded-lg p-5">
                 <div className="font-semibold mb-3 text-lg">{t('eventDetails.yourAttendance')}</div>
-                <div className="flex flex-col gap-2">
-                  {!eventStats.isParticipant && !eventStats.isFull && (
-                    <button onClick={handleJoin} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
-                      {t('eventDetails.join')}
-                    </button>
-                  )}
-                  {eventStats.isParticipant && (
-                    <>
-                      <button onClick={() => handleUpdateStatus(EventParticipantStatus.confirmed)} className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
-                        ✓ {t('eventDetails.confirmAttendance')}
-                      </button>
-                      <button onClick={() => handleUpdateStatus(EventParticipantStatus.declined)} className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
-                        ✗ {t('eventDetails.decline')}
-                      </button>
-                      <div className="grid grid-cols-2 gap-2 mt-1">
-                        <button onClick={handleMarkLate} className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs font-medium transition-colors">
-                          ⏰ {t('eventDetails.markLate')}
-                        </button>
-                        <button onClick={handleUnmarkLate} className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs font-medium transition-colors">
-                          ↩ {t('eventDetails.undoLate')}
-                        </button>
-                      </div>
-                      {!eventStats.isCreator && (
-                        <button onClick={handleLeave} className="bg-pink-600 hover:bg-pink-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full mt-2">
-                          {t('eventDetails.leave')}
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
+                <EventActions
+                  event={event}
+                  isParticipant={eventStats.isParticipant}
+                  isCreator={eventStats.isCreator}
+                  isFull={eventStats.isFull}
+                  onJoin={handleJoin}
+                  onLeave={handleLeave}
+                  onUpdateStatus={handleUpdateStatus}
+                  onDelete={handleDelete}
+                  onMarkLate={handleMarkLate}
+                  onUnmarkLate={handleUnmarkLate}
+                />
               </div>
             ) : (
               <div className="bg-[#1a2233] rounded-lg p-5 opacity-50 pointer-events-none select-none">
@@ -478,7 +460,13 @@ const EventDetails = () => {
                 })()}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-white truncate">{p.user?.name}</div>
+                <div className="text-sm font-semibold text-white truncate flex items-center gap-2">
+                  {p.user?.name}
+                  {/* Show 'Will be late' badge if attendance for this user is late */}
+                  {event.eventAttendances?.find((a) => a.userId === p.userId && a.status === 'late') && (
+                    <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-yellow-600/20 text-yellow-500">{t('eventDetails.willBeLate', 'Will be late')}</span>
+                  )}
+                </div>
                 <div className="text-xs text-[#a1a6b4] truncate">{p.user?.email}</div>
                 <div className="text-xs">
                   <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mt-1 ${
