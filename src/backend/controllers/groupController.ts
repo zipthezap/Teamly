@@ -1172,7 +1172,7 @@ export const joinGroupByInvite = async (req: Request, res: Response) => {
   // generate tokens in getInviteLink(), validate tokens here,
   // and optionally add token expiration
   if (!group.isPublic) {
-    throw new ForbiddenError('This group is private. Please ask the group admin to send you a direct invitation via email.');
+    throw new ForbiddenError('This group is private. Please contact the group admin for an invitation.');
   }
 
   // Check if already a member
