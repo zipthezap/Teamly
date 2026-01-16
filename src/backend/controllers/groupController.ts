@@ -1169,6 +1169,102 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
   });
 };
 
+// Respond to a group invitation (for invited users)
+export const respondToInvitation = async (req: Request, res: Response) => {
+  const { id, requestId } = req.params;
+  const { action } = req.body; // 'accept' or 'decline'
+
+  if (!action || !['accept', 'decline'].includes(action)) {
+    throw new BadRequestError('Invalid action. Must be "accept" or "decline"');
+  }
+
+  // Get the invitation
+  const invitation = await prisma.groupJoinRequest.findUnique({
+    where: { id: requestId }
+  });
+
+  if (!invitation) {
+    throw new NotFoundError('Invitation not found');
+  }
+
+  if (invitation.groupId !== id) {
+    throw new BadRequestError('Invitation does not belong to this group');
+  }
+
+  if (invitation.status !== 'pending') {
+    throw new BadRequestError('Invitation already processed');
+  }
+
+  // Only the invited user can respond to their invitation
+  if (invitation.userId !== req.user!.id) {
+    throw new ForbiddenError('You can only respond to your own invitations');
+  }
+
+  // Only invitations (not user-initiated requests) can be responded to by users
+  if (invitation.createdBy !== 'invite') {
+    throw new BadRequestError('This is not an invitation. Join requests must be handled by group admins.');
+  }
+
+  // Update the invitation status
+  const updatedInvitation = await prisma.groupJoinRequest.update({
+    where: { id: requestId },
+    data: { status: action === 'accept' ? 'approved' : 'rejected' }
+  });
+
+  // If accepted, add the user as a member
+  if (action === 'accept') {
+    await prisma.groupMember.create({
+      data: {
+        groupId: id,
+        userId: req.user!.id,
+        role: 'member'
+      }
+    });
+
+    // Invalidate group cache for all affected users
+    await Promise.allSettled([
+      CacheService.invalidate('group', id),
+      CacheService.deletePattern(`user:${req.user!.id}:groups:*`),
+      CacheService.deletePattern(`events:user:${req.user!.id}:group:${id}:*`),
+      CacheService.deletePattern(`events:user:${req.user!.id}:group:all:*`)
+    ]).catch((error: Error) => {
+      logger.error('Cache invalidation error in respondToInvitation', 'GroupController', { error });
+    });
+  }
+
+  res.json({ 
+    message: `Invitation ${action}ed successfully`,
+    invitation: updatedInvitation
+  });
+};
+
+// Get user's pending invitations
+export const getUserInvitations = async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+
+  const invitations = await prisma.groupJoinRequest.findMany({
+    where: {
+      userId,
+      status: 'pending',
+      createdBy: 'invite'
+    },
+    include: {
+      group: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          picture: true,
+          isPublic: true
+        }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  res.json(invitations);
+};
+
 // Join group by invite link - now requires authentication
 // SECURITY FIX: Changed to use authenticated user's ID instead of accepting userId from request body
 // This prevents privilege escalation where attackers could join as any user
