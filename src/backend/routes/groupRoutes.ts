@@ -20,6 +20,9 @@ router.get('/public', optionalAuthMiddleware, distributedApiLimiter, asyncHandle
 router.use(authMiddleware);
 router.use(distributedAuthenticatedLimiter);
 
+// Get user's pending invitations (must come before /:id routes)
+router.get('/invitations/pending', asyncHandler(groupController.getUserInvitations));
+
 router.post('/', asyncHandler(groupController.createGroup));
 // ETag enables 304 Not Modified responses for bandwidth optimization without HTTP caching
 // No Cache-Control max-age to avoid stale data; server-side cache (Redis/in-memory) remains active
@@ -56,5 +59,7 @@ router.delete('/:id/picture', asyncHandler(groupController.deleteGroupPicture));
 router.post('/:id/join-request', asyncHandler(groupController.requestJoinGroup));
 router.get('/:id/join-requests', asyncHandler(groupController.getJoinRequests));
 router.post('/:id/join-requests/:requestId', asyncHandler(groupController.handleJoinRequest));
+// Allow invited users to respond to their invitations
+router.post('/:id/invitations/:requestId/respond', asyncHandler(groupController.respondToInvitation));
 
 export default router;
