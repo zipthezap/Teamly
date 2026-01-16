@@ -1239,14 +1239,21 @@ export const respondToInvitation = async (req: Request, res: Response) => {
     });
 
     // Invalidate group cache for all affected users
-    await Promise.allSettled([
+    const cacheOperations = await Promise.allSettled([
       CacheService.invalidate('group', id),
       CacheService.deletePattern(`user:${req.user!.id}:groups:*`),
       CacheService.deletePattern(`events:user:${req.user!.id}:group:${id}:*`),
       CacheService.deletePattern(`events:user:${req.user!.id}:group:all:*`)
-    ]).catch((error: Error) => {
-      logger.error('Cache invalidation error in respondToInvitation', 'GroupController', { error });
-    });
+    ]);
+
+    // Log any failures
+    const failures = cacheOperations.filter(r => r.status === 'rejected');
+    if (failures.length > 0) {
+      logger.warn('Some cache invalidation operations failed in respondToInvitation', 'GroupController', { 
+        failureCount: failures.length,
+        totalOperations: cacheOperations.length 
+      });
+    }
 
     res.json({ 
       message: 'Invitation accepted successfully',
