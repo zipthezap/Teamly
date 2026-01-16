@@ -1205,20 +1205,37 @@ export const respondToInvitation = async (req: Request, res: Response) => {
     throw new BadRequestError('This is not an invitation. Join requests must be handled by group admins.');
   }
 
-  // Update the invitation status
-  const updatedInvitation = await prisma.groupJoinRequest.update({
-    where: { id: requestId },
-    data: { status: action === 'accept' ? 'approved' : 'rejected' }
-  });
-
-  // If accepted, add the user as a member
+  // If accepting, use a transaction to ensure atomicity
   if (action === 'accept') {
-    await prisma.groupMember.create({
-      data: {
-        groupId: id,
-        userId: req.user!.id,
-        role: 'member'
+    const result = await prisma.$transaction(async (tx) => {
+      // Check if user is already a member (race condition protection)
+      const existingMembership = await tx.groupMember.findFirst({
+        where: {
+          groupId: id,
+          userId: req.user!.id
+        }
+      });
+
+      if (existingMembership) {
+        throw new BadRequestError('You are already a member of this group');
       }
+
+      // Update the invitation status
+      const updatedInvitation = await tx.groupJoinRequest.update({
+        where: { id: requestId },
+        data: { status: 'approved' }
+      });
+
+      // Add the user as a member
+      await tx.groupMember.create({
+        data: {
+          groupId: id,
+          userId: req.user!.id,
+          role: 'member'
+        }
+      });
+
+      return updatedInvitation;
     });
 
     // Invalidate group cache for all affected users
@@ -1230,12 +1247,23 @@ export const respondToInvitation = async (req: Request, res: Response) => {
     ]).catch((error: Error) => {
       logger.error('Cache invalidation error in respondToInvitation', 'GroupController', { error });
     });
-  }
 
-  res.json({ 
-    message: `Invitation ${action}ed successfully`,
-    invitation: updatedInvitation
-  });
+    res.json({ 
+      message: 'Invitation accepted successfully',
+      invitation: result
+    });
+  } else {
+    // Declining is simpler, just update the status
+    const updatedInvitation = await prisma.groupJoinRequest.update({
+      where: { id: requestId },
+      data: { status: 'rejected' }
+    });
+
+    res.json({ 
+      message: 'Invitation declined successfully',
+      invitation: updatedInvitation
+    });
+  }
 };
 
 // Get user's pending invitations
