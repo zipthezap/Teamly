@@ -1286,9 +1286,14 @@ export const leaveGroup = async (req: Request, res: Response) => {
       ])
     ];
     
-    await Promise.allSettled(cacheOperations).catch((error: Error) => {
-      logger.error('Cache invalidation error in leaveGroup', 'GroupController', { error });
-    });
+    const results = await Promise.allSettled(cacheOperations);
+    const failures = results.filter(r => r.status === 'rejected');
+    if (failures.length > 0) {
+      logger.error('Some cache invalidation operations failed in leaveGroup', 'GroupController', { 
+        failureCount: failures.length,
+        totalOperations: cacheOperations.length 
+      });
+    }
 
     res.json({ message: 'Group deleted successfully as you were the last member', groupDeleted: true });
   } else {
