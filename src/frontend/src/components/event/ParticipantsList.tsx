@@ -39,7 +39,7 @@ const ParticipantsList: React.FC<ParticipantsListProps> = ({ event, participantC
       ) : (
         <ul className="divide-y divide-gray-100 dark:divide-gray-800">
           {event.participants.map((participant: EventParticipant, idx: number) => {
-            const attendance = event.eventAttendances?.find((a: EventAttendance) => a.id === participant.id);
+            const attendance = event.eventAttendances?.find((a: EventAttendance) => a.userId === participant.userId);
             const isLate = attendance?.status === 'late';
             const profilePictureUrl = getImageUrl(participant.user?.profilePicture);
             return (
