@@ -439,12 +439,17 @@ export default function GroupDetailsPage() {
     if (!selectedNewAdmin) return;
     try {
       await groupsAPI.transferAdmin(groupId!, selectedNewAdmin); // Assumes backend API exists
-      await groupsAPI.leave(groupId!);
+      const response = await groupsAPI.leave(groupId!);
       // Invalidate all group-related queries to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ["groupsList"] });
       queryClient.invalidateQueries({ queryKey: ["groupDetails"] });
       queryClient.invalidateQueries({ queryKey: ["groups"] });
-      setToast({ message: t('groupDetails.leftGroup'), type: "success" });
+      
+      const message = response.data.groupDeleted 
+        ? t('groupDetails.groupDeletedAsLastMember', 'Group deleted successfully as you were the last member')
+        : t('groupDetails.leftGroup');
+      
+      setToast({ message, type: "success" });
       setShowAdminTransfer(false);
       // Navigate immediately to groups page - cache invalidation ensures fresh data
       setTimeout(() => {

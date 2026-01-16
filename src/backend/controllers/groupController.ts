@@ -1214,18 +1214,18 @@ export const leaveGroup = async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = req.user!.id;
 
-  // Get all members for cache invalidation before deletion
-  const group = await prisma.group.findUnique({
-    where: { id },
-    select: {
-      members: {
-        select: { userId: true }
-      }
-    }
-  });
-
   // SECURITY FIX: Use transaction to prevent race condition where last admin could leave
   const result = await prisma.$transaction(async (tx) => {
+    // Get all members for cache invalidation (inside transaction for consistency)
+    const group = await tx.group.findUnique({
+      where: { id },
+      select: {
+        members: {
+          select: { userId: true }
+        }
+      }
+    });
+
     // Find the membership
     const membership = await tx.groupMember.findFirst({
       where: {
@@ -1258,7 +1258,7 @@ export const leaveGroup = async (req: Request, res: Response) => {
           await tx.group.delete({
             where: { id }
           });
-          return { groupDeleted: true };
+          return { groupDeleted: true, members: group?.members || [] };
         }
 
         // If there are other members but no other admins
@@ -1271,7 +1271,7 @@ export const leaveGroup = async (req: Request, res: Response) => {
       where: { id: membership.id }
     });
 
-    return { groupDeleted: false };
+    return { groupDeleted: false, members: group?.members || [] };
   });
 
   // Invalidate group cache for all affected users
@@ -1279,11 +1279,11 @@ export const leaveGroup = async (req: Request, res: Response) => {
     // Group was deleted, invalidate caches for all members
     const cacheOperations = [
       CacheService.invalidate('group', id),
-      ...(group?.members.flatMap(member => [
+      ...result.members.flatMap(member => [
         CacheService.deletePattern(`user:${member.userId}:groups:*`),
         CacheService.deletePattern(`events:user:${member.userId}:group:${id}:*`),
         CacheService.deletePattern(`events:user:${member.userId}:group:all:*`)
-      ]) || [])
+      ])
     ];
     
     await Promise.allSettled(cacheOperations).catch((error: Error) => {
