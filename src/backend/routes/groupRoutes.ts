@@ -21,8 +21,8 @@ router.use(authMiddleware);
 router.use(distributedAuthenticatedLimiter);
 
 router.post('/', asyncHandler(groupController.createGroup));
-// Add ETag for conditional requests but no HTTP caching to avoid stale data
-// Server-side caching (Redis/in-memory) is still active in the controller
+// ETag enables 304 Not Modified responses for bandwidth optimization without HTTP caching
+// No Cache-Control max-age to avoid stale data; server-side cache (Redis/in-memory) remains active
 router.get('/', etagMiddleware({ weak: true }), asyncHandler(groupController.getGroups));
 router.get('/nearby', asyncHandler(groupController.getNearbyGroups));
 router.get('/:id', etagMiddleware({ weak: true }), asyncHandler(groupController.getGroup));
