@@ -1245,20 +1245,11 @@ export const leaveGroup = async (req: Request, res: Response) => {
 
         // If admin is the only member, delete the group
         if (totalMembers <= 1) {
-          // Get all members for cache invalidation before deletion
-          const group = await tx.group.findUnique({
-            where: { id },
-            select: {
-              members: {
-                select: { userId: true }
-              }
-            }
-          });
-
           await tx.group.delete({
             where: { id }
           });
-          return { groupDeleted: true, members: group?.members || [] };
+          // Since we know there's only one member (current user), use their userId directly
+          return { groupDeleted: true, members: [{ userId }] };
         }
 
         // If there are other members but no other admins
