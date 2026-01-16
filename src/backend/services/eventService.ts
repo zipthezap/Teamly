@@ -169,9 +169,14 @@ export const createEventUpdateNotifications = async (
   if (participantIds.length === 0) return;
 
   try {
+    // Filter out users who have muted event update notifications
+    const unmutedParticipantIds = await filterUnmutedUsers(participantIds, 'muteEventUpdates');
+    
+    if (unmutedParticipantIds.length === 0) return;
+    
     // Use createMany for batch insert - much faster than individual creates
     await prisma.eventNotification.createMany({
-      data: participantIds.map(userId => ({
+      data: unmutedParticipantIds.map(userId => ({
         eventId,
         userId,
         type: EventNotificationType.event_updated,
@@ -199,7 +204,14 @@ export const createEventDeletionNotifications = async (
   deleterName: string,
   participantIds: string[]
 ) => {
-  await Promise.all(participantIds.map(userId =>
+  if (participantIds.length === 0) return;
+  
+  // Filter out users who have muted event cancellation notifications
+  const unmutedParticipantIds = await filterUnmutedUsers(participantIds, 'muteEventCancellations');
+  
+  if (unmutedParticipantIds.length === 0) return;
+  
+  await Promise.all(unmutedParticipantIds.map(userId =>
     prisma.eventNotification.create({
       data: {
         eventId,

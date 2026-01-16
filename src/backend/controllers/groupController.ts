@@ -646,19 +646,24 @@ export const inviteMember = async (req: Request, res: Response) => {
 
   // Create in-app notification for the invited user
   if (inviterUser) {
-    await prisma.groupNotification.create({
-      data: {
-        groupId: id,
-        userId: userToInvite.id,
-        type: 'invited',
-        params: {
-          groupName: group.name,
-          name: inviterUser.name
+    // Check if user has muted group invite notifications
+    const isMuted = await filterUnmutedUsers([userToInvite.id], 'muteGroupInvites');
+    
+    if (isMuted.length > 0) {
+      await prisma.groupNotification.create({
+        data: {
+          groupId: id,
+          userId: userToInvite.id,
+          type: 'invited',
+          params: {
+            groupName: group.name,
+            name: inviterUser.name
+          }
         }
-      }
-    }).catch((error: Error) => {
-      logger.error('Failed to send invitation notification', 'GroupController', { error });
-    });
+      }).catch((error: Error) => {
+        logger.error('Failed to send invitation notification', 'GroupController', { error });
+      });
+    }
   }
 
   res.status(201).json({
