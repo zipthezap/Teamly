@@ -195,6 +195,7 @@ const EditEvent = () => {
       // Invalidate group events if this event belongs to a group
       if (groupId) {
         queryClient.invalidateQueries({ queryKey: ['groupEvents', groupId] });
+        // Invalidate groupsList to update event counts displayed for groups
         queryClient.invalidateQueries({ queryKey: ['groupsList'] });
       }
       

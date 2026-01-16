@@ -189,6 +189,7 @@ export default function GroupDetailsPage() {
     onSuccess: () => {
       setToast({ message: t('groupDetails.eventDeleted'), type: "success" });
       queryClient.invalidateQueries({ queryKey: ["groupEvents", groupId] });
+      // Invalidate groupsList to update event counts displayed in GroupsList
       queryClient.invalidateQueries({ queryKey: ["groupsList"] });
     },
     onError: (err: unknown) => {
@@ -228,6 +229,7 @@ export default function GroupDetailsPage() {
       setToast({ message: t('groupDetails.memberRemoved'), type: "success" });
       queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
       queryClient.invalidateQueries({ queryKey: ["groupMembers", groupId] });
+      // Invalidate groupsList to update member counts displayed in GroupsList
       queryClient.invalidateQueries({ queryKey: ["groupsList"] });
     },
   });
@@ -461,6 +463,7 @@ export default function GroupDetailsPage() {
       setShowInviteModal(false);
       setInviteEmail("");
       queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
+      // Invalidate groupsList to update member counts displayed in GroupsList
       queryClient.invalidateQueries({ queryKey: ["groupsList"] });
     },
     onError: (err: unknown) => {
