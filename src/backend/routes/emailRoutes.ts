@@ -7,22 +7,26 @@ import {
   toggleEmailNotifications
 } from '../controllers/emailController';
 import authMiddleware from '../middleware/auth';
+import { noCache } from '../middleware/cacheControl';
+import { etagMiddleware } from '../middleware/etag';
 
 const router = Router();
 
 // Get email preferences
-router.get('/preferences', authMiddleware, getEmailPreferences);
+// ETag enables 304 Not Modified responses for bandwidth optimization without HTTP caching
+// No Cache-Control max-age to avoid stale data
+router.get('/preferences', authMiddleware, etagMiddleware({ weak: true }), getEmailPreferences);
 
 // Update email preferences
-router.put('/preferences', authMiddleware, updateEmailPreferences);
+router.put('/preferences', authMiddleware, noCache, updateEmailPreferences);
 
 // Toggle email notifications on/off
-router.put('/notifications/toggle', authMiddleware, toggleEmailNotifications);
+router.put('/notifications/toggle', authMiddleware, noCache, toggleEmailNotifications);
 
 // Send verification email
-router.post('/verify/send', authMiddleware, sendVerificationEmail);
+router.post('/verify/send', authMiddleware, noCache, sendVerificationEmail);
 
 // Verify email with token
-router.get('/verify/:token', verifyEmail);
+router.get('/verify/:token', noCache, verifyEmail);
 
 export default router;

@@ -13,6 +13,8 @@ import {
   deleteNotificationsEndpoint,
   deleteAllReadNotificationsEndpoint,
 } from '../controllers/notificationController';
+import { noCache } from '../middleware/cacheControl';
+import { etagMiddleware } from '../middleware/etag';
 
 const router = express.Router();
 
@@ -20,21 +22,23 @@ const router = express.Router();
 router.use(authMiddleware);
 
 // Get notifications with filtering and pagination
-router.get('/', getNotifications);
+// ETag enables 304 Not Modified responses for bandwidth optimization without HTTP caching
+// No Cache-Control max-age to avoid stale data
+router.get('/', etagMiddleware({ weak: true }), getNotifications);
 
 // Mark notifications as read
-router.put('/read', markAsRead);
+router.put('/read', noCache, markAsRead);
 
 // Get notification statistics
-router.get('/stats', getStats);
+router.get('/stats', etagMiddleware({ weak: true }), getStats);
 
 // Get unread notification count
-router.get('/unread-count', getUnreadCount);
+router.get('/unread-count', etagMiddleware({ weak: true }), getUnreadCount);
 
 // Delete specific notifications
-router.delete('/', deleteNotificationsEndpoint);
+router.delete('/', noCache, deleteNotificationsEndpoint);
 
 // Delete all read notifications
-router.delete('/read', deleteAllReadNotificationsEndpoint);
+router.delete('/read', noCache, deleteAllReadNotificationsEndpoint);
 
 export default router;
