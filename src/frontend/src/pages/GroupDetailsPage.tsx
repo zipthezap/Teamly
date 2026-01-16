@@ -32,7 +32,6 @@ function Toast({ message, type, onClose }: { message: string; type: "success" | 
 export default function GroupDetailsPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<EventWithDetails | undefined>(undefined);
   const { id: groupId } = useParams();
