@@ -1214,8 +1214,18 @@ export const leaveGroup = async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = req.user!.id;
 
+  // Get all members for cache invalidation before deletion
+  const group = await prisma.group.findUnique({
+    where: { id },
+    select: {
+      members: {
+        select: { userId: true }
+      }
+    }
+  });
+
   // SECURITY FIX: Use transaction to prevent race condition where last admin could leave
-  await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // Find the membership
     const membership = await tx.groupMember.findFirst({
       where: {
@@ -1237,7 +1247,21 @@ export const leaveGroup = async (req: Request, res: Response) => {
         }
       });
 
+      // If this is the only admin, check total member count
       if (adminCount <= 1) {
+        const totalMembers = await tx.groupMember.count({
+          where: { groupId: id }
+        });
+
+        // If admin is the only member, delete the group
+        if (totalMembers <= 1) {
+          await tx.group.delete({
+            where: { id }
+          });
+          return { groupDeleted: true };
+        }
+
+        // If there are other members but no other admins
         throw new BadRequestError('Cannot leave group as the only admin. Please assign another admin first or delete the group.');
       }
     }
@@ -1246,17 +1270,36 @@ export const leaveGroup = async (req: Request, res: Response) => {
     await tx.groupMember.delete({
       where: { id: membership.id }
     });
+
+    return { groupDeleted: false };
   });
 
   // Invalidate group cache for all affected users
-  await CacheService.invalidate('group', id);
-  // Invalidate user groups cache for the leaving user
-  await CacheService.deletePattern(`user:${userId}:groups:*`);
-  // Invalidate events cache since user no longer has access to group events
-  await CacheService.deletePattern(`events:user:${userId}:group:${id}:*`);
-  await CacheService.deletePattern(`events:user:${userId}:group:all:*`);
+  if (result.groupDeleted) {
+    // Group was deleted, invalidate caches for all members
+    const cacheOperations = [
+      CacheService.invalidate('group', id),
+      ...(group?.members.flatMap(member => [
+        CacheService.deletePattern(`user:${member.userId}:groups:*`),
+        CacheService.deletePattern(`events:user:${member.userId}:group:${id}:*`),
+        CacheService.deletePattern(`events:user:${member.userId}:group:all:*`)
+      ]) || [])
+    ];
+    
+    await Promise.allSettled(cacheOperations).catch((error: Error) => {
+      logger.error('Cache invalidation error in leaveGroup', 'GroupController', { error });
+    });
 
-  res.json({ message: 'Left group successfully' });
+    res.json({ message: 'Group deleted successfully as you were the last member', groupDeleted: true });
+  } else {
+    // Regular leave, invalidate caches
+    await CacheService.invalidate('group', id);
+    await CacheService.deletePattern(`user:${userId}:groups:*`);
+    await CacheService.deletePattern(`events:user:${userId}:group:${id}:*`);
+    await CacheService.deletePattern(`events:user:${userId}:group:all:*`);
+
+    res.json({ message: 'Left group successfully', groupDeleted: false });
+  }
 };
 
 // Get invite link for a group
