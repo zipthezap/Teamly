@@ -505,8 +505,16 @@ export const updateGroup = async (req: Request, res: Response) => {
     }
   });
 
-  // Invalidate group cache after update
-  await CacheService.invalidate('group', id);
+  // Invalidate group cache after update for all affected users
+  const cacheOperations = [
+    CacheService.invalidate('group', id),
+    ...group.members.map(member => 
+      CacheService.deletePattern(`user:${member.userId}:groups:*`)
+    )
+  ];
+  await Promise.allSettled(cacheOperations).catch((error: Error) => {
+    logger.error('Cache invalidation error in updateGroup', 'GroupController', { error });
+  });
 
   res.json(group);
 };
@@ -1387,6 +1395,17 @@ export const uploadGroupPicture = async (req: Request, res: Response) => {
       userId: req.user!.id 
     });
 
+    // Invalidate group cache for all affected users
+    const cacheOperations = [
+      CacheService.invalidate('group', id),
+      ...updatedGroup.members.map(member => 
+        CacheService.deletePattern(`user:${member.userId}:groups:*`)
+      )
+    ];
+    await Promise.allSettled(cacheOperations).catch((error: Error) => {
+      logger.error('Cache invalidation error in uploadGroupPicture', 'GroupController', { error });
+    });
+
     res.json({ 
       group: updatedGroup,
       message: 'Group picture uploaded successfully' 
@@ -1460,6 +1479,17 @@ export const deleteGroupPicture = async (req: Request, res: Response) => {
   logger.debug('Group picture deleted successfully', 'GroupController', { 
     groupId: id,
     userId: req.user!.id 
+  });
+
+  // Invalidate group cache for all affected users
+  const cacheOperations = [
+    CacheService.invalidate('group', id),
+    ...updatedGroup.members.map(member => 
+      CacheService.deletePattern(`user:${member.userId}:groups:*`)
+    )
+  ];
+  await Promise.allSettled(cacheOperations).catch((error: Error) => {
+    logger.error('Cache invalidation error in deleteGroupPicture', 'GroupController', { error });
   });
 
   res.json({ 
@@ -1552,6 +1582,22 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
 export const transferAdmin = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { newAdminEmail } = req.body;
+  
+  // Get group with members for cache invalidation
+  const group = await prisma.group.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      members: {
+        select: { userId: true }
+      }
+    }
+  });
+
+  if (!group) {
+    throw new NotFoundError('Group not found');
+  }
+
   // Check if user is current admin
   const currentAdmin = await prisma.groupMember.findFirst({
     where: { groupId: id, userId: req.user!.id, role: 'admin' }
@@ -1582,8 +1628,16 @@ export const transferAdmin = async (req: Request, res: Response) => {
     })
   ]);
   
-  // Invalidate group cache after role changes
-  await CacheService.invalidate('group', id);
+  // Invalidate group cache for all affected users (role changes affect all members)
+  const cacheOperations = [
+    CacheService.invalidate('group', id),
+    ...group.members.map(member => 
+      CacheService.deletePattern(`user:${member.userId}:groups:*`)
+    )
+  ];
+  await Promise.allSettled(cacheOperations).catch((error: Error) => {
+    logger.error('Cache invalidation error in transferAdmin', 'GroupController', { error });
+  });
   
   res.json({ message: 'Admin rights transferred successfully.' });
 };
