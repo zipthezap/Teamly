@@ -285,13 +285,6 @@ const GroupsList = () => {
                 {t('groups.public')}
               </Typography>
             </CardContent>
-            <Button
-              variant="outlined"
-              onClick={() => refetch()}
-              sx={{ ml: 1 }}
-            >
-              {t('groups.refresh', 'Refresh')}
-            </Button>
           </Card>
           <Card sx={{ background: 'linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%)' }}>
             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>

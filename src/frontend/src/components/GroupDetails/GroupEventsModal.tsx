@@ -36,7 +36,7 @@ const GroupEventsModal: React.FC<GroupEventsModalProps> = ({ open, onClose, even
             {events.length === 0 ? (
               <div className="text-slate-400 text-center py-8 text-lg">{t('groupDetails.noEvents', 'No events found.')}</div>
             ) : (
-              <ul className="space-y-4">
+              <ul className="space-y-2">
                 {events.map((event) => {
                   const eventDate = event.startTime || event.date || new Date().toISOString();
                   const eventType = event.eventType;
@@ -44,30 +44,30 @@ const GroupEventsModal: React.FC<GroupEventsModalProps> = ({ open, onClose, even
                   return (
                     <li
                       key={event.id}
-                      className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-xl shadow flex items-center gap-6 p-5 cursor-pointer border border-slate-700 hover:border-pink-500 hover:shadow-lg transition group"
+                      className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-lg shadow flex items-center gap-3 p-2 cursor-pointer border border-slate-700 hover:border-pink-500 hover:shadow-lg transition group"
                       onClick={() => { onClose(); onEventClick(event.id); }}
                       tabIndex={0}
                       aria-label={`${t('common.viewDetails')} ${event.title}`}
                     >
-                      {/* Large date badge */}
-                      <div className="flex flex-col items-center justify-center w-16 h-16 rounded-xl bg-slate-950 border-2 border-pink-500 group-hover:bg-pink-900/30 transition">
-                        <span className="text-lg font-bold text-pink-400 leading-none">
+                      {/* Smaller date badge */}
+                      <div className="flex flex-col items-center justify-center w-10 h-10 rounded-lg bg-slate-950 border-2 border-pink-500 group-hover:bg-pink-900/30 transition">
+                        <span className="text-xs font-bold text-pink-400 leading-none">
                           {new Date(eventDate).toLocaleString('en-US', { month: 'short' })}
                         </span>
-                        <span className="text-3xl font-extrabold text-white leading-none">
+                        <span className="text-base font-extrabold text-white leading-none">
                           {new Date(eventDate).getDate()}
                         </span>
                       </div>
                       {/* Event info */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-lg font-semibold text-white truncate">{event.title}</span>
-                          <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide bg-pink-600/20 text-pink-400">{eventType}</span>
+                        <div className="flex items-center gap-1 mb-0.5">
+                          <span className="text-sm font-medium text-white truncate">{event.title}</span>
+                          <span className="ml-1 px-1 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-pink-600/20 text-pink-400">{eventType}</span>
                         </div>
-                        <div className="text-sm text-slate-300 mb-1">
+                        <div className="text-xs text-slate-300 mb-0.5">
                           {formatEventDate(eventDate)}
                         </div>
-                        <div className="text-xs text-slate-500 italic">
+                        <div className="text-[10px] text-slate-500 italic">
                           {t('groupDetails.organizer')}: {organizerName}
                         </div>
                       </div>

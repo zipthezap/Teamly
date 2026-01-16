@@ -54,6 +54,8 @@ const EventList: React.FC<EventListProps> = React.memo(({ events, onEventClick, 
 
   // All events for modal, sorted soonest first
   const allUpcomingEvents = filteredEvents;
+  // Only show up to 5 events in the main list
+  const visibleEvents = filteredEvents.slice(0, 5);
 
   return (
     <section className="bg-slate-800 rounded-lg p-4 shadow">
@@ -98,11 +100,11 @@ const EventList: React.FC<EventListProps> = React.memo(({ events, onEventClick, 
                 )}
               </div>
             </div>
-            {filteredEvents.length === 0 ? (
+            {visibleEvents.length === 0 ? (
               <div className="text-slate-400 text-center py-4">{t('groupDetails.noEvents', 'No events found.')}</div>
             ) : (
               <ul>
-                {filteredEvents.map((event) => {
+                {visibleEvents.map((event) => {
                   const eventDate: string = typeof event.startTime === 'string' ? event.startTime : event.startTime.toISOString();
                   const eventType = event.eventType;
                   const organizerName = event.creator?.name || 'Unknown';
@@ -116,7 +118,7 @@ const EventList: React.FC<EventListProps> = React.memo(({ events, onEventClick, 
                   return (
                     <li
                       key={event.id}
-                      className={`mb-3 p-3 bg-slate-700 rounded flex items-center gap-3 cursor-pointer transition hover:bg-slate-600 border-l-4 ${isPast ? "border-slate-500 opacity-70" : "border-green-500"}`}
+                      className={`mb-1 p-2 bg-slate-700 rounded flex items-center gap-2 cursor-pointer transition hover:bg-slate-600 border-l-4 ${isPast ? "border-slate-500 opacity-70" : "border-green-500"}`}
                       onClick={() => {
                         if (eventIdStr !== null) onEventClick(eventIdStr);
                       }}
@@ -124,7 +126,7 @@ const EventList: React.FC<EventListProps> = React.memo(({ events, onEventClick, 
                       aria-label={`${t('common.viewDetails')} ${event.title}`}
                       style={eventIdStr === null ? { pointerEvents: 'none', opacity: 0.5 } : {}}
                     >
-                      <div className="w-10 h-10 bg-slate-600 rounded flex items-center justify-center">
+                      <div className="w-8 h-8 bg-slate-600 rounded flex items-center justify-center">
                         {/* Custom date icon: show month and day */}
                         {(() => {
                           const dateObj = new Date(eventDate);
@@ -132,24 +134,24 @@ const EventList: React.FC<EventListProps> = React.memo(({ events, onEventClick, 
                           const day = dateObj.getDate();
                           return (
                             <div className="flex flex-col items-center justify-center w-full h-full">
-                              <span className="text-xs font-bold text-blue-300 leading-none">{month}</span>
-                              <span className="text-lg font-extrabold text-white leading-none">{day}</span>
+                              <span className="text-[10px] font-bold text-blue-300 leading-none">{month}</span>
+                              <span className="text-base font-extrabold text-white leading-none">{day}</span>
                             </div>
                           );
                         })()}
                       </div>
                       <div className="flex-1">
-                        <div className={`font-medium flex items-center gap-2 ${isPast ? 'line-through text-slate-400' : ''}`}> 
-                          {event.title}
+                        <div className={`font-medium flex items-center gap-1 ${isPast ? 'line-through text-slate-400' : ''}`}> 
+                          <span className="text-sm">{event.title}</span>
                           {isPast && (
-                            <span className="ml-2 text-xs bg-slate-500 px-2 py-0.5 rounded text-white">{t('groupDetails.past')}</span>
+                            <span className="ml-1 text-[10px] bg-slate-500 px-1 py-0.5 rounded text-white">{t('groupDetails.past')}</span>
                           )}
                         </div>
-                        <div className="text-xs text-slate-400">{eventType} • {formatEventDate(eventDate)}</div>
-                        <div className="text-xs text-slate-500">{t('groupDetails.organizer')}: {organizerName}</div>
+                        <div className="text-[11px] text-slate-400">{eventType} • {formatEventDate(eventDate)}</div>
+                        <div className="text-[11px] text-slate-500">{t('groupDetails.organizer')}: {organizerName}</div>
                       </div>
                       {/* Removed Edit and Delete buttons for events as requested */}
-                      {!isAdmin && <Button color="secondary" size="xs" className="ml-auto">{t('groupDetails.rsvp')}</Button>}
+                      {!isAdmin && <Button color="secondary" size="xs" className="ml-auto text-xs px-2 py-1">{t('groupDetails.rsvp')}</Button>}
                     </li>
                   );
                 })}
