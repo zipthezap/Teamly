@@ -348,10 +348,24 @@ const EventDetails = () => {
                   )}
                   {eventStats.isParticipant && (
                     <>
-                      <button onClick={() => handleUpdateStatus(EventParticipantStatus.confirmed)} className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
+                      <button 
+                        onClick={() => handleUpdateStatus(EventParticipantStatus.confirmed)} 
+                        className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={
+                          // Can click when not confirmed or when declined (to switch)
+                          event.participants?.find((p: EventParticipant) => p.userId === user?.id)?.status === EventParticipantStatus.confirmed
+                        }
+                      >
                         ✓ {t('eventDetails.confirmAttendance')}
                       </button>
-                      <button onClick={() => handleUpdateStatus(EventParticipantStatus.declined)} className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full">
+                      <button 
+                        onClick={() => handleUpdateStatus(EventParticipantStatus.declined)} 
+                        className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={
+                          // Can only click when confirmed (to switch from confirmed to declined)
+                          event.participants?.find((p: EventParticipant) => p.userId === user?.id)?.status !== EventParticipantStatus.confirmed
+                        }
+                      >
                         ✗ {t('eventDetails.decline')}
                       </button>
                       <div className="grid grid-cols-2 gap-2 mt-1">
@@ -359,12 +373,9 @@ const EventDetails = () => {
                           onClick={handleMarkLate} 
                           className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           disabled={
-                            // Disable if already marked as late
-                            event.eventAttendances?.find((a: EventAttendance) => a.userId === user?.id && a.status === 'late') !== undefined ||
-                            // Disable if user has confirmed
-                            event.participants?.find((p: EventParticipant) => p.userId === user?.id)?.status === EventParticipantStatus.confirmed ||
-                            // Disable if user has declined
-                            event.participants?.find((p: EventParticipant) => p.userId === user?.id)?.status === EventParticipantStatus.declined
+                            // Can only click when confirmed and not already late
+                            event.participants?.find((p: EventParticipant) => p.userId === user?.id)?.status !== EventParticipantStatus.confirmed ||
+                            event.eventAttendances?.find((a: EventAttendance) => a.userId === user?.id && a.status === 'late') !== undefined
                           }
                         >
                           ⏰ {t('eventDetails.markLate')}
