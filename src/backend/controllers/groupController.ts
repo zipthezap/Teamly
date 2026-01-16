@@ -1326,6 +1326,71 @@ export const getUserInvitations = async (req: Request, res: Response) => {
   res.json(invitations);
 };
 
+// Get group info for invite preview (public groups only)
+// This allows users to see group details before joining
+export const getGroupForInvite = async (req: Request, res: Response) => {
+  const { groupId } = req.params;
+  const userId = req.user?.id; // Optional auth - user may not be logged in yet
+
+  if (!groupId) {
+    throw new BadRequestError('Group ID is required');
+  }
+
+  // Get group info with basic details
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      picture: true,
+      isPublic: true,
+      sportType: true,
+      maxMembers: true,
+      locationName: true,
+      city: true,
+      country: true,
+      tags: true,
+      createdAt: true,
+      creator: {
+        select: { id: true, name: true, profilePicture: true }
+      },
+      _count: {
+        select: {
+          members: true,
+          events: true
+        }
+      }
+    }
+  });
+
+  if (!group) {
+    throw new NotFoundError('Group not found');
+  }
+
+  // Only allow preview for public groups via invite link
+  if (!group.isPublic) {
+    throw new ForbiddenError('This is a private group. Invite links only work for public groups.');
+  }
+
+  // Check if user is already a member (if authenticated)
+  let isMember = false;
+  if (userId) {
+    const membership = await prisma.groupMember.findFirst({
+      where: { userId, groupId }
+    });
+    isMember = !!membership;
+  }
+
+  // Enrich with location info
+  const enrichedGroup = locationService.enrichWithLocationInfo(group);
+
+  res.json({
+    ...enrichedGroup,
+    isMember
+  });
+};
+
 // Join group by invite link - now requires authentication
 // SECURITY FIX: Changed to use authenticated user's ID instead of accepting userId from request body
 // This prevents privilege escalation where attackers could join as any user

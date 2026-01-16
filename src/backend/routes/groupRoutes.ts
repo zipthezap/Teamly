@@ -8,6 +8,9 @@ import { etagMiddleware } from '../middleware/etag';
 
 const router = Router();
 
+// Get group info for invite preview (public groups only, optional auth)
+router.get('/invite/:groupId', optionalAuthMiddleware, distributedApiLimiter, asyncHandler(groupController.getGroupForInvite));
+
 // Join via invite link - requires authentication to ensure user identity
 // Changed from public to authenticated to prevent privilege escalation
 // SECURITY: Added rate limiting to prevent abuse
