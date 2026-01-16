@@ -356,9 +356,10 @@ ensureUploadDirectories()
     await initializeRedis();
     
     // Start server after upload directories are ready
-    const server = app.listen(PORT, () => {
+    const server = app.listen(PORT, '0.0.0.0', () => {
       logger.info(`Server is running on port ${PORT}`, 'Server');
       logger.info(`API available at http://localhost:${PORT}`, 'Server');
+      logger.info(`Server accessible on all network interfaces (0.0.0.0:${PORT})`, 'Server');
       
       // Initialize database connection pool monitoring
       initializePoolMonitoring();
