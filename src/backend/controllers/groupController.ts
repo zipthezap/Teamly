@@ -159,7 +159,7 @@ export const createGroup = async (req: Request, res: Response) => {
   }
 
   // Invalidate the creator's groups cache so the new group appears immediately
-  await CacheService.invalidate('user', `${req.user!.id}:groups`);
+  await CacheService.deletePattern(`user:${req.user!.id}:groups:*`);
   
   res.status(201).json(group);
 };
