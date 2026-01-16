@@ -578,11 +578,27 @@ export const inviteMember = async (req: Request, res: Response) => {
     throw new BadRequestError('User is already a member');
   }
 
-  const newMember = await prisma.groupMember.create({
+  // Check if user already has a pending invitation
+  const existingInvitation = await prisma.groupJoinRequest.findFirst({
+    where: {
+      groupId: id,
+      userId: userToInvite.id,
+      status: 'pending',
+      createdBy: 'invite'
+    }
+  });
+
+  if (existingInvitation) {
+    throw new BadRequestError('User already has a pending invitation');
+  }
+
+  // Create a pending join request for the invitation
+  const invitation = await prisma.groupJoinRequest.create({
     data: {
       groupId: id,
       userId: userToInvite.id,
-      role: 'member'
+      status: 'pending',
+      createdBy: 'invite'
     },
     include: {
       user: {
@@ -605,7 +621,8 @@ export const inviteMember = async (req: Request, res: Response) => {
       <p>${escapeHtml(inviterUser.name)} has invited you to join the group:</p>
       <h3>${escapeHtml(group.name)}</h3>
       <p>${escapeHtml(group.description || '')}</p>
-      <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/groups">View Group</a></p>
+      <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/groups/${id}">View Invitation</a></p>
+      <p>You can accept or decline this invitation from the app.</p>
     `;
     
     await sendEmailWithQueue(
@@ -641,12 +658,10 @@ export const inviteMember = async (req: Request, res: Response) => {
     });
   }
 
-  // Invalidate group cache for all affected users
-  await CacheService.invalidate('group', id);
-  // Invalidate user groups cache for the invited user
-  await CacheService.deletePattern(`user:${userToInvite.id}:groups:*`);
-
-  res.status(201).json(newMember);
+  res.status(201).json({
+    message: 'Invitation sent successfully',
+    invitation
+  });
 };
 
 export const removeMember = async (req: Request, res: Response) => {
