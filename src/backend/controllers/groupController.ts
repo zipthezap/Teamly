@@ -940,7 +940,8 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
         data: {
           groupId: id,
           userId: req.user!.id,
-          status: 'approved'
+          status: 'approved',
+          createdBy: 'user'
         },
         include: {
           user: {
@@ -996,7 +997,8 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
     data: {
       groupId: id,
       userId: req.user!.id,
-      status: 'pending'
+      status: 'pending',
+      createdBy: 'user'
     },
     include: {
       user: {
@@ -1170,7 +1172,7 @@ export const joinGroupByInvite = async (req: Request, res: Response) => {
   // generate tokens in getInviteLink(), validate tokens here,
   // and optionally add token expiration
   if (!group.isPublic) {
-    throw new ForbiddenError('Private groups can only be joined through direct invitations');
+    throw new ForbiddenError('This group is private. Please contact the group admin for an invitation.');
   }
 
   // Check if already a member

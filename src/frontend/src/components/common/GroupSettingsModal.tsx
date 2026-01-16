@@ -258,21 +258,24 @@ const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
                 </FormHelperText>
               </Box>
 
-              <Box>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={form.allowMemberCopyLink !== false}
-                      onChange={e => setForm({ ...form, allowMemberCopyLink: e.target.checked })}
-                      color="primary"
-                    />
-                  }
-                  label={t('groups.allowMemberCopyLink') || 'Allow members to copy invite link'}
-                />
-                <FormHelperText sx={{ ml: 4, mb: 2 }}>
-                  {t('groups.allowMemberCopyLinkHelp') || 'When disabled, only admins and moderators can copy the group invite link'}
-                </FormHelperText>
-              </Box>
+              {/* Only show for public groups since invite links don't work for private groups */}
+              {form.privacy === 'public' && (
+                <Box>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={form.allowMemberCopyLink !== false}
+                        onChange={e => setForm({ ...form, allowMemberCopyLink: e.target.checked })}
+                        color="primary"
+                      />
+                    }
+                    label={t('groups.allowMemberCopyLink') || 'Allow members to copy invite link'}
+                  />
+                  <FormHelperText sx={{ ml: 4, mb: 2 }}>
+                    {t('groups.allowMemberCopyLinkHelp') || 'When disabled, only admins and moderators can copy the group invite link'}
+                  </FormHelperText>
+                </Box>
+              )}
             </Box>
           )}
         </DialogContent>
