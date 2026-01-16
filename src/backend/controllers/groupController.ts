@@ -506,15 +506,12 @@ export const updateGroup = async (req: Request, res: Response) => {
   });
 
   // Invalidate group cache after update for all affected users
-  const cacheOperations = [
+  await Promise.allSettled([
     CacheService.invalidate('group', id),
     ...group.members.map(member => 
       CacheService.deletePattern(`user:${member.userId}:groups:*`)
     )
-  ];
-  await Promise.allSettled(cacheOperations).catch((error: Error) => {
-    logger.error('Cache invalidation error in updateGroup', 'GroupController', { error });
-  });
+  ]);
 
   res.json(group);
 };
@@ -1396,15 +1393,12 @@ export const uploadGroupPicture = async (req: Request, res: Response) => {
     });
 
     // Invalidate group cache for all affected users
-    const cacheOperations = [
+    await Promise.allSettled([
       CacheService.invalidate('group', id),
       ...updatedGroup.members.map(member => 
         CacheService.deletePattern(`user:${member.userId}:groups:*`)
       )
-    ];
-    await Promise.allSettled(cacheOperations).catch((error: Error) => {
-      logger.error('Cache invalidation error in uploadGroupPicture', 'GroupController', { error });
-    });
+    ]);
 
     res.json({ 
       group: updatedGroup,
@@ -1482,15 +1476,12 @@ export const deleteGroupPicture = async (req: Request, res: Response) => {
   });
 
   // Invalidate group cache for all affected users
-  const cacheOperations = [
+  await Promise.allSettled([
     CacheService.invalidate('group', id),
     ...updatedGroup.members.map(member => 
       CacheService.deletePattern(`user:${member.userId}:groups:*`)
     )
-  ];
-  await Promise.allSettled(cacheOperations).catch((error: Error) => {
-    logger.error('Cache invalidation error in deleteGroupPicture', 'GroupController', { error });
-  });
+  ]);
 
   res.json({ 
     group: updatedGroup,
@@ -1629,15 +1620,12 @@ export const transferAdmin = async (req: Request, res: Response) => {
   ]);
   
   // Invalidate group cache for all affected users (role changes affect all members)
-  const cacheOperations = [
+  await Promise.allSettled([
     CacheService.invalidate('group', id),
     ...group.members.map(member => 
       CacheService.deletePattern(`user:${member.userId}:groups:*`)
     )
-  ];
-  await Promise.allSettled(cacheOperations).catch((error: Error) => {
-    logger.error('Cache invalidation error in transferAdmin', 'GroupController', { error });
-  });
+  ]);
   
   res.json({ message: 'Admin rights transferred successfully.' });
 };
