@@ -3,7 +3,7 @@ import { EventParticipantStatus, GroupNotificationType, EventNotificationType } 
 import { validateRecurrenceRule } from '../utils/recurrenceService';
 import { logger } from '../utils/logger';
 import { sendEmail } from '../utils/emailService';
-import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
+import { batchShouldSendEmailNotification, filterUnmutedUsers } from '../utils/notificationHelper';
 import { sanitizeString } from '../utils/validation';
 import { ValidationResult } from '../../shared/types';
 import { checkGroupAdmin } from './groupService';
@@ -129,9 +129,14 @@ export const createEventNotifications = async (
   if (memberIds.length === 0) return;
 
   try {
+    // Filter out users who have muted event created notifications
+    const unmutedMemberIds = await filterUnmutedUsers(memberIds, 'muteEventCreated');
+    
+    if (unmutedMemberIds.length === 0) return;
+    
     // Use createMany for batch insert - much faster than individual creates
     await prisma.groupNotification.createMany({
-      data: memberIds.map(userId => ({
+      data: unmutedMemberIds.map(userId => ({
         groupId,
         userId,
         type: GroupNotificationType.event_created,

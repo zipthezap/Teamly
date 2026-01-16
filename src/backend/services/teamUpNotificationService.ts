@@ -7,7 +7,7 @@
 
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
-import { shouldSendEmailNotification } from '../utils/notificationHelper';
+import { shouldSendEmailNotification, filterUnmutedUsers } from '../utils/notificationHelper';
 import { TeamUpNotificationType } from '../../shared/types/event.types';
 
 interface TeamUpRequest {
@@ -127,9 +127,19 @@ export async function notifyUsersAboutNewTeamUp(
       return;
     }
 
+    // Filter out users who have muted nearby TeamUp notifications
+    const unmutedUsers = await filterUnmutedUsers(usersToNotify, 'muteNearbyTeamUps');
+    
+    if (unmutedUsers.length === 0) {
+      logger.info('All users have muted nearby TeamUp notifications', 'TeamUpNotificationService', {
+        teamUpRequestId: teamUpRequest.id
+      });
+      return;
+    }
+
     // Get user details for email notifications
     const users = await prisma.user.findMany({
-      where: { id: { in: usersToNotify } },
+      where: { id: { in: unmutedUsers } },
       select: {
         id: true,
         name: true,
@@ -138,7 +148,7 @@ export async function notifyUsersAboutNewTeamUp(
     });
 
     // Create in-app notifications
-    const notifications = usersToNotify.map(userId => ({
+    const notifications = unmutedUsers.map(userId => ({
       userId,
       teamUpRequestId: teamUpRequest.id,
       type: TeamUpNotificationType.teamup_nearby,

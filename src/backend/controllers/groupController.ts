@@ -1,7 +1,7 @@
 
 import prisma from '../config/database';
 import { sendEmailWithQueue } from '../services/emailQueueService';
-import { shouldSendEmailNotification } from '../utils/notificationHelper';
+import { shouldSendEmailNotification, filterUnmutedUsers } from '../utils/notificationHelper';
 import { logger } from '../utils/logger';
 import { escapeHtml, isValidEmail } from '../utils/validation';
 import { Request, Response } from 'express';
@@ -131,9 +131,12 @@ export const createGroup = async (req: Request, res: Response) => {
     // };
     const nearbyUserIds = users.map(u => u.id);
     
+    // Filter out users who have muted nearby group notifications
+    const unmutedUserIds = await filterUnmutedUsers(nearbyUserIds, 'muteNearbyGroups');
+    
     // Use Promise.allSettled to handle individual notification failures gracefully
     const notificationResults = await Promise.allSettled(
-      nearbyUserIds.map(userId =>
+      unmutedUserIds.map(userId =>
         prisma.groupNotification.create({
           data: {
             groupId: group.id,
@@ -153,7 +156,7 @@ export const createGroup = async (req: Request, res: Response) => {
     if (failures.length > 0) {
       logger.warn('Some nearby user notifications failed', 'GroupController', { 
         failureCount: failures.length,
-        totalUsers: nearbyUserIds.length 
+        totalUsers: unmutedUserIds.length 
       });
     }
   }
@@ -1065,11 +1068,16 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
     where: { groupId: id, role: 'admin' },
     select: { userId: true }
   });
-  await Promise.all(admins.map((admin: { userId: string }) =>
+  
+  // Filter out admins who have muted group join request notifications
+  const adminUserIds = admins.map(admin => admin.userId);
+  const unmutedAdminIds = await filterUnmutedUsers(adminUserIds, 'muteGroupRequests');
+  
+  await Promise.all(unmutedAdminIds.map((userId: string) =>
     prisma.groupNotification.create({
       data: {
         groupId: id,
-        userId: admin.userId,
+        userId: userId,
         type: 'join_request',
         params: {
           groupName: joinRequest.group.name,
