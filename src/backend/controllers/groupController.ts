@@ -1370,7 +1370,7 @@ export const getGroupForInvite = async (req: Request, res: Response) => {
 
   // Only allow preview for public groups via invite link
   if (!group.isPublic) {
-    throw new ForbiddenError('This group is private. Please contact the group admin for an invitation.');
+    throw new ForbiddenError('This is a private group. Invite links only work for public groups.');
   }
 
   // Check if user is already a member (if authenticated)
