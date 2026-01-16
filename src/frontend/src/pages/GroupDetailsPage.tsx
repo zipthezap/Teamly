@@ -189,6 +189,7 @@ export default function GroupDetailsPage() {
     onSuccess: () => {
       setToast({ message: t('groupDetails.eventDeleted'), type: "success" });
       queryClient.invalidateQueries({ queryKey: ["groupEvents", groupId] });
+      queryClient.invalidateQueries({ queryKey: ["groupsList"] });
     },
     onError: (err: unknown) => {
       const errorMessage = err instanceof Error ? err.message : t('groupDetails.failedToDeleteEvent');
@@ -227,10 +228,7 @@ export default function GroupDetailsPage() {
       setToast({ message: t('groupDetails.memberRemoved'), type: "success" });
       queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
       queryClient.invalidateQueries({ queryKey: ["groupMembers", groupId] });
-      queryClient.refetchQueries({ queryKey: ["groupDetails", groupId] }); // Force immediate refetch
-      setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["groupDetails", groupId] });
-      }, 100);
+      queryClient.invalidateQueries({ queryKey: ["groupsList"] });
     },
   });
 
@@ -463,6 +461,7 @@ export default function GroupDetailsPage() {
       setShowInviteModal(false);
       setInviteEmail("");
       queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
+      queryClient.invalidateQueries({ queryKey: ["groupsList"] });
     },
     onError: (err: unknown) => {
       const errorMessage = err instanceof AxiosError 

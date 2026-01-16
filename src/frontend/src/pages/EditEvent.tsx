@@ -195,6 +195,7 @@ const EditEvent = () => {
       // Invalidate group events if this event belongs to a group
       if (groupId) {
         queryClient.invalidateQueries({ queryKey: ['groupEvents', groupId] });
+        queryClient.invalidateQueries({ queryKey: ['groupsList'] });
       }
       
       navigate(`/events/${id}`);
