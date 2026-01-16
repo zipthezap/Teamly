@@ -6,7 +6,7 @@ import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import InviteLinkCard from '../components/InviteLinkCard';
 import { getImageUrl, getInitials } from '../utils/imageUtils';
-import { EventWithDetails, EventParticipant, GuestParticipant, EventParticipantStatus, GuestParticipantStatus } from '../../../shared/types/event.types';
+import { EventWithDetails, EventParticipant, GuestParticipant, EventParticipantStatus, GuestParticipantStatus, EventAttendance } from '../../../shared/types/event.types';
 import { UserProfilePicture, PublicUser } from '../../../shared/types/user.types';
 import { AxiosError } from 'axios';
 
@@ -348,48 +348,45 @@ const EventDetails = () => {
                   )}
                   {eventStats.isParticipant && (
                     <>
-                      <button 
-                        onClick={() => handleUpdateStatus(EventParticipantStatus.confirmed)} 
-                        className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={
-                          // Can click when not confirmed or when declined (to switch)
-                          event.participants?.find((p: EventParticipant) => p.userId === user?.id)?.status === EventParticipantStatus.confirmed
-                        }
-                      >
-                        ✓ {t('eventDetails.confirmAttendance')}
-                      </button>
-                      <button 
-                        onClick={() => handleUpdateStatus(EventParticipantStatus.declined)} 
-                        className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={
-                          // Can only click when confirmed (to switch from confirmed to declined)
-                          event.participants?.find((p: EventParticipant) => p.userId === user?.id)?.status !== EventParticipantStatus.confirmed
-                        }
-                      >
-                        ✗ {t('eventDetails.decline')}
-                      </button>
+                      {/* Show confirm button only when not confirmed */}
+                      {event.participants?.find((p: EventParticipant) => p.userId === user?.id)?.status !== EventParticipantStatus.confirmed && (
+                        <button 
+                          onClick={() => handleUpdateStatus(EventParticipantStatus.confirmed)} 
+                          className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full"
+                        >
+                          ✓ {t('eventDetails.confirmAttendance')}
+                        </button>
+                      )}
+                      {/* Show decline button only when confirmed */}
+                      {event.participants?.find((p: EventParticipant) => p.userId === user?.id)?.status === EventParticipantStatus.confirmed && (
+                        <button 
+                          onClick={() => handleUpdateStatus(EventParticipantStatus.declined)} 
+                          className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full"
+                        >
+                          ✗ {t('eventDetails.decline')}
+                        </button>
+                      )}
+                      {/* Late buttons - only show the relevant one */}
                       <div className="grid grid-cols-2 gap-2 mt-1">
-                        <button 
-                          onClick={handleMarkLate} 
-                          className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          disabled={
-                            // Can only click when confirmed and not already late
-                            event.participants?.find((p: EventParticipant) => p.userId === user?.id)?.status !== EventParticipantStatus.confirmed ||
-                            event.eventAttendances?.find((a: EventAttendance) => a.userId === user?.id && a.status === 'late') !== undefined
-                          }
-                        >
-                          ⏰ {t('eventDetails.markLate')}
-                        </button>
-                        <button 
-                          onClick={handleUnmarkLate} 
-                          className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          disabled={
-                            // Disable if not marked as late
-                            event.eventAttendances?.find((a: EventAttendance) => a.userId === user?.id && a.status === 'late') === undefined
-                          }
-                        >
-                          ↩ {t('eventDetails.undoLate')}
-                        </button>
+                        {/* Show mark late button only when confirmed and not already late */}
+                        {event.participants?.find((p: EventParticipant) => p.userId === user?.id)?.status === EventParticipantStatus.confirmed &&
+                         event.eventAttendances?.find((a: EventAttendance) => a.userId === user?.id && a.status === 'late') === undefined && (
+                          <button 
+                            onClick={handleMarkLate} 
+                            className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs font-medium transition-colors"
+                          >
+                            ⏰ {t('eventDetails.markLate')}
+                          </button>
+                        )}
+                        {/* Show undo late button only when marked as late */}
+                        {event.eventAttendances?.find((a: EventAttendance) => a.userId === user?.id && a.status === 'late') !== undefined && (
+                          <button 
+                            onClick={handleUnmarkLate} 
+                            className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs font-medium transition-colors"
+                          >
+                            ↩ {t('eventDetails.undoLate')}
+                          </button>
+                        )}
                       </div>
                       {!eventStats.isCreator && (
                         <button onClick={handleLeave} className="bg-pink-600 hover:bg-pink-700 text-white rounded-lg px-4 py-3 text-sm font-semibold transition-colors w-full mt-2">
