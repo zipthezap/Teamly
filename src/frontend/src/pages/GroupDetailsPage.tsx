@@ -129,9 +129,8 @@ export default function GroupDetailsPage() {
   const canInvite = group && user ? 
     (canEdit || (isMember && group.allowMemberInvites)) : false;
 
-  // Check if user can copy invite link
-  const canCopyLink = group && user ? 
-    (canEdit || (isMember && group.allowMemberCopyLink)) : false;
+  // Check if user can copy invite link (only for public groups, since invite links don't work for private groups)
+  const canCopyLink = group && user && group.isPublic && (canEdit || (isMember && group.allowMemberCopyLink));
 
   // Update group settings when group data loads
   React.useEffect(() => {
@@ -189,6 +188,8 @@ export default function GroupDetailsPage() {
     onSuccess: () => {
       setToast({ message: t('groupDetails.eventDeleted'), type: "success" });
       queryClient.invalidateQueries({ queryKey: ["groupEvents", groupId] });
+      // Invalidate groupsList to update event counts displayed in GroupsList
+      queryClient.invalidateQueries({ queryKey: ["groupsList"] });
     },
     onError: (err: unknown) => {
       const errorMessage = err instanceof Error ? err.message : t('groupDetails.failedToDeleteEvent');
@@ -227,10 +228,8 @@ export default function GroupDetailsPage() {
       setToast({ message: t('groupDetails.memberRemoved'), type: "success" });
       queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
       queryClient.invalidateQueries({ queryKey: ["groupMembers", groupId] });
-      queryClient.refetchQueries({ queryKey: ["groupDetails", groupId] }); // Force immediate refetch
-      setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["groupDetails", groupId] });
-      }, 100);
+      // Invalidate groupsList to update member counts displayed in GroupsList
+      queryClient.invalidateQueries({ queryKey: ["groupsList"] });
     },
   });
 
@@ -352,7 +351,7 @@ export default function GroupDetailsPage() {
       setToast({ message: t('groupDetails.groupDeleted'), type: "success" });
       // Navigate immediately to groups page - cache invalidation ensures fresh data
       setTimeout(() => {
-        navigate('/groups');
+        navigate('/groups', { state: { justLeftGroup: true } });
       }, 500);
     },
     onError: (err: unknown) => {
@@ -401,7 +400,7 @@ export default function GroupDetailsPage() {
       setToast({ message: t('groupDetails.leftGroup'), type: "success" });
       // Navigate immediately to groups page - cache invalidation ensures fresh data
       setTimeout(() => {
-        navigate('/groups');
+        navigate('/groups', { state: { justLeftGroup: true } });
       }, 500);
     },
     onError: (err: unknown, variables, context) => {
@@ -437,7 +436,7 @@ export default function GroupDetailsPage() {
       setShowAdminTransfer(false);
       // Navigate immediately to groups page - cache invalidation ensures fresh data
       setTimeout(() => {
-        navigate('/groups');
+        navigate('/groups', { state: { justLeftGroup: true } });
       }, 500);
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
@@ -463,6 +462,8 @@ export default function GroupDetailsPage() {
       setShowInviteModal(false);
       setInviteEmail("");
       queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
+      // Invalidate groupsList to update member counts displayed in GroupsList
+      queryClient.invalidateQueries({ queryKey: ["groupsList"] });
     },
     onError: (err: unknown) => {
       const errorMessage = err instanceof AxiosError 
