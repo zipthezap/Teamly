@@ -112,6 +112,8 @@ export const groupsAPI = {
   getMembers: (groupId: string | number) => api.get(`/groups/${groupId}/members`),
   leave: (groupId: string | number) => api.delete(`/groups/${groupId}/leave`),
   getInviteLink: (groupId: string | number) => api.get(`/groups/${groupId}/invite-link`),
+  // Get group info for invite preview (public groups only, no auth required)
+  getForInvite: (groupId: string | number) => axios.get(`${API_BASE_URL}/groups/invite/${groupId}`),
   joinByInvite: (groupId: string | number) => api.post(`/groups/join/${groupId}`),
   // Public groups and join requests
   getPublic: () => api.get('/groups/public'),
