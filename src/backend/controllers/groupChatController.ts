@@ -99,6 +99,15 @@ export const markLate = asyncHandler(async (req: Request, res: Response) => {
     throw new NotFoundError('Event not found');
   }
 
+  // Check if user is already marked as late
+  const existingAttendance = await prisma.eventAttendance.findUnique({
+    where: { eventId_userId: { eventId, userId } }
+  });
+
+  if (existingAttendance && existingAttendance.status === 'late') {
+    throw new BadRequestError('You are already marked as late');
+  }
+
   const attendance = await prisma.eventAttendance.upsert({
     where: { eventId_userId: { eventId, userId } },
     update: { status: 'late' },

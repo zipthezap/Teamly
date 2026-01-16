@@ -7,7 +7,7 @@ import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import InviteLinkCard from '../components/InviteLinkCard';
 import { getImageUrl, getInitials } from '../utils/imageUtils';
-import { EventWithDetails, EventParticipant, GuestParticipant, EventParticipantStatus, GuestParticipantStatus } from '../../../shared/types/event.types';
+import { EventWithDetails, EventParticipant, GuestParticipant, EventParticipantStatus, GuestParticipantStatus, EventAttendance } from '../../../shared/types/event.types';
 import { UserProfilePicture, PublicUser } from '../../../shared/types/user.types';
 import { AxiosError } from 'axios';
 
@@ -352,6 +352,7 @@ const EventDetails = () => {
                   onMarkLate={handleMarkLate}
                   onUnmarkLate={handleUnmarkLate}
                 />
+              </div>
               </div>
             ) : (
               <div className="bg-[#1a2233] rounded-lg p-5 opacity-50 pointer-events-none select-none">

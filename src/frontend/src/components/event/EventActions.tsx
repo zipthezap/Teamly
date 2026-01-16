@@ -68,7 +68,6 @@ const EventActions: React.FC<EventActionsProps> = ({
 
         {isParticipant && (
           <>
-
             {/* Confirm Attendance: show if not confirmed (including if declined) */}
             {!isConfirmed && (
               <Button
@@ -103,6 +102,74 @@ const EventActions: React.FC<EventActionsProps> = ({
                 fullWidth
                 size="medium"
                 onClick={onMarkLate}
+              >
+                Mark as Late
+              </Button>
+            )}
+
+            {/* On Time: only if confirmed and late */}
+            {isConfirmed && isLate && (
+              <Button
+                variant="outlined"
+                color="info"
+                fullWidth
+                size="medium"
+                onClick={onUnmarkLate}
+              >
+                On Time
+              </Button>
+            )}
+
+            {/* Leave Event: always show for non-creator */}
+            {!isCreator && (
+              <Button
+                variant="outlined"
+                color="secondary"
+                fullWidth
+                size="medium"
+                onClick={onLeave}
+              >
+                Leave Event
+              </Button>
+            )}
+          </>
+              <Button
+                variant="contained"
+                color="success"
+                fullWidth
+                size="medium"
+                onClick={() => onUpdateStatus('confirmed')}
+              >
+                Confirm Attendance
+              </Button>
+            )}
+
+            {/* Decline: only show if confirmed and not already declined */}
+            {isConfirmed && !isDeclined && (
+              <Button
+                variant="contained"
+                color="error"
+                fullWidth
+                size="medium"
+                onClick={() => onUpdateStatus('declined')}
+              >
+                Decline
+              </Button>
+            )}
+
+            {/* Mark Late: only if confirmed and not late */}
+            {isConfirmed && !isLate && (
+              <Button
+                variant="outlined"
+                color="warning"
+                fullWidth
+                size="medium"
+                onClick={onMarkLate}
+                disabled={
+                  // Can only click when confirmed and not already late
+                  event.participants?.find((p) => p.userId === user?.id)?.status !== 'confirmed' ||
+                  event.eventAttendances?.find((a) => a.userId === user?.id && a.status === 'late') !== undefined
+                }
               >
                 Mark as Late
               </Button>
