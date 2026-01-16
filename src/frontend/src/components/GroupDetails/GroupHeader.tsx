@@ -59,7 +59,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = React.memo(({
       </div>
       <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
         {isAdmin && onViewEventRequests && (
-          <Button color="warning" onClick={onViewEventRequests} className="rounded-full p-2 min-w-0 w-14 h-14 flex items-center justify-center" aria-label={t('groupDetails.viewEventRequests')}>
+          <Button color="info" onClick={onViewEventRequests} className="rounded-full p-2 min-w-0 w-14 h-14 flex items-center justify-center" aria-label={t('groupDetails.viewEventRequests')}>
             <ClipboardIcon className="w-8 h-8" />
           </Button>
         )}
