@@ -4,7 +4,7 @@ import authMiddleware, { optionalAuthMiddleware } from '../middleware/auth';
 import { distributedAuthenticatedLimiter, distributedUploadLimiter, distributedApiLimiter } from '../middleware/distributedRateLimiter';
 import { uploadGroupPicture } from '../middleware/upload';
 import { asyncHandler } from '../middleware/asyncHandler';
-import { etagMiddleware, privateCache } from '../middleware/etag';
+import { etagMiddleware } from '../middleware/etag';
 
 const router = Router();
 
@@ -21,10 +21,11 @@ router.use(authMiddleware);
 router.use(distributedAuthenticatedLimiter);
 
 router.post('/', asyncHandler(groupController.createGroup));
-// Add ETag and cache control for frequently accessed read endpoints
-router.get('/', etagMiddleware({ weak: true }), privateCache(60), asyncHandler(groupController.getGroups));
+// Add ETag for conditional requests but no HTTP caching to avoid stale data
+// Server-side caching (Redis/in-memory) is still active in the controller
+router.get('/', etagMiddleware({ weak: true }), asyncHandler(groupController.getGroups));
 router.get('/nearby', asyncHandler(groupController.getNearbyGroups));
-router.get('/:id', etagMiddleware({ weak: true }), privateCache(30), asyncHandler(groupController.getGroup));
+router.get('/:id', etagMiddleware({ weak: true }), asyncHandler(groupController.getGroup));
 
 
 // Get all members for a group
