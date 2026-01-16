@@ -578,11 +578,27 @@ export const inviteMember = async (req: Request, res: Response) => {
     throw new BadRequestError('User is already a member');
   }
 
-  const newMember = await prisma.groupMember.create({
+  // Check if user already has a pending invitation
+  const existingInvitation = await prisma.groupJoinRequest.findFirst({
+    where: {
+      groupId: id,
+      userId: userToInvite.id,
+      status: 'pending',
+      createdBy: 'invite'
+    }
+  });
+
+  if (existingInvitation) {
+    throw new BadRequestError('User already has a pending invitation');
+  }
+
+  // Create a pending join request for the invitation
+  const invitation = await prisma.groupJoinRequest.create({
     data: {
       groupId: id,
       userId: userToInvite.id,
-      role: 'member'
+      status: 'pending',
+      createdBy: 'invite'
     },
     include: {
       user: {
@@ -605,7 +621,8 @@ export const inviteMember = async (req: Request, res: Response) => {
       <p>${escapeHtml(inviterUser.name)} has invited you to join the group:</p>
       <h3>${escapeHtml(group.name)}</h3>
       <p>${escapeHtml(group.description || '')}</p>
-      <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/groups">View Group</a></p>
+      <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/groups/${id}">View Invitation</a></p>
+      <p>You can accept or decline this invitation from the app.</p>
     `;
     
     await sendEmailWithQueue(
@@ -641,12 +658,10 @@ export const inviteMember = async (req: Request, res: Response) => {
     });
   }
 
-  // Invalidate group cache for all affected users
-  await CacheService.invalidate('group', id);
-  // Invalidate user groups cache for the invited user
-  await CacheService.deletePattern(`user:${userToInvite.id}:groups:*`);
-
-  res.status(201).json(newMember);
+  res.status(201).json({
+    message: 'Invitation sent successfully',
+    invitation
+  });
 };
 
 export const removeMember = async (req: Request, res: Response) => {
@@ -1152,6 +1167,137 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
     message: `Join request ${action}d successfully`,
     request: updatedRequest
   });
+};
+
+// Respond to a group invitation (for invited users)
+export const respondToInvitation = async (req: Request, res: Response) => {
+  const { id, requestId } = req.params;
+  const { action } = req.body; // 'accept' or 'decline'
+
+  if (!action || !['accept', 'decline'].includes(action)) {
+    throw new BadRequestError('Invalid action. Must be "accept" or "decline"');
+  }
+
+  // Get the invitation
+  const invitation = await prisma.groupJoinRequest.findUnique({
+    where: { id: requestId }
+  });
+
+  if (!invitation) {
+    throw new NotFoundError('Invitation not found');
+  }
+
+  if (invitation.groupId !== id) {
+    throw new BadRequestError('Invitation does not belong to this group');
+  }
+
+  if (invitation.status !== 'pending') {
+    throw new BadRequestError('Invitation already processed');
+  }
+
+  // Only the invited user can respond to their invitation
+  if (invitation.userId !== req.user!.id) {
+    throw new ForbiddenError('You can only respond to your own invitations');
+  }
+
+  // Only invitations (not user-initiated requests) can be responded to by users
+  if (invitation.createdBy !== 'invite') {
+    throw new BadRequestError('This is not an invitation. Join requests must be handled by group admins.');
+  }
+
+  // If accepting, use a transaction to ensure atomicity
+  if (action === 'accept') {
+    const result = await prisma.$transaction(async (tx) => {
+      // Check if user is already a member (race condition protection)
+      const existingMembership = await tx.groupMember.findFirst({
+        where: {
+          groupId: id,
+          userId: req.user!.id
+        }
+      });
+
+      if (existingMembership) {
+        throw new BadRequestError('You are already a member of this group');
+      }
+
+      // Update the invitation status
+      const updatedInvitation = await tx.groupJoinRequest.update({
+        where: { id: requestId },
+        data: { status: 'approved' }
+      });
+
+      // Add the user as a member
+      await tx.groupMember.create({
+        data: {
+          groupId: id,
+          userId: req.user!.id,
+          role: 'member'
+        }
+      });
+
+      return updatedInvitation;
+    });
+
+    // Invalidate group cache for all affected users
+    const cacheOperations = await Promise.allSettled([
+      CacheService.invalidate('group', id),
+      CacheService.deletePattern(`user:${req.user!.id}:groups:*`),
+      CacheService.deletePattern(`events:user:${req.user!.id}:group:${id}:*`),
+      CacheService.deletePattern(`events:user:${req.user!.id}:group:all:*`)
+    ]);
+
+    // Log any failures
+    const failures = cacheOperations.filter(r => r.status === 'rejected');
+    if (failures.length > 0) {
+      logger.warn('Some cache invalidation operations failed in respondToInvitation', 'GroupController', { 
+        failureCount: failures.length,
+        totalOperations: cacheOperations.length 
+      });
+    }
+
+    res.json({ 
+      message: 'Invitation accepted successfully',
+      invitation: result
+    });
+  } else {
+    // Declining is simpler, just update the status
+    const updatedInvitation = await prisma.groupJoinRequest.update({
+      where: { id: requestId },
+      data: { status: 'rejected' }
+    });
+
+    res.json({ 
+      message: 'Invitation declined successfully',
+      invitation: updatedInvitation
+    });
+  }
+};
+
+// Get user's pending invitations
+export const getUserInvitations = async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+
+  const invitations = await prisma.groupJoinRequest.findMany({
+    where: {
+      userId,
+      status: 'pending',
+      createdBy: 'invite'
+    },
+    include: {
+      group: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          picture: true,
+          isPublic: true
+        }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  res.json(invitations);
 };
 
 // Join group by invite link - now requires authentication
