@@ -368,6 +368,24 @@ export default function GroupDetailsPage() {
     setShowDeleteConfirm(false);
   };
 
+  // Helper function to handle successful leave/delete
+  const handleLeaveSuccess = useCallback((groupDeleted: boolean) => {
+    // Invalidate all group-related queries to ensure fresh data
+    queryClient.invalidateQueries({ queryKey: ["groupsList"] });
+    queryClient.invalidateQueries({ queryKey: ["groupDetails"] });
+    queryClient.invalidateQueries({ queryKey: ["groups"] });
+    
+    const message = groupDeleted 
+      ? t('groupDetails.groupDeletedAsLastMember', 'Group deleted successfully as you were the last member')
+      : t('groupDetails.leftGroup');
+    
+    setToast({ message, type: "success" });
+    // Navigate immediately to groups page - cache invalidation ensures fresh data
+    setTimeout(() => {
+      navigate('/groups', { state: { justLeftGroup: true } });
+    }, 500);
+  }, [queryClient, t, navigate]);
+
   // Leave group handler
   const leaveGroupMutation = useMutation({
     mutationFn: async () => {
@@ -394,20 +412,7 @@ export default function GroupDetailsPage() {
       return { previousGroup };
     },
     onSuccess: (data) => {
-      // Invalidate all group-related queries to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ["groupsList"] });
-      queryClient.invalidateQueries({ queryKey: ["groupDetails"] });
-      queryClient.invalidateQueries({ queryKey: ["groups"] });
-      
-      const message = data.groupDeleted 
-        ? t('groupDetails.groupDeletedAsLastMember', 'Group deleted successfully as you were the last member')
-        : t('groupDetails.leftGroup');
-      
-      setToast({ message, type: "success" });
-      // Navigate immediately to groups page - cache invalidation ensures fresh data
-      setTimeout(() => {
-        navigate('/groups', { state: { justLeftGroup: true } });
-      }, 500);
+      handleLeaveSuccess(data.groupDeleted);
     },
     onError: (err: unknown, variables, context) => {
       // Rollback on error
@@ -440,21 +445,8 @@ export default function GroupDetailsPage() {
     try {
       await groupsAPI.transferAdmin(groupId!, selectedNewAdmin); // Assumes backend API exists
       const response = await groupsAPI.leave(groupId!);
-      // Invalidate all group-related queries to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ["groupsList"] });
-      queryClient.invalidateQueries({ queryKey: ["groupDetails"] });
-      queryClient.invalidateQueries({ queryKey: ["groups"] });
-      
-      const message = response.data.groupDeleted 
-        ? t('groupDetails.groupDeletedAsLastMember', 'Group deleted successfully as you were the last member')
-        : t('groupDetails.leftGroup');
-      
-      setToast({ message, type: "success" });
+      handleLeaveSuccess(response.data.groupDeleted);
       setShowAdminTransfer(false);
-      // Navigate immediately to groups page - cache invalidation ensures fresh data
-      setTimeout(() => {
-        navigate('/groups', { state: { justLeftGroup: true } });
-      }, 500);
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
         ? err.response?.data?.error || t('groupDetails.failedToLeave')

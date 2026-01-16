@@ -1216,16 +1216,6 @@ export const leaveGroup = async (req: Request, res: Response) => {
 
   // SECURITY FIX: Use transaction to prevent race condition where last admin could leave
   const result = await prisma.$transaction(async (tx) => {
-    // Get all members for cache invalidation (inside transaction for consistency)
-    const group = await tx.group.findUnique({
-      where: { id },
-      select: {
-        members: {
-          select: { userId: true }
-        }
-      }
-    });
-
     // Find the membership
     const membership = await tx.groupMember.findFirst({
       where: {
@@ -1255,6 +1245,16 @@ export const leaveGroup = async (req: Request, res: Response) => {
 
         // If admin is the only member, delete the group
         if (totalMembers <= 1) {
+          // Get all members for cache invalidation before deletion
+          const group = await tx.group.findUnique({
+            where: { id },
+            select: {
+              members: {
+                select: { userId: true }
+              }
+            }
+          });
+
           await tx.group.delete({
             where: { id }
           });
@@ -1271,7 +1271,7 @@ export const leaveGroup = async (req: Request, res: Response) => {
       where: { id: membership.id }
     });
 
-    return { groupDeleted: false, members: group?.members || [] };
+    return { groupDeleted: false, members: [] };
   });
 
   // Invalidate group cache for all affected users
