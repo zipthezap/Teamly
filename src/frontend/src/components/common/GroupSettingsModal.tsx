@@ -258,6 +258,7 @@ const GroupSettingsModal: React.FC<GroupSettingsModalProps> = ({
                 </FormHelperText>
               </Box>
 
+              {/* Only show for public groups since invite links don't work for private groups */}
               {form.privacy === 'public' && (
                 <Box>
                   <FormControlLabel

@@ -129,9 +129,8 @@ export default function GroupDetailsPage() {
   const canInvite = group && user ? 
     (canEdit || (isMember && group.allowMemberInvites)) : false;
 
-  // Check if user can copy invite link (only for public groups)
-  const canCopyLink = group && user && group.isPublic ? 
-    (canEdit || (isMember && group.allowMemberCopyLink)) : false;
+  // Check if user can copy invite link (only for public groups, since invite links don't work for private groups)
+  const canCopyLink = group && user && group.isPublic && (canEdit || (isMember && group.allowMemberCopyLink));
 
   // Update group settings when group data loads
   React.useEffect(() => {
