@@ -194,6 +194,8 @@ CREATE TABLE "Group" (
     "maxMembers" INTEGER,
     "autoApproveJoinRequests" BOOLEAN NOT NULL DEFAULT false,
     "tags" TEXT,
+    "allowMemberInvites" BOOLEAN NOT NULL DEFAULT false,
+    "allowMemberCopyLink" BOOLEAN NOT NULL DEFAULT true,
     "creatorId" TEXT NOT NULL,
 
     CONSTRAINT "Group_pkey" PRIMARY KEY ("id")

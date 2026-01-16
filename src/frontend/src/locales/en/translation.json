@@ -356,6 +356,7 @@
     "activityLeave": "left the event"
   },
   "groups": {
+      "failedToLoadGroups": "Failed to load groups",
     "groupName": "Group Name",
     "description": "Description",
     "groupPicture": "Group Picture",
@@ -446,14 +447,19 @@
       "checkBackOrCreate": "Check back later or create your own public group!",
       "showingGroups": "Showing {{count}} of {{total}} groups",
       "noDescriptionAvailable": "No description available",
+      "memberPermissions": "Member Permissions",
+      "allowMemberInvites": "Allow members to invite others",
+      "allowMemberInvitesHelp": "If enabled, all group members can invite new people to join this group.",
+      "allowMemberCopyLink": "Allow members to copy invite link",
+      "allowMemberCopyLinkHelp": "If enabled, all group members can copy and share the group invite link.",
       "kmAway": "{{count}} km away",
       "requesting": "Requesting...",
       "requestToJoin": "Request to Join",
       "applyToJoin": "Apply to Join",
       "customPoint": "custom point",
       "yourLocation": "your location"
-    }
-  },
+      }
+    },
   "groupDetails": {
     "transferAdminTitle": "Select New Admin",
     "transferAdminDesc": "You must select a new admin before leaving the group.",

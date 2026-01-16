@@ -356,6 +356,7 @@
     "activityLeave": "a quitté l'événement"
   },
   "groups": {
+    "failedToLoadGroups": "Échec du chargement des groupes",
     "groupName": "Nom du groupe",
     "description": "Description du groupe",
     "groupPicture": "Photo du groupe",
@@ -407,6 +408,11 @@
     "descriptionHelp": "Décrivez le sujet de votre groupe et les activités que vous faites",
     "failedToLoad": "Échec du chargement du groupe",
     "failedToUpdate": "Échec de la mise à jour du groupe",
+    "memberPermissions": "Permissions des membres",
+    "allowMemberInvites": "Autoriser les membres à inviter d'autres personnes",
+    "allowMemberInvitesHelp": "Si activé, tous les membres du groupe peuvent inviter de nouvelles personnes à rejoindre ce groupe.",
+    "allowMemberCopyLink": "Autoriser les membres à copier le lien d'invitation",
+    "allowMemberCopyLinkHelp": "Si activé, tous les membres du groupe peuvent copier et partager le lien d'invitation du groupe.",
     "joinGroup": {
       "title": "Rejoindre le groupe",
       "loginToJoin": "Veuillez vous connecter pour rejoindre ce groupe.",
@@ -452,8 +458,8 @@
       "applyToJoin": "Postuler pour rejoindre",
       "customPoint": "point personnalisé",
       "yourLocation": "votre position"
-    }
-  },
+      }
+    },
   "groupDetails": {
     "transferAdminTitle": "Sélectionner un nouvel admin",
     "transferAdminDesc": "Vous devez choisir un nouvel admin avant de quitter le groupe.",
