@@ -83,7 +83,7 @@ const EventActions: React.FC<EventActionsProps> = ({
               Decline
             </Button>
 
-            {event.eventAttendances?.find((a) => a.id === user?.id && a.status === 'late') ? (
+            {event.eventAttendances?.find((a) => a.userId === user?.id && a.status === 'late') ? (
               <Button
                 variant="outlined"
                 color="info"
@@ -100,6 +100,14 @@ const EventActions: React.FC<EventActionsProps> = ({
                 fullWidth
                 size="medium"
                 onClick={onMarkLate}
+                disabled={
+                  // Disable if already marked as late
+                  event.eventAttendances?.find((a) => a.userId === user?.id && a.status === 'late') !== undefined ||
+                  // Disable if user has confirmed
+                  event.participants?.find((p) => p.id === user?.id)?.status === 'confirmed' ||
+                  // Disable if user has declined
+                  event.participants?.find((p) => p.id === user?.id)?.status === 'declined'
+                }
               >
                 Mark as Late
               </Button>

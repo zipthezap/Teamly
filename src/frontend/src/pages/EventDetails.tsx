@@ -355,10 +355,28 @@ const EventDetails = () => {
                         ✗ {t('eventDetails.decline')}
                       </button>
                       <div className="grid grid-cols-2 gap-2 mt-1">
-                        <button onClick={handleMarkLate} className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs font-medium transition-colors">
+                        <button 
+                          onClick={handleMarkLate} 
+                          className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={
+                            // Disable if already marked as late
+                            event.eventAttendances?.find((a: EventAttendance) => a.userId === user?.id && a.status === 'late') !== undefined ||
+                            // Disable if user has confirmed
+                            event.participants?.find((p: EventParticipant) => p.userId === user?.id)?.status === EventParticipantStatus.confirmed ||
+                            // Disable if user has declined
+                            event.participants?.find((p: EventParticipant) => p.userId === user?.id)?.status === EventParticipantStatus.declined
+                          }
+                        >
                           ⏰ {t('eventDetails.markLate')}
                         </button>
-                        <button onClick={handleUnmarkLate} className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs font-medium transition-colors">
+                        <button 
+                          onClick={handleUnmarkLate} 
+                          className="bg-gray-600 hover:bg-gray-700 text-white rounded-lg px-3 py-2 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={
+                            // Disable if not marked as late
+                            event.eventAttendances?.find((a: EventAttendance) => a.userId === user?.id && a.status === 'late') === undefined
+                          }
+                        >
                           ↩ {t('eventDetails.undoLate')}
                         </button>
                       </div>
