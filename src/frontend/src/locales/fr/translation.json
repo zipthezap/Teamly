@@ -415,6 +415,7 @@
     "allowMemberCopyLinkHelp": "Si activé, tous les membres du groupe peuvent copier et partager le lien d'invitation du groupe.",
     "joinGroup": {
       "title": "Rejoindre le groupe",
+      "inviteTitle": "Vous avez été invité à rejoindre",
       "loginToJoin": "Veuillez vous connecter pour rejoindre ce groupe.",
       "login": "Se connecter",
       "signup": "S'inscrire",
@@ -422,7 +423,19 @@
       "tryAgain": "Réessayer",
       "goToGroups": "Aller aux groupes",
       "successfullyJoined": "Vous avez rejoint le groupe avec succès !",
-      "failedToJoin": "Échec de la tentative de rejoindre le groupe"
+      "failedToJoin": "Échec de la tentative de rejoindre le groupe",
+      "joinNow": "Rejoindre le groupe",
+      "alreadyMember": "Vous êtes déjà membre de ce groupe",
+      "viewGroup": "Voir le groupe",
+      "groupInfo": "Informations sur le groupe",
+      "memberCount": "{{count}} Membres",
+      "eventCount": "{{count}} Événements",
+      "sportType": "Sport",
+      "location": "Localisation",
+      "createdBy": "Créé par",
+      "loadingGroupInfo": "Chargement des informations du groupe...",
+      "failedToLoadGroup": "Échec du chargement des informations du groupe",
+      "groupNotFound": "Groupe introuvable ou privé"
     },
     "publicGroups": {
       "title": "Découvrir des groupes publics",

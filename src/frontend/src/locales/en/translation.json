@@ -415,6 +415,7 @@
     "failedToUpdate": "Failed to update group",
     "joinGroup": {
       "title": "Join Group",
+      "inviteTitle": "You've Been Invited to Join",
       "loginToJoin": "Please log in to join this group.",
       "login": "Log In",
       "signup": "Sign Up",
@@ -422,7 +423,19 @@
       "tryAgain": "Try Again",
       "goToGroups": "Go to Groups",
       "successfullyJoined": "Successfully joined the group!",
-      "failedToJoin": "Failed to join group"
+      "failedToJoin": "Failed to join group",
+      "joinNow": "Join Group",
+      "alreadyMember": "You're already a member of this group",
+      "viewGroup": "View Group",
+      "groupInfo": "Group Information",
+      "memberCount": "{{count}} Members",
+      "eventCount": "{{count}} Events",
+      "sportType": "Sport",
+      "location": "Location",
+      "createdBy": "Created by",
+      "loadingGroupInfo": "Loading group information...",
+      "failedToLoadGroup": "Failed to load group information",
+      "groupNotFound": "Group not found or is private"
     },
     "publicGroups": {
       "title": "Discover Public Groups",
