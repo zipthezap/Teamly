@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -50,6 +50,32 @@ interface GroupInfoForInvite {
   isMember?: boolean;
 }
 
+// Helper function to extract error message from API errors
+const getErrorMessage = (err: unknown): string | null => {
+  if (err && typeof err === 'object' && 'response' in err) {
+    const response = (err as { response?: unknown }).response;
+    if (response && typeof response === 'object' && 'data' in response) {
+      const data = (response as { data?: unknown }).data;
+      if (data && typeof data === 'object' && 'error' in data) {
+        return String((data as { error: unknown }).error);
+      }
+    }
+  }
+  return null;
+};
+
+// Helper function to format location display
+const getLocationDisplay = (groupInfo: GroupInfoForInvite | null): string | null => {
+  if (!groupInfo) return null;
+  
+  const parts = [];
+  if (groupInfo.locationName) parts.push(groupInfo.locationName);
+  if (groupInfo.city) parts.push(groupInfo.city);
+  if (groupInfo.country) parts.push(groupInfo.country);
+  
+  return parts.join(', ') || null;
+};
+
 const JoinGroup = () => {
   const { groupId } = useParams();
   const navigate = useNavigate();
@@ -73,11 +99,7 @@ const JoinGroup = () => {
         const res = await groupsAPI.getForInvite(groupId);
         setGroupInfo(res.data);
       } catch (err: unknown) {
-        const errorMessage = err && typeof err === 'object' && 'response' in err && 
-          err.response && typeof err.response === 'object' && 'data' in err.response &&
-          err.response.data && typeof err.response.data === 'object' && 'error' in err.response.data
-          ? String(err.response.data.error)
-          : t('groups.joinGroup.failedToLoadGroup');
+        const errorMessage = getErrorMessage(err) || t('groups.joinGroup.failedToLoadGroup');
         setError(errorMessage);
       } finally {
         setLoadingGroupInfo(false);
@@ -87,7 +109,7 @@ const JoinGroup = () => {
     fetchGroupInfo();
   }, [groupId, t]);
 
-  const handleJoinGroup = async () => {
+  const handleJoinGroup = useCallback(async () => {
     if (!user) {
       setError(t('groups.joinGroup.loginToJoin'));
       return;
@@ -115,27 +137,14 @@ const JoinGroup = () => {
         navigate(`/groups/${groupId}`);
       }, 1500);
     } catch (err: unknown) {
-      const errorMessage = err && typeof err === 'object' && 'response' in err && 
-        err.response && typeof err.response === 'object' && 'data' in err.response &&
-        err.response.data && typeof err.response.data === 'object' && 'error' in err.response.data
-        ? String(err.response.data.error)
-        : t('groups.joinGroup.failedToJoin');
+      const errorMessage = getErrorMessage(err) || t('groups.joinGroup.failedToJoin');
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, groupId, navigate, t, queryClient]);
 
-  const getLocationDisplay = () => {
-    if (!groupInfo) return null;
-    
-    const parts = [];
-    if (groupInfo.locationName) parts.push(groupInfo.locationName);
-    if (groupInfo.city) parts.push(groupInfo.city);
-    if (groupInfo.country) parts.push(groupInfo.country);
-    
-    return parts.join(', ') || null;
-  };
+  const locationDisplay = getLocationDisplay(groupInfo);
 
   // Show loading state while fetching group info
   if (loadingGroupInfo) {
@@ -244,12 +253,12 @@ const JoinGroup = () => {
                     </Typography>
                   </Box>
                 </Grid>
-                {getLocationDisplay() && (
+                {locationDisplay && (
                   <Grid item xs={12}>
                     <Box display="flex" alignItems="center" gap={1}>
                       <LocationIcon color="action" />
                       <Typography variant="body2" color="text.secondary">
-                        {getLocationDisplay()}
+                        {locationDisplay}
                       </Typography>
                     </Box>
                   </Grid>
@@ -363,12 +372,12 @@ const JoinGroup = () => {
                     </Typography>
                   </Box>
                 </Grid>
-                {getLocationDisplay() && (
+                {locationDisplay && (
                   <Grid item xs={12}>
                     <Box display="flex" alignItems="center" gap={1}>
                       <LocationIcon color="action" />
                       <Typography variant="body2" color="text.secondary">
-                        {getLocationDisplay()}
+                        {locationDisplay}
                       </Typography>
                     </Box>
                   </Grid>
