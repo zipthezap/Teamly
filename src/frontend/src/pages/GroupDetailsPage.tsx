@@ -368,10 +368,29 @@ export default function GroupDetailsPage() {
     setShowDeleteConfirm(false);
   };
 
+  // Helper function to handle successful leave/delete
+  const handleLeaveSuccess = useCallback((groupDeleted: boolean) => {
+    // Invalidate all group-related queries to ensure fresh data
+    queryClient.invalidateQueries({ queryKey: ["groupsList"] });
+    queryClient.invalidateQueries({ queryKey: ["groupDetails"] });
+    queryClient.invalidateQueries({ queryKey: ["groups"] });
+    
+    const message = groupDeleted 
+      ? t('groupDetails.groupDeletedAsLastMember', 'Group deleted successfully as you were the last member')
+      : t('groupDetails.leftGroup');
+    
+    setToast({ message, type: "success" });
+    // Navigate immediately to groups page - cache invalidation ensures fresh data
+    setTimeout(() => {
+      navigate('/groups', { state: { justLeftGroup: true } });
+    }, 500);
+  }, [queryClient, t, navigate]);
+
   // Leave group handler
   const leaveGroupMutation = useMutation({
     mutationFn: async () => {
-      await groupsAPI.leave(groupId!);
+      const response = await groupsAPI.leave(groupId!);
+      return response.data;
     },
     onMutate: async () => {
       // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
@@ -392,16 +411,8 @@ export default function GroupDetailsPage() {
       // Return context with the snapshot
       return { previousGroup };
     },
-    onSuccess: () => {
-      // Invalidate all group-related queries to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ["groupsList"] });
-      queryClient.invalidateQueries({ queryKey: ["groupDetails"] });
-      queryClient.invalidateQueries({ queryKey: ["groups"] });
-      setToast({ message: t('groupDetails.leftGroup'), type: "success" });
-      // Navigate immediately to groups page - cache invalidation ensures fresh data
-      setTimeout(() => {
-        navigate('/groups', { state: { justLeftGroup: true } });
-      }, 500);
+    onSuccess: (data) => {
+      handleLeaveSuccess(data.groupDeleted);
     },
     onError: (err: unknown, variables, context) => {
       // Rollback on error
@@ -411,6 +422,12 @@ export default function GroupDetailsPage() {
       setToast({ message: getErrorMessage(err) || t('groupDetails.failedToLeave'), type: "error" });
     },
   });
+
+  // Check if admin is the only member
+  const isOnlyMember = () => {
+    const membersArray = Array.isArray(group?.members) ? group.members : [];
+    return membersArray.length <= 1;
+  };
 
   // Admin leave logic: require transfer
   const handleLeaveGroup = () => {
@@ -427,17 +444,9 @@ export default function GroupDetailsPage() {
     if (!selectedNewAdmin) return;
     try {
       await groupsAPI.transferAdmin(groupId!, selectedNewAdmin); // Assumes backend API exists
-      await groupsAPI.leave(groupId!);
-      // Invalidate all group-related queries to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ["groupsList"] });
-      queryClient.invalidateQueries({ queryKey: ["groupDetails"] });
-      queryClient.invalidateQueries({ queryKey: ["groups"] });
-      setToast({ message: t('groupDetails.leftGroup'), type: "success" });
+      const response = await groupsAPI.leave(groupId!);
+      handleLeaveSuccess(response.data.groupDeleted);
       setShowAdminTransfer(false);
-      // Navigate immediately to groups page - cache invalidation ensures fresh data
-      setTimeout(() => {
-        navigate('/groups', { state: { justLeftGroup: true } });
-      }, 500);
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
         ? err.response?.data?.error || t('groupDetails.failedToLeave')
@@ -658,12 +667,22 @@ export default function GroupDetailsPage() {
       {showLeaveConfirm && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
           <div className="bg-slate-800 p-6 rounded shadow-lg w-96 text-center">
-            <div className="mb-4 text-lg font-bold">{t('groupDetails.leave')}?</div>
+            <div className="mb-4 text-lg font-bold">
+              {isAdmin && isOnlyMember() ? t('groupDetails.deleteGroup') : t('groupDetails.leave')}?
+            </div>
             <div className="mb-6 text-slate-400">
-              {t('groupDetails.confirmLeave')}
+              {isAdmin && isOnlyMember() 
+                ? t('groupDetails.confirmLeaveAsLastMember', 'You are the last member of this group. Leaving will delete the group permanently.')
+                : t('groupDetails.confirmLeave')}
             </div>
             <div className="flex gap-4 justify-center">
-              <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded" onClick={confirmLeaveGroup} disabled={leaveGroupMutation.isPending}>{t('groupDetails.leave')}</button>
+              <button 
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded" 
+                onClick={confirmLeaveGroup} 
+                disabled={leaveGroupMutation.isPending}
+              >
+                {isAdmin && isOnlyMember() ? t('groupDetails.deleteGroup') : t('groupDetails.leave')}
+              </button>
               <button className="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded" onClick={() => setShowLeaveConfirm(false)}>{t('common.cancel')}</button>
             </div>
           </div>
