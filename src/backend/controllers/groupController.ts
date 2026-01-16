@@ -706,6 +706,16 @@ export const removeMember = async (req: Request, res: Response) => {
     where: { id: memberId }
   });
 
+  // Clean up any pending invitations for this user
+  await prisma.groupJoinRequest.deleteMany({
+    where: {
+      groupId: id,
+      userId: memberToRemove.userId,
+      status: 'pending',
+      createdBy: 'invite'
+    }
+  });
+
   // Notify the removed member
   if (group) {
     await prisma.groupNotification.create({
@@ -775,6 +785,16 @@ export const removeMemberByUserId = async (req: Request, res: Response) => {
 
   await prisma.groupMember.delete({
     where: { id: memberToRemove.id }
+  });
+
+  // Clean up any pending invitations for this user
+  await prisma.groupJoinRequest.deleteMany({
+    where: {
+      groupId: id,
+      userId: memberToRemove.userId,
+      status: 'pending',
+      createdBy: 'invite'
+    }
   });
 
   // Invalidate group cache for all affected users
@@ -1406,6 +1426,16 @@ export const leaveGroup = async (req: Request, res: Response) => {
     // Delete the membership atomically
     await tx.groupMember.delete({
       where: { id: membership.id }
+    });
+
+    // Clean up any pending invitations for this user
+    await tx.groupJoinRequest.deleteMany({
+      where: {
+        groupId: id,
+        userId: userId,
+        status: 'pending',
+        createdBy: 'invite'
+      }
     });
 
     return { groupDeleted: false, members: [] };
