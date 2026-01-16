@@ -647,9 +647,9 @@ export const inviteMember = async (req: Request, res: Response) => {
   // Create in-app notification for the invited user
   if (inviterUser) {
     // Check if user has muted group invite notifications
-    const isMuted = await filterUnmutedUsers([userToInvite.id], 'muteGroupInvites');
+    const unmutedUsers = await filterUnmutedUsers([userToInvite.id], 'muteGroupInvites');
     
-    if (isMuted.length > 0) {
+    if (unmutedUsers.length > 0) {
       await prisma.groupNotification.create({
         data: {
           groupId: id,
