@@ -1,8 +1,8 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
-// Performance configuration
-const MAX_BUNDLE_SIZE = 2000000; // 2MB - reasonable for a React SPA
+// Performance configuration - configurable via environment variable
+const MAX_BUNDLE_SIZE = parseInt(process.env.MAX_BUNDLE_SIZE || '2000000', 10); // Default 2MB - reasonable for a React SPA
 
 module.exports = {
   mode: 'production',
@@ -26,7 +26,10 @@ module.exports = {
         use: {
           loader: 'ts-loader',
           options: {
-            transpileOnly: true, // Skip type checking for faster builds
+            // Skip type checking for faster builds
+            // Note: Type checking should be done separately via 'tsc --noEmit' 
+            // in CI/CD pipeline or during development
+            transpileOnly: true,
           },
         },
         exclude: /node_modules/,

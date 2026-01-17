@@ -345,12 +345,14 @@ const API_ROUTE_PREFIXES = ['/api', '/uploads', '/metrics', '/health'];
 // Serve static frontend bundle (webpack build)
 // This serves the webpack-bundled frontend from src/frontend/dist
 // Can be customized via FRONTEND_DIST_PATH environment variable
+// NOTE: This must be placed AFTER all API route definitions to avoid intercepting API calls
 const frontendDistPath = process.env.FRONTEND_DIST_PATH || path.join(__dirname, '../../src/frontend/dist');
 if (process.env.SERVE_FRONTEND === 'true') {
   logger.info('Serving frontend from webpack bundle', 'Server', { path: frontendDistPath });
   app.use(express.static(frontendDistPath));
   
   // Handle client-side routing - send index.html for all non-API routes
+  // This catch-all route must be the last route definition
   app.get('*', (req: Request, res: Response) => {
     // Don't intercept API routes or uploads
     const isApiRoute = API_ROUTE_PREFIXES.some(prefix => req.path.startsWith(prefix));

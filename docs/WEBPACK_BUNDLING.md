@@ -57,11 +57,18 @@ This starts the backend in API-only mode (default behavior).
 The webpack configuration is located at `src/frontend/webpack.config.cjs`. Key features:
 
 - **Production mode**: Optimized bundle with minification
-- **TypeScript support**: Uses ts-loader with transpileOnly for fast builds
+- **TypeScript support**: Uses ts-loader with transpileOnly for fast builds (type checking should be done separately)
 - **CSS support**: Includes PostCSS and Tailwind CSS processing
 - **Asset handling**: Images and fonts are bundled as resources
 - **HTML generation**: Generates index.html with injected bundle scripts
-- **Performance limits**: Set to 2MB for React SPA applications
+- **Performance limits**: Set to 2MB by default, configurable via MAX_BUNDLE_SIZE environment variable
+
+You can customize the bundle size limit:
+
+```bash
+# Build with custom bundle size limit (3MB example)
+MAX_BUNDLE_SIZE=3000000 npm run build:webpack
+```
 
 ### Backend Configuration
 
