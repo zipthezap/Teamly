@@ -62,10 +62,6 @@ const NeedPlayersTab = () => {
     skillLevel: 'any',
   });
 
-  useEffect(() => {
-    fetchMyRequests();
-  }, [fetchMyRequests]);
-
   const fetchMyRequests = useCallback(async () => {
     try {
       setLoading(true);
@@ -77,6 +73,10 @@ const NeedPlayersTab = () => {
       setLoading(false);
     }
   }, [t]);
+
+  useEffect(() => {
+    fetchMyRequests();
+  }, [fetchMyRequests]);
 
   const handleOpenDialog = (request?: TeamUpRequest) => {
     if (request) {

@@ -20,10 +20,6 @@ const MyResponsesTab = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchMyResponses();
-  }, [fetchMyResponses]);
-
   const fetchMyResponses = useCallback(async () => {
     try {
       setLoading(true);
@@ -35,6 +31,10 @@ const MyResponsesTab = () => {
       setLoading(false);
     }
   }, [t]);
+
+  useEffect(() => {
+    fetchMyResponses();
+  }, [fetchMyResponses]);
 
   if (loading) {
     return <LoadingSpinner message={t('teamup.loadingResponses')} />;

@@ -67,12 +67,6 @@ const TournamentDetails: React.FC = () => {
   });
   const [scores, setScores] = useState({ homeScore: 0, awayScore: 0 });
 
-  useEffect(() => {
-    if (id) {
-      loadTournament();
-    }
-  }, [id, loadTournament]);
-
   const loadTournament = useCallback(async () => {
     if (!id) return;
     
@@ -86,6 +80,12 @@ const TournamentDetails: React.FC = () => {
       setLoading(false);
     }
   }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      loadTournament();
+    }
+  }, [id, loadTournament]);
 
   const handleAddTeam = async () => {
     if (!id) return;

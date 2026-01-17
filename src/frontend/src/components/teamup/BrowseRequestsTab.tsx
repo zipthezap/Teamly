@@ -38,10 +38,6 @@ const BrowseRequestsTab = () => {
     skillLevel: '',
   });
 
-  useEffect(() => {
-    fetchRequests();
-  }, [fetchRequests]);
-
   const fetchRequests = useCallback(async () => {
     try {
       setLoading(true);
@@ -77,6 +73,10 @@ const BrowseRequestsTab = () => {
       setLoading(false);
     }
   }, [filters, t]);
+
+  useEffect(() => {
+    fetchRequests();
+  }, [fetchRequests]);
 
   const handleOpenModal = (requestId: string) => {
     setSelectedRequestId(requestId);

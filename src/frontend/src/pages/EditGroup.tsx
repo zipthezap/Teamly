@@ -43,10 +43,6 @@ const EditGroup = () => {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchGroup();
-  }, [id, fetchGroup]);
-
   const fetchGroup = useCallback(async () => {
     if (!id) {
       setError('Group ID is required');
@@ -80,6 +76,10 @@ const EditGroup = () => {
     }
   }, [id, t]);
 
+  useEffect(() => {
+    fetchGroup();
+  }, [id, fetchGroup]);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
@@ -95,10 +95,10 @@ const EditGroup = () => {
         ...(location.locationName && { locationName: location.locationName }),
         ...(location.city && { city: location.city }),
         ...(location.country && { country: location.country }),
-        sportType: sportType || null,
-        maxMembers: maxMembers ? (typeof maxMembers === 'string' ? parseInt(maxMembers) : maxMembers) : null,
+        ...(sportType && { sportType }),
+        ...(maxMembers && { maxMembers: typeof maxMembers === 'string' ? parseInt(maxMembers) : maxMembers }),
         autoApproveJoinRequests,
-        tags: tags || null,
+        ...(tags && { tags }),
       };
       
       if (!id) {

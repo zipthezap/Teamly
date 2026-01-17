@@ -13,7 +13,7 @@ import {
   Divider,
   Card,
   CardContent,
-  Grid,
+  Grid2 as Grid,
 } from '@mui/material';
 import {
   People as PeopleIcon,
@@ -237,7 +237,7 @@ const JoinGroup = () => {
               <Divider sx={{ my: 2 }} />
 
               <Grid container spacing={2}>
-                <Grid item xs={6}>
+                <Grid size={{ xs: 6 }}>
                   <Box display="flex" alignItems="center" gap={1}>
                     <PeopleIcon color="action" />
                     <Typography variant="body2" color="text.secondary">
@@ -245,7 +245,7 @@ const JoinGroup = () => {
                     </Typography>
                   </Box>
                 </Grid>
-                <Grid item xs={6}>
+                <Grid size={{ xs: 6 }}>
                   <Box display="flex" alignItems="center" gap={1}>
                     <EventIcon color="action" />
                     <Typography variant="body2" color="text.secondary">
@@ -254,7 +254,7 @@ const JoinGroup = () => {
                   </Box>
                 </Grid>
                 {locationDisplay && (
-                  <Grid item xs={12}>
+                  <Grid size={{ xs: 12 }}>
                     <Box display="flex" alignItems="center" gap={1}>
                       <LocationIcon color="action" />
                       <Typography variant="body2" color="text.secondary">
@@ -264,7 +264,7 @@ const JoinGroup = () => {
                   </Grid>
                 )}
                 {groupInfo.creator && (
-                  <Grid item xs={12}>
+                  <Grid size={{ xs: 12 }}>
                     <Box display="flex" alignItems="center" gap={1}>
                       <PersonIcon color="action" />
                       <Typography variant="body2" color="text.secondary">
@@ -356,7 +356,7 @@ const JoinGroup = () => {
               <Divider sx={{ my: 2 }} />
 
               <Grid container spacing={2}>
-                <Grid item xs={6}>
+                <Grid size={{ xs: 6 }}>
                   <Box display="flex" alignItems="center" gap={1}>
                     <PeopleIcon color="action" />
                     <Typography variant="body2" color="text.secondary">
@@ -364,7 +364,7 @@ const JoinGroup = () => {
                     </Typography>
                   </Box>
                 </Grid>
-                <Grid item xs={6}>
+                <Grid size={{ xs: 6 }}>
                   <Box display="flex" alignItems="center" gap={1}>
                     <EventIcon color="action" />
                     <Typography variant="body2" color="text.secondary">
@@ -373,7 +373,7 @@ const JoinGroup = () => {
                   </Box>
                 </Grid>
                 {locationDisplay && (
-                  <Grid item xs={12}>
+                  <Grid size={{ xs: 12 }}>
                     <Box display="flex" alignItems="center" gap={1}>
                       <LocationIcon color="action" />
                       <Typography variant="body2" color="text.secondary">
@@ -383,7 +383,7 @@ const JoinGroup = () => {
                   </Grid>
                 )}
                 {groupInfo.creator && (
-                  <Grid item xs={12}>
+                  <Grid size={{ xs: 12 }}>
                     <Box display="flex" alignItems="center" gap={1}>
                       <PersonIcon color="action" />
                       <Typography variant="body2" color="text.secondary">
