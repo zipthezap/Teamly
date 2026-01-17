@@ -92,6 +92,7 @@ When frontend serving is enabled:
 - Static files are served from `src/frontend/dist/`
 - All non-API routes (`/api/*`, `/uploads/*`, `/metrics`, `/health`) return the index.html for client-side routing
 - API routes still return JSON responses
+- **Note**: In production, it's recommended to use a reverse proxy (e.g., nginx) for static file serving and rate limiting
 
 ## File Structure
 

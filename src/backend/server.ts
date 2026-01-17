@@ -346,6 +346,7 @@ const API_ROUTE_PREFIXES = ['/api', '/uploads', '/metrics', '/health'];
 // This serves the webpack-bundled frontend from src/frontend/dist
 // Can be customized via FRONTEND_DIST_PATH environment variable
 // NOTE: This must be placed AFTER all API route definitions to avoid intercepting API calls
+// NOTE: Static file serving is typically rate-limited at the reverse proxy level (e.g., nginx)
 const frontendDistPath = process.env.FRONTEND_DIST_PATH || path.join(__dirname, '../../src/frontend/dist');
 if (process.env.SERVE_FRONTEND === 'true') {
   logger.info('Serving frontend from webpack bundle', 'Server', { path: frontendDistPath });
