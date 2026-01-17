@@ -6,6 +6,7 @@
 
 import { logger } from './logger';
 import { Response } from 'express';
+import { hasErrorCode } from './typeGuards';
 
 /**
  * Error severity levels
@@ -62,17 +63,15 @@ export class ErrorHandler {
     this.logError(error, { ...context, errorType: 'database' }, ErrorSeverity.HIGH);
     
     // Handle specific Prisma errors
-    if (typeof error === 'object' && error !== null && 'code' in error) {
-      const prismaError = error as { code: string };
-      
-      if (prismaError.code === 'P2002') {
+    if (hasErrorCode(error)) {
+      if (error.code === 'P2002') {
         res.status(409).json({ 
           error: 'A record with this information already exists' 
         });
         return;
       }
       
-      if (prismaError.code === 'P2025') {
+      if (error.code === 'P2025') {
         res.status(404).json({ 
           error: 'Record not found' 
         });

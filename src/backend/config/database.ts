@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool, PoolConfig } from 'pg';
 import { logger } from '../utils/logger';
+import { isPrismaQueryEvent } from '../utils/typeGuards';
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -76,12 +77,14 @@ const prisma = new PrismaClient({
 // Log slow queries in development
 if (process.env.NODE_ENV === 'development') {
   prisma.$on('query' as never, (e: unknown) => {
-    const event = e as { duration: number; query: string; params: string };
-    if (event.duration > 1000) { // Log queries taking more than 1 second
+    if (!isPrismaQueryEvent(e)) {
+      return;
+    }
+    if (e.duration > 1000) { // Log queries taking more than 1 second
       logger.warn('Slow query detected', 'Database', {
-        query: event.query,
-        duration: `${event.duration}ms`,
-        params: event.params,
+        query: e.query,
+        duration: `${e.duration}ms`,
+        params: e.params,
       });
     }
   });

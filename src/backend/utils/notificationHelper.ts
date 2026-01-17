@@ -1,6 +1,7 @@
 import prisma from '../config/database';
 import { logger } from './logger';
 import { EmailPreference } from '../../shared/types/email.types';
+import { hasEmailNotifications } from './typeGuards';
 
 /**
  * Safely get boolean value from preferences object
@@ -105,7 +106,7 @@ export const batchIsNotificationMuted = async (userIds: string[], muteField: key
     for (const userId of userIds) {
       const userPrefs = preferencesMap.get(userId);
       // Check if the notification type is muted using type-safe helper
-      result.set(userId, getMuteValue(userPrefs || null, muteField));
+      result.set(userId, getMuteValue(userPrefs ?? null, muteField));
     }
 
     return result;
@@ -165,7 +166,7 @@ export const batchShouldSendEmailNotification = async (userIds: string[], notifi
     for (const userId of userIds) {
       const user = usersMap.get(userId);
       // If user doesn't exist or has notifications disabled globally, don't send
-      if (!user || !(user as { emailNotifications?: boolean }).emailNotifications) {
+      if (!user || !hasEmailNotifications(user) || !user.emailNotifications) {
         result.set(userId, false);
         continue;
       }
@@ -173,7 +174,7 @@ export const batchShouldSendEmailNotification = async (userIds: string[], notifi
       const userPrefs = preferencesMap.get(userId);
       
       // Check the specific notification type using type-safe helper
-      result.set(userId, getPreferenceValue(userPrefs || null, notificationType));
+      result.set(userId, getPreferenceValue(userPrefs ?? null, notificationType));
     }
 
     return result;

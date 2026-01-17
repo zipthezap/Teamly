@@ -22,10 +22,10 @@ import {
   SportScoringConfig,
   VolleyballConfig
 } from '../../shared/types/tournament.types';
-import * as locationService from '../services/locationService';
 import { BadRequestError, ForbiddenError, NotFoundError } from '../utils/errors';
-import { isRequired } from '../utils/validation';
+import { isRequired, parseCoordinates } from '../utils/validation';
 import { ensureResourceExists } from '../utils/controllerHelpers';
+import { isPrismaUniqueError } from '../utils/typeGuards';
 
 // ==================== TOURNAMENT CRUD OPERATIONS ====================
 
@@ -104,13 +104,7 @@ export const createTournament = async (req: Request, res: Response) => {
 
   // Validate coordinates if provided
   if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
-    const coordValidation = locationService.validateCoordinates(
-      parseFloat(latitude),
-      parseFloat(longitude)
-    );
-    if (!coordValidation.valid) {
-      throw new BadRequestError(coordValidation.error!);
-    }
+    parseCoordinates(latitude, longitude);
   }
 
   // If groupId is provided, verify user has access to the group
@@ -139,8 +133,8 @@ export const createTournament = async (req: Request, res: Response) => {
       endDate: endDate ? new Date(endDate) : undefined,
       maxTeams,
       location: sanitized.location || undefined,
-      latitude: latitude ? parseFloat(latitude) : undefined,
-      longitude: longitude ? parseFloat(longitude) : undefined,
+      latitude: latitude && longitude ? parseCoordinates(latitude, longitude).lat : undefined,
+      longitude: latitude && longitude ? parseCoordinates(latitude, longitude).lon : undefined,
       locationName: sanitized.locationName || undefined,
       city,
       country,
@@ -350,15 +344,9 @@ export const updateTournament = async (req: Request, res: Response) => {
   if (country !== undefined) updateData.country = country;
   
   if (latitude !== undefined && longitude !== undefined) {
-    const coordValidation = locationService.validateCoordinates(
-      parseFloat(latitude),
-      parseFloat(longitude)
-    );
-    if (!coordValidation.valid) {
-      throw new BadRequestError(coordValidation.error!);
-    }
-    updateData.latitude = parseFloat(latitude);
-    updateData.longitude = parseFloat(longitude);
+    const coords = parseCoordinates(latitude, longitude);
+    updateData.latitude = coords.lat;
+    updateData.longitude = coords.lon;
   }
 
   // Admin controls
@@ -491,7 +479,7 @@ export const addTeam = async (req: Request, res: Response) => {
     }
   }).catch((error: unknown) => {
     // Handle unique constraint violation
-    if ((error as { code?: string }).code === 'P2002') {
+    if (isPrismaUniqueError(error)) {
       throw new BadRequestError('A team with this name already exists in the tournament');
     }
     throw error;
@@ -1390,7 +1378,7 @@ export const updatePlayer = async (req: Request, res: Response) => {
 
     res.json(updatedPlayer);
   } catch (error: unknown) {
-    if ((error as { code?: string }).code === 'P2002') {
+    if (isPrismaUniqueError(error)) {
       return res.status(400).json({
         error: 'This user is already registered on this team'
       });
@@ -1589,7 +1577,7 @@ export const createPool = async (req: Request, res: Response) => {
 
     res.status(201).json(pool);
   } catch (error: unknown) {
-    if ((error as { code?: string }).code === 'P2002') {
+    if (isPrismaUniqueError(error)) {
       return res.status(400).json({
         error: 'A pool with this name already exists in the tournament'
       });

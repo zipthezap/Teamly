@@ -3,11 +3,14 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as FacebookStrategy } from 'passport-facebook';
 import prisma from './database';
 import { logger } from '../utils/logger';
+import { hasId } from '../utils/typeGuards';
 
 // Serialize user for session
 passport.serializeUser((user: Express.User, done) => {
-  const userId = (user as { id: string }).id;
-  done(null, userId);
+  if (!hasId(user)) {
+    return done(new Error('User object must have an id'));
+  }
+  done(null, user.id);
 });
 
 // Deserialize user from session

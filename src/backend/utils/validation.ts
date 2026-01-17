@@ -321,3 +321,122 @@ export function validateAndSanitize<T extends Record<string, unknown>>(
   
   return sanitized;
 }
+
+/**
+ * Safely parses a string to a float and validates it's not NaN
+ * @param value The value to parse
+ * @param fieldName Name of the field for error messages
+ * @returns The parsed float value
+ * @throws ValidationError if the value cannot be parsed to a valid number
+ */
+export function parseFloatSafe(value: unknown, fieldName: string): number {
+  if (value === undefined || value === null) {
+    throw new ValidationError(`${fieldName} is required`, fieldName, 'REQUIRED');
+  }
+
+  const parsed = parseFloat(String(value));
+  
+  if (isNaN(parsed)) {
+    throw new ValidationError(
+      `${fieldName} must be a valid number`,
+      fieldName,
+      'INVALID_NUMBER'
+    );
+  }
+  
+  return parsed;
+}
+
+/**
+ * Safely parses a string to an integer and validates it's not NaN
+ * @param value The value to parse
+ * @param fieldName Name of the field for error messages
+ * @returns The parsed integer value
+ * @throws ValidationError if the value cannot be parsed to a valid integer
+ */
+export function parseIntSafe(value: unknown, fieldName: string): number {
+  if (value === undefined || value === null) {
+    throw new ValidationError(`${fieldName} is required`, fieldName, 'REQUIRED');
+  }
+
+  const parsed = parseInt(String(value), 10);
+  
+  if (isNaN(parsed)) {
+    throw new ValidationError(
+      `${fieldName} must be a valid integer`,
+      fieldName,
+      'INVALID_INTEGER'
+    );
+  }
+  
+  return parsed;
+}
+
+/**
+ * Safely parses coordinates (latitude and longitude) and validates them
+ * @param latitude The latitude value to parse
+ * @param longitude The longitude value to parse
+ * @returns An object with parsed and validated lat and lon values
+ * @throws ValidationError if coordinates are invalid
+ */
+export function parseCoordinates(
+  latitude: unknown,
+  longitude: unknown
+): { lat: number; lon: number } {
+  const lat = parseFloatSafe(latitude, 'Latitude');
+  const lon = parseFloatSafe(longitude, 'Longitude');
+  
+  // Validate latitude range
+  if (lat < -90 || lat > 90) {
+    throw new ValidationError(
+      'Latitude must be between -90 and 90',
+      'latitude',
+      'INVALID_COORDINATE'
+    );
+  }
+  
+  // Validate longitude range
+  if (lon < -180 || lon > 180) {
+    throw new ValidationError(
+      'Longitude must be between -180 and 180',
+      'longitude',
+      'INVALID_COORDINATE'
+    );
+  }
+  
+  return { lat, lon };
+}
+
+/**
+ * Safely parses pagination parameters with defaults and validation
+ * @param limit The limit parameter
+ * @param offset The offset parameter
+ * @param maxLimit Maximum allowed limit (default: 100)
+ * @param defaultLimit Default limit if not provided (default: 50)
+ * @returns An object with validated limit and offset values
+ */
+export function parsePaginationParams(
+  limit: unknown,
+  offset: unknown,
+  maxLimit: number = 100,
+  defaultLimit: number = 50
+): { limit: number; offset: number } {
+  let parsedLimit = defaultLimit;
+  let parsedOffset = 0;
+  
+  if (limit !== undefined && limit !== null && limit !== '') {
+    const limitNum = parseInt(String(limit), 10);
+    if (!isNaN(limitNum)) {
+      parsedLimit = Math.max(1, Math.min(limitNum, maxLimit));
+    }
+  }
+  
+  if (offset !== undefined && offset !== null && offset !== '') {
+    const offsetNum = parseInt(String(offset), 10);
+    if (!isNaN(offsetNum)) {
+      parsedOffset = Math.max(0, offsetNum);
+    }
+  }
+  
+  return { limit: parsedLimit, offset: parsedOffset };
+}

@@ -5,6 +5,7 @@ import { sanitizeUserInput } from '../utils/validation';
 import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors';
+import { hasId, isUserWithEmail } from '../utils/typeGuards';
 
 // Create a comment
 export const createComment = asyncHandler(async (req: Request, res: Response) => {
@@ -112,25 +113,29 @@ export const createComment = asyncHandler(async (req: Request, res: Response) =>
     }
     
     // Batch fetch preferences for all mentioned users
-    const mentionedUserIds = Array.from(mentionedUsers).map(u => (u as { id: string }).id);
+    const mentionedUserIds = Array.from(mentionedUsers)
+      .filter(hasId)
+      .map(u => u.id);
     const notificationMap = await batchShouldSendEmailNotification(mentionedUserIds, 'commentMentions');
     
     // Create mentions and send notifications
     for (const mentionedUser of mentionedUsers) {
-      const user = mentionedUser as { id: string; email: string; name: string };
+      if (!isUserWithEmail(mentionedUser)) {
+        continue;
+      }
       // Create mention record
       await prisma.commentMention.create({
         data: {
           commentId: comment.id,
-          userId: user.id
+          userId: mentionedUser.id
         }
       });
       // Send email notification if enabled
-      if (notificationMap.get(user.id)) {
+      if (notificationMap.get(mentionedUser.id)) {
         await sendEmail(
-          user.email,
+          mentionedUser.email,
           'commentMention',
-          user.name,
+          mentionedUser.name,
           req.user!.name,
           event.title,
           content
