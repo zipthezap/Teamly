@@ -7,7 +7,10 @@ import path from 'path';
 import session from 'express-session';
 import RedisStore from 'connect-redis';
 import passport from './config/passport';
-import crypto from 'crypto';
+import * as crypto from 'crypto';
+import * as http from 'http';
+import * as https from 'https';
+import * as fs from 'fs';
 
 import authRoutes from './routes/authRoutes';
 import groupRoutes from './routes/groupRoutes';
@@ -347,6 +350,46 @@ app.use((_req: Request, res: Response) => {
 // Start background services
 let emailQueueInterval: NodeJS.Timeout | null = null;
 
+/**
+ * Create and configure HTTP or HTTPS server based on environment
+ */
+const createServer = () => {
+  const useHttps = process.env.USE_HTTPS === 'true';
+  const sslKeyPath = process.env.SSL_KEY_PATH;
+  const sslCertPath = process.env.SSL_CERT_PATH;
+  
+  if (useHttps && sslKeyPath && sslCertPath) {
+    try {
+      // Check if certificate files exist
+      if (!fs.existsSync(sslKeyPath)) {
+        logger.error(`SSL key file not found at: ${sslKeyPath}`, 'Server');
+        logger.warn('Falling back to HTTP server', 'Server');
+        return http.createServer(app);
+      }
+      if (!fs.existsSync(sslCertPath)) {
+        logger.error(`SSL certificate file not found at: ${sslCertPath}`, 'Server');
+        logger.warn('Falling back to HTTP server', 'Server');
+        return http.createServer(app);
+      }
+      
+      const httpsOptions = {
+        key: fs.readFileSync(sslKeyPath),
+        cert: fs.readFileSync(sslCertPath)
+      };
+      
+      logger.info('Creating HTTPS server', 'Server');
+      return https.createServer(httpsOptions, app);
+    } catch (error) {
+      logger.error('Failed to read SSL certificates', 'Server', { error });
+      logger.warn('Falling back to HTTP server', 'Server');
+      return http.createServer(app);
+    }
+  }
+  
+  logger.info('Creating HTTP server', 'Server');
+  return http.createServer(app);
+};
+
 // Initialize upload directories before starting server
 ensureUploadDirectories()
   .then(async () => {
@@ -355,10 +398,14 @@ ensureUploadDirectories()
     // Initialize Redis connection (optional)
     await initializeRedis();
     
+    // Create server (HTTP or HTTPS based on configuration)
+    const server = createServer();
+    const protocol = process.env.USE_HTTPS === 'true' ? 'https' : 'http';
+    
     // Start server after upload directories are ready
-    const server = app.listen(PORT, '0.0.0.0', () => {
+    server.listen(PORT, '0.0.0.0', () => {
       logger.info(`Server is running on port ${PORT}`, 'Server');
-      logger.info(`API available at http://localhost:${PORT}`, 'Server');
+      logger.info(`API available at ${protocol}://localhost:${PORT}`, 'Server');
       logger.info(`Server accessible on all network interfaces (0.0.0.0:${PORT})`, 'Server');
       
       // Initialize database connection pool monitoring

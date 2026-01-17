@@ -34,6 +34,7 @@ services:
       dockerfile: Dockerfile.backend
     ports:
       - "3000:3000"
+      - "3443:3443"  # HTTPS port
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/teamly?schema=public
       REDIS_URL: redis://redis:6379
@@ -42,8 +43,15 @@ services:
       # SECURITY: Set a strong JWT secret via environment variable in production
       # Generate with: openssl rand -base64 32
       JWT_SECRET: ${JWT_SECRET:-please-change-this-in-production-to-a-random-secure-value}
+      # HTTPS Configuration (optional)
+      # Set USE_HTTPS=true and mount SSL certificates to enable HTTPS
+      USE_HTTPS: ${USE_HTTPS:-false}
+      SSL_KEY_PATH: ${SSL_KEY_PATH:-/app/ssl/privkey.pem}
+      SSL_CERT_PATH: ${SSL_CERT_PATH:-/app/ssl/fullchain.pem}
     volumes:
       - uploads_data:/app/uploads
+      # Uncomment to mount SSL certificates for HTTPS
+      # - ./ssl:/app/ssl:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -59,11 +67,15 @@ services:
         VITE_API_URL: http://localhost:3000/api
     ports:
       - "80:80"
+      - "443:443"  # HTTPS port
     depends_on:
       - backend
     environment:
       VITE_API_URL: http://localhost:3000/api
       NODE_ENV: development
+    # Uncomment to mount SSL certificates for HTTPS
+    # volumes:
+    #   - ./ssl:/etc/nginx/ssl:ro
       
 
   frontend-dev:

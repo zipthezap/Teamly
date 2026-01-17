@@ -333,6 +333,7 @@ This project follows best practices for code quality and maintainability:
   - See [docs/SCALABILITY_ENHANCEMENTS_V2.md](docs/SCALABILITY_ENHANCEMENTS_V2.md) for V2 improvements
   - See [docs/SCALABILITY_IMPROVEMENTS.md](docs/SCALABILITY_IMPROVEMENTS.md) for V1 improvements
 - **Security Best Practices**: 
+  - **HTTPS Support**: Optional SSL/TLS encryption for secure communication
   - Environment-based JWT secrets (never hardcoded)
   - Automatic input sanitization and XSS prevention
   - Enhanced rate limiting (10 auth requests, 500 authenticated requests per 15min)
@@ -346,6 +347,7 @@ This project follows best practices for code quality and maintainability:
   - Graceful shutdown and error handling
 
 For complete security documentation, see [docs/SECURITY.md](docs/SECURITY.md).
+For HTTPS setup instructions, see [docs/HTTPS_SETUP.md](docs/HTTPS_SETUP.md).
 For backend improvements details, see [docs/BACKEND_IMPROVEMENTS.md](docs/BACKEND_IMPROVEMENTS.md).
 
 ### Database Management
