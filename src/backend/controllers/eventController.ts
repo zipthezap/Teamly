@@ -545,7 +545,7 @@ export const updateEvent = async (req: Request, res: Response) => {
 
   // Send email notifications to participants
   await eventService.sendEventEmailNotifications(
-    (updatedEvent as any).participants,
+    updatedEvent.participants,
     req.user!.id,
     'eventUpdates',
     'eventUpdate',
