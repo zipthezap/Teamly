@@ -67,6 +67,9 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
     // Set expiration to 1 hour after the event time
     const expiresAt = new Date(eventDate.getTime() + 60 * 60 * 1000);
 
+    // Parse coordinates once if provided
+    const coordinates = latitude && longitude ? parseCoordinates(latitude, longitude) : null;
+
     const teamUpRequest = await prisma.teamUpRequest.create({
       data: {
         creatorId: req.user!.id,
@@ -74,8 +77,8 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
         description: sanitized.description,
         sportType: sanitized.sportType!,
         location: sanitized.location,
-        latitude: latitude && longitude ? parseCoordinates(latitude, longitude).lat : null,
-        longitude: latitude && longitude ? parseCoordinates(latitude, longitude).lon : null,
+        latitude: coordinates?.lat ?? null,
+        longitude: coordinates?.lon ?? null,
         locationName: sanitized.locationName,
         city: sanitized.city,
         country: sanitized.country,

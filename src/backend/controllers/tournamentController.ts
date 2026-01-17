@@ -123,6 +123,9 @@ export const createTournament = async (req: Request, res: Response) => {
     }
   }
 
+  // Parse coordinates once if provided
+  const coordinates = latitude && longitude ? parseCoordinates(latitude, longitude) : null;
+
   const tournament = await prisma.tournament.create({
     data: {
       name: sanitized.name,
@@ -133,8 +136,8 @@ export const createTournament = async (req: Request, res: Response) => {
       endDate: endDate ? new Date(endDate) : undefined,
       maxTeams,
       location: sanitized.location || undefined,
-      latitude: latitude && longitude ? parseCoordinates(latitude, longitude).lat : undefined,
-      longitude: latitude && longitude ? parseCoordinates(latitude, longitude).lon : undefined,
+      latitude: coordinates?.lat ?? undefined,
+      longitude: coordinates?.lon ?? undefined,
       locationName: sanitized.locationName || undefined,
       city,
       country,

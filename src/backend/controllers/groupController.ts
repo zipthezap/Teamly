@@ -71,13 +71,16 @@ export const createGroup = async (req: Request, res: Response) => {
     throw new BadRequestError(coordValidation.error || 'Invalid coordinates');
   }
 
+  // Parse coordinates once if provided
+  const coordinates = latitude && longitude ? parseCoordinates(latitude, longitude) : null;
+
   const group = await prisma.group.create({
     data: {
       name: sanitized.name,
       description: sanitized.description,
       isPublic: isPublic || false,
-      latitude: latitude && longitude ? parseCoordinates(latitude, longitude).lat : null,
-      longitude: latitude && longitude ? parseCoordinates(latitude, longitude).lon : null,
+      latitude: coordinates?.lat ?? null,
+      longitude: coordinates?.lon ?? null,
       locationName: sanitized.locationName,
       city: sanitized.city,
       country: sanitized.country,
@@ -476,10 +479,13 @@ export const updateGroup = async (req: Request, res: Response) => {
       ...(sanitized.name && { name: sanitized.name }),
       ...(sanitized.description !== undefined && { description: sanitized.description }),
       ...(isPublic !== undefined && { isPublic }),
-      ...(latitude !== undefined && longitude !== undefined && latitude && longitude ? {
-        latitude: parseCoordinates(latitude, longitude).lat,
-        longitude: parseCoordinates(latitude, longitude).lon
-      } : {}),
+      ...(() => {
+        if (latitude !== undefined && longitude !== undefined && latitude && longitude) {
+          const coords = parseCoordinates(latitude, longitude);
+          return { latitude: coords.lat, longitude: coords.lon };
+        }
+        return {};
+      })(),
       ...(sanitized.locationName !== undefined && { locationName: sanitized.locationName }),
       ...(sanitized.city !== undefined && { city: sanitized.city }),
       ...(sanitized.country !== undefined && { country: sanitized.country }),

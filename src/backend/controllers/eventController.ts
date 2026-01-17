@@ -99,6 +99,9 @@ export const createEvent = async (req: Request, res: Response) => {
   // Generate invite token if event is public
   const inviteToken = isPublic ? createInviteToken() : null;
 
+  // Parse coordinates once if provided
+  const coordinates = latitude && longitude ? parseCoordinates(latitude, longitude) : null;
+
   const event = await prisma.event.create({
     data: {
       groupId,
@@ -107,8 +110,8 @@ export const createEvent = async (req: Request, res: Response) => {
       description: sanitized.description,
       eventType: sanitized.eventType! as SportType,
       location: sanitized.location,
-      latitude: latitude && longitude ? parseCoordinates(latitude, longitude).lat : null,
-      longitude: latitude && longitude ? parseCoordinates(latitude, longitude).lon : null,
+      latitude: coordinates?.lat ?? null,
+      longitude: coordinates?.lon ?? null,
       locationName: locationName || null,
       city: city || null,
       country: country || null,
@@ -493,6 +496,11 @@ export const updateEvent = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the event creator or group admins can update it');
   }
 
+  // Parse coordinates once if both are provided
+  const updateCoordinates = latitude !== undefined && longitude !== undefined && latitude && longitude 
+    ? parseCoordinates(latitude, longitude) 
+    : null;
+
   const updatedEvent = await prisma.event.update({
     where: { id },
     data: {
@@ -500,9 +508,9 @@ export const updateEvent = async (req: Request, res: Response) => {
       ...(sanitized.description !== undefined && { description: sanitized.description }),
       ...(sanitized.eventType && { eventType: sanitized.eventType as SportType }),
       ...(sanitized.location !== undefined && { location: sanitized.location }),
-      ...(latitude !== undefined && longitude !== undefined && latitude && longitude ? {
-        latitude: parseCoordinates(latitude, longitude).lat,
-        longitude: parseCoordinates(latitude, longitude).lon
+      ...(updateCoordinates ? {
+        latitude: updateCoordinates.lat,
+        longitude: updateCoordinates.lon
       } : {}),
       ...(locationName !== undefined && { locationName: locationName || null }),
       ...(city !== undefined && { city: city || null }),
