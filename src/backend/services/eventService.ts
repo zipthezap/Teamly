@@ -3,7 +3,7 @@ import { EventParticipantStatus, GroupNotificationType, EventNotificationType } 
 import { validateRecurrenceRule } from '../utils/recurrenceService';
 import { logger } from '../utils/logger';
 import { sendEmail } from '../utils/emailService';
-import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
+import { batchShouldSendEmailNotification, filterUnmutedUsers } from '../utils/notificationHelper';
 import { sanitizeString } from '../utils/validation';
 import { ValidationResult } from '../../shared/types';
 import { checkGroupAdmin } from './groupService';
@@ -129,9 +129,14 @@ export const createEventNotifications = async (
   if (memberIds.length === 0) return;
 
   try {
+    // Filter out users who have muted event created notifications
+    const unmutedMemberIds = await filterUnmutedUsers(memberIds, 'muteEventCreated');
+    
+    if (unmutedMemberIds.length === 0) return;
+    
     // Use createMany for batch insert - much faster than individual creates
     await prisma.groupNotification.createMany({
-      data: memberIds.map(userId => ({
+      data: unmutedMemberIds.map(userId => ({
         groupId,
         userId,
         type: GroupNotificationType.event_created,
@@ -164,9 +169,14 @@ export const createEventUpdateNotifications = async (
   if (participantIds.length === 0) return;
 
   try {
+    // Filter out users who have muted event update notifications
+    const unmutedParticipantIds = await filterUnmutedUsers(participantIds, 'muteEventUpdates');
+    
+    if (unmutedParticipantIds.length === 0) return;
+    
     // Use createMany for batch insert - much faster than individual creates
     await prisma.eventNotification.createMany({
-      data: participantIds.map(userId => ({
+      data: unmutedParticipantIds.map(userId => ({
         eventId,
         userId,
         type: EventNotificationType.event_updated,
@@ -194,7 +204,14 @@ export const createEventDeletionNotifications = async (
   deleterName: string,
   participantIds: string[]
 ) => {
-  await Promise.all(participantIds.map(userId =>
+  if (participantIds.length === 0) return;
+  
+  // Filter out users who have muted event cancellation notifications
+  const unmutedParticipantIds = await filterUnmutedUsers(participantIds, 'muteEventCancellations');
+  
+  if (unmutedParticipantIds.length === 0) return;
+  
+  await Promise.all(unmutedParticipantIds.map(userId =>
     prisma.eventNotification.create({
       data: {
         eventId,

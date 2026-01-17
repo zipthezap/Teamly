@@ -55,7 +55,8 @@
       "eventUpdates": "Mises à jour d'événements",
       "eventCancellations": "Annulations d'événements",
       "groupInvites": "Invitations aux groupes",
-      "commentMentions": "Mentions dans les commentaires (@mentions)"
+      "commentMentions": "Mentions dans les commentaires (@mentions)",
+      "nearbyTeamUps": "Opportunités TeamUp à proximité"
     }
   },
   "notifications": {
@@ -114,7 +115,20 @@
     "teamup_accepted": "Votre réponse à \"{{title}}\" a été acceptée ! Préparez-vous pour {{sportType}}",
     "teamup_declined": "Votre réponse à \"{{title}}\" n'a pas été acceptée",
     "teamup_nearby": "Un TeamUp a lieu près de chez vous !",
-    "invited": "Vous avez été invité à rejoindre !"
+    "invited": "Vous avez été invité à rejoindre !",
+    "muteInAppNotifications": "Désactiver les notifications dans l'application",
+    "muteInAppDescription": "Contrôlez les notifications dans l'application que vous souhaitez voir",
+    "mute": {
+      "eventInvites": "Désactiver les invitations aux événements",
+      "eventReminders": "Désactiver les rappels d'événements",
+      "eventUpdates": "Désactiver les mises à jour d'événements",
+      "eventCancellations": "Désactiver les annulations d'événements",
+      "groupInvites": "Désactiver les invitations aux groupes",
+      "groupRequests": "Désactiver les demandes d'adhésion aux groupes",
+      "nearbyGroups": "Désactiver les groupes à proximité",
+      "eventCreated": "Désactiver les événements créés",
+      "nearbyTeamUps": "Désactiver les TeamUps à proximité"
+    }
   },
   "auth": {
     "loginTitle": "Se connecter à Teamly",
