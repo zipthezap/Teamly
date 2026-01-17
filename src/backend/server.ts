@@ -339,6 +339,9 @@ app.get('/health', async (req: Request, res: Response) => {
   }
 });
 
+// API route prefixes that should not serve the frontend
+const API_ROUTE_PREFIXES = ['/api', '/uploads', '/metrics', '/health'];
+
 // Serve static frontend bundle (webpack build)
 // This serves the webpack-bundled frontend from src/frontend/dist
 // Can be customized via FRONTEND_DIST_PATH environment variable
@@ -350,7 +353,8 @@ if (process.env.SERVE_FRONTEND === 'true') {
   // Handle client-side routing - send index.html for all non-API routes
   app.get('*', (req: Request, res: Response) => {
     // Don't intercept API routes or uploads
-    if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path.startsWith('/metrics') || req.path.startsWith('/health')) {
+    const isApiRoute = API_ROUTE_PREFIXES.some(prefix => req.path.startsWith(prefix));
+    if (isApiRoute) {
       return res.status(404).json({ error: 'Route not found' });
     }
     res.sendFile(path.join(frontendDistPath, 'index.html'));

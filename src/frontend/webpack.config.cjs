@@ -1,6 +1,9 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
+// Performance configuration
+const MAX_BUNDLE_SIZE = 2000000; // 2MB - reasonable for a React SPA
+
 module.exports = {
   mode: 'production',
   entry: './src/index.tsx',
@@ -44,13 +47,14 @@ module.exports = {
   },
   plugins: [
     new HtmlWebpackPlugin({
+      // Use separate template for webpack builds (without Vite-specific script tags)
       template: './index.webpack.html',
       inject: 'body',
       filename: 'index.html',
     }),
   ],
   performance: {
-    maxEntrypointSize: 2000000, // 2MB - reasonable for a React SPA
-    maxAssetSize: 2000000, // 2MB
+    maxEntrypointSize: MAX_BUNDLE_SIZE,
+    maxAssetSize: MAX_BUNDLE_SIZE,
   },
 };
