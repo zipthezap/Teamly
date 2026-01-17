@@ -153,6 +153,8 @@ npm start
 
 The backend will start on `http://localhost:3000`.
 
+> **📱 Network Access**: The backend server is configured to listen on all network interfaces (`0.0.0.0`), allowing access from other devices on your local network. To access from another device, use your machine's IP address instead of localhost (e.g., `http://192.168.1.100:3000`).
+
 ### Frontend Setup
 
 1. Navigate to the frontend directory:
@@ -180,6 +182,8 @@ npm run dev
 ```
 
 The frontend will start on `http://localhost:3001`.
+
+> **📱 Network Access**: The frontend development server is configured to listen on all network interfaces (`0.0.0.0`), allowing access from other devices on your local network. To access from another device (e.g., mobile phone or tablet), use your machine's IP address instead of localhost (e.g., `http://192.168.1.100:3001`). Make sure to also update the `VITE_API_URL` in your `.env` file to use your machine's IP address for the backend API.
 
 5. Build for production:
 ```bash
