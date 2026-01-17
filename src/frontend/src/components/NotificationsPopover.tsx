@@ -50,8 +50,8 @@ const NotificationsPopover: React.FC = () => {
     // Mark this notification as read
     try {
       await markAsRead([notif.id]);
-    } catch (err) {
-      console.error('Failed to mark notification as read:', err);
+    } catch {
+      // Failed to mark notification as read - operation continues
     }
 
     // Navigate based on notification type
@@ -69,8 +69,8 @@ const NotificationsPopover: React.FC = () => {
     try {
       await markAsRead();
       refresh();
-    } catch (error) {
-      console.error('Failed to mark notifications as read:', error);
+    } catch {
+      // Failed to mark notifications as read
       refresh();
     }
   };

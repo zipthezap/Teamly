@@ -30,6 +30,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children, value })
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useEvent = (): EventContextType => {
   const context = useContext(EventContext);
   if (!context) {

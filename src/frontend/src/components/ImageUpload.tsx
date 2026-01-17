@@ -73,8 +73,7 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     try {
       await onUpload(file);
       setError('');
-    } catch (error) {
-      console.error('Upload failed:', error);
+    } catch {
       setPreview(null);
     } finally {
       setUploading(false);
@@ -89,8 +88,8 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     try {
       await onDelete();
       setPreview(null);
-    } catch (error) {
-      console.error('Delete failed:', error);
+    } catch {
+      // Error handled by state management
     } finally {
       setDeleting(false);
     }

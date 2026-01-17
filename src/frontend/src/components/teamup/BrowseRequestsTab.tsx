@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -40,9 +40,9 @@ const BrowseRequestsTab = () => {
 
   useEffect(() => {
     fetchRequests();
-  }, [filters]);
+  }, [fetchRequests]);
 
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     try {
       setLoading(true);
       const params: TeamUpRequestFilters = { status: 'open' };
@@ -71,13 +71,12 @@ const BrowseRequestsTab = () => {
       });
       
       setRequests(sortedRequests);
-    } catch (err) {
-      console.error('Error fetching requests:', err);
+    } catch {
       setError(t('teamup.loadingRequests'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, t]);
 
   const handleOpenModal = (requestId: string) => {
     setSelectedRequestId(requestId);

@@ -83,7 +83,7 @@ const PublicGroups = () => {
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const navigate = useNavigate();
-  const location = useLocation();
+  const _location = useLocation();
   const { t } = useTranslation();
 
   // Helper to clear all markers from the map
@@ -139,11 +139,11 @@ const PublicGroups = () => {
     });
     // Cleanup markers on unmount
     return clearMarkers;
-  }, [customSearchLocation, userLocation, filteredGroups, mapRef.current]);
+  }, [distanceRadius, mapCenter, locationEnabled, customSearchLocation, calculateZoomLevel, filteredGroups, userLocation]);
 
   useEffect(() => {
     fetchPublicGroups();
-  }, [location.key]);
+  }, [fetchPublicGroups]);
 
   // Calculate appropriate zoom level based on radius
   const calculateZoomLevel = useCallback((radiusKm: number) => {
@@ -219,13 +219,12 @@ const PublicGroups = () => {
     }
   }, [distanceRadius, mapCenter, locationEnabled, customSearchLocation, calculateZoomLevel]);
 
-  const fetchPublicGroups = async () => {
+  const fetchPublicGroups = useCallback(async () => {
     try {
       const response = await groupsAPI.getPublic();
       setGroups(response.data);
       setFilteredGroups(response.data);
-    } catch (error: unknown) {
-      console.error('Error fetching public groups:', error);
+    } catch (_error: unknown) {
       setSnackbar({
         open: true,
         message: t('groups.publicGroups.failedToLoad'),
@@ -234,7 +233,7 @@ const PublicGroups = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {

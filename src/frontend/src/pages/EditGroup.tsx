@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Container,
@@ -45,9 +45,9 @@ const EditGroup = () => {
 
   useEffect(() => {
     fetchGroup();
-  }, [id]);
+  }, [id, fetchGroup]);
 
-  const fetchGroup = async () => {
+  const fetchGroup = useCallback(async () => {
     if (!id) {
       setError('Group ID is required');
       setLoading(false);
@@ -73,13 +73,12 @@ const EditGroup = () => {
         city: group.city,
         country: group.country,
       });
-    } catch (error) {
-      console.error('Error fetching group:', error);
+    } catch {
       setError(t('groups.failedToLoad'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, t]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

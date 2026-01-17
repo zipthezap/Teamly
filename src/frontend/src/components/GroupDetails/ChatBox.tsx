@@ -70,7 +70,7 @@ const ChatBox: React.FC<ChatBoxProps> = React.memo(({ chat, message, setMessage,
             <p className="text-slate-500 text-xs mt-1">{t('groupDetails.startConversation')}</p>
           </div>
         ) : (
-          chat.map((msg, idx) => {
+          chat.map((msg, _idx) => {
             const senderName = msg.user?.name || msg.sender || 'Unknown';
             const messageTime = msg.createdAt || msg.time || '';
             const messageContent = msg.content || msg.text || '';

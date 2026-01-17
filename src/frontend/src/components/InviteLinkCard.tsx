@@ -57,9 +57,8 @@ const InviteLinkCard: React.FC<InviteLinkCardProps> = ({
         await navigator.clipboard.writeText(inviteUrl);
         setCopySuccess(true);
         setTimeout(() => setCopySuccess(false), 3000);
-      } catch (error) {
+      } catch {
         // Fallback for browsers without clipboard API or when permission is denied
-        console.warn('Clipboard API failed, attempting fallback', error);
         // Create a temporary textarea element for fallback
         const textarea = document.createElement('textarea');
         textarea.value = inviteUrl;
@@ -71,9 +70,8 @@ const InviteLinkCard: React.FC<InviteLinkCardProps> = ({
           document.execCommand('copy');
           setCopySuccess(true);
           setTimeout(() => setCopySuccess(false), 3000);
-        } catch (fallbackError) {
-          console.error('Copy fallback also failed', fallbackError);
-          // Could show an error message here
+        } catch {
+          // Fallback copy method failed as well
         } finally {
           document.body.removeChild(textarea);
         }

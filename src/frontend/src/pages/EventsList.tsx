@@ -1,5 +1,3 @@
-import { getInitials } from '../utils/imageUtils';
-
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Tabs, Tab } from '@mui/material';
 import {
@@ -73,7 +71,6 @@ const EventsList = () => {
 
   // DEBUG: Log hook initialization order
   React.useEffect(() => {
-    console.log('[EventsList] Hooks initialized');
   }, []);
 
   // Defensive: Ensure hooks are never called conditionally
@@ -85,8 +82,7 @@ const EventsList = () => {
       try {
         const response = await groupsAPI.getAll();
         setGroups(response.data);
-      } catch (err) {
-        console.error('[EventsList] Error fetching groups:', err);
+      } catch {
       }
     }
     fetchGroups();
@@ -94,8 +90,6 @@ const EventsList = () => {
 
   // Fetch events
   const fetchEvents = useCallback(async (isInitialLoad = false) => {
-    console.log('[EventsList] useCallback: fetchEvents called');
-    console.log('[EventsList] fetchEvents params:', { searchFilters, page });
     try {
       if (isInitialLoad) {
         setIsLoading(true);
@@ -113,9 +107,7 @@ const EventsList = () => {
         newEvents = response.data;
       }
       setEvents(newEvents);
-      console.log('[EventsList] [fetchEvents] setEvents called, newEvents:', newEvents);
-    } catch (err) {
-      console.error('[EventsList] Error fetching events:', err);
+    } catch {
     } finally {
       setIsLoading(false);
       setIsFetching(false);
@@ -128,12 +120,10 @@ const EventsList = () => {
 
   // Delete event
   const handlePageChange = useCallback((value: number) => {
-    console.log('[EventsList] useCallback: handlePageChange called');
     setPage(value);
   }, []);
 
   const handleDeleteEvent = useCallback(async (eventId: string | number) => {
-    console.log('[EventsList] useCallback: handleDeleteEvent called');
     try {
       await eventsAPI.delete(eventId);
       setToast({ message: t('events.eventDeleted'), type: 'success' });
@@ -150,11 +140,9 @@ const EventsList = () => {
 
   // Join event
   const handleJoinEvent = useCallback(async (eventId: string | number) => {
-    console.log('[EventsList] useCallback: handleJoinEvent called', { eventId });
     try {
       await eventsAPI.join(eventId);
       setToast({ message: t('events.eventJoined'), type: 'success' });
-      console.log('[EventsList] handleJoinEvent: calling fetchEvents after join');
       fetchEvents();
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
@@ -166,7 +154,6 @@ const EventsList = () => {
 
   // Leave event
   const handleLeaveEvent = useCallback(async (eventId: string | number) => {
-    console.log('[EventsList] useCallback: handleLeaveEvent called');
     try {
       await eventsAPI.leave(eventId);
       setToast({ message: t('events.leftEvent'), type: 'success' });
@@ -221,8 +208,7 @@ const EventsList = () => {
         message: t('events.exportSuccess', { format: format.toUpperCase() }) || `Events exported successfully as ${format.toUpperCase()}`, 
         type: 'success' 
       });
-    } catch (err: unknown) {
-      console.error('Export error:', err);
+    } catch {
       setToast({ 
         message: t('events.exportError') || 'Failed to export events', 
         type: 'error' 
@@ -234,7 +220,6 @@ const EventsList = () => {
 
   // Handle search/filter
   const handleSearch = useCallback((filters: EventSearchParams) => {
-    console.log('[EventsList] useCallback: handleSearch called');
     setSearchFilters(filters);
     setPage(1);
     const paramsObj = Object.entries({ ...filters, page: '1' })
@@ -245,23 +230,19 @@ const EventsList = () => {
 
   // Modal handlers
   const handleModalClose = useCallback(() => {
-    console.log('[EventsList] useCallback: handleModalClose called');
     setModalOpen(false);
   }, []);
 
   const handleModalSuccess = useCallback(() => {
-    console.log('[EventsList] useCallback: handleModalSuccess called');
     fetchEvents();
   }, [fetchEvents]);
 
   const handleCreateEvent = useCallback(() => {
-    console.log('[EventsList] useCallback: handleCreateEvent called');
     setEditEvent(undefined);
     setModalOpen(true);
   }, []);
 
   const handleEditEvent = useCallback((event: EventWithDetails) => {
-    console.log('[EventsList] useCallback: handleEditEvent called');
     setEditEvent(event);
     setModalOpen(true);
   }, []);
@@ -307,16 +288,6 @@ const EventsList = () => {
         const isJoined = Array.isArray(event.participants) && event.participants.some((p: EventParticipant) => p.userId === user.id);
         const isCreator = event.creatorId === user.id;
         const result = eventDate >= now && (isJoined || isCreator);
-        if (!result) {
-          console.log('[filteredEvents][my] filtered out:', {
-            eventId: event.id,
-            eventDate,
-            isJoined,
-            isCreator,
-            now,
-            reason: 'Not future or not joined/creator'
-          });
-        }
         return result;
       });
     } else if (tab === 'upcoming') {
@@ -331,18 +302,6 @@ const EventsList = () => {
           !isCreator &&
           ((isUserGroup) || (!isUserGroup && event.isPublic))
         );
-        if (!result) {
-          console.log('[filteredEvents][upcoming] filtered out:', {
-            eventId: event.id,
-            eventDate,
-            isUserGroup,
-            isJoined,
-            isCreator,
-            isPublic: event.isPublic,
-            now,
-            reason: 'Already joined/creator or not future or not visible'
-          });
-        }
         return result;
       });
     } else {
@@ -351,16 +310,6 @@ const EventsList = () => {
         const isJoined = Array.isArray(event.participants) && event.participants.some((p: EventParticipant) => p.userId === user.id);
         const isCreator = event.creatorId === user.id;
         const result = eventDate < now && (isJoined || isCreator);
-        if (!result) {
-          console.log('[filteredEvents][past] filtered out:', {
-            eventId: event.id,
-            eventDate,
-            isJoined,
-            isCreator,
-            now,
-            reason: 'Not past or not joined/creator'
-          });
-        }
         return result;
       });
     }
@@ -370,24 +319,16 @@ const EventsList = () => {
 
   // Robust loading and error handling
   if (userLoading) {
-    console.log('[EventsList] userLoading true');
     return <LoadingSpinner message={t('events.loadingUser')} />;
   }
   if (!user || !user.id) {
-    console.log('[EventsList] user not found or logged out');
     return <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh"><Typography variant="h6">{t('events.userNotFoundOrLoggedOut')}</Typography></Box>;
   }
   if (isLoading) {
-    console.log('[EventsList] isLoading true');
     return <LoadingSpinner message={t('events.loadingEvents')} />;
   }
 
   // DEBUG: Log every render and key data 
-  console.log('[EventsList] render');
-  console.log('[EventsList] user:', user);
-  console.log('[EventsList] events:', events);
-  console.log('[EventsList] groups:', groups);
-  console.log('[EventsList] filteredEvents:', filteredEvents);
 
   // Defensive: Never call hooks inside any conditional, loop, or callback below this point
   // Main render
@@ -494,9 +435,8 @@ const EventsList = () => {
         />
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
-          {filteredEvents.map((event: EventWithDetails, idx) => {
+          {filteredEvents.map((event: EventWithDetails, _idx) => {
             // DEBUG: Log each event in the map
-            console.log(`[EventsList] rendering event #${idx}:`, event);
             const status = getEventStatus(event);
             const participantCount = event.participants?.length || 0;
             const spotsLeft = event.maxPlayers ? event.maxPlayers - participantCount : null;

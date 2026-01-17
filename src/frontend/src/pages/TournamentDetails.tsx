@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -71,9 +71,9 @@ const TournamentDetails: React.FC = () => {
     if (id) {
       loadTournament();
     }
-  }, [id]);
+  }, [id, loadTournament]);
 
-  const loadTournament = async () => {
+  const loadTournament = useCallback(async () => {
     if (!id) return;
     
     try {
@@ -85,7 +85,7 @@ const TournamentDetails: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   const handleAddTeam = async () => {
     if (!id) return;

@@ -15,6 +15,15 @@ import {
   ToggleButtonGroup,
   Avatar,
   AvatarGroup,
+  IconButton,
+  Badge,
+  Popover,
+  List,
+  ListItem,
+  ListItemText,
+  Tooltip,
+  CircularProgress,
+  Alert as _Alert,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import GroupIcon from '@mui/icons-material/Group';
@@ -26,23 +35,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { LoadingSpinner, EmptyState } from '../components/common';
 import { ErrorState } from '../components/common/StateComponents';
-import { getImageUrl, getInitials } from '../utils/imageUtils';
+import { getImageUrl } from '../utils/imageUtils';
 import UserPlusIcon from '../components/icons/UserPlusIcon';
-import {
-  IconButton,
-  Badge,
-  Popover,
-  List,
-  ListItem,
-  ListItemText,
-  Box as MuiBox,
-  Tooltip,
-  CircularProgress,
-  Alert,
-} from '@mui/material';
 import { useEnhancedNotifications } from '../hooks/useEnhancedNotifications';
 
-import { GroupNotificationType, GroupWithDetails } from '../../../shared/types';
+import { GroupNotificationType, GroupWithDetails, GroupMember } from '../../../shared/types';
 
 
 const GroupsList = () => {
@@ -58,7 +55,7 @@ const GroupsList = () => {
     data: groups = [],
     isLoading: groupsLoading,
     isError: groupsError,
-    error: groupsErrorObj,
+    error: _groupsErrorObj,
     refetch
   } = useQuery<GroupWithDetails[]>(
     {
@@ -95,7 +92,7 @@ const GroupsList = () => {
       filtered = filtered.filter(group => !group.isPublic);
     } else if (filter === 'admin') {
       filtered = filtered.filter(group =>
-        group.members?.some((m: any) => m.id === user?.id && m.role === 'admin')
+        group.members?.some((m: GroupMember) => m.id === user?.id && m.role === 'admin')
       );
     }
     return filtered;
@@ -103,9 +100,9 @@ const GroupsList = () => {
 
   const groupStats = useMemo(() => ({
     total: Array.isArray(groups) ? groups.length : 0,
-    public: Array.isArray(groups) ? groups.filter((g: any) => g.isPublic).length : 0,
-    private: Array.isArray(groups) ? groups.filter((g: any) => !g.isPublic).length : 0,
-    admin: Array.isArray(groups) ? groups.filter((g: any) => g.members?.some((m: any) => m.id === user?.id && m.role === 'admin')).length : 0,
+    public: Array.isArray(groups) ? groups.filter((g: GroupWithDetails) => g.isPublic).length : 0,
+    private: Array.isArray(groups) ? groups.filter((g: GroupWithDetails) => !g.isPublic).length : 0,
+    admin: Array.isArray(groups) ? groups.filter((g: GroupWithDetails) => g.members?.some((m: GroupMember) => m.id === user?.id && m.role === 'admin')).length : 0,
   }), [groups, user?.id]);
 
     // --- Group Invite Requests Popover State ---
@@ -139,18 +136,16 @@ const GroupsList = () => {
       // Invalidate group details cache so GroupDetailsPage is fresh
       queryClient.invalidateQueries({ queryKey: ["groupDetails", notif.group.id] });
       refreshInvites();
-    } catch (err) {
+    } catch {
       // Optionally show error feedback
-      console.error('Failed to accept group invite:', err);
     }
   };
   const handleDecline = async (notifId: string) => {
     try {
       await markInvitesAsRead([notifId]);
       refreshInvites();
-    } catch (err) {
+    } catch {
       // Optionally show error feedback
-      console.error('Failed to decline group invite:', err);
     }
   };
 
@@ -169,10 +164,6 @@ const GroupsList = () => {
   }
 
   // DEBUG: Log every render and key data (after all hooks/vars)
-  console.log('[GroupsList] render');
-  console.log('[GroupsList] user:', user);
-  console.log('[GroupsList] groups:', groups);
-  console.log('[GroupsList] filteredGroups:', filteredGroups);
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -360,11 +351,10 @@ const GroupsList = () => {
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
 
 
-          {filteredGroups.map((group, idx) => {
+          {filteredGroups.map((group, _idx) => {
             // DEBUG: Log each group in the map
-            console.log(`[GroupsList] rendering group #${idx}:`, group);
             // Inline getUserRole logic
-            const role = group.members?.find((m: any) => m.id === user.id)?.role;
+            const role = group.members?.find((m: GroupMember) => m.id === user.id)?.role;
             const memberCount = group.members?.length || 0;
             // Only count future events
             const now = new Date();

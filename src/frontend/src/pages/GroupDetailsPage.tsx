@@ -58,7 +58,7 @@ export default function GroupDetailsPage() {
 
 
   // Fetch group details (with members)
-  const { data: group, isLoading: groupLoading, error: groupError, refetch: refetchGroup } = useQuery({
+  const { data: group, isLoading: groupLoading, error: groupError, refetch: _refetchGroup } = useQuery({
     queryKey: ["groupDetails", groupId],
     queryFn: async () => {
       const res = await groupsAPI.getById(groupId!);
@@ -108,7 +108,6 @@ export default function GroupDetailsPage() {
   if (group && user && Array.isArray(group.members)) {
     // Always use m.id === user.id, since member objects have 'id' not 'userId'
     if (group.members.some((m: GroupMember) => m.id === user.id && m.role === "admin")) {
-      console.log('[DEBUG] User %s is admin based on members list', user.email);
       isAdmin = true;
     } else if ((group.members.length === 0) && group.creator?.email && userEmail) {
       isAdmin = group.creator.email === userEmail;
@@ -180,7 +179,7 @@ export default function GroupDetailsPage() {
   });
 
   // Delete event mutation
-  const deleteEventMutation = useMutation({
+  const _deleteEventMutation = useMutation({
     mutationFn: async (eventId: number) => {
       await eventsAPI.delete(eventId);
       return eventId;
@@ -263,17 +262,6 @@ export default function GroupDetailsPage() {
     },
   });
 
-    // Debug logs for membership and admin logic
-  React.useEffect(() => {
-    console.log('[DEBUG] user:', user);
-    console.log('[DEBUG] group:', group);
-    if (group && group.members) {
-      console.log('[DEBUG] group.members:', group.members);
-      console.log('[DEBUG] isAdmin:', isAdmin);
-      console.log('[DEBUG] isMember:', isMember);  
-    }
-  }, [user, group]);
-
   // Local state for chat input, confirmation dialog, and join requests
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -286,12 +274,12 @@ export default function GroupDetailsPage() {
   const [inviteEmail, setInviteEmail] = useState("");
 
   // Handle settings form change
-  const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const _handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSettingsForm({ ...settingsForm, [e.target.name]: e.target.value });
   };
 
   // Handle settings form submit
-  const handleSettingsSubmit = (e: React.FormEvent) => {
+  const _handleSettingsSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateGroupMutation.mutate(settingsForm);
   };
@@ -400,7 +388,7 @@ export default function GroupDetailsPage() {
       const previousGroup = queryClient.getQueryData(["groupDetails", groupId]);
       
       // Optimistically update to remove current user from members
-      queryClient.setQueryData(["groupDetails", groupId], (old: any) => {
+      queryClient.setQueryData(["groupDetails", groupId], (old: GroupWithDetails | undefined) => {
         if (!old || !user) return old;
         return {
           ...old,
@@ -568,7 +556,7 @@ export default function GroupDetailsPage() {
   const eventsArray = Array.isArray(events) ? events : (events?.data ?? []);
 
   // Defensive: always use array for members
-  const groupMembersArray = Array.isArray(members) ? members : [];
+  const _groupMembersArray = Array.isArray(members) ? members : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white p-2 sm:p-4 md:p-6">

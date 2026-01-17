@@ -83,8 +83,8 @@ const Profile = () => {
     try {
       const response = await authAPI.listProfilePictures();
       setPictureHistory(response.data.pictures || []);
-    } catch (err) {
-      // Optionally handle error
+    } catch (_err) {
+      // Failed to fetch profile picture history
     } finally {
       setPictureHistoryLoading(false);
     }
@@ -98,8 +98,8 @@ const Profile = () => {
         ...prev,
         ...response.data,
       }));
-    } catch (err) {
-      console.error('Failed to fetch email preferences:', err);
+    } catch {
+      // Failed to fetch email preferences
     } finally {
       setPreferencesLoading(false);
     }
@@ -193,7 +193,7 @@ const Profile = () => {
       await emailAPI.toggleNotifications(!muted);
       setSuccess(muted ? 'All notifications muted' : 'Notifications unmuted');
       updateUser({ emailNotifications: !muted });
-    } catch (err) {
+    } catch {
       setError('Failed to update notification settings');
       setAllNotificationsMuted(!muted);
     }
@@ -211,7 +211,7 @@ const Profile = () => {
     try {
       await emailAPI.updatePreferences(updatedPreferences);
       setSuccess('Notification preferences updated');
-    } catch (err) {
+    } catch {
       setError('Failed to update preferences');
       setEmailPreferences(previousPreferences);
     }
@@ -263,7 +263,7 @@ const Profile = () => {
       // Optionally refresh user/profile
       const refreshed = await authAPI.getProfile();
       updateUser(refreshed.data.user);
-    } catch (err) {
+    } catch {
       setError('Failed to restore profile picture');
     }
   };
@@ -275,7 +275,7 @@ const Profile = () => {
       await authAPI.hardDeleteProfilePicture(pictureId);
       setSuccess('Profile picture permanently deleted');
       fetchProfilePictureHistory();
-    } catch (err) {
+    } catch {
       setError('Failed to permanently delete profile picture');
     }
   };

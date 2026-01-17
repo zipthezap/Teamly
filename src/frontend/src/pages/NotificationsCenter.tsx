@@ -73,8 +73,8 @@ const NotificationsCenter: React.FC = () => {
   const handleNotificationClick = async (notif: Notification) => {
     try {
       await markAsRead([notif.id]);
-    } catch (err) {
-      console.error('Failed to mark notification as read:', err);
+    } catch {
+      // Failed to mark notification as read
     }
 
     if ('metadata' in notif && notif.metadata?.actionUrl) {

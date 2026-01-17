@@ -8,6 +8,7 @@ interface JoinRequest {
   id: string | number;
   groupId?: string | number;
   groupName?: string;
+  createdBy?: string;
   user?: {
     name?: string;
     email?: string;
@@ -60,8 +61,7 @@ export const useJoinRequests = (groupId: string | number | null = null): UseJoin
         const flattenedRequests = allRequests.flat();
         setJoinRequests(flattenedRequests);
       }
-    } catch (error) {
-      console.error('Error fetching join requests:', error);
+    } catch {
       setJoinRequests([]);
     } finally {
       setLoading(false);

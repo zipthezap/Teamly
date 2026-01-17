@@ -52,8 +52,8 @@ const Dashboard = () => {
         new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
       );
       setEvents(sortedEvents);
-    } catch (error) {
-      console.error('Error fetching data:', error);
+    } catch {
+      // Error fetching dashboard data
     } finally {
       setLoading(false);
     }

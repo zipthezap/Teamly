@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -47,9 +47,9 @@ const TournamentTeamDetails: React.FC = () => {
     if (tournamentId && teamId) {
       loadTeamDetails();
     }
-  }, [tournamentId, teamId]);
+  }, [tournamentId, teamId, loadTeamDetails]);
 
-  const loadTeamDetails = async () => {
+  const loadTeamDetails = useCallback(async () => {
     if (!tournamentId || !teamId) return;
 
     try {
@@ -69,8 +69,7 @@ const TournamentTeamDetails: React.FC = () => {
       try {
         const playersData = await tournamentAPI.getPlayers(tournamentId, teamId);
         setPlayers(playersData);
-      } catch (err) {
-        console.error('Error loading players:', err);
+      } catch {
         setPlayers([]);
       }
 
@@ -85,7 +84,7 @@ const TournamentTeamDetails: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tournamentId, teamId]);
 
   const getMatchResult = (match: TournamentMatch) => {
     if (!team) return '-';
@@ -352,7 +351,7 @@ const TournamentTeamDetails: React.FC = () => {
                     })
                     .map((match) => {
                       const isHome = match.homeTeamId === team.id;
-                      const isAway = match.awayTeamId === team.id;
+                      const _isAway = match.awayTeamId === team.id;
                       const isReferee = match.refereeTeamId === team.id;
                       const opponent = isHome ? match.awayTeam : match.homeTeam;
                       const result = getMatchResult(match);

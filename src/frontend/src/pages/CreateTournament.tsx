@@ -86,8 +86,8 @@ const CreateTournament: React.FC = () => {
       });
       
       return rule.toString();
-    } catch (error) {
-      console.error('Error generating recurrence rule:', error);
+    } catch {
+      // Error generating recurrence rule
       return undefined;
     }
   };

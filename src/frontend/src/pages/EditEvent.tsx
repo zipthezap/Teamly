@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Container,
@@ -56,9 +56,9 @@ const EditEvent = () => {
 
   useEffect(() => {
     fetchEvent();
-  }, [id]);
+  }, [id, fetchEvent]);
 
-  const fetchEvent = async () => {
+  const fetchEvent = useCallback(async () => {
     if (!id) {
       setError('Event ID is required');
       setLoading(false);
@@ -100,13 +100,12 @@ const EditEvent = () => {
       if (event.groupId) {
         setGroupId(event.groupId);
       }
-    } catch (error) {
-      console.error('Error fetching event:', error);
+    } catch {
       setError('Failed to load event');
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

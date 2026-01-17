@@ -34,8 +34,7 @@ const UserStatistics: React.FC = () => {
     try {
       const response = await eventsAPI.getStatistics();
       setStatistics(response.data);
-    } catch (err: unknown) {
-      console.error('Error fetching statistics:', err);
+    } catch {
       setError(t('common.error') + ': ' + t('dashboard.loadingDashboard'));
     } finally {
       setLoading(false);

@@ -52,8 +52,7 @@ const OAuthConnections: React.FC<OAuthConnectionsProps> = ({ onSuccess, onError 
     try {
       const response = await authAPI.getOAuthStatus();
       setOAuthStatus(response.data);
-    } catch (err) {
-      console.error('Failed to fetch OAuth status:', err);
+    } catch {
       onError?.('Failed to load OAuth connections');
     } finally {
       setLoading(false);

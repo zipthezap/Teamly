@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -49,9 +49,9 @@ const LookingForPlayTab = () => {
     } else {
       fetchMyResponses();
     }
-  }, [view, filters]);
+  }, [view, filters, fetchRequests, fetchMyResponses]);
 
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     try {
       setLoading(true);
       const params: TeamUpRequestFilters = { status: 'open' };
@@ -79,26 +79,24 @@ const LookingForPlayTab = () => {
       });
       
       setRequests(sortedRequests);
-    } catch (err) {
-      console.error('Error fetching requests:', err);
+    } catch {
       setError(t('teamup.loadingRequests'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, t]);
 
-  const fetchMyResponses = async () => {
+  const fetchMyResponses = useCallback(async () => {
     try {
       setLoading(true);
       const response = await teamUpAPI.getMyResponses();
       setMyResponses(response.data);
-    } catch (err) {
-      console.error('Error fetching my responses:', err);
+    } catch {
       setError(t('teamup.loadingResponses'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   const handleOpenModal = (requestId: string) => {
     setSelectedRequestId(requestId);
