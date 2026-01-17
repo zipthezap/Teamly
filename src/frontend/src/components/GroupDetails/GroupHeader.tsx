@@ -1,7 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { Group } from "../../types/group";
-import Button from "../ui/Button";
+import Button from "../common/Button";
 import EditIcon from "../icons/EditIcon";
 import TrashIcon from "../icons/TrashIcon";
 import LinkIcon from "../icons/LinkIcon";

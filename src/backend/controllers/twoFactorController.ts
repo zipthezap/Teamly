@@ -135,7 +135,7 @@ export const disable2FA = asyncHandler(async (req: Request, res: Response) => {
 });
 
 // Validate 2FA token during login
-export const validate2FAToken = async (userId: string, token: string): Promise<any> => {
+export const validate2FAToken = async (userId: string, token: string): Promise<{ valid: boolean; error?: string; usedBackupCode?: boolean }> => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import GroupEventsModal from "./GroupEventsModal";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import Button from "../ui/Button";
+import Button from "../common/Button";
 import PlusIcon from "../icons/PlusIcon";
 import { EventWithDetails } from "../../../../shared/types";
 
