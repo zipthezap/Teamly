@@ -111,10 +111,6 @@ const EventList: React.FC<EventListProps> = React.memo(({ events, onEventClick, 
                   const isPast = isPastEvent(eventDate);
                   // Accept any non-empty string as valid event ID (UUID)
                   const eventIdStr: string | null = (typeof event.id === 'string' && event.id.trim() !== '') ? event.id : null;
-                  if (eventIdStr === null) {
-                    // eslint-disable-next-line no-console
-                    console.warn('[EventList] Invalid event.id:', event.id, event);
-                  }
                   return (
                     <li
                       key={event.id}

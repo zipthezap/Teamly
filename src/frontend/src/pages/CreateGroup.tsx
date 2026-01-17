@@ -71,9 +71,8 @@ const CreateGroup = () => {
       if (groupPicture) {
         try {
           await groupsAPI.uploadGroupPicture(groupId, groupPicture);
-        } catch (uploadErr) {
-          console.error('Failed to upload group picture:', uploadErr);
-          // Continue navigation even if picture upload fails
+        } catch {
+          // Failed to upload group picture, continue navigation
         }
       }
       

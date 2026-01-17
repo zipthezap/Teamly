@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -57,20 +57,19 @@ const SubmitRequestTab = () => {
 
   useEffect(() => {
     fetchMyRequests();
-  }, []);
+  }, [fetchMyRequests]);
 
-  const fetchMyRequests = async () => {
+  const fetchMyRequests = useCallback(async () => {
     try {
       setLoading(true);
       const response = await teamUpAPI.getMyRequests();
       setMyRequests(response.data);
-    } catch (err) {
-      console.error('Error fetching requests:', err);
+    } catch {
       setError(t('teamup.loadingRequests'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   const handleOpenDialog = (request?: TeamUpRequest) => {
     if (request) {
@@ -138,8 +137,7 @@ const SubmitRequestTab = () => {
       }
       handleCloseDialog();
       fetchMyRequests();
-    } catch (err: unknown) {
-      console.error('Error submitting request:', err);
+    } catch {
       setError(
         editingRequest
           ? t('teamup.updateRequestError')
@@ -157,8 +155,7 @@ const SubmitRequestTab = () => {
       await teamUpAPI.delete(id);
       setSuccess(t('teamup.deleteRequestSuccess'));
       fetchMyRequests();
-    } catch (err) {
-      console.error('Error deleting request:', err);
+    } catch {
       setError(t('teamup.deleteRequestError'));
     }
   };
@@ -177,8 +174,7 @@ const SubmitRequestTab = () => {
       }
       await teamUpAPI.update(id, { status: newStatus });
       fetchMyRequests();
-    } catch (err) {
-      console.error('Error updating status:', err);
+    } catch {
       setError(t('teamup.updateRequestError'));
     }
   };

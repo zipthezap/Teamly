@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -35,9 +35,9 @@ const ManageResponsesTab = () => {
 
   useEffect(() => {
     fetchRequestsWithResponses();
-  }, []);
+  }, [fetchRequestsWithResponses]);
 
-  const fetchRequestsWithResponses = async () => {
+  const fetchRequestsWithResponses = useCallback(async () => {
     try {
       setLoading(true);
       const response = await teamUpAPI.getMyRequests();
@@ -46,13 +46,12 @@ const ManageResponsesTab = () => {
         (req: TeamUpRequestWithDetails) => req.responses && req.responses.length > 0
       );
       setRequests(requestsWithResponses);
-    } catch (err) {
-      console.error('Error fetching requests:', err);
+    } catch {
       setError(t('teamup.loadingRequests'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   const handleResponse = async (requestId: string, responseId: string, action: 'accept' | 'decline') => {
     try {
@@ -63,8 +62,7 @@ const ManageResponsesTab = () => {
           : t('teamup.declineResponseSuccess')
       );
       fetchRequestsWithResponses();
-    } catch (err: unknown) {
-      console.error('Error handling response:', err);
+    } catch {
       setError(
         action === 'accept'
           ? t('teamup.acceptResponseError')

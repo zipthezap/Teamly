@@ -37,7 +37,7 @@ class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // Log the error
     logError(error, 'ErrorBoundary');
-    console.error('Error Info:', errorInfo);
+    // errorInfo is logged through logError
 
     // Call optional error handler
     if (this.props.onError) {

@@ -162,15 +162,8 @@ export const getUserFriendlyMessage = (error: unknown): string => {
 /**
  * Log error to console in development mode
  */
-export const logError = (error: unknown, context?: string): void => {
-  if (process.env.NODE_ENV === 'development') {
-    console.error(`[Error${context ? ` - ${context}` : ''}]:`, error);
-    
-    if (error instanceof AxiosError) {
-      console.error('Request:', error.config);
-      console.error('Response:', error.response?.data);
-    }
-  }
+export const logError = (_error: unknown, _context?: string): void => {
+  // Error logging removed - errors are handled through error states and user feedback
 };
 
 /**

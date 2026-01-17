@@ -37,7 +37,7 @@ const JoinRequestsPopover: React.FC<JoinRequestsPopoverProps> = ({ groupId = nul
   const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Only show actionable requests (createdBy !== 'invite') for admins
-  const actionableRequests = joinRequests.filter((req: any) => req.createdBy !== 'invite');
+  const actionableRequests = joinRequests.filter((req) => req.createdBy !== 'invite');
 
   useEffect(() => {
     // Cleanup timeout on unmount

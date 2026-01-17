@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -84,24 +84,24 @@ const TournamentsList: React.FC = () => {
     });
   };
 
-  const isUpcoming = (tournament: TournamentWithCount) => {
+  const isUpcoming = useCallback((tournament: TournamentWithCount) => {
     const now = new Date();
     const startDate = new Date(tournament.startDate);
     return startDate > now && 
            (tournament.status === TournamentStatus.DRAFT || 
             tournament.status === TournamentStatus.REGISTRATION);
-  };
+  }, []);
 
-  const isPast = (tournament: TournamentWithCount) => {
+  const isPast = useCallback((tournament: TournamentWithCount) => {
     return tournament.status === TournamentStatus.COMPLETED || 
            tournament.status === TournamentStatus.CANCELLED;
-  };
+  }, []);
 
-  const isMyTournament = (tournament: TournamentWithCount) => {
+  const isMyTournament = useCallback((tournament: TournamentWithCount) => {
     return tournament.organizerId === user?.id;
-  };
+  }, [user?.id]);
 
-  const filterTournaments = (tournaments: TournamentWithCount[]) => {
+  const filterTournaments = useCallback((tournaments: TournamentWithCount[]) => {
     return tournaments.filter((tournament) => {
       // Search filter
       const matchesSearch = 
@@ -120,7 +120,7 @@ const TournamentsList: React.FC = () => {
 
       return matchesSearch && matchesSport && matchesTab;
     });
-  };
+  }, [isUpcoming, isPast, isMyTournament, searchQuery, sportFilter, tabValue]);
 
   const getSportTypes = () => {
     const types = new Set(tournaments.map(t => t.sportType));
@@ -129,15 +129,12 @@ const TournamentsList: React.FC = () => {
 
   const filteredTournaments = React.useMemo(() => filterTournaments(tournaments), [
     tournaments,
-    searchQuery,
-    sportFilter,
-    tabValue,
-    user?.id
+    filterTournaments
   ]);
 
-  const upcomingCount = React.useMemo(() => tournaments.filter(isUpcoming).length, [tournaments]);
-  const pastCount = React.useMemo(() => tournaments.filter(isPast).length, [tournaments]);
-  const myTournamentsCount = React.useMemo(() => tournaments.filter(isMyTournament).length, [tournaments, user?.id]);
+  const upcomingCount = React.useMemo(() => tournaments.filter(isUpcoming).length, [tournaments, isUpcoming]);
+  const pastCount = React.useMemo(() => tournaments.filter(isPast).length, [tournaments, isPast]);
+  const myTournamentsCount = React.useMemo(() => tournaments.filter(isMyTournament).length, [tournaments, isMyTournament]);
 
   if (loading) {
     return (

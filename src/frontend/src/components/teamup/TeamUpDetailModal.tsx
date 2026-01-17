@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -57,21 +57,20 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
     if (open && requestId) {
       fetchRequestDetails();
     }
-  }, [open, requestId]);
+  }, [open, requestId, fetchRequestDetails]);
 
-  const fetchRequestDetails = async () => {
+  const fetchRequestDetails = useCallback(async () => {
     try {
       setLoading(true);
       const response = await teamUpAPI.getById(requestId);
       setRequest(response.data);
       setComments(response.data.comments || []);
-    } catch (err) {
-      console.error('Error fetching request details:', err);
+    } catch {
       setError(t('teamup.loadingError'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [requestId, t]);
 
   const handleAddComment = async () => {
     if (!newComment.trim() || !requestId) return;
@@ -83,7 +82,6 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
       setNewComment('');
       setSuccess(t('teamup.commentAdded'));
     } catch (err: unknown) {
-      console.error('Error adding comment:', err);
       setError(getErrorMessage(err) || t('teamup.commentError'));
     } finally {
       setSubmittingComment(false);
@@ -98,7 +96,6 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
       setComments(comments.filter(c => c.id !== commentId));
       setSuccess(t('teamup.commentDeleted'));
     } catch (err: unknown) {
-      console.error('Error deleting comment:', err);
       setError(getErrorMessage(err) || t('teamup.commentDeleteError'));
     }
   };
@@ -114,7 +111,6 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
       fetchRequestDetails();
       if (onUpdate) onUpdate();
     } catch (err: unknown) {
-      console.error('Error responding:', err);
       setError(getErrorMessage(err) || t('teamup.respondError'));
     } finally {
       setSubmittingResponse(false);
@@ -132,8 +128,7 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
       );
       fetchRequestDetails();
       if (onUpdate) onUpdate();
-    } catch (err: unknown) {
-      console.error('Error handling response:', err);
+    } catch {
       setError(
         action === 'accept'
           ? t('teamup.acceptResponseError')

@@ -65,8 +65,7 @@ const AuthCallback = () => {
           } else {
             navigate('/dashboard');
           }
-        } catch (err) {
-          console.error('Failed to join group:', err);
+        } catch {
           navigate('/dashboard');
         }
       } else {

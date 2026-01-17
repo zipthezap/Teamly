@@ -94,8 +94,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const userData = response.data.user;
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
-    } catch (error) {
-      console.error('Failed to fetch user profile:', error);
+    } catch {
       logout();
     }
   };
@@ -107,6 +106,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {

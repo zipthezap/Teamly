@@ -122,8 +122,8 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
               setLoading(false);
               return;
             }
-          } catch (err) {
-            console.error('Reverse geocoding error:', err);
+          } catch {
+            // Reverse geocoding failed, use fallback
           }
         }
         
@@ -203,9 +203,8 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ value = {}, onChange })
             }
           }
         })
-        .catch(err => {
-          console.error('Reverse geocoding error:', err);
-          // Fallback without address
+        .catch(() => {
+          // Reverse geocoding error, use fallback without address
           const newLocation = {
             ...location,
             latitude: lat,

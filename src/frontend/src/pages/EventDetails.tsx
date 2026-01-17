@@ -7,7 +7,7 @@ import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import InviteLinkCard from '../components/InviteLinkCard';
 import { getImageUrl, getInitials } from '../utils/imageUtils';
-import { EventWithDetails, EventParticipant, GuestParticipant, EventParticipantStatus, GuestParticipantStatus, EventAttendance } from '../../../shared/types/event.types';
+import { EventParticipant, GuestParticipant, EventParticipantStatus, GuestParticipantStatus } from '../../../shared/types/event.types';
 import { UserProfilePicture, PublicUser } from '../../../shared/types/user.types';
 import { AxiosError } from 'axios';
 
@@ -34,7 +34,6 @@ const EventDetails = () => {
   const {
     data: event,
     isLoading: loading,
-    refetch: refetchEvent,
   } = useQuery({
     queryKey: ['eventDetails', id],
     queryFn: async () => {
@@ -174,20 +173,6 @@ const EventDetails = () => {
     generateInviteLinkMutation.mutate();
   }, [generateInviteLinkMutation]);
 
-  const handleCopyInviteLink = useCallback(async () => {
-    if (event?.inviteToken) {
-      const inviteUrl = `${window.location.origin}/events/join/${event.inviteToken}`;
-      await navigator.clipboard.writeText(inviteUrl);
-      setCopySuccess('Invite link copied to clipboard!');
-      setTimeout(() => setCopySuccess(''), 3000);
-    }
-  }, [event?.inviteToken]);
-
-  // Guard for missing ID - must be after all hooks
-  if (!id) {
-    return <div className="p-4 text-red-600">{t('eventDetails.invalidEventId')}</div>;
-  }
-
   // Memoize computed values to prevent unnecessary recalculations
   const eventStats = useMemo(() => {
     const isParticipant = event?.participants?.some((p: EventParticipant) => p.id === user?.id || p.userId === user?.id);
@@ -212,6 +197,11 @@ const EventDetails = () => {
       fillPercentage,
     };
   }, [event, user?.id]);
+
+  // Guard for missing ID - must be after all hooks
+  if (!id) {
+    return <div className="p-4 text-red-600">{t('eventDetails.invalidEventId')}</div>;
+  }
 
   if (loading) {
     return (

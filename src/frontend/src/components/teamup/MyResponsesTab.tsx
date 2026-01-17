@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -22,20 +22,19 @@ const MyResponsesTab = () => {
 
   useEffect(() => {
     fetchMyResponses();
-  }, []);
+  }, [fetchMyResponses]);
 
-  const fetchMyResponses = async () => {
+  const fetchMyResponses = useCallback(async () => {
     try {
       setLoading(true);
       const response = await teamUpAPI.getMyResponses();
       setResponses(response.data);
-    } catch (err) {
-      console.error('Error fetching my responses:', err);
+    } catch {
       setError(t('teamup.loadingResponses'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   if (loading) {
     return <LoadingSpinner message={t('teamup.loadingResponses')} />;

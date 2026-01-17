@@ -132,8 +132,8 @@ export const useEnhancedNotifications = (options: UseEnhancedNotificationsOption
     try {
       const response = await notificationsAPI.getStats();
       setStats(response.data);
-    } catch (err: unknown) {
-      console.error('Failed to fetch notification stats:', err);
+    } catch {
+      // Failed to fetch notification stats
     }
   }, []);
 
@@ -153,8 +153,8 @@ export const useEnhancedNotifications = (options: UseEnhancedNotificationsOption
         // Refresh stats
         await fetchStats();
       } catch (err: unknown) {
-        console.error('Failed to mark notifications as read:', err);
-        throw err;
+        // Failed to mark notifications as read - preserve original error information
+        throw err instanceof Error ? err : new Error(`Failed to mark notifications as read: ${String(err)}`);
       }
     },
     [fetchStats]
@@ -243,8 +243,8 @@ export const useUnreadCount = () => {
     try {
       const response = await notificationsAPI.getUnreadCount();
       setCount(response.data.count);
-    } catch (err) {
-      console.error('Failed to fetch unread count:', err);
+    } catch {
+      // Failed to fetch unread count
     } finally {
       setLoading(false);
     }

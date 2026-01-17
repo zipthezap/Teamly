@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import EventForm, { EventFormData } from '../components/common/EventForm';
 import { useParams } from 'react-router-dom';
@@ -35,9 +35,9 @@ const EventRequests = () => {
     if (groupId) {
       fetchData();
     }
-  }, [groupId]);
+  }, [groupId, fetchData]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!groupId) {
       setLoading(false);
       return;
@@ -52,7 +52,6 @@ const EventRequests = () => {
       setRequests(requestsRes.data);
       setGroup(groupRes.data);
     } catch (error: unknown) {
-      console.error('Error fetching data:', error);
       setSnackbar({
         open: true,
         message: getErrorMessage(error) || t('events.eventRequests.failedToLoad'),
@@ -61,7 +60,7 @@ const EventRequests = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [groupId, t]);
 
   const handleVote = async (requestId: string, vote: 'yes' | 'no') => {
     setVoting((prev) => ({ ...prev, [requestId]: true }));
@@ -74,7 +73,6 @@ const EventRequests = () => {
         severity: 'success',
       });
     } catch (error: unknown) {
-      console.error('Error voting:', error);
       setSnackbar({
         open: true,
         message: getErrorMessage(error) || t('events.eventRequests.failedToVote'),
@@ -95,7 +93,6 @@ const EventRequests = () => {
         severity: 'success',
       });
     } catch (error: unknown) {
-      console.error('Error finalizing:', error);
       setSnackbar({
         open: true,
         message: getErrorMessage(error) || t('events.eventRequests.failedToFinalize'),
@@ -114,7 +111,6 @@ const EventRequests = () => {
         severity: 'success',
       });
     } catch (error: unknown) {
-      console.error('Error cancelling:', error);
       setSnackbar({
         open: true,
         message: getErrorMessage(error) || t('events.eventRequests.failedToCancel'),
@@ -181,7 +177,6 @@ const EventRequests = () => {
         severity: 'success',
       });
     } catch (error: unknown) {
-      console.error('Error creating request:', error);
       setSnackbar({
         open: true,
         message: getErrorMessage(error) || t('events.eventRequests.failedToCreate'),

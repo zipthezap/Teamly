@@ -54,8 +54,7 @@ const TwoFactorSetup = () => {
     try {
       const response = await twoFactorAPI.getStatus();
       setStatus(response.data);
-    } catch (error: unknown) {
-      console.error('Error checking 2FA status:', error);
+    } catch {
     }
   };
 
