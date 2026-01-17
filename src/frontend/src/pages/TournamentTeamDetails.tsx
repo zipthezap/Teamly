@@ -43,12 +43,6 @@ const TournamentTeamDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (tournamentId && teamId) {
-      loadTeamDetails();
-    }
-  }, [tournamentId, teamId, loadTeamDetails]);
-
   const loadTeamDetails = useCallback(async () => {
     if (!tournamentId || !teamId) return;
 
@@ -85,6 +79,12 @@ const TournamentTeamDetails: React.FC = () => {
       setLoading(false);
     }
   }, [tournamentId, teamId]);
+
+  useEffect(() => {
+    if (tournamentId && teamId) {
+      loadTeamDetails();
+    }
+  }, [tournamentId, teamId, loadTeamDetails]);
 
   const getMatchResult = (match: TournamentMatch) => {
     if (!team) return '-';

@@ -147,7 +147,7 @@ const EventList: React.FC<EventListProps> = React.memo(({ events, onEventClick, 
                         <div className="text-[11px] text-slate-500">{t('groupDetails.organizer')}: {organizerName}</div>
                       </div>
                       {/* Removed Edit and Delete buttons for events as requested */}
-                      {!isAdmin && <Button color="secondary" size="xs" className="ml-auto text-xs px-2 py-1">{t('groupDetails.rsvp')}</Button>}
+                      {!isAdmin && <Button color="secondary" size="small" className="ml-auto text-xs px-2 py-1">{t('groupDetails.rsvp')}</Button>}
                     </li>
                   );
                 })}

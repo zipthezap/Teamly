@@ -43,14 +43,6 @@ const LookingForPlayTab = () => {
     skillLevel: '',
   });
 
-  useEffect(() => {
-    if (view === 'browse') {
-      fetchRequests();
-    } else {
-      fetchMyResponses();
-    }
-  }, [view, filters, fetchRequests, fetchMyResponses]);
-
   const fetchRequests = useCallback(async () => {
     try {
       setLoading(true);
@@ -97,6 +89,14 @@ const LookingForPlayTab = () => {
       setLoading(false);
     }
   }, [t]);
+
+  useEffect(() => {
+    if (view === 'browse') {
+      fetchRequests();
+    } else {
+      fetchMyResponses();
+    }
+  }, [view, filters, fetchRequests, fetchMyResponses]);
 
   const handleOpenModal = (requestId: string) => {
     setSelectedRequestId(requestId);

@@ -160,7 +160,7 @@ const PublicGroups = () => {
       const response = await groupsAPI.getPublic();
       setGroups(response.data);
       setFilteredGroups(response.data);
-    } catch (_error: unknown) {
+    } catch {
       setSnackbar({
         open: true,
         message: t('groups.publicGroups.failedToLoad'),

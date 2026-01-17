@@ -31,12 +31,6 @@ const EventRequests = () => {
     groupId: groupId || '',
   });
 
-  useEffect(() => {
-    if (groupId) {
-      fetchData();
-    }
-  }, [groupId, fetchData]);
-
   const fetchData = useCallback(async () => {
     if (!groupId) {
       setLoading(false);
@@ -61,6 +55,12 @@ const EventRequests = () => {
       setLoading(false);
     }
   }, [groupId, t]);
+
+  useEffect(() => {
+    if (groupId) {
+      fetchData();
+    }
+  }, [groupId, fetchData]);
 
   const handleVote = async (requestId: string, vote: 'yes' | 'no') => {
     setVoting((prev) => ({ ...prev, [requestId]: true }));

@@ -57,10 +57,10 @@ const CreateGroup = () => {
         ...(location.locationName && { locationName: location.locationName }),
         ...(location.city && { city: location.city }),
         ...(location.country && { country: location.country }),
-        sportType: sportType || null,
+        ...(sportType && { sportType }),
         ...(maxMembers && { maxMembers: typeof maxMembers === 'string' ? parseInt(maxMembers) : maxMembers }),
         autoApproveJoinRequests,
-        tags: tags || null,
+        ...(tags && { tags }),
         allowMemberInvites,
         allowMemberCopyLink,
       };

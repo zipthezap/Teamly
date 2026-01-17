@@ -54,10 +54,6 @@ const EditEvent = () => {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchEvent();
-  }, [id, fetchEvent]);
-
   const fetchEvent = useCallback(async () => {
     if (!id) {
       setError('Event ID is required');
@@ -106,6 +102,10 @@ const EditEvent = () => {
       setLoading(false);
     }
   }, [id]);
+
+  useEffect(() => {
+    fetchEvent();
+  }, [id, fetchEvent]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

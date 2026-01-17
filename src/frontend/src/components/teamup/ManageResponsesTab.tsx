@@ -33,10 +33,6 @@ const ManageResponsesTab = () => {
   const [success, setSuccess] = useState('');
   const [expandedRequests, setExpandedRequests] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    fetchRequestsWithResponses();
-  }, [fetchRequestsWithResponses]);
-
   const fetchRequestsWithResponses = useCallback(async () => {
     try {
       setLoading(true);
@@ -52,6 +48,10 @@ const ManageResponsesTab = () => {
       setLoading(false);
     }
   }, [t]);
+
+  useEffect(() => {
+    fetchRequestsWithResponses();
+  }, [fetchRequestsWithResponses]);
 
   const handleResponse = async (requestId: string, responseId: string, action: 'accept' | 'decline') => {
     try {

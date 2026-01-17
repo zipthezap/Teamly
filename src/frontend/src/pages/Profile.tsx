@@ -82,7 +82,7 @@ const Profile = () => {
     try {
       const response = await authAPI.listProfilePictures();
       setPictureHistory(response.data.pictures || []);
-    } catch (_err) {
+    } catch {
       // Failed to fetch profile picture history
     }
   };

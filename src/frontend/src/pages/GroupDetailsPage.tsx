@@ -46,10 +46,10 @@ export default function GroupDetailsPage() {
     name: '',
     description: '',
     privacy: 'public',
-    sportType: '',
-    maxMembers: '' as number | string,
+    sportType: '' as string | undefined,
+    maxMembers: '' as number | string | undefined,
     autoApproveJoinRequests: false,
-    tags: '',
+    tags: '' as string | undefined,
     allowMemberInvites: false,
     allowMemberCopyLink: true,
   });

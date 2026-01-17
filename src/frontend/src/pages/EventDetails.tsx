@@ -453,7 +453,7 @@ const EventDetails = () => {
                 <div className="text-sm font-semibold text-white truncate flex items-center gap-2">
                   {p.user?.name}
                   {/* Show 'Will be late' badge if attendance for this user is late */}
-                  {event.eventAttendances?.find((a) => a.userId === p.userId && a.status === 'late') && (
+                  {event.eventAttendances?.find((a: { userId: string; status: string }) => a.userId === p.userId && a.status === 'late') && (
                     <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-yellow-600/20 text-yellow-500">{t('eventDetails.willBeLate', 'Will be late')}</span>
                   )}
                 </div>

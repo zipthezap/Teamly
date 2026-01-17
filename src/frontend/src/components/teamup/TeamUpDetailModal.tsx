@@ -53,12 +53,6 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
   const [submittingResponse, setSubmittingResponse] = useState(false);
   const [processingResponseId, setProcessingResponseId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (open && requestId) {
-      fetchRequestDetails();
-    }
-  }, [open, requestId, fetchRequestDetails]);
-
   const fetchRequestDetails = useCallback(async () => {
     try {
       setLoading(true);
@@ -71,6 +65,12 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
       setLoading(false);
     }
   }, [requestId, t]);
+
+  useEffect(() => {
+    if (open && requestId) {
+      fetchRequestDetails();
+    }
+  }, [open, requestId, fetchRequestDetails]);
 
   const handleAddComment = async () => {
     if (!newComment.trim() || !requestId) return;
