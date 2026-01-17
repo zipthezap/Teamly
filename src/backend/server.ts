@@ -7,7 +7,7 @@ import path from 'path';
 import session from 'express-session';
 import RedisStore from 'connect-redis';
 import passport from './config/passport';
-import * as crypto from 'crypto';
+import crypto from 'crypto';
 import * as http from 'http';
 import * as https from 'https';
 import * as fs from 'fs';
