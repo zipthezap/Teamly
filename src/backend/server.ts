@@ -339,13 +339,34 @@ app.get('/health', async (req: Request, res: Response) => {
   }
 });
 
+// Serve static frontend bundle (webpack build)
+// This serves the webpack-bundled frontend from src/frontend/dist
+const frontendDistPath = path.join(__dirname, '../../frontend/dist');
+if (process.env.SERVE_FRONTEND === 'true') {
+  logger.info('Serving frontend from webpack bundle', 'Server', { path: frontendDistPath });
+  app.use(express.static(frontendDistPath));
+  
+  // Handle client-side routing - send index.html for all non-API routes
+  app.get('*', (req: Request, res: Response) => {
+    // Don't intercept API routes or uploads
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path.startsWith('/metrics') || req.path.startsWith('/health')) {
+      return res.status(404).json({ error: 'Route not found' });
+    }
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+} else {
+  logger.info('Frontend serving disabled (SERVE_FRONTEND not set to true)', 'Server');
+}
+
 // Use centralized error handling middleware
 app.use(errorHandler);
 
-// 404 handler
-app.use((_req: Request, res: Response) => {
-  res.status(404).json({ error: 'Route not found' });
-});
+// 404 handler for API routes when frontend is not being served
+if (process.env.SERVE_FRONTEND !== 'true') {
+  app.use((_req: Request, res: Response) => {
+    res.status(404).json({ error: 'Route not found' });
+  });
+}
 
 // Start background services
 let emailQueueInterval: NodeJS.Timeout | null = null;
