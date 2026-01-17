@@ -5,6 +5,7 @@ import * as teamUpService from '../services/teamUpService';
 import * as locationService from '../services/locationService';
 import * as teamUpNotificationService from '../services/teamUpNotificationService';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors';
+import { parseCoordinates, parseFloatStrict } from '../utils/validation';
 
 // Create a TeamUp request
 export const createTeamUpRequest = async (req: Request, res: Response) => {
@@ -66,6 +67,9 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
     // Set expiration to 1 hour after the event time
     const expiresAt = new Date(eventDate.getTime() + 60 * 60 * 1000);
 
+    // Parse coordinates once if provided
+    const coordinates = latitude && longitude ? parseCoordinates(latitude, longitude) : null;
+
     const teamUpRequest = await prisma.teamUpRequest.create({
       data: {
         creatorId: req.user!.id,
@@ -73,8 +77,8 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
         description: sanitized.description,
         sportType: sanitized.sportType!,
         location: sanitized.location,
-        latitude: latitude ? parseFloat(latitude) : null,
-        longitude: longitude ? parseFloat(longitude) : null,
+        latitude: coordinates?.lat ?? null,
+        longitude: coordinates?.lon ?? null,
         locationName: sanitized.locationName,
         city: sanitized.city,
         country: sanitized.country,
@@ -425,8 +429,11 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
   if (sanitized.description !== undefined) updateData.description = sanitized.description;
   if (sanitized.sportType !== undefined) updateData.sportType = sanitized.sportType;
   if (sanitized.location !== undefined) updateData.location = sanitized.location;
-  if (latitude !== undefined) updateData.latitude = parseFloat(latitude);
-  if (longitude !== undefined) updateData.longitude = parseFloat(longitude);
+  if (latitude !== undefined && longitude !== undefined) {
+    const coords = parseCoordinates(latitude, longitude);
+    updateData.latitude = coords.lat;
+    updateData.longitude = coords.lon;
+  }
   if (sanitized.locationName !== undefined) updateData.locationName = sanitized.locationName;
   if (sanitized.city !== undefined) updateData.city = sanitized.city;
   if (sanitized.country !== undefined) updateData.country = sanitized.country;
@@ -822,14 +829,12 @@ export const getNearbyTeamUpRequests = async (req: Request, res: Response) => {
     throw new BadRequestError('Latitude and longitude are required');
   }
 
-  const lat = parseFloat(latitude as string);
-  const lon = parseFloat(longitude as string);
-  const radiusKm = parseFloat(radius as string);
+  const { lat, lon } = parseCoordinates(latitude, longitude);
+  const radiusKm = parseFloatStrict(radius, 'Radius');
 
-  // Validate coordinates
-  const coordValidation = locationService.validateCoordinates(lat, lon);
-  if (!coordValidation.valid) {
-    throw new BadRequestError(coordValidation.error!);
+  // Validate radius (max 100km to prevent excessive queries)
+  if (radiusKm <= 0 || radiusKm > 100) {
+    throw new BadRequestError('Radius must be between 0 and 100 kilometers');
   }
 
   // Get all open TeamUp requests with location data

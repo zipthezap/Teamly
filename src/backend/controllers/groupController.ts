@@ -3,7 +3,8 @@ import prisma from '../config/database';
 import { sendEmailWithQueue } from '../services/emailQueueService';
 import { shouldSendEmailNotification, filterUnmutedUsers } from '../utils/notificationHelper';
 import { logger } from '../utils/logger';
-import { escapeHtml, isValidEmail } from '../utils/validation';
+import { escapeHtml, isValidEmail, parseCoordinates, parseFloatStrict } from '../utils/validation';
+import { hasLocation } from '../utils/typeGuards';
 import { Request, Response } from 'express';
 import path from 'path';
 import { 
@@ -70,13 +71,16 @@ export const createGroup = async (req: Request, res: Response) => {
     throw new BadRequestError(coordValidation.error || 'Invalid coordinates');
   }
 
+  // Parse coordinates once if provided
+  const coordinates = latitude && longitude ? parseCoordinates(latitude, longitude) : null;
+
   const group = await prisma.group.create({
     data: {
       name: sanitized.name,
       description: sanitized.description,
       isPublic: isPublic || false,
-      latitude: latitude ? parseFloat(latitude) : null,
-      longitude: longitude ? parseFloat(longitude) : null,
+      latitude: coordinates?.lat ?? null,
+      longitude: coordinates?.lon ?? null,
       locationName: sanitized.locationName,
       city: sanitized.city,
       country: sanitized.country,
@@ -257,15 +261,8 @@ export const getGroups = async (req: Request, res: Response) => {
   // Enrich with location info
   const enrichedGroups = mappedGroups.map(group => {
     // Only enrich if group has coordinates
-    if (group.latitude && group.longitude) {
-      return locationService.enrichWithLocationInfo(group as { 
-        latitude: number; 
-        longitude: number; 
-        locationName?: string | null; 
-        city?: string | null; 
-        country?: string | null;
-        [key: string]: unknown;
-      });
+    if (hasLocation(group) && group.latitude !== null && group.longitude !== null) {
+      return locationService.enrichWithLocationInfo(group);
     }
     return group;
   });
@@ -482,8 +479,13 @@ export const updateGroup = async (req: Request, res: Response) => {
       ...(sanitized.name && { name: sanitized.name }),
       ...(sanitized.description !== undefined && { description: sanitized.description }),
       ...(isPublic !== undefined && { isPublic }),
-      ...(latitude !== undefined && { latitude: latitude ? parseFloat(latitude) : null }),
-      ...(longitude !== undefined && { longitude: longitude ? parseFloat(longitude) : null }),
+      ...(() => {
+        if (latitude !== undefined && longitude !== undefined && latitude && longitude) {
+          const coords = parseCoordinates(latitude, longitude);
+          return { latitude: coords.lat, longitude: coords.lon };
+        }
+        return {};
+      })(),
       ...(sanitized.locationName !== undefined && { locationName: sanitized.locationName }),
       ...(sanitized.city !== undefined && { city: sanitized.city }),
       ...(sanitized.country !== undefined && { country: sanitized.country }),
@@ -1799,13 +1801,12 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
     throw new BadRequestError('Latitude and longitude are required');
   }
 
-  const lat = parseFloat(latitude as string);
-  const lon = parseFloat(longitude as string);
+  const { lat, lon } = parseCoordinates(latitude, longitude);
   
   // Use user's discoveryRadius if no radius provided
   let radiusKm: number;
   if (radius) {
-    radiusKm = parseFloat(radius as string);
+    radiusKm = parseFloatStrict(radius, 'Radius');
   } else {
     // Get user's discovery radius preference
     const user = await prisma.user.findUnique({

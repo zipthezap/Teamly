@@ -24,7 +24,8 @@ import * as groupService from '../services/groupService';
 import * as locationService from '../services/locationService';
 import { exportToCSV, exportToICalendar, exportToJSON } from '../services/exportService';
 import { BadRequestError, ForbiddenError, NotFoundError } from '../utils/errors';
-import { isRequired } from '../utils/validation';
+import { isRequired, parseCoordinates, parseFloatStrict } from '../utils/validation';
+import { isPrismaUniqueError, hasGroupId } from '../utils/typeGuards';
 import { ensureResourceExists } from '../utils/controllerHelpers';
 import { CacheService } from '../services/cacheService';
 
@@ -59,10 +60,8 @@ export const createEvent = async (req: Request, res: Response) => {
 
   // Validate coordinates if provided
   if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
-    const coordValidation = locationService.validateCoordinates(parseFloat(latitude), parseFloat(longitude));
-    if (!coordValidation.valid) {
-      throw new BadRequestError(coordValidation.error!);
-    }
+    parseCoordinates(latitude, longitude);
+    // Coordinates are validated by parseCoordinates, no need for additional check
   }
 
   // Validate maxPlayers if provided
@@ -100,6 +99,9 @@ export const createEvent = async (req: Request, res: Response) => {
   // Generate invite token if event is public
   const inviteToken = isPublic ? createInviteToken() : null;
 
+  // Parse coordinates once if provided
+  const coordinates = latitude && longitude ? parseCoordinates(latitude, longitude) : null;
+
   const event = await prisma.event.create({
     data: {
       groupId,
@@ -108,8 +110,8 @@ export const createEvent = async (req: Request, res: Response) => {
       description: sanitized.description,
       eventType: sanitized.eventType! as SportType,
       location: sanitized.location,
-      latitude: latitude ? parseFloat(latitude) : null,
-      longitude: longitude ? parseFloat(longitude) : null,
+      latitude: coordinates?.lat ?? null,
+      longitude: coordinates?.lon ?? null,
       locationName: locationName || null,
       city: city || null,
       country: country || null,
@@ -449,10 +451,8 @@ export const updateEvent = async (req: Request, res: Response) => {
 
   // Validate coordinates if provided
   if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
-    const coordValidation = locationService.validateCoordinates(parseFloat(latitude), parseFloat(longitude));
-    if (!coordValidation.valid) {
-      throw new BadRequestError(coordValidation.error!);
-    }
+    parseCoordinates(latitude, longitude);
+    // Coordinates are validated by parseCoordinates
   }
 
   // Validate maxPlayers if provided
@@ -496,6 +496,11 @@ export const updateEvent = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the event creator or group admins can update it');
   }
 
+  // Parse coordinates once if both are provided
+  const updateCoordinates = latitude !== undefined && longitude !== undefined && latitude && longitude 
+    ? parseCoordinates(latitude, longitude) 
+    : null;
+
   const updatedEvent = await prisma.event.update({
     where: { id },
     data: {
@@ -503,8 +508,10 @@ export const updateEvent = async (req: Request, res: Response) => {
       ...(sanitized.description !== undefined && { description: sanitized.description }),
       ...(sanitized.eventType && { eventType: sanitized.eventType as SportType }),
       ...(sanitized.location !== undefined && { location: sanitized.location }),
-      ...(latitude !== undefined && { latitude: latitude ? parseFloat(latitude) : null }),
-      ...(longitude !== undefined && { longitude: longitude ? parseFloat(longitude) : null }),
+      ...(updateCoordinates ? {
+        latitude: updateCoordinates.lat,
+        longitude: updateCoordinates.lon
+      } : {}),
       ...(locationName !== undefined && { locationName: locationName || null }),
       ...(city !== undefined && { city: city || null }),
       ...(country !== undefined && { country: country || null }),
@@ -737,7 +744,7 @@ export const joinEvent = async (req: Request, res: Response) => {
     }
     
     // Handle unique constraint violations
-    if ((error as { code?: string }).code === 'P2002') {
+    if (isPrismaUniqueError(error)) {
       return res.status(400).json({ error: 'Already joined this event' });
     }
     
@@ -1517,19 +1524,12 @@ export const getNearbyEvents = async (req: Request, res: Response) => {
     throw new BadRequestError('Latitude and longitude are required');
   }
 
-  const lat = parseFloat(latitude as string);
-  const lon = parseFloat(longitude as string);
-  const radiusKm = parseFloat(radius as string);
-
-  // Validate coordinates
-  const coordValidation = locationService.validateCoordinates(lat, lon);
-  if (!coordValidation.valid) {
-    throw new BadRequestError(coordValidation.error!);
-  }
+  const { lat, lon } = parseCoordinates(latitude, longitude);
+  const radiusKm = parseFloatStrict(radius, 'Radius');
 
   // Validate radius (max 100km to prevent excessive queries)
-  if (isNaN(radiusKm) || radiusKm <= 0 || radiusKm > 100) {
-    throw new BadRequestError('Radius must be a number between 0 and 100 kilometers');
+  if (radiusKm <= 0 || radiusKm > 100) {
+    throw new BadRequestError('Radius must be between 0 and 100 kilometers');
   }
 
   // Get all events with location data
@@ -1856,9 +1856,10 @@ export const updateGuestParticipant = async (req: Request, res: Response) => {
   });
 
   // Invalidate events cache for all group members
-  const event = authResult.event as { groupId: string };
-  await CacheService.deletePattern(`events:user:*:group:${event.groupId}:*`);
-  await CacheService.deletePattern(`events:user:*:group:all:*`);
+  if (hasGroupId(authResult.event)) {
+    await CacheService.deletePattern(`events:user:*:group:${authResult.event.groupId}:*`);
+    await CacheService.deletePattern(`events:user:*:group:all:*`);
+  }
 
   res.json(updatedGuest);
 };
@@ -1893,9 +1894,10 @@ export const updateGuestParticipantStatus = async (req: Request, res: Response) 
   });
 
   // Invalidate events cache for all group members
-  const event = authResult.event as { groupId: string };
-  await CacheService.deletePattern(`events:user:*:group:${event.groupId}:*`);
-  await CacheService.deletePattern(`events:user:*:group:all:*`);
+  if (hasGroupId(authResult.event)) {
+    await CacheService.deletePattern(`events:user:*:group:${authResult.event.groupId}:*`);
+    await CacheService.deletePattern(`events:user:*:group:all:*`);
+  }
 
   res.json(updatedGuest);
 };
@@ -1922,9 +1924,10 @@ export const removeGuestParticipant = async (req: Request, res: Response) => {
   });
 
   // Invalidate events cache for all group members
-  const event = authResult.event as { groupId: string };
-  await CacheService.deletePattern(`events:user:*:group:${event.groupId}:*`);
-  await CacheService.deletePattern(`events:user:*:group:all:*`);
+  if (hasGroupId(authResult.event)) {
+    await CacheService.deletePattern(`events:user:*:group:${authResult.event.groupId}:*`);
+    await CacheService.deletePattern(`events:user:*:group:all:*`);
+  }
 
   res.json({ message: 'Guest participant removed successfully' });
 };
