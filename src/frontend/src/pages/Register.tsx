@@ -117,12 +117,6 @@ const Register = () => {
             </Alert>
           )}
 
-          <Divider sx={{ width: '100%', mb: 2 }}>
-            <Typography variant="body2" color="text.secondary">
-              {t('auth.orContinueWith') || 'Or continue with email'}
-            </Typography>
-          </Divider>
-
           <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
             <TextField
               label={t('common.name')}
@@ -173,7 +167,14 @@ const Register = () => {
               {loading ? t('common.loading') : t('auth.registerButton')}
             </Button>
 
-            {/* External sign-ups below Teamly sign-up */}
+            {/* Divider after register button */}
+            <Divider sx={{ width: '100%', mb: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                {t('auth.orContinueWith') || 'Or continue with email'}
+              </Typography>
+            </Divider>
+
+            {/* External sign-ups below divider */}
             <Box sx={{ width: '100%', mt: 1 }}>
               <Button
                 variant="outlined"

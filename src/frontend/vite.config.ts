@@ -10,5 +10,6 @@ export default defineConfig({
       // Allow serving files from parent directory (for shared types)
       allow: ['..'],
     },
+    allowedHosts: ['winona-ungraced-nondefensively.ngrok-free.dev'],
   },
 });

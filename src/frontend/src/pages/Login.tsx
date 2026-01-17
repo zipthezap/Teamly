@@ -83,16 +83,6 @@ const Login = () => {
             </Alert>
           )}
 
-          {!requires2FA && (
-            <>
-              <Divider sx={{ width: '100%', mb: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  {t('auth.orContinueWith') || 'Or continue with email'}
-                </Typography>
-              </Divider>
-            </>
-          )}
-
           <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
             <TextField
               label={t('common.email')}
@@ -150,7 +140,16 @@ const Login = () => {
               {loading ? t('common.loading') : requires2FA ? t('auth.verifyAndLogin') : t('auth.loginButton')}
             </Button>
 
-            {/* External sign-ins below Teamly sign-in */}
+            {/* Divider after sign in button */}
+            {!requires2FA && (
+              <Divider sx={{ width: '100%', mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  {t('auth.orContinueWith') || 'Or continue with email'}
+                </Typography>
+              </Divider>
+            )}
+
+            {/* External sign-ins below divider */}
             {!requires2FA && (
               <Box sx={{ width: '100%', mt: 1 }}>
                 <Button

@@ -80,6 +80,20 @@ services:
       VITE_API_URL: http://localhost:3000/api
       NODE_ENV: development
 
+  frontend-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend.dev
+      args:
+        VITE_API_URL: http://192.168.0.212:3000/api
+    ports:
+      - "5173:3001"
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: http://192.168.0.212:3000/api
+      NODE_ENV: development
+
 volumes:
   postgres_data:
   redis_data:
