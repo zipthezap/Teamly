@@ -187,8 +187,30 @@ The frontend will start on `http://localhost:3001`.
 
 5. Build for production:
 ```bash
+# Vite build (default)
+cd src/frontend
 npm run build
+
+# OR Webpack build (alternative)
+cd src/frontend
+npm run build:webpack
 ```
+
+### Serving Frontend with Backend (Optional)
+
+You can serve the webpack-bundled frontend directly from the backend server:
+
+```bash
+# Build frontend with webpack
+npm run build:frontend
+
+# Start backend with frontend serving
+npm run start:with-frontend
+```
+
+The application will be available at `http://localhost:3000` (both frontend and API).
+
+> **Note**: For local development, it's recommended to run frontend and backend separately using `npm run dev` in each directory. See [docs/WEBPACK_BUNDLING.md](docs/WEBPACK_BUNDLING.md) for more details on webpack bundling.
 
 ## Docker Architecture
 
