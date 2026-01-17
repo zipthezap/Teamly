@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Typography,
-  Box,
+  Box as MuiBox,
   Card,
   CardContent,
   CardActions,
@@ -35,7 +35,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { LoadingSpinner, EmptyState } from '../components/common';
 import { ErrorState } from '../components/common/StateComponents';
-import { getImageUrl } from '../utils/imageUtils';
+import { getImageUrl, getInitials } from '../utils/imageUtils';
 import UserPlusIcon from '../components/icons/UserPlusIcon';
 import { useEnhancedNotifications } from '../hooks/useEnhancedNotifications';
 
@@ -167,9 +167,9 @@ const GroupsList = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+      <MuiBox display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" fontWeight={700}>{t('groups.myGroups')}</Typography>
-        <Box display="flex" gap={2} alignItems="center">
+        <MuiBox display="flex" gap={2} alignItems="center">
           {/* Invite Requests Popover Button */}
           <Tooltip title={t('groups.inviteRequests', 'Group Invites')}>
             <span>
@@ -197,7 +197,7 @@ const GroupsList = () => {
               <Typography variant="h6" sx={{ fontWeight: 600 }}>
                 {t('groups.inviteRequests', 'Group Invites')}
                 {inviteCount > 0 && (
-                  <Box component="span" sx={{ ml: 1, px: 1.5, py: 0.5, bgcolor: 'error.main', color: 'white', borderRadius: 2, fontSize: '0.875rem', fontWeight: 700 }}>{inviteCount}</Box>
+                  <MuiBox component="span" sx={{ ml: 1, px: 1.5, py: 0.5, bgcolor: 'error.main', color: 'white', borderRadius: 2, fontSize: '0.875rem', fontWeight: 700 }}>{inviteCount}</MuiBox>
                 )}
               </Typography>
               <Typography variant="caption" color="text.secondary">
@@ -206,13 +206,13 @@ const GroupsList = () => {
             </MuiBox>
             <MuiBox sx={{ p: 2 }}>
               {inviteLoading ? (
-                <Box display="flex" justifyContent="center" py={4}><CircularProgress size={36} /></Box>
+                <MuiBox display="flex" justifyContent="center" py={4}><CircularProgress size={36} /></MuiBox>
               ) : inviteCount === 0 ? (
-                <Box textAlign="center" py={4}>
+                <MuiBox textAlign="center" py={4}>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     🎉 {t('groups.noInvites', 'No pending group invites!')}
                   </Typography>
-                </Box>
+                </MuiBox>
               ) : (
                 <List sx={{ maxHeight: 320, overflow: 'auto', p: 0 }}>
                   {groupInviteRequests.map((notif) => (
@@ -226,10 +226,10 @@ const GroupsList = () => {
                         </>}
                         secondary={<Typography variant="caption" color="text.secondary">{notif.message}</Typography>}
                       />
-                      <Box display="flex" flexDirection="column" gap={1} ml={2}>
+                      <MuiBox display="flex" flexDirection="column" gap={1} ml={2}>
                         <Button size="small" color="success" variant="contained" onClick={() => handleAccept(notif.id)}>{t('common.accept', 'Accept')}</Button>
                         <Button size="small" color="error" variant="outlined" onClick={() => handleDecline(notif.id)}>{t('common.decline', 'Decline')}</Button>
-                      </Box>
+                      </MuiBox>
                     </ListItem>
                   ))}
                 </List>
@@ -251,12 +251,12 @@ const GroupsList = () => {
           >
             {t('groups.createGroup')}
           </Button>
-        </Box>
-      </Box>
+        </MuiBox>
+      </MuiBox>
 
       {/* Statistics Overview */}
       {groups.length > 0 && (
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
+        <MuiBox sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
           <Card sx={{ background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)' }}>
             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
               <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
@@ -297,11 +297,11 @@ const GroupsList = () => {
               </Typography>
             </CardContent>
           </Card>
-        </Box>
+        </MuiBox>
       )}
       
       {/* Search and Filters */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 2, mb: 3 }}>
+      <MuiBox sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 2, mb: 3 }}>
         <TextField
           fullWidth
           value={searchTerm}
@@ -334,7 +334,7 @@ const GroupsList = () => {
             {t('groups.admin')}
           </ToggleButton>
         </ToggleButtonGroup>
-      </Box>
+      </MuiBox>
       {filteredGroups.length === 0 ? (
         <EmptyState
           icon={<GroupIcon />}
@@ -348,7 +348,7 @@ const GroupsList = () => {
           gradient="linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(156, 39, 176, 0.05) 100%)"
         />
       ) : (
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
+        <MuiBox sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
 
 
           {filteredGroups.map((group, _idx) => {
@@ -378,7 +378,7 @@ const GroupsList = () => {
                   }}
                 >
                   <CardContent sx={{ flexGrow: 1, p: 3 }}>
-                    <Box display="flex" gap={2} mb={1.5}>
+                    <MuiBox display="flex" gap={2} mb={1.5}>
                       <Avatar
                         src={getImageUrl(group.picture) || undefined}
                         sx={{ 
@@ -391,12 +391,12 @@ const GroupsList = () => {
                       >
                         {!group.picture && getInitials(group.name)}
                       </Avatar>
-                      <Box flexGrow={1} minWidth={0}>
-                        <Box display="flex" justifyContent="space-between" alignItems="start" mb={0.5}>
+                      <MuiBox flexGrow={1} minWidth={0}>
+                        <MuiBox display="flex" justifyContent="space-between" alignItems="start" mb={0.5}>
                           <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, pr: 1 }}>
                             {group.name}
                           </Typography>
-                          <Box display="flex" gap={0.5} flexShrink={0}>
+                          <MuiBox display="flex" gap={0.5} flexShrink={0}>
                             {group.isPublic ? (
                               <Chip label={t('groups.public')} size="small" color="primary" />
                             ) : (
@@ -405,10 +405,10 @@ const GroupsList = () => {
                             {role === 'admin' && (
                               <Chip label={t('groups.admin')} size="small" color="secondary" />
                             )}
-                          </Box>
-                        </Box>
-                      </Box>
-                    </Box>
+                          </MuiBox>
+                        </MuiBox>
+                      </MuiBox>
+                    </MuiBox>
                     <Typography 
                       variant="body2" 
                       color="text.secondary" 
@@ -423,20 +423,20 @@ const GroupsList = () => {
                     >
                       {group.description || t('groups.noDescriptionProvided')}
                     </Typography>
-                    <Box display="flex" alignItems="center" gap={2} mb={2}>
-                      <Box display="flex" alignItems="center" gap={0.5}>
+                    <MuiBox display="flex" alignItems="center" gap={2} mb={2}>
+                      <MuiBox display="flex" alignItems="center" gap={0.5}>
                         <GroupIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
                         <Typography variant="caption" color="text.secondary">
                           {t('groups.membersCount', { count: memberCount })}
                         </Typography>
-                      </Box>
-                      <Box display="flex" alignItems="center" gap={0.5}>
+                      </MuiBox>
+                      <MuiBox display="flex" alignItems="center" gap={0.5}>
                         <EventIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
                         <Typography variant="caption" color="text.secondary">
                           {t('groups.eventsCount', { count: eventCount })}
                         </Typography>
-                      </Box>
-                    </Box>
+                      </MuiBox>
+                    </MuiBox>
                     {recentMembers.length > 0 && (
                       <AvatarGroup max={4} sx={{ justifyContent: 'flex-start' }}>
                         {recentMembers.map((member) => {
@@ -473,7 +473,7 @@ const GroupsList = () => {
                 </Card>
             );
           })}
-        </Box>
+        </MuiBox>
       )}
     </Container>
   );

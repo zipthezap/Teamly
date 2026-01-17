@@ -79,14 +79,11 @@ const Profile = () => {
   }, [user]);
 
   const fetchProfilePictureHistory = async () => {
-    setPictureHistoryLoading(true);
     try {
       const response = await authAPI.listProfilePictures();
       setPictureHistory(response.data.pictures || []);
     } catch (_err) {
       // Failed to fetch profile picture history
-    } finally {
-      setPictureHistoryLoading(false);
     }
   };
 

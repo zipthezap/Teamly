@@ -48,6 +48,10 @@ services:
       USE_HTTPS: ${USE_HTTPS:-false}
       SSL_KEY_PATH: ${SSL_KEY_PATH:-/app/ssl/privkey.pem}
       SSL_CERT_PATH: ${SSL_CERT_PATH:-/app/ssl/fullchain.pem}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL}
+      FRONTEND_URL: ${FRONTEND_URL}
     volumes:
       - uploads_data:/app/uploads
       # Uncomment to mount SSL certificates for HTTPS

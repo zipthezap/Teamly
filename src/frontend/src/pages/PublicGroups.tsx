@@ -98,6 +98,20 @@ const PublicGroups = () => {
     }
   };
 
+  // Calculate appropriate zoom level based on radius
+  const calculateZoomLevel = useCallback((radiusKm: number) => {
+    // Approximate zoom levels for different radius ranges
+    // These values are empirically chosen to fit the radius well in the viewport
+    if (radiusKm <= 1) return 14;
+    if (radiusKm <= 2) return 13;
+    if (radiusKm <= 5) return 12;
+    if (radiusKm <= 10) return 11;
+    if (radiusKm <= 20) return 10;
+    if (radiusKm <= 50) return 9;
+    if (radiusKm <= 100) return 8;
+    return 7;
+  }, []);
+
   // Add AdvancedMarkerElement markers after map loads or data changes
   useEffect(() => {
     if (!window.google?.maps?.marker?.AdvancedMarkerElement || !mapRef.current) return;
@@ -141,23 +155,25 @@ const PublicGroups = () => {
     return clearMarkers;
   }, [distanceRadius, mapCenter, locationEnabled, customSearchLocation, calculateZoomLevel, filteredGroups, userLocation]);
 
+    const fetchPublicGroups = useCallback(async () => {
+    try {
+      const response = await groupsAPI.getPublic();
+      setGroups(response.data);
+      setFilteredGroups(response.data);
+    } catch (_error: unknown) {
+      setSnackbar({
+        open: true,
+        message: t('groups.publicGroups.failedToLoad'),
+        severity: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
+
   useEffect(() => {
     fetchPublicGroups();
   }, [fetchPublicGroups]);
-
-  // Calculate appropriate zoom level based on radius
-  const calculateZoomLevel = useCallback((radiusKm: number) => {
-    // Approximate zoom levels for different radius ranges
-    // These values are empirically chosen to fit the radius well in the viewport
-    if (radiusKm <= 1) return 14;
-    if (radiusKm <= 2) return 13;
-    if (radiusKm <= 5) return 12;
-    if (radiusKm <= 10) return 11;
-    if (radiusKm <= 20) return 10;
-    if (radiusKm <= 50) return 9;
-    if (radiusKm <= 100) return 8;
-    return 7;
-  }, []);
 
   // Calculate distance between two coordinates using Haversine formula
   const calculateDistance = useCallback((lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -218,22 +234,6 @@ const PublicGroups = () => {
       setMapZoom(calculateZoomLevel(distanceRadius));
     }
   }, [distanceRadius, mapCenter, locationEnabled, customSearchLocation, calculateZoomLevel]);
-
-  const fetchPublicGroups = useCallback(async () => {
-    try {
-      const response = await groupsAPI.getPublic();
-      setGroups(response.data);
-      setFilteredGroups(response.data);
-    } catch (_error: unknown) {
-      setSnackbar({
-        open: true,
-        message: t('groups.publicGroups.failedToLoad'),
-        severity: 'error',
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
 
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
