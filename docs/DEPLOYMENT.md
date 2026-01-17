@@ -310,12 +310,15 @@ This opens a web interface at `http://localhost:5555`
 ## Security Considerations
 
 1. **JWT Secret**: Use a strong, random secret in production
-2. **HTTPS**: Always use HTTPS in production
+2. **HTTPS**: Always use HTTPS in production (see [HTTPS_SETUP.md](HTTPS_SETUP.md) for setup instructions)
 3. **CORS**: Configure CORS appropriately for your frontend domain
 4. **Rate Limiting**: Consider adding rate limiting (e.g., express-rate-limit)
 5. **Input Validation**: Add additional validation as needed
 6. **Database Backups**: Set up regular database backups
 7. **Environment Variables**: Never commit `.env` to version control
+8. **SSL Certificates**: Use Let's Encrypt or commercial certificates for HTTPS
+
+For detailed HTTPS setup instructions, see [docs/HTTPS_SETUP.md](HTTPS_SETUP.md).
 
 ---
 
