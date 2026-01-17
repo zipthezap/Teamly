@@ -329,7 +329,7 @@ export function validateAndSanitize<T extends Record<string, unknown>>(
  * @returns The parsed float value
  * @throws ValidationError if the value cannot be parsed to a valid number
  */
-export function parseFloatSafe(value: unknown, fieldName: string): number {
+export function parseFloatStrict(value: unknown, fieldName: string): number {
   if (value === undefined || value === null) {
     throw new ValidationError(`${fieldName} is required`, fieldName, 'REQUIRED');
   }
@@ -354,7 +354,7 @@ export function parseFloatSafe(value: unknown, fieldName: string): number {
  * @returns The parsed integer value
  * @throws ValidationError if the value cannot be parsed to a valid integer
  */
-export function parseIntSafe(value: unknown, fieldName: string): number {
+export function parseIntStrict(value: unknown, fieldName: string): number {
   if (value === undefined || value === null) {
     throw new ValidationError(`${fieldName} is required`, fieldName, 'REQUIRED');
   }
@@ -383,8 +383,8 @@ export function parseCoordinates(
   latitude: unknown,
   longitude: unknown
 ): { lat: number; lon: number } {
-  const lat = parseFloatSafe(latitude, 'Latitude');
-  const lon = parseFloatSafe(longitude, 'Longitude');
+  const lat = parseFloatStrict(latitude, 'Latitude');
+  const lon = parseFloatStrict(longitude, 'Longitude');
   
   // Validate latitude range
   if (lat < -90 || lat > 90) {

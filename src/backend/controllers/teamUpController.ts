@@ -5,7 +5,7 @@ import * as teamUpService from '../services/teamUpService';
 import * as locationService from '../services/locationService';
 import * as teamUpNotificationService from '../services/teamUpNotificationService';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors';
-import { parseCoordinates, parseFloatSafe } from '../utils/validation';
+import { parseCoordinates, parseFloatStrict } from '../utils/validation';
 
 // Create a TeamUp request
 export const createTeamUpRequest = async (req: Request, res: Response) => {
@@ -830,7 +830,7 @@ export const getNearbyTeamUpRequests = async (req: Request, res: Response) => {
   }
 
   const { lat, lon } = parseCoordinates(latitude, longitude);
-  const radiusKm = parseFloatSafe(radius, 'Radius');
+  const radiusKm = parseFloatStrict(radius, 'Radius');
 
   // Validate radius (max 100km to prevent excessive queries)
   if (radiusKm <= 0 || radiusKm > 100) {

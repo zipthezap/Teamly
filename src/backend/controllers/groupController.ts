@@ -3,7 +3,7 @@ import prisma from '../config/database';
 import { sendEmailWithQueue } from '../services/emailQueueService';
 import { shouldSendEmailNotification, filterUnmutedUsers } from '../utils/notificationHelper';
 import { logger } from '../utils/logger';
-import { escapeHtml, isValidEmail, parseCoordinates, parseFloatSafe } from '../utils/validation';
+import { escapeHtml, isValidEmail, parseCoordinates, parseFloatStrict } from '../utils/validation';
 import { hasLocation } from '../utils/typeGuards';
 import { Request, Response } from 'express';
 import path from 'path';
@@ -1806,7 +1806,7 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
   // Use user's discoveryRadius if no radius provided
   let radiusKm: number;
   if (radius) {
-    radiusKm = parseFloatSafe(radius, 'Radius');
+    radiusKm = parseFloatStrict(radius, 'Radius');
   } else {
     // Get user's discovery radius preference
     const user = await prisma.user.findUnique({

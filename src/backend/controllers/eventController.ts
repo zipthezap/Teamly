@@ -24,7 +24,7 @@ import * as groupService from '../services/groupService';
 import * as locationService from '../services/locationService';
 import { exportToCSV, exportToICalendar, exportToJSON } from '../services/exportService';
 import { BadRequestError, ForbiddenError, NotFoundError } from '../utils/errors';
-import { isRequired, parseCoordinates, parseFloatSafe } from '../utils/validation';
+import { isRequired, parseCoordinates, parseFloatStrict } from '../utils/validation';
 import { isPrismaUniqueError, hasGroupId } from '../utils/typeGuards';
 import { ensureResourceExists } from '../utils/controllerHelpers';
 import { CacheService } from '../services/cacheService';
@@ -1525,7 +1525,7 @@ export const getNearbyEvents = async (req: Request, res: Response) => {
   }
 
   const { lat, lon } = parseCoordinates(latitude, longitude);
-  const radiusKm = parseFloatSafe(radius, 'Radius');
+  const radiusKm = parseFloatStrict(radius, 'Radius');
 
   // Validate radius (max 100km to prevent excessive queries)
   if (radiusKm <= 0 || radiusKm > 100) {

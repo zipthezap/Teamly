@@ -11,7 +11,8 @@ export function isPrismaUniqueError(error: unknown): error is { code: string; me
     typeof error === 'object' &&
     error !== null &&
     'code' in error &&
-    (error as { code: unknown }).code === 'P2002'
+    typeof (error as Record<string, unknown>).code === 'string' &&
+    (error as Record<string, unknown>).code === 'P2002'
   );
 }
 
@@ -23,7 +24,8 @@ export function isPrismaNotFoundError(error: unknown): error is { code: string }
     typeof error === 'object' &&
     error !== null &&
     'code' in error &&
-    (error as { code: unknown }).code === 'P2025'
+    typeof (error as Record<string, unknown>).code === 'string' &&
+    (error as Record<string, unknown>).code === 'P2025'
   );
 }
 
@@ -35,7 +37,7 @@ export function hasErrorCode(error: unknown): error is { code: string } {
     typeof error === 'object' &&
     error !== null &&
     'code' in error &&
-    typeof (error as { code: unknown }).code === 'string'
+    typeof (error as Record<string, unknown>).code === 'string'
   );
 }
 
@@ -47,7 +49,7 @@ export function hasId(obj: unknown): obj is { id: string } {
     typeof obj === 'object' &&
     obj !== null &&
     'id' in obj &&
-    typeof (obj as { id: unknown }).id === 'string'
+    typeof (obj as Record<string, unknown>).id === 'string'
   );
 }
 
@@ -55,15 +57,16 @@ export function hasId(obj: unknown): obj is { id: string } {
  * Type guard for user objects with id, email, and name
  */
 export function isUserWithEmail(obj: unknown): obj is { id: string; email: string; name: string } {
+  const record = obj as Record<string, unknown>;
   return (
     typeof obj === 'object' &&
     obj !== null &&
     'id' in obj &&
     'email' in obj &&
     'name' in obj &&
-    typeof (obj as { id: unknown }).id === 'string' &&
-    typeof (obj as { email: unknown }).email === 'string' &&
-    typeof (obj as { name: unknown }).name === 'string'
+    typeof record.id === 'string' &&
+    typeof record.email === 'string' &&
+    typeof record.name === 'string'
   );
 }
 
@@ -75,7 +78,7 @@ export function hasEmailNotifications(obj: unknown): obj is { emailNotifications
     typeof obj === 'object' &&
     obj !== null &&
     'emailNotifications' in obj &&
-    typeof (obj as { emailNotifications: unknown }).emailNotifications === 'boolean'
+    typeof (obj as Record<string, unknown>).emailNotifications === 'boolean'
   );
 }
 
@@ -87,7 +90,7 @@ export function hasExpiration(obj: unknown): obj is { exp: number } {
     typeof obj === 'object' &&
     obj !== null &&
     'exp' in obj &&
-    typeof (obj as { exp: unknown }).exp === 'number'
+    typeof (obj as Record<string, unknown>).exp === 'number'
   );
 }
 
@@ -99,7 +102,7 @@ export function hasGroupId(obj: unknown): obj is { groupId: string } {
     typeof obj === 'object' &&
     obj !== null &&
     'groupId' in obj &&
-    typeof (obj as { groupId: unknown }).groupId === 'string'
+    typeof (obj as Record<string, unknown>).groupId === 'string'
   );
 }
 
@@ -107,15 +110,16 @@ export function hasGroupId(obj: unknown): obj is { groupId: string } {
  * Type guard for Prisma query event logging
  */
 export function isPrismaQueryEvent(obj: unknown): obj is { duration: number; query: string; params: string } {
+  const record = obj as Record<string, unknown>;
   return (
     typeof obj === 'object' &&
     obj !== null &&
     'duration' in obj &&
     'query' in obj &&
     'params' in obj &&
-    typeof (obj as { duration: unknown }).duration === 'number' &&
-    typeof (obj as { query: unknown }).query === 'string' &&
-    typeof (obj as { params: unknown }).params === 'string'
+    typeof record.duration === 'number' &&
+    typeof record.query === 'string' &&
+    typeof record.params === 'string'
   );
 }
 
