@@ -153,8 +153,8 @@ export const useEnhancedNotifications = (options: UseEnhancedNotificationsOption
         // Refresh stats
         await fetchStats();
       } catch (err: unknown) {
-        // Failed to mark notifications as read - preserve original error
-        throw err instanceof Error ? err : new Error('Failed to mark notifications as read');
+        // Failed to mark notifications as read - preserve original error information
+        throw err instanceof Error ? err : new Error(`Failed to mark notifications as read: ${String(err)}`);
       }
     },
     [fetchStats]
