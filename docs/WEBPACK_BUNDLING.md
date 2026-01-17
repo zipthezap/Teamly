@@ -61,6 +61,7 @@ The webpack configuration is located at `src/frontend/webpack.config.cjs`. Key f
 - **CSS support**: Includes PostCSS and Tailwind CSS processing
 - **Asset handling**: Images and fonts are bundled as resources
 - **HTML generation**: Generates index.html with injected bundle scripts
+- **Performance limits**: Set to 2MB for React SPA applications
 
 ### Backend Configuration
 
@@ -69,6 +70,9 @@ The backend server will serve the frontend bundle when the `SERVE_FRONTEND` envi
 ```bash
 # In .env file
 SERVE_FRONTEND=true
+
+# Optional: Custom frontend dist path (defaults to src/frontend/dist)
+FRONTEND_DIST_PATH=/path/to/custom/dist
 ```
 
 Or via command line:
@@ -105,4 +109,5 @@ src/frontend/
 - The webpack configuration uses `transpileOnly: true` for faster builds, skipping type checking
 - Vite setup remains unchanged and is recommended for local development
 - The webpack bundle is not committed to git (dist/ is in .gitignore)
-- Bundle size warnings are expected for a React application and can be addressed with code splitting if needed
+- Performance limits are set to 2MB, appropriate for a React SPA
+- Frontend dist path can be customized with `FRONTEND_DIST_PATH` environment variable

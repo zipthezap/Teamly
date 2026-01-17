@@ -1,6 +1,5 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   mode: 'production',
@@ -51,7 +50,7 @@ module.exports = {
     }),
   ],
   performance: {
-    maxEntrypointSize: 512000,
-    maxAssetSize: 512000,
+    maxEntrypointSize: 2000000, // 2MB - reasonable for a React SPA
+    maxAssetSize: 2000000, // 2MB
   },
 };

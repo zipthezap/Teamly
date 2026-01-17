@@ -341,7 +341,8 @@ app.get('/health', async (req: Request, res: Response) => {
 
 // Serve static frontend bundle (webpack build)
 // This serves the webpack-bundled frontend from src/frontend/dist
-const frontendDistPath = path.join(__dirname, '../../src/frontend/dist');
+// Can be customized via FRONTEND_DIST_PATH environment variable
+const frontendDistPath = process.env.FRONTEND_DIST_PATH || path.join(__dirname, '../../src/frontend/dist');
 if (process.env.SERVE_FRONTEND === 'true') {
   logger.info('Serving frontend from webpack bundle', 'Server', { path: frontendDistPath });
   app.use(express.static(frontendDistPath));
