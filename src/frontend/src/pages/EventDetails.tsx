@@ -353,7 +353,6 @@ const EventDetails = () => {
                   onUnmarkLate={handleUnmarkLate}
                 />
               </div>
-              </div>
             ) : (
               <div className="bg-[#1a2233] rounded-lg p-5 opacity-50 pointer-events-none select-none">
                 <div className="font-semibold mb-3 text-lg">{t('eventDetails.activityDisabled')}</div>
