@@ -243,8 +243,8 @@ const GroupsList = () => {
             onClick={() => navigate('/public-groups')}
             sx={{ minHeight: '44px', fontSize: { xs: '0.813rem', sm: '0.875rem' }, px: { xs: 2, sm: 3 } }}
           >
-            <span className="hidden sm:inline">{t('groups.discoverGroups')}</span>
-            <span className="sm:hidden">{t('groups.discover')}</span>
+            <MuiBox component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>{t('groups.discoverGroups')}</MuiBox>
+            <MuiBox component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{t('groups.discover')}</MuiBox>
           </Button>
           <Button
             variant="contained"
@@ -252,8 +252,8 @@ const GroupsList = () => {
             onClick={() => navigate('/groups/new')}
             sx={{ minHeight: '44px', fontSize: { xs: '0.813rem', sm: '0.875rem' }, px: { xs: 2, sm: 3 } }}
           >
-            <span className="hidden sm:inline">{t('groups.createGroup')}</span>
-            <span className="sm:hidden">{t('common.create')}</span>
+            <MuiBox component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>{t('groups.createGroup')}</MuiBox>
+            <MuiBox component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{t('common.create')}</MuiBox>
           </Button>
         </MuiBox>
       </MuiBox>
