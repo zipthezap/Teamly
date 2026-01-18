@@ -100,14 +100,14 @@ const Register = () => {
   };
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 8 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
+    <Container maxWidth="sm" sx={{ mt: { xs: 4, sm: 6, md: 8 }, px: { xs: 2, sm: 3 } }}>
+      <Paper elevation={3} sx={{ p: { xs: 3, sm: 4 } }}>
         <Box display="flex" flexDirection="column" alignItems="center">
-          <PersonAddIcon sx={{ fontSize: 48, mb: 2, color: 'primary.main' }} />
-          <Typography variant="h4" component="h1" gutterBottom>
+          <PersonAddIcon sx={{ fontSize: { xs: 40, sm: 48 }, mb: 2, color: 'primary.main' }} />
+          <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' }, textAlign: 'center' }}>
             {t('auth.registerTitle')}
           </Typography>
-          <Typography variant="body2" color="text.secondary" gutterBottom>
+          <Typography variant="body2" color="text.secondary" gutterBottom sx={{ textAlign: 'center' }}>
             {t('auth.registerSubtitle')}
           </Typography>
           
@@ -161,7 +161,7 @@ const Register = () => {
               variant="contained"
               fullWidth
               size="large"
-              sx={{ mt: 3, mb: 2 }}
+              sx={{ mt: 3, mb: 2, minHeight: '48px' }}
               disabled={loading}
             >
               {loading ? t('common.loading') : t('auth.registerButton')}
@@ -169,7 +169,7 @@ const Register = () => {
 
             {/* Divider after register button */}
             <Divider sx={{ width: '100%', mb: 2 }}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
                 {t('auth.orContinueWith') || 'Or continue with email'}
               </Typography>
             </Divider>
@@ -182,7 +182,7 @@ const Register = () => {
                 size="large"
                 startIcon={<GoogleIcon />}
                 onClick={() => handleOAuthSignup('google')}
-                sx={{ mb: 1, textTransform: 'none' }}
+                sx={{ mb: 1, textTransform: 'none', minHeight: '48px' }}
               >
                 {t('auth.signUpWithGoogle') || 'Sign up with Google'}
               </Button>
@@ -192,14 +192,14 @@ const Register = () => {
                 size="large"
                 startIcon={<FacebookIcon />}
                 onClick={() => handleOAuthSignup('facebook')}
-                sx={{ textTransform: 'none' }}
+                sx={{ textTransform: 'none', minHeight: '48px' }}
               >
                 {t('auth.signUpWithFacebook') || 'Sign up with Facebook'}
               </Button>
             </Box>
           </Box>
 
-          <Typography variant="body2" sx={{ mt: 2 }}>
+          <Typography variant="body2" sx={{ mt: 2, textAlign: 'center', fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
             {t('auth.hasAccount')}{' '}
             <StyledLink to="/login">
               {t('auth.signInHere')}

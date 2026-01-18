@@ -66,14 +66,14 @@ const Login = () => {
   };
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 8 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
+    <Container maxWidth="sm" sx={{ mt: { xs: 4, sm: 6, md: 8 }, px: { xs: 2, sm: 3 } }}>
+      <Paper elevation={3} sx={{ p: { xs: 3, sm: 4 } }}>
         <Box display="flex" flexDirection="column" alignItems="center">
-          <LoginIcon sx={{ fontSize: 48, mb: 2, color: 'primary.main' }} />
-          <Typography variant="h4" component="h1" gutterBottom>
+          <LoginIcon sx={{ fontSize: { xs: 40, sm: 48 }, mb: 2, color: 'primary.main' }} />
+          <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' }, textAlign: 'center' }}>
             {t('auth.loginTitle')}
           </Typography>
-          <Typography variant="body2" color="text.secondary" gutterBottom>
+          <Typography variant="body2" color="text.secondary" gutterBottom sx={{ textAlign: 'center' }}>
             {t('auth.loginSubtitle')}
           </Typography>
           
@@ -134,7 +134,7 @@ const Login = () => {
               variant="contained"
               fullWidth
               size="large"
-              sx={{ mt: 3, mb: 2 }}
+              sx={{ mt: 3, mb: 2, minHeight: '48px' }}
               disabled={loading || (requires2FA && twoFactorToken.length !== 6)}
             >
               {loading ? t('common.loading') : requires2FA ? t('auth.verifyAndLogin') : t('auth.loginButton')}
@@ -143,7 +143,7 @@ const Login = () => {
             {/* Divider after sign in button */}
             {!requires2FA && (
               <Divider sx={{ width: '100%', mb: 2 }}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
                   {t('auth.orContinueWith') || 'Or continue with email'}
                 </Typography>
               </Divider>
@@ -158,7 +158,7 @@ const Login = () => {
                   size="large"
                   startIcon={<GoogleIcon />}
                   onClick={() => handleOAuthLogin('google')}
-                  sx={{ mb: 1, textTransform: 'none' }}
+                  sx={{ mb: 1, textTransform: 'none', minHeight: '48px' }}
                 >
                   {t('auth.signInWithGoogle') || 'Sign in with Google'}
                 </Button>
@@ -168,7 +168,7 @@ const Login = () => {
                   size="large"
                   startIcon={<FacebookIcon />}
                   onClick={() => handleOAuthLogin('facebook')}
-                  sx={{ textTransform: 'none' }}
+                  sx={{ textTransform: 'none', minHeight: '48px' }}
                 >
                   {t('auth.signInWithFacebook') || 'Sign in with Facebook'}
                 </Button>
@@ -184,13 +184,14 @@ const Login = () => {
                   setTwoFactorToken('');
                   setError('');
                 }}
+                sx={{ minHeight: '44px' }}
               >
                 {t('auth.backToLogin')}
               </Button>
             )}
           </Box>
 
-          <Typography variant="body2" sx={{ mt: 2 }}>
+          <Typography variant="body2" sx={{ mt: 2, textAlign: 'center', fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
             {t('auth.noAccount')}{' '}
             <StyledLink to="/register">
               {t('auth.signUpHere')}
