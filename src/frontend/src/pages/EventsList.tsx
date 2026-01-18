@@ -377,8 +377,10 @@ const EventsList = () => {
             startIcon={<DownloadIcon />}
             onClick={(e) => setExportMenuAnchor(e.currentTarget)}
             disabled={isExporting || events.length === 0}
-            fullWidth={{ xs: true, sm: false }}
-            sx={{ fontSize: { xs: '0.875rem', sm: '0.875rem' } }}
+            sx={{ 
+              fontSize: { xs: '0.875rem', sm: '0.875rem' },
+              width: { xs: '100%', sm: 'auto' }
+            }}
           >
             {isExporting ? t('events.exporting', 'Exporting...') : t('events.export', 'Export')}
           </Button>
@@ -387,8 +389,10 @@ const EventsList = () => {
             color="secondary"
             startIcon={<AddIcon />}
             onClick={handleCreateEvent}
-            fullWidth={{ xs: true, sm: false }}
-            sx={{ fontSize: { xs: '0.875rem', sm: '0.875rem' } }}
+            sx={{ 
+              fontSize: { xs: '0.875rem', sm: '0.875rem' },
+              width: { xs: '100%', sm: 'auto' }
+            }}
           >
             {t('events.createEvent')}
           </Button>
@@ -656,12 +660,11 @@ const EventsList = () => {
             page={page} 
             onChange={(e, value) => handlePageChange(value)}
             color="secondary"
-            size={{ xs: 'small', sm: 'medium' }}
-            siblingCount={{ xs: 0, sm: 1 }}
             sx={{
               '& .MuiPaginationItem-root': {
                 minWidth: { xs: '32px', sm: '40px' },
-                height: { xs: '32px', sm: '40px' }
+                height: { xs: '32px', sm: '40px' },
+                fontSize: { xs: '0.75rem', sm: '0.875rem' }
               }
             }}
           />
