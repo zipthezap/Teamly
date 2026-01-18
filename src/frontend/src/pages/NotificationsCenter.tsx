@@ -154,7 +154,7 @@ const NotificationsCenter: React.FC = () => {
           </Typography>
         </Box>
         <Stack 
-          direction={{ xs: 'row', sm: 'row' }} 
+          direction="row" 
           spacing={1}
           sx={{ '& > *': { minHeight: '44px' } }}
         >

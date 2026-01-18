@@ -378,7 +378,7 @@ const EventsList = () => {
             onClick={(e) => setExportMenuAnchor(e.currentTarget)}
             disabled={isExporting || events.length === 0}
             sx={{ 
-              fontSize: { xs: '0.875rem', sm: '0.875rem' },
+              fontSize: '0.875rem',
               width: { xs: '100%', sm: 'auto' }
             }}
           >
@@ -390,7 +390,7 @@ const EventsList = () => {
             startIcon={<AddIcon />}
             onClick={handleCreateEvent}
             sx={{ 
-              fontSize: { xs: '0.875rem', sm: '0.875rem' },
+              fontSize: '0.875rem',
               width: { xs: '100%', sm: 'auto' }
             }}
           >
@@ -446,7 +446,7 @@ const EventsList = () => {
           sx={{
             '& .MuiTab-root': {
               minHeight: '48px',
-              fontSize: { xs: '0.875rem', sm: '0.875rem' },
+              fontSize: '0.875rem',
               px: { xs: 2, sm: 3 }
             }
           }}

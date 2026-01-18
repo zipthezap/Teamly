@@ -108,14 +108,14 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = React.memo(({ onSe
               variant="outlined"
               onClick={() => setShowFilters(!showFilters)}
               startIcon={<FilterListIcon />}
-              sx={{ fontSize: { xs: '0.875rem', sm: '0.875rem' } }}
+              sx={{ fontSize: '0.875rem' }}
             >
               Filters
             </Button>
             <Button 
               variant="contained" 
               onClick={handleSearch}
-              sx={{ fontSize: { xs: '0.875rem', sm: '0.875rem' } }}
+              sx={{ fontSize: '0.875rem' }}
             >
               Search
             </Button>
