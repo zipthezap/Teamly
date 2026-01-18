@@ -135,17 +135,30 @@ const NotificationsCenter: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3, md: 4 }, px: { xs: 1, sm: 2, md: 3 } }}>
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+      <Box 
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: { xs: 2, sm: 0 },
+          mb: 3
+        }}
+      >
         <Box display="flex" alignItems="center" gap={2}>
           <NotificationsIcon fontSize="large" color="primary" />
-          <Typography variant="h4" fontWeight="bold">
+          <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
             {t('notifications.title')}
           </Typography>
         </Box>
-        <Stack direction="row" spacing={1}>
-          <IconButton onClick={refresh} disabled={loading}>
+        <Stack 
+          direction={{ xs: 'row', sm: 'row' }} 
+          spacing={1}
+          sx={{ '& > *': { minHeight: '44px' } }}
+        >
+          <IconButton onClick={refresh} disabled={loading} sx={{ minWidth: '44px', minHeight: '44px' }}>
             <RefreshIcon />
           </IconButton>
           <Button
@@ -153,6 +166,11 @@ const NotificationsCenter: React.FC = () => {
             size="small"
             onClick={() => markAsRead()}
             disabled={!notifications.length || filters.includeRead}
+            sx={{ 
+              minHeight: '44px',
+              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              px: { xs: 2, sm: 3 }
+            }}
           >
             {t('notifications.markAllRead')}
           </Button>
@@ -161,15 +179,15 @@ const NotificationsCenter: React.FC = () => {
 
       {/* Stats Cards */}
       {stats && (
-        <Grid container spacing={2} mb={3}>
+        <Grid container spacing={{ xs: 2, sm: 2, md: 3 }} mb={3}>
           <Grid size={{ xs: 12, sm: 4 }}>
             <Card>
-              <CardContent>
+              <CardContent sx={{ p: { xs: 2, sm: 2, md: 3 } }}>
                 <Box display="flex" alignItems="center" gap={1}>
                   <NotificationsIcon color="primary" />
                   <Box>
-                    <Typography variant="h4">{stats.unread}</Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="h4" sx={{ fontSize: { xs: '1.75rem', sm: '2rem', md: '2.125rem' } }}>{stats.unread}</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                       {t('notifications.unread')}
                     </Typography>
                   </Box>
@@ -179,12 +197,12 @@ const NotificationsCenter: React.FC = () => {
           </Grid>
           <Grid size={{ xs: 12, sm: 4 }}>
             <Card>
-              <CardContent>
+              <CardContent sx={{ p: { xs: 2, sm: 2, md: 3 } }}>
                 <Box display="flex" alignItems="center" gap={1}>
                   <EventIcon color="primary" />
                   <Box>
-                    <Typography variant="h4">{stats.totalEvent}</Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="h4" sx={{ fontSize: { xs: '1.75rem', sm: '2rem', md: '2.125rem' } }}>{stats.totalEvent}</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                       {t('notifications.eventNotifications')}
                     </Typography>
                   </Box>
@@ -194,12 +212,12 @@ const NotificationsCenter: React.FC = () => {
           </Grid>
           <Grid size={{ xs: 12, sm: 4 }}>
             <Card>
-              <CardContent>
+              <CardContent sx={{ p: { xs: 2, sm: 2, md: 3 } }}>
                 <Box display="flex" alignItems="center" gap={1}>
                   <GroupIcon color="secondary" />
                   <Box>
-                    <Typography variant="h4">{stats.totalGroup}</Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="h4" sx={{ fontSize: { xs: '1.75rem', sm: '2rem', md: '2.125rem' } }}>{stats.totalGroup}</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                       {t('notifications.groupNotifications')}
                     </Typography>
                   </Box>
@@ -213,16 +231,33 @@ const NotificationsCenter: React.FC = () => {
       {/* Main Content */}
       <Paper>
         {/* Tabs */}
-        <Tabs value={tabValue} onChange={handleTabChange} variant="fullWidth">
+        <Tabs 
+          value={tabValue} 
+          onChange={handleTabChange} 
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+          sx={{
+            '& .MuiTab-root': {
+              minHeight: '48px',
+              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              px: { xs: 1.5, sm: 2 }
+            }
+          }}
+        >
           <Tab label={`${t('notifications.unread')} (${stats?.unread || 0})`} />
           <Tab label={`${t('notifications.events')} (${stats?.unreadEvent || 0})`} />
           <Tab label={`${t('notifications.groups')} (${stats?.unreadGroup || 0})`} />
           <Tab label={t('notifications.all')} />
         </Tabs>
 
-        <Box p={2}>
+        <Box p={{ xs: 2, sm: 2, md: 3 }}>
           {/* Search and Filters */}
-          <Stack direction="row" spacing={2} mb={2}>
+          <Stack 
+            direction={{ xs: 'column', sm: 'row' }} 
+            spacing={2} 
+            mb={2}
+          >
             <TextField
               fullWidth
               placeholder={t('notifications.searchPlaceholder')}
@@ -236,8 +271,20 @@ const NotificationsCenter: React.FC = () => {
                 ),
               }}
               size="small"
+              sx={{
+                '& .MuiInputBase-root': {
+                  minHeight: '44px'
+                }
+              }}
             />
-            <IconButton onClick={() => setShowFilters(!showFilters)}>
+            <IconButton 
+              onClick={() => setShowFilters(!showFilters)}
+              sx={{ 
+                minWidth: '44px', 
+                minHeight: '44px',
+                alignSelf: { xs: 'flex-start', sm: 'auto' }
+              }}
+            >
               <FilterListIcon />
             </IconButton>
           </Stack>
@@ -294,7 +341,9 @@ const NotificationsCenter: React.FC = () => {
                         onClick={() => handleNotificationClick(notif)}
                         disabled={!isClickable}
                         sx={{
-                          py: 2,
+                          py: { xs: 1.5, sm: 2 },
+                          px: { xs: 2, sm: 3 },
+                          minHeight: '60px',
                           bgcolor: !notif.read ? 'action.hover' : 'transparent',
                           '&:hover': {
                             bgcolor: !notif.read ? 'action.selected' : 'action.hover',
@@ -303,9 +352,18 @@ const NotificationsCenter: React.FC = () => {
                       >
                         <ListItemText
                           primary={
-                            <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
-                              <Box display="flex" alignItems="center" gap={1}>
-                                <Typography variant="body1" fontWeight={!notif.read ? 600 : 400}>
+                            <Box 
+                              sx={{
+                                display: 'flex',
+                                flexDirection: { xs: 'column', sm: 'row' },
+                                alignItems: { xs: 'flex-start', sm: 'center' },
+                                justifyContent: 'space-between',
+                                mb: 1,
+                                gap: { xs: 0.5, sm: 0 }
+                              }}
+                            >
+                              <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+                                <Typography variant="body1" fontWeight={!notif.read ? 600 : 400} sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                   {String(t(`notifications.${notif.type}`, notif.params || {}))}
                                 </Typography>
                                 {!notif.read && (
@@ -320,17 +378,17 @@ const NotificationsCenter: React.FC = () => {
                                   />
                                 )}
                               </Box>
-                              <Typography variant="caption" color="text.secondary">
+                              <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                                 {formatDate(notif.createdAt)}
                               </Typography>
                             </Box>
                           }
                           secondary={
                             <Box>
-                              <Typography variant="body2" color="text.secondary" mb={0.5}>
+                              <Typography variant="body2" color="text.secondary" mb={0.5} sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                                 {String(t(`notifications.${notif.type}Message`, notif.params || {}))}
                               </Typography>
-                              <Stack direction="row" spacing={1}>
+                              <Stack direction="row" spacing={1} flexWrap="wrap">
                                 <Chip
                                   label={notif.notificationType}
                                   size="small"
@@ -356,7 +414,12 @@ const NotificationsCenter: React.FC = () => {
               {/* Load More */}
               {hasMore && (
                 <Box display="flex" justifyContent="center" mt={2}>
-                  <Button onClick={loadMore} disabled={loading} variant="outlined">
+                  <Button 
+                    onClick={loadMore} 
+                    disabled={loading} 
+                    variant="outlined"
+                    sx={{ minHeight: '44px' }}
+                  >
                     {loading ? t('notifications.loading') : t('notifications.loadMore')}
                   </Button>
                 </Box>
