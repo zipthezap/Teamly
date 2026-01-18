@@ -244,7 +244,7 @@ const GroupsList = () => {
             sx={{ minHeight: '44px', fontSize: { xs: '0.813rem', sm: '0.875rem' }, px: { xs: 2, sm: 3 } }}
           >
             <MuiBox component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>{t('groups.discoverGroups')}</MuiBox>
-            <MuiBox component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{t('groups.discover')}</MuiBox>
+            <MuiBox component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{t('common.discover')}</MuiBox>
           </Button>
           <Button
             variant="contained"
@@ -253,7 +253,7 @@ const GroupsList = () => {
             sx={{ minHeight: '44px', fontSize: { xs: '0.813rem', sm: '0.875rem' }, px: { xs: 2, sm: 3 } }}
           >
             <MuiBox component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>{t('groups.createGroup')}</MuiBox>
-            <MuiBox component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{t('common.create')}</MuiBox>
+            <MuiBox component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{t('common.new')}</MuiBox>
           </Button>
         </MuiBox>
       </MuiBox>
@@ -310,7 +310,7 @@ const GroupsList = () => {
           fullWidth
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          placeholder={t('groups.searchPlaceholder', 'Search groups...')}
+          placeholder={t('groups.search') || 'Search groups...'}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -333,7 +333,7 @@ const GroupsList = () => {
           }}
         >
           <ToggleButton value="all">
-            {t('groups.all', 'All')}
+            {t('groups.allGroups')}
           </ToggleButton>
           <ToggleButton value="public">
             {t('groups.public')}
