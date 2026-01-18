@@ -586,7 +586,7 @@ export default function GroupDetailsPage() {
         isSubmitting={updateGroupMutation.isPending}
         t={t}
       />
-      <div className={`grid ${gridCols} gap-6`}>
+      <div className={`grid ${gridCols} gap-4 sm:gap-6`}>
         {groupId && (
           <MemberList groupId={groupId} isAdmin={isAdmin} onRemove={isAdmin ? handleRemoveMember : undefined} />
         )}
@@ -622,8 +622,8 @@ export default function GroupDetailsPage() {
               })()}
             </div>
             <div className="flex gap-4 justify-center">
-              <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded" onClick={confirmRemove} disabled={removeMemberMutation.isPending}>{t('groupDetails.remove')}</button>
-              <button className="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded" onClick={() => setShowConfirm({ open: false, memberId: null })}>{t('common.cancel')}</button>
+              <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded min-h-[44px]" onClick={confirmRemove} disabled={removeMemberMutation.isPending}>{t('groupDetails.remove')}</button>
+              <button className="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded min-h-[44px]" onClick={() => setShowConfirm({ open: false, memberId: null })}>{t('common.cancel')}</button>
             </div>
           </div>
         </div>
@@ -637,8 +637,8 @@ export default function GroupDetailsPage() {
               {t('groupDetails.confirmDelete')}
             </div>
             <div className="flex gap-4 justify-center">
-              <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded" onClick={confirmDeleteGroup} disabled={deleteGroupMutation.isPending}>{t('common.delete')}</button>
-              <button className="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded" onClick={() => setShowDeleteConfirm(false)}>{t('common.cancel')}</button>
+              <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded min-h-[44px]" onClick={confirmDeleteGroup} disabled={deleteGroupMutation.isPending}>{t('common.delete')}</button>
+              <button className="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded min-h-[44px]" onClick={() => setShowDeleteConfirm(false)}>{t('common.cancel')}</button>
             </div>
           </div>
         </div>
@@ -673,13 +673,13 @@ export default function GroupDetailsPage() {
             </div>
             <div className="flex gap-4 justify-center">
               <button 
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded" 
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded min-h-[44px]" 
                 onClick={confirmLeaveGroup} 
                 disabled={leaveGroupMutation.isPending}
               >
                 {isAdmin && isOnlyMember() ? t('groupDetails.deleteGroup') : t('groupDetails.leave')}
               </button>
-              <button className="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded" onClick={() => setShowLeaveConfirm(false)}>{t('common.cancel')}</button>
+              <button className="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded min-h-[44px]" onClick={() => setShowLeaveConfirm(false)}>{t('common.cancel')}</button>
             </div>
           </div>
         </div>
