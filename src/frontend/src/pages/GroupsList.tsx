@@ -253,7 +253,7 @@ const GroupsList = () => {
             sx={{ minHeight: '44px', fontSize: { xs: '0.813rem', sm: '0.875rem' }, px: { xs: 2, sm: 3 } }}
           >
             <MuiBox component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>{t('groups.createGroup')}</MuiBox>
-            <MuiBox component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{t('common.new')}</MuiBox>
+            <MuiBox component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{t('common.add')}</MuiBox>
           </Button>
         </MuiBox>
       </MuiBox>
@@ -310,7 +310,7 @@ const GroupsList = () => {
           fullWidth
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          placeholder={t('groups.search') || 'Search groups...'}
+          placeholder={t('groups.searchGroups')}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
