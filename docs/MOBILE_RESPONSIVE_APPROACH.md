@@ -3,6 +3,12 @@
 ## Overview
 This document outlines the phased approach for making the Teamly application fully responsive for mobile usage. The work is divided into multiple merge requests (MRs) to ensure incremental, testable progress.
 
+> **📋 For detailed roadmap of remaining work (Phases 3-9), see [MOBILE_RESPONSIVE_FUTURE_WORK.md](./MOBILE_RESPONSIVE_FUTURE_WORK.md)**
+
+## Status: PR #215 Complete ✅
+**Completed:** Phase 1 (Core Layout & Navigation) + Phase 2 (Groups List)  
+**Remaining:** Phases 3-9 (see MOBILE_RESPONSIVE_FUTURE_WORK.md for details)
+
 ## Design Principles
 
 ### 1. Mobile-First Responsive Breakpoints
@@ -383,8 +389,15 @@ For questions about this approach:
 - Test changes across multiple devices
 - Ask team for guidance on complex layouts
 
+**For detailed roadmap of Phases 3-9 (remaining work):**  
+See **[MOBILE_RESPONSIVE_FUTURE_WORK.md](./MOBILE_RESPONSIVE_FUTURE_WORK.md)** for:
+- Complete page-by-page breakdown
+- Time estimates and priorities
+- Milestone planning
+- Quick-start patterns
+
 ---
 
-**Last Updated**: January 18, 2026
-**Current Phase**: Phase 1 Complete, Phase 2 In Progress
+**Last Updated**: January 18, 2026  
+**Current Phase**: Phase 2 Complete (PR #215)  
 **Maintained By**: Development Team
