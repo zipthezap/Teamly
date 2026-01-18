@@ -24,7 +24,28 @@ export const darkTheme = createTheme({
       secondary: '#9ca3af',
     },
   },
+  breakpoints: {
+    values: {
+      xs: 0,
+      sm: 600,
+      md: 900,
+      lg: 1200,
+      xl: 1536,
+    },
+  },
   components: {
+    MuiContainer: {
+      styleOverrides: {
+        root: {
+          paddingLeft: '16px',
+          paddingRight: '16px',
+          '@media (min-width: 600px)': {
+            paddingLeft: '24px',
+            paddingRight: '24px',
+          },
+        },
+      },
+    },
     MuiPaper: {
       styleOverrides: {
         root: {
@@ -44,6 +65,31 @@ export const darkTheme = createTheme({
         root: {
           cursor: 'pointer',
           textTransform: 'none',
+          minHeight: 44, // Touch-friendly tap target (44px)
+          '@media (max-width: 600px)': {
+            fontSize: '0.875rem',
+            padding: '8px 16px',
+          },
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '@media (max-width: 600px)': {
+            '& .MuiInputBase-input': {
+              fontSize: '16px', // Prevents zoom on iOS
+            },
+          },
+        },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          '@media (max-width: 600px)': {
+            padding: '12px', // Touch-friendly tap target
+          },
         },
       },
     },

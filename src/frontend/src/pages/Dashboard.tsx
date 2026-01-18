@@ -81,13 +81,13 @@ const Dashboard = () => {
   );
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="xl" sx={{ mt: { xs: 2, sm: 3, md: 4 }, mb: { xs: 2, sm: 3, md: 4 }, px: { xs: 1, sm: 2, md: 3 } }}>
       {/* Welcome Section */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 0.5 }}>
+      <Box sx={{ mb: { xs: 2, md: 3 }, px: { xs: 1, sm: 0 } }}>
+        <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
           {t('dashboard.welcomeBack', { name: user?.name || 'User' })}
         </Typography>
-        <Typography variant="body1" color="text.secondary">
+        <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
           {t('dashboard.whatsHappening')}
         </Typography>
       </Box>
@@ -98,7 +98,7 @@ const Dashboard = () => {
           display: 'flex',
           flexDirection: { xs: 'column', md: 'row' },
           alignItems: 'flex-start',
-          gap: 4,
+          gap: { xs: 2, sm: 3, md: 4 },
         }}
       >
         {/* Sidebar */}
@@ -106,17 +106,17 @@ const Dashboard = () => {
           sx={{
             width: { xs: '100%', md: 340, lg: 360 },
             flexShrink: 0,
-            mb: { xs: 4, md: 0 },
+            mb: { xs: 2, md: 0 },
             position: { md: 'sticky' },
             top: { md: 80 },
             alignSelf: { md: 'flex-start' },
             maxHeight: { md: 'calc(100vh - 100px)' },
             overflowY: { md: 'auto' },
             background: 'rgba(30, 41, 59, 0.98)',
-            borderRadius: 3,
+            borderRadius: { xs: 2, md: 3 },
             boxShadow: 3,
             border: '1.5px solid #22304a',
-            p: 3,
+            p: { xs: 2, sm: 2.5, md: 3 },
           }}
         >
           <Stack spacing={3}>
@@ -181,21 +181,21 @@ const Dashboard = () => {
         </Box>
 
         {/* Main Content */}
-        <Box sx={{ flex: 1, minWidth: 0, background: 'rgba(30, 41, 59, 0.98)', borderRadius: 3, boxShadow: 3, border: '1.5px solid #22304a', p: 3 }}>
+        <Box sx={{ flex: 1, minWidth: 0, background: 'rgba(30, 41, 59, 0.98)', borderRadius: { xs: 2, md: 3 }, boxShadow: 3, border: '1.5px solid #22304a', p: { xs: 2, sm: 2.5, md: 3 } }}>
           {/* Statistics Section */}
-          <Box sx={{ mb: 4 }}>
+          <Box sx={{ mb: { xs: 3, md: 4 } }}>
             <UserStatistics />
           </Box>
 
           {/* Upcoming Events */}
-          <Box sx={{ mb: 4 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: 0.5, color: 'primary.light', textTransform: 'uppercase' }}>{t('dashboard.upcomingEvents')}</Typography>
+          <Box sx={{ mb: { xs: 3, md: 4 } }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
+              <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: 0.5, color: 'primary.light', textTransform: 'uppercase', fontSize: { xs: '1.125rem', sm: '1.25rem', md: '1.5rem' } }}>{t('dashboard.upcomingEvents')}</Typography>
               <Button
                 variant="text"
                 size="small"
                 onClick={() => navigate('/events')}
-                sx={{ textTransform: 'none' }}
+                sx={{ textTransform: 'none', minWidth: 'auto' }}
               >
                 {t('common.viewAll')}
               </Button>
@@ -209,7 +209,7 @@ const Dashboard = () => {
                 return {
                   display: 'grid',
                   gridTemplateColumns: { xs: '1fr', sm: `repeat(${columns}, 1fr)`, md: `repeat(${columns}, 1fr)` },
-                  gap: 4,
+                  gap: { xs: 2, sm: 3, md: 4 },
                   minHeight: count === 0 ? 700 : undefined,
                 };
               })()}
@@ -218,10 +218,10 @@ const Dashboard = () => {
                 const _isParticipating = event.participants?.some(p => p.userId === user?.id);
                 const isFull = event.maxPlayers && event.participants && event.participants.length >= event.maxPlayers;
                 return (
-                  <Card key={event.id} sx={{ height: 340, minHeight: 340, display: 'flex', flexDirection: 'column', transition: 'all 0.3s', background: 'rgba(51,65,85,0.98)', borderRadius: 2, boxShadow: 2, border: '1.5px solid #2d3a53', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6, borderColor: 'primary.main' } }}>
-                    <CardContent sx={{ flexGrow: 1, p: 3 }}>
+                  <Card key={event.id} sx={{ height: { xs: 'auto', md: 340 }, minHeight: { xs: 'auto', md: 340 }, display: 'flex', flexDirection: 'column', transition: 'all 0.3s', background: 'rgba(51,65,85,0.98)', borderRadius: 2, boxShadow: 2, border: '1.5px solid #2d3a53', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6, borderColor: 'primary.main' } }}>
+                    <CardContent sx={{ flexGrow: 1, p: { xs: 2, sm: 2.5, md: 3 } }}>
                       <Box display="flex" gap={2} mb={1.5}>
-                          <Box sx={{ width: 60, height: 60, bgcolor: 'slate.600', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Box sx={{ width: { xs: 50, sm: 60 }, height: { xs: 50, sm: 60 }, bgcolor: 'slate.600', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             {(() => {
                               const dateObj = new Date(event.startTime);
                               const month = dateObj.toLocaleString('en-US', { month: 'short' });
@@ -235,8 +235,8 @@ const Dashboard = () => {
                             })()}
                           </Box>
                         <Box flexGrow={1} minWidth={0}>
-                          <Box display="flex" justifyContent="space-between" alignItems="start" mb={0.5}>
-                            <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, pr: 1 }}>
+                          <Box display="flex" justifyContent="space-between" alignItems="start" mb={0.5} flexWrap="wrap" gap={0.5}>
+                            <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, pr: 1, fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' }, wordBreak: 'break-word' }}>
                               {event.title}
                             </Typography>
                             <Box display="flex" gap={0.5} flexShrink={0}>
@@ -250,20 +250,21 @@ const Dashboard = () => {
                         color="text.secondary"
                         sx={{
                           mb: 2,
-                          minHeight: 40,
+                          minHeight: { xs: 'auto', md: 40 },
                           display: '-webkit-box',
                           WebkitLineClamp: 2,
                           WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden'
+                          overflow: 'hidden',
+                          fontSize: { xs: '0.813rem', sm: '0.875rem' }
                         }}
                       >
                         📅 {new Date(event.startTime).toLocaleDateString()} • 🕐 {new Date(event.startTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}
                         {event.location && ` • 📍 ${event.location}`}
                       </Typography>
-                      <Box display="flex" alignItems="center" gap={2} mb={2}>
+                      <Box display="flex" alignItems="center" gap={2} mb={2} flexWrap="wrap">
                         <Box display="flex" alignItems="center" gap={0.5}>
                           <GroupIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}>
                             {event.participants?.length || 0}{event.maxPlayers && ` / ${event.maxPlayers}`} {t('common.participants')}
                           </Typography>
                         </Box>
@@ -284,11 +285,12 @@ const Dashboard = () => {
                         })()}
                       </Box>
                     </CardContent>
-                    <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
+                    <CardActions sx={{ px: { xs: 2, sm: 2.5, md: 3 }, pb: { xs: 2, sm: 2.5, md: 3 }, pt: 0 }}>
                       <Button
                         variant="contained"
                         fullWidth
                         onClick={() => navigate(`/events/${event.id}`)}
+                        sx={{ minHeight: '44px' }}
                       >
                         {t('common.viewDetails')}
                       </Button>
@@ -315,18 +317,18 @@ const Dashboard = () => {
 
           {/* Your Groups */}
           <Box>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: 0.5, color: 'primary.light', textTransform: 'uppercase' }}>{t('dashboard.yourGroups')}</Typography>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
+              <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: 0.5, color: 'primary.light', textTransform: 'uppercase', fontSize: { xs: '1.125rem', sm: '1.25rem', md: '1.5rem' } }}>{t('dashboard.yourGroups')}</Typography>
               <Button
                 variant="text"
                 size="small"
                 onClick={() => navigate('/groups')}
-                sx={{ textTransform: 'none' }}
+                sx={{ textTransform: 'none', minWidth: 'auto' }}
               >
                 {t('common.viewAll')}
               </Button>
             </Box>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: { xs: 2, sm: 2.5, md: 3 } }}>
               {groups.slice(0, 3).map((group) => {
                 const memberCount = group._count?.members ?? group.memberCount ?? group.members?.length ?? 0;
                 // Only count future events for this group
@@ -344,18 +346,18 @@ const Dashboard = () => {
                 const recentMembers = hasJoined ? (group.members?.slice(0, 4) || []) : [];
                 return (
                   <Card key={group.id} sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'all 0.3s', background: 'rgba(51,65,85,0.98)', borderRadius: 2, boxShadow: 2, border: '1.5px solid #2d3a53', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6, borderColor: 'primary.main' } }}>
-                    <CardContent sx={{ flexGrow: 1, p: 3 }}>
+                    <CardContent sx={{ flexGrow: 1, p: { xs: 2, sm: 2.5, md: 3 } }}>
                       <Box display="flex" gap={2} mb={1.5}>
                         <Avatar
                           src={getImageUrl(group.picture) || undefined}
-                          sx={{ width: 60, height: 60, borderRadius: '8px', bgcolor: 'primary.main' }}
+                          sx={{ width: { xs: 50, sm: 60 }, height: { xs: 50, sm: 60 }, borderRadius: '8px', bgcolor: 'primary.main', flexShrink: 0 }}
                           variant="rounded"
                         >
                           {!group.picture && getInitials(group.name)}
                         </Avatar>
                         <Box flexGrow={1} minWidth={0}>
-                          <Box display="flex" justifyContent="space-between" alignItems="start" mb={0.5}>
-                            <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, pr: 1 }}>
+                          <Box display="flex" justifyContent="space-between" alignItems="start" mb={0.5} flexWrap="wrap" gap={0.5}>
+                            <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, pr: 1, fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' }, wordBreak: 'break-word' }}>
                               {group.name}
                             </Typography>
                             <Box display="flex" gap={0.5} flexShrink={0}>
@@ -368,19 +370,19 @@ const Dashboard = () => {
                           </Box>
                         </Box>
                       </Box>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2, minHeight: 40, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2, minHeight: { xs: 'auto', md: 40 }, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
                         {group.description || t('common.noDescription')}
                       </Typography>
-                      <Box display="flex" alignItems="center" gap={2} mb={2}>
+                      <Box display="flex" alignItems="center" gap={2} mb={2} flexWrap="wrap">
                         <Box display="flex" alignItems="center" gap={0.5}>
                           <GroupIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}>
                             {t('groups.membersCount', { count: memberCount })}
                           </Typography>
                         </Box>
                         <Box display="flex" alignItems="center" gap={0.5}>
                           <EventIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}>
                             {t('groups.eventsCount', { count: eventCount })}
                           </Typography>
                         </Box>
@@ -394,7 +396,7 @@ const Dashboard = () => {
                               <Avatar
                                 key={member.id}
                                 src={profilePictureUrl || undefined}
-                                sx={{ width: 32, height: 32, fontSize: '0.75rem', bgcolor: 'primary.main' }}
+                                sx={{ width: { xs: 28, sm: 32 }, height: { xs: 28, sm: 32 }, fontSize: '0.75rem', bgcolor: 'primary.main' }}
                               >
                                 {!profilePictureUrl && getInitials(member.user?.name)}
                               </Avatar>
@@ -403,11 +405,12 @@ const Dashboard = () => {
                         </AvatarGroup>
                       )}
                     </CardContent>
-                    <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
+                    <CardActions sx={{ px: { xs: 2, sm: 2.5, md: 3 }, pb: { xs: 2, sm: 2.5, md: 3 }, pt: 0 }}>
                       <Button
                         variant="contained"
                         fullWidth
                         onClick={() => navigate(`/groups/${group.id}`)}
+                        sx={{ minHeight: '44px' }}
                       >
                         {t('common.viewDetails')}
                       </Button>

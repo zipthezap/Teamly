@@ -166,10 +166,10 @@ const GroupsList = () => {
   // DEBUG: Log every render and key data (after all hooks/vars)
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <MuiBox display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" fontWeight={700}>{t('groups.myGroups')}</Typography>
-        <MuiBox display="flex" gap={2} alignItems="center">
+    <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3, md: 4 }, px: { xs: 2, sm: 3 } }}>
+      <MuiBox display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+        <Typography variant="h4" fontWeight={700} sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' } }}>{t('groups.myGroups')}</Typography>
+        <MuiBox display="flex" gap={{ xs: 1, sm: 2 }} alignItems="center" flexWrap="wrap">
           {/* Invite Requests Popover Button */}
           <Tooltip title={t('groups.inviteRequests', 'Group Invites')}>
             <span>
@@ -191,10 +191,10 @@ const GroupsList = () => {
             onClose={handleInviteClose}
             anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
             transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-            slotProps={{ paper: { sx: { mt: 1.5, width: 380, maxHeight: 500, borderRadius: 2 } } }}
+            slotProps={{ paper: { sx: { mt: 1.5, width: { xs: '90vw', sm: 380 }, maxWidth: 380, maxHeight: 500, borderRadius: 2 } } }}
           >
-            <MuiBox sx={{ p: 2.5, borderBottom: '1px solid rgba(0,0,0,0.08)', background: 'linear-gradient(135deg, rgba(33,150,243,0.05) 0%, rgba(33,150,243,0.02) 100%)' }}>
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            <MuiBox sx={{ p: { xs: 2, sm: 2.5 }, borderBottom: '1px solid rgba(0,0,0,0.08)', background: 'linear-gradient(135deg, rgba(33,150,243,0.05) 0%, rgba(33,150,243,0.02) 100%)' }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                 {t('groups.inviteRequests', 'Group Invites')}
                 {inviteCount > 0 && (
                   <MuiBox component="span" sx={{ ml: 1, px: 1.5, py: 0.5, bgcolor: 'error.main', color: 'white', borderRadius: 2, fontSize: '0.875rem', fontWeight: 700 }}>{inviteCount}</MuiBox>
@@ -204,7 +204,7 @@ const GroupsList = () => {
                 {t('groups.inviteRequestsDesc', 'You have pending group invitations')}
               </Typography>
             </MuiBox>
-            <MuiBox sx={{ p: 2 }}>
+            <MuiBox sx={{ p: { xs: 1.5, sm: 2 } }}>
               {inviteLoading ? (
                 <MuiBox display="flex" justifyContent="center" py={4}><CircularProgress size={36} /></MuiBox>
               ) : inviteCount === 0 ? (
@@ -216,19 +216,19 @@ const GroupsList = () => {
               ) : (
                 <List sx={{ maxHeight: 320, overflow: 'auto', p: 0 }}>
                   {groupInviteRequests.map((notif) => (
-                    <ListItem key={notif.id} alignItems="flex-start" sx={{ px: 1, py: 1.5 }}>
+                    <ListItem key={notif.id} alignItems="flex-start" sx={{ px: 1, py: 1.5, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1, sm: 0 } }}>
                       <ListItemText
                         primary={<>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>{notif.group?.name || t('groups.unknownGroup')}</Typography>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 600, fontSize: { xs: '0.875rem', sm: '0.938rem' } }}>{notif.group?.name || t('groups.unknownGroup')}</Typography>
                           {notif.user?.name && (
                             <Typography variant="caption" color="text.secondary">{t('groups.invitedBy', { name: notif.user.name })}</Typography>
                           )}
                         </>}
                         secondary={<Typography variant="caption" color="text.secondary">{notif.message}</Typography>}
                       />
-                      <MuiBox display="flex" flexDirection="column" gap={1} ml={2}>
-                        <Button size="small" color="success" variant="contained" onClick={() => handleAccept(notif.id)}>{t('common.accept', 'Accept')}</Button>
-                        <Button size="small" color="error" variant="outlined" onClick={() => handleDecline(notif.id)}>{t('common.decline', 'Decline')}</Button>
+                      <MuiBox display="flex" flexDirection={{ xs: 'row', sm: 'column' }} gap={1} ml={{ xs: 0, sm: 2 }} width={{ xs: '100%', sm: 'auto' }}>
+                        <Button size="small" color="success" variant="contained" onClick={() => handleAccept(notif.id)} sx={{ minHeight: '36px', width: { xs: '100%', sm: 'auto' } }}>{t('common.accept', 'Accept')}</Button>
+                        <Button size="small" color="error" variant="outlined" onClick={() => handleDecline(notif.id)} sx={{ minHeight: '36px', width: { xs: '100%', sm: 'auto' } }}>{t('common.decline', 'Decline')}</Button>
                       </MuiBox>
                     </ListItem>
                   ))}
@@ -239,60 +239,64 @@ const GroupsList = () => {
           {/* ...existing code... */}
           <Button
             variant="outlined"
-            startIcon={<SearchIcon />}
+            startIcon={<SearchIcon sx={{ display: { xs: 'none', sm: 'inline' } }} />}
             onClick={() => navigate('/public-groups')}
+            sx={{ minHeight: '44px', fontSize: { xs: '0.813rem', sm: '0.875rem' }, px: { xs: 2, sm: 3 } }}
           >
-            {t('groups.discoverGroups')}
+            <MuiBox component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>{t('groups.discoverGroups')}</MuiBox>
+            <MuiBox component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{t('common.discover')}</MuiBox>
           </Button>
           <Button
             variant="contained"
-            startIcon={<AddIcon />}
+            startIcon={<AddIcon sx={{ display: { xs: 'none', sm: 'inline' } }} />}
             onClick={() => navigate('/groups/new')}
+            sx={{ minHeight: '44px', fontSize: { xs: '0.813rem', sm: '0.875rem' }, px: { xs: 2, sm: 3 } }}
           >
-            {t('groups.createGroup')}
+            <MuiBox component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>{t('groups.createGroup')}</MuiBox>
+            <MuiBox component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>{t('common.add')}</MuiBox>
           </Button>
         </MuiBox>
       </MuiBox>
 
       {/* Statistics Overview */}
       {groups.length > 0 && (
-        <MuiBox sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, gap: 2, mb: 3 }}>
+        <MuiBox sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, gap: { xs: 1.5, sm: 2 }, mb: { xs: 2, sm: 3 } }}>
           <Card sx={{ background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)' }}>
-            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'white', fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
                 {groupStats.total}
               </Typography>
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)', fontSize: { xs: '0.688rem', sm: '0.75rem' } }}>
                 {t('groups.allGroups')}
               </Typography>
             </CardContent>
           </Card>
           <Card sx={{ background: 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)' }}>
-            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'white', fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
                 {groupStats.public}
               </Typography>
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)', fontSize: { xs: '0.688rem', sm: '0.75rem' } }}>
                 {t('groups.public')}
               </Typography>
             </CardContent>
           </Card>
           <Card sx={{ background: 'linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%)' }}>
-            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'white', fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
                 {groupStats.private}
               </Typography>
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)', fontSize: { xs: '0.688rem', sm: '0.75rem' } }}>
                 {t('groups.private')}
               </Typography>
             </CardContent>
           </Card>
           <Card sx={{ background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 100%)' }}>
-            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: 'white', fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
                 {groupStats.admin}
               </Typography>
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)' }}>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)', fontSize: { xs: '0.688rem', sm: '0.75rem' } }}>
                 {t('groups.admin')}
               </Typography>
             </CardContent>
@@ -301,11 +305,12 @@ const GroupsList = () => {
       )}
       
       {/* Search and Filters */}
-      <MuiBox sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 2, mb: 3 }}>
+      <MuiBox sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: { xs: 1.5, sm: 2 }, mb: { xs: 2, sm: 3 } }}>
         <TextField
           fullWidth
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
+          placeholder={t('groups.searchGroups')}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -320,6 +325,12 @@ const GroupsList = () => {
           onChange={(e, newFilter) => newFilter && setFilter(newFilter)}
           fullWidth
           size="medium"
+          sx={{ 
+            '& .MuiToggleButton-root': { 
+              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              px: { xs: 1, sm: 2 }
+            } 
+          }}
         >
           <ToggleButton value="all">
             {t('groups.allGroups')}
@@ -348,7 +359,7 @@ const GroupsList = () => {
           gradient="linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(156, 39, 176, 0.05) 100%)"
         />
       ) : (
-        <MuiBox sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
+        <MuiBox sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: { xs: 2, sm: 2.5, md: 3 } }}>
 
 
           {filteredGroups.map((group, _idx) => {
@@ -377,23 +388,24 @@ const GroupsList = () => {
                     }
                   }}
                 >
-                  <CardContent sx={{ flexGrow: 1, p: 3 }}>
+                  <CardContent sx={{ flexGrow: 1, p: { xs: 2, sm: 2.5, md: 3 } }}>
                     <MuiBox display="flex" gap={2} mb={1.5}>
                       <Avatar
                         src={getImageUrl(group.picture) || undefined}
                         sx={{ 
-                          width: 60, 
-                          height: 60,
+                          width: { xs: 50, sm: 56, md: 60 }, 
+                          height: { xs: 50, sm: 56, md: 60 },
                           borderRadius: '8px',
-                          bgcolor: 'primary.main'
+                          bgcolor: 'primary.main',
+                          flexShrink: 0
                         }}
                         variant="rounded"
                       >
                         {!group.picture && getInitials(group.name)}
                       </Avatar>
                       <MuiBox flexGrow={1} minWidth={0}>
-                        <MuiBox display="flex" justifyContent="space-between" alignItems="start" mb={0.5}>
-                          <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, pr: 1 }}>
+                        <MuiBox display="flex" justifyContent="space-between" alignItems="start" mb={0.5} flexWrap="wrap" gap={0.5}>
+                          <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, pr: 1, fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' }, wordBreak: 'break-word' }}>
                             {group.name}
                           </Typography>
                           <MuiBox display="flex" gap={0.5} flexShrink={0}>
@@ -414,25 +426,26 @@ const GroupsList = () => {
                       color="text.secondary" 
                       sx={{ 
                         mb: 2, 
-                        minHeight: 40,
+                        minHeight: { xs: 'auto', md: 40 },
                         display: '-webkit-box',
                         WebkitLineClamp: 2,
+                        fontSize: { xs: '0.813rem', sm: '0.875rem' },
                         WebkitBoxOrient: 'vertical',
                         overflow: 'hidden'
                       }}
                     >
                       {group.description || t('groups.noDescriptionProvided')}
                     </Typography>
-                    <MuiBox display="flex" alignItems="center" gap={2} mb={2}>
+                    <MuiBox display="flex" alignItems="center" gap={2} mb={2} flexWrap="wrap">
                       <MuiBox display="flex" alignItems="center" gap={0.5}>
                         <GroupIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}>
                           {t('groups.membersCount', { count: memberCount })}
                         </Typography>
                       </MuiBox>
                       <MuiBox display="flex" alignItems="center" gap={0.5}>
                         <EventIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}>
                           {t('groups.eventsCount', { count: eventCount })}
                         </Typography>
                       </MuiBox>
@@ -448,8 +461,8 @@ const GroupsList = () => {
                               key={member.id}
                               src={profilePictureUrl || undefined}
                               sx={{ 
-                                width: 32, 
-                                height: 32,
+                                width: { xs: 28, sm: 32 }, 
+                                height: { xs: 28, sm: 32 },
                                 fontSize: '0.75rem',
                                 bgcolor: 'primary.main'
                               }}
@@ -461,11 +474,12 @@ const GroupsList = () => {
                       </AvatarGroup>
                     )}
                   </CardContent>
-                  <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
+                  <CardActions sx={{ px: { xs: 2, sm: 2.5, md: 3 }, pb: { xs: 2, sm: 2.5, md: 3 }, pt: 0 }}>
                     <Button 
                       variant="contained"
                       fullWidth
                       onClick={() => navigate(`/groups/${group.id}`)}
+                      sx={{ minHeight: '44px' }}
                     >
                       {t('common.viewDetails')}
                     </Button>
