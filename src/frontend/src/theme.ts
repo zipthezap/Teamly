@@ -65,7 +65,7 @@ export const darkTheme = createTheme({
         root: {
           cursor: 'pointer',
           textTransform: 'none',
-          minHeight: '44px', // Touch-friendly tap target
+          minHeight: 44, // Touch-friendly tap target (44px)
           '@media (max-width: 600px)': {
             fontSize: '0.875rem',
             padding: '8px 16px',

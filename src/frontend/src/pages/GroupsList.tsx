@@ -227,8 +227,8 @@ const GroupsList = () => {
                         secondary={<Typography variant="caption" color="text.secondary">{notif.message}</Typography>}
                       />
                       <MuiBox display="flex" flexDirection={{ xs: 'row', sm: 'column' }} gap={1} ml={{ xs: 0, sm: 2 }} width={{ xs: '100%', sm: 'auto' }}>
-                        <Button size="small" color="success" variant="contained" onClick={() => handleAccept(notif.id)} fullWidth={{ xs: true, sm: false }} sx={{ minHeight: '36px' }}>{t('common.accept', 'Accept')}</Button>
-                        <Button size="small" color="error" variant="outlined" onClick={() => handleDecline(notif.id)} fullWidth={{ xs: true, sm: false }} sx={{ minHeight: '36px' }}>{t('common.decline', 'Decline')}</Button>
+                        <Button size="small" color="success" variant="contained" onClick={() => handleAccept(notif.id)} sx={{ minHeight: '36px', width: { xs: '100%', sm: 'auto' } }}>{t('common.accept', 'Accept')}</Button>
+                        <Button size="small" color="error" variant="outlined" onClick={() => handleDecline(notif.id)} sx={{ minHeight: '36px', width: { xs: '100%', sm: 'auto' } }}>{t('common.decline', 'Decline')}</Button>
                       </MuiBox>
                     </ListItem>
                   ))}
