@@ -52,12 +52,18 @@ A sports event organization app that allows individuals to set and organize smal
   - Quick actions for navigation
   - Dedicated notification center page
 
+- **📱 Mobile Responsive (In Progress)**: Making Teamly fully mobile-friendly
+  - ✅ Phase 1 & 2 Complete: Core navigation, dashboard, auth pages, groups list
+  - 🔄 Phases 3-9 In Progress: Events, forms, tournaments, and more
+  - See [MOBILE_RESPONSIVE_ROADMAP.md](MOBILE_RESPONSIVE_ROADMAP.md) for details
+
 For detailed documentation on these features, see:
 - [docs/guides/FEATURES.md](docs/guides/FEATURES.md) - Core features
 - [docs/guides/TOURNAMENT_TEAM_INVITATIONS.md](docs/guides/TOURNAMENT_TEAM_INVITATIONS.md) - Tournament team invitation system
 - [docs/features/ENHANCED_NOTIFICATIONS.md](docs/features/ENHANCED_NOTIFICATIONS.md) - Enhanced notification system
 - [docs/features/EVENT_EXPORT.md](docs/features/EVENT_EXPORT.md) - Event data export feature
 - [docs/guides/PICTURE_UPLOAD.md](docs/guides/PICTURE_UPLOAD.md) - Secure picture upload feature
+- [MOBILE_RESPONSIVE_ROADMAP.md](MOBILE_RESPONSIVE_ROADMAP.md) - Mobile responsive implementation roadmap
 
 ## Architecture
 
