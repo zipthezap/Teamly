@@ -333,7 +333,7 @@ const EventsList = () => {
   // Defensive: Never call hooks inside any conditional, loop, or callback below this point
   // Main render
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="xl" sx={{ mt: { xs: 2, sm: 3, md: 4 }, mb: { xs: 2, sm: 3, md: 4 }, px: { xs: 1, sm: 2, md: 3 } }}>
       <Snackbar 
         open={!!toast} 
         autoHideDuration={6000} 
@@ -345,22 +345,40 @@ const EventsList = () => {
         </Alert>
       </Snackbar>
 
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+      <Box 
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: { xs: 2, sm: 0 },
+          mb: 3
+        }}
+      >
         <Box>
-          <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 0.5 }}>
+          <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
             {t('events.allEvents')}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
             {events.length} {events.length !== 1 ? t('events.eventsFound') : t('events.eventFound')}
           </Typography>
         </Box>
-        <Box display="flex" gap={2}>
+        <Box 
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: { xs: 1.5, sm: 2 },
+            '& > button': { minHeight: '44px' }
+          }}
+        >
           <Button
             variant="outlined"
             color="primary"
             startIcon={<DownloadIcon />}
             onClick={(e) => setExportMenuAnchor(e.currentTarget)}
             disabled={isExporting || events.length === 0}
+            fullWidth={{ xs: true, sm: false }}
+            sx={{ fontSize: { xs: '0.875rem', sm: '0.875rem' } }}
           >
             {isExporting ? t('events.exporting', 'Exporting...') : t('events.export', 'Export')}
           </Button>
@@ -369,6 +387,8 @@ const EventsList = () => {
             color="secondary"
             startIcon={<AddIcon />}
             onClick={handleCreateEvent}
+            fullWidth={{ xs: true, sm: false }}
+            sx={{ fontSize: { xs: '0.875rem', sm: '0.875rem' } }}
           >
             {t('events.createEvent')}
           </Button>
@@ -410,10 +430,23 @@ const EventsList = () => {
         </MenuItem>
       </Menu>
 
-      {/* Removed tabs for Upcoming/Past */}
       {/* Tabs for My/Upcoming/Past */}
       <Box mb={2}>
-        <Tabs value={tab} onChange={(e, v) => setTab(v)} aria-label="event tabs">
+        <Tabs 
+          value={tab} 
+          onChange={(e, v) => setTab(v)} 
+          aria-label="event tabs"
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+          sx={{
+            '& .MuiTab-root': {
+              minHeight: '48px',
+              fontSize: { xs: '0.875rem', sm: '0.875rem' },
+              px: { xs: 2, sm: 3 }
+            }
+          }}
+        >
           <Tab value="my" label={t('events.myEvents') || 'My Events'} />
           <Tab value="upcoming" label={t('events.upcomingEvents') || 'Upcoming Events'} />
           <Tab value="past" label={t('events.pastEvents') || 'Past Events'} />
@@ -434,7 +467,11 @@ const EventsList = () => {
           gradient="linear-gradient(135deg, rgba(245, 0, 87, 0.05) 0%, rgba(245, 0, 87, 0.02) 100%)"
         />
       ) : (
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
+        <Box sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, 
+          gap: { xs: 2, sm: 3, md: 4 }
+        }}>
           {filteredEvents.map((event: EventWithDetails, _idx) => {
             // DEBUG: Log each event in the map
             const status = getEventStatus(event);
@@ -456,9 +493,9 @@ const EventsList = () => {
                     }
                   }}
                 >
-                  <CardContent sx={{ flexGrow: 1, p: 2.5 }}>
+                  <CardContent sx={{ flexGrow: 1, p: { xs: 2, sm: 2.5 } }}>
                     <Box display="flex" justifyContent="space-between" alignItems="start" mb={1.5}>
-                      <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, pr: 1 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, pr: 1, fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}>
                         {event.title}
                       </Typography>
                       <Box display="flex" gap={0.5} alignItems="center">
@@ -471,7 +508,7 @@ const EventsList = () => {
                             <IconButton 
                               size="small" 
                               onClick={() => handleEditEvent(event)}
-                              sx={{ ml: 0.5 }}
+                              sx={{ ml: 0.5, minWidth: '44px', minHeight: '44px' }}
                             >
                               <EditIcon fontSize="small" />
                             </IconButton>
@@ -479,6 +516,7 @@ const EventsList = () => {
                               size="small" 
                               color="error"
                               onClick={() => { setEventToDelete(event); setDeleteDialogOpen(true); }}
+                              sx={{ minWidth: '44px', minHeight: '44px' }}
                             >
                               <DeleteIcon fontSize="small" />
                             </IconButton>
@@ -539,12 +577,13 @@ const EventsList = () => {
                       )}
                     </Box>
                   </CardContent>
-                  <CardActions sx={{ px: 2.5, pb: 2.5, pt: 0, flexDirection: 'column', gap: 1 }}>
+                  <CardActions sx={{ px: { xs: 2, sm: 2.5 }, pb: { xs: 2, sm: 2.5 }, pt: 0, flexDirection: 'column', gap: 1 }}>
                     <Button 
                       variant="contained"
                       fullWidth
                       color="secondary"
                       onClick={() => navigate(`/events/${event.id}`)}
+                      sx={{ minHeight: '44px' }}
                     >
                       {t('common.viewDetails')}
                     </Button>
@@ -556,6 +595,7 @@ const EventsList = () => {
                         color="success"
                         onClick={() => handleJoinEvent(event.id)}
                         disabled={isFetching || status.label === t('common.full')}
+                        sx={{ minHeight: '44px' }}
                       >
                         {t('events.joinEvent')}
                       </Button>
@@ -566,6 +606,7 @@ const EventsList = () => {
                         fullWidth
                         onClick={() => handleLeaveEvent(event.id)}
                         disabled={isFetching}
+                        sx={{ minHeight: '44px' }}
                       >
                         {t('events.leaveEvent')}
                       </Button>
@@ -615,6 +656,14 @@ const EventsList = () => {
             page={page} 
             onChange={(e, value) => handlePageChange(value)}
             color="secondary"
+            size={{ xs: 'small', sm: 'medium' }}
+            siblingCount={{ xs: 0, sm: 1 }}
+            sx={{
+              '& .MuiPaginationItem-root': {
+                minWidth: { xs: '32px', sm: '40px' },
+                height: { xs: '32px', sm: '40px' }
+              }
+            }}
           />
         </Box>
       )}

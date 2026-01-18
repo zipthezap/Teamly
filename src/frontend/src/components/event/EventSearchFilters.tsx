@@ -64,10 +64,16 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = React.memo(({ onSe
   }, [onSearch]);
 
   return (
-    <Paper sx={{ p: 2, mb: 3 }}>
+    <Paper sx={{ p: { xs: 2, sm: 2, md: 3 }, mb: 3 }}>
       <Stack spacing={2}>
         {/* Main Search Bar */}
-        <Box display="flex" gap={1}>
+        <Box 
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: { xs: 1.5, sm: 1 }
+          }}
+        >
           <TextField
             fullWidth
             placeholder="Search events by title or description..."
@@ -81,17 +87,39 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = React.memo(({ onSe
                 handleSearch();
               }
             }}
+            sx={{
+              '& .MuiInputBase-root': {
+                minHeight: '44px',
+                fontSize: { xs: '1rem', sm: '0.875rem' }
+              }
+            }}
           />
-          <Button
-            variant="outlined"
-            onClick={() => setShowFilters(!showFilters)}
-            startIcon={<FilterListIcon />}
+          <Box 
+            sx={{
+              display: 'flex',
+              gap: { xs: 1.5, sm: 1 },
+              '& > button': { 
+                minHeight: '44px',
+                flex: { xs: 1, sm: 'initial' }
+              }
+            }}
           >
-            Filters
-          </Button>
-          <Button variant="contained" onClick={handleSearch}>
-            Search
-          </Button>
+            <Button
+              variant="outlined"
+              onClick={() => setShowFilters(!showFilters)}
+              startIcon={<FilterListIcon />}
+              sx={{ fontSize: { xs: '0.875rem', sm: '0.875rem' } }}
+            >
+              Filters
+            </Button>
+            <Button 
+              variant="contained" 
+              onClick={handleSearch}
+              sx={{ fontSize: { xs: '0.875rem', sm: '0.875rem' } }}
+            >
+              Search
+            </Button>
+          </Box>
         </Box>
 
         {/* Advanced Filters */}
@@ -106,6 +134,11 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = React.memo(({ onSe
                   value={filters.eventType}
                   onChange={handleChange('eventType')}
                   size="small"
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      minHeight: '44px'
+                    }
+                  }}
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -116,6 +149,11 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = React.memo(({ onSe
                   value={filters.location}
                   onChange={handleChange('location')}
                   size="small"
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      minHeight: '44px'
+                    }
+                  }}
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -127,6 +165,11 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = React.memo(({ onSe
                   onChange={handleChange('startDate')}
                   size="small"
                   InputLabelProps={{ shrink: true }}
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      minHeight: '44px'
+                    }
+                  }}
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -138,14 +181,26 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = React.memo(({ onSe
                   onChange={handleChange('endDate')}
                   size="small"
                   InputLabelProps={{ shrink: true }}
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      minHeight: '44px'
+                    }
+                  }}
                 />
               </Grid>
             </Grid>
-            <Box display="flex" justifyContent="flex-end" mt={2}>
+            <Box 
+              sx={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                mt: 2
+              }}
+            >
               <Button
                 startIcon={<ClearIcon />}
                 onClick={handleClear}
                 color="secondary"
+                sx={{ minHeight: '44px' }}
               >
                 Clear Filters
               </Button>
