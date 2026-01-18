@@ -50,6 +50,7 @@ const EventActions: React.FC<EventActionsProps> = ({
             fullWidth
             size="medium"
             onClick={onJoin}
+            sx={{ minHeight: '44px' }}
           >
             Join Event
           </Button>
@@ -61,6 +62,7 @@ const EventActions: React.FC<EventActionsProps> = ({
             fullWidth
             size="medium"
             style={{ opacity: 0.5, pointerEvents: 'none' }}
+            sx={{ minHeight: '44px' }}
           >
             Event Full
           </Button>
@@ -76,6 +78,7 @@ const EventActions: React.FC<EventActionsProps> = ({
                 fullWidth
                 size="medium"
                 onClick={() => onUpdateStatus('confirmed')}
+                sx={{ minHeight: '44px' }}
               >
                 Confirm Attendance
               </Button>
@@ -89,6 +92,7 @@ const EventActions: React.FC<EventActionsProps> = ({
                 fullWidth
                 size="medium"
                 onClick={() => onUpdateStatus('declined')}
+                sx={{ minHeight: '44px' }}
               >
                 Decline
               </Button>
@@ -102,6 +106,7 @@ const EventActions: React.FC<EventActionsProps> = ({
                 fullWidth
                 size="medium"
                 onClick={onMarkLate}
+                sx={{ minHeight: '44px' }}
               >
                 Mark as Late
               </Button>
@@ -115,6 +120,7 @@ const EventActions: React.FC<EventActionsProps> = ({
                 fullWidth
                 size="medium"
                 onClick={onUnmarkLate}
+                sx={{ minHeight: '44px' }}
               >
                 On Time
               </Button>
@@ -128,6 +134,7 @@ const EventActions: React.FC<EventActionsProps> = ({
                 fullWidth
                 size="medium"
                 onClick={onLeave}
+                sx={{ minHeight: '44px' }}
               >
                 Leave Event
               </Button>
