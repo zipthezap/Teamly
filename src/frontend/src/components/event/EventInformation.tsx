@@ -1,6 +1,18 @@
 import React from 'react';
 import { EventWithDetails } from '../../../../shared/types';
-
+import { 
+  Box, 
+  Typography, 
+  Chip, 
+  Avatar,
+  Stack
+} from '@mui/material';
+import {
+  AccessTime,
+  Event,
+  LocationOn,
+  Repeat
+} from '@mui/icons-material';
 
 interface EventInformationProps {
   event: EventWithDetails;
@@ -16,101 +28,205 @@ const EventInformation: React.FC<EventInformationProps> = ({
   isFull,
 }) => {
   return (
-    <>
+    <Box>
       {/* Header Section */}
-      <div className="flex items-start gap-4 mb-6">
-        <div className="flex items-center justify-center w-16 h-16 rounded-full bg-blue-600 text-white text-2xl font-bold">
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          alignItems: 'flex-start', 
+          gap: { xs: 2, sm: 3 }, 
+          mb: { xs: 3, sm: 4 },
+          flexDirection: { xs: 'column', sm: 'row' }
+        }}
+      >
+        <Avatar
+          sx={{ 
+            width: { xs: 48, sm: 56, md: 64 }, 
+            height: { xs: 48, sm: 56, md: 64 },
+            bgcolor: 'primary.main',
+            fontSize: { xs: '1.25rem', sm: '1.5rem' },
+            fontWeight: 'bold'
+          }}
+        >
           {event.eventType?.charAt(0).toUpperCase()}
-        </div>
-        <div className="flex-1">
-          <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{event.title}</div>
-          <div className="flex gap-2 flex-wrap">
-            <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs font-semibold">
-              {event.eventType}
-            </span>
+        </Avatar>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography 
+            variant="h5" 
+            sx={{ 
+              fontWeight: 'bold', 
+              mb: 1,
+              fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' },
+              wordBreak: 'break-word'
+            }}
+          >
+            {event.title}
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Chip 
+              label={event.eventType} 
+              size="small" 
+              color="primary" 
+              sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+            />
             {isFull && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded bg-yellow-100 text-yellow-800 text-xs font-semibold">Full</span>
+              <Chip 
+                label="Full" 
+                size="small" 
+                color="warning" 
+                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+              />
             )}
             {isParticipant && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded bg-green-100 text-green-700 text-xs font-semibold">Joined</span>
+              <Chip 
+                label="Joined" 
+                size="small" 
+                color="success" 
+                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+              />
             )}
             {isCreator && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-600 text-white text-xs font-semibold">Organizer</span>
+              <Chip 
+                label="Organizer" 
+                size="small" 
+                color="info" 
+                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+              />
             )}
-          </div>
-        </div>
-      </div>
+          </Box>
+        </Box>
+      </Box>
 
       {/* Description */}
-      <div className="mb-6">
-        <div className="text-lg font-semibold mb-1">Description</div>
-        <div className="text-base text-gray-700 dark:text-gray-300">
+      <Box sx={{ mb: { xs: 3, sm: 4 } }}>
+        <Typography 
+          variant="h6" 
+          sx={{ 
+            fontWeight: 'semibold', 
+            mb: 1,
+            fontSize: { xs: '1rem', sm: '1.125rem' }
+          }}
+        >
+          Description
+        </Typography>
+        <Typography 
+          variant="body1" 
+          color="text.secondary"
+          sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+        >
           {event.description || 'No description provided'}
-        </div>
-      </div>
+        </Typography>
+      </Box>
 
       {/* Time and Location Details */}
-      <div>
-        <div className="text-lg font-semibold mb-2">Event Details</div>
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
-            {/* Clock SVG */}
-            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" /><path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
-            <div>
-              <div className="text-xs text-gray-500">Start Time</div>
-              <div className="font-medium text-gray-900 dark:text-white">
+      <Box>
+        <Typography 
+          variant="h6" 
+          sx={{ 
+            fontWeight: 'semibold', 
+            mb: 2,
+            fontSize: { xs: '1rem', sm: '1.125rem' }
+          }}
+        >
+          Event Details
+        </Typography>
+        <Stack spacing={{ xs: 2, sm: 2.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+            <AccessTime color="primary" sx={{ fontSize: { xs: 20, sm: 24 }, mt: 0.25 }} />
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                Start Time
+              </Typography>
+              <Typography 
+                variant="body2" 
+                fontWeight="medium"
+                sx={{ 
+                  fontSize: { xs: '0.813rem', sm: '0.875rem' },
+                  wordBreak: 'break-word'
+                }}
+              >
                 {new Date(event.startTime).toLocaleString('en-US', {
-                  weekday: 'long',
-                  month: 'long',
+                  weekday: 'short',
+                  month: 'short',
                   day: 'numeric',
                   year: 'numeric',
                   hour: '2-digit',
                   minute: '2-digit'
                 })}
-              </div>
-            </div>
-          </div>
+              </Typography>
+            </Box>
+          </Box>
+          
           {event.endTime && (
-            <div className="flex items-center gap-2">
-              {/* Calendar SVG */}
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2" /><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="2" /></svg>
-              <div>
-                <div className="text-xs text-gray-500">End Time</div>
-                <div className="font-medium text-gray-900 dark:text-white">
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+              <Event color="primary" sx={{ fontSize: { xs: 20, sm: 24 }, mt: 0.25 }} />
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                  End Time
+                </Typography>
+                <Typography 
+                  variant="body2" 
+                  fontWeight="medium"
+                  sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}
+                >
                   {new Date(event.endTime).toLocaleString('en-US', {
                     hour: '2-digit',
                     minute: '2-digit'
                   })}
-                </div>
-              </div>
-            </div>
+                </Typography>
+              </Box>
+            </Box>
           )}
+          
           {event.location && (
-            <div className="flex items-center gap-2">
-              {/* Location SVG */}
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 21c-4.418 0-8-3.582-8-8 0-4.418 3.582-8 8-8s8 3.582 8 8c0 4.418-3.582 8-8 8z" stroke="currentColor" strokeWidth="2" /><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" /></svg>
-              <div>
-                <div className="text-xs text-gray-500">Location</div>
-                <div className="font-medium text-gray-900 dark:text-white">{event.location}</div>
-              </div>
-            </div>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+              <LocationOn color="primary" sx={{ fontSize: { xs: 20, sm: 24 }, mt: 0.25 }} />
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                  Location
+                </Typography>
+                <Typography 
+                  variant="body2" 
+                  fontWeight="medium"
+                  sx={{ 
+                    fontSize: { xs: '0.813rem', sm: '0.875rem' },
+                    wordBreak: 'break-word'
+                  }}
+                >
+                  {event.location}
+                </Typography>
+              </Box>
+            </Box>
           )}
+          
           {event.isRecurring && event.recurrenceRule && (
-            <div className="flex items-start gap-2">
-              {/* Repeat SVG */}
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><path d="M3 11V9a4 4 0 014-4h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /><path d="M7 23l-4-4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><path d="M21 13v2a4 4 0 01-4 4H3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
-              <div>
-                <div className="text-xs text-gray-500">Recurring Event</div>
-                <div className="font-medium text-gray-900 dark:text-white">{event.recurrenceRule}</div>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+              <Repeat color="primary" sx={{ fontSize: { xs: 20, sm: 24 }, mt: 0.25 }} />
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                  Recurring Event
+                </Typography>
+                <Typography 
+                  variant="body2" 
+                  fontWeight="medium"
+                  sx={{ 
+                    fontSize: { xs: '0.813rem', sm: '0.875rem' },
+                    wordBreak: 'break-word'
+                  }}
+                >
+                  {event.recurrenceRule}
+                </Typography>
                 {event.recurrenceEnd && (
-                  <div className="text-xs text-gray-500">Until {new Date(event.recurrenceEnd).toLocaleDateString()}</div>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                    Until {new Date(event.recurrenceEnd).toLocaleDateString()}
+                  </Typography>
                 )}
-              </div>
-            </div>
+              </Box>
+            </Box>
           )}
-        </div>
-      </div>
-    </>
+        </Stack>
+      </Box>
+    </Box>
   );
 };
 

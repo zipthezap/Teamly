@@ -131,7 +131,7 @@ const TwoFactorSetup = () => {
         return (
           <Box textAlign="center" py={4}>
             <SecurityIcon sx={{ fontSize: 64, mb: 2, color: 'primary.main' }} />
-            <Typography variant="h5" gutterBottom>
+            <Typography variant="h5" gutterBottom sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
               Enable Two-Factor Authentication
             </Typography>
             <Typography variant="body1" color="text.secondary" paragraph>
@@ -143,7 +143,7 @@ const TwoFactorSetup = () => {
               size="large"
               onClick={handleStartSetup}
               disabled={loading}
-              sx={{ mt: 2 }}
+              sx={{ mt: 2, minHeight: '48px' }}
             >
               {loading ? 'Setting up...' : 'Start Setup'}
             </Button>
@@ -153,7 +153,7 @@ const TwoFactorSetup = () => {
       case 1:
         return (
           <Box py={2}>
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}>
               Scan QR Code
             </Typography>
             <Typography variant="body2" color="text.secondary" paragraph>
@@ -164,7 +164,11 @@ const TwoFactorSetup = () => {
                 component="img"
                 src={setupData?.qrCode}
                 alt="QR Code"
-                sx={{ maxWidth: '250px', width: '100%', height: 'auto' }}
+                sx={{ 
+                  maxWidth: { xs: '200px', sm: '250px' }, 
+                  width: '100%', 
+                  height: 'auto' 
+                }}
               />
             </Box>
             <Divider sx={{ my: 2 }} />
@@ -189,7 +193,7 @@ const TwoFactorSetup = () => {
               variant="contained"
               fullWidth
               onClick={() => setActiveStep(2)}
-              sx={{ mt: 3 }}
+              sx={{ mt: 3, minHeight: '48px' }}
             >
               Continue to Verification
             </Button>
@@ -199,7 +203,7 @@ const TwoFactorSetup = () => {
       case 2:
         return (
           <Box py={2}>
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}>
               Verify Setup
             </Typography>
             <Typography variant="body2" color="text.secondary" paragraph>
@@ -215,7 +219,7 @@ const TwoFactorSetup = () => {
                 placeholder="000000"
                 inputProps={{ maxLength: 6 }}
                 InputProps={{
-                  sx: { fontSize: '24px', textAlign: 'center' }
+                  sx: { fontSize: '24px', textAlign: 'center', minHeight: '48px' }
                 }}
                 required
               />
@@ -225,7 +229,7 @@ const TwoFactorSetup = () => {
                 fullWidth
                 size="large"
                 disabled={loading || token.length !== 6}
-                sx={{ mt: 2 }}
+                sx={{ mt: 2, minHeight: '48px' }}
               >
                 {loading ? 'Verifying...' : 'Verify and Enable'}
               </Button>
@@ -236,7 +240,7 @@ const TwoFactorSetup = () => {
       case 3:
         return (
           <Box py={2}>
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}>
               Save Your Backup Codes
             </Typography>
             <Alert severity="warning" sx={{ mb: 2 }}>
@@ -263,7 +267,7 @@ const TwoFactorSetup = () => {
               fullWidth
               startIcon={<DownloadIcon />}
               onClick={handleDownloadBackupCodes}
-              sx={{ mt: 2 }}
+              sx={{ mt: 2, minHeight: '48px' }}
             >
               Download Backup Codes
             </Button>
@@ -271,7 +275,7 @@ const TwoFactorSetup = () => {
               variant="outlined"
               fullWidth
               onClick={() => navigate('/dashboard')}
-              sx={{ mt: 1 }}
+              sx={{ mt: 1, minHeight: '48px' }}
             >
               Done
             </Button>
@@ -285,11 +289,11 @@ const TwoFactorSetup = () => {
 
   if (status?.enabled) {
     return (
-      <Container maxWidth="sm" sx={{ mt: 8 }}>
-        <Paper elevation={3} sx={{ p: 4 }}>
+      <Container maxWidth="sm" sx={{ mt: { xs: 4, sm: 6, md: 8 }, px: { xs: 2, sm: 3 } }}>
+        <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
           <Box display="flex" flexDirection="column" alignItems="center">
             <SecurityIcon sx={{ fontSize: 48, mb: 2, color: 'success.main' }} />
-            <Typography variant="h5" gutterBottom>
+            <Typography variant="h5" gutterBottom sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
               2FA is Enabled
             </Typography>
             <Typography variant="body1" color="text.secondary" paragraph textAlign="center">
@@ -309,7 +313,7 @@ const TwoFactorSetup = () => {
 
             <Divider sx={{ width: '100%', my: 3 }} />
 
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}>
               Disable 2FA
             </Typography>
             <Typography variant="body2" color="text.secondary" paragraph textAlign="center">
@@ -325,6 +329,11 @@ const TwoFactorSetup = () => {
                 fullWidth
                 margin="normal"
                 required
+                sx={{
+                  '& .MuiInputBase-root': {
+                    minHeight: '44px'
+                  }
+                }}
               />
               <Button
                 type="submit"
@@ -332,7 +341,7 @@ const TwoFactorSetup = () => {
                 color="error"
                 fullWidth
                 disabled={loading}
-                sx={{ mt: 2 }}
+                sx={{ mt: 2, minHeight: '48px' }}
               >
                 {loading ? 'Disabling...' : 'Disable 2FA'}
               </Button>
@@ -344,8 +353,8 @@ const TwoFactorSetup = () => {
   }
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 8 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
+    <Container maxWidth="sm" sx={{ mt: { xs: 4, sm: 6, md: 8 }, px: { xs: 2, sm: 3 } }}>
+      <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
         <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
           {steps.map((label) => (
             <Step key={label}>
