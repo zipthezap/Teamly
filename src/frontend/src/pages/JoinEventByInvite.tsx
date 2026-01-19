@@ -139,7 +139,7 @@ const JoinEventByInvite = () => {
 
   if (loading) {
     return (
-      <Container maxWidth="md" sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+      <Container maxWidth="md" sx={{ mt: { xs: 3, sm: 4 }, px: { xs: 2, sm: 3 }, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
       </Container>
     );
@@ -147,11 +147,15 @@ const JoinEventByInvite = () => {
 
   if (error && !event) {
     return (
-      <Container maxWidth="md" sx={{ mt: 4 }}>
-        <Paper elevation={3} sx={{ p: 4 }}>
+      <Container maxWidth="md" sx={{ mt: { xs: 3, sm: 4 }, px: { xs: 2, sm: 3 } }}>
+        <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
           <Alert severity="error">{error}</Alert>
           <Box sx={{ mt: 2 }}>
-            <Button variant="contained" onClick={() => navigate('/login')}>
+            <Button 
+              variant="contained" 
+              onClick={() => navigate('/login')}
+              sx={{ minHeight: '44px' }}
+            >
               Go to Login
             </Button>
           </Box>
@@ -174,24 +178,24 @@ const JoinEventByInvite = () => {
   const isAlreadyParticipant = user && event.participants?.some((p: EventParticipant) => p.userId === user.id);
 
   return (
-    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="md" sx={{ mt: { xs: 3, sm: 4 }, mb: { xs: 3, sm: 4 }, px: { xs: 2, sm: 3 } }}>
       {/* Hero Section */}
       <Paper 
         elevation={0} 
         sx={{ 
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white',
-          p: 4,
+          p: { xs: 2, sm: 3, md: 4 },
           mb: 3,
           borderRadius: 2
         }}
       >
         <Box sx={{ textAlign: 'center' }}>
-          <SportsSoccer sx={{ fontSize: 60, mb: 2, opacity: 0.9 }} />
-          <Typography variant="h4" gutterBottom fontWeight="bold">
+          <SportsSoccer sx={{ fontSize: { xs: 48, sm: 60 }, mb: 2, opacity: 0.9 }} />
+          <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
             You're Invited! 🎉
           </Typography>
-          <Typography variant="h5" sx={{ mb: 1 }}>
+          <Typography variant="h5" sx={{ mb: 1, fontSize: { xs: '1.125rem', sm: '1.25rem', md: '1.5rem' } }}>
             {event.title}
           </Typography>
           <Chip 
@@ -211,8 +215,8 @@ const JoinEventByInvite = () => {
 
       {/* Event Details Card */}
       <Card elevation={3} sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+        <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+          <Typography variant="h6" gutterBottom sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1, fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}>
             <CalendarToday color="primary" />
             Event Details
           </Typography>
@@ -273,9 +277,9 @@ const JoinEventByInvite = () => {
 
       {/* Participants Card */}
       <Card elevation={3} sx={{ mb: 3 }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}>
               <People color="primary" />
               Participants
             </Typography>
@@ -354,8 +358,8 @@ const JoinEventByInvite = () => {
         </Alert>
       ) : (
         <Card elevation={3}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}>
               <Person color="primary" />
               Join this Event
             </Typography>
@@ -372,7 +376,7 @@ const JoinEventByInvite = () => {
                   onClick={handleAuthenticatedJoin}
                   disabled={joining}
                   fullWidth
-                  sx={{ py: 1.5 }}
+                  sx={{ py: 1.5, minHeight: '48px' }}
                 >
                   {joining ? <CircularProgress size={24} /> : 'Join Event Now'}
                 </Button>
@@ -401,7 +405,12 @@ const JoinEventByInvite = () => {
                     placeholder="Enter your name"
                     required
                     disabled={joining}
-                    sx={{ mb: 2 }}
+                    sx={{ 
+                      mb: 2,
+                      '& .MuiInputBase-root': {
+                        minHeight: '44px'
+                      }
+                    }}
                   />
 
                   <Button
@@ -410,7 +419,7 @@ const JoinEventByInvite = () => {
                     size="large"
                     disabled={joining || !guestName.trim()}
                     fullWidth
-                    sx={{ py: 1.5 }}
+                    sx={{ py: 1.5, minHeight: '48px' }}
                   >
                     {joining ? <CircularProgress size={24} /> : 'Join as Guest'}
                   </Button>

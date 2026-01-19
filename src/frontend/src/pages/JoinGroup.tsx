@@ -149,8 +149,8 @@ const JoinGroup = () => {
   // Show loading state while fetching group info
   if (loadingGroupInfo) {
     return (
-      <Container maxWidth="md" sx={{ mt: 8 }}>
-        <Paper sx={{ p: 4 }}>
+      <Container maxWidth="md" sx={{ mt: { xs: 4, sm: 6, md: 8 }, px: { xs: 2, sm: 3 } }}>
+        <Paper sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
           <Box display="flex" justifyContent="center" alignItems="center" py={4}>
             <CircularProgress />
             <Typography variant="body1" sx={{ ml: 2 }}>
@@ -165,15 +165,16 @@ const JoinGroup = () => {
   // Show error if group couldn't be loaded
   if (error && !groupInfo) {
     return (
-      <Container maxWidth="md" sx={{ mt: 8 }}>
-        <Paper sx={{ p: 4 }}>
-          <Typography variant="h5" gutterBottom>
+      <Container maxWidth="md" sx={{ mt: { xs: 4, sm: 6, md: 8 }, px: { xs: 2, sm: 3 } }}>
+        <Paper sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+          <Typography variant="h5" gutterBottom sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
             {t('groups.joinGroup.title')}
           </Typography>
           <Alert severity="error" sx={{ mt: 2, mb: 2 }}>{error}</Alert>
           <Button
             variant="outlined"
             onClick={() => navigate('/groups')}
+            sx={{ minHeight: '44px' }}
           >
             {t('groups.joinGroup.goToGroups')}
           </Button>
@@ -185,9 +186,9 @@ const JoinGroup = () => {
   // Not logged in view
   if (!user && groupInfo) {
     return (
-      <Container maxWidth="md" sx={{ mt: 8 }}>
-        <Paper sx={{ p: 4 }}>
-          <Typography variant="h5" gutterBottom textAlign="center" sx={{ mb: 3 }}>
+      <Container maxWidth="md" sx={{ mt: { xs: 4, sm: 6, md: 8 }, px: { xs: 2, sm: 3 } }}>
+        <Paper sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+          <Typography variant="h5" gutterBottom textAlign="center" sx={{ mb: 3, fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
             {t('groups.joinGroup.inviteTitle')}
           </Typography>
 
@@ -281,11 +282,18 @@ const JoinGroup = () => {
             {t('groups.joinGroup.loginToJoin')}
           </Typography>
           
-          <Box display="flex" gap={2} justifyContent="center">
+          <Box 
+            display="flex" 
+            gap={2} 
+            justifyContent="center"
+            sx={{ flexDirection: { xs: 'column', sm: 'row' } }}
+          >
             <Button
               variant="contained"
               size="large"
               onClick={() => navigate('/login', { state: { returnTo: `/join-group/${groupId}` } })}
+              sx={{ minHeight: '48px' }}
+              fullWidth={{ xs: true, sm: false }}
             >
               {t('groups.joinGroup.login')}
             </Button>
@@ -293,6 +301,8 @@ const JoinGroup = () => {
               variant="outlined"
               size="large"
               onClick={() => navigate('/register', { state: { returnTo: `/join-group/${groupId}` } })}
+              sx={{ minHeight: '48px' }}
+              fullWidth={{ xs: true, sm: false }}
             >
               {t('groups.joinGroup.signup')}
             </Button>
@@ -304,9 +314,9 @@ const JoinGroup = () => {
 
   // Logged in view
   return (
-    <Container maxWidth="md" sx={{ mt: 8 }}>
-      <Paper sx={{ p: 4 }}>
-        <Typography variant="h5" gutterBottom textAlign="center" sx={{ mb: 3 }}>
+    <Container maxWidth="md" sx={{ mt: { xs: 4, sm: 6, md: 8 }, px: { xs: 2, sm: 3 } }}>
+      <Paper sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+        <Typography variant="h5" gutterBottom textAlign="center" sx={{ mb: 3, fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
           {groupInfo?.isMember ? t('groups.joinGroup.alreadyMember') : t('groups.joinGroup.inviteTitle')}
         </Typography>
 
@@ -410,12 +420,19 @@ const JoinGroup = () => {
         )}
         
         {!loading && !success && (
-          <Box display="flex" gap={2} justifyContent="center">
+          <Box 
+            display="flex" 
+            gap={2} 
+            justifyContent="center"
+            sx={{ flexDirection: { xs: 'column', sm: 'row' } }}
+          >
             {groupInfo?.isMember ? (
               <Button
                 variant="contained"
                 size="large"
                 onClick={() => navigate(`/groups/${groupId}`)}
+                sx={{ minHeight: '48px' }}
+                fullWidth={{ xs: true, sm: false }}
               >
                 {t('groups.joinGroup.viewGroup')}
               </Button>
@@ -425,6 +442,8 @@ const JoinGroup = () => {
                 size="large"
                 onClick={handleJoinGroup}
                 disabled={loading}
+                sx={{ minHeight: '48px' }}
+                fullWidth={{ xs: true, sm: false }}
               >
                 {t('groups.joinGroup.joinNow')}
               </Button>
@@ -434,6 +453,8 @@ const JoinGroup = () => {
               size="large"
               onClick={() => navigate('/groups')}
               disabled={loading}
+              sx={{ minHeight: '48px' }}
+              fullWidth={{ xs: true, sm: false }}
             >
               {t('common.cancel')}
             </Button>
