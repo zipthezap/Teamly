@@ -292,8 +292,7 @@ const JoinGroup = () => {
               variant="contained"
               size="large"
               onClick={() => navigate('/login', { state: { returnTo: `/join-group/${groupId}` } })}
-              sx={{ minHeight: '48px' }}
-              fullWidth={{ xs: true, sm: false }}
+              sx={{ minHeight: '48px', width: { xs: '100%', sm: 'auto' } }}
             >
               {t('groups.joinGroup.login')}
             </Button>
@@ -301,8 +300,7 @@ const JoinGroup = () => {
               variant="outlined"
               size="large"
               onClick={() => navigate('/register', { state: { returnTo: `/join-group/${groupId}` } })}
-              sx={{ minHeight: '48px' }}
-              fullWidth={{ xs: true, sm: false }}
+              sx={{ minHeight: '48px', width: { xs: '100%', sm: 'auto' } }}
             >
               {t('groups.joinGroup.signup')}
             </Button>
@@ -431,8 +429,7 @@ const JoinGroup = () => {
                 variant="contained"
                 size="large"
                 onClick={() => navigate(`/groups/${groupId}`)}
-                sx={{ minHeight: '48px' }}
-                fullWidth={{ xs: true, sm: false }}
+                sx={{ minHeight: '48px', width: { xs: '100%', sm: 'auto' } }}
               >
                 {t('groups.joinGroup.viewGroup')}
               </Button>
@@ -442,8 +439,7 @@ const JoinGroup = () => {
                 size="large"
                 onClick={handleJoinGroup}
                 disabled={loading}
-                sx={{ minHeight: '48px' }}
-                fullWidth={{ xs: true, sm: false }}
+                sx={{ minHeight: '48px', width: { xs: '100%', sm: 'auto' } }}
               >
                 {t('groups.joinGroup.joinNow')}
               </Button>
@@ -453,8 +449,7 @@ const JoinGroup = () => {
               size="large"
               onClick={() => navigate('/groups')}
               disabled={loading}
-              sx={{ minHeight: '48px' }}
-              fullWidth={{ xs: true, sm: false }}
+              sx={{ minHeight: '48px', width: { xs: '100%', sm: 'auto' } }}
             >
               {t('common.cancel')}
             </Button>

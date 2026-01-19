@@ -146,7 +146,7 @@ const EventInformation: React.FC<EventInformationProps> = ({
                 }}
               >
                 {new Date(event.startTime).toLocaleString('en-US', {
-                  weekday: { xs: 'short', sm: 'long' } as any,
+                  weekday: 'short',
                   month: 'short',
                   day: 'numeric',
                   year: 'numeric',
