@@ -219,7 +219,7 @@ const TwoFactorSetup = () => {
                 placeholder="000000"
                 inputProps={{ maxLength: 6 }}
                 InputProps={{
-                  sx: { fontSize: '24px', textAlign: 'center', minHeight: '56px' }
+                  sx: { fontSize: '24px', textAlign: 'center', minHeight: '48px' }
                 }}
                 required
               />
@@ -275,7 +275,7 @@ const TwoFactorSetup = () => {
               variant="outlined"
               fullWidth
               onClick={() => navigate('/dashboard')}
-              sx={{ mt: 1, minHeight: '44px' }}
+              sx={{ mt: 1, minHeight: '48px' }}
             >
               Done
             </Button>
