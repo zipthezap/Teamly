@@ -19,6 +19,8 @@ import Alert from '@mui/material/Alert';
 import IconButton from '@mui/material/IconButton';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CircularProgress from '@mui/material/CircularProgress';
+import Link from '@mui/material/Link';
 
 interface EventNotification {
   id: string;
@@ -219,7 +221,7 @@ const EventDetails = () => {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
-        <div className="w-12 h-12 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+        <CircularProgress size={48} />
       </Box>
     );
   }
@@ -376,7 +378,7 @@ const EventDetails = () => {
                     {event.location}
                   </Typography>
                   {/* Google Maps Directions Button */}
-                  <a
+                  <Link
                     href={
                       event.latitude && event.longitude
                         ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(event.latitude + ',' + event.longitude)}`
@@ -384,11 +386,16 @@ const EventDetails = () => {
                     }
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="ml-2 text-blue-400 underline hover:text-blue-300 text-xs"
+                    underline="hover"
+                    sx={{ 
+                      ml: 1,
+                      fontSize: { xs: '0.75rem', sm: '0.813rem' },
+                      color: 'primary.light'
+                    }}
                     title="Open in Google Maps"
                   >
                     {event.latitude && event.longitude ? 'Directions' : 'Map'}
-                  </a>
+                  </Link>
                 </Box>
               )}
             </Box>
@@ -427,7 +434,12 @@ const EventDetails = () => {
                   const currentPic = event.creator?.profilePictures?.find((p: UserProfilePicture) => p.isCurrent && !p.deletedAt);
                   const url = getImageUrl(currentPic?.url || event.creator?.profilePicture);
                   return url ? (
-                    <img src={url} alt={event.creator?.name} className="w-full h-full object-cover" />
+                    <Box 
+                      component="img" 
+                      src={url} 
+                      alt={event.creator?.name} 
+                      sx={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                    />
                   ) : (
                     getInitials(event.creator?.name)
                   );
@@ -608,7 +620,12 @@ const EventDetails = () => {
                                 const currentPic = n.user?.profilePictures?.find((p: UserProfilePicture) => p.isCurrent && !p.deletedAt);
                                 const url = getImageUrl(currentPic?.url || n.user?.profilePicture);
                                 return url ? (
-                                  <img src={url} alt={n.user?.name} className="w-full h-full object-cover" />
+                                  <Box 
+                                    component="img" 
+                                    src={url} 
+                                    alt={n.user?.name} 
+                                    sx={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                  />
                                 ) : (
                                   getInitials(n.user?.name || t('eventDetails.user'))
                                 );
@@ -683,7 +700,12 @@ const EventDetails = () => {
                     const currentPic = p.user?.profilePictures?.find((pic: UserProfilePicture) => pic.isCurrent && !pic.deletedAt);
                     const url = getImageUrl(currentPic?.url || p.user?.profilePicture);
                     return url ? (
-                      <img src={url} alt={p.user?.name} className="w-full h-full object-cover" />
+                      <Box 
+                        component="img" 
+                        src={url} 
+                        alt={p.user?.name} 
+                        sx={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                      />
                     ) : (
                       getInitials(p.user?.name)
                     );
