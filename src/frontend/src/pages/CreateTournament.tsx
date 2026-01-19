@@ -151,27 +151,38 @@ const CreateTournament: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Paper sx={{ p: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-          <TrophyIcon fontSize="large" color="primary" />
-          <Typography variant="h4" component="h1">
+    <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3, md: 4 }, px: { xs: 2, sm: 3 } }}>
+      <Paper sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, mb: { xs: 2, sm: 3 } }}>
+          <TrophyIcon sx={{ fontSize: { xs: '2rem', sm: '2.5rem' } }} color="primary" />
+          <Typography 
+            variant="h4" 
+            component="h1"
+            sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}
+          >
             Create Tournament
           </Typography>
         </Box>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
+          <Alert severity="error" sx={{ mb: { xs: 2, sm: 3 } }}>
             {error}
           </Alert>
         )}
 
         <Box component="form" onSubmit={handleSubmit}>
           {/* Basic Information */}
-          <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+          <Typography 
+            variant="h6" 
+            gutterBottom 
+            sx={{ 
+              mt: { xs: 2, sm: 2 }, 
+              fontSize: { xs: '1.125rem', sm: '1.25rem' } 
+            }}
+          >
             Basic Information
           </Typography>
-          <Divider sx={{ mb: 2 }} />
+          <Divider sx={{ mb: { xs: 1.5, sm: 2 } }} />
 
           <TextField
             fullWidth
@@ -181,6 +192,11 @@ const CreateTournament: React.FC = () => {
             value={formData.name}
             onChange={handleChange}
             margin="normal"
+            sx={{
+              '& .MuiInputBase-root': {
+                minHeight: { xs: '44px', sm: '56px' }
+              }
+            }}
           />
 
           <TextField
@@ -193,6 +209,11 @@ const CreateTournament: React.FC = () => {
             multiline
             rows={3}
             placeholder="Describe your tournament, rules, and any special information..."
+            sx={{
+              '& .MuiInputBase-root': {
+                minHeight: { xs: '88px', sm: '96px' }
+              }
+            }}
           />
 
           <Grid container spacing={2}>
@@ -206,6 +227,11 @@ const CreateTournament: React.FC = () => {
                 value={formData.sportType}
                 onChange={handleChange}
                 margin="normal"
+                sx={{
+                  '& .MuiInputBase-root': {
+                    minHeight: { xs: '44px', sm: '56px' }
+                  }
+                }}
               >
                 <MenuItem value="football">⚽ Soccer (Football)</MenuItem>
                 <MenuItem value="basketball">🏀 Basketball</MenuItem>
@@ -235,6 +261,11 @@ const CreateTournament: React.FC = () => {
                 value={formData.format}
                 onChange={handleChange}
                 margin="normal"
+                sx={{
+                  '& .MuiInputBase-root': {
+                    minHeight: { xs: '44px', sm: '56px' }
+                  }
+                }}
               >
                 <MenuItem value={TournamentFormat.SINGLE_ELIMINATION}>
                   Single Elimination
@@ -253,25 +284,35 @@ const CreateTournament: React.FC = () => {
           </Grid>
 
           {/* Sport-Specific Configuration */}
-          <Accordion sx={{ mt: 2 }}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography>Sport-Specific Scoring Configuration (Optional)</Typography>
+          <Accordion sx={{ mt: { xs: 2, sm: 2 } }}>
+            <AccordionSummary 
+              expandIcon={<ExpandMoreIcon />}
+              sx={{ minHeight: { xs: '48px', sm: '64px' } }}
+            >
+              <Typography sx={{ fontSize: { xs: '0.9375rem', sm: '1rem' } }}>
+                Sport-Specific Scoring Configuration (Optional)
+              </Typography>
             </AccordionSummary>
-            <AccordionDetails>
+            <AccordionDetails sx={{ px: { xs: 1.5, sm: 2 }, py: { xs: 1.5, sm: 2 } }}>
               <FormControlLabel
                 control={
                   <Checkbox
                     name="useSportConfig"
                     checked={formData.useSportConfig}
                     onChange={handleChange}
+                    sx={{ '& .MuiSvgIcon-root': { fontSize: { xs: 24, sm: 28 } } }}
                   />
                 }
                 label="Enable sport-specific scoring rules"
               />
 
               {formData.useSportConfig && formData.sportType === 'volleyball' && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom>
+                <Box sx={{ mt: { xs: 1.5, sm: 2 } }}>
+                  <Typography 
+                    variant="subtitle2" 
+                    gutterBottom
+                    sx={{ fontSize: { xs: '0.875rem', sm: '0.875rem' } }}
+                  >
                     Volleyball Configuration
                   </Typography>
                   <Grid container spacing={2}>
@@ -286,6 +327,11 @@ const CreateTournament: React.FC = () => {
                         margin="normal"
                         helperText="Points needed to win regular sets (e.g., 25)"
                         inputProps={{ min: 1 }}
+                        sx={{
+                          '& .MuiInputBase-root': {
+                            minHeight: { xs: '44px', sm: '56px' }
+                          }
+                        }}
                       />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6 }}>
@@ -299,6 +345,11 @@ const CreateTournament: React.FC = () => {
                         margin="normal"
                         helperText="Points for deciding set when tied (e.g., 15)"
                         inputProps={{ min: 1 }}
+                        sx={{
+                          '& .MuiInputBase-root': {
+                            minHeight: { xs: '44px', sm: '56px' }
+                          }
+                        }}
                       />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6 }}>
@@ -312,6 +363,11 @@ const CreateTournament: React.FC = () => {
                         margin="normal"
                         helperText="Total sets to play (e.g., 3 or 5)"
                         inputProps={{ min: 1, max: 7 }}
+                        sx={{
+                          '& .MuiInputBase-root': {
+                            minHeight: { xs: '44px', sm: '56px' }
+                          }
+                        }}
                       />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6 }}>
@@ -325,6 +381,11 @@ const CreateTournament: React.FC = () => {
                         margin="normal"
                         helperText="Minimum points to win by (usually 2)"
                         inputProps={{ min: 1 }}
+                        sx={{
+                          '& .MuiInputBase-root': {
+                            minHeight: { xs: '44px', sm: '56px' }
+                          }
+                        }}
                       />
                     </Grid>
                   </Grid>
@@ -332,7 +393,7 @@ const CreateTournament: React.FC = () => {
               )}
 
               {formData.useSportConfig && formData.sportType !== 'volleyball' && (
-                <Alert severity="info" sx={{ mt: 2 }}>
+                <Alert severity="info" sx={{ mt: { xs: 1.5, sm: 2 } }}>
                   Sport-specific configuration for {formData.sportType} is not yet available. 
                   Default scoring rules will be used.
                 </Alert>
@@ -341,10 +402,17 @@ const CreateTournament: React.FC = () => {
           </Accordion>
 
           {/* Date and Time */}
-          <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+          <Typography 
+            variant="h6" 
+            gutterBottom 
+            sx={{ 
+              mt: { xs: 3, sm: 4 },
+              fontSize: { xs: '1.125rem', sm: '1.25rem' } 
+            }}
+          >
             Schedule
           </Typography>
-          <Divider sx={{ mb: 2 }} />
+          <Divider sx={{ mb: { xs: 1.5, sm: 2 } }} />
 
           <LocalizationProvider dateAdapter={AdapterDateFns}>
             <Grid container spacing={2}>
@@ -357,7 +425,12 @@ const CreateTournament: React.FC = () => {
                     textField: {
                       fullWidth: true,
                       margin: 'normal',
-                      required: true
+                      required: true,
+                      sx: {
+                        '& .MuiInputBase-root': {
+                          minHeight: { xs: '44px', sm: '56px' }
+                        }
+                      }
                     }
                   }}
                 />
@@ -371,7 +444,12 @@ const CreateTournament: React.FC = () => {
                   slotProps={{
                     textField: {
                       fullWidth: true,
-                      margin: 'normal'
+                      margin: 'normal',
+                      sx: {
+                        '& .MuiInputBase-root': {
+                          minHeight: { xs: '44px', sm: '56px' }
+                        }
+                      }
                     }
                   }}
                 />
@@ -386,7 +464,12 @@ const CreateTournament: React.FC = () => {
                     textField: {
                       fullWidth: true,
                       margin: 'normal',
-                      helperText: 'Deadline for team registration'
+                      helperText: 'Deadline for team registration',
+                      sx: {
+                        '& .MuiInputBase-root': {
+                          minHeight: { xs: '44px', sm: '56px' }
+                        }
+                      }
                     }
                   }}
                 />
@@ -403,16 +486,28 @@ const CreateTournament: React.FC = () => {
                   margin="normal"
                   inputProps={{ min: 2 }}
                   helperText="Leave empty for unlimited teams"
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      minHeight: { xs: '44px', sm: '56px' }
+                    }
+                  }}
                 />
               </Grid>
             </Grid>
           </LocalizationProvider>
 
           {/* Location */}
-          <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+          <Typography 
+            variant="h6" 
+            gutterBottom 
+            sx={{ 
+              mt: { xs: 3, sm: 4 },
+              fontSize: { xs: '1.125rem', sm: '1.25rem' } 
+            }}
+          >
             Location
           </Typography>
-          <Divider sx={{ mb: 2 }} />
+          <Divider sx={{ mb: { xs: 1.5, sm: 2 } }} />
 
           <TextField
             fullWidth
@@ -422,6 +517,11 @@ const CreateTournament: React.FC = () => {
             onChange={handleChange}
             margin="normal"
             placeholder="e.g., Central Sports Complex"
+            sx={{
+              '& .MuiInputBase-root': {
+                minHeight: { xs: '44px', sm: '56px' }
+              }
+            }}
           />
 
           <Grid container spacing={2}>
@@ -433,6 +533,11 @@ const CreateTournament: React.FC = () => {
                 value={formData.city}
                 onChange={handleChange}
                 margin="normal"
+                sx={{
+                  '& .MuiInputBase-root': {
+                    minHeight: { xs: '44px', sm: '56px' }
+                  }
+                }}
               />
             </Grid>
 
@@ -444,21 +549,38 @@ const CreateTournament: React.FC = () => {
                 value={formData.country}
                 onChange={handleChange}
                 margin="normal"
+                sx={{
+                  '& .MuiInputBase-root': {
+                    minHeight: { xs: '44px', sm: '56px' }
+                  }
+                }}
               />
             </Grid>
           </Grid>
 
           {/* Advanced Settings Accordions */}
-          <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+          <Typography 
+            variant="h6" 
+            gutterBottom 
+            sx={{ 
+              mt: { xs: 3, sm: 4 },
+              fontSize: { xs: '1.125rem', sm: '1.25rem' } 
+            }}
+          >
             Advanced Settings
           </Typography>
-          <Divider sx={{ mb: 2 }} />
+          <Divider sx={{ mb: { xs: 1.5, sm: 2 } }} />
 
           <Accordion>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography>Admin Controls</Typography>
+            <AccordionSummary 
+              expandIcon={<ExpandMoreIcon />}
+              sx={{ minHeight: { xs: '48px', sm: '64px' } }}
+            >
+              <Typography sx={{ fontSize: { xs: '0.9375rem', sm: '1rem' } }}>
+                Admin Controls
+              </Typography>
             </AccordionSummary>
-            <AccordionDetails>
+            <AccordionDetails sx={{ px: { xs: 1.5, sm: 2 }, py: { xs: 1.5, sm: 2 } }}>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12 }}>
                   <FormControlLabel
@@ -467,6 +589,7 @@ const CreateTournament: React.FC = () => {
                         checked={formData.isPublic}
                         onChange={handleChange}
                         name="isPublic"
+                        sx={{ '& .MuiSvgIcon-root': { fontSize: { xs: 24, sm: 28 } } }}
                       />
                     }
                     label="Public Tournament (Visible to all users)"
@@ -479,6 +602,7 @@ const CreateTournament: React.FC = () => {
                         checked={formData.allowLateRegistration}
                         onChange={handleChange}
                         name="allowLateRegistration"
+                        sx={{ '& .MuiSvgIcon-root': { fontSize: { xs: 24, sm: 28 } } }}
                       />
                     }
                     label="Allow late registration after deadline"
@@ -491,6 +615,7 @@ const CreateTournament: React.FC = () => {
                         checked={formData.autoGenerateBrackets}
                         onChange={handleChange}
                         name="autoGenerateBrackets"
+                        sx={{ '& .MuiSvgIcon-root': { fontSize: { xs: 24, sm: 28 } } }}
                       />
                     }
                     label="Auto-generate brackets when registration closes"
@@ -506,6 +631,11 @@ const CreateTournament: React.FC = () => {
                     onChange={handleChange}
                     margin="normal"
                     helperText="Email for tournament inquiries"
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        minHeight: { xs: '44px', sm: '56px' }
+                      }
+                    }}
                   />
                 </Grid>
               </Grid>
@@ -513,10 +643,15 @@ const CreateTournament: React.FC = () => {
           </Accordion>
 
           <Accordion>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography>Prizes & Rules</Typography>
+            <AccordionSummary 
+              expandIcon={<ExpandMoreIcon />}
+              sx={{ minHeight: { xs: '48px', sm: '64px' } }}
+            >
+              <Typography sx={{ fontSize: { xs: '0.9375rem', sm: '1rem' } }}>
+                Prizes & Rules
+              </Typography>
             </AccordionSummary>
-            <AccordionDetails>
+            <AccordionDetails sx={{ px: { xs: 1.5, sm: 2 }, py: { xs: 1.5, sm: 2 } }}>
               <TextField
                 fullWidth
                 label="Prizes"
@@ -527,6 +662,11 @@ const CreateTournament: React.FC = () => {
                 multiline
                 rows={3}
                 placeholder="Describe the prizes for winners..."
+                sx={{
+                  '& .MuiInputBase-root': {
+                    minHeight: { xs: '88px', sm: '96px' }
+                  }
+                }}
               />
 
               <TextField
@@ -539,28 +679,39 @@ const CreateTournament: React.FC = () => {
                 multiline
                 rows={4}
                 placeholder="Specify any specific rules or regulations..."
+                sx={{
+                  '& .MuiInputBase-root': {
+                    minHeight: { xs: '108px', sm: '120px' }
+                  }
+                }}
               />
             </AccordionDetails>
           </Accordion>
 
           <Accordion>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography>Recurring Tournament</Typography>
+            <AccordionSummary 
+              expandIcon={<ExpandMoreIcon />}
+              sx={{ minHeight: { xs: '48px', sm: '64px' } }}
+            >
+              <Typography sx={{ fontSize: { xs: '0.9375rem', sm: '1rem' } }}>
+                Recurring Tournament
+              </Typography>
             </AccordionSummary>
-            <AccordionDetails>
+            <AccordionDetails sx={{ px: { xs: 1.5, sm: 2 }, py: { xs: 1.5, sm: 2 } }}>
               <FormControlLabel
                 control={
                   <Checkbox
                     checked={formData.isRecurring}
                     onChange={handleChange}
                     name="isRecurring"
+                    sx={{ '& .MuiSvgIcon-root': { fontSize: { xs: 24, sm: 28 } } }}
                   />
                 }
                 label="Make this a recurring tournament"
               />
 
               {formData.isRecurring && (
-                <Grid container spacing={2} sx={{ mt: 1 }}>
+                <Grid container spacing={2} sx={{ mt: { xs: 0.5, sm: 1 } }}>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       fullWidth
@@ -569,6 +720,11 @@ const CreateTournament: React.FC = () => {
                       name="recurringFrequency"
                       value={formData.recurringFrequency}
                       onChange={handleChange}
+                      sx={{
+                        '& .MuiInputBase-root': {
+                          minHeight: { xs: '44px', sm: '56px' }
+                        }
+                      }}
                     >
                       <MenuItem value="weekly">Weekly</MenuItem>
                       <MenuItem value="monthly">Monthly</MenuItem>
@@ -584,10 +740,15 @@ const CreateTournament: React.FC = () => {
                       onChange={handleChange}
                       inputProps={{ min: 2, max: 52 }}
                       helperText="How many times should this repeat?"
+                      sx={{
+                        '& .MuiInputBase-root': {
+                          minHeight: { xs: '44px', sm: '56px' }
+                        }
+                      }}
                     />
                   </Grid>
                   <Grid size={{ xs: 12 }}>
-                    <Alert severity="info" sx={{ mt: 1 }}>
+                    <Alert severity="info" sx={{ mt: { xs: 0.5, sm: 1 } }}>
                       This will create {formData.recurringCount} tournaments, each {formData.recurringFrequency}.
                       Tournaments will be created automatically based on your schedule.
                     </Alert>
@@ -597,13 +758,26 @@ const CreateTournament: React.FC = () => {
             </AccordionDetails>
           </Accordion>
 
-          <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
+          <Box 
+            sx={{ 
+              mt: { xs: 3, sm: 4 }, 
+              display: 'flex', 
+              flexDirection: { xs: 'column-reverse', sm: 'row' },
+              justifyContent: { sm: 'flex-start' },
+              gap: { xs: 1.5, sm: 2 }
+            }}
+          >
             <Button
               type="submit"
               variant="contained"
               color="primary"
               size="large"
               disabled={loading}
+              sx={{
+                minHeight: '44px',
+                px: { xs: 2, sm: 3 },
+                fontSize: { xs: '0.9375rem', sm: '1rem' }
+              }}
             >
               {loading ? 'Creating...' : 'Create Tournament'}
             </Button>
@@ -612,6 +786,11 @@ const CreateTournament: React.FC = () => {
               size="large"
               onClick={() => navigate('/tournaments')}
               disabled={loading}
+              sx={{
+                minHeight: '44px',
+                px: { xs: 2, sm: 3 },
+                fontSize: { xs: '0.9375rem', sm: '1rem' }
+              }}
             >
               Cancel
             </Button>

@@ -10,6 +10,17 @@ import { getImageUrl, getInitials } from '../utils/imageUtils';
 import { EventParticipant, GuestParticipant, EventParticipantStatus, GuestParticipantStatus } from '../../../shared/types/event.types';
 import { UserProfilePicture, PublicUser } from '../../../shared/types/user.types';
 import { AxiosError } from 'axios';
+import Box from '@mui/material/Box';
+import Container from '@mui/material/Container';
+import Typography from '@mui/material/Typography';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Alert from '@mui/material/Alert';
+import IconButton from '@mui/material/IconButton';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import CircularProgress from '@mui/material/CircularProgress';
+import Link from '@mui/material/Link';
 
 interface EventNotification {
   id: string;
@@ -200,296 +211,650 @@ const EventDetails = () => {
 
   // Guard for missing ID - must be after all hooks
   if (!id) {
-    return <div className="p-4 text-red-600">{t('eventDetails.invalidEventId')}</div>;
+    return (
+      <Box sx={{ p: { xs: 2, sm: 3 } }}>
+        <Alert severity="error">{t('eventDetails.invalidEventId')}</Alert>
+      </Box>
+    );
   }
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[80vh]">
-        <div className="w-12 h-12 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
+        <CircularProgress size={48} />
+      </Box>
     );
   }
 
   if (!event) {
     return (
-      <div className="max-w-2xl mx-auto mt-8">
-        <div className="bg-red-900/50 text-red-300 p-4 rounded border border-red-700">{t('eventDetails.notFound')}</div>
-      </div>
+      <Container maxWidth="md" sx={{ mt: { xs: 2, sm: 3, md: 4 } }}>
+        <Alert severity="error">{t('eventDetails.notFound')}</Alert>
+      </Container>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto mt-4 sm:mt-6 md:mt-8 mb-4 sm:mb-6 md:mb-8 px-2 sm:px-4">
+    <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3, md: 4 }, px: { xs: 2, sm: 3 } }}>
       {/* Alerts */}
-      {error && <div className="bg-red-900/50 text-red-300 p-3 rounded mb-4 border border-red-700 text-sm">{error}</div>}
-      {success && <div className="bg-green-900/50 text-green-300 p-3 rounded mb-4 border border-green-700 text-sm">{success}</div>}
-      {lateSuccess && <div className="bg-green-900/50 text-green-300 p-3 rounded mb-4 border border-green-700 text-sm">{lateSuccess}</div>}
-      {lateError && <div className="bg-red-900/50 text-red-300 p-3 rounded mb-4 border border-red-700 text-sm">{lateError}</div>}
-      {copySuccess && <div className="bg-blue-900/50 text-blue-300 p-3 rounded mb-4 border border-blue-700 text-sm">{copySuccess}</div>}
+      {error && (
+        <Alert severity="error" sx={{ mb: { xs: 2, sm: 3 }, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+          {error}
+        </Alert>
+      )}
+      {success && (
+        <Alert severity="success" sx={{ mb: { xs: 2, sm: 3 }, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+          {success}
+        </Alert>
+      )}
+      {lateSuccess && (
+        <Alert severity="success" sx={{ mb: { xs: 2, sm: 3 }, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+          {lateSuccess}
+        </Alert>
+      )}
+      {lateError && (
+        <Alert severity="error" sx={{ mb: { xs: 2, sm: 3 }, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+          {lateError}
+        </Alert>
+      )}
+      {copySuccess && (
+        <Alert severity="info" sx={{ mb: { xs: 2, sm: 3 }, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+          {copySuccess}
+        </Alert>
+      )}
 
-      <div className="relative bg-[#232946] rounded-xl shadow-md p-4 sm:p-5 md:p-6 mb-4 sm:mb-6 md:mb-8">
-        {/* Admin icon buttons in top right */}
-        {eventStats.isCreator && (
-          <div className="absolute top-3 right-3 sm:top-4 sm:right-4 flex gap-2 z-10">
-            <button onClick={() => navigate(`/events/${event.id}/edit`)} className="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2.5 sm:p-2 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" title="Edit Event">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19.5 3 21l1.5-4L16.5 3.5z" /></svg>
-            </button>
-            <button onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white rounded-full p-2.5 sm:p-2 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center" title="Delete Event">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M9 7V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v3" /></svg>
-            </button>
-          </div>
-        )}
-        
-        {/* Event Information Section */}
-        <div className="mb-4 sm:mb-6">
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 sm:mb-3 pr-20 sm:pr-24">{event.title}</h2>
-          {event.isPublic && (
-            <div className="inline-block bg-green-600/20 text-green-400 px-3 py-1 rounded-full text-xs font-semibold mb-2">
-              🌐 Public Event
-            </div>
+      <Card sx={{ position: 'relative', mb: { xs: 2, sm: 3, md: 4 } }}>
+        <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+          {/* Admin icon buttons in top right */}
+          {eventStats.isCreator && (
+            <Box sx={{ position: 'absolute', top: { xs: 12, sm: 16 }, right: { xs: 12, sm: 16 }, display: 'flex', gap: 1, zIndex: 10 }}>
+              <IconButton
+                onClick={() => navigate(`/events/${event.id}/edit`)}
+                sx={{
+                  bgcolor: 'primary.main',
+                  color: 'white',
+                  minWidth: '44px',
+                  minHeight: '44px',
+                  '&:hover': { bgcolor: 'primary.dark' },
+                }}
+                title="Edit Event"
+              >
+                <EditIcon />
+              </IconButton>
+              <IconButton
+                onClick={handleDelete}
+                sx={{
+                  bgcolor: 'error.main',
+                  color: 'white',
+                  minWidth: '44px',
+                  minHeight: '44px',
+                  '&:hover': { bgcolor: 'error.dark' },
+                }}
+                title="Delete Event"
+              >
+                <DeleteIcon />
+              </IconButton>
+            </Box>
           )}
-          <div className="text-sm sm:text-base text-[#a1a6b4] mb-2 sm:mb-3 font-medium">{event.eventType}</div>
-          <div className="text-sm text-[#d4d8e1] mb-3 sm:mb-4 leading-relaxed">{event.description || t('common.noDescription')}</div>
           
-          {/* Date, Time, Location */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4 mb-3 sm:mb-4 text-xs sm:text-sm">
-            <div className="flex items-center gap-2 bg-[#1a2233] px-3 py-2 rounded-lg min-h-[44px]">
-              <span role="img" aria-label="date">📅</span>
-              <span className="text-[#d4d8e1]">{new Date(event.startTime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-            </div>
-            <div className="flex items-center gap-2 bg-[#1a2233] px-3 py-2 rounded-lg min-h-[44px]">
-              <span role="img" aria-label="time">🕐</span>
-              <span className="text-[#d4d8e1]">{new Date(event.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-            </div>
-            {event.location && (
-              <div className="flex items-center gap-2 bg-[#1a2233] px-3 py-2 rounded-lg min-h-[44px] flex-wrap">
-                <span role="img" aria-label="location">📍</span>
-                <span className="text-[#d4d8e1]">{event.location}</span>
-                {/* Google Maps Directions Button */}
-                <a
-                  href={
-                    event.latitude && event.longitude
-                      ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(event.latitude + ',' + event.longitude)}`
-                      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ml-2 text-blue-400 underline hover:text-blue-300 text-xs"
-                  title="Open in Google Maps"
-                >
-                  {event.latitude && event.longitude ? 'Directions' : 'Map'}
-                </a>
-              </div>
+          {/* Event Information Section */}
+          <Box sx={{ mb: { xs: 3, sm: 4 } }}>
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' },
+                fontWeight: 'bold',
+                mb: { xs: 1.5, sm: 2 },
+                pr: { xs: 10, sm: 12 }
+              }}
+            >
+              {event.title}
+            </Typography>
+            {event.isPublic && (
+              <Box
+                component="span"
+                sx={{
+                  display: 'inline-block',
+                  bgcolor: 'success.dark',
+                  color: 'success.light',
+                  px: 1.5,
+                  py: 0.5,
+                  borderRadius: '12px',
+                  fontSize: { xs: '0.75rem', sm: '0.813rem' },
+                  fontWeight: 600,
+                  mb: 1
+                }}
+              >
+                🌐 Public Event
+              </Box>
             )}
-          </div>
-          
-          {/* Organizer Info */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3 mb-3 sm:mb-4">
-            <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center text-lg font-bold flex-shrink-0 overflow-hidden">
-              {(() => {
-                const currentPic = event.creator?.profilePictures?.find((p: UserProfilePicture) => p.isCurrent && !p.deletedAt);
-                const url = getImageUrl(currentPic?.url || event.creator?.profilePicture);
-                return url ? (
-                  <img src={url} alt={event.creator?.name} className="w-full h-full object-cover" />
-                ) : (
-                  getInitials(event.creator?.name)
-                );
-              })()}
-            </div>
-            <div>
-              <div className="text-xs text-[#a1a6b4] mb-0.5">{t('eventDetails.organizedBy')}</div>
-              <div className="text-sm sm:text-base font-semibold text-white">{event.creator?.name}</div>
-            </div>
-            <div className="sm:ml-auto text-xs sm:text-sm text-[#a1a6b4]">
-              {t('eventDetails.group')}: <span className="font-bold text-blue-400">{event.group?.name}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Two Column Layout: Capacity + Attendance | Activity Feed */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* Left Column: Capacity & Attendance */}
-          <div className="flex flex-col gap-3 sm:gap-4">
-            {/* Capacity Section */}
-            <div className="bg-[#1a2233] rounded-lg p-4 sm:p-5">
-              <div className="font-semibold mb-2 sm:mb-3 text-base sm:text-lg">{t('eventDetails.capacity')}</div>
-              <div className="text-sm text-[#a1a6b4] mb-3">{event.maxPlayers ? t('eventDetails.participantsCount', { count: eventStats.totalParticipants, max: event.maxPlayers }) : t('eventDetails.participants', { count: eventStats.totalParticipants })}</div>
-              {event.maxPlayers && (
-                <div className="w-full bg-gray-700 rounded-full h-3 mb-3">
-                  <div className="bg-blue-600 h-3 rounded-full transition-all" style={{ width: `${eventStats.fillPercentage}%` }}></div>
-                </div>
-              )}
-              <div className="flex flex-wrap gap-3 text-xs text-[#a1a6b4]">
-                <span className="bg-[#232946] px-2 py-1 rounded">✅ {eventStats.confirmedCount} {t('eventDetails.confirmed')}</span>
-                <span className="bg-[#232946] px-2 py-1 rounded">❌ {eventStats.declinedCount} {t('eventDetails.declined')}</span>
-              </div>
-            </div>
+            <Typography 
+              sx={{ 
+                fontSize: { xs: '0.875rem', sm: '1rem' },
+                color: 'text.secondary',
+                mb: { xs: 1.5, sm: 2 },
+                fontWeight: 500
+              }}
+            >
+              {event.eventType}
+            </Typography>
+            <Typography 
+              sx={{ 
+                fontSize: { xs: '0.875rem', sm: '1rem' },
+                color: 'text.primary',
+                mb: { xs: 2, sm: 3 },
+                lineHeight: 1.6
+              }}
+            >
+              {event.description || t('common.noDescription')}
+            </Typography>
             
-            {/* Attendance/Activity Actions: disabled for past events */}
-            {new Date(event.startTime) >= new Date() ? (
-              <div className="bg-[#1a2233] rounded-lg p-4 sm:p-5">
-                <div className="font-semibold mb-2 sm:mb-3 text-base sm:text-lg">{t('eventDetails.yourAttendance')}</div>
-                <EventActions
-                  event={event}
-                  isParticipant={eventStats.isParticipant}
-                  isCreator={eventStats.isCreator}
-                  isFull={eventStats.isFull}
-                  onJoin={handleJoin}
-                  onLeave={handleLeave}
-                  onUpdateStatus={handleUpdateStatus}
-                  onDelete={handleDelete}
-                  onMarkLate={handleMarkLate}
-                  onUnmarkLate={handleUnmarkLate}
-                />
-              </div>
-            ) : (
-              <div className="bg-[#1a2233] rounded-lg p-4 sm:p-5 opacity-50 pointer-events-none select-none">
-                <div className="font-semibold mb-2 sm:mb-3 text-base sm:text-lg">{t('eventDetails.activityDisabled')}</div>
-                <div className="text-sm text-[#a1a6b4]">{t('eventDetails.pastEventNoActions')}</div>
-              </div>
-            )}
-            
-            {/* Invite Link Section - Only for creator */}
-            <InviteLinkCard
-              inviteToken={event.inviteToken ?? null}
-              eventTitle={event.title}
-              eventDate={new Date(event.startTime).toLocaleDateString('en-US', { 
-                weekday: 'short', 
-                month: 'short', 
-                day: 'numeric',
-                year: 'numeric'
-              })}
-              isCreator={eventStats.isCreator}
-              onGenerateLink={async () => { handleGenerateInviteLink(); }}
-              isPublic={event.isPublic}
-              isPast={new Date(event.startTime) < new Date()}
-            />
-          </div>
-          
-          {/* Right Column: Activity Feed - Fixed Height */}
-          <div
-            className="bg-[#1a2233] rounded-lg p-4 sm:p-5 flex flex-col max-h-[400px] sm:max-h-[500px]"
-            key={event.eventNotifications?.length || 0}
-          >
-            <div className="font-semibold mb-2 sm:mb-3 text-base sm:text-lg flex-shrink-0">{t('eventDetails.activityFeed')}</div>
-            <div className="flex-1 overflow-y-auto text-sm text-[#a1a6b4] pr-2">
-              {(event.eventNotifications || []).length === 0 ? (
-                <div className="flex items-center justify-center h-full text-center">
-                  <div>
-                    <div className="text-4xl mb-2">📋</div>
-                    <div>{t('eventDetails.noActivity')}</div>
-                  </div>
-                </div>
-              ) : (
-                event.eventNotifications && event.eventNotifications.map((n: EventNotification) => {
-                  let action = '';
-                  switch (n.type) {
-                    case 'join':
-                      action = t('eventDetails.activityJoin', { name: n.user?.name || t('eventDetails.user') });
-                      break;
-                    case 'leave':
-                      action = t('eventDetails.activityLeave', { name: n.user?.name || t('eventDetails.user') });
-                      break;
-                    case 'confirmed':
-                      action = t('eventDetails.activityConfirmed', { name: n.user?.name || t('eventDetails.user') });
-                      break;
-                    case 'declined':
-                      action = t('eventDetails.activityDeclined', { name: n.user?.name || t('eventDetails.user') });
-                      break;
-                    case 'late':
-                      action = t('eventDetails.activityLate', { name: n.user?.name || t('eventDetails.user') });
-                      break;
-                    default:
-                      action = n.type;
-                  }
-                  return (
-                    <div key={n.id} className="mb-3 pb-3 border-b border-[#232946] last:border-b-0">
-                      <div className="flex items-start gap-2">
-                        <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden">
-                          {(() => {
-                            const currentPic = n.user?.profilePictures?.find((p: UserProfilePicture) => p.isCurrent && !p.deletedAt);
-                            const url = getImageUrl(currentPic?.url || n.user?.profilePicture);
-                            return url ? (
-                              <img src={url} alt={n.user?.name} className="w-full h-full object-cover" />
-                            ) : (
-                              getInitials(n.user?.name || t('eventDetails.user'))
-                            );
-                          })()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-white font-medium text-sm mb-0.5">{n.user?.name || t('eventDetails.user')}</div>
-                          <div className="text-xs text-[#a1a6b4] mb-1">{action}</div>
-                          <div className="text-xs text-[#757b8a]">{new Date(n.createdAt).toLocaleString()}</div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
+            {/* Date, Time, Location */}
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                alignItems: 'center', 
+                gap: { xs: 1, sm: 1.5, md: 2 },
+                mb: { xs: 2, sm: 3 }
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: 'background.default', px: 2, py: 1, borderRadius: 1, minHeight: '44px' }}>
+                <span role="img" aria-label="date">📅</span>
+                <Typography sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
+                  {new Date(event.startTime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: 'background.default', px: 2, py: 1, borderRadius: 1, minHeight: '44px' }}>
+                <span role="img" aria-label="time">🕐</span>
+                <Typography sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
+                  {new Date(event.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Typography>
+              </Box>
+              {event.location && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: 'background.default', px: 2, py: 1, borderRadius: 1, minHeight: '44px', flexWrap: 'wrap' }}>
+                  <span role="img" aria-label="location">📍</span>
+                  <Typography sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
+                    {event.location}
+                  </Typography>
+                  {/* Google Maps Directions Button */}
+                  <Link
+                    href={
+                      event.latitude && event.longitude
+                        ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(event.latitude + ',' + event.longitude)}`
+                        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    underline="hover"
+                    sx={{ 
+                      ml: 1,
+                      fontSize: { xs: '0.75rem', sm: '0.813rem' },
+                      color: 'primary.light'
+                    }}
+                    title="Open in Google Maps"
+                  >
+                    {event.latitude && event.longitude ? 'Directions' : 'Map'}
+                  </Link>
+                </Box>
               )}
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Participants List */}
-      <div className="bg-[#232946] rounded-xl shadow-md p-4 sm:p-5 md:p-6 mt-4 sm:mt-6 md:mt-8">
-        <div className="font-semibold mb-3 sm:mb-4 text-lg sm:text-xl">{t('eventDetails.participantsList', { count: eventStats.totalParticipants })}</div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          {event?.participants?.map((p: EventParticipant) => (
-            <div key={p.id} className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3">
-              <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden">
+            </Box>
+            
+            {/* Organizer Info */}
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                flexDirection: { xs: 'column', sm: 'row' },
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                gap: { xs: 2, sm: 3 },
+                bgcolor: 'background.default',
+                borderRadius: 1,
+                px: { xs: 2, sm: 3 },
+                py: { xs: 2, sm: 2.5 },
+                mb: { xs: 2, sm: 3 }
+              }}
+            >
+              <Box
+                sx={{
+                  width: { xs: 48, sm: 56 },
+                  height: { xs: 48, sm: 56 },
+                  borderRadius: '50%',
+                  bgcolor: 'primary.main',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: { xs: '1rem', sm: '1.125rem' },
+                  fontWeight: 'bold',
+                  flexShrink: 0,
+                  overflow: 'hidden'
+                }}
+              >
                 {(() => {
-                  const currentPic = p.user?.profilePictures?.find((pic: UserProfilePicture) => pic.isCurrent && !pic.deletedAt);
-                  const url = getImageUrl(currentPic?.url || p.user?.profilePicture);
+                  const currentPic = event.creator?.profilePictures?.find((p: UserProfilePicture) => p.isCurrent && !p.deletedAt);
+                  const url = getImageUrl(currentPic?.url || event.creator?.profilePicture);
                   return url ? (
-                    <img src={url} alt={p.user?.name} className="w-full h-full object-cover" />
+                    <Box 
+                      component="img" 
+                      src={url} 
+                      alt={event.creator?.name} 
+                      sx={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                    />
                   ) : (
-                    getInitials(p.user?.name)
+                    getInitials(event.creator?.name)
                   );
                 })()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-white truncate flex items-center gap-2">
-                  {p.user?.name}
-                  {/* Show 'Will be late' badge if attendance for this user is late */}
-                  {event.eventAttendances?.find((a: { userId: string; status: string }) => a.userId === p.userId && a.status === 'late') && (
-                    <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-yellow-600/20 text-yellow-500">{t('eventDetails.willBeLate', 'Will be late')}</span>
+              </Box>
+              <Box>
+                <Typography sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' }, color: 'text.secondary', mb: 0.5 }}>
+                  {t('eventDetails.organizedBy')}
+                </Typography>
+                <Typography sx={{ fontSize: { xs: '0.875rem', sm: '1rem' }, fontWeight: 600 }}>
+                  {event.creator?.name}
+                </Typography>
+              </Box>
+              <Typography sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, color: 'text.secondary', mt: { xs: 0, sm: 0 }, ml: { xs: 0, sm: 'auto' } }}>
+                {t('eventDetails.group')}: <Box component="span" sx={{ fontWeight: 700, color: 'primary.main' }}>{event.group?.name}</Box>
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* Two Column Layout: Capacity + Attendance | Activity Feed */}
+          <Box 
+            sx={{ 
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, 1fr)' },
+              gap: { xs: 2, sm: 3, md: 4 }
+            }}
+          >
+            {/* Left Column: Capacity & Attendance */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, sm: 3 } }}>
+              {/* Capacity Section */}
+              <Card>
+                <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+                  <Typography sx={{ fontWeight: 600, mb: { xs: 1.5, sm: 2 }, fontSize: { xs: '1rem', sm: '1.125rem' } }}>
+                    {t('eventDetails.capacity')}
+                  </Typography>
+                  <Typography sx={{ fontSize: { xs: '0.875rem', sm: '1rem' }, color: 'text.secondary', mb: 2 }}>
+                    {event.maxPlayers ? t('eventDetails.participantsCount', { count: eventStats.totalParticipants, max: event.maxPlayers }) : t('eventDetails.participants', { count: eventStats.totalParticipants })}
+                  </Typography>
+                  {event.maxPlayers && (
+                    <Box sx={{ width: '100%', bgcolor: 'grey.700', borderRadius: '4px', height: 12, mb: 2, overflow: 'hidden' }}>
+                      <Box sx={{ bgcolor: 'primary.main', height: '100%', borderRadius: '4px', transition: 'width 0.3s', width: `${eventStats.fillPercentage}%` }} />
+                    </Box>
                   )}
-                </div>
-                <div className="text-xs text-[#a1a6b4] truncate">{p.user?.email}</div>
-                <div className="text-xs">
-                  <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mt-1 ${
-                    p.status === 'confirmed' ? 'bg-green-900/50 text-green-300' :
-                    p.status === 'declined' ? 'bg-red-900/50 text-red-300' :
-                    'bg-yellow-900/50 text-yellow-300'
-                  }`}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1, sm: 1.5 }, fontSize: { xs: '0.75rem', sm: '0.813rem' } }}>
+                    <Box component="span" sx={{ bgcolor: 'background.paper', px: 1, py: 0.5, borderRadius: 0.5, color: 'text.secondary' }}>
+                      ✅ {eventStats.confirmedCount} {t('eventDetails.confirmed')}
+                    </Box>
+                    <Box component="span" sx={{ bgcolor: 'background.paper', px: 1, py: 0.5, borderRadius: 0.5, color: 'text.secondary' }}>
+                      ❌ {eventStats.declinedCount} {t('eventDetails.declined')}
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+              
+              {/* Attendance/Activity Actions: disabled for past events */}
+              {new Date(event.startTime) >= new Date() ? (
+                <Card>
+                  <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+                    <Typography sx={{ fontWeight: 600, mb: { xs: 1.5, sm: 2 }, fontSize: { xs: '1rem', sm: '1.125rem' } }}>
+                      {t('eventDetails.yourAttendance')}
+                    </Typography>
+                    <EventActions
+                      event={event}
+                      isParticipant={eventStats.isParticipant}
+                      isCreator={eventStats.isCreator}
+                      isFull={eventStats.isFull}
+                      onJoin={handleJoin}
+                      onLeave={handleLeave}
+                      onUpdateStatus={handleUpdateStatus}
+                      onDelete={handleDelete}
+                      onMarkLate={handleMarkLate}
+                      onUnmarkLate={handleUnmarkLate}
+                    />
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card sx={{ opacity: 0.5, pointerEvents: 'none' }}>
+                  <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+                    <Typography sx={{ fontWeight: 600, mb: { xs: 1.5, sm: 2 }, fontSize: { xs: '1rem', sm: '1.125rem' } }}>
+                      {t('eventDetails.activityDisabled')}
+                    </Typography>
+                    <Typography sx={{ fontSize: { xs: '0.875rem', sm: '1rem' }, color: 'text.secondary' }}>
+                      {t('eventDetails.pastEventNoActions')}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {/* Invite Link Section - Only for creator */}
+              <InviteLinkCard
+                inviteToken={event.inviteToken ?? null}
+                eventTitle={event.title}
+                eventDate={new Date(event.startTime).toLocaleDateString('en-US', { 
+                  weekday: 'short', 
+                  month: 'short', 
+                  day: 'numeric',
+                  year: 'numeric'
+                })}
+                isCreator={eventStats.isCreator}
+                onGenerateLink={async () => { handleGenerateInviteLink(); }}
+                isPublic={event.isPublic}
+                isPast={new Date(event.startTime) < new Date()}
+              />
+            </Box>
+            
+            {/* Right Column: Activity Feed - Fixed Height */}
+            <Card
+              sx={{ 
+                display: 'flex', 
+                flexDirection: 'column',
+                maxHeight: { xs: '400px', sm: '500px' }
+              }}
+              key={event.eventNotifications?.length || 0}
+            >
+              <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 }, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <Typography sx={{ fontWeight: 600, mb: { xs: 1.5, sm: 2 }, fontSize: { xs: '1rem', sm: '1.125rem' }, flexShrink: 0 }}>
+                  {t('eventDetails.activityFeed')}
+                </Typography>
+                <Box sx={{ flex: 1, overflowY: 'auto', fontSize: { xs: '0.875rem', sm: '1rem' }, color: 'text.secondary', pr: 1 }}>
+                  {(event.eventNotifications || []).length === 0 ? (
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', textAlign: 'center' }}>
+                      <Box>
+                        <Box sx={{ fontSize: '2.5rem', mb: 1 }}>📋</Box>
+                        <Typography>{t('eventDetails.noActivity')}</Typography>
+                      </Box>
+                    </Box>
+                  ) : (
+                    event.eventNotifications && event.eventNotifications.map((n: EventNotification) => {
+                      let action = '';
+                      switch (n.type) {
+                        case 'join':
+                          action = t('eventDetails.activityJoin', { name: n.user?.name || t('eventDetails.user') });
+                          break;
+                        case 'leave':
+                          action = t('eventDetails.activityLeave', { name: n.user?.name || t('eventDetails.user') });
+                          break;
+                        case 'confirmed':
+                          action = t('eventDetails.activityConfirmed', { name: n.user?.name || t('eventDetails.user') });
+                          break;
+                        case 'declined':
+                          action = t('eventDetails.activityDeclined', { name: n.user?.name || t('eventDetails.user') });
+                          break;
+                        case 'late':
+                          action = t('eventDetails.activityLate', { name: n.user?.name || t('eventDetails.user') });
+                          break;
+                        default:
+                          action = n.type;
+                      }
+                      return (
+                        <Box 
+                          key={n.id} 
+                          sx={{ 
+                            mb: 2, 
+                            pb: 2, 
+                            borderBottom: '1px solid',
+                            borderColor: 'divider',
+                            '&:last-child': { borderBottom: 'none' }
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                            <Box
+                              sx={{
+                                width: { xs: 32, sm: 36 },
+                                height: { xs: 32, sm: 36 },
+                                borderRadius: '50%',
+                                bgcolor: 'primary.main',
+                                color: 'white',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: { xs: '0.75rem', sm: '0.813rem' },
+                                fontWeight: 'bold',
+                                flexShrink: 0,
+                                overflow: 'hidden'
+                              }}
+                            >
+                              {(() => {
+                                const currentPic = n.user?.profilePictures?.find((p: UserProfilePicture) => p.isCurrent && !p.deletedAt);
+                                const url = getImageUrl(currentPic?.url || n.user?.profilePicture);
+                                return url ? (
+                                  <Box 
+                                    component="img" 
+                                    src={url} 
+                                    alt={n.user?.name} 
+                                    sx={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                  />
+                                ) : (
+                                  getInitials(n.user?.name || t('eventDetails.user'))
+                                );
+                              })()}
+                            </Box>
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Typography sx={{ color: 'text.primary', fontWeight: 500, fontSize: { xs: '0.875rem', sm: '1rem' }, mb: 0.5 }}>
+                                {n.user?.name || t('eventDetails.user')}
+                              </Typography>
+                              <Typography sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' }, color: 'text.secondary', mb: 0.5 }}>
+                                {action}
+                              </Typography>
+                              <Typography sx={{ fontSize: { xs: '0.688rem', sm: '0.75rem' }, color: 'text.disabled' }}>
+                                {new Date(n.createdAt).toLocaleString()}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+                      );
+                    })
+                  )}
+                </Box>
+              </CardContent>
+            </Card>
+          </Box>
+        </CardContent>
+      </Card>
+      
+      {/* Participants List */}
+      <Card sx={{ mt: { xs: 2, sm: 3, md: 4 } }}>
+        <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+          <Typography sx={{ fontWeight: 600, mb: { xs: 2, sm: 3 }, fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
+            {t('eventDetails.participantsList', { count: eventStats.totalParticipants })}
+          </Typography>
+          <Box 
+            sx={{ 
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
+              gap: { xs: 2, sm: 3 }
+            }}
+          >
+            {event?.participants?.map((p: EventParticipant) => (
+              <Box 
+                key={p.id} 
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 2, 
+                  bgcolor: 'background.default', 
+                  borderRadius: 1,
+                  px: { xs: 2, sm: 2.5 },
+                  py: { xs: 2, sm: 2.5 }
+                }}
+              >
+                <Box
+                  sx={{
+                    width: { xs: 40, sm: 44 },
+                    height: { xs: 40, sm: 44 },
+                    borderRadius: '50%',
+                    bgcolor: 'primary.main',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                    fontWeight: 'bold',
+                    flexShrink: 0,
+                    overflow: 'hidden'
+                  }}
+                >
+                  {(() => {
+                    const currentPic = p.user?.profilePictures?.find((pic: UserProfilePicture) => pic.isCurrent && !pic.deletedAt);
+                    const url = getImageUrl(currentPic?.url || p.user?.profilePicture);
+                    return url ? (
+                      <Box 
+                        component="img" 
+                        src={url} 
+                        alt={p.user?.name} 
+                        sx={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                      />
+                    ) : (
+                      getInitials(p.user?.name)
+                    );
+                  })()}
+                </Box>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                    <Typography 
+                      sx={{ 
+                        fontSize: { xs: '0.875rem', sm: '1rem' }, 
+                        fontWeight: 600,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {p.user?.name}
+                    </Typography>
+                    {/* Show 'Will be late' badge if attendance for this user is late */}
+                    {event.eventAttendances?.find((a: { userId: string; status: string }) => a.userId === p.userId && a.status === 'late') && (
+                      <Box
+                        component="span"
+                        sx={{
+                          px: 1,
+                          py: 0.25,
+                          borderRadius: '12px',
+                          fontSize: { xs: '0.625rem', sm: '0.688rem' },
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          bgcolor: 'warning.dark',
+                          color: 'warning.light'
+                        }}
+                      >
+                        {t('eventDetails.willBeLate', 'Will be late')}
+                      </Box>
+                    )}
+                  </Box>
+                  <Typography 
+                    sx={{ 
+                      fontSize: { xs: '0.75rem', sm: '0.813rem' }, 
+                      color: 'text.secondary',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      mb: 0.5
+                    }}
+                  >
+                    {p.user?.email}
+                  </Typography>
+                  <Box
+                    component="span"
+                    sx={{
+                      display: 'inline-block',
+                      px: 1,
+                      py: 0.5,
+                      borderRadius: 0.5,
+                      fontSize: { xs: '0.75rem', sm: '0.813rem' },
+                      fontWeight: 500,
+                      ...(p.status === 'confirmed' && { bgcolor: 'success.dark', color: 'success.light' }),
+                      ...(p.status === 'declined' && { bgcolor: 'error.dark', color: 'error.light' }),
+                      ...(p.status !== 'confirmed' && p.status !== 'declined' && { bgcolor: 'warning.dark', color: 'warning.light' })
+                    }}
+                  >
                     {t(`eventDetails.status.${p.status}`)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-          {event.guestParticipants?.map((g: GuestParticipant) => (
-            <div key={g.id} className="flex items-center gap-3 bg-[#1a2233] rounded-lg px-4 py-3 border border-purple-500/30">
-              <div className="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">{getInitials(g.name)}</div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-white truncate">{g.name}</div>
-                <div className="text-xs text-purple-400 truncate">Guest</div>
-                <div className="text-xs">
-                  <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mt-1 ${
-                    g.status === 'confirmed' ? 'bg-green-900/50 text-green-300' :
-                    'bg-red-900/50 text-red-300'
-                  }`}>
+                  </Box>
+                </Box>
+              </Box>
+            ))}
+            {event.guestParticipants?.map((g: GuestParticipant) => (
+              <Box 
+                key={g.id} 
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 2, 
+                  bgcolor: 'background.default', 
+                  borderRadius: 1,
+                  px: { xs: 2, sm: 2.5 },
+                  py: { xs: 2, sm: 2.5 },
+                  border: '1px solid',
+                  borderColor: 'secondary.main',
+                  borderOpacity: 0.3
+                }}
+              >
+                <Box
+                  sx={{
+                    width: { xs: 40, sm: 44 },
+                    height: { xs: 40, sm: 44 },
+                    borderRadius: '50%',
+                    bgcolor: 'secondary.main',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                    fontWeight: 'bold',
+                    flexShrink: 0
+                  }}
+                >
+                  {getInitials(g.name)}
+                </Box>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography 
+                    sx={{ 
+                      fontSize: { xs: '0.875rem', sm: '1rem' }, 
+                      fontWeight: 600,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      mb: 0.5
+                    }}
+                  >
+                    {g.name}
+                  </Typography>
+                  <Typography 
+                    sx={{ 
+                      fontSize: { xs: '0.75rem', sm: '0.813rem' }, 
+                      color: 'secondary.main',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      mb: 0.5
+                    }}
+                  >
+                    Guest
+                  </Typography>
+                  <Box
+                    component="span"
+                    sx={{
+                      display: 'inline-block',
+                      px: 1,
+                      py: 0.5,
+                      borderRadius: 0.5,
+                      fontSize: { xs: '0.75rem', sm: '0.813rem' },
+                      fontWeight: 500,
+                      ...(g.status === 'confirmed' && { bgcolor: 'success.dark', color: 'success.light' }),
+                      ...(g.status !== 'confirmed' && { bgcolor: 'error.dark', color: 'error.light' })
+                    }}
+                  >
                     {t(`eventDetails.status.${g.status}`)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+                  </Box>
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        </CardContent>
+      </Card>
+    </Container>
   );
 };
 

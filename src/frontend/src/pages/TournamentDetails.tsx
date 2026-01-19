@@ -171,24 +171,43 @@ const TournamentDetails: React.FC = () => {
   const isOrganizer = user?.id === tournament.organizerId;
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Paper sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 3 }}>
-          <Box>
-            <Typography variant="h4" component="h1" gutterBottom>
+    <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3, md: 4 }, px: { xs: 2, sm: 3 } }}>
+      <Paper sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'start', 
+          mb: { xs: 2, sm: 3 },
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 2, sm: 3 }
+        }}>
+          <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
+            <Typography 
+              variant="h4" 
+              component="h1" 
+              gutterBottom
+              sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}
+            >
               {tournament.name}
             </Typography>
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
               <Chip
                 label={tournament.status.replace('_', ' ').toUpperCase()}
                 color={getTournamentStatusColor(tournament.status)}
+                size="small"
               />
-              <Chip label={tournament.sportType} />
-              <Chip label={tournament.format.replace('_', ' ')} variant="outlined" />
+              <Chip label={tournament.sportType} size="small" />
+              <Chip label={tournament.format.replace('_', ' ')} variant="outlined" size="small" />
             </Box>
           </Box>
           {isOrganizer && tournament.status === TournamentStatus.DRAFT && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-end' }}>
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 1, 
+              alignItems: { xs: 'stretch', sm: 'flex-end' },
+              width: { xs: '100%', sm: 'auto' }
+            }}>
               <FormControlLabel
                 control={
                   <Switch
@@ -206,6 +225,11 @@ const TournamentDetails: React.FC = () => {
                   />
                 }
                 label="Manual Bracket Management"
+                sx={{ 
+                  '& .MuiFormControlLabel-label': { 
+                    fontSize: { xs: '0.875rem', sm: '1rem' } 
+                  } 
+                }}
               />
               {!tournament.useManualBrackets && (
                 <Button
@@ -214,6 +238,10 @@ const TournamentDetails: React.FC = () => {
                   startIcon={<StartIcon />}
                   onClick={handleGenerateBrackets}
                   disabled={!tournament.teams || tournament.teams.length < 2}
+                  sx={{ 
+                    minHeight: '44px',
+                    width: { xs: '100%', sm: 'auto' }
+                  }}
                 >
                   Generate Brackets
                 </Button>
@@ -223,25 +251,38 @@ const TournamentDetails: React.FC = () => {
         </Box>
 
         {tournament.description && (
-          <Typography variant="body1" color="text.secondary" paragraph>
+          <Typography 
+            variant="body1" 
+            color="text.secondary" 
+            paragraph
+            sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+          >
             {tournament.description}
           </Typography>
         )}
 
         {/* Admin Control Panel */}
         {isOrganizer && (
-          <Alert severity="info" icon={<EditIcon />} sx={{ mb: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-              <Typography variant="body2">
+          <Alert severity="info" icon={<EditIcon />} sx={{ mb: { xs: 2, sm: 3 } }}>
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: { xs: 'stretch', sm: 'center' }, 
+              flexDirection: { xs: 'column', sm: 'row' },
+              flexWrap: 'wrap', 
+              gap: { xs: 1.5, sm: 2 }
+            }}>
+              <Typography variant="body2" sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
                 <strong>Organizer Controls:</strong> You can manage teams, generate brackets, and update scores.
               </Typography>
-              <Box sx={{ display: 'flex', gap: 1 }}>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 {tournament.status === TournamentStatus.DRAFT && (
                   <Button
                     size="small"
                     variant="outlined"
                     startIcon={<EditIcon />}
                     onClick={() => navigate(`/tournaments/${id}/edit`)}
+                    sx={{ minHeight: '44px', flex: { xs: '1 1 auto', sm: '0 0 auto' } }}
                   >
                     Edit
                   </Button>
@@ -256,6 +297,7 @@ const TournamentDetails: React.FC = () => {
                       // Handle delete
                     }
                   }}
+                  sx={{ minHeight: '44px', flex: { xs: '1 1 auto', sm: '0 0 auto' } }}
                 >
                   Delete
                 </Button>
@@ -266,15 +308,24 @@ const TournamentDetails: React.FC = () => {
 
         {/* Additional Tournament Info */}
         {(tournament.prizesDescription || tournament.rulesDescription || tournament.registrationDeadline) && (
-          <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid container spacing={{ xs: 2, sm: 2 }} sx={{ mb: { xs: 2, sm: 3 } }}>
             {tournament.prizesDescription && (
               <Grid size={{ xs: 12, md: 6 }}>
                 <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom color="primary">
+                  <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+                    <Typography 
+                      variant="h6" 
+                      gutterBottom 
+                      color="primary"
+                      sx={{ fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}
+                    >
                       🏆 Prizes
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary"
+                      sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}
+                    >
                       {tournament.prizesDescription}
                     </Typography>
                   </CardContent>
@@ -284,11 +335,20 @@ const TournamentDetails: React.FC = () => {
             {tournament.rulesDescription && (
               <Grid size={{ xs: 12, md: 6 }}>
                 <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom color="primary">
+                  <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+                    <Typography 
+                      variant="h6" 
+                      gutterBottom 
+                      color="primary"
+                      sx={{ fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}
+                    >
                       📋 Rules
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary"
+                      sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}
+                    >
                       {tournament.rulesDescription}
                     </Typography>
                   </CardContent>
@@ -297,7 +357,7 @@ const TournamentDetails: React.FC = () => {
             )}
             {tournament.registrationDeadline && (
               <Grid size={{ xs: 12 }}>
-                <Alert severity="warning">
+                <Alert severity="warning" sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
                   Registration Deadline: {new Date(tournament.registrationDeadline).toLocaleString()}
                 </Alert>
               </Grid>
@@ -305,52 +365,80 @@ const TournamentDetails: React.FC = () => {
           </Grid>
         )}
 
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid container spacing={{ xs: 2, sm: 2 }} sx={{ mb: { xs: 2, sm: 3 } }}>
+          <Grid size={{ xs: 6, sm: 6, md: 3 }}>
             <Card variant="outlined">
-              <CardContent>
-                <Typography color="text.secondary" gutterBottom>
+              <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
+                <Typography 
+                  color="text.secondary" 
+                  gutterBottom
+                  sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                >
                   Start Date
                 </Typography>
-                <Typography variant="h6">
+                <Typography 
+                  variant="h6"
+                  sx={{ fontSize: { xs: '0.875rem', sm: '1rem', md: '1.25rem' } }}
+                >
                   {new Date(tournament.startDate).toLocaleDateString()}
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 6, sm: 6, md: 3 }}>
             <Card variant="outlined">
-              <CardContent>
-                <Typography color="text.secondary" gutterBottom>
+              <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
+                <Typography 
+                  color="text.secondary" 
+                  gutterBottom
+                  sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                >
                   Teams
                 </Typography>
-                <Typography variant="h6">
+                <Typography 
+                  variant="h6"
+                  sx={{ fontSize: { xs: '0.875rem', sm: '1rem', md: '1.25rem' } }}
+                >
                   {tournament.teams?.length || 0}
                   {tournament.maxTeams ? ` / ${tournament.maxTeams}` : ''}
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 6, sm: 6, md: 3 }}>
             <Card variant="outlined">
-              <CardContent>
-                <Typography color="text.secondary" gutterBottom>
+              <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
+                <Typography 
+                  color="text.secondary" 
+                  gutterBottom
+                  sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                >
                   Matches
                 </Typography>
-                <Typography variant="h6">
+                <Typography 
+                  variant="h6"
+                  sx={{ fontSize: { xs: '0.875rem', sm: '1rem', md: '1.25rem' } }}
+                >
                   {tournament.matches?.length || 0}
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
           {tournament.location && (
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Grid size={{ xs: 6, sm: 6, md: 3 }}>
               <Card variant="outlined">
-                <CardContent>
-                  <Typography color="text.secondary" gutterBottom>
+                <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
+                  <Typography 
+                    color="text.secondary" 
+                    gutterBottom
+                    sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                  >
                     Location
                   </Typography>
-                  <Typography variant="body2">
+                  <Typography 
+                    variant="body2"
+                    sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}
+                  >
                     {tournament.location}
                   </Typography>
                 </CardContent>
@@ -359,8 +447,21 @@ const TournamentDetails: React.FC = () => {
           )}
         </Grid>
 
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={(_, val) => setTabValue(val)}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: { xs: 2, sm: 3 } }}>
+          <Tabs 
+            value={tabValue} 
+            onChange={(_, val) => setTabValue(val)}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{
+              minHeight: { xs: '44px', sm: '48px' },
+              '& .MuiTab-root': {
+                minHeight: { xs: '44px', sm: '48px' },
+                fontSize: { xs: '0.813rem', sm: '0.875rem' },
+                px: { xs: 1.5, sm: 2, md: 3 }
+              }
+            }}
+          >
             <Tab label="Overview" />
             <Tab label="Teams" />
             {isOrganizer && tournament.useManualBrackets && <Tab label="Pools" />}
@@ -372,11 +473,15 @@ const TournamentDetails: React.FC = () => {
 
         {/* Overview Tab */}
         <TabPanel value={tabValue} index={0}>
-          <Grid container spacing={3}>
+          <Grid container spacing={{ xs: 2, sm: 3 }}>
             <Grid size={{ xs: 12, md: 6 }}>
               <Card variant="outlined">
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
+                <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+                  <Typography 
+                    variant="h6" 
+                    gutterBottom
+                    sx={{ fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}
+                  >
                     Tournament Information
                   </Typography>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -425,8 +530,12 @@ const TournamentDetails: React.FC = () => {
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <Card variant="outlined">
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
+                <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+                  <Typography 
+                    variant="h6" 
+                    gutterBottom
+                    sx={{ fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}
+                  >
                     Statistics
                   </Typography>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -476,39 +585,52 @@ const TournamentDetails: React.FC = () => {
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => setAddTeamOpen(true)}
-              sx={{ mb: 2 }}
+              sx={{ 
+                mb: { xs: 2, sm: 2 },
+                minHeight: '44px',
+                width: { xs: '100%', sm: 'auto' }
+              }}
             >
               Add Team
             </Button>
           )}
 
-          <TableContainer>
+          <TableContainer sx={{ 
+            overflowX: 'auto',
+            '& .MuiTable-root': {
+              minWidth: { xs: 500, sm: 650 }
+            }
+          }}>
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Team Name</TableCell>
-                  <TableCell>Captain</TableCell>
-                  <TableCell>Email</TableCell>
-                  {isOrganizer && tournament.useManualBrackets && <TableCell>Pool</TableCell>}
-                  <TableCell>Actions</TableCell>
+                  <TableCell sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>Team Name</TableCell>
+                  <TableCell sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>Captain</TableCell>
+                  <TableCell sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' }, display: { xs: 'none', sm: 'table-cell' } }}>Email</TableCell>
+                  {isOrganizer && tournament.useManualBrackets && <TableCell sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>Pool</TableCell>}
+                  <TableCell sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {tournament.teams?.map((team) => (
                   <TableRow key={team.id}>
-                    <TableCell>
+                    <TableCell sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
                       <Button
                         variant="text"
                         onClick={() => navigate(`/tournaments/${tournament.id}/teams/${team.id}`)}
-                        sx={{ textTransform: 'none', fontWeight: 'bold' }}
+                        sx={{ 
+                          textTransform: 'none', 
+                          fontWeight: 'bold',
+                          fontSize: { xs: '0.813rem', sm: '0.875rem' }
+                        }}
                       >
                         {team.name}
                       </Button>
                     </TableCell>
-                    <TableCell>{team.captainName || '-'}</TableCell>
-                    <TableCell>{team.captainEmail || '-'}</TableCell>
+                    <TableCell sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>{team.captainName || '-'}</TableCell>
+                    <TableCell sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' }, display: { xs: 'none', sm: 'table-cell' } }}>{team.captainEmail || '-'}</TableCell>
                     {isOrganizer && tournament.useManualBrackets && (
-                      <TableCell>
+                      <TableCell sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
                         {team.poolName || (team.poolNumber ? `Pool ${team.poolNumber}` : '-')}
                       </TableCell>
                     )}
@@ -517,15 +639,26 @@ const TournamentDetails: React.FC = () => {
                         size="small"
                         variant="outlined"
                         onClick={() => navigate(`/tournaments/${tournament.id}/teams/${team.id}`)}
+                        sx={{ 
+                          minHeight: '44px',
+                          fontSize: { xs: '0.75rem', sm: '0.813rem' }
+                        }}
                       >
-                        View Details
+                        View
                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
                 {(!tournament.teams || tournament.teams.length === 0) && (
                   <TableRow>
-                    <TableCell colSpan={isOrganizer && tournament.useManualBrackets ? 5 : 4} align="center">
+                    <TableCell 
+                      colSpan={isOrganizer && tournament.useManualBrackets ? 5 : 4} 
+                      align="center"
+                      sx={{ 
+                        py: { xs: 3, sm: 4 },
+                        fontSize: { xs: '0.813rem', sm: '0.875rem' } 
+                      }}
+                    >
                       No teams added yet
                     </TableCell>
                   </TableRow>
@@ -550,18 +683,23 @@ const TournamentDetails: React.FC = () => {
         {/* Matches Tab */}
         <TabPanel value={tabValue} index={isOrganizer && tournament.useManualBrackets ? 3 : 2}>
           {tournament.matches && tournament.matches.length > 0 ? (
-            <TableContainer>
+            <TableContainer sx={{ 
+              overflowX: 'auto',
+              '& .MuiTable-root': {
+                minWidth: { xs: 700, sm: 900 }
+              }
+            }}>
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Date & Time</TableCell>
-                    <TableCell>Stage/Pool</TableCell>
-                    <TableCell>Home Team</TableCell>
-                    <TableCell align="center">Score</TableCell>
-                    <TableCell>Away Team</TableCell>
-                    {isOrganizer && tournament.useManualBrackets && <TableCell>Referee</TableCell>}
-                    <TableCell>Status</TableCell>
-                    <TableCell>Actions</TableCell>
+                    <TableCell sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>Date & Time</TableCell>
+                    <TableCell sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' }, display: { xs: 'none', sm: 'table-cell' } }}>Stage/Pool</TableCell>
+                    <TableCell sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>Home Team</TableCell>
+                    <TableCell align="center" sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>Score</TableCell>
+                    <TableCell sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>Away Team</TableCell>
+                    {isOrganizer && tournament.useManualBrackets && <TableCell sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' }, display: { xs: 'none', md: 'table-cell' } }}>Referee</TableCell>}
+                    <TableCell sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' }, display: { xs: 'none', sm: 'table-cell' } }}>Status</TableCell>
+                    <TableCell sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -575,13 +713,13 @@ const TournamentDetails: React.FC = () => {
                     })
                     .map((match) => (
                     <TableRow key={match.id}>
-                      <TableCell>
+                      <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}>
                         {match.scheduledAt ? (
                           <Box>
-                            <Typography variant="body2" fontWeight="bold">
+                            <Typography variant="body2" fontWeight="bold" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}>
                               {new Date(match.scheduledAt).toLocaleDateString()}
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.688rem', sm: '0.75rem' } }}>
                               {new Date(match.scheduledAt).toLocaleTimeString([], { 
                                 hour: '2-digit', 
                                 minute: '2-digit' 
@@ -589,16 +727,16 @@ const TournamentDetails: React.FC = () => {
                             </Typography>
                           </Box>
                         ) : (
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}>
                             TBD
                           </Typography>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
                         {match.groupName ? (
-                          <Chip label={match.groupName} size="small" variant="outlined" />
+                          <Chip label={match.groupName} size="small" variant="outlined" sx={{ fontSize: { xs: '0.688rem', sm: '0.75rem' } }} />
                         ) : (
-                          <Typography variant="body2">
+                          <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}>
                             {match.stage?.replace('_', ' ').toUpperCase() || `Round ${match.roundNumber}`}
                           </Typography>
                         )}
@@ -608,16 +746,21 @@ const TournamentDetails: React.FC = () => {
                           size="small"
                           variant="text"
                           onClick={() => {
-                            // Navigate to team details (will be implemented)
                             navigate(`/tournaments/${tournament.id}/teams/${match.homeTeam?.id}`);
                           }}
-                          sx={{ textTransform: 'none', justifyContent: 'flex-start' }}
+                          sx={{ 
+                            textTransform: 'none', 
+                            justifyContent: 'flex-start',
+                            fontSize: { xs: '0.75rem', sm: '0.813rem' },
+                            minHeight: '44px',
+                            p: { xs: 0.5, sm: 1 }
+                          }}
                         >
                           {match.homeTeam?.name || 'TBD'}
                         </Button>
                       </TableCell>
                       <TableCell align="center">
-                        <Typography variant="h6" fontWeight="bold">
+                        <Typography variant="h6" fontWeight="bold" sx={{ fontSize: { xs: '0.875rem', sm: '1rem', md: '1.25rem' } }}>
                           {match.homeScore ?? '-'} : {match.awayScore ?? '-'}
                         </Typography>
                       </TableCell>
@@ -626,28 +769,34 @@ const TournamentDetails: React.FC = () => {
                           size="small"
                           variant="text"
                           onClick={() => {
-                            // Navigate to team details (will be implemented)
                             navigate(`/tournaments/${tournament.id}/teams/${match.awayTeam?.id}`);
                           }}
-                          sx={{ textTransform: 'none', justifyContent: 'flex-start' }}
+                          sx={{ 
+                            textTransform: 'none', 
+                            justifyContent: 'flex-start',
+                            fontSize: { xs: '0.75rem', sm: '0.813rem' },
+                            minHeight: '44px',
+                            p: { xs: 0.5, sm: 1 }
+                          }}
                         >
                           {match.awayTeam?.name || 'TBD'}
                         </Button>
                       </TableCell>
                       {isOrganizer && tournament.useManualBrackets && (
-                        <TableCell>
+                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                           {match.refereeTeam ? (
-                            <Chip label={match.refereeTeam.name} size="small" color="secondary" />
+                            <Chip label={match.refereeTeam.name} size="small" color="secondary" sx={{ fontSize: { xs: '0.688rem', sm: '0.75rem' } }} />
                           ) : (
                             '-'
                           )}
                         </TableCell>
                       )}
-                      <TableCell>
+                      <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
                         <Chip
                           label={match.status.replace('_', ' ')}
                           color={getMatchStatusColor(match.status)}
                           size="small"
+                          sx={{ fontSize: { xs: '0.688rem', sm: '0.75rem' } }}
                         />
                       </TableCell>
                       <TableCell>
@@ -656,8 +805,13 @@ const TournamentDetails: React.FC = () => {
                             size="small"
                             variant="outlined"
                             onClick={() => handleOpenScoreDialog(match)}
+                            sx={{ 
+                              minHeight: '44px',
+                              fontSize: { xs: '0.75rem', sm: '0.813rem' },
+                              px: { xs: 1, sm: 2 }
+                            }}
                           >
-                            {match.homeScore !== null ? 'Update' : 'Enter'} Score
+                            {match.homeScore !== null ? 'Update' : 'Enter'}
                           </Button>
                         )}
                       </TableCell>
@@ -667,7 +821,7 @@ const TournamentDetails: React.FC = () => {
               </Table>
             </TableContainer>
           ) : (
-            <Alert severity="info">
+            <Alert severity="info" sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
               {tournament.useManualBrackets 
                 ? 'No matches created yet. Use the Bracket Manager tab to create matches manually.' 
                 : 'No matches scheduled yet. Generate brackets to create matches.'}
@@ -716,31 +870,36 @@ const TournamentDetails: React.FC = () => {
                 });
 
                 return Object.entries(groupedStandings).map(([groupName, standings]) => (
-                  <Box key={groupName} sx={{ mb: 4 }}>
-                    <Typography variant="h6" gutterBottom sx={{ 
-                      mt: 2, 
-                      mb: 2, 
-                      fontWeight: 'bold',
-                      borderBottom: '2px solid',
-                      borderColor: 'primary.main',
-                      pb: 1
-                    }}>
+                  <Box key={groupName} sx={{ mb: { xs: 3, sm: 4 } }}>
+                    <Typography 
+                      variant="h6" 
+                      gutterBottom 
+                      sx={{ 
+                        mt: { xs: 1.5, sm: 2 }, 
+                        mb: { xs: 1.5, sm: 2 }, 
+                        fontWeight: 'bold',
+                        borderBottom: '2px solid',
+                        borderColor: 'primary.main',
+                        pb: 1,
+                        fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' }
+                      }}
+                    >
                       {groupName}
                     </Typography>
-                    <TableContainer component={Paper} variant="outlined">
-                      <Table size="small">
+                    <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
+                      <Table size="small" sx={{ minWidth: { xs: 600, sm: 700 } }}>
                         <TableHead>
                           <TableRow sx={{ bgcolor: 'action.hover' }}>
-                            <TableCell><strong>Rank</strong></TableCell>
-                            <TableCell><strong>Team</strong></TableCell>
-                            <TableCell align="center"><strong>Played</strong></TableCell>
-                            <TableCell align="center"><strong>Points</strong></TableCell>
-                            <TableCell align="center"><strong>W</strong></TableCell>
-                            <TableCell align="center"><strong>D</strong></TableCell>
-                            <TableCell align="center"><strong>L</strong></TableCell>
-                            <TableCell align="center"><strong>GF</strong></TableCell>
-                            <TableCell align="center"><strong>GA</strong></TableCell>
-                            <TableCell align="center"><strong>GD</strong></TableCell>
+                            <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem', md: '0.875rem' } }}><strong>Rank</strong></TableCell>
+                            <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem', md: '0.875rem' } }}><strong>Team</strong></TableCell>
+                            <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem', md: '0.875rem' } }}><strong>P</strong></TableCell>
+                            <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem', md: '0.875rem' } }}><strong>Pts</strong></TableCell>
+                            <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem', md: '0.875rem' }, display: { xs: 'none', sm: 'table-cell' } }}><strong>W</strong></TableCell>
+                            <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem', md: '0.875rem' }, display: { xs: 'none', sm: 'table-cell' } }}><strong>D</strong></TableCell>
+                            <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem', md: '0.875rem' }, display: { xs: 'none', sm: 'table-cell' } }}><strong>L</strong></TableCell>
+                            <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem', md: '0.875rem' } }}><strong>GF</strong></TableCell>
+                            <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem', md: '0.875rem' } }}><strong>GA</strong></TableCell>
+                            <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem', md: '0.875rem' } }}><strong>GD</strong></TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -759,12 +918,12 @@ const TournamentDetails: React.FC = () => {
                                   opacity: index === 0 || index === 1 ? 0.9 : 1
                                 }}
                               >
-                                <TableCell>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                     {index + 1}
-                                    {index === 0 && <Typography variant="caption">🥇</Typography>}
-                                    {index === 1 && <Typography variant="caption">🥈</Typography>}
-                                    {index === 2 && <Typography variant="caption">🥉</Typography>}
+                                    {index === 0 && <Typography variant="caption" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>🥇</Typography>}
+                                    {index === 1 && <Typography variant="caption" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>🥈</Typography>}
+                                    {index === 2 && <Typography variant="caption" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>🥉</Typography>}
                                   </Box>
                                 </TableCell>
                                 <TableCell>
@@ -772,27 +931,34 @@ const TournamentDetails: React.FC = () => {
                                     size="small"
                                     variant="text"
                                     onClick={() => navigate(`/tournaments/${tournament.id}/teams/${standing.team?.id}`)}
-                                    sx={{ textTransform: 'none', fontWeight: 'medium' }}
+                                    sx={{ 
+                                      textTransform: 'none', 
+                                      fontWeight: 'medium',
+                                      fontSize: { xs: '0.75rem', sm: '0.813rem' },
+                                      minHeight: '44px',
+                                      p: { xs: 0.5, sm: 1 }
+                                    }}
                                   >
                                     {standing.team?.name || 'TBD'}
                                   </Button>
                                 </TableCell>
-                                <TableCell align="center">{gamesPlayed}</TableCell>
+                                <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}>{gamesPlayed}</TableCell>
                                 <TableCell align="center">
-                                  <Typography variant="body2" fontWeight="bold" color="primary">
+                                  <Typography variant="body2" fontWeight="bold" color="primary" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}>
                                     {standing.points}
                                   </Typography>
                                 </TableCell>
-                                <TableCell align="center">{standing.wins}</TableCell>
-                                <TableCell align="center">{standing.draws}</TableCell>
-                                <TableCell align="center">{standing.losses}</TableCell>
-                                <TableCell align="center">{standing.goalsFor}</TableCell>
-                                <TableCell align="center">{standing.goalsAgainst}</TableCell>
+                                <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' }, display: { xs: 'none', sm: 'table-cell' } }}>{standing.wins}</TableCell>
+                                <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' }, display: { xs: 'none', sm: 'table-cell' } }}>{standing.draws}</TableCell>
+                                <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' }, display: { xs: 'none', sm: 'table-cell' } }}>{standing.losses}</TableCell>
+                                <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}>{standing.goalsFor}</TableCell>
+                                <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}>{standing.goalsAgainst}</TableCell>
                                 <TableCell align="center">
                                   <Typography 
                                     variant="body2" 
                                     color={goalDiff > 0 ? 'success.main' : goalDiff < 0 ? 'error.main' : 'text.primary'}
                                     fontWeight="medium"
+                                    sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}
                                   >
                                     {goalDiff > 0 ? '+' : ''}{goalDiff}
                                   </Typography>
@@ -808,7 +974,7 @@ const TournamentDetails: React.FC = () => {
               })()}
             </>
           ) : (
-            <Alert severity="info">
+            <Alert severity="info" sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
               No standings available yet. Standings will be generated after matches are played.
             </Alert>
           )}
@@ -817,7 +983,7 @@ const TournamentDetails: React.FC = () => {
 
       {/* Add Team Dialog */}
       <Dialog open={addTeamOpen} onClose={() => setAddTeamOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add Team</DialogTitle>
+        <DialogTitle sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>Add Team</DialogTitle>
         <DialogContent>
           <TextField
             fullWidth
@@ -826,6 +992,11 @@ const TournamentDetails: React.FC = () => {
             value={newTeam.name}
             onChange={(e) => setNewTeam({ ...newTeam, name: e.target.value })}
             margin="normal"
+            sx={{
+              '& .MuiInputBase-root': {
+                minHeight: '44px'
+              }
+            }}
           />
           <TextField
             fullWidth
@@ -833,6 +1004,11 @@ const TournamentDetails: React.FC = () => {
             value={newTeam.captainName}
             onChange={(e) => setNewTeam({ ...newTeam, captainName: e.target.value })}
             margin="normal"
+            sx={{
+              '& .MuiInputBase-root': {
+                minHeight: '44px'
+              }
+            }}
           />
           <TextField
             fullWidth
@@ -841,11 +1017,21 @@ const TournamentDetails: React.FC = () => {
             value={newTeam.captainEmail}
             onChange={(e) => setNewTeam({ ...newTeam, captainEmail: e.target.value })}
             margin="normal"
+            sx={{
+              '& .MuiInputBase-root': {
+                minHeight: '44px'
+              }
+            }}
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAddTeamOpen(false)}>Cancel</Button>
-          <Button onClick={handleAddTeam} variant="contained" disabled={!newTeam.name}>
+        <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: { xs: 1.5, sm: 2 } }}>
+          <Button onClick={() => setAddTeamOpen(false)} sx={{ minHeight: '44px' }}>Cancel</Button>
+          <Button 
+            onClick={handleAddTeam} 
+            variant="contained" 
+            disabled={!newTeam.name}
+            sx={{ minHeight: '44px' }}
+          >
             Add Team
           </Button>
         </DialogActions>
@@ -853,13 +1039,17 @@ const TournamentDetails: React.FC = () => {
 
       {/* Score Dialog */}
       <Dialog open={scoreDialogOpen} onClose={() => setScoreDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Enter Match Score</DialogTitle>
+        <DialogTitle sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>Enter Match Score</DialogTitle>
         <DialogContent>
           {selectedMatch && (
-            <Box sx={{ mt: 2 }}>
-              <Grid container spacing={2} alignItems="center">
+            <Box sx={{ mt: { xs: 1.5, sm: 2 } }}>
+              <Grid container spacing={{ xs: 1.5, sm: 2 }} alignItems="center">
                 <Grid size={{ xs: 5 }}>
-                  <Typography variant="h6" align="center">
+                  <Typography 
+                    variant="h6" 
+                    align="center"
+                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem', md: '1.25rem' } }}
+                  >
                     {selectedMatch.homeTeam?.name || 'Home Team'}
                   </Typography>
                   <TextField
@@ -869,16 +1059,29 @@ const TournamentDetails: React.FC = () => {
                     value={scores.homeScore}
                     onChange={(e) => setScores({ ...scores, homeScore: parseInt(e.target.value) || 0 })}
                     inputProps={{ min: 0 }}
-                    sx={{ mt: 1 }}
+                    sx={{ 
+                      mt: 1,
+                      '& .MuiInputBase-root': {
+                        minHeight: '44px'
+                      }
+                    }}
                   />
                 </Grid>
                 <Grid size={{ xs: 2 }}>
-                  <Typography variant="h4" align="center">
+                  <Typography 
+                    variant="h4" 
+                    align="center"
+                    sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}
+                  >
                     :
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 5 }}>
-                  <Typography variant="h6" align="center">
+                  <Typography 
+                    variant="h6" 
+                    align="center"
+                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem', md: '1.25rem' } }}
+                  >
                     {selectedMatch.awayTeam?.name || 'Away Team'}
                   </Typography>
                   <TextField
@@ -888,16 +1091,25 @@ const TournamentDetails: React.FC = () => {
                     value={scores.awayScore}
                     onChange={(e) => setScores({ ...scores, awayScore: parseInt(e.target.value) || 0 })}
                     inputProps={{ min: 0 }}
-                    sx={{ mt: 1 }}
+                    sx={{ 
+                      mt: 1,
+                      '& .MuiInputBase-root': {
+                        minHeight: '44px'
+                      }
+                    }}
                   />
                 </Grid>
               </Grid>
             </Box>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setScoreDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleSubmitScore} variant="contained">
+        <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: { xs: 1.5, sm: 2 } }}>
+          <Button onClick={() => setScoreDialogOpen(false)} sx={{ minHeight: '44px' }}>Cancel</Button>
+          <Button 
+            onClick={handleSubmitScore} 
+            variant="contained"
+            sx={{ minHeight: '44px' }}
+          >
             Submit Score
           </Button>
         </DialogActions>

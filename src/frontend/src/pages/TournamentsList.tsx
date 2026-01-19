@@ -157,13 +157,34 @@ const TournamentsList: React.FC = () => {
         }
       }}
     >
-      <CardContent sx={{ flexGrow: 1 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1 }}>
-            <Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
-              <TrophyIcon />
+      <CardContent sx={{ flexGrow: 1, p: { xs: 2, sm: 2.5, md: 3 } }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'start', 
+          mb: { xs: 1.5, sm: 2 },
+          gap: 1
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1, minWidth: 0 }}>
+            <Avatar sx={{ 
+              bgcolor: 'primary.main', 
+              width: { xs: 36, sm: 40 }, 
+              height: { xs: 36, sm: 40 },
+              flexShrink: 0
+            }}>
+              <TrophyIcon sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }} />
             </Avatar>
-            <Typography variant="h6" component="h2" sx={{ flexGrow: 1 }}>
+            <Typography 
+              variant="h6" 
+              component="h2" 
+              sx={{ 
+                flexGrow: 1,
+                fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' },
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}
+            >
               {tournament.name}
             </Typography>
           </Box>
@@ -171,6 +192,7 @@ const TournamentsList: React.FC = () => {
             label={tournament.status.replace('_', ' ').toUpperCase()}
             color={getTournamentStatusColor(tournament.status)}
             size="small"
+            sx={{ flexShrink: 0 }}
           />
         </Box>
 
@@ -179,54 +201,91 @@ const TournamentsList: React.FC = () => {
             variant="body2"
             color="text.secondary"
             sx={{
-              mb: 2,
+              mb: { xs: 1.5, sm: 2 },
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               display: '-webkit-box',
               WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical'
+              WebkitBoxOrient: 'vertical',
+              fontSize: { xs: '0.813rem', sm: '0.875rem' }
             }}
           >
             {tournament.description}
           </Typography>
         )}
 
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 0.75, sm: 1 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <CalendarIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
-            <Typography variant="body2" color="text.secondary">
+            <CalendarIcon sx={{ 
+              fontSize: { xs: '1.125rem', sm: '1.25rem' }, 
+              mr: 1, 
+              color: 'text.secondary' 
+            }} />
+            <Typography 
+              variant="body2" 
+              color="text.secondary"
+              sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}
+            >
               {formatDateTime(tournament.startDate)}
             </Typography>
           </Box>
 
           {tournament.location && (
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <LocationIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
-              <Typography variant="body2" color="text.secondary" noWrap>
+            <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+              <LocationIcon sx={{ 
+                fontSize: { xs: '1.125rem', sm: '1.25rem' }, 
+                mr: 1, 
+                color: 'text.secondary',
+                flexShrink: 0
+              }} />
+              <Typography 
+                variant="body2" 
+                color="text.secondary" 
+                noWrap
+                sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}
+              >
                 {tournament.location}
               </Typography>
             </Box>
           )}
 
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <PeopleIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
-            <Typography variant="body2" color="text.secondary">
+            <PeopleIcon sx={{ 
+              fontSize: { xs: '1.125rem', sm: '1.25rem' }, 
+              mr: 1, 
+              color: 'text.secondary' 
+            }} />
+            <Typography 
+              variant="body2" 
+              color="text.secondary"
+              sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}
+            >
               {tournament._count?.teams || 0} teams
               {tournament.maxTeams ? ` / ${tournament.maxTeams}` : ''}
             </Typography>
           </Box>
 
           {tournament.organizer && (
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <PersonIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
-              <Typography variant="body2" color="text.secondary" noWrap>
+            <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+              <PersonIcon sx={{ 
+                fontSize: { xs: '1.125rem', sm: '1.25rem' }, 
+                mr: 1, 
+                color: 'text.secondary',
+                flexShrink: 0
+              }} />
+              <Typography 
+                variant="body2" 
+                color="text.secondary" 
+                noWrap
+                sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}
+              >
                 {tournament.organizer.name}
               </Typography>
             </Box>
           )}
         </Box>
 
-        <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        <Box sx={{ mt: { xs: 1.5, sm: 2 }, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <Chip label={tournament.sportType} size="small" color="primary" variant="outlined" />
           <Chip label={tournament.format.replace('_', ' ')} size="small" variant="outlined" />
           {tournament.isRecurring && (
@@ -235,12 +294,23 @@ const TournamentsList: React.FC = () => {
         </Box>
       </CardContent>
 
-      <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
+      <CardActions sx={{ 
+        justifyContent: 'space-between', 
+        px: { xs: 2, sm: 2.5, md: 3 }, 
+        pb: { xs: 2, sm: 2.5, md: 3 },
+        flexWrap: 'wrap',
+        gap: 1
+      }}>
         <Button
           size="small"
           color="primary"
           variant="contained"
           onClick={() => navigate(`/tournaments/${tournament.id}`)}
+          sx={{ 
+            minHeight: '44px',
+            px: { xs: 2, sm: 3 },
+            fontSize: { xs: '0.813rem', sm: '0.875rem' }
+          }}
         >
           View Details
         </Button>
@@ -252,17 +322,26 @@ const TournamentsList: React.FC = () => {
   );
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 3, md: 4 }, px: { xs: 2, sm: 3 } }}>
       <Box sx={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
-        mb: 3,
+        mb: { xs: 2, sm: 3 },
         flexWrap: 'wrap',
-        gap: 2
+        gap: { xs: 1.5, sm: 2 }
       }}>
-        <Typography variant="h4" component="h1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <TrophyIcon fontSize="large" sx={{ color: 'primary.main' }} />
+        <Typography 
+          variant="h4" 
+          component="h1" 
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1,
+            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+          }}
+        >
+          <TrophyIcon sx={{ fontSize: { xs: '1.75rem', sm: '2.5rem' }, color: 'primary.main' }} />
           Tournaments
         </Typography>
         <Button
@@ -271,23 +350,34 @@ const TournamentsList: React.FC = () => {
           size="large"
           startIcon={<AddIcon />}
           onClick={() => navigate('/tournaments/create')}
+          sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
         >
           Create Tournament
         </Button>
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity="error" sx={{ mb: { xs: 2, sm: 3 } }}>
           {error}
         </Alert>
       )}
 
-      <Paper sx={{ mb: 3 }}>
+      <Paper sx={{ mb: { xs: 2, sm: 3 } }}>
         <Tabs 
           value={tabValue} 
           onChange={(_, val) => setTabValue(val)}
-          variant="fullWidth"
-          sx={{ borderBottom: 1, borderColor: 'divider' }}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{ 
+            borderBottom: 1, 
+            borderColor: 'divider',
+            minHeight: { xs: '44px', sm: '48px' },
+            '& .MuiTab-root': {
+              minHeight: { xs: '44px', sm: '48px' },
+              fontSize: { xs: '0.813rem', sm: '0.875rem' },
+              px: { xs: 1.5, sm: 2 }
+            }
+          }}
         >
           <Tab label={`All (${filteredTournaments.length})`} />
           <Tab label={`Upcoming (${upcomingCount})`} />
@@ -295,13 +385,24 @@ const TournamentsList: React.FC = () => {
           <Tab label={`My Tournaments (${myTournamentsCount})`} />
         </Tabs>
 
-        <Box sx={{ p: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <Box sx={{ 
+          p: { xs: 1.5, sm: 2 }, 
+          display: 'flex', 
+          gap: { xs: 1.5, sm: 2 }, 
+          flexWrap: 'wrap' 
+        }}>
           <TextField
             placeholder="Search tournaments..."
             size="small"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            sx={{ flexGrow: 1, minWidth: 250 }}
+            sx={{ 
+              flexGrow: 1, 
+              minWidth: { xs: '100%', sm: 250 },
+              '& .MuiInputBase-root': {
+                minHeight: '44px'
+              }
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -315,7 +416,12 @@ const TournamentsList: React.FC = () => {
             size="small"
             value={sportFilter}
             onChange={(e) => setSportFilter(e.target.value)}
-            sx={{ minWidth: 150 }}
+            sx={{ 
+              minWidth: { xs: '100%', sm: 150 },
+              '& .MuiInputBase-root': {
+                minHeight: '44px'
+              }
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -336,8 +442,16 @@ const TournamentsList: React.FC = () => {
 
       {filteredTournaments.length === 0 ? (
         <Card>
-          <CardContent>
-            <Typography variant="body1" color="text.secondary" align="center" sx={{ py: 4 }}>
+          <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+            <Typography 
+              variant="body1" 
+              color="text.secondary" 
+              align="center" 
+              sx={{ 
+                py: { xs: 2, sm: 3, md: 4 },
+                fontSize: { xs: '0.875rem', sm: '1rem' }
+              }}
+            >
               {searchQuery || sportFilter !== 'all' 
                 ? 'No tournaments found matching your filters.' 
                 : 'No tournaments found. Create your first tournament!'}
@@ -345,7 +459,7 @@ const TournamentsList: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <Grid container spacing={3}>
+        <Grid container spacing={{ xs: 2, sm: 3 }}>
           {filteredTournaments.map((tournament) => (
             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={tournament.id}>
               <TournamentCard tournament={tournament} />

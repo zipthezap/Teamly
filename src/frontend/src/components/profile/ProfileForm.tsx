@@ -39,12 +39,16 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
 }) => {
   const { t } = useTranslation();
   return (
-    <Paper sx={{ p: 4 }}>
-      <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+    <Paper sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+      <Typography variant="h5" gutterBottom sx={{ 
+        fontWeight: 600, 
+        mb: { xs: 2, sm: 3 },
+        fontSize: { xs: '1.25rem', sm: '1.5rem' }
+      }}>
         {t('profile.infoTitle')}
       </Typography>
       
-      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', mb: { xs: 2, sm: 3 } }}>
         <ImageUpload
           currentImage={profilePicture}
           onUpload={onUploadPicture}
@@ -56,7 +60,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
       </Box>
 
       <form onSubmit={onSubmit}>
-        <Grid container spacing={3}>
+        <Grid container spacing={{ xs: 2, sm: 3 }}>
           <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               label={t('common.name')}
@@ -65,6 +69,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
               onChange={onChange}
               fullWidth
               required
+              sx={{ '& .MuiInputBase-root': { minHeight: { xs: '44px', sm: '56px' } } }}
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
@@ -76,6 +81,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
               onChange={onChange}
               fullWidth
               required
+              sx={{ '& .MuiInputBase-root': { minHeight: { xs: '44px', sm: '56px' } } }}
             />
           </Grid>
           <Grid size={{ xs: 12 }}>
@@ -86,6 +92,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
               onChange={onChange}
               fullWidth
               helperText={t('profile.addressHelp') || 'Enter your address to receive notifications about nearby TeamUp opportunities'}
+              sx={{ '& .MuiInputBase-root': { minHeight: { xs: '44px', sm: '56px' } } }}
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
@@ -95,6 +102,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
               value={formData.city}
               onChange={onChange}
               fullWidth
+              sx={{ '& .MuiInputBase-root': { minHeight: { xs: '44px', sm: '56px' } } }}
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
@@ -104,6 +112,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
               value={formData.postalCode}
               onChange={onChange}
               fullWidth
+              sx={{ '& .MuiInputBase-root': { minHeight: { xs: '44px', sm: '56px' } } }}
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
@@ -113,6 +122,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
               value={formData.country}
               onChange={onChange}
               fullWidth
+              sx={{ '& .MuiInputBase-root': { minHeight: { xs: '44px', sm: '56px' } } }}
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
@@ -125,15 +135,17 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
               fullWidth
               inputProps={{ min: 1, max: 200 }}
               helperText={t('profile.discoveryRadiusHelp') || 'Radius for discovering nearby groups and TeamUp opportunities (1-200 km)'}
+              sx={{ '& .MuiInputBase-root': { minHeight: { xs: '44px', sm: '56px' } } }}
             />
           </Grid>
         </Grid>
-        <Box sx={{ mt: 3 }}>
+        <Box sx={{ mt: { xs: 2, sm: 3 } }}>
           <Button
             type="submit"
             variant="contained"
             size="large"
             disabled={loading}
+            sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
           >
             {t('profile.updateProfile')}
           </Button>

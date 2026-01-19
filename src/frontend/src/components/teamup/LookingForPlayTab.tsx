@@ -150,7 +150,7 @@ const LookingForPlayTab = () => {
       )}
 
       {/* View Toggle */}
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
+      <Box sx={{ mb: { xs: 2, sm: 3 }, display: 'flex', justifyContent: 'center' }}>
         <ToggleButtonGroup
           value={view}
           exclusive
@@ -161,12 +161,13 @@ const LookingForPlayTab = () => {
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             borderRadius: 2,
             '& .MuiToggleButton-root': {
-              px: 3,
-              py: 1.5,
+              px: { xs: 2, sm: 3 },
+              py: { xs: 1, sm: 1.5 },
+              minHeight: '44px',
               border: 'none',
               fontWeight: 600,
               textTransform: 'none',
-              fontSize: '0.95rem',
+              fontSize: { xs: '0.813rem', sm: '0.95rem' },
               transition: 'all 0.3s ease',
               '&:hover': {
                 backgroundColor: 'rgba(102, 126, 234, 0.08)'
@@ -195,13 +196,13 @@ const LookingForPlayTab = () => {
         <>
           {/* Filters */}
           <Box sx={{ 
-            mb: 3, 
-            p: 3, 
+            mb: { xs: 2, sm: 3 }, 
+            p: { xs: 2, sm: 2.5, md: 3 }, 
             backgroundColor: 'white',
             borderRadius: 2,
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
           }}>
-            <Grid container spacing={2}>
+            <Grid container spacing={{ xs: 1.5, sm: 2 }}>
               <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField
                   fullWidth
@@ -210,6 +211,9 @@ const LookingForPlayTab = () => {
                   value={filters.sportType}
                   onChange={(e) => setFilters({ ...filters, sportType: e.target.value })}
                   sx={{
+                    '& .MuiInputBase-root': {
+                      minHeight: { xs: '44px', sm: '56px' }
+                    },
                     '& .MuiOutlinedInput-root': {
                       '&:hover fieldset': {
                         borderColor: '#667eea'
@@ -236,6 +240,9 @@ const LookingForPlayTab = () => {
                   onChange={(e) => setFilters({ ...filters, city: e.target.value })}
                   placeholder="City"
                   sx={{
+                    '& .MuiInputBase-root': {
+                      minHeight: { xs: '44px', sm: '56px' }
+                    },
                     '& .MuiOutlinedInput-root': {
                       '&:hover fieldset': {
                         borderColor: '#667eea'
@@ -255,6 +262,9 @@ const LookingForPlayTab = () => {
                   value={filters.skillLevel}
                   onChange={(e) => setFilters({ ...filters, skillLevel: e.target.value })}
                   sx={{
+                    '& .MuiInputBase-root': {
+                      minHeight: { xs: '44px', sm: '56px' }
+                    },
                     '& .MuiOutlinedInput-root': {
                       '&:hover fieldset': {
                         borderColor: '#667eea'
@@ -278,21 +288,21 @@ const LookingForPlayTab = () => {
           {requests.length === 0 ? (
             <Box sx={{ 
               textAlign: 'center', 
-              py: 8,
+              py: { xs: 6, sm: 8 },
               backgroundColor: 'white',
               borderRadius: 2,
               boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
             }}>
-              <Typography variant="h4" sx={{ mb: 2, fontSize: '3rem' }}>🔍</Typography>
-              <Typography variant="h6" color="text.secondary" gutterBottom>
+              <Typography variant="h4" sx={{ mb: 2, fontSize: { xs: '2.5rem', sm: '3rem' } }}>🔍</Typography>
+              <Typography variant="h6" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                 {t('teamup.noRequestsFound')}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
                 Try adjusting your filters to see more activities
               </Typography>
             </Box>
           ) : (
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 2, sm: 3 }}>
               {requests.map((request) => {
                 const _ownRequest = isOwnRequest(request);
                 const _responded = hasResponded(request);
@@ -337,13 +347,14 @@ const LookingForPlayTab = () => {
                     }}
                     onClick={() => handleOpenModal(request.id)}
                     >
-                      <CardContent sx={{ p: 3 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                      <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, flexWrap: 'wrap', gap: 1 }}>
                           <Typography variant="h6" component="div" sx={{ 
                             fontWeight: 600,
                             color: '#1a1a1a',
                             flex: 1,
-                            pr: 1
+                            pr: 1,
+                            fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' }
                           }}>
                             {request.title}
                           </Typography>
@@ -497,21 +508,21 @@ const LookingForPlayTab = () => {
           {myResponses.length === 0 ? (
             <Box sx={{ 
               textAlign: 'center', 
-              py: 8,
+              py: { xs: 6, sm: 8 },
               backgroundColor: 'white',
               borderRadius: 2,
               boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
             }}>
-              <Typography variant="h4" sx={{ mb: 2, fontSize: '3rem' }}>💬</Typography>
-              <Typography variant="h6" color="text.secondary" gutterBottom>
+              <Typography variant="h4" sx={{ mb: 2, fontSize: { xs: '2.5rem', sm: '3rem' } }}>💬</Typography>
+              <Typography variant="h6" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                 {t('teamup.noResponsesYet')}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
                 Start browsing activities and express your interest!
               </Typography>
             </Box>
           ) : (
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 2, sm: 3 }}>
               {myResponses.map((response) => (
                 <Grid size={{ xs: 12, md: 6, lg: 4 }} key={response.id}>
                   <Card sx={{
@@ -524,12 +535,13 @@ const LookingForPlayTab = () => {
                       boxShadow: '0 8px 16px rgba(0,0,0,0.15)'
                     }
                   }}>
-                    <CardContent sx={{ p: 3 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'flex-start' }}>
+                    <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
                         <Typography variant="h6" component="div" sx={{ 
                           fontWeight: 600,
                           flex: 1,
-                          pr: 1
+                          pr: 1,
+                          fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' }
                         }}>
                           {response.teamUpRequest?.title}
                         </Typography>

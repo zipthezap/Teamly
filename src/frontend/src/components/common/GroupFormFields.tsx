@@ -69,7 +69,7 @@ const GroupFormFields: React.FC<GroupFormFieldsProps> = ({
   return (
     <Box>
       {/* Basic Information Section */}
-      <Typography variant="h6" sx={{ mb: 2, mt: 2 }}>
+      <Typography variant="h6" sx={{ mb: 2, mt: 2, fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}>
         {t('groups.basicInfo') || 'Basic Information'}
       </Typography>
       
@@ -81,6 +81,11 @@ const GroupFormFields: React.FC<GroupFormFieldsProps> = ({
         onChange={e => setName(e.target.value)}
         required
         helperText={t('groups.groupNameHelp') || 'Choose a descriptive name for your group'}
+        sx={{
+          '& .MuiInputBase-root': {
+            minHeight: { xs: '44px', sm: '56px' }
+          }
+        }}
       />
       
       <TextField
@@ -92,12 +97,17 @@ const GroupFormFields: React.FC<GroupFormFieldsProps> = ({
         value={description}
         onChange={e => setDescription(e.target.value)}
         helperText={t('groups.descriptionHelp') || 'Describe what your group is about and what activities you do'}
+        sx={{
+          '& .MuiInputBase-root': {
+            minHeight: { xs: '44px', sm: 'auto' }
+          }
+        }}
       />
 
       <Divider sx={{ my: 3 }} />
 
       {/* Group Settings Section */}
-      <Typography variant="h6" sx={{ mb: 2 }}>
+      <Typography variant="h6" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}>
         {t('groups.groupSettings') || 'Group Settings'}
       </Typography>
 
@@ -108,6 +118,9 @@ const GroupFormFields: React.FC<GroupFormFieldsProps> = ({
             value={sportType || ''}
             onChange={e => setSportType(e.target.value)}
             label={t('groups.sportType') || 'Primary Sport Type'}
+            sx={{
+              minHeight: { xs: '44px', sm: '56px' }
+            }}
           >
             {SPORT_TYPES.map(sport => (
               <MenuItem key={sport.value} value={sport.value}>
@@ -131,6 +144,11 @@ const GroupFormFields: React.FC<GroupFormFieldsProps> = ({
           onChange={e => setMaxMembers(e.target.value)}
           inputProps={{ min: 2, max: 10000 }}
           helperText={t('groups.maxMembersHelp') || 'Leave empty for unlimited members (2-10,000)'}
+          sx={{
+            '& .MuiInputBase-root': {
+              minHeight: { xs: '44px', sm: '56px' }
+            }
+          }}
         />
       )}
 
@@ -144,6 +162,11 @@ const GroupFormFields: React.FC<GroupFormFieldsProps> = ({
             onChange={handleTagsChange}
             placeholder="competitive, weekend-warriors, beginners-welcome"
             helperText={t('groups.tagsHelp') || 'Add comma-separated tags to help others find your group'}
+            sx={{
+              '& .MuiInputBase-root': {
+                minHeight: { xs: '44px', sm: '56px' }
+              }
+            }}
           />
           {tagArray.length > 0 && (
             <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
@@ -164,7 +187,7 @@ const GroupFormFields: React.FC<GroupFormFieldsProps> = ({
       <Divider sx={{ my: 3 }} />
 
       {/* Privacy & Access Section */}
-      <Typography variant="h6" sx={{ mb: 2 }}>
+      <Typography variant="h6" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}>
         {t('groups.privacySettings') || 'Privacy & Access'}
       </Typography>
 
@@ -175,6 +198,7 @@ const GroupFormFields: React.FC<GroupFormFieldsProps> = ({
               checked={isPublic}
               onChange={e => setIsPublic(e.target.checked)}
               color="primary"
+              sx={{ '& .MuiSvgIcon-root': { fontSize: { xs: 28, sm: 24 } } }}
             />
           }
           label={t('groups.makePublic')}
@@ -193,6 +217,7 @@ const GroupFormFields: React.FC<GroupFormFieldsProps> = ({
                 checked={autoApproveJoinRequests || false}
                 onChange={e => setAutoApproveJoinRequests(e.target.checked)}
                 color="primary"
+                sx={{ '& .MuiSvgIcon-root': { fontSize: { xs: 28, sm: 24 } } }}
               />
             }
             label={t('groups.autoApproveJoinRequests') || 'Auto-approve join requests'}
@@ -207,7 +232,7 @@ const GroupFormFields: React.FC<GroupFormFieldsProps> = ({
       <Divider sx={{ my: 3 }} />
 
       {/* Member Permissions Section */}
-      <Typography variant="h6" sx={{ mb: 2 }}>
+      <Typography variant="h6" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}>
         {t('groups.memberPermissions') || 'Member Permissions'}
       </Typography>
 
@@ -219,6 +244,7 @@ const GroupFormFields: React.FC<GroupFormFieldsProps> = ({
                 checked={allowMemberInvites || false}
                 onChange={e => setAllowMemberInvites(e.target.checked)}
                 color="primary"
+                sx={{ '& .MuiSvgIcon-root': { fontSize: { xs: 28, sm: 24 } } }}
               />
             }
             label={t('groups.allowMemberInvites') || 'Allow members to invite others'}
@@ -238,6 +264,7 @@ const GroupFormFields: React.FC<GroupFormFieldsProps> = ({
                 checked={allowMemberCopyLink !== false}
                 onChange={e => setAllowMemberCopyLink(e.target.checked)}
                 color="primary"
+                sx={{ '& .MuiSvgIcon-root': { fontSize: { xs: 28, sm: 24 } } }}
               />
             }
             label={t('groups.allowMemberCopyLink') || 'Allow members to copy invite link'}

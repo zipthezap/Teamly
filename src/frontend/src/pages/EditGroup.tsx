@@ -170,9 +170,9 @@ const EditGroup = () => {
   }
 
   return (
-    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Typography variant="h4" gutterBottom>
+    <Container maxWidth="md" sx={{ py: { xs: 2, sm: 3, md: 4 }, px: { xs: 2, sm: 3 } }}>
+      <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+        <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' } }}>
           {t('groups.editGroup')}
         </Typography>
 
@@ -183,7 +183,7 @@ const EditGroup = () => {
         )}
 
         <form onSubmit={handleSubmit}>
-          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: { xs: 2, sm: 3 } }}>
             <ImageUpload
               currentImage={groupPicture}
               onUpload={handlePictureUpload}
@@ -219,21 +219,37 @@ const EditGroup = () => {
             />
           )}
           
-          <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column-reverse', sm: 'row' },
+            justifyContent: { sm: 'flex-end' },
+            gap: { xs: 1.5, sm: 2 },
+            mt: 3
+          }}>
+            <Button
+              variant="outlined"
+              size="large"
+              onClick={() => navigate(`/groups/${id}`)}
+              sx={{ 
+                minHeight: '44px', 
+                px: { xs: 2, sm: 3 },
+                width: { xs: '100%', sm: 'auto' }
+              }}
+            >
+              {t('common.cancel')}
+            </Button>
             <Button
               type="submit"
               variant="contained"
               size="large"
               disabled={submitting}
+              sx={{ 
+                minHeight: '44px', 
+                px: { xs: 2, sm: 3 },
+                width: { xs: '100%', sm: 'auto' }
+              }}
             >
               {submitting ? t('groups.updating') : t('groups.updateGroup')}
-            </Button>
-            <Button
-              variant="outlined"
-              size="large"
-              onClick={() => navigate(`/groups/${id}`)}
-            >
-              {t('common.cancel')}
             </Button>
           </Box>
         </form>

@@ -19,12 +19,12 @@ const TeamUp = () => {
     <Box sx={{ 
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      pb: 4
+      pb: { xs: 2, sm: 3, md: 4 }
     }}>
-      <Container maxWidth="xl" sx={{ pt: 4 }}>
+      <Container maxWidth="xl" sx={{ pt: { xs: 2, sm: 3, md: 4 }, px: { xs: 2, sm: 3 } }}>
         {/* Header Section with Modern Design */}
         <Box sx={{ 
-          mb: 4, 
+          mb: { xs: 3, sm: 4 }, 
           textAlign: 'center',
           color: 'white'
         }}>
@@ -34,7 +34,8 @@ const TeamUp = () => {
             sx={{ 
               fontWeight: 700,
               textShadow: '2px 2px 4px rgba(0,0,0,0.2)',
-              mb: 1
+              mb: 1,
+              fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' }
             }}
           >
             {t('teamup.title')}
@@ -45,7 +46,9 @@ const TeamUp = () => {
               fontWeight: 300,
               opacity: 0.95,
               maxWidth: '600px',
-              mx: 'auto'
+              mx: 'auto',
+              fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' },
+              px: { xs: 2, sm: 0 }
             }}
           >
             {t('teamup.subtitle')}
@@ -56,7 +59,7 @@ const TeamUp = () => {
         <Paper 
           elevation={8}
           sx={{ 
-            borderRadius: 3,
+            borderRadius: { xs: 2, sm: 3 },
             overflow: 'hidden',
             backgroundColor: 'white'
           }}
@@ -65,17 +68,18 @@ const TeamUp = () => {
             value={tabValue} 
             onChange={handleTabChange}
             aria-label="teamup tabs"
-            centered
+            variant="fullWidth"
             sx={{
               backgroundColor: 'grey.50',
               borderBottom: 1,
               borderColor: 'divider',
               '& .MuiTab-root': {
-                minHeight: 72,
-                fontSize: '1rem',
+                minHeight: { xs: 64, sm: 72 },
+                fontSize: { xs: '0.875rem', sm: '1rem' },
                 fontWeight: 600,
                 textTransform: 'none',
                 transition: 'all 0.3s ease',
+                px: { xs: 1, sm: 2 },
                 '&:hover': {
                   backgroundColor: 'rgba(102, 126, 234, 0.08)',
                   transform: 'translateY(-2px)'
@@ -88,6 +92,9 @@ const TeamUp = () => {
                 height: 3,
                 borderRadius: '3px 3px 0 0',
                 backgroundColor: '#667eea'
+              },
+              '& .MuiTab-iconWrapper': {
+                fontSize: { xs: '1.25rem', sm: '1.5rem' }
               }
             }}
           >
@@ -95,17 +102,19 @@ const TeamUp = () => {
               icon={<SearchIcon />} 
               iconPosition="start" 
               label={t('teamup.lookingForPlayTab')} 
-              id="teamup-tab-0" 
+              id="teamup-tab-0"
+              sx={{ minHeight: '44px' }}
             />
             <Tab 
               icon={<GroupAddIcon />} 
               iconPosition="start" 
               label={t('teamup.needPlayersTab')} 
-              id="teamup-tab-1" 
+              id="teamup-tab-1"
+              sx={{ minHeight: '44px' }}
             />
           </Tabs>
 
-          <Box sx={{ backgroundColor: '#fafafa', minHeight: '60vh' }}>
+          <Box sx={{ backgroundColor: '#fafafa', minHeight: '60vh', p: { xs: 2, sm: 3 } }}>
             <TabPanel value={tabValue} index={0}>
               <LookingForPlayTab />
             </TabPanel>
