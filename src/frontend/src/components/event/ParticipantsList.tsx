@@ -1,5 +1,21 @@
 import React from 'react';
-// All MUI imports removed; using Tailwind and SVGs only
+import { 
+  Box,
+  Typography, 
+  Avatar, 
+  Chip, 
+  List, 
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  Paper
+} from '@mui/material';
+import {
+  CheckCircle,
+  Cancel,
+  HelpOutline,
+  PeopleOutline
+} from '@mui/icons-material';
 import { getAvatarColor } from '../../utils/colors';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
 import { getParticipantStatusColor } from '../../utils/statusHelpers';
@@ -13,72 +29,170 @@ interface ParticipantsListProps {
 const getStatusIcon = (status: string) => {
   switch (status) {
     case 'confirmed':
-      return (
-        <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" /><path d="M9 12l2 2l4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-      );
+      return <CheckCircle sx={{ fontSize: 16 }} color="success" />;
     case 'declined':
-      return (
-        <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" /><path d="M15 9l-6 6M9 9l6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
-      );
+      return <Cancel sx={{ fontSize: 16 }} color="error" />;
     default:
-      return (
-        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" /><path d="M12 8v4m0 4h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
-      );
+      return <HelpOutline sx={{ fontSize: 16 }} color="action" />;
   }
 };
 
 const ParticipantsList: React.FC<ParticipantsListProps> = ({ event, participantCount }) => {
+  // Helper function to get status chip color
+  const getStatusChipColor = (status: string): 'success' | 'error' | 'default' => {
+    switch (status) {
+      case 'confirmed':
+        return 'success';
+      case 'declined':
+        return 'error';
+      default:
+        return 'default';
+    }
+  };
+
   return (
-    <div className="bg-white dark:bg-[#1a2233] rounded-xl shadow-md p-6">
-      <div className="text-lg font-semibold mb-4">Participants ({participantCount})</div>
+    <Paper 
+      elevation={2} 
+      sx={{ 
+        borderRadius: 3, 
+        p: { xs: 2, sm: 2.5, md: 3 }
+      }}
+    >
+      <Typography 
+        variant="h6" 
+        sx={{ 
+          fontWeight: 'semibold', 
+          mb: { xs: 2, sm: 2.5 },
+          fontSize: { xs: '1rem', sm: '1.125rem' }
+        }}
+      >
+        Participants ({participantCount})
+      </Typography>
+      
       {(!event.participants || event.participants.length === 0) ? (
-        <div className="flex flex-col items-center py-8 text-center">
-          <svg className="w-12 h-12 text-gray-300 mb-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2" /><path d="M5.5 21a7.5 7.5 0 0 1 13 0" stroke="currentColor" strokeWidth="2" /></svg>
-          <div className="text-gray-400">No participants yet. Be the first to join!</div>
-        </div>
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            py: { xs: 4, sm: 6 }, 
+            textAlign: 'center' 
+          }}
+        >
+          <PeopleOutline sx={{ fontSize: { xs: 40, sm: 48 }, color: 'text.disabled', mb: 1 }} />
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
+            No participants yet. Be the first to join!
+          </Typography>
+        </Box>
       ) : (
-        <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+        <List sx={{ py: 0 }}>
           {event.participants.map((participant: EventParticipant, idx: number) => {
             // Match attendance by userId, not id
             const attendance = event.eventAttendances?.find((a: EventAttendance) => a.userId === participant.userId);
             const isLate = attendance?.status === 'late';
             const profilePictureUrl = getImageUrl(participant.user?.profilePicture);
+            
             return (
-              <li key={participant.id} className="flex items-center py-3 gap-4 hover:bg-gray-50 dark:hover:bg-white/5 rounded-lg transition">
-                {/* Avatar */}
-                <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-white overflow-hidden" style={{ background: getAvatarColor(idx) }}>
-                  {profilePictureUrl ? (
-                    <img src={profilePictureUrl} alt={participant.user?.name} className="w-full h-full object-cover" />
-                  ) : (
-                    getInitials(participant.user?.name)
-                  )}
-                </div>
-                {/* Name, badges, email */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 font-medium text-gray-900 dark:text-white">
-                    {participant.user?.name}
-                    {participant.id === event.creatorId && (
-                      <span className="ml-1 px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-xs font-semibold">Organizer</span>
-                    )}
-                    {isLate && (
-                      <span className="ml-1 px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 text-xs font-semibold">Late</span>
-                    )}
-                  </div>
-                  <div className="text-xs text-gray-400 truncate">{participant.user?.email}</div>
-                </div>
-                {/* Status chip */}
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${getParticipantStatusColor(participant.status)}`}
-                  style={{ minWidth: 80, justifyContent: 'center' }}
-                >
-                  {getStatusIcon(participant.status)}
-                  <span className="capitalize">{participant.status}</span>
-                </span>
-              </li>
+              <ListItem 
+                key={participant.id}
+                sx={{ 
+                  px: { xs: 1, sm: 2 },
+                  py: { xs: 1.5, sm: 2 },
+                  borderRadius: 1,
+                  '&:hover': {
+                    bgcolor: 'action.hover'
+                  }
+                }}
+              >
+                <ListItemAvatar>
+                  <Avatar
+                    src={profilePictureUrl || undefined}
+                    alt={participant.user?.name}
+                    sx={{ 
+                      width: { xs: 36, sm: 40 }, 
+                      height: { xs: 36, sm: 40 },
+                      bgcolor: profilePictureUrl ? undefined : getAvatarColor(idx),
+                      fontSize: { xs: '0.875rem', sm: '1rem' }
+                    }}
+                  >
+                    {!profilePictureUrl && getInitials(participant.user?.name)}
+                  </Avatar>
+                </ListItemAvatar>
+                
+                <ListItemText
+                  primary={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                      <Typography 
+                        variant="body2" 
+                        fontWeight="medium"
+                        sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}
+                      >
+                        {participant.user?.name}
+                      </Typography>
+                      {participant.id === event.creatorId && (
+                        <Chip 
+                          label="Organizer" 
+                          size="small" 
+                          color="info"
+                          sx={{ 
+                            height: { xs: 18, sm: 20 }, 
+                            fontSize: { xs: '0.65rem', sm: '0.7rem' },
+                            '& .MuiChip-label': { px: { xs: 0.5, sm: 0.75 } }
+                          }}
+                        />
+                      )}
+                      {isLate && (
+                        <Chip 
+                          label="Late" 
+                          size="small" 
+                          color="warning"
+                          sx={{ 
+                            height: { xs: 18, sm: 20 }, 
+                            fontSize: { xs: '0.65rem', sm: '0.7rem' },
+                            '& .MuiChip-label': { px: { xs: 0.5, sm: 0.75 } }
+                          }}
+                        />
+                      )}
+                    </Box>
+                  }
+                  secondary={
+                    <Typography 
+                      variant="caption" 
+                      color="text.secondary" 
+                      noWrap
+                      sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                    >
+                      {participant.user?.email}
+                    </Typography>
+                  }
+                  sx={{ 
+                    pr: { xs: 1, sm: 2 },
+                    minWidth: 0,
+                    flex: 1
+                  }}
+                />
+                
+                <Chip
+                  icon={getStatusIcon(participant.status)}
+                  label={participant.status}
+                  size="small"
+                  color={getStatusChipColor(participant.status)}
+                  sx={{ 
+                    minWidth: { xs: 70, sm: 80 },
+                    height: { xs: 24, sm: 28 },
+                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                    textTransform: 'capitalize',
+                    '& .MuiChip-label': { 
+                      px: { xs: 0.75, sm: 1 }
+                    }
+                  }}
+                />
+              </ListItem>
             );
           })}
-        </ul>
+        </List>
       )}
-    </div>
+    </Paper>
   );
 };
 

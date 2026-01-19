@@ -92,9 +92,9 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
 
   return (
     <>
-      <Paper sx={{ p: 2, bgcolor: 'rgba(76, 175, 80, 0.03)' }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+      <Paper sx={{ p: { xs: 1.5, sm: 2 }, bgcolor: 'rgba(76, 175, 80, 0.03)' }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5} flexWrap="wrap" gap={1}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: { xs: '0.938rem', sm: '1rem' } }}>
             {t('activityFeed.recentActivity', 'Recent Activity')}
           </Typography>
           {event.eventNotifications && event.eventNotifications.length > 3 && (
@@ -102,6 +102,7 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
               size="small"
               startIcon={<HistoryIcon />}
               onClick={onOpenDialog}
+              sx={{ minHeight: '32px', fontSize: { xs: '0.75rem', sm: '0.813rem' } }}
             >
               {t('activityFeed.viewAll', 'View All')}
             </Button>
@@ -109,7 +110,7 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
         </Box>
         <Box
           sx={{
-            maxHeight: '180px',
+            maxHeight: { xs: '150px', sm: '180px', md: '200px' },
             overflowY: 'auto',
             overflowX: 'hidden',
             '&::-webkit-scrollbar': {
@@ -127,7 +128,7 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
                 <Box
                   key={notif.id || idx}
                   sx={{
-                    p: 0.75,
+                    p: { xs: 0.5, sm: 0.75 },
                     borderRadius: 1,
                     bgcolor: 'rgba(255,255,255,0.8)',
                     border: '1px solid rgba(76,175,80,0.07)',
@@ -136,14 +137,25 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
                     gap: 1,
                   }}
                 >
-                  <Typography sx={{ fontSize: '1rem' }}>
+                  <Typography sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                     {getActivityIcon(notif.type)}
                   </Typography>
-                  <Box flexGrow={1}>
-                    <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.95rem' }} noWrap>
+                  <Box flexGrow={1} minWidth={0}>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        fontWeight: 500, 
+                        fontSize: { xs: '0.813rem', sm: '0.938rem' } 
+                      }} 
+                      noWrap
+                    >
                       {getActivityMessage(notif, t)}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography 
+                      variant="caption" 
+                      color="text.secondary"
+                      sx={{ fontSize: { xs: '0.688rem', sm: '0.75rem' } }}
+                    >
                       {new Date(notif.createdAt).toLocaleString('en-US', {
                         month: 'short',
                         day: 'numeric',
@@ -159,7 +171,7 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
                 <Box
                   key={p.id || idx}
                   sx={{
-                    p: 0.75,
+                    p: { xs: 0.5, sm: 0.75 },
                     borderRadius: 1,
                     bgcolor: 'rgba(255,255,255,0.8)',
                     border: '1px solid rgba(76,175,80,0.07)',
@@ -168,14 +180,25 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
                     gap: 1,
                   }}
                 >
-                  <Typography sx={{ fontSize: '1rem' }}>
+                  <Typography sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                     {getActivityIcon('join')}
                   </Typography>
-                  <Box flexGrow={1}>
-                    <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.95rem' }} noWrap>
+                  <Box flexGrow={1} minWidth={0}>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        fontWeight: 500, 
+                        fontSize: { xs: '0.813rem', sm: '0.938rem' } 
+                      }} 
+                      noWrap
+                    >
                       {t('activityFeed.join', { userName: p.user?.name })}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography 
+                      variant="caption" 
+                      color="text.secondary"
+                      sx={{ fontSize: { xs: '0.688rem', sm: '0.75rem' } }}
+                    >
                       {new Date(p.joinedAt).toLocaleString('en-US', {
                         month: 'short',
                         day: 'numeric',
@@ -188,7 +211,11 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
               ))
             ) : (
               <Box textAlign="center" py={1}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}
+                >
                   {t('activityFeed.noActivityYet', 'No activity yet')}
                 </Typography>
               </Box>
