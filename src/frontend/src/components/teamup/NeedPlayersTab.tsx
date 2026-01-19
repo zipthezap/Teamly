@@ -243,7 +243,7 @@ const NeedPlayersTab = () => {
       )}
 
       {/* View Toggle */}
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+      <Box sx={{ mb: { xs: 2, sm: 3 }, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
         <ToggleButtonGroup
           value={view}
           exclusive
@@ -254,12 +254,13 @@ const NeedPlayersTab = () => {
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             borderRadius: 2,
             '& .MuiToggleButton-root': {
-              px: 3,
-              py: 1.5,
+              px: { xs: 2, sm: 3 },
+              py: { xs: 1, sm: 1.5 },
+              minHeight: '44px',
               border: 'none',
               fontWeight: 600,
               textTransform: 'none',
-              fontSize: '0.95rem',
+              fontSize: { xs: '0.813rem', sm: '0.95rem' },
               transition: 'all 0.3s ease',
               '&:hover': {
                 backgroundColor: 'rgba(102, 126, 234, 0.08)'
@@ -296,8 +297,10 @@ const NeedPlayersTab = () => {
               color: 'white',
               fontWeight: 600,
               textTransform: 'none',
-              px: 3,
-              py: 1.5,
+              px: { xs: 2, sm: 3 },
+              py: { xs: 1, sm: 1.5 },
+              minHeight: '44px',
+              fontSize: { xs: '0.875rem', sm: '1rem' },
               borderRadius: 2,
               boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
               transition: 'all 0.3s ease',
@@ -319,21 +322,21 @@ const NeedPlayersTab = () => {
           {myRequests.length === 0 ? (
             <Box sx={{ 
               textAlign: 'center', 
-              py: 8,
+              py: { xs: 6, sm: 8 },
               backgroundColor: 'white',
               borderRadius: 2,
               boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
             }}>
-              <Typography variant="h4" sx={{ mb: 2, fontSize: '3rem' }}>📝</Typography>
-              <Typography variant="h6" color="text.secondary" gutterBottom>
+              <Typography variant="h4" sx={{ mb: 2, fontSize: { xs: '2.5rem', sm: '3rem' } }}>📝</Typography>
+              <Typography variant="h6" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                 {t('teamup.noRequestsYet')}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
                 Create your first request to find players!
               </Typography>
             </Box>
           ) : (
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 2, sm: 3 }}>
               {myRequests.map((request) => (
                 <Grid size={{ xs: 12, md: 6, lg: 4 }} key={request.id}>
                   <Card sx={{
@@ -346,12 +349,13 @@ const NeedPlayersTab = () => {
                       boxShadow: '0 8px 16px rgba(0,0,0,0.15)'
                     }
                   }}>
-                    <CardContent sx={{ p: 3 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'flex-start' }}>
+                    <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
                         <Typography variant="h6" component="div" sx={{ 
                           fontWeight: 600,
                           flex: 1,
-                          pr: 1
+                          pr: 1,
+                          fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' }
                         }}>
                           {request.title}
                         </Typography>
@@ -439,12 +443,14 @@ const NeedPlayersTab = () => {
                         </Box>
                       )}
                     </CardContent>
-                    <CardActions sx={{ px: 3, pb: 2, pt: 0, borderTop: '1px solid', borderColor: 'divider', gap: 1, flexWrap: 'wrap' }}>
+                    <CardActions sx={{ px: { xs: 2, sm: 2.5, md: 3 }, pb: 2, pt: 0, borderTop: '1px solid', borderColor: 'divider', gap: 1, flexWrap: 'wrap' }}>
                       <IconButton
                         size="small"
                         onClick={() => handleOpenDialog(request)}
                         sx={{
                           color: '#667eea',
+                          minWidth: '44px',
+                          minHeight: '44px',
                           '&:hover': {
                             backgroundColor: 'rgba(102, 126, 234, 0.08)'
                           }
@@ -458,6 +464,8 @@ const NeedPlayersTab = () => {
                         onClick={() => handleDelete(request.id)}
                         sx={{
                           color: 'error.main',
+                          minWidth: '44px',
+                          minHeight: '44px',
                           '&:hover': {
                             backgroundColor: 'rgba(244, 67, 54, 0.08)'
                           }
@@ -476,6 +484,9 @@ const NeedPlayersTab = () => {
                           color: '#667eea',
                           textTransform: 'none',
                           fontWeight: 600,
+                          minHeight: '44px',
+                          fontSize: { xs: '0.813rem', sm: '0.875rem' },
+                          px: { xs: 1.5, sm: 2 },
                           '&:hover': {
                             borderColor: '#5568d3',
                             backgroundColor: 'rgba(102, 126, 234, 0.08)'
@@ -491,6 +502,9 @@ const NeedPlayersTab = () => {
                           sx={{
                             textTransform: 'none',
                             fontWeight: 600,
+                            minHeight: '44px',
+                            fontSize: { xs: '0.813rem', sm: '0.875rem' },
+                            px: { xs: 1.5, sm: 2 },
                             color: '#4caf50',
                             '&:hover': {
                               backgroundColor: 'rgba(76, 175, 80, 0.08)'
@@ -507,6 +521,9 @@ const NeedPlayersTab = () => {
                           sx={{
                             textTransform: 'none',
                             fontWeight: 600,
+                            minHeight: '44px',
+                            fontSize: { xs: '0.813rem', sm: '0.875rem' },
+                            px: { xs: 1.5, sm: 2 },
                             color: '#2196f3',
                             '&:hover': {
                               backgroundColor: 'rgba(33, 150, 243, 0.08)'
@@ -531,21 +548,21 @@ const NeedPlayersTab = () => {
           {requestsWithResponses.length === 0 ? (
             <Box sx={{ 
               textAlign: 'center', 
-              py: 8,
+              py: { xs: 6, sm: 8 },
               backgroundColor: 'white',
               borderRadius: 2,
               boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
             }}>
-              <Typography variant="h4" sx={{ mb: 2, fontSize: '3rem' }}>📬</Typography>
-              <Typography variant="h6" color="text.secondary" gutterBottom>
+              <Typography variant="h4" sx={{ mb: 2, fontSize: { xs: '2.5rem', sm: '3rem' } }}>📬</Typography>
+              <Typography variant="h6" color="text.secondary" gutterBottom sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                 {t('teamup.noResponsesReceived')}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
                 {t('teamup.noResponsesReceivedDesc')}
               </Typography>
             </Box>
           ) : (
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 2, sm: 3 }}>
               {requestsWithResponses.map((request) => {
                 const stats = getResponseStats(request);
                 const spotsLeft = request.playersNeeded - stats.accepted;
@@ -565,8 +582,8 @@ const NeedPlayersTab = () => {
                     }}
                     onClick={() => handleOpenDetailModal(request.id)}
                     >
-                      <CardContent sx={{ p: 3 }}>
-                        <Typography variant="h6" component="div" gutterBottom sx={{ fontWeight: 600 }}>
+                      <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+                        <Typography variant="h6" component="div" gutterBottom sx={{ fontWeight: 600, fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' } }}>
                           {request.title}
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
@@ -651,17 +668,18 @@ const NeedPlayersTab = () => {
       {/* Create/Edit Request Dialog */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
         <form onSubmit={handleSubmit}>
-          <DialogTitle>
+          <DialogTitle sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
             {editingRequest ? t('teamup.editRequest') : t('teamup.createRequest')}
           </DialogTitle>
           <DialogContent>
-            <Stack spacing={2} sx={{ mt: 1 }}>
+            <Stack spacing={{ xs: 1.5, sm: 2 }} sx={{ mt: 1 }}>
               <TextField
                 fullWidth
                 required
                 label={t('teamup.requestTitle')}
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                sx={{ '& .MuiInputBase-root': { minHeight: { xs: '44px', sm: '56px' } } }}
               />
               <TextField
                 fullWidth
@@ -678,6 +696,7 @@ const NeedPlayersTab = () => {
                 label={t('teamup.sportType')}
                 value={formData.sportType}
                 onChange={(e) => setFormData({ ...formData, sportType: e.target.value })}
+                sx={{ '& .MuiInputBase-root': { minHeight: { xs: '44px', sm: '56px' } } }}
               >
                 {SPORT_TYPES.map((sport) => (
                   <MenuItem key={sport} value={sport}>
@@ -693,6 +712,7 @@ const NeedPlayersTab = () => {
                 value={formData.dateTime}
                 onChange={(e) => setFormData({ ...formData, dateTime: e.target.value })}
                 InputLabelProps={{ shrink: true }}
+                sx={{ '& .MuiInputBase-root': { minHeight: { xs: '44px', sm: '56px' } } }}
               />
               <TextField
                 fullWidth
@@ -704,6 +724,7 @@ const NeedPlayersTab = () => {
                   setFormData({ ...formData, playersNeeded: parseInt(e.target.value) })
                 }
                 inputProps={{ min: 1 }}
+                sx={{ '& .MuiInputBase-root': { minHeight: { xs: '44px', sm: '56px' } } }}
               />
               <TextField
                 fullWidth
@@ -711,6 +732,7 @@ const NeedPlayersTab = () => {
                 label={t('teamup.skillLevel')}
                 value={formData.skillLevel}
                 onChange={(e) => setFormData({ ...formData, skillLevel: e.target.value })}
+                sx={{ '& .MuiInputBase-root': { minHeight: { xs: '44px', sm: '56px' } } }}
               >
                 {SKILL_LEVELS.map((level) => (
                   <MenuItem key={level} value={level}>
@@ -724,12 +746,15 @@ const NeedPlayersTab = () => {
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 placeholder="Enter location"
+                sx={{ '& .MuiInputBase-root': { minHeight: { xs: '44px', sm: '56px' } } }}
               />
             </Stack>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseDialog}>{t('common.cancel')}</Button>
-            <Button type="submit" variant="contained">
+          <DialogActions sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 3 } }}>
+            <Button onClick={handleCloseDialog} sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}>
+              {t('common.cancel')}
+            </Button>
+            <Button type="submit" variant="contained" sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}>
               {editingRequest ? t('common.save') : t('common.create')}
             </Button>
           </DialogActions>

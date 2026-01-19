@@ -38,19 +38,23 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({
   const isOAuthOnly = authProvider && authProvider !== 'local' && !hasPassword;
 
   return (
-    <Paper sx={{ p: 4 }}>
-      <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+    <Paper sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+      <Typography variant="h5" gutterBottom sx={{ 
+        fontWeight: 600, 
+        mb: { xs: 2, sm: 3 },
+        fontSize: { xs: '1.25rem', sm: '1.5rem' }
+      }}>
         {isOAuthOnly ? 'Set Password' : t('profile.changePassword')}
       </Typography>
       
       {isOAuthOnly && (
-        <Alert severity="info" sx={{ mb: 3 }}>
+        <Alert severity="info" sx={{ mb: { xs: 2, sm: 3 } }}>
           You signed up using {authProvider}. Setting a password will allow you to sign in with email and password as well.
         </Alert>
       )}
       
       <form onSubmit={onSubmit}>
-        <Stack spacing={3}>
+        <Stack spacing={{ xs: 2, sm: 3 }}>
           {!isOAuthOnly && (
             <TextField
               label={t('profile.currentPassword')}
@@ -60,6 +64,7 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({
               onChange={onChange}
               fullWidth
               required
+              sx={{ '& .MuiInputBase-root': { minHeight: { xs: '44px', sm: '56px' } } }}
             />
           )}
           <TextField
@@ -71,6 +76,7 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({
             fullWidth
             required
             helperText={t('profile.passwordMinLength') || 'Minimum 8 characters with uppercase, lowercase, number, and special character'}
+            sx={{ '& .MuiInputBase-root': { minHeight: { xs: '44px', sm: '56px' } } }}
           />
           <TextField
             label={isOAuthOnly ? 'Confirm Password' : t('profile.confirmNewPassword')}
@@ -80,14 +86,16 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({
             onChange={onChange}
             fullWidth
             required
+            sx={{ '& .MuiInputBase-root': { minHeight: { xs: '44px', sm: '56px' } } }}
           />
         </Stack>
-        <Box sx={{ mt: 3 }}>
+        <Box sx={{ mt: { xs: 2, sm: 3 } }}>
           <Button
             type="submit"
             variant="contained"
             size="large"
             disabled={loading}
+            sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
           >
             {isOAuthOnly ? 'Set Password' : t('profile.updatePassword')}
           </Button>

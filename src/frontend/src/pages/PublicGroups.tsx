@@ -395,49 +395,85 @@ const PublicGroups = () => {
   }
 
   const renderContent = () => (
-    <div className="max-w-6xl mx-auto mt-8 mb-8 px-4">
-      <div className="flex items-center mb-6">
+    <Box sx={{ maxWidth: '1200px', mx: 'auto', py: { xs: 2, sm: 3, md: 4 }, px: { xs: 2, sm: 3 } }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 3, sm: 4, md: 6 } }}>
         {/* Globe SVG icon */}
-        <span className="mr-3">
+        <Box component="span" sx={{ mr: { xs: 1.5, sm: 2, md: 3 } }}>
           <svg width="40" height="40" fill="none" viewBox="0 0 24 24" className="text-blue-600"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" /><path d="M2 12h20M12 2c2.5 2.5 4 6.5 4 10s-1.5 7.5-4 10c-2.5-2.5-4-6.5-4-10s1.5-7.5 4-10z" stroke="currentColor" strokeWidth="2" /></svg>
-        </span>
-        <h1 className="text-3xl font-bold text-gray-100">{t('groups.publicGroups.title')}</h1>
-      </div>
+        </Box>
+        <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'grey.100', fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' } }}>
+          {t('groups.publicGroups.title')}
+        </Typography>
+      </Box>
 
       {/* Location Filter Section */}
-      <div className="bg-[#202334] rounded-lg shadow p-4 mb-6 border border-gray-800">
-        <h2 className="text-base font-bold mb-2 text-white">{t('groups.publicGroups.filterByLocation')}</h2>
-        <div className="flex items-center gap-2 mb-2 flex-wrap">
+      <Box sx={{ 
+        bgcolor: '#202334', 
+        borderRadius: 2, 
+        boxShadow: 1, 
+        p: { xs: 2, sm: 2.5, md: 3 }, 
+        mb: { xs: 3, sm: 4, md: 6 }, 
+        border: 1, 
+        borderColor: 'grey.800' 
+      }}>
+        <Typography variant="h6" sx={{ fontWeight: 'bold', mb: { xs: 1.5, sm: 2 }, color: 'white', fontSize: { xs: '1rem', sm: '1.125rem' } }}>
+          {t('groups.publicGroups.filterByLocation')}
+        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 }, mb: { xs: 1.5, sm: 2 }, flexWrap: 'wrap' }}>
           <Button
             onClick={getCurrentLocation}
             disabled={locationEnabled && !customSearchLocation}
             startIcon={
-              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/10 border border-blue-400 mr-2">
+              <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', bgcolor: 'rgba(255, 255, 255, 0.1)', border: 1, borderColor: 'primary.light', mr: { xs: 0.5, sm: 1 } }}>
                 <svg className="w-4 h-4 text-blue-200" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z" />
                 </svg>
-              </span>
+              </Box>
             }
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded px-4 py-1.5 text-sm shadow transition border border-blue-500 focus:ring-2 focus:ring-blue-400 focus:outline-none gap-2"
+            sx={{
+              bgcolor: 'primary.main',
+              color: 'white',
+              fontWeight: 600,
+              borderRadius: 1,
+              px: { xs: 2, sm: 3 },
+              py: 1,
+              minHeight: '44px',
+              fontSize: { xs: '0.813rem', sm: '0.875rem' },
+              boxShadow: 2,
+              border: 1,
+              borderColor: 'primary.dark',
+              '&:hover': {
+                bgcolor: 'primary.dark',
+              },
+              '&:focus': {
+                outline: 2,
+                outlineColor: 'primary.light',
+              }
+            }}
           >
             {locationEnabled && !customSearchLocation ? t('groups.publicGroups.usingCurrentLocation') : t('groups.publicGroups.useMyLocation')}
           </Button>
           {(userLocation || customSearchLocation) && (
-            <span className="text-xs text-blue-200 font-normal">
+            <Typography variant="caption" sx={{ color: 'primary.light', fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
               Search from: {customSearchLocation
                 ? `Custom point (${customSearchLocation.latitude.toFixed(4)}, ${customSearchLocation.longitude.toFixed(4)})`
                 : `Your location (${userLocation?.latitude.toFixed(4)}, ${userLocation?.longitude.toFixed(4)})`}
-            </span>
+            </Typography>
           )}
-        </div>
+        </Box>
 
         {/* Google Maps Integration */}
         {GOOGLE_MAPS_API_KEY ? (
           <>
-            <div className="mb-3">
-              <div className="text-xs text-gray-400 mb-1">{t('groups.publicGroups.clickMapToSetLocation')}</div>
+            <Box sx={{ mb: { xs: 2, sm: 3 } }}>
+              <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mb: 1, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                {t('groups.publicGroups.clickMapToSetLocation')}
+              </Typography>
               <GoogleMap
-                mapContainerStyle={mapContainerStyle}
+                mapContainerStyle={{
+                  ...mapContainerStyle,
+                  height: window.innerWidth < 600 ? '300px' : '400px',
+                }}
                 center={toLatLng(mapCenter) || { lat: 0, lng: 0 }}
                 zoom={mapCenter ? mapZoom : 2}
                 onClick={handleMapClick}
@@ -462,58 +498,99 @@ const PublicGroups = () => {
                 )}
                 {/* Markers are now handled by AdvancedMarkerElement in useEffect above */}
               </GoogleMap>
-            </div>
+            </Box>
 
             {/* Address Search with Autocomplete */}
-            <div className="mb-2">
+            <Box sx={{ mb: { xs: 1.5, sm: 2 } }}>
               <Autocomplete onLoad={onAutocompleteLoad} onPlaceChanged={onPlaceChanged}>
-                <input
-                  className="w-full px-3 py-2 border border-gray-700 rounded bg-[#181c24] text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                <Box 
+                  component="input"
+                  sx={{ 
+                    width: '100%', 
+                    px: { xs: 2, sm: 3 }, 
+                    py: { xs: 1.5, sm: 2 }, 
+                    minHeight: { xs: '44px', sm: '48px' },
+                    border: 1, 
+                    borderColor: 'grey.700', 
+                    borderRadius: 1, 
+                    bgcolor: '#181c24', 
+                    color: 'white',
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                    '&:focus': {
+                      outline: 2,
+                      outlineColor: 'primary.main',
+                    }
+                  }}
                   placeholder={t('groups.searchByAddress')}
                   value={searchAddress}
-                  onChange={(e) => setSearchAddress(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchAddress(e.target.value)}
                   type="text"
                 />
               </Autocomplete>
-            </div>
+            </Box>
           </>
         ) : (
           <>
-            <div className="mb-3 p-2 bg-yellow-100 text-yellow-900 rounded border border-yellow-300">
-              <strong>{t('groups.publicGroups.apiKeyNotConfigured')}</strong> <span className="font-mono">VITE_GOOGLE_MAPS_API_KEY</span> {t('groups.publicGroups.apiKeyRequired')}<br />
+            <Box sx={{ mb: { xs: 2, sm: 3 }, p: 2, bgcolor: 'warning.light', color: 'warning.dark', borderRadius: 1, border: 1, borderColor: 'warning.main' }}>
+              <Typography component="span" sx={{ fontWeight: 'bold' }}>{t('groups.publicGroups.apiKeyNotConfigured')}</Typography>{' '}
+              <Typography component="span" sx={{ fontFamily: 'monospace' }}>VITE_GOOGLE_MAPS_API_KEY</Typography>{' '}
+              {t('groups.publicGroups.apiKeyRequired')}<br />
               {t('groups.publicGroups.locationFilteringWithoutMap')}
-            </div>
-            <div className="mb-2">
-              <input
-                className="w-full px-3 py-2 border border-gray-700 rounded bg-[#181c24] text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            </Box>
+            <Box sx={{ mb: { xs: 1.5, sm: 2 } }}>
+              <Box 
+                component="input"
+                sx={{ 
+                  width: '100%', 
+                  px: { xs: 2, sm: 3 }, 
+                  py: { xs: 1.5, sm: 2 }, 
+                  minHeight: { xs: '44px', sm: '48px' },
+                  border: 1, 
+                  borderColor: 'grey.700', 
+                  borderRadius: 1, 
+                  bgcolor: '#181c24', 
+                  color: 'white',
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  '&:disabled': {
+                    opacity: 0.5,
+                  }
+                }}
                 placeholder={t('groups.searchByAddress')}
                 value={searchAddress}
-                onChange={(e) => setSearchAddress(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchAddress(e.target.value)}
                 type="text"
                 disabled
               />
-            </div>
+            </Box>
           </>
         )}
 
         {(locationEnabled && (userLocation || customSearchLocation)) && (
-          <div>
-            <div className="text-sm mb-1">{t('groups.publicGroups.distanceRadius', { count: distanceRadius })}</div>
-            <input
+          <Box>
+            <Typography variant="body2" sx={{ mb: 1, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+              {t('groups.publicGroups.distanceRadius', { count: distanceRadius })}
+            </Typography>
+            <Box 
+              component="input"
               type="range"
               min={1}
               max={100}
               step={1}
               value={distanceRadius}
-              onChange={e => setDistanceRadius(Number(e.target.value))}
-              className="w-full accent-blue-600"
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDistanceRadius(Number(e.target.value))}
+              sx={{
+                width: '100%',
+                minHeight: '44px',
+                cursor: 'pointer',
+                accentColor: 'primary.main',
+              }}
             />
-            <div className="text-xs text-gray-400 mt-1">
+            <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mt: 1, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
               {t('groups.publicGroups.showingGroupsWithin', { count: distanceRadius, location: customSearchLocation ? t('groups.publicGroups.customPoint') : t('groups.publicGroups.yourLocation') })}
-            </div>
-          </div>
+            </Typography>
+          </Box>
         )}
-      </div>
+      </Box>
 
       {filteredGroups.length === 0 ? (
         <EmptyState
@@ -531,50 +608,78 @@ const PublicGroups = () => {
         />
       ) : (
         <>
-          <div className="text-sm text-gray-400 mb-2">
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: { xs: 1.5, sm: 2 }, fontSize: { xs: '0.813rem', sm: '0.875rem' } }}>
             {t('groups.publicGroups.showingGroups', { count: filteredGroups.length, total: groups.length })}
-          </div>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: { xs: 2, sm: 3, md: 4 } }}>
             {filteredGroups.map((group) => {
               const memberCount = group._count?.members ?? group.memberCount ?? group.members?.length ?? 0;
               const _eventCount = group._count?.events ?? group.eventCount ?? group.events?.length ?? 0;
               // Don't show member avatars in public groups page since user hasn't joined
               const _recentMembers = [];
               return (
-                <Card key={group.id} sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'all 0.3s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 } }}>
-                  <CardContent sx={{ flexGrow: 1, p: 3 }}>
-                    <Box display="flex" gap={2} mb={1.5}>
+                <Card key={group.id} sx={{ 
+                  height: '100%', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  transition: 'all 0.3s', 
+                  '&:hover': { 
+                    transform: 'translateY(-4px)', 
+                    boxShadow: 6 
+                  } 
+                }}>
+                  <CardContent sx={{ flexGrow: 1, p: { xs: 2, sm: 2.5, md: 3 } }}>
+                    <Box display="flex" gap={{ xs: 1.5, sm: 2 }} mb={1.5}>
                       <Avatar
                         src={getImageUrl(group.picture) || undefined}
-                        sx={{ width: 60, height: 60, borderRadius: '8px', bgcolor: 'primary.main' }}
+                        sx={{ 
+                          width: { xs: 48, sm: 56, md: 60 }, 
+                          height: { xs: 48, sm: 56, md: 60 }, 
+                          borderRadius: '8px', 
+                          bgcolor: 'primary.main' 
+                        }}
                         variant="rounded"
                       >
                         {!group.picture && getInitials(group.name)}
                       </Avatar>
                       <Box flexGrow={1} minWidth={0}>
                         <Box display="flex" justifyContent="space-between" alignItems="start" mb={0.5}>
-                          <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1, pr: 1 }}>
+                          <Typography variant="h6" sx={{ 
+                            fontWeight: 600, 
+                            flexGrow: 1, 
+                            pr: 1,
+                            fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' }
+                          }}>
                             {group.name}
                           </Typography>
                           <Box display="flex" gap={0.5} flexShrink={0}>
-                            <Chip label={t('groups.public')} size="small" color="primary" />
+                            <Chip label={t('groups.public')} size="small" color="primary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }} />
                           </Box>
                         </Box>
                       </Box>
                     </Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2, minHeight: 40, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ 
+                      mb: 2, 
+                      minHeight: { xs: 36, sm: 40 }, 
+                      display: '-webkit-box', 
+                      WebkitLineClamp: 2, 
+                      WebkitBoxOrient: 'vertical', 
+                      overflow: 'hidden',
+                      fontSize: { xs: '0.813rem', sm: '0.875rem' }
+                    }}>
                       {group.description || t('groups.publicGroups.noDescriptionAvailable')}
                     </Typography>
-                    <Box display="flex" alignItems="center" gap={2} mb={2}>
+                    <Box display="flex" alignItems="center" gap={{ xs: 1.5, sm: 2 }} mb={2} flexWrap="wrap">
                       <Box display="flex" alignItems="center" gap={0.5}>
-                        <GroupIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                        <Typography variant="caption" color="text.secondary">
+                        <GroupIcon sx={{ fontSize: { xs: 16, sm: 18 }, color: 'text.secondary' }} />
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                           {t('groups.membersCount', { count: memberCount })}
                         </Typography>
                       </Box>
                       {/* Google Maps Directions Button for group location */}
                       {(group.latitude && group.longitude) || group.locationName ? (
-                        <a
+                        <Box 
+                          component="a"
                           href={
                             group.latitude && group.longitude
                               ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(group.latitude + ',' + group.longitude)}`
@@ -582,20 +687,28 @@ const PublicGroups = () => {
                           }
                           target="_blank"
                           rel="noopener noreferrer"
-                          style={{ marginLeft: 8, color: '#1976d2', fontSize: 12, textDecoration: 'underline' }}
+                          sx={{ 
+                            color: 'primary.main', 
+                            fontSize: { xs: '0.7rem', sm: '0.75rem' }, 
+                            textDecoration: 'underline',
+                            minHeight: '44px',
+                            display: 'inline-flex',
+                            alignItems: 'center'
+                          }}
                           title="Open in Google Maps"
                         >
                           {group.latitude && group.longitude ? 'Directions' : 'Map'}
-                        </a>
+                        </Box>
                       ) : null}
                     </Box>
                   </CardContent>
-                  <CardActions sx={{ px: 3, pb: 3, pt: 0 }}>
+                  <CardActions sx={{ px: { xs: 2, sm: 2.5, md: 3 }, pb: { xs: 2, sm: 2.5, md: 3 }, pt: 0 }}>
                     <Button 
                       variant="contained"
                       fullWidth
                       onClick={() => handleRequestJoin(group.id)}
                       disabled={requesting[group.id]}
+                      sx={{ minHeight: '44px', fontSize: { xs: '0.875rem', sm: '1rem' } }}
                     >
                       {requesting[group.id] ? t('groups.publicGroups.requesting') : t('groups.publicGroups.applyToJoin')}
                     </Button>
@@ -608,19 +721,49 @@ const PublicGroups = () => {
       )}
       {/* Snackbar/Alert replacement */}
       {snackbar.open && (
-        <div className={`fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 min-w-[250px] max-w-xs px-4 py-3 rounded shadow-lg text-white transition-all
-          ${snackbar.severity === 'success' ? 'bg-green-600' : snackbar.severity === 'error' ? 'bg-red-600' : 'bg-blue-600'}`}
+        <Box sx={{
+          position: 'fixed',
+          bottom: { xs: 16, sm: 24 },
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1400,
+          minWidth: { xs: '90%', sm: '250px' },
+          maxWidth: { xs: '90%', sm: '400px' },
+          px: { xs: 2, sm: 3 },
+          py: { xs: 1.5, sm: 2 },
+          borderRadius: 1,
+          boxShadow: 6,
+          color: 'white',
+          bgcolor: snackbar.severity === 'success' ? 'success.main' : snackbar.severity === 'error' ? 'error.main' : 'info.main',
+        }}
           role="alert"
         >
-          <div className="flex items-center justify-between">
-            <span>{snackbar.message}</span>
-            <button className="ml-4 text-white/80 hover:text-white" onClick={handleCloseSnackbar} aria-label="Close notification">
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>{snackbar.message}</Typography>
+            <Box 
+              component="button" 
+              onClick={handleCloseSnackbar} 
+              aria-label="Close notification"
+              sx={{ 
+                ml: 2, 
+                color: 'rgba(255, 255, 255, 0.8)', 
+                bgcolor: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                minWidth: '44px',
+                minHeight: '44px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                '&:hover': { color: 'white' } 
+              }}
+            >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
-            </button>
-          </div>
-        </div>
+            </Box>
+          </Box>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 
   return GOOGLE_MAPS_API_KEY ? (

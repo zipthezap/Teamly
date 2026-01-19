@@ -278,36 +278,40 @@ const Profile = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: { xs: 2, sm: 3, md: 4 }, mb: { xs: 2, sm: 3, md: 4 }, px: { xs: 2, sm: 3 } }}>
       {!user ? (
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
           <CircularProgress size={60} thickness={4} />
         </Box>
       ) : (
         <>
-          <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 4 }}>
+          <Typography variant="h4" gutterBottom sx={{ 
+            fontWeight: 600, 
+            mb: { xs: 3, sm: 4 },
+            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+          }}>
             Profile Settings
           </Typography>
 
           {error && (
-            <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
+            <Alert severity="error" sx={{ mb: { xs: 2, sm: 3 } }} onClose={() => setError('')}>
               {error}
             </Alert>
           )}
 
           {success && (
-            <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess('')}>
+            <Alert severity="success" sx={{ mb: { xs: 2, sm: 3 } }} onClose={() => setSuccess('')}>
               {success}
             </Alert>
           )}
 
-          <Stack spacing={3}>
+          <Stack spacing={{ xs: 2, sm: 3 }}>
             <TwoFactorSection />
             <OAuthConnections 
               onSuccess={(message) => setSuccess(message)}
               onError={(error) => setError(error)}
             />
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 2, sm: 3 }}>
               <Grid size={{ xs: 12, md: 6 }}>
                 <ProfileForm
                   formData={formData}
