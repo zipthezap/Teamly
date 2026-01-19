@@ -3,7 +3,7 @@ import AdminTransferDialog from "../components/GroupDetails/AdminTransferDialog"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, Container } from '@mui/material';
 import GroupSettingsModal from "../components/common/GroupSettingsModal";
 import { useAuth } from "../contexts/AuthContext";
 import GroupHeader from "../components/GroupDetails/GroupHeader";
@@ -21,10 +21,48 @@ import { getErrorMessage } from "../utils/errorHandler";
 // Simple toast system
 function Toast({ message, type, onClose }: { message: string; type: "success" | "error"; onClose: () => void }) {
   return (
-    <div className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded shadow-lg text-white ${type === "success" ? "bg-green-600" : "bg-red-600"}`}>
-      {message}
-      <button className="ml-4 font-bold" onClick={onClose}>×</button>
-    </div>
+    <Box
+      sx={{
+        position: 'fixed',
+        top: { xs: 16, sm: 24 },
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 50,
+        px: { xs: 3, sm: 4 },
+        py: { xs: 2, sm: 2.5 },
+        borderRadius: 1,
+        boxShadow: 3,
+        color: 'white',
+        bgcolor: type === "success" ? 'success.main' : 'error.main',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        maxWidth: { xs: '90vw', sm: 'auto' },
+        minWidth: { xs: 'auto', sm: 300 },
+      }}
+    >
+      <Box sx={{ flex: 1, fontSize: { xs: '0.875rem', sm: '1rem' } }}>{message}</Box>
+      <Box
+        component="button"
+        onClick={onClose}
+        sx={{
+          background: 'none',
+          border: 'none',
+          color: 'white',
+          fontWeight: 'bold',
+          fontSize: { xs: '1.25rem', sm: '1.5rem' },
+          cursor: 'pointer',
+          padding: 0,
+          minWidth: '24px',
+          minHeight: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        ×
+      </Box>
+    </Box>
   );
 }
 
@@ -549,57 +587,84 @@ export default function GroupDetailsPage() {
     }
   }, [groupId, navigate]);
 
-  if (groupLoading || eventsLoading || chatLoading) return <div className="text-center text-slate-300 mt-10">{t('groupDetails.loadingGroupDetails')}</div>;
-  if (groupError || !group) return <div className="text-center text-red-400 mt-10">{t('groupDetails.failedToLoad')}</div>;
+  if (groupLoading || eventsLoading || chatLoading) {
+    return (
+      <Box sx={{ textAlign: 'center', color: 'grey.300', mt: { xs: 5, sm: 8, md: 10 } }}>
+        {t('groupDetails.loadingGroupDetails')}
+      </Box>
+    );
+  }
+  if (groupError || !group) {
+    return (
+      <Box sx={{ textAlign: 'center', color: 'error.light', mt: { xs: 5, sm: 8, md: 10 } }}>
+        {t('groupDetails.failedToLoad')}
+      </Box>
+    );
+  }
 
-  const gridCols = "grid-cols-1 sm:grid-cols-2 md:grid-cols-3";
   const eventsArray = Array.isArray(events) ? events : (events?.data ?? []);
 
   // Defensive: always use array for members
   const _groupMembersArray = Array.isArray(members) ? members : [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white p-2 sm:p-4 md:p-6">
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: 'linear-gradient(to bottom right, #0f172a, #1e293b)',
+        color: 'white',
+        py: { xs: 2, sm: 3, md: 4 },
+        px: { xs: 2, sm: 3 },
+      }}
+    >
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <GroupHeader
-        group={group}
-        onEdit={isAdmin ? (() => setSettingsOpen(true)) : undefined}
-        onDelete={isAdmin ? handleDeleteGroup : undefined}
-        onLeave={isMember ? handleLeaveGroup : undefined}
-        onInvite={canInvite ? handleInviteMember : undefined}
-        onCopyLink={canCopyLink ? handleCopyLink : undefined}
-        onViewEventRequests={isAdmin ? handleViewEventRequests : undefined}
-        isAdmin={isAdmin}
-      />
-      {/* Group Statistics */}
-      <GroupStats memberCount={group.members?.length || 0} events={eventsArray} />
-      {/* Group Settings Modal (shared component) */}
-      <GroupSettingsModal
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        onSubmit={() => updateGroupMutation.mutate(settingsForm)}
-        form={settingsForm}
-        setForm={setSettingsForm}
-        groupPicture={groupPicture}
-        onPictureUpload={handlePictureUpload}
-        onPictureDelete={handleDeletePicture}
-        isSubmitting={updateGroupMutation.isPending}
-        t={t}
-      />
-      <div className={`grid ${gridCols} gap-4 sm:gap-6`}>
-        {groupId && (
-          <MemberList groupId={groupId} isAdmin={isAdmin} onRemove={isAdmin ? handleRemoveMember : undefined} />
-        )}
-        <EventList
-          events={eventsArray}
-          onEventClick={handleEventClick}
-          onCreate={isMember ? handleCreateEvent : undefined}
+      <Container maxWidth="xl" disableGutters>
+        <GroupHeader
+          group={group}
+          onEdit={isAdmin ? (() => setSettingsOpen(true)) : undefined}
+          onDelete={isAdmin ? handleDeleteGroup : undefined}
+          onLeave={isMember ? handleLeaveGroup : undefined}
+          onInvite={canInvite ? handleInviteMember : undefined}
+          onCopyLink={canCopyLink ? handleCopyLink : undefined}
+          onViewEventRequests={isAdmin ? handleViewEventRequests : undefined}
           isAdmin={isAdmin}
-          groupId={groupId}
-          isMember={isMember}
         />
-        <ChatBox chat={chatMessages || []} message={message} setMessage={setMessage} onSend={handleSend} isTyping={isTyping} />
-      </div>
+        {/* Group Statistics */}
+        <GroupStats memberCount={group.members?.length || 0} events={eventsArray} />
+        {/* Group Settings Modal (shared component) */}
+        <GroupSettingsModal
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          onSubmit={() => updateGroupMutation.mutate(settingsForm)}
+          form={settingsForm}
+          setForm={setSettingsForm}
+          groupPicture={groupPicture}
+          onPictureUpload={handlePictureUpload}
+          onPictureDelete={handleDeletePicture}
+          isSubmitting={updateGroupMutation.isPending}
+          t={t}
+        />
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+            gap: { xs: 2, sm: 3, md: 4 },
+          }}
+        >
+          {groupId && (
+            <MemberList groupId={groupId} isAdmin={isAdmin} onRemove={isAdmin ? handleRemoveMember : undefined} />
+          )}
+          <EventList
+            events={eventsArray}
+            onEventClick={handleEventClick}
+            onCreate={isMember ? handleCreateEvent : undefined}
+            isAdmin={isAdmin}
+            groupId={groupId}
+            isMember={isMember}
+          />
+          <ChatBox chat={chatMessages || []} message={message} setMessage={setMessage} onSend={handleSend} isTyping={isTyping} />
+        </Box>
+      </Container>
       {/* Event create/edit modal */}
       <EventFormModal
         open={eventModalOpen}
@@ -610,38 +675,122 @@ export default function GroupDetailsPage() {
       />
       {/* Confirmation Dialog */}
       {showConfirm.open && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-          <div className="bg-slate-800 p-6 rounded shadow-lg w-80 text-center">
-            <div className="mb-4 text-lg">{t('groupDetails.removeThisMember')}</div>
-            <div className="mb-6 text-slate-400">
+        <Box
+          sx={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: 'rgba(0, 0, 0, 0.4)',
+            zIndex: 50,
+            px: { xs: 2, sm: 0 },
+          }}
+        >
+          <Box
+            sx={{
+              bgcolor: '#1e293b',
+              p: { xs: 3, sm: 4 },
+              borderRadius: 2,
+              boxShadow: 3,
+              width: { xs: '100%', sm: 400 },
+              maxWidth: '100%',
+              textAlign: 'center',
+            }}
+          >
+            <Box sx={{ mb: 3, fontSize: { xs: '1rem', sm: '1.125rem' }, fontWeight: 500 }}>
+              {t('groupDetails.removeThisMember')}
+            </Box>
+            <Box sx={{ mb: 4, color: 'grey.400', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
               {(() => {
                 const member = group?.members?.find((m: GroupMember) => m.userId === showConfirm.memberId || m.id === showConfirm.memberId);
                 const name = member?.user?.name || member?.name || '';
                 const email = member?.user?.email || member?.email || '';
                 return t('groupDetails.confirmRemoveMemberDesc', { email: name ? `${name} (${email})` : email });
               })()}
-            </div>
-            <div className="flex gap-4 justify-center">
-              <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded min-h-[44px]" onClick={confirmRemove} disabled={removeMemberMutation.isPending}>{t('groupDetails.remove')}</button>
-              <button className="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded min-h-[44px]" onClick={() => setShowConfirm({ open: false, memberId: null })}>{t('common.cancel')}</button>
-            </div>
-          </div>
-        </div>
+            </Box>
+            <Box sx={{ display: 'flex', gap: { xs: 2, sm: 3 }, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={confirmRemove}
+                disabled={removeMemberMutation.isPending}
+                sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
+              >
+                {t('groupDetails.remove')}
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => setShowConfirm({ open: false, memberId: null })}
+                sx={{
+                  minHeight: '44px',
+                  px: { xs: 2, sm: 3 },
+                  bgcolor: '#475569',
+                  '&:hover': { bgcolor: '#64748b' },
+                }}
+              >
+                {t('common.cancel')}
+              </Button>
+            </Box>
+          </Box>
+        </Box>
       )}
       {/* Delete Group Confirmation Dialog */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-          <div className="bg-slate-800 p-6 rounded shadow-lg w-96 text-center">
-            <div className="mb-4 text-lg font-bold">{t('groupDetails.deleteGroup')}?</div>
-            <div className="mb-6 text-slate-400">
+        <Box
+          sx={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: 'rgba(0, 0, 0, 0.4)',
+            zIndex: 50,
+            px: { xs: 2, sm: 0 },
+          }}
+        >
+          <Box
+            sx={{
+              bgcolor: '#1e293b',
+              p: { xs: 3, sm: 4 },
+              borderRadius: 2,
+              boxShadow: 3,
+              width: { xs: '100%', sm: 450 },
+              maxWidth: '100%',
+              textAlign: 'center',
+            }}
+          >
+            <Box sx={{ mb: 3, fontSize: { xs: '1rem', sm: '1.125rem' }, fontWeight: 700 }}>
+              {t('groupDetails.deleteGroup')}?
+            </Box>
+            <Box sx={{ mb: 4, color: 'grey.400', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
               {t('groupDetails.confirmDelete')}
-            </div>
-            <div className="flex gap-4 justify-center">
-              <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded min-h-[44px]" onClick={confirmDeleteGroup} disabled={deleteGroupMutation.isPending}>{t('common.delete')}</button>
-              <button className="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded min-h-[44px]" onClick={() => setShowDeleteConfirm(false)}>{t('common.cancel')}</button>
-            </div>
-          </div>
-        </div>
+            </Box>
+            <Box sx={{ display: 'flex', gap: { xs: 2, sm: 3 }, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={confirmDeleteGroup}
+                disabled={deleteGroupMutation.isPending}
+                sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
+              >
+                {t('common.delete')}
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => setShowDeleteConfirm(false)}
+                sx={{
+                  minHeight: '44px',
+                  px: { xs: 2, sm: 3 },
+                  bgcolor: '#475569',
+                  '&:hover': { bgcolor: '#64748b' },
+                }}
+              >
+                {t('common.cancel')}
+              </Button>
+            </Box>
+          </Box>
+        </Box>
       )}
       {/* Admin Transfer Dialog */}
       <AdminTransferDialog
@@ -661,34 +810,81 @@ export default function GroupDetailsPage() {
       />
       {/* Leave Group Confirmation Dialog */}
       {showLeaveConfirm && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-          <div className="bg-slate-800 p-6 rounded shadow-lg w-96 text-center">
-            <div className="mb-4 text-lg font-bold">
+        <Box
+          sx={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: 'rgba(0, 0, 0, 0.4)',
+            zIndex: 50,
+            px: { xs: 2, sm: 0 },
+          }}
+        >
+          <Box
+            sx={{
+              bgcolor: '#1e293b',
+              p: { xs: 3, sm: 4 },
+              borderRadius: 2,
+              boxShadow: 3,
+              width: { xs: '100%', sm: 450 },
+              maxWidth: '100%',
+              textAlign: 'center',
+            }}
+          >
+            <Box sx={{ mb: 3, fontSize: { xs: '1rem', sm: '1.125rem' }, fontWeight: 700 }}>
               {isAdmin && isOnlyMember() ? t('groupDetails.deleteGroup') : t('groupDetails.leave')}?
-            </div>
-            <div className="mb-6 text-slate-400">
+            </Box>
+            <Box sx={{ mb: 4, color: 'grey.400', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
               {isAdmin && isOnlyMember() 
                 ? t('groupDetails.confirmLeaveAsLastMember', 'You are the last member of this group. Leaving will delete the group permanently.')
                 : t('groupDetails.confirmLeave')}
-            </div>
-            <div className="flex gap-4 justify-center">
-              <button 
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded min-h-[44px]" 
-                onClick={confirmLeaveGroup} 
+            </Box>
+            <Box sx={{ display: 'flex', gap: { xs: 2, sm: 3 }, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={confirmLeaveGroup}
                 disabled={leaveGroupMutation.isPending}
+                sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
               >
                 {isAdmin && isOnlyMember() ? t('groupDetails.deleteGroup') : t('groupDetails.leave')}
-              </button>
-              <button className="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded min-h-[44px]" onClick={() => setShowLeaveConfirm(false)}>{t('common.cancel')}</button>
-            </div>
-          </div>
-        </div>
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => setShowLeaveConfirm(false)}
+                sx={{
+                  minHeight: '44px',
+                  px: { xs: 2, sm: 3 },
+                  bgcolor: '#475569',
+                  '&:hover': { bgcolor: '#64748b' },
+                }}
+              >
+                {t('common.cancel')}
+              </Button>
+            </Box>
+          </Box>
+        </Box>
       )}
       {/* Invite Member Modal */}
-      <Dialog open={showInviteModal} onClose={() => setShowInviteModal(false)} maxWidth="sm" fullWidth>
+      <Dialog 
+        open={showInviteModal} 
+        onClose={() => setShowInviteModal(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            width: { xs: '90vw', sm: '100%' },
+            mx: { xs: 2, sm: 'auto' },
+          }
+        }}
+      >
         <form onSubmit={handleInviteSubmit}>
-          <DialogTitle>{t('groupDetails.inviteMember')}</DialogTitle>
-          <DialogContent>
+          <DialogTitle sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' }, py: { xs: 2, sm: 2.5 } }}>
+            {t('groupDetails.inviteMember')}
+          </DialogTitle>
+          <DialogContent sx={{ py: { xs: 2, sm: 2.5 } }}>
             <TextField
               label={t('common.email')}
               type="email"
@@ -697,16 +893,31 @@ export default function GroupDetailsPage() {
               required
               fullWidth
               margin="normal"
+              InputProps={{
+                sx: { minHeight: '44px' }
+              }}
             />
           </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setShowInviteModal(false)} color="secondary">{t('common.cancel')}</Button>
-            <Button type="submit" variant="contained" color="primary" disabled={inviteMemberMutation.isPending}>
+          <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: { xs: 2, sm: 2.5 }, gap: 1 }}>
+            <Button 
+              onClick={() => setShowInviteModal(false)} 
+              color="secondary"
+              sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button 
+              type="submit" 
+              variant="contained" 
+              color="primary" 
+              disabled={inviteMemberMutation.isPending}
+              sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
+            >
               {t('groupDetails.invite')}
             </Button>
           </DialogActions>
         </form>
       </Dialog>
-    </div>
+    </Box>
   );
 }
