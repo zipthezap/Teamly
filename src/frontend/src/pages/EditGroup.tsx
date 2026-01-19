@@ -230,8 +230,11 @@ const EditGroup = () => {
               variant="outlined"
               size="large"
               onClick={() => navigate(`/groups/${id}`)}
-              fullWidth={{ xs: true, sm: false }}
-              sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
+              sx={{ 
+                minHeight: '44px', 
+                px: { xs: 2, sm: 3 },
+                width: { xs: '100%', sm: 'auto' }
+              }}
             >
               {t('common.cancel')}
             </Button>
@@ -240,8 +243,11 @@ const EditGroup = () => {
               variant="contained"
               size="large"
               disabled={submitting}
-              fullWidth={{ xs: true, sm: false }}
-              sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
+              sx={{ 
+                minHeight: '44px', 
+                px: { xs: 2, sm: 3 },
+                width: { xs: '100%', sm: 'auto' }
+              }}
             >
               {submitting ? t('groups.updating') : t('groups.updateGroup')}
             </Button>

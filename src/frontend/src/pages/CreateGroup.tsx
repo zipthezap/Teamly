@@ -158,8 +158,11 @@ const CreateGroup = () => {
               variant="outlined"
               size="large"
               onClick={() => navigate('/groups')}
-              fullWidth={{ xs: true, sm: false }}
-              sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
+              sx={{ 
+                minHeight: '44px', 
+                px: { xs: 2, sm: 3 },
+                width: { xs: '100%', sm: 'auto' }
+              }}
             >
               {t('common.cancel')}
             </Button>
@@ -168,8 +171,11 @@ const CreateGroup = () => {
               variant="contained"
               size="large"
               disabled={loading}
-              fullWidth={{ xs: true, sm: false }}
-              sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
+              sx={{ 
+                minHeight: '44px', 
+                px: { xs: 2, sm: 3 },
+                width: { xs: '100%', sm: 'auto' }
+              }}
             >
               {loading ? t('groups.creating') : t('groups.createGroup')}
             </Button>
