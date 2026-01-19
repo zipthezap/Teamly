@@ -215,9 +215,9 @@ const EditEvent = () => {
   }
 
   return (
-    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Typography variant="h4" gutterBottom>
+    <Container maxWidth="md" sx={{ py: { xs: 2, sm: 3, md: 4 }, px: { xs: 2, sm: 3 } }}>
+      <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+        <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' } }}>
           Edit Event
         </Typography>
 
@@ -236,6 +236,7 @@ const EditEvent = () => {
             value={formData.title}
             onChange={handleChange}
             required
+            sx={{ '& .MuiInputBase-root': { minHeight: '44px' } }}
           />
 
           <TextField
@@ -247,6 +248,7 @@ const EditEvent = () => {
             margin="normal"
             value={formData.description}
             onChange={handleChange}
+            sx={{ '& .MuiInputBase-root': { minHeight: '44px' } }}
           />
 
           <TextField
@@ -258,6 +260,7 @@ const EditEvent = () => {
             value={formData.eventType}
             onChange={handleChange}
             required
+            sx={{ '& .MuiInputBase-root': { minHeight: '44px' } }}
           >
             {EVENT_TYPES.map((type) => (
               <MenuItem key={type} value={type}>
@@ -273,6 +276,7 @@ const EditEvent = () => {
             margin="normal"
             value={formData.location}
             onChange={handleChange}
+            sx={{ '& .MuiInputBase-root': { minHeight: '44px' } }}
           />
 
           <TextField
@@ -285,69 +289,74 @@ const EditEvent = () => {
             onChange={handleChange}
             InputLabelProps={{ shrink: true }}
             required
+            sx={{ '& .MuiInputBase-root': { minHeight: '44px' } }}
           />
 
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 2 }}>
-            <Typography>Start Time</Typography>
-            <TextField
-              select
-              label="Hour"
-              name="startHour"
-              value={formData.startHour}
-              onChange={handleHourChange('startHour')}
-              required
-              sx={{ width: 100 }}
-            >
-              {[...Array(24)].map((_, i) => (
-                <MenuItem key={i} value={i.toString().padStart(2, '0')}>
-                  {i.toString().padStart(2, '0')}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              select
-              label="Minute"
-              name="startMinute"
-              value={formData.startMinute}
-              onChange={handleMinuteChange('startMinute')}
-              required
-              sx={{ width: 100 }}
-            >
-              {['00', '15', '30', '45'].map((m) => (
-                <MenuItem key={m} value={m}>{m}</MenuItem>
-              ))}
-            </TextField>
+          <Box sx={{ mt: 2 }}>
+            <Typography sx={{ mb: 1 }}>Start Time</Typography>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
+              <TextField
+                select
+                label="Hour"
+                name="startHour"
+                value={formData.startHour}
+                onChange={handleHourChange('startHour')}
+                required
+                sx={{ width: { xs: 'calc(50% - 8px)', sm: 100 }, minHeight: '44px' }}
+              >
+                {[...Array(24)].map((_, i) => (
+                  <MenuItem key={i} value={i.toString().padStart(2, '0')}>
+                    {i.toString().padStart(2, '0')}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Minute"
+                name="startMinute"
+                value={formData.startMinute}
+                onChange={handleMinuteChange('startMinute')}
+                required
+                sx={{ width: { xs: 'calc(50% - 8px)', sm: 100 }, minHeight: '44px' }}
+              >
+                {['00', '15', '30', '45'].map((m) => (
+                  <MenuItem key={m} value={m}>{m}</MenuItem>
+                ))}
+              </TextField>
+            </Box>
           </Box>
 
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 2 }}>
-            <Typography>End Time (optional)</Typography>
-            <TextField
-              select
-              label="Hour"
-              name="endHour"
-              value={formData.endHour}
-              onChange={handleHourChange('endHour')}
-              sx={{ width: 100 }}
-            >
-              <MenuItem value="">--</MenuItem>
-              {[...Array(24)].map((_, i) => (
-                <MenuItem key={i} value={i.toString().padStart(2, '0')}>
-                  {i.toString().padStart(2, '0')}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              select
-              label="Minute"
-              name="endMinute"
-              value={formData.endMinute}
-              onChange={handleMinuteChange('endMinute')}
-              sx={{ width: 100 }}
-            >
-              {['00', '15', '30', '45'].map((m) => (
-                <MenuItem key={m} value={m}>{m}</MenuItem>
-              ))}
-            </TextField>
+          <Box sx={{ mt: 2 }}>
+            <Typography sx={{ mb: 1 }}>End Time (optional)</Typography>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
+              <TextField
+                select
+                label="Hour"
+                name="endHour"
+                value={formData.endHour}
+                onChange={handleHourChange('endHour')}
+                sx={{ width: { xs: 'calc(50% - 8px)', sm: 100 }, minHeight: '44px' }}
+              >
+                <MenuItem value="">--</MenuItem>
+                {[...Array(24)].map((_, i) => (
+                  <MenuItem key={i} value={i.toString().padStart(2, '0')}>
+                    {i.toString().padStart(2, '0')}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Minute"
+                name="endMinute"
+                value={formData.endMinute}
+                onChange={handleMinuteChange('endMinute')}
+                sx={{ width: { xs: 'calc(50% - 8px)', sm: 100 }, minHeight: '44px' }}
+              >
+                {['00', '15', '30', '45'].map((m) => (
+                  <MenuItem key={m} value={m}>{m}</MenuItem>
+                ))}
+              </TextField>
+            </Box>
           </Box>
 
           <TextField
@@ -359,23 +368,34 @@ const EditEvent = () => {
             value={formData.maxPlayers}
             onChange={handleChange}
             inputProps={{ min: 1 }}
+            sx={{ '& .MuiInputBase-root': { minHeight: '44px' } }}
           />
 
-          <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column-reverse', sm: 'row' },
+            justifyContent: { sm: 'flex-end' },
+            gap: { xs: 1.5, sm: 2 },
+            mt: 3
+          }}>
+            <Button
+              variant="outlined"
+              size="large"
+              onClick={() => navigate(`/events/${id}`)}
+              fullWidth={{ xs: true, sm: false } as any}
+              sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
+            >
+              Cancel
+            </Button>
             <Button
               type="submit"
               variant="contained"
               size="large"
               disabled={submitting}
+              fullWidth={{ xs: true, sm: false } as any}
+              sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
             >
               {submitting ? 'Updating...' : 'Update Event'}
-            </Button>
-            <Button
-              variant="outlined"
-              size="large"
-              onClick={() => navigate(`/events/${id}`)}
-            >
-              Cancel
             </Button>
           </Box>
         </form>

@@ -13,7 +13,7 @@ import {
   Divider,
   Card,
   CardContent,
-  Grid2 as Grid,
+  Grid,
 } from '@mui/material';
 import {
   People as PeopleIcon,

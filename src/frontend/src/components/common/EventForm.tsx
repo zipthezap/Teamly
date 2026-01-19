@@ -136,8 +136,8 @@ const EventForm: React.FC<EventFormProps> = ({
           value={formData.groupId}
           onChange={handleChange}
           required
-          // Only disable if we are in a group context (editing/creating from a group page)
           disabled={!!initialData.groupId && groups.length === 1}
+          sx={{ '& .MuiInputBase-root': { minHeight: '44px' } }}
         >
           {groups.map((group) => (
             <MenuItem key={group.id} value={group.id}>
@@ -154,6 +154,7 @@ const EventForm: React.FC<EventFormProps> = ({
         value={formData.title}
         onChange={handleChange}
         required
+        sx={{ '& .MuiInputBase-root': { minHeight: '44px' } }}
       />
       <TextField
         label={t('events.description')}
@@ -164,6 +165,7 @@ const EventForm: React.FC<EventFormProps> = ({
         margin="normal"
         value={formData.description}
         onChange={handleChange}
+        sx={{ '& .MuiInputBase-root': { minHeight: '44px' } }}
       />
       <TextField
         select
@@ -174,6 +176,7 @@ const EventForm: React.FC<EventFormProps> = ({
         value={formData.eventType}
         onChange={handleChange}
         required
+        sx={{ '& .MuiInputBase-root': { minHeight: '44px' } }}
       >
         {EVENT_TYPES.map((type) => (
           <MenuItem key={type} value={type}>
@@ -196,67 +199,72 @@ const EventForm: React.FC<EventFormProps> = ({
         onChange={handleChange}
         InputLabelProps={{ shrink: true }}
         required
+        sx={{ '& .MuiInputBase-root': { minHeight: '44px' } }}
       />
-      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 2 }}>
-        <Typography>{t('events.startTime')}</Typography>
-        <TextField
-          select
-          label={t('events.hour')}
-          name="startHour"
-          value={formData.startHour}
-          onChange={handleHourChange('startHour')}
-          required
-          sx={{ width: 100 }}
-        >
-          {[...Array(24)].map((_, i) => (
-            <MenuItem key={i} value={i.toString().padStart(2, '0')}>
-              {i.toString().padStart(2, '0')}
-            </MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          select
-          label={t('events.minute')}
-          name="startMinute"
-          value={formData.startMinute}
-          onChange={handleMinuteChange('startMinute')}
-          required
-          sx={{ width: 100 }}
-        >
-          {['00', '15', '30', '45'].map((m) => (
-            <MenuItem key={m} value={m}>{m}</MenuItem>
-          ))}
-        </TextField>
+      <Box sx={{ mt: 2 }}>
+        <Typography sx={{ mb: 1 }}>{t('events.startTime')}</Typography>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
+          <TextField
+            select
+            label={t('events.hour')}
+            name="startHour"
+            value={formData.startHour}
+            onChange={handleHourChange('startHour')}
+            required
+            sx={{ width: { xs: 'calc(50% - 8px)', sm: 100 }, minHeight: '44px' }}
+          >
+            {[...Array(24)].map((_, i) => (
+              <MenuItem key={i} value={i.toString().padStart(2, '0')}>
+                {i.toString().padStart(2, '0')}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label={t('events.minute')}
+            name="startMinute"
+            value={formData.startMinute}
+            onChange={handleMinuteChange('startMinute')}
+            required
+            sx={{ width: { xs: 'calc(50% - 8px)', sm: 100 }, minHeight: '44px' }}
+          >
+            {['00', '15', '30', '45'].map((m) => (
+              <MenuItem key={m} value={m}>{m}</MenuItem>
+            ))}
+          </TextField>
+        </Box>
       </Box>
-      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 2 }}>
-        <Typography>{t('events.endTimeOptional')}</Typography>
-        <TextField
-          select
-          label={t('events.hour')}
-          name="endHour"
-          value={formData.endHour}
-          onChange={handleHourChange('endHour')}
-          sx={{ width: 100 }}
-        >
-          <MenuItem value="">--</MenuItem>
-          {[...Array(24)].map((_, i) => (
-            <MenuItem key={i} value={i.toString().padStart(2, '0')}>
-              {i.toString().padStart(2, '0')}
-            </MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          select
-          label={t('events.minute')}
-          name="endMinute"
-          value={formData.endMinute}
-          onChange={handleMinuteChange('endMinute')}
-          sx={{ width: 100 }}
-        >
-          {['00', '15', '30', '45'].map((m) => (
-            <MenuItem key={m} value={m}>{m}</MenuItem>
-          ))}
-        </TextField>
+      <Box sx={{ mt: 2 }}>
+        <Typography sx={{ mb: 1 }}>{t('events.endTimeOptional')}</Typography>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
+          <TextField
+            select
+            label={t('events.hour')}
+            name="endHour"
+            value={formData.endHour}
+            onChange={handleHourChange('endHour')}
+            sx={{ width: { xs: 'calc(50% - 8px)', sm: 100 }, minHeight: '44px' }}
+          >
+            <MenuItem value="">--</MenuItem>
+            {[...Array(24)].map((_, i) => (
+              <MenuItem key={i} value={i.toString().padStart(2, '0')}>
+                {i.toString().padStart(2, '0')}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label={t('events.minute')}
+            name="endMinute"
+            value={formData.endMinute}
+            onChange={handleMinuteChange('endMinute')}
+            sx={{ width: { xs: 'calc(50% - 8px)', sm: 100 }, minHeight: '44px' }}
+          >
+            {['00', '15', '30', '45'].map((m) => (
+              <MenuItem key={m} value={m}>{m}</MenuItem>
+            ))}
+          </TextField>
+        </Box>
       </Box>
       <TextField
         label={t('events.maxPlayers')}
@@ -267,6 +275,7 @@ const EventForm: React.FC<EventFormProps> = ({
         value={formData.maxPlayers}
         onChange={handleChange}
         inputProps={{ min: 1 }}
+        sx={{ '& .MuiInputBase-root': { minHeight: '44px' } }}
       />
       
       {/* Recurring Event Section */}
@@ -291,7 +300,7 @@ const EventForm: React.FC<EventFormProps> = ({
       </Box>
 
       {formData.isRecurring && (
-        <Paper elevation={1} sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
+        <Paper elevation={1} sx={{ p: { xs: 2, sm: 2.5 }, mb: 2, bgcolor: 'grey.50' }}>
           <Typography variant="subtitle2" sx={{ mb: 2 }}>
             Recurrence Settings
           </Typography>
@@ -304,6 +313,7 @@ const EventForm: React.FC<EventFormProps> = ({
             margin="normal"
             value={formData.recurrencePattern}
             onChange={handleChange}
+            sx={{ '& .MuiInputBase-root': { minHeight: '44px' } }}
           >
             <MenuItem value="DAILY">Daily</MenuItem>
             <MenuItem value="WEEKLY">Weekly</MenuItem>
@@ -324,6 +334,7 @@ const EventForm: React.FC<EventFormProps> = ({
               formData.recurrencePattern === 'WEEKLY' ? 'week' : 
               'month'
             }${(formData.recurrenceInterval || 1) !== '1' ? 's' : ''}`}
+            sx={{ '& .MuiInputBase-root': { minHeight: '44px' } }}
           />
 
           {formData.recurrencePattern === 'WEEKLY' && (
@@ -331,7 +342,7 @@ const EventForm: React.FC<EventFormProps> = ({
               <Typography variant="body2" sx={{ mb: 1 }}>
                 Repeat On
               </Typography>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Box sx={{ display: 'flex', gap: { xs: 0.5, sm: 1 }, flexWrap: 'wrap' }}>
                 {[
                   { label: 'Mon', value: 'MO' },
                   { label: 'Tue', value: 'TU' },
@@ -352,6 +363,11 @@ const EventForm: React.FC<EventFormProps> = ({
                         : [...days, day.value];
                       setFormData({ ...formData, recurrenceDays: newDays });
                     }}
+                    sx={{ 
+                      minWidth: { xs: '40px', sm: '48px' },
+                      minHeight: '44px',
+                      px: { xs: 1, sm: 2 }
+                    }}
                   >
                     {day.label}
                   </Button>
@@ -370,6 +386,7 @@ const EventForm: React.FC<EventFormProps> = ({
             onChange={handleChange}
             InputLabelProps={{ shrink: true }}
             helperText="Leave empty to repeat indefinitely (up to 1 year)"
+            sx={{ '& .MuiInputBase-root': { minHeight: '44px' } }}
           />
         </Paper>
       )}
@@ -402,24 +419,34 @@ const EventForm: React.FC<EventFormProps> = ({
           {localError || error}
         </Alert>
       )}
-      <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-        <Button
-          type="submit"
-          variant="contained"
-          size="large"
-          disabled={loading}
-        >
-          {loading ? t('events.submitting') : submitLabel}
-        </Button>
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column-reverse', sm: 'row' },
+        justifyContent: { sm: 'flex-end' },
+        gap: { xs: 1.5, sm: 2 },
+        mt: 3
+      }}>
         {onCancel && (
           <Button
             variant="outlined"
             size="large"
             onClick={onCancel}
+            fullWidth={{ xs: true, sm: false } as any}
+            sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
           >
             {t('common.cancel')}
           </Button>
         )}
+        <Button
+          type="submit"
+          variant="contained"
+          size="large"
+          disabled={loading}
+          fullWidth={{ xs: true, sm: false } as any}
+          sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
+        >
+          {loading ? t('events.submitting') : submitLabel}
+        </Button>
       </Box>
     </form>
   );
