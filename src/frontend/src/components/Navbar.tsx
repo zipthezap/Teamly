@@ -93,24 +93,27 @@ const Navbar = () => {
             </div>
           )}
 
-          {/* Mobile: Hamburger Menu Button */}
+          {/* Mobile: Hamburger Menu Button & Notifications */}
           {user && (
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded text-white hover:bg-white/10 transition"
-              aria-label="Toggle menu"
-            >
-              {mobileMenuOpen ? (
-                // Left arrow for uncollapse/close
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path d="M15 19l-7-7 7-7" />
-                </svg>
-              ) : (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              )}
-            </button>
+            <div className="lg:hidden flex items-center gap-2">
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="p-2 rounded text-white hover:bg-white/10 transition"
+                aria-label="Toggle menu"
+              >
+                {mobileMenuOpen ? (
+                  // Left arrow for uncollapse/close
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M15 19l-7-7 7-7" />
+                  </svg>
+                ) : (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                )}
+              </button>
+              <NotificationsPopover />
+            </div>
           )}
 
           {/* Mobile: Show minimal actions when not logged in */}
