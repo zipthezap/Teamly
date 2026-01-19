@@ -48,6 +48,7 @@
     "change": "Changer",
     "invalidFileType": "Veuillez sélectionner un fichier image",
     "fileTooLarge": "La taille du fichier doit être inférieure à 5 Mo",
+    "language": "Langue",
     "notificationPreferences": {
       "title": "Préférences de notification",
       "eventInvites": "Invitations aux événements",
