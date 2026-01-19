@@ -302,7 +302,7 @@ const EditEvent = () => {
                 value={formData.startHour}
                 onChange={handleHourChange('startHour')}
                 required
-                sx={{ width: { xs: 'calc(50% - 8px)', sm: 100 }, minHeight: '44px' }}
+                sx={{ width: { xs: 'calc(50% - 8px)', sm: 100 }, '& .MuiInputBase-root': { minHeight: '44px' } }}
               >
                 {[...Array(24)].map((_, i) => (
                   <MenuItem key={i} value={i.toString().padStart(2, '0')}>
@@ -317,7 +317,7 @@ const EditEvent = () => {
                 value={formData.startMinute}
                 onChange={handleMinuteChange('startMinute')}
                 required
-                sx={{ width: { xs: 'calc(50% - 8px)', sm: 100 }, minHeight: '44px' }}
+                sx={{ width: { xs: 'calc(50% - 8px)', sm: 100 }, '& .MuiInputBase-root': { minHeight: '44px' } }}
               >
                 {['00', '15', '30', '45'].map((m) => (
                   <MenuItem key={m} value={m}>{m}</MenuItem>
@@ -335,7 +335,7 @@ const EditEvent = () => {
                 name="endHour"
                 value={formData.endHour}
                 onChange={handleHourChange('endHour')}
-                sx={{ width: { xs: 'calc(50% - 8px)', sm: 100 }, minHeight: '44px' }}
+                sx={{ width: { xs: 'calc(50% - 8px)', sm: 100 }, '& .MuiInputBase-root': { minHeight: '44px' } }}
               >
                 <MenuItem value="">--</MenuItem>
                 {[...Array(24)].map((_, i) => (
@@ -350,7 +350,7 @@ const EditEvent = () => {
                 name="endMinute"
                 value={formData.endMinute}
                 onChange={handleMinuteChange('endMinute')}
-                sx={{ width: { xs: 'calc(50% - 8px)', sm: 100 }, minHeight: '44px' }}
+                sx={{ width: { xs: 'calc(50% - 8px)', sm: 100 }, '& .MuiInputBase-root': { minHeight: '44px' } }}
               >
                 {['00', '15', '30', '45'].map((m) => (
                   <MenuItem key={m} value={m}>{m}</MenuItem>
@@ -382,8 +382,11 @@ const EditEvent = () => {
               variant="outlined"
               size="large"
               onClick={() => navigate(`/events/${id}`)}
-              fullWidth={{ xs: true, sm: false } as any}
-              sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
+              sx={{ 
+                minHeight: '44px', 
+                px: { xs: 2, sm: 3 },
+                width: { xs: '100%', sm: 'auto' }
+              }}
             >
               Cancel
             </Button>
@@ -392,8 +395,11 @@ const EditEvent = () => {
               variant="contained"
               size="large"
               disabled={submitting}
-              fullWidth={{ xs: true, sm: false } as any}
-              sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
+              sx={{ 
+                minHeight: '44px', 
+                px: { xs: 2, sm: 3 },
+                width: { xs: '100%', sm: 'auto' }
+              }}
             >
               {submitting ? 'Updating...' : 'Update Event'}
             </Button>
