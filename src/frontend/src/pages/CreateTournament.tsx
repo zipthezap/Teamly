@@ -8,14 +8,15 @@ import {
   Paper,
   Box,
   MenuItem,
-  Alert,
   Grid,
   Accordion,
   AccordionSummary,
   AccordionDetails,
   FormControlLabel,
   Checkbox,
-  Divider
+  Divider,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -27,11 +28,12 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { RRule } from 'rrule';
 import { tournamentAPI } from '../services/tournamentAPI';
 import { CreateTournamentDto, TournamentFormat, SportScoringConfig, VolleyballConfig } from '../../../shared/types';
+import { useNotification } from '../hooks/useNotification';
+import { useApiMutation } from '../hooks/useApiMutation';
 
 const CreateTournament: React.FC = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { notification, showError, hideNotification } = useNotification();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -92,12 +94,8 @@ const CreateTournament: React.FC = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    try {
+  const createMutation = useApiMutation({
+    mutationFn: async () => {
       // Build sport-specific config
       let sportConfig: SportScoringConfig | undefined = undefined;
       if (formData.useSportConfig) {
@@ -140,14 +138,19 @@ const CreateTournament: React.FC = () => {
         recurrenceRule: generateRecurrenceRule()
       };
 
-      const tournament = await tournamentAPI.createTournament(dto);
+      return await tournamentAPI.createTournament(dto);
+    },
+    onSuccess: (tournament) => {
       navigate(`/tournaments/${tournament.id}`);
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string } } };
-      setError(error.response?.data?.error || 'Failed to create tournament');
-    } finally {
-      setLoading(false);
-    }
+    },
+    onError: (error) => {
+      showError(error || 'Failed to create tournament');
+    },
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await createMutation.mutateAsync();
   };
 
   return (
@@ -163,12 +166,6 @@ const CreateTournament: React.FC = () => {
             Create Tournament
           </Typography>
         </Box>
-
-        {error && (
-          <Alert severity="error" sx={{ mb: { xs: 2, sm: 3 } }}>
-            {error}
-          </Alert>
-        )}
 
         <Box component="form" onSubmit={handleSubmit}>
           {/* Basic Information */}
@@ -772,20 +769,20 @@ const CreateTournament: React.FC = () => {
               variant="contained"
               color="primary"
               size="large"
-              disabled={loading}
+              disabled={createMutation.isLoading}
               sx={{
                 minHeight: '44px',
                 px: { xs: 2, sm: 3 },
                 fontSize: { xs: '0.9375rem', sm: '1rem' }
               }}
             >
-              {loading ? 'Creating...' : 'Create Tournament'}
+              {createMutation.isLoading ? 'Creating...' : 'Create Tournament'}
             </Button>
             <Button
               variant="outlined"
               size="large"
               onClick={() => navigate('/tournaments')}
-              disabled={loading}
+              disabled={createMutation.isLoading}
               sx={{
                 minHeight: '44px',
                 px: { xs: 2, sm: 3 },
@@ -797,6 +794,22 @@ const CreateTournament: React.FC = () => {
           </Box>
         </Box>
       </Paper>
+
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={hideNotification}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={hideNotification}
+          severity={notification.severity}
+          sx={{ width: '100%' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };
