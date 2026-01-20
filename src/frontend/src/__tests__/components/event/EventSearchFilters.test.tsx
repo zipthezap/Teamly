@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import EventSearchFilters from '../../../components/event/EventSearchFilters';
 
@@ -23,6 +23,7 @@ describe('EventSearchFilters', () => {
   });
 
   it('should toggle filter panel when filter button is clicked', async () => {
+    const user = userEvent.setup();
     render(<EventSearchFilters onSearch={mockOnSearch} />);
     
     const filterButton = screen.getByRole('button', { name: /filters/i });
@@ -31,7 +32,7 @@ describe('EventSearchFilters', () => {
     expect(screen.queryByLabelText(/event type/i)).not.toBeVisible();
     
     // Click to show filters
-    fireEvent.click(filterButton);
+    await user.click(filterButton);
     
     await waitFor(() => {
       expect(screen.getByLabelText(/event type/i)).toBeVisible();
@@ -48,8 +49,8 @@ describe('EventSearchFilters', () => {
     const searchInput = screen.getByPlaceholderText(/search events/i);
     await user.type(searchInput, 'Football');
     
-    const searchButton = screen.getByRole('button', { name: /^search$/i });
-    fireEvent.click(searchButton);
+    const searchButton = screen.getByRole('button', { name: /search/i });
+    await user.click(searchButton);
     
     expect(mockOnSearch).toHaveBeenCalledWith({ search: 'Football' });
   });
@@ -70,7 +71,7 @@ describe('EventSearchFilters', () => {
     
     // Open filter panel
     const filterButton = screen.getByRole('button', { name: /filters/i });
-    fireEvent.click(filterButton);
+    await user.click(filterButton);
     
     await waitFor(() => {
       expect(screen.getByLabelText(/event type/i)).toBeVisible();
@@ -81,8 +82,8 @@ describe('EventSearchFilters', () => {
     await user.type(eventTypeInput, 'Basketball');
     
     // Click search
-    const searchButton = screen.getByRole('button', { name: /^search$/i });
-    fireEvent.click(searchButton);
+    const searchButton = screen.getByRole('button', { name: /search/i });
+    await user.click(searchButton);
     
     // Should only include non-empty values
     expect(mockOnSearch).toHaveBeenCalledWith({
