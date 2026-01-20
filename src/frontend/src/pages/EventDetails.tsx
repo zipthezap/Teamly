@@ -7,7 +7,7 @@ import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import InviteLinkCard from '../components/InviteLinkCard';
 import { EventParticipant, GuestParticipant, EventParticipantStatus, GuestParticipantStatus } from '../../../shared/types/event.types';
-import { PublicUser } from '../../../shared/types/user.types';
+import { PublicUser, UserProfilePicture } from '../../../shared/types/user.types';
 import { useNotification } from '../hooks/useNotification';
 import { useApiMutation } from '../hooks/useApiMutation';
 import { usePermissions } from '../hooks/usePermissions';
@@ -374,7 +374,7 @@ const EventDetails = () => {
             >
               <ProfileAvatar
                 picture={(() => {
-                  const currentPic = event.creator?.profilePictures?.find((p: any) => p.isCurrent && !p.deletedAt);
+                  const currentPic = event.creator?.profilePictures?.find((p: UserProfilePicture) => p.isCurrent && !p.deletedAt);
                   return currentPic?.url || event.creator?.profilePicture;
                 })()}
                 name={event.creator?.name || ''}
@@ -537,7 +537,7 @@ const EventDetails = () => {
                           <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
                             <ProfileAvatar
                               picture={(() => {
-                                const currentPic = n.user?.profilePictures?.find((p: any) => p.isCurrent && !p.deletedAt);
+                                const currentPic = n.user?.profilePictures?.find((p: UserProfilePicture) => p.isCurrent && !p.deletedAt);
                                 return currentPic?.url || n.user?.profilePicture;
                               })()}
                               name={n.user?.name || t('eventDetails.user')}
@@ -594,7 +594,7 @@ const EventDetails = () => {
               >
                 <ProfileAvatar
                   picture={(() => {
-                    const currentPic = p.user?.profilePictures?.find((pic: any) => pic.isCurrent && !pic.deletedAt);
+                    const currentPic = p.user?.profilePictures?.find((pic: UserProfilePicture) => pic.isCurrent && !pic.deletedAt);
                     return currentPic?.url || p.user?.profilePicture;
                   })()}
                   name={p.user?.name || ''}
