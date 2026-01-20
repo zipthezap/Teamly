@@ -1,26 +1,30 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import EventActions from '../components/event/EventActions';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import InviteLinkCard from '../components/InviteLinkCard';
-import { getImageUrl, getInitials } from '../utils/imageUtils';
 import { EventParticipant, GuestParticipant, EventParticipantStatus, GuestParticipantStatus } from '../../../shared/types/event.types';
-import { UserProfilePicture, PublicUser } from '../../../shared/types/user.types';
-import { AxiosError } from 'axios';
+import { PublicUser } from '../../../shared/types/user.types';
+import { useNotification } from '../hooks/useNotification';
+import { useApiMutation } from '../hooks/useApiMutation';
+import { usePermissions } from '../hooks/usePermissions';
+import ProfileAvatar from '../components/common/ProfileAvatar';
+import ConfirmationDialog from '../components/common/ConfirmationDialog';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import Alert from '@mui/material/Alert';
 import IconButton from '@mui/material/IconButton';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CircularProgress from '@mui/material/CircularProgress';
 import Link from '@mui/material/Link';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 
 interface EventNotification {
   id: string;
@@ -35,12 +39,8 @@ const EventDetails = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useTranslation();
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [lateSuccess, setLateSuccess] = useState('');
-  const [lateError, setLateError] = useState('');
-  const [copySuccess, setCopySuccess] = useState('');
-  const queryClient = useQueryClient();
+  const { notification, showSuccess, showError, showInfo, hideNotification } = useNotification();
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; action: 'leave' | 'delete' | null }>({ open: false, action: null });
 
   const {
     data: event,
@@ -56,138 +56,95 @@ const EventDetails = () => {
     refetchOnWindowFocus: true, // Refetch when user returns to tab
   });
 
-  const joinMutation = useMutation({
+  const joinMutation = useApiMutation({
     mutationFn: async () => eventsAPI.join(id!),
-    onSuccess: () => {
-      setSuccess(t('eventDetails.joined'));
-      queryClient.invalidateQueries({ queryKey: ['eventDetails', id] });
-    },
-    onError: (err: unknown) => {
-      const errorMessage = err instanceof AxiosError 
-        ? err.response?.data?.error || t('eventDetails.failedToJoin')
-        : t('eventDetails.failedToJoin');
-      setError(errorMessage);
-    },
+    invalidateKeys: [['eventDetails', id], ['events']],
+    onSuccess: () => showSuccess(t('eventDetails.joined')),
+    onError: (error) => showError(error || t('eventDetails.failedToJoin')),
   });
   const handleJoin = useCallback(async () => {
-    setError('');
-    setSuccess('');
     await joinMutation.mutateAsync();
   }, [joinMutation]);
 
-  const leaveMutation = useMutation({
+  const leaveMutation = useApiMutation({
     mutationFn: async () => eventsAPI.leave(id!),
-    onSuccess: () => {
-      setSuccess(t('eventDetails.left'));
-      queryClient.invalidateQueries({ queryKey: ['eventDetails', id] });
-    },
-    onError: (err: unknown) => {
-      const errorMessage = err instanceof AxiosError 
-        ? err.response?.data?.error || t('eventDetails.failedToLeave')
-        : t('eventDetails.failedToLeave');
-      setError(errorMessage);
-    },
+    invalidateKeys: [['eventDetails', id], ['events']],
+    onSuccess: () => showSuccess(t('eventDetails.left')),
+    onError: (error) => showError(error || t('eventDetails.failedToLeave')),
   });
   const handleLeave = useCallback(async () => {
-    if (!window.confirm(t('eventDetails.confirmLeave'))) return;
-    setError('');
-    setSuccess('');
-    await leaveMutation.mutateAsync();
-  }, [leaveMutation, t]);
+    setConfirmDialog({ open: true, action: 'leave' });
+  }, []);
 
-  const updateStatusMutation = useMutation({
+  const updateStatusMutation = useApiMutation({
     mutationFn: async (status: string) => eventsAPI.updateStatus(id!, status),
-    onSuccess: (_data, status) => {
-      setSuccess(t('eventDetails.statusUpdated', { status }));
-      queryClient.invalidateQueries({ queryKey: ['eventDetails', id] });
-    },
-    onError: (err: unknown) => {
-      const errorMessage = err instanceof AxiosError 
-        ? err.response?.data?.error || t('eventDetails.failedToUpdateStatus')
-        : t('eventDetails.failedToUpdateStatus');
-      setError(errorMessage);
-    },
+    invalidateKeys: [['eventDetails', id], ['events']],
+    onSuccess: (_data, status) => showSuccess(t('eventDetails.statusUpdated', { status })),
+    onError: (error) => showError(error || t('eventDetails.failedToUpdateStatus')),
   });
   const handleUpdateStatus = useCallback(async (status: string) => {
-    setError('');
-    setSuccess('');
     await updateStatusMutation.mutateAsync(status);
   }, [updateStatusMutation]);
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useApiMutation({
     mutationFn: async () => eventsAPI.delete(id!),
-    onSuccess: () => {
-      navigate('/events');
-    },
-    onError: (err: unknown) => {
-      const errorMessage = err instanceof AxiosError 
-        ? err.response?.data?.error || t('eventDetails.failedToDelete')
-        : t('eventDetails.failedToDelete');
-      setError(errorMessage);
-    },
+    onSuccess: () => navigate('/events'),
+    onError: (error) => showError(error || t('eventDetails.failedToDelete')),
   });
   const handleDelete = useCallback(async () => {
-    if (!window.confirm(t('eventDetails.confirmDelete'))) return;
-    await deleteMutation.mutateAsync();
-  }, [deleteMutation, t]);
+    setConfirmDialog({ open: true, action: 'delete' });
+  }, []);
 
-  const markLateMutation = useMutation({
+  const markLateMutation = useApiMutation({
     mutationFn: async () => groupChatAPI.markLate(id!),
-    onSuccess: () => {
-      setLateSuccess(t('eventDetails.markedLate'));
-      queryClient.invalidateQueries({ queryKey: ['eventDetails', id] });
-    },
-    onError: () => {
-      setLateError(t('eventDetails.failedToMarkLate'));
-    },
+    invalidateKeys: [['eventDetails', id]],
+    onSuccess: () => showSuccess(t('eventDetails.markedLate')),
+    onError: () => showError(t('eventDetails.failedToMarkLate')),
   });
   const handleMarkLate = useCallback(async () => {
-    setLateError('');
-    setLateSuccess('');
     await markLateMutation.mutateAsync();
   }, [markLateMutation]);
 
-  const unmarkLateMutation = useMutation({
+  const unmarkLateMutation = useApiMutation({
     mutationFn: async () => groupChatAPI.unmarkLate(id!),
-    onSuccess: () => {
-      setLateSuccess(t('eventDetails.lateUndone'));
-      queryClient.invalidateQueries({ queryKey: ['eventDetails', id] });
-    },
-    onError: () => {
-      setLateError(t('eventDetails.failedToUndoLate'));
-    },
+    invalidateKeys: [['eventDetails', id]],
+    onSuccess: () => showSuccess(t('eventDetails.lateUndone')),
+    onError: () => showError(t('eventDetails.failedToUndoLate')),
   });
   const handleUnmarkLate = useCallback(async () => {
-    setLateError('');
-    setLateSuccess('');
     await unmarkLateMutation.mutateAsync();
   }, [unmarkLateMutation]);
 
-  const generateInviteLinkMutation = useMutation({
+  const generateInviteLinkMutation = useApiMutation({
     mutationFn: async () => eventsAPI.generateInviteToken(id!),
+    invalidateKeys: [['eventDetails', id]],
     onSuccess: (response: { data: { inviteToken: string } }) => {
       const inviteUrl = `${window.location.origin}/events/join/${response.data.inviteToken}`;
       navigator.clipboard.writeText(inviteUrl);
-      setCopySuccess('Invite link copied to clipboard!');
-      queryClient.invalidateQueries({ queryKey: ['eventDetails', id] });
+      showInfo('Invite link copied to clipboard!');
     },
-    onError: (err: unknown) => {
-      const errorMessage = err instanceof AxiosError 
-        ? err.response?.data?.error || 'Failed to generate invite link'
-        : 'Failed to generate invite link';
-      setError(errorMessage);
-    },
+    onError: (error) => showError(error || 'Failed to generate invite link'),
   });
   const handleGenerateInviteLink = useCallback(() => {
-    setError('');
-    setCopySuccess('');
     generateInviteLinkMutation.mutate();
   }, [generateInviteLinkMutation]);
+
+  const handleConfirmAction = useCallback(async () => {
+    if (confirmDialog.action === 'leave') {
+      await leaveMutation.mutateAsync();
+    } else if (confirmDialog.action === 'delete') {
+      await deleteMutation.mutateAsync();
+    }
+    setConfirmDialog({ open: false, action: null });
+  }, [confirmDialog.action, leaveMutation, deleteMutation]);
+
+  const handleCancelAction = useCallback(() => {
+    setConfirmDialog({ open: false, action: null });
+  }, []);
 
   // Memoize computed values to prevent unnecessary recalculations
   const eventStats = useMemo(() => {
     const isParticipant = event?.participants?.some((p: EventParticipant) => p.id === user?.id || p.userId === user?.id);
-    const isCreator = event?.creatorId === user?.id;
     const totalParticipants = 
       ((event?.participants?.filter((p: EventParticipant) => p.status === EventParticipantStatus.confirmed).length) || 0) +
       ((event?.guestParticipants?.filter((g: GuestParticipant) => g.status === GuestParticipantStatus.confirmed).length) || 0);
@@ -199,7 +156,6 @@ const EventDetails = () => {
 
     return {
       isParticipant,
-      isCreator,
       totalParticipants,
       isFull,
       confirmedCount,
@@ -208,6 +164,10 @@ const EventDetails = () => {
       fillPercentage,
     };
   }, [event, user?.id]);
+
+  const { isCreator } = usePermissions({
+    creatorId: event?.creatorId,
+  });
 
   // Guard for missing ID - must be after all hooks
   if (!id) {
@@ -236,37 +196,35 @@ const EventDetails = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3, md: 4 }, px: { xs: 2, sm: 3 } }}>
-      {/* Alerts */}
-      {error && (
-        <Alert severity="error" sx={{ mb: { xs: 2, sm: 3 }, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-          {error}
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={hideNotification}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={hideNotification} severity={notification.severity} sx={{ width: '100%' }}>
+          {notification.message}
         </Alert>
-      )}
-      {success && (
-        <Alert severity="success" sx={{ mb: { xs: 2, sm: 3 }, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-          {success}
-        </Alert>
-      )}
-      {lateSuccess && (
-        <Alert severity="success" sx={{ mb: { xs: 2, sm: 3 }, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-          {lateSuccess}
-        </Alert>
-      )}
-      {lateError && (
-        <Alert severity="error" sx={{ mb: { xs: 2, sm: 3 }, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-          {lateError}
-        </Alert>
-      )}
-      {copySuccess && (
-        <Alert severity="info" sx={{ mb: { xs: 2, sm: 3 }, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-          {copySuccess}
-        </Alert>
-      )}
+      </Snackbar>
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        open={confirmDialog.open}
+        title={confirmDialog.action === 'leave' ? t('eventDetails.confirmLeave') : t('eventDetails.confirmDelete')}
+        message={confirmDialog.action === 'leave' ? t('eventDetails.confirmLeaveMessage', 'Are you sure you want to leave this event?') : t('eventDetails.confirmDeleteMessage', 'Are you sure you want to delete this event?')}
+        confirmText={t('common.confirm', 'Confirm')}
+        cancelText={t('common.cancel', 'Cancel')}
+        confirmColor={confirmDialog.action === 'delete' ? 'error' : 'primary'}
+        loading={leaveMutation.isLoading || deleteMutation.isLoading}
+        onConfirm={handleConfirmAction}
+        onCancel={handleCancelAction}
+      />
 
       <Card sx={{ position: 'relative', mb: { xs: 2, sm: 3, md: 4 } }}>
         <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
           {/* Admin icon buttons in top right */}
-          {eventStats.isCreator && (
+          {isCreator && (
             <Box sx={{ position: 'absolute', top: { xs: 12, sm: 16 }, right: { xs: 12, sm: 16 }, display: 'flex', gap: 1, zIndex: 10 }}>
               <IconButton
                 onClick={() => navigate(`/events/${event.id}/edit`)}
@@ -414,37 +372,14 @@ const EventDetails = () => {
                 mb: { xs: 2, sm: 3 }
               }}
             >
-              <Box
-                sx={{
-                  width: { xs: 48, sm: 56 },
-                  height: { xs: 48, sm: 56 },
-                  borderRadius: '50%',
-                  bgcolor: 'primary.main',
-                  color: 'white',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: { xs: '1rem', sm: '1.125rem' },
-                  fontWeight: 'bold',
-                  flexShrink: 0,
-                  overflow: 'hidden'
-                }}
-              >
-                {(() => {
-                  const currentPic = event.creator?.profilePictures?.find((p: UserProfilePicture) => p.isCurrent && !p.deletedAt);
-                  const url = getImageUrl(currentPic?.url || event.creator?.profilePicture);
-                  return url ? (
-                    <Box 
-                      component="img" 
-                      src={url} 
-                      alt={event.creator?.name} 
-                      sx={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                    />
-                  ) : (
-                    getInitials(event.creator?.name)
-                  );
+              <ProfileAvatar
+                picture={(() => {
+                  const currentPic = event.creator?.profilePictures?.find((p: any) => p.isCurrent && !p.deletedAt);
+                  return currentPic?.url || event.creator?.profilePicture;
                 })()}
-              </Box>
+                name={event.creator?.name || ''}
+                size={56}
+              />
               <Box>
                 <Typography sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' }, color: 'text.secondary', mb: 0.5 }}>
                   {t('eventDetails.organizedBy')}
@@ -504,7 +439,7 @@ const EventDetails = () => {
                     <EventActions
                       event={event}
                       isParticipant={eventStats.isParticipant}
-                      isCreator={eventStats.isCreator}
+                      isCreator={isCreator}
                       isFull={eventStats.isFull}
                       onJoin={handleJoin}
                       onLeave={handleLeave}
@@ -538,7 +473,7 @@ const EventDetails = () => {
                   day: 'numeric',
                   year: 'numeric'
                 })}
-                isCreator={eventStats.isCreator}
+                isCreator={isCreator}
                 onGenerateLink={async () => { handleGenerateInviteLink(); }}
                 isPublic={event.isPublic}
                 isPast={new Date(event.startTime) < new Date()}
@@ -600,37 +535,14 @@ const EventDetails = () => {
                           }}
                         >
                           <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
-                            <Box
-                              sx={{
-                                width: { xs: 32, sm: 36 },
-                                height: { xs: 32, sm: 36 },
-                                borderRadius: '50%',
-                                bgcolor: 'primary.main',
-                                color: 'white',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: { xs: '0.75rem', sm: '0.813rem' },
-                                fontWeight: 'bold',
-                                flexShrink: 0,
-                                overflow: 'hidden'
-                              }}
-                            >
-                              {(() => {
-                                const currentPic = n.user?.profilePictures?.find((p: UserProfilePicture) => p.isCurrent && !p.deletedAt);
-                                const url = getImageUrl(currentPic?.url || n.user?.profilePicture);
-                                return url ? (
-                                  <Box 
-                                    component="img" 
-                                    src={url} 
-                                    alt={n.user?.name} 
-                                    sx={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                                  />
-                                ) : (
-                                  getInitials(n.user?.name || t('eventDetails.user'))
-                                );
+                            <ProfileAvatar
+                              picture={(() => {
+                                const currentPic = n.user?.profilePictures?.find((p: any) => p.isCurrent && !p.deletedAt);
+                                return currentPic?.url || n.user?.profilePicture;
                               })()}
-                            </Box>
+                              name={n.user?.name || t('eventDetails.user')}
+                              size={36}
+                            />
                             <Box sx={{ flex: 1, minWidth: 0 }}>
                               <Typography sx={{ color: 'text.primary', fontWeight: 500, fontSize: { xs: '0.875rem', sm: '1rem' }, mb: 0.5 }}>
                                 {n.user?.name || t('eventDetails.user')}
@@ -680,37 +592,14 @@ const EventDetails = () => {
                   py: { xs: 2, sm: 2.5 }
                 }}
               >
-                <Box
-                  sx={{
-                    width: { xs: 40, sm: 44 },
-                    height: { xs: 40, sm: 44 },
-                    borderRadius: '50%',
-                    bgcolor: 'primary.main',
-                    color: 'white',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: { xs: '0.875rem', sm: '1rem' },
-                    fontWeight: 'bold',
-                    flexShrink: 0,
-                    overflow: 'hidden'
-                  }}
-                >
-                  {(() => {
-                    const currentPic = p.user?.profilePictures?.find((pic: UserProfilePicture) => pic.isCurrent && !pic.deletedAt);
-                    const url = getImageUrl(currentPic?.url || p.user?.profilePicture);
-                    return url ? (
-                      <Box 
-                        component="img" 
-                        src={url} 
-                        alt={p.user?.name} 
-                        sx={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                      />
-                    ) : (
-                      getInitials(p.user?.name)
-                    );
+                <ProfileAvatar
+                  picture={(() => {
+                    const currentPic = p.user?.profilePictures?.find((pic: any) => pic.isCurrent && !pic.deletedAt);
+                    return currentPic?.url || p.user?.profilePicture;
                   })()}
-                </Box>
+                  name={p.user?.name || ''}
+                  size={44}
+                />
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                     <Typography 
@@ -791,23 +680,12 @@ const EventDetails = () => {
                   borderOpacity: 0.3
                 }}
               >
-                <Box
-                  sx={{
-                    width: { xs: 40, sm: 44 },
-                    height: { xs: 40, sm: 44 },
-                    borderRadius: '50%',
-                    bgcolor: 'secondary.main',
-                    color: 'white',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: { xs: '0.875rem', sm: '1rem' },
-                    fontWeight: 'bold',
-                    flexShrink: 0
-                  }}
-                >
-                  {getInitials(g.name)}
-                </Box>
+                <ProfileAvatar
+                  picture={null}
+                  name={g.name}
+                  size={44}
+                  bgcolor="secondary.main"
+                />
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography 
                     sx={{ 
