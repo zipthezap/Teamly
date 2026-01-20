@@ -378,6 +378,33 @@ For complete security documentation, see [docs/SECURITY.md](docs/SECURITY.md).
 For HTTPS setup instructions, see [docs/HTTPS_SETUP.md](docs/HTTPS_SETUP.md).
 For backend improvements details, see [docs/BACKEND_IMPROVEMENTS.md](docs/BACKEND_IMPROVEMENTS.md).
 
+### Testing
+
+This project uses Jest for testing both backend and frontend code:
+
+```bash
+# Run backend tests
+npm test
+
+# Run frontend tests
+cd src/frontend && npm test
+
+# Run tests with coverage
+npm run test:coverage
+cd src/frontend && npm run test:coverage
+
+# Run tests in watch mode (during development)
+npm run test:watch
+cd src/frontend && npm run test:watch
+```
+
+**Test Coverage:**
+- Backend: 69 tests covering validation utilities and core logic
+- Frontend: 9 tests covering UI components
+- Total: 78 tests
+
+For detailed testing guidelines, patterns, and best practices, see [TESTING.md](TESTING.md).
+
 ### Database Management
 
 ```bash
