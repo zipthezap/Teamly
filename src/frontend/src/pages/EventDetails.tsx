@@ -142,6 +142,12 @@ const EventDetails = () => {
     setConfirmDialog({ open: false, action: null });
   }, []);
 
+  // Helper function to get current profile picture URL
+  const getCurrentProfilePicture = useCallback((profilePictures?: UserProfilePicture[], fallback?: string) => {
+    const currentPic = profilePictures?.find((p: UserProfilePicture) => p.isCurrent && !p.deletedAt);
+    return currentPic?.url || fallback;
+  }, []);
+
   // Memoize computed values to prevent unnecessary recalculations
   const eventStats = useMemo(() => {
     const isParticipant = event?.participants?.some((p: EventParticipant) => p.id === user?.id || p.userId === user?.id);
@@ -168,6 +174,22 @@ const EventDetails = () => {
   const { isCreator } = usePermissions({
     creatorId: event?.creatorId,
   });
+
+  // Confirmation dialog content
+  const confirmDialogContent = useMemo(() => {
+    if (confirmDialog.action === 'leave') {
+      return {
+        title: t('eventDetails.confirmLeave'),
+        message: t('eventDetails.confirmLeaveMessage', 'Are you sure you want to leave this event?'),
+        color: 'primary' as const,
+      };
+    }
+    return {
+      title: t('eventDetails.confirmDelete'),
+      message: t('eventDetails.confirmDeleteMessage', 'Are you sure you want to delete this event?'),
+      color: 'error' as const,
+    };
+  }, [confirmDialog.action, t]);
 
   // Guard for missing ID - must be after all hooks
   if (!id) {
@@ -211,11 +233,11 @@ const EventDetails = () => {
       {/* Confirmation Dialog */}
       <ConfirmationDialog
         open={confirmDialog.open}
-        title={confirmDialog.action === 'leave' ? t('eventDetails.confirmLeave') : t('eventDetails.confirmDelete')}
-        message={confirmDialog.action === 'leave' ? t('eventDetails.confirmLeaveMessage', 'Are you sure you want to leave this event?') : t('eventDetails.confirmDeleteMessage', 'Are you sure you want to delete this event?')}
+        title={confirmDialogContent.title}
+        message={confirmDialogContent.message}
         confirmText={t('common.confirm', 'Confirm')}
         cancelText={t('common.cancel', 'Cancel')}
-        confirmColor={confirmDialog.action === 'delete' ? 'error' : 'primary'}
+        confirmColor={confirmDialogContent.color}
         loading={leaveMutation.isLoading || deleteMutation.isLoading}
         onConfirm={handleConfirmAction}
         onCancel={handleCancelAction}
@@ -373,10 +395,7 @@ const EventDetails = () => {
               }}
             >
               <ProfileAvatar
-                picture={(() => {
-                  const currentPic = event.creator?.profilePictures?.find((p: UserProfilePicture) => p.isCurrent && !p.deletedAt);
-                  return currentPic?.url || event.creator?.profilePicture;
-                })()}
+                picture={getCurrentProfilePicture(event.creator?.profilePictures, event.creator?.profilePicture)}
                 name={event.creator?.name || ''}
                 size={56}
               />
@@ -536,10 +555,7 @@ const EventDetails = () => {
                         >
                           <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
                             <ProfileAvatar
-                              picture={(() => {
-                                const currentPic = n.user?.profilePictures?.find((p: UserProfilePicture) => p.isCurrent && !p.deletedAt);
-                                return currentPic?.url || n.user?.profilePicture;
-                              })()}
+                              picture={getCurrentProfilePicture(n.user?.profilePictures, n.user?.profilePicture)}
                               name={n.user?.name || t('eventDetails.user')}
                               size={36}
                             />
@@ -593,10 +609,7 @@ const EventDetails = () => {
                 }}
               >
                 <ProfileAvatar
-                  picture={(() => {
-                    const currentPic = p.user?.profilePictures?.find((pic: UserProfilePicture) => pic.isCurrent && !pic.deletedAt);
-                    return currentPic?.url || p.user?.profilePicture;
-                  })()}
+                  picture={getCurrentProfilePicture(p.user?.profilePictures, p.user?.profilePicture)}
                   name={p.user?.name || ''}
                   size={44}
                 />
