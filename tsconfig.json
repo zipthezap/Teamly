@@ -20,7 +20,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
-    "types": ["node"]
+    "types": ["node", "jest"]
   },
   "include": ["src/backend/**/*", "scripts/**/*", "prisma/**/*"],
   "exclude": ["node_modules", "src/frontend", "src/app", "dist"]
