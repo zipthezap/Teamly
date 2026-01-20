@@ -6,6 +6,8 @@ export { EmptyState } from './EmptyState';
 export { StatusBadge } from './StatusBadge';
 export { StyledLink } from './StyledLink';
 export { TabPanel } from './TabPanel';
+export { ProfileAvatar } from './ProfileAvatar';
+export { ConfirmationDialog } from './ConfirmationDialog';
 
 // New reusable state components
 export { LoadingState, ErrorState, EmptyStateComponent, SuccessState } from './StateComponents';
