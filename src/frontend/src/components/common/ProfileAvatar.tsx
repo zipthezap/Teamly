@@ -30,7 +30,11 @@ export const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
   ...props
 }) => {
   // Handle both string and object picture formats
-  const pictureUrl = typeof picture === 'string' ? picture : picture?.url;
+  const pictureUrl = typeof picture === 'string' 
+    ? picture 
+    : (picture && typeof picture === 'object' && 'url' in picture) 
+      ? picture.url 
+      : null;
   const imageUrl = getImageUrl(pictureUrl);
   const initials = getInitials(name);
 

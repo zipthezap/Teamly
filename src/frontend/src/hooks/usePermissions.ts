@@ -32,7 +32,7 @@ interface TeamUpParticipant {
 
 export interface UsePermissionsOptions {
   /** Resource type */
-  resourceType?: 'group' | 'tournament' | 'teamup' | 'event';
+  resourceType?: 'group' | 'tournament' | 'teamup';
   /** Resource creator/organizer ID */
   creatorId?: string;
   /** Current user's role in the resource */
