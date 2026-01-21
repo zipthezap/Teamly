@@ -273,7 +273,7 @@ describe('Tournament Service', () => {
       vi.mocked(prisma.tournamentTeam.findUnique).mockResolvedValueOnce({
         id: 'team-1',
         captainUserId: 'user-1',
-      } as any);
+      } as unknown);
 
       const result = await isTeamCaptain('team-1', 'user-1');
 
@@ -284,7 +284,7 @@ describe('Tournament Service', () => {
       vi.mocked(prisma.tournamentTeam.findUnique).mockResolvedValueOnce({
         id: 'team-1',
         captainUserId: 'user-2',
-      } as any);
+      } as unknown);
 
       const result = await isTeamCaptain('team-1', 'user-1');
 
@@ -334,7 +334,7 @@ describe('Tournament Service', () => {
 
     it('should allow home team captain to submit score', async () => {
       vi.mocked(prisma.tournamentTeam.findUnique)
-        .mockResolvedValueOnce({ id: 'team-1', captainUserId: 'user-1' } as any);
+        .mockResolvedValueOnce({ id: 'team-1', captainUserId: 'user-1' } as unknown);
 
       const result = await canSubmitScore(match, tournament, 'user-1');
 
@@ -343,8 +343,8 @@ describe('Tournament Service', () => {
 
     it('should allow away team captain to submit score', async () => {
       vi.mocked(prisma.tournamentTeam.findUnique)
-        .mockResolvedValueOnce({ id: 'team-1', captainUserId: 'other-user' } as any)
-        .mockResolvedValueOnce({ id: 'team-2', captainUserId: 'user-1' } as any);
+        .mockResolvedValueOnce({ id: 'team-1', captainUserId: 'other-user' } as unknown)
+        .mockResolvedValueOnce({ id: 'team-2', captainUserId: 'user-1' } as unknown);
 
       const result = await canSubmitScore(match, tournament, 'user-1');
 
@@ -353,8 +353,8 @@ describe('Tournament Service', () => {
 
     it('should allow registered player on home team to submit score', async () => {
       vi.mocked(prisma.tournamentTeam.findUnique)
-        .mockResolvedValueOnce({ id: 'team-1', captainUserId: 'other-user' } as any)
-        .mockResolvedValueOnce({ id: 'team-2', captainUserId: 'other-user' } as any);
+        .mockResolvedValueOnce({ id: 'team-1', captainUserId: 'other-user' } as unknown)
+        .mockResolvedValueOnce({ id: 'team-2', captainUserId: 'other-user' } as unknown);
       vi.mocked(prisma.tournamentPlayer.count)
         .mockResolvedValueOnce(1); // Home team player
 
@@ -365,7 +365,7 @@ describe('Tournament Service', () => {
 
     it('should deny submission for unrelated user', async () => {
       vi.mocked(prisma.tournamentTeam.findUnique)
-        .mockResolvedValue({ id: 'team-1', captainUserId: 'other-user' } as any);
+        .mockResolvedValue({ id: 'team-1', captainUserId: 'other-user' } as unknown);
       vi.mocked(prisma.tournamentPlayer.count)
         .mockResolvedValue(0);
 
@@ -378,7 +378,7 @@ describe('Tournament Service', () => {
       const matchWithReferee = { ...match, refereeTeamId: 'ref-team' };
       
       vi.mocked(prisma.tournamentTeam.findUnique)
-        .mockResolvedValue({ id: 'team-1', captainUserId: 'other-user' } as any);
+        .mockResolvedValue({ id: 'team-1', captainUserId: 'other-user' } as unknown);
       vi.mocked(prisma.tournamentPlayer.count)
         .mockResolvedValueOnce(0) // Not on home team
         .mockResolvedValueOnce(0) // Not on away team
@@ -398,8 +398,8 @@ describe('Tournament Service', () => {
         createdAt: new Date(),
       }));
 
-      vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce(teams as any);
-      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 4 } as any);
+      vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce(teams as unknown);
+      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 4 } as unknown);
 
       const result = await generateSingleEliminationBrackets('tournament-1');
 
@@ -419,7 +419,7 @@ describe('Tournament Service', () => {
 
     it('should throw error for insufficient teams', async () => {
       vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce([
-        { id: 'team-1', name: 'Team 1' } as any,
+        { id: 'team-1', name: 'Team 1' } as unknown,
       ]);
 
       await expect(generateSingleEliminationBrackets('tournament-1')).rejects.toThrow(
@@ -433,8 +433,8 @@ describe('Tournament Service', () => {
         { id: 'team-2', name: 'Team 2', createdAt: new Date() },
       ];
 
-      vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce(teams as any);
-      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 1 } as any);
+      vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce(teams as unknown);
+      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 1 } as unknown);
 
       const result = await generateSingleEliminationBrackets('tournament-1');
 
@@ -455,8 +455,8 @@ describe('Tournament Service', () => {
         createdAt: new Date(),
       }));
 
-      vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce(teams as any);
-      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 2 } as any);
+      vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce(teams as unknown);
+      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 2 } as unknown);
 
       await generateSingleEliminationBrackets('tournament-1');
 
@@ -478,8 +478,8 @@ describe('Tournament Service', () => {
         { id: 'team-3', name: 'Team 3', createdAt: new Date() },
       ];
 
-      vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce(teams as any);
-      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 3 } as any);
+      vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce(teams as unknown);
+      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 3 } as unknown);
 
       const result = await generateRoundRobinBrackets('tournament-1');
 
@@ -497,7 +497,7 @@ describe('Tournament Service', () => {
 
     it('should throw error for insufficient teams', async () => {
       vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce([
-        { id: 'team-1', name: 'Team 1' } as any,
+        { id: 'team-1', name: 'Team 1' } as unknown,
       ]);
 
       await expect(generateRoundRobinBrackets('tournament-1')).rejects.toThrow(
@@ -512,8 +512,8 @@ describe('Tournament Service', () => {
         createdAt: new Date(),
       }));
 
-      vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce(teams as any);
-      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 6 } as any);
+      vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce(teams as unknown);
+      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 6 } as unknown);
 
       const result = await generateRoundRobinBrackets('tournament-1');
 
@@ -530,8 +530,8 @@ describe('Tournament Service', () => {
         createdAt: new Date(),
       }));
 
-      vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce(teams as any);
-      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 12 } as any);
+      vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce(teams as unknown);
+      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 12 } as unknown);
 
       const result = await generateGroupsKnockoutBrackets('tournament-1', 4);
 
@@ -550,8 +550,8 @@ describe('Tournament Service', () => {
 
     it('should throw error for insufficient teams', async () => {
       vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce([
-        { id: 'team-1', name: 'Team 1' } as any,
-        { id: 'team-2', name: 'Team 2' } as any,
+        { id: 'team-1', name: 'Team 1' } as unknown,
+        { id: 'team-2', name: 'Team 2' } as unknown,
       ]);
 
       // With 4 groups, we need at least 8 teams
@@ -567,8 +567,8 @@ describe('Tournament Service', () => {
         createdAt: new Date(),
       }));
 
-      vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce(teams as any);
-      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 12 } as any);
+      vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce(teams as unknown);
+      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 12 } as unknown);
 
       await generateGroupsKnockoutBrackets('tournament-1');
 

@@ -41,7 +41,7 @@ describe('JWT Utilities', () => {
       expect(token).toBeDefined();
       expect(typeof token).toBe('string');
       
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as unknown;
       expect(decoded.userId).toBe(testUserId);
       expect(decoded.type).toBe('access');
     });
@@ -49,7 +49,7 @@ describe('JWT Utilities', () => {
     it('should generate access token with session ID', () => {
       const token = generateToken(testUserId, testSessionId);
       
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as unknown;
       expect(decoded.userId).toBe(testUserId);
       expect(decoded.sessionId).toBe(testSessionId);
       expect(decoded.type).toBe('access');
@@ -58,7 +58,7 @@ describe('JWT Utilities', () => {
     it('should generate token with expiration', () => {
       const token = generateToken(testUserId);
       
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as unknown;
       expect(decoded.exp).toBeDefined();
       expect(decoded.exp).toBeGreaterThan(Date.now() / 1000);
     });
@@ -69,8 +69,8 @@ describe('JWT Utilities', () => {
       
       expect(token1).not.toBe(token2);
       
-      const decoded1 = jwt.verify(token1, process.env.JWT_SECRET!) as any;
-      const decoded2 = jwt.verify(token2, process.env.JWT_SECRET!) as any;
+      const decoded1 = jwt.verify(token1, process.env.JWT_SECRET!) as unknown;
+      const decoded2 = jwt.verify(token2, process.env.JWT_SECRET!) as unknown;
       
       expect(decoded1.userId).toBe('user-1');
       expect(decoded2.userId).toBe('user-2');
@@ -84,7 +84,7 @@ describe('JWT Utilities', () => {
       expect(token).toBeDefined();
       expect(typeof token).toBe('string');
       
-      const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET!) as any;
+      const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET!) as unknown;
       expect(decoded.userId).toBe(testUserId);
       expect(decoded.type).toBe('refresh');
     });
@@ -95,8 +95,8 @@ describe('JWT Utilities', () => {
       
       expect(token1).not.toBe(token2);
       
-      const decoded1 = jwt.verify(token1, process.env.JWT_REFRESH_SECRET!) as any;
-      const decoded2 = jwt.verify(token2, process.env.JWT_REFRESH_SECRET!) as any;
+      const decoded1 = jwt.verify(token1, process.env.JWT_REFRESH_SECRET!) as unknown;
+      const decoded2 = jwt.verify(token2, process.env.JWT_REFRESH_SECRET!) as unknown;
       
       expect(decoded1.jti).toBeDefined();
       expect(decoded2.jti).toBeDefined();
@@ -106,7 +106,7 @@ describe('JWT Utilities', () => {
     it('should generate refresh token with expiration', () => {
       const token = generateRefreshToken(testUserId);
       
-      const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET!) as any;
+      const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET!) as unknown;
       expect(decoded.exp).toBeDefined();
       expect(decoded.exp).toBeGreaterThan(Date.now() / 1000);
     });
@@ -197,8 +197,8 @@ describe('JWT Utilities', () => {
       const token1 = generateRefreshToken(testUserId);
       const token2 = generateRefreshToken(testUserId);
       
-      const decoded1 = jwt.verify(token1, process.env.JWT_REFRESH_SECRET!) as any;
-      const decoded2 = jwt.verify(token2, process.env.JWT_REFRESH_SECRET!) as any;
+      const decoded1 = jwt.verify(token1, process.env.JWT_REFRESH_SECRET!) as unknown;
+      const decoded2 = jwt.verify(token2, process.env.JWT_REFRESH_SECRET!) as unknown;
       
       // JTI should be 32 characters (16 bytes as hex)
       expect(decoded1.jti.length).toBe(32);
