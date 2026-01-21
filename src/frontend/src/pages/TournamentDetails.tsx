@@ -27,7 +27,8 @@ import {
   Card,
   CardContent,
   Switch,
-  FormControlLabel
+  FormControlLabel,
+  Snackbar
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -47,15 +48,18 @@ import ManualBracketManager from '../components/ManualBracketManager';
 import PoolManager from '../components/PoolManager';
 import { TabPanel } from '../components/common';
 import { getTournamentStatusColor } from '../utils/statusHelpers';
-import { getErrorMessage } from '../utils/errorHandler';
+import { useNotification } from '../hooks/useNotification';
+import { useApiMutation } from '../hooks/useApiMutation';
+import { usePermissions } from '../hooks/usePermissions';
+import { ConfirmationDialog } from '../components/common/ConfirmationDialog';
 
 const TournamentDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { notification, showSuccess, showError, hideNotification } = useNotification();
   const [tournament, setTournament] = useState<TournamentWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
   const [addTeamOpen, setAddTeamOpen] = useState(false);
   const [scoreDialogOpen, setScoreDialogOpen] = useState(false);
@@ -66,6 +70,8 @@ const TournamentDetails: React.FC = () => {
     captainEmail: ''
   });
   const [scores, setScores] = useState({ homeScore: 0, awayScore: 0 });
+  const [confirmBrackets, setConfirmBrackets] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const loadTournament = useCallback(async () => {
     if (!id) return;
@@ -75,11 +81,12 @@ const TournamentDetails: React.FC = () => {
       const data = await tournamentAPI.getTournament(id);
       setTournament(data);
     } catch (err: unknown) {
-      setError(getErrorMessage(err));
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load tournament';
+      showError(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, showError]);
 
   useEffect(() => {
     if (id) {
@@ -87,32 +94,60 @@ const TournamentDetails: React.FC = () => {
     }
   }, [id, loadTournament]);
 
-  const handleAddTeam = async () => {
-    if (!id) return;
-    
-    try {
-      await tournamentAPI.addTeam(id, newTeam);
+  // Mutations
+  const addTeamMutation = useApiMutation({
+    mutationFn: (teamData: CreateTeamDto) => tournamentAPI.addTeam(id!, teamData),
+    onSuccess: () => {
+      showSuccess('Team added successfully');
       setAddTeamOpen(false);
       setNewTeam({ name: '', captainName: '', captainEmail: '' });
       loadTournament();
-    } catch (err: unknown) {
-      alert(getErrorMessage(err));
-    }
+    },
+    onError: (error) => showError(error)
+  });
+
+  const generateBracketsMutation = useApiMutation({
+    mutationFn: () => tournamentAPI.generateBrackets(id!),
+    onSuccess: () => {
+      showSuccess('Brackets generated successfully');
+      loadTournament();
+    },
+    onError: (error) => showError(error)
+  });
+
+  const submitScoreMutation = useApiMutation({
+    mutationFn: ({ matchId, scores }: { matchId: string; scores: { homeScore: number; awayScore: number } }) => 
+      tournamentAPI.submitScore(id!, matchId, scores),
+    onSuccess: () => {
+      showSuccess('Score submitted successfully');
+      setScoreDialogOpen(false);
+      setSelectedMatch(null);
+      loadTournament();
+    },
+    onError: (error) => showError(error)
+  });
+
+  const updateTournamentMutation = useApiMutation({
+    mutationFn: (data: { useManualBrackets: boolean }) => 
+      tournamentAPI.updateTournament(id!, data),
+    onSuccess: () => {
+      showSuccess('Tournament updated successfully');
+      loadTournament();
+    },
+    onError: (error) => showError(error)
+  });
+
+  const handleAddTeam = () => {
+    addTeamMutation.mutate(newTeam);
   };
 
-  const handleGenerateBrackets = async () => {
-    if (!id || !tournament) return;
-    
-    if (!window.confirm('Are you sure you want to generate brackets? This cannot be undone.')) {
-      return;
-    }
+  const handleGenerateBrackets = () => {
+    setConfirmBrackets(true);
+  };
 
-    try {
-      await tournamentAPI.generateBrackets(id);
-      loadTournament();
-    } catch (err: unknown) {
-      alert(getErrorMessage(err));
-    }
+  const confirmGenerateBrackets = () => {
+    setConfirmBrackets(false);
+    generateBracketsMutation.mutate();
   };
 
   const handleOpenScoreDialog = (match: TournamentMatch) => {
@@ -124,17 +159,9 @@ const TournamentDetails: React.FC = () => {
     setScoreDialogOpen(true);
   };
 
-  const handleSubmitScore = async () => {
-    if (!id || !selectedMatch) return;
-
-    try {
-      await tournamentAPI.submitScore(id, selectedMatch.id, scores);
-      setScoreDialogOpen(false);
-      setSelectedMatch(null);
-      loadTournament();
-    } catch (err: unknown) {
-      alert(getErrorMessage(err));
-    }
+  const handleSubmitScore = () => {
+    if (!selectedMatch) return;
+    submitScoreMutation.mutate({ matchId: selectedMatch.id, scores });
   };
 
   const getMatchStatusColor = (status: MatchStatus) => {
@@ -152,6 +179,12 @@ const TournamentDetails: React.FC = () => {
     }
   };
 
+  // Use permissions hook
+  const { isCreator: isOrganizer } = usePermissions({
+    resourceType: 'tournament',
+    creatorId: tournament?.organizerId
+  });
+
   if (loading) {
     return (
       <Container sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -160,15 +193,13 @@ const TournamentDetails: React.FC = () => {
     );
   }
 
-  if (error || !tournament) {
+  if (!tournament) {
     return (
       <Container sx={{ mt: 4 }}>
-        <Alert severity="error">{error || 'Tournament not found'}</Alert>
+        <Alert severity="error">Tournament not found</Alert>
       </Container>
     );
   }
-
-  const isOrganizer = user?.id === tournament.organizerId;
 
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3, md: 4 }, px: { xs: 2, sm: 3 } }}>
@@ -212,15 +243,8 @@ const TournamentDetails: React.FC = () => {
                 control={
                   <Switch
                     checked={tournament.useManualBrackets || false}
-                    onChange={async (e) => {
-                      try {
-                        await tournamentAPI.updateTournament(tournament.id, {
-                          useManualBrackets: e.target.checked
-                        });
-                        loadTournament();
-                      } catch (err: unknown) {
-                        alert(getErrorMessage(err));
-                      }
+                    onChange={(e) => {
+                      updateTournamentMutation.mutate({ useManualBrackets: e.target.checked });
                     }}
                   />
                 }
@@ -292,11 +316,7 @@ const TournamentDetails: React.FC = () => {
                   variant="outlined"
                   color="error"
                   startIcon={<DeleteIcon />}
-                  onClick={() => {
-                    if (window.confirm('Are you sure you want to delete this tournament?')) {
-                      // Handle delete
-                    }
-                  }}
+                  onClick={() => setConfirmDelete(true)}
                   sx={{ minHeight: '44px', flex: { xs: '1 1 auto', sm: '0 0 auto' } }}
                 >
                   Delete
@@ -1114,6 +1134,47 @@ const TournamentDetails: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Confirmation Dialogs */}
+      <ConfirmationDialog
+        open={confirmBrackets}
+        title="Generate Brackets"
+        message="Are you sure you want to generate brackets? This cannot be undone."
+        confirmText="Generate"
+        confirmColor="primary"
+        loading={generateBracketsMutation.isLoading}
+        onConfirm={confirmGenerateBrackets}
+        onCancel={() => setConfirmBrackets(false)}
+      />
+
+      <ConfirmationDialog
+        open={confirmDelete}
+        title="Delete Tournament"
+        message="Are you sure you want to delete this tournament? This action cannot be undone."
+        confirmText="Delete"
+        confirmColor="error"
+        onConfirm={() => {
+          setConfirmDelete(false);
+          // Handle delete - implementation needed
+        }}
+        onCancel={() => setConfirmDelete(false)}
+      />
+
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={hideNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={hideNotification} 
+          severity={notification.severity}
+          sx={{ width: '100%' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

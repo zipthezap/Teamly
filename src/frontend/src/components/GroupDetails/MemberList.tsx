@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../contexts/AuthContext";
 import { groupsAPI } from "../../services/api";
-import { getImageUrl, getInitials } from "../../utils/imageUtils";
 import { GroupMember } from "../../../../shared/types";
+import ProfileAvatar from "../common/ProfileAvatar";
 
 interface MemberListProps {
   groupId: string;
@@ -66,13 +66,11 @@ const MemberList: React.FC<MemberListProps> = ({ groupId, isAdmin, onRemove }) =
             );
             return (
               <li key={memberId} className="flex items-center gap-3 mb-2">
-                <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-lg font-bold overflow-hidden">
-                  {profilePictureUrl ? (
-                    <img src={profilePictureUrl} alt={memberName} className="w-full h-full rounded-full object-cover" />
-                  ) : (
-                    <span>{getInitials(memberName)}</span>
-                  )}
-                </div>
+                <ProfileAvatar
+                  picture={memberProfilePicture}
+                  name={memberName}
+                  size={32}
+                />
                 <div className="flex-1 min-w-0">
                   <span className="font-medium">{memberName}</span>
                   {(memberRole?.toLowerCase() === "admin") && (

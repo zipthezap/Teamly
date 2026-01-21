@@ -1,10 +1,11 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import EventSearchFilters from '../../../components/event/EventSearchFilters';
 
 describe('EventSearchFilters', () => {
-  const mockOnSearch = jest.fn();
+  const mockOnSearch = vi.fn();
 
   beforeEach(() => {
     mockOnSearch.mockClear();

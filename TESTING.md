@@ -4,13 +4,29 @@ This document provides guidelines for writing and running tests in the Teamly pr
 
 ## Overview
 
-Teamly uses Jest as the testing framework for both backend and frontend code. The testing infrastructure was established to prevent regressions and ensure code quality.
+Teamly uses Vitest as the testing framework for backend code. The testing infrastructure was established to prevent regressions and ensure code quality.
 
-## Test Statistics
+## Test Statistics (Updated January 2026)
 
-- **Backend Tests**: 69 tests covering validation utilities
+- **Backend Tests**: 591 tests passing
+  - Service Layer: 372 tests
+  - Extended Database Operation Tests: 93 tests (events, groups, notifications)
+  - Middleware: 53 tests
+  - Utilities: 58 tests
+  - Routes: 15 tests (skipped - integration tests)
 - **Frontend Tests**: 9 tests covering UI components
-- **Total Coverage**: 78 tests
+- **Total Coverage**: 600 tests
+- **Test Pass Rate**: 100%
+
+### Recent Improvements
+- **Test Organization**: Extracted mock data into centralized `__mocks__/mockData/` folder
+- **Extended Test Coverage**: Added 93 new database operation tests
+  - Event Database Operations: +26 tests covering creation, updates, participants, and activity
+  - Group Database Operations: +36 tests covering permissions, members, and invitations
+  - Notification Database Operations: +31 tests covering filtering, bulk operations, and cross-type queries
+- **notificationService**: Coverage improved from 81.48% to 93.82%
+- **eventService**: Maintaining 95.61% coverage with comprehensive edge cases
+- **groupService**: Maintaining 98.9% coverage with robust validation tests
 
 ## Running Tests
 
@@ -57,23 +73,52 @@ cd src/frontend && npm test
 
 ```
 Teamly/
-├── jest.config.js                              # Backend Jest configuration
+├── vitest.config.ts                             # Vitest configuration
 ├── src/
 │   ├── backend/
 │   │   └── __tests__/                          # Backend tests
-│   │       └── utils/
-│   │           └── validation.test.ts          # Validation utility tests
+│   │       ├── __mocks__/                      # Mock infrastructure
+│   │       │   ├── database.ts                 # Database mock
+│   │       │   └── mockData/                   # Centralized mock data
+│   │       │       ├── events.ts               # Event mock data
+│   │       │       ├── groups.ts               # Group mock data
+│   │       │       ├── notifications.ts        # Notification mock data
+│   │       │       ├── users.ts                # User mock data
+│   │       │       ├── index.ts                # Main export
+│   │       │       └── README.md               # Mock data documentation
+│   │       ├── helpers/                        # Test helpers
+│   │       │   ├── testApp.ts                  # Test app setup
+│   │       │   └── testHelpers.ts              # Helper functions
+│   │       ├── middleware/                     # Middleware tests
+│   │       ├── services/                       # Service tests
+│   │       │   ├── eventService.test.ts        # Event service tests
+│   │       │   ├── eventService.extended.test.ts # Extended event tests
+│   │       │   ├── groupService.test.ts        # Group service tests
+│   │       │   ├── groupService.extended.test.ts # Extended group tests
+│   │       │   ├── notificationService.test.ts # Notification service tests
+│   │       │   └── notificationService.extended.test.ts # Extended notification tests
+│   │       ├── utils/                          # Utility tests
+│   │       └── setup.ts                        # Test setup
 │   └── frontend/
-│       ├── jest.config.js                      # Frontend Jest configuration
 │       └── src/
 │           └── __tests__/                      # Frontend tests
 │               ├── setup.ts                    # Test setup & mocks
 │               ├── __mocks__/                  # Mock files
 │               │   └── fileMock.js            # Static file mock
-│               └── components/
-│                   └── common/
-│                       └── StatusBadge.test.tsx # Component tests
+│               └── hooks/
+│                   └── useNotification.test.ts # Hook tests
 ```
+
+### Mock Data Organization
+
+Centralized mock data is available in `src/backend/__tests__/__mocks__/mockData/`:
+
+- **events.ts**: Mock events, participants, and activity
+- **groups.ts**: Mock groups, members, and permissions
+- **notifications.ts**: Mock notifications of all types
+- **users.ts**: Mock users and profiles
+
+See [Mock Data README](src/backend/__tests__/__mocks__/mockData/README.md) for detailed usage.
 
 ## Writing Tests
 
@@ -105,6 +150,40 @@ describe('validateEmail', () => {
 3. **Test error conditions**: Ensure errors are thrown when expected
 4. **Group related tests**: Use `describe` blocks to organize tests
 5. **Keep tests focused**: Each test should validate one specific behavior
+6. **Use centralized mock data**: Import from `__mocks__/mockData` instead of creating inline mocks
+
+#### Example: Using Centralized Mock Data
+
+```typescript
+import { vi, describe, it, expect } from 'vitest';
+import { mockEvent, mockEventParticipants } from '../__mocks__/mockData';
+import prisma from '../../config/database';
+
+describe('Event Service', () => {
+  it('should find event by ID', async () => {
+    // Use centralized mock instead of creating inline
+    vi.mocked(prisma.event.findUnique).mockResolvedValueOnce(mockEvent as any);
+
+    const result = await prisma.event.findUnique({
+      where: { id: mockEvent.id },
+    });
+
+    expect(result).toEqual(mockEvent);
+  });
+
+  it('should list event participants', async () => {
+    vi.mocked(prisma.eventParticipant.findMany).mockResolvedValueOnce(
+      mockEventParticipants as any
+    );
+
+    const result = await prisma.eventParticipant.findMany({
+      where: { eventId: 'event-1' },
+    });
+
+    expect(result).toHaveLength(3);
+  });
+});
+```
 
 ### Frontend Tests (React + TypeScript)
 

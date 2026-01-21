@@ -196,7 +196,7 @@ export const revokeAllUserTokens = async (userId: string, reason: string = 'secu
 
     // Revoke each token
     const now = new Date();
-    const revokedTokens = sessions.map(session => ({
+    const revokedTokens = sessions.map((session: { token: string; expiresAt: Date }) => ({
       token: session.token,
       userId,
       expiresAt: session.expiresAt,
