@@ -2,6 +2,14 @@
  * Email-related TypeScript interfaces based on Prisma schema
  */
 
+// Enums for type safety
+export enum EmailQueueStatus {
+  pending = 'pending',
+  sent = 'sent',
+  failed = 'failed',
+  retry = 'retry',
+}
+
 // Email Preference
 export interface EmailPreference {
   id: string;

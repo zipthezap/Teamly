@@ -5,7 +5,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InviteService } from '../../services/inviteService';
 import prisma from '../../config/database';
-import { NotificationFactory } from '../../services/notificationFactory';
 
 // Mock dependencies
 vi.mock('../../config/database', () => ({

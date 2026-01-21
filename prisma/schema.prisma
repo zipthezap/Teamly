@@ -65,6 +65,18 @@ enum GroupJoinRequestSource {
   LINK      // Joined via invite link
 }
 
+enum GroupJoinRequestStatus {
+  pending
+  approved
+  rejected
+}
+
+enum GroupMemberRole {
+  member
+  moderator
+  admin
+}
+
 model GroupMessage {
   id        String   @id @default(uuid())
   content   String
@@ -88,16 +100,22 @@ model EventReminder {
   @@index([sent]) // For efficient querying of sent reminders
 }
 
+enum EventAttendanceStatus {
+  on_time
+  late
+}
+
 model EventAttendance {
   id        String   @id @default(uuid())
   eventId   String
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  status    String   @default("on-time") // on-time, late
+  status    EventAttendanceStatus   @default(on_time)
   updatedAt DateTime @updatedAt
   
   @@unique([eventId, userId])
+  @@index([status]) // For filtering by attendance status
 }
 
 model EventNotification {
@@ -317,14 +335,17 @@ model GroupJoinRequest {
   group     Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
   userId    String
   user      User    @relation(fields: [userId], references: [id])
-  status    String  @default("pending") // pending, approved, rejected
+  status    GroupJoinRequestStatus  @default(pending)
   createdAt DateTime @default(now())
   createdBy GroupJoinRequestSource @default(USER) // Source of the join request
+  
+  @@index([status]) // For filtering by status
+  @@index([userId, status]) // For user's pending requests
 }
 
 model GroupMember {
   id        String   @id @default(uuid())
-  role      String   @default("member") // member, moderator, admin
+  role      GroupMemberRole   @default(member)
   joinedAt  DateTime @default(now())
 
   userId  String
@@ -444,6 +465,13 @@ model EventParticipant {
   @@index([joinedAt]) // For joined date queries
 }
 
+enum EventRequestStatus {
+  voting
+  finalized
+  cancelled
+  expired
+}
+
 model EventRequest {
   id          String   @id @default(uuid())
   title       String
@@ -454,7 +482,7 @@ model EventRequest {
   endTime     DateTime?
   maxPlayers  Int?
   createdAt   DateTime @default(now())
-  status      String   @default("voting") // voting, finalized, cancelled, expired
+  status      EventRequestStatus   @default(voting)
   voteDeadline DateTime? // When voting closes
   voteThreshold Float?   @default(0.5) // % of votes needed (0.5 = 50%)
   
@@ -592,6 +620,13 @@ model UserSession {
   @@index([expiresAt])
 }
 
+enum EmailQueueStatus {
+  pending
+  sent
+  failed
+  retry
+}
+
 // Email notification queue for reliable delivery
 model EmailQueue {
   id          String   @id @default(uuid())
@@ -601,7 +636,7 @@ model EmailQueue {
   textContent String?
   templateType String? // eventInvitation, eventUpdate, etc.
   templateData Json?   // Data for template rendering
-  status      String   @default("pending") // pending, sent, failed, retry
+  status      EmailQueueStatus   @default(pending)
   attempts    Int      @default(0)
   maxAttempts Int      @default(3)
   lastError   String?
@@ -612,6 +647,19 @@ model EmailQueue {
   @@index([status])
   @@index([scheduledAt])
   @@index([recipient])
+}
+
+enum TeamUpRequestStatus {
+  open
+  filled
+  cancelled
+  expired
+}
+
+enum TeamUpResponseStatus {
+  pending
+  accepted
+  declined
 }
 
 // TeamUp functionality for finding substitute/replacement players
@@ -631,7 +679,7 @@ model TeamUpRequest {
   skillLevel  String?  // beginner, intermediate, advanced, any
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  status      String   @default("open") // open, filled, cancelled, expired
+  status      TeamUpRequestStatus   @default(open)
   expiresAt   DateTime? // Auto-expire after a certain time
   
   creatorId   String
@@ -656,7 +704,7 @@ model TeamUpRequest {
 model TeamUpResponse {
   id        String   @id @default(uuid())
   message   String?  // Optional message from the responder
-  status    String   @default("pending") // pending, accepted, declined
+  status    TeamUpResponseStatus   @default(pending)
   createdAt DateTime @default(now())
   
   teamUpRequestId String
