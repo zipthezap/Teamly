@@ -337,8 +337,27 @@ deploy_containers() {
 run_migrations() {
     print_header "Running Database Migrations"
     
-    print_info "Waiting for backend to start (30 seconds)..."
-    sleep 30
+    BACKEND_URL="https://$BACKEND_APP.azurewebsites.net"
+    
+    print_info "Waiting for backend to be ready..."
+    # Poll health endpoint with timeout
+    RETRY_COUNT=0
+    MAX_RETRIES=20
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        if curl -f -s "$BACKEND_URL/health" > /dev/null 2>&1; then
+            print_success "Backend is ready!"
+            break
+        fi
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        echo "  Waiting... ($RETRY_COUNT/$MAX_RETRIES)"
+        sleep 10
+    done
+    
+    if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+        print_warning "Backend health check timed out after 200 seconds"
+        print_warning "The app may still be starting. You can check status with:"
+        echo "  az webapp log tail --name $BACKEND_APP --resource-group $RESOURCE_GROUP"
+    fi
     
     print_info "Running migrations..."
     # Note: This requires the app to be running
