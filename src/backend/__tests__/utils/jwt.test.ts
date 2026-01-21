@@ -133,7 +133,7 @@ describe('JWT Utilities', () => {
       expect(decoded).toBeNull();
     });
 
-    it('should return null for expired token', () => {
+    it('should return null for expired token', async () => {
       const expiredToken = jwt.sign(
         { userId: testUserId, type: 'access' },
         process.env.JWT_SECRET!,
@@ -141,10 +141,10 @@ describe('JWT Utilities', () => {
       );
       
       // Wait a bit to ensure token is expired
-      setTimeout(() => {
-        const decoded = verifyToken(expiredToken);
-        expect(decoded).toBeNull();
-      }, 100);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const decoded = verifyToken(expiredToken);
+      expect(decoded).toBeNull();
     });
   });
 
