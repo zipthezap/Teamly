@@ -28,6 +28,7 @@ import { isRequired, parseCoordinates, parseFloatStrict } from '../utils/validat
 import { isPrismaUniqueError, hasGroupId } from '../utils/typeGuards';
 import { ensureResourceExists } from '../utils/controllerHelpers';
 import { CacheService } from '../services/cacheService';
+import { NotificationFactory } from '../services/notificationFactory';
 
 // ==================== EVENT CRUD OPERATIONS ====================
 
@@ -694,12 +695,12 @@ export const joinEvent = async (req: Request, res: Response) => {
         }
       });
 
-      // Log activity for the user who joined
-      await tx.eventNotification.create({
-        data: {
+      // Log activity for the user who joined using NotificationFactory
+      await NotificationFactory.createEventNotifications(
+        {
           eventId: id,
-          userId: req.user!.id,
           type: 'join',
+          userIds: [req.user!.id],
           params: {
             name: req.user!.name,
             eventTitle: event.title
@@ -712,9 +713,11 @@ export const joinEvent = async (req: Request, res: Response) => {
               where: { eventId: id, status: 'confirmed' }
             }),
             maxPlayers: event.maxPlayers
-          }
-        }
-      });
+          },
+          checkMutePreference: false // User joining their own event
+        },
+        tx
+      );
 
       return { participant, eventTitle: event.title, groupId: event.groupId };
     }, {
@@ -798,12 +801,12 @@ export const leaveEvent = async (req: Request, res: Response) => {
         }
       });
 
-      // Log activity for the user who left
-      await tx.eventNotification.create({
-        data: {
+      // Log activity for the user who left using NotificationFactory
+      await NotificationFactory.createEventNotifications(
+        {
           eventId: id,
-          userId: req.user!.id,
           type: 'leave',
+          userIds: [req.user!.id],
           params: {
             name: req.user!.name,
             eventTitle: event.title
@@ -812,9 +815,11 @@ export const leaveEvent = async (req: Request, res: Response) => {
             eventType: event.eventType,
             eventStartTime: event.startTime,
             groupId: event.groupId
-          }
-        }
-      });
+          },
+          checkMutePreference: false // User leaving their own event
+        },
+        tx
+      );
 
       return { groupId: event.groupId };
     });
@@ -886,22 +891,21 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
       });
 
       if (statusEvent) {
-        await prisma.eventNotification.create({
-          data: {
-            eventId: id,
-            userId: req.user!.id,
-            type: status,
-            params: {
-              name: req.user!.name,
-              eventTitle: statusEvent.title
-            },
-            metadata: {
-              eventType: statusEvent.eventType,
-              eventStartTime: statusEvent.startTime,
-              groupId: statusEvent.groupId,
-              previousStatus: participant.status
-            }
-          }
+        await NotificationFactory.createEventNotifications({
+          eventId: id,
+          type: status,
+          userIds: [req.user!.id],
+          params: {
+            name: req.user!.name,
+            eventTitle: statusEvent.title
+          },
+          metadata: {
+            eventType: statusEvent.eventType,
+            eventStartTime: statusEvent.startTime,
+            groupId: statusEvent.groupId,
+            previousStatus: participant.status
+          },
+          checkMutePreference: false // User updating their own status
         });
 
         // Invalidate events cache when status changes
@@ -1285,27 +1289,30 @@ export const updateEventStatus = async (req: Request, res: Response) => {
     data: { status }
   });
 
-  // Create notifications for participants about status change
+  // Create notifications for participants about status change using NotificationFactory
   const participantIds = event.participants
     .filter(p => p.userId !== req.user!.id)
     .map(p => p.userId);
   
-  await Promise.all(participantIds.map(userId =>
-    prisma.eventNotification.create({
-      data: {
-        eventId: id,
-        userId,
-        type: 'status_change',
-        params: {
-          name: req.user!.name,
-          eventTitle: event.title,
-          newStatus: status,
-          oldStatus: event.status
-        },
-        metadata: { newStatus: status, oldStatus: event.status }
-      }
-    })
-  ));
+  if (participantIds.length > 0) {
+    await NotificationFactory.createEventNotifications({
+      eventId: id,
+      type: 'status_change',
+      userIds: participantIds,
+      params: {
+        name: req.user!.name,
+        eventTitle: event.title,
+        newStatus: status,
+        oldStatus: event.status
+      },
+      metadata: { 
+        newStatus: status, 
+        oldStatus: event.status 
+      },
+      checkMutePreference: true,
+      deduplicateWindow: 60000 // 1 minute deduplication window
+    });
+  }
 
   res.json({ message: 'Event status updated successfully', event: updatedEvent });
 };

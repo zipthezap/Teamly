@@ -58,6 +58,13 @@ enum GuestParticipantStatus {
   confirmed
   declined
 }
+
+enum GroupJoinRequestSource {
+  USER      // User-initiated join request
+  INVITE    // Admin/moderator invitation
+  LINK      // Joined via invite link
+}
+
 model GroupMessage {
   id        String   @id @default(uuid())
   content   String
@@ -288,6 +295,9 @@ model Group {
   tags        String?    // Comma-separated tags/interests (e.g., "competitive,weekend-warriors,beginners-welcome")
   allowMemberInvites Boolean @default(false) // Allow non-admin members to invite others to the group
   allowMemberCopyLink Boolean @default(true) // Allow non-admin members to copy the group invite link
+  
+  // Invite token for shareable group links (similar to events)
+  inviteToken String? @unique // Unique token for invite links
 
   creatorId String
   creator   User   @relation("GroupCreator", fields: [creatorId], references: [id])
@@ -309,7 +319,7 @@ model GroupJoinRequest {
   user      User    @relation(fields: [userId], references: [id])
   status    String  @default("pending") // pending, approved, rejected
   createdAt DateTime @default(now())
-  createdBy String   @default("user") // 'user' or 'invite'
+  createdBy GroupJoinRequestSource @default(USER) // Source of the join request
 }
 
 model GroupMember {
