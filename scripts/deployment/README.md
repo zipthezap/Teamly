@@ -108,10 +108,10 @@ Check Azure portal for partial resources and either:
 Running the Azure deployment script creates:
 - App Service Plan B1: ~$13/month
 - PostgreSQL Flexible Server B1ms: ~$12/month
-- Redis Cache Basic C0: ~$16/month
+- Redis Cache Basic C0: ~$16/month (optional, can be skipped)
 - Container Registry Basic: $5/month
 
-**Total: ~$46/month**
+**Total: ~$46/month (or ~$30/month without Redis)**
 
 You can reduce costs by:
 - Skipping Redis (app has fallback)

@@ -96,8 +96,10 @@ The script will:
 ### Step 4: Configure Your App
 
 After deployment, you'll receive URLs for:
-- **Backend API**: `https://teamly-backend-<random>.azurewebsites.net`
-- **Frontend**: `https://teamly-frontend-<random>.azurewebsites.net`
+- **Backend API**: `https://teamly-backend.azurewebsites.net`
+- **Frontend**: `https://teamly-frontend.azurewebsites.net`
+
+Note: If these names are already taken, you'll need to choose different names during deployment.
 
 ### Step 5: Set Up OAuth (Optional)
 

@@ -88,16 +88,42 @@ get_configuration() {
     BACKEND_APP="teamly-backend"
     FRONTEND_APP="teamly-frontend"
     
-    # Database password
-    read -sp "Enter database admin password (min 8 chars, must include uppercase, lowercase, numbers): " DB_PASSWORD
-    echo ""
-    if [ ${#DB_PASSWORD} -lt 8 ]; then
-        print_error "Password too short"
-        exit 1
-    fi
+    # Database password with validation
+    while true; do
+        read -sp "Enter database admin password (min 8 chars, must include uppercase, lowercase, numbers): " DB_PASSWORD
+        echo ""
+        
+        # Validate password length
+        if [ ${#DB_PASSWORD} -lt 8 ]; then
+            print_error "Password must be at least 8 characters"
+            continue
+        fi
+        
+        # Validate password complexity (has uppercase, lowercase, and number)
+        if ! echo "$DB_PASSWORD" | grep -q '[A-Z]'; then
+            print_error "Password must contain at least one uppercase letter"
+            continue
+        fi
+        if ! echo "$DB_PASSWORD" | grep -q '[a-z]'; then
+            print_error "Password must contain at least one lowercase letter"
+            continue
+        fi
+        if ! echo "$DB_PASSWORD" | grep -q '[0-9]'; then
+            print_error "Password must contain at least one number"
+            continue
+        fi
+        
+        break
+    done
     
     # Generate JWT secret
-    JWT_SECRET=$(openssl rand -base64 32)
+    if command -v openssl &> /dev/null; then
+        JWT_SECRET=$(openssl rand -base64 32)
+    else
+        # Fallback if openssl not available
+        JWT_SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+        print_warning "OpenSSL not found, using alternative random generation"
+    fi
     
     print_success "Configuration complete"
     echo ""
@@ -316,11 +342,15 @@ run_migrations() {
     
     print_info "Running migrations..."
     # Note: This requires the app to be running
-    az webapp ssh \
+    if ! az webapp ssh \
         --resource-group "$RESOURCE_GROUP" \
         --name "$BACKEND_APP" \
-        --command "cd /app && npx prisma migrate deploy && npx prisma generate && node prisma/seed.js" \
-        2>/dev/null || print_warning "Could not run migrations automatically. Run them manually using SSH."
+        --command "cd /app && npx prisma migrate deploy && npx prisma generate && node prisma/seed.js"; then
+        print_warning "Could not run migrations automatically."
+        echo "You may need to run them manually after the app fully starts:"
+        echo "  az webapp ssh --resource-group $RESOURCE_GROUP --name $BACKEND_APP"
+        echo "  Then run: cd /app && npx prisma migrate deploy && node prisma/seed.js"
+    fi
     
     print_success "Migration step completed"
 }
