@@ -192,6 +192,35 @@ model TournamentNotification {
   @@index([userId, read]) // Composite for unread user notifications
   @@index([createdAt]) // For chronological sorting
 }
+
+// Invite audit log for tracking all invitation activity
+model InviteLog {
+  id          String   @id @default(uuid())
+  inviterType String   // "group" or "event"
+  entityId    String   // groupId or eventId
+  inviterId   String   // User who sent the invite
+  inviter     User     @relation("InviteLogInviter", fields: [inviterId], references: [id])
+  inviteeEmail String  // Email of invited user
+  inviteeId   String?  // User ID if registered
+  invitee     User?    @relation("InviteLogInvitee", fields: [inviteeId], references: [id])
+  status      String   // "sent", "accepted", "declined", "expired", "revoked"
+  sentAt      DateTime @default(now())
+  respondedAt DateTime?
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  revokedBy   String?
+  revoker     User?    @relation("InviteLogRevoker", fields: [revokedBy], references: [id])
+  message     String?  // Optional custom message with the invite
+  metadata    Json?    // Additional data
+  
+  @@index([inviterType, entityId]) // For finding all invites for a group/event
+  @@index([inviterId]) // For finding all invites sent by a user
+  @@index([inviteeEmail]) // For finding invites by email
+  @@index([status]) // For filtering by status
+  @@index([sentAt]) // For chronological queries
+  @@index([expiresAt]) // For cleanup of expired invites
+}
+
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -264,6 +293,10 @@ model User {
   teamUpNotifications TeamUpNotification[]
   tournamentNotifications TournamentNotification[]
   groupJoinRequests GroupJoinRequest[]
+  invitedGroupJoinRequests GroupJoinRequest[] @relation("GroupInviter")
+  sentInvites       InviteLog[]      @relation("InviteLogInviter")
+  receivedInvites   InviteLog[]      @relation("InviteLogInvitee")
+  revokedInvites    InviteLog[]      @relation("InviteLogRevoker")
   createdEventRequests EventRequest[]   @relation("EventRequestCreator")
   eventVotes        EventVote[]
   emailPreferences  EmailPreference?
@@ -316,6 +349,7 @@ model Group {
   
   // Invite token for shareable group links (similar to events)
   inviteToken String? @unique // Unique token for invite links
+  inviteTokenExpiresAt DateTime? // Optional expiration for invite tokens
 
   creatorId String
   creator   User   @relation("GroupCreator", fields: [creatorId], references: [id])
@@ -338,9 +372,13 @@ model GroupJoinRequest {
   status    GroupJoinRequestStatus  @default(pending)
   createdAt DateTime @default(now())
   createdBy GroupJoinRequestSource @default(USER) // Source of the join request
+  expiresAt DateTime? // Optional expiration for invites
+  invitedBy String?   // ID of user who sent the invite
+  inviter   User?     @relation("GroupInviter", fields: [invitedBy], references: [id])
   
   @@index([status]) // For filtering by status
   @@index([userId, status]) // For user's pending requests
+  @@index([expiresAt]) // For cleaning up expired invites
 }
 
 model GroupMember {
@@ -407,6 +445,7 @@ model Event {
   // Public/Private event and invite features
   isPublic    Boolean  @default(false) // Public events can be joined by anyone with the link
   inviteToken String?  @unique // Unique token for shareable invite links
+  inviteTokenExpiresAt DateTime? // Optional expiration for event invite tokens
 
   // Recurring event fields
   isRecurring     Boolean   @default(false)
