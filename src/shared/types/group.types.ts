@@ -4,6 +4,25 @@
 
 import { PublicUser } from './user.types';
 
+// Enums for type safety
+export enum GroupMemberRole {
+  member = 'member',
+  moderator = 'moderator',
+  admin = 'admin',
+}
+
+export enum GroupJoinRequestStatus {
+  pending = 'pending',
+  approved = 'approved',
+  rejected = 'rejected',
+}
+
+export enum GroupJoinRequestSource {
+  USER = 'USER',
+  INVITE = 'INVITE',
+  LINK = 'LINK',
+}
+
 // Main Group interface
 export interface Group {
   id: string;

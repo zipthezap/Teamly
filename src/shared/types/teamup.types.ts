@@ -4,6 +4,20 @@
 
 import { PublicUser } from './user.types';
 
+// Enums for type safety
+export enum TeamUpRequestStatus {
+  open = 'open',
+  filled = 'filled',
+  cancelled = 'cancelled',
+  expired = 'expired',
+}
+
+export enum TeamUpResponseStatus {
+  pending = 'pending',
+  accepted = 'accepted',
+  declined = 'declined',
+}
+
 // TeamUp Request
 export interface TeamUpRequest {
   id: string;
