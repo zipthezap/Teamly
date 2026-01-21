@@ -1,24 +1,24 @@
 import jwt from 'jsonwebtoken';
+import { vi } from 'vitest';
 
 // Mock database module before importing JWT utilities
-jest.mock('../../config/database', () => ({
-  __esModule: true,
+vi.mock('../../config/database', () => ({
   default: {
     userSession: {
-      create: jest.fn(),
-      deleteMany: jest.fn(),
-      findMany: jest.fn(),
+      create: vi.fn(),
+      deleteMany: vi.fn(),
+      findMany: vi.fn(),
     },
     refreshToken: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      deleteMany: jest.fn(),
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      deleteMany: vi.fn(),
     },
     revokedToken: {
-      findUnique: jest.fn(),
-      create: jest.fn(),
-      createMany: jest.fn(),
-      deleteMany: jest.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      createMany: vi.fn(),
+      deleteMany: vi.fn(),
     },
   },
 }));
