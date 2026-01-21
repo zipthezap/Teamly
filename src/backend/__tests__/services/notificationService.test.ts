@@ -404,4 +404,271 @@ describe('NotificationService', () => {
       });
     });
   });
+
+  describe('getUserNotifications - metadata enrichment', () => {
+    it('should enrich event notifications with high priority for cancelled type', async () => {
+      const mockEventNotifications = [
+        {
+          id: 'notif-1',
+          userId: 'user-1',
+          type: 'cancelled',
+          params: { eventTitle: 'Soccer Match' },
+          read: false,
+          createdAt: new Date(),
+          event: { id: 'event-1', title: 'Soccer Match', startTime: new Date() },
+          user: { id: 'user-2', name: 'John' }
+        }
+      ];
+
+      mockPrisma.eventNotification.findMany.mockResolvedValue(mockEventNotifications);
+      mockPrisma.eventNotification.count.mockResolvedValue(1);
+      mockPrisma.groupNotification.findMany.mockResolvedValue([]);
+      mockPrisma.groupNotification.count.mockResolvedValue(0);
+      mockPrisma.teamUpNotification.findMany.mockResolvedValue([]);
+      mockPrisma.teamUpNotification.count.mockResolvedValue(0);
+      mockPrisma.tournamentNotification.findMany.mockResolvedValue([]);
+      mockPrisma.tournamentNotification.count.mockResolvedValue(0);
+
+      const result = await getUserNotifications('user-1');
+
+      expect(result.notifications[0].metadata?.priority).toBe('high');
+      expect(result.notifications[0].metadata?.actionUrl).toBe('/events/event-1');
+      expect(result.notifications[0].metadata?.actionText).toBe('View Event');
+    });
+
+    it('should enrich group notifications with action URL and text for join_request', async () => {
+      const mockGroupNotifications = [
+        {
+          id: 'notif-1',
+          userId: 'user-1',
+          type: 'join_request',
+          params: { groupName: 'Soccer Team' },
+          read: false,
+          createdAt: new Date(),
+          group: { id: 'group-1', name: 'Soccer Team' }
+        }
+      ];
+
+      mockPrisma.eventNotification.findMany.mockResolvedValue([]);
+      mockPrisma.eventNotification.count.mockResolvedValue(0);
+      mockPrisma.groupNotification.findMany.mockResolvedValue(mockGroupNotifications);
+      mockPrisma.groupNotification.count.mockResolvedValue(1);
+      mockPrisma.teamUpNotification.findMany.mockResolvedValue([]);
+      mockPrisma.teamUpNotification.count.mockResolvedValue(0);
+      mockPrisma.tournamentNotification.findMany.mockResolvedValue([]);
+      mockPrisma.tournamentNotification.count.mockResolvedValue(0);
+
+      const result = await getUserNotifications('user-1');
+
+      expect(result.notifications[0].metadata?.actionUrl).toBe('/groups/group-1');
+      expect(result.notifications[0].metadata?.actionText).toBe('Review Request');
+    });
+
+    it('should enrich teamup notifications with medium priority for accepted type', async () => {
+      const mockTeamUpNotifications = [
+        {
+          id: 'notif-1',
+          userId: 'user-1',
+          type: 'teamup_accepted',
+          params: { title: 'Basketball Game' },
+          read: false,
+          createdAt: new Date(),
+          teamUpRequest: { id: 'teamup-1', title: 'Basketball Game', sportType: 'basketball' }
+        }
+      ];
+
+      mockPrisma.eventNotification.findMany.mockResolvedValue([]);
+      mockPrisma.eventNotification.count.mockResolvedValue(0);
+      mockPrisma.groupNotification.findMany.mockResolvedValue([]);
+      mockPrisma.groupNotification.count.mockResolvedValue(0);
+      mockPrisma.teamUpNotification.findMany.mockResolvedValue(mockTeamUpNotifications);
+      mockPrisma.teamUpNotification.count.mockResolvedValue(1);
+      mockPrisma.tournamentNotification.findMany.mockResolvedValue([]);
+      mockPrisma.tournamentNotification.count.mockResolvedValue(0);
+
+      const result = await getUserNotifications('user-1');
+
+      expect(result.notifications[0].metadata?.priority).toBe('medium');
+      expect(result.notifications[0].metadata?.actionUrl).toBe('/teamup/teamup-1');
+      expect(result.notifications[0].metadata?.actionText).toBe('View Request');
+    });
+
+    it('should enrich teamup notifications with specific action text for response type', async () => {
+      const mockTeamUpNotifications = [
+        {
+          id: 'notif-1',
+          userId: 'user-1',
+          type: 'teamup_response',
+          params: { title: 'Basketball Game' },
+          read: false,
+          createdAt: new Date(),
+          teamUpRequest: { id: 'teamup-1', title: 'Basketball Game', sportType: 'basketball' }
+        }
+      ];
+
+      mockPrisma.eventNotification.findMany.mockResolvedValue([]);
+      mockPrisma.eventNotification.count.mockResolvedValue(0);
+      mockPrisma.groupNotification.findMany.mockResolvedValue([]);
+      mockPrisma.groupNotification.count.mockResolvedValue(0);
+      mockPrisma.teamUpNotification.findMany.mockResolvedValue(mockTeamUpNotifications);
+      mockPrisma.teamUpNotification.count.mockResolvedValue(1);
+      mockPrisma.tournamentNotification.findMany.mockResolvedValue([]);
+      mockPrisma.tournamentNotification.count.mockResolvedValue(0);
+
+      const result = await getUserNotifications('user-1');
+
+      expect(result.notifications[0].metadata?.actionText).toBe('Review Response');
+    });
+
+    it('should enrich teamup notifications with specific action text for comment type', async () => {
+      const mockTeamUpNotifications = [
+        {
+          id: 'notif-1',
+          userId: 'user-1',
+          type: 'teamup_comment',
+          params: { title: 'Basketball Game' },
+          read: false,
+          createdAt: new Date(),
+          teamUpRequest: { id: 'teamup-1', title: 'Basketball Game', sportType: 'basketball' }
+        }
+      ];
+
+      mockPrisma.eventNotification.findMany.mockResolvedValue([]);
+      mockPrisma.eventNotification.count.mockResolvedValue(0);
+      mockPrisma.groupNotification.findMany.mockResolvedValue([]);
+      mockPrisma.groupNotification.count.mockResolvedValue(0);
+      mockPrisma.teamUpNotification.findMany.mockResolvedValue(mockTeamUpNotifications);
+      mockPrisma.teamUpNotification.count.mockResolvedValue(1);
+      mockPrisma.tournamentNotification.findMany.mockResolvedValue([]);
+      mockPrisma.tournamentNotification.count.mockResolvedValue(0);
+
+      const result = await getUserNotifications('user-1');
+
+      expect(result.notifications[0].metadata?.actionText).toBe('View Comment');
+    });
+
+    it('should enrich tournament notifications with action URL and text for team_registered', async () => {
+      const mockTournamentNotifications = [
+        {
+          id: 'notif-1',
+          userId: 'user-1',
+          type: 'team_registered',
+          params: { tournamentName: 'Summer Cup' },
+          read: false,
+          createdAt: new Date(),
+          tournament: { id: 'tournament-1', name: 'Summer Cup', sportType: 'soccer' }
+        }
+      ];
+
+      mockPrisma.eventNotification.findMany.mockResolvedValue([]);
+      mockPrisma.eventNotification.count.mockResolvedValue(0);
+      mockPrisma.groupNotification.findMany.mockResolvedValue([]);
+      mockPrisma.groupNotification.count.mockResolvedValue(0);
+      mockPrisma.teamUpNotification.findMany.mockResolvedValue([]);
+      mockPrisma.teamUpNotification.count.mockResolvedValue(0);
+      mockPrisma.tournamentNotification.findMany.mockResolvedValue(mockTournamentNotifications);
+      mockPrisma.tournamentNotification.count.mockResolvedValue(1);
+
+      const result = await getUserNotifications('user-1');
+
+      expect(result.notifications[0].metadata?.actionUrl).toBe('/tournaments/tournament-1');
+      expect(result.notifications[0].metadata?.actionText).toBe('View Team');
+      expect(result.notifications[0].metadata?.priority).toBe('medium');
+    });
+
+    it('should enrich tournament notifications with action text for score_submitted', async () => {
+      const mockTournamentNotifications = [
+        {
+          id: 'notif-1',
+          userId: 'user-1',
+          type: 'score_submitted',
+          params: { tournamentName: 'Summer Cup' },
+          read: false,
+          createdAt: new Date(),
+          tournament: { id: 'tournament-1', name: 'Summer Cup', sportType: 'soccer' }
+        }
+      ];
+
+      mockPrisma.eventNotification.findMany.mockResolvedValue([]);
+      mockPrisma.eventNotification.count.mockResolvedValue(0);
+      mockPrisma.groupNotification.findMany.mockResolvedValue([]);
+      mockPrisma.groupNotification.count.mockResolvedValue(0);
+      mockPrisma.teamUpNotification.findMany.mockResolvedValue([]);
+      mockPrisma.teamUpNotification.count.mockResolvedValue(0);
+      mockPrisma.tournamentNotification.findMany.mockResolvedValue(mockTournamentNotifications);
+      mockPrisma.tournamentNotification.count.mockResolvedValue(1);
+
+      const result = await getUserNotifications('user-1');
+
+      expect(result.notifications[0].metadata?.actionText).toBe('Review Score');
+    });
+
+    it('should enrich notifications with low priority for other types', async () => {
+      const mockEventNotifications = [
+        {
+          id: 'notif-1',
+          userId: 'user-1',
+          type: 'other_type',
+          params: { eventTitle: 'Soccer Match' },
+          read: false,
+          createdAt: new Date(),
+          event: { id: 'event-1', title: 'Soccer Match', startTime: new Date() },
+          user: { id: 'user-2', name: 'John' }
+        }
+      ];
+
+      mockPrisma.eventNotification.findMany.mockResolvedValue(mockEventNotifications);
+      mockPrisma.eventNotification.count.mockResolvedValue(1);
+      mockPrisma.groupNotification.findMany.mockResolvedValue([]);
+      mockPrisma.groupNotification.count.mockResolvedValue(0);
+      mockPrisma.teamUpNotification.findMany.mockResolvedValue([]);
+      mockPrisma.teamUpNotification.count.mockResolvedValue(0);
+      mockPrisma.tournamentNotification.findMany.mockResolvedValue([]);
+      mockPrisma.tournamentNotification.count.mockResolvedValue(0);
+
+      const result = await getUserNotifications('user-1');
+
+      expect(result.notifications[0].metadata?.priority).toBe('low');
+    });
+
+    it('should apply search query filter on notifications', async () => {
+      const mockEventNotifications = [
+        {
+          id: 'notif-1',
+          userId: 'user-1',
+          type: 'event_created',
+          params: { eventTitle: 'Soccer Match' },
+          read: false,
+          createdAt: new Date('2024-01-01'),
+          event: { id: 'event-1', title: 'Soccer Match', startTime: new Date() },
+          user: { id: 'user-2', name: 'John' }
+        },
+        {
+          id: 'notif-2',
+          userId: 'user-1',
+          type: 'event_updated',
+          params: { eventTitle: 'Basketball Game' },
+          read: false,
+          createdAt: new Date('2024-01-02'),
+          event: { id: 'event-2', title: 'Basketball Game', startTime: new Date() },
+          user: { id: 'user-3', name: 'Jane' }
+        }
+      ];
+
+      mockPrisma.eventNotification.findMany.mockResolvedValue(mockEventNotifications);
+      mockPrisma.eventNotification.count.mockResolvedValue(2);
+      mockPrisma.groupNotification.findMany.mockResolvedValue([]);
+      mockPrisma.groupNotification.count.mockResolvedValue(0);
+      mockPrisma.teamUpNotification.findMany.mockResolvedValue([]);
+      mockPrisma.teamUpNotification.count.mockResolvedValue(0);
+      mockPrisma.tournamentNotification.findMany.mockResolvedValue([]);
+      mockPrisma.tournamentNotification.count.mockResolvedValue(0);
+
+      const result = await getUserNotifications('user-1', { searchQuery: 'soccer' });
+
+      expect(result.notifications).toHaveLength(1);
+      expect(result.notifications[0].params?.eventTitle).toBe('Soccer Match');
+      expect(result.total).toBe(1);
+    });
+  });
 });
