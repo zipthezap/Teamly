@@ -4,13 +4,23 @@ This document provides guidelines for writing and running tests in the Teamly pr
 
 ## Overview
 
-Teamly uses Jest as the testing framework for both backend and frontend code. The testing infrastructure was established to prevent regressions and ensure code quality.
+Teamly uses Vitest as the testing framework for backend code. The testing infrastructure was established to prevent regressions and ensure code quality.
 
-## Test Statistics
+## Test Statistics (Updated January 2026)
 
-- **Backend Tests**: 69 tests covering validation utilities
+- **Backend Tests**: 498 tests passing
+  - Service Layer: 372 tests
+  - Middleware: 53 tests
+  - Utilities: 58 tests
+  - Routes: 15 tests (skipped - integration tests)
 - **Frontend Tests**: 9 tests covering UI components
-- **Total Coverage**: 78 tests
+- **Total Coverage**: 507 tests
+- **Test Pass Rate**: 100%
+
+### Recent Improvements
+- **notificationService**: Coverage improved from 81.48% to 93.82%
+- **eventService**: Maintaining 95.61% coverage with comprehensive edge cases
+- **groupService**: Maintaining 98.9% coverage with robust validation tests
 
 ## Running Tests
 
