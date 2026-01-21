@@ -122,9 +122,10 @@ get_configuration() {
     if command -v openssl &> /dev/null; then
         JWT_SECRET=$(openssl rand -base64 32)
     else
-        # Fallback if openssl not available
-        JWT_SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
-        print_warning "OpenSSL not found, using alternative random generation"
+        # Fallback if openssl not available (less secure)
+        print_warning "OpenSSL not found, using alternative random generation (less secure)"
+        print_warning "For production, install OpenSSL and regenerate the JWT_SECRET"
+        JWT_SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9!@#$%^&*()_+-=' | fold -w 32 | head -n 1)
     fi
     
     print_success "Configuration complete"
@@ -170,6 +171,8 @@ create_resources() {
     
     # Create PostgreSQL database
     print_info "Creating PostgreSQL database (this may take 5-10 minutes)..."
+    # Note: Using 0.0.0.0 for public-access allows Azure services to connect
+    # For enhanced security, restrict to specific IPs after deployment
     az postgres flexible-server create \
         --resource-group "$RESOURCE_GROUP" \
         --name "$POSTGRES_SERVER" \
@@ -195,6 +198,8 @@ create_resources() {
     
     # Create Redis cache
     print_info "Creating Redis cache (this may take 5-10 minutes)..."
+    # Note: Non-SSL port is enabled for development compatibility
+    # For production, consider using SSL-only connections
     az redis create \
         --resource-group "$RESOURCE_GROUP" \
         --name "$REDIS_NAME" \
@@ -362,15 +367,31 @@ run_migrations() {
     fi
     
     print_info "Running migrations..."
-    # Note: This requires the app to be running
+    # Run each migration step separately for better error handling
     if ! az webapp ssh \
         --resource-group "$RESOURCE_GROUP" \
         --name "$BACKEND_APP" \
-        --command "cd /app && npx prisma migrate deploy && npx prisma generate && node prisma/seed.js"; then
-        print_warning "Could not run migrations automatically."
-        echo "You may need to run them manually after the app fully starts:"
+        --command "cd /app && npx prisma migrate deploy"; then
+        print_warning "Database migration failed."
+        echo "You may need to run migrations manually:"
         echo "  az webapp ssh --resource-group $RESOURCE_GROUP --name $BACKEND_APP"
-        echo "  Then run: cd /app && npx prisma migrate deploy && node prisma/seed.js"
+        echo "  Then run: cd /app && npx prisma migrate deploy"
+    else
+        print_success "Database migrations completed"
+        
+        # Generate Prisma client
+        print_info "Generating Prisma client..."
+        az webapp ssh \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$BACKEND_APP" \
+            --command "cd /app && npx prisma generate" || print_warning "Prisma generate may have failed"
+        
+        # Seed database
+        print_info "Seeding database..."
+        az webapp ssh \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$BACKEND_APP" \
+            --command "cd /app && node prisma/seed.js" || print_warning "Database seeding may have failed"
     fi
     
     print_success "Migration step completed"
