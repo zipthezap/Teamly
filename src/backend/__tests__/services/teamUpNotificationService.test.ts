@@ -43,6 +43,9 @@ const mockPrisma = vi.mocked(prisma);
 const mockShouldSend = vi.mocked(shouldSendEmailNotification);
 const mockFilterUnmuted = vi.mocked(filterUnmutedUsers);
 
+// Test constants
+const LARGE_DISCOVERY_RADIUS = 150;
+
 describe('TeamUpNotificationService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -123,7 +126,7 @@ describe('TeamUpNotificationService', () => {
           id: 'user-1',
           city: 'Los Angeles',
           country: 'USA',
-          discoveryRadius: 150 // Large radius
+          discoveryRadius: LARGE_DISCOVERY_RADIUS // Large radius
         },
         {
           id: 'user-2',
@@ -160,7 +163,7 @@ describe('TeamUpNotificationService', () => {
           id: 'user-1',
           city: 'London',
           country: 'UK',
-          discoveryRadius: 150
+          discoveryRadius: LARGE_DISCOVERY_RADIUS
         }
       ];
 

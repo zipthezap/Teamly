@@ -42,6 +42,9 @@ import {
 
 const mockPrisma = vi.mocked(prisma);
 
+// Test constants
+const TEST_LARGE_BATCH_SIZE = 1000;
+
 describe('BulkNotificationService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -99,8 +102,8 @@ describe('BulkNotificationService', () => {
     });
 
     it('should process large batches in chunks', async () => {
-      // Create 1000 user IDs
-      const userIds = Array.from({ length: 1000 }, (_, i) => `user-${i}`);
+      // Create large batch of user IDs
+      const userIds = Array.from({ length: TEST_LARGE_BATCH_SIZE }, (_, i) => `user-${i}`);
       mockPrisma.eventNotification.createMany = vi.fn().mockResolvedValue({ count: 500 });
 
       await createBulkEventNotifications(
