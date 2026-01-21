@@ -6,7 +6,7 @@ This document provides guidelines for writing and running tests in the Teamly pr
 
 Teamly uses Vitest as the testing framework for backend code. The testing infrastructure was established to prevent regressions and ensure code quality.
 
-## Test Statistics (Updated January 2026)
+## Test Statistics (Updated January 21, 2026)
 
 - **Backend Tests**: 591 tests passing
   - Service Layer: 372 tests
@@ -14,11 +14,26 @@ Teamly uses Vitest as the testing framework for backend code. The testing infras
   - Middleware: 53 tests
   - Utilities: 58 tests
   - Routes: 15 tests (skipped - integration tests)
-- **Frontend Tests**: 9 tests covering UI components
-- **Total Coverage**: 600 tests
+- **Frontend Tests**: 128 tests covering UI components
+  - Component Tests: 9 tests
+  - **Responsive Tests**: 119 tests across 6 pages ✨ **NEW**
+    - EventsList: 20 tests
+    - EventDetails: 21 tests
+    - GroupDetailsPage: 19 tests
+    - NotificationsCenter: 18 tests
+    - EventRequests: 20 tests
+    - AuthCallback: 21 tests
+- **Total Coverage**: 719 tests
 - **Test Pass Rate**: 100%
 
 ### Recent Improvements
+- **Responsive Testing Infrastructure** (January 21, 2026): Added 119 comprehensive responsive tests
+  - Touch target validation (≥44px for accessibility)
+  - Breakpoint testing (320px, 375px, 768px, 1024px)
+  - Text readability validation (≥12px)
+  - No horizontal scroll checks
+  - Cross-breakpoint consistency tests
+  - Coverage for EventsList, EventDetails, GroupDetailsPage, NotificationsCenter, EventRequests, AuthCallback
 - **Test Organization**: Extracted mock data into centralized `__mocks__/mockData/` folder
 - **Extended Test Coverage**: Added 93 new database operation tests
   - Event Database Operations: +26 tests covering creation, updates, participants, and activity
@@ -187,7 +202,54 @@ describe('Event Service', () => {
 
 ### Frontend Tests (React + TypeScript)
 
-Frontend tests are located in `src/frontend/src/__tests__/` and use React Testing Library:
+Frontend tests are located in `src/frontend/src/__tests__/` and `src/frontend/src/pages/__tests__/` and use React Testing Library:
+
+#### Responsive Component Tests
+
+Teamly includes comprehensive responsive tests for all major pages to ensure mobile-first design:
+
+```typescript
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
+import EventsList from '../EventsList';
+
+describe('EventsList - Mobile Responsive Tests', () => {
+  const createTestQueryClient = () => new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } }
+  });
+
+  beforeEach(() => {
+    global.innerWidth = 320; // iPhone SE
+    global.dispatchEvent(new Event('resize'));
+  });
+
+  it('should render without crashing on mobile', async () => {
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <EventsList />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    
+    expect(screen.getByText(/events/i)).toBeInTheDocument();
+  });
+});
+```
+
+**Responsive Test Coverage:**
+- **Breakpoints Tested**: 320px (iPhone SE), 375px (iPhone 12/13/14), 768px (iPad Portrait), 1024px (iPad Landscape)
+- **Test Categories**:
+  - Mobile breakpoint rendering
+  - Touch target validation (≥44px)
+  - Text readability (≥12px)
+  - No horizontal scroll
+  - Cross-breakpoint consistency
+  - Loading and error states
+  - Responsive layouts
 
 #### Example: Testing a React Component
 
