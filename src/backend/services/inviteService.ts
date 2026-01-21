@@ -12,6 +12,17 @@ import { NotificationFactory } from './notificationFactory';
 import { escapeHtml, isValidEmail } from '../utils/validation';
 import { Prisma } from '@prisma/client';
 
+/**
+ * Calculate expiration date from days
+ * @param days Number of days from now
+ * @returns Date object for expiration
+ */
+export function calculateExpirationDate(days: number): Date {
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + days);
+  return expiresAt;
+}
+
 export interface InviteEmailData {
   recipientName: string;
   recipientEmail: string;
@@ -167,7 +178,7 @@ export class InviteService {
 
       // Calculate expiration if specified
       const expiresAt = options.expiresInDays 
-        ? new Date(Date.now() + options.expiresInDays * 24 * 60 * 60 * 1000)
+        ? calculateExpirationDate(options.expiresInDays)
         : undefined;
 
       // Create the invitation
@@ -652,7 +663,10 @@ export class InviteService {
         else if (log.status === 'revoked') stats.revoked++;
       });
 
-      stats.pending = stats.sent; // Sent but not responded = pending
+      // Pending = sent status invitations (those not yet responded to)
+      // Note: This is a simplified calculation. In practice, some 'sent' may have expired.
+      // For accurate pending count, consider also checking expiresAt dates.
+      stats.pending = stats.sent;
 
       return stats;
     } catch (error) {
@@ -682,10 +696,10 @@ export class InviteService {
     expiresInDays: number = 30
   ): Promise<{ success: boolean; token?: string; expiresAt?: Date; error?: string }> {
     try {
-      const token = Math.random().toString(36).substring(2, 15) + 
-                    Math.random().toString(36).substring(2, 15);
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + expiresInDays);
+      // Use crypto for secure token generation
+      const crypto = require('crypto');
+      const token = crypto.randomBytes(16).toString('hex');
+      const expiresAt = calculateExpirationDate(expiresInDays);
 
       if (resourceType === 'group') {
         await prisma.group.update({

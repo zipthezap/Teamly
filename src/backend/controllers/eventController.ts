@@ -28,7 +28,7 @@ import { isRequired, parseCoordinates, parseFloatStrict } from '../utils/validat
 import { isPrismaUniqueError, hasGroupId } from '../utils/typeGuards';
 import { ensureResourceExists } from '../utils/controllerHelpers';
 import { CacheService } from '../services/cacheService';
-import { InviteService } from '../services/inviteService';
+import { InviteService, calculateExpirationDate } from '../services/inviteService';
 import { permissionService } from '../services/permissionService';
 import { Permission } from '../../shared/types/permissions.types';
 import { NotificationFactory } from '../services/notificationFactory';
@@ -2060,7 +2060,7 @@ export const inviteToEvent = async (req: Request, res: Response) => {
 
   // Calculate expiration
   const expiresAt = expiresInDays 
-    ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
+    ? calculateExpirationDate(expiresInDays)
     : undefined;
 
   // Create event participant with pending status
