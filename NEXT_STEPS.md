@@ -92,7 +92,7 @@ describe('EventsList - Mobile Responsive', () => {
 - [ ] `docs/PR_215_SUMMARY_AND_NEXT_STEPS.md` - Mark Phase 3 complete
 - [ ] `MOBILE_RESPONSIVE_ROADMAP.md` - Update completion status
 - [ ] `docs/MOBILE_RESPONSIVE_FUTURE_WORK.md` - Already updated, verify accuracy
-- [ ] `README.md` - Update mobile responsive section to show ~95% complete
+- [x] `README.md` - Update mobile responsive section to show ~95% complete (completed in this PR)
 
 **Key Changes Needed:**
 - Update phase completion percentages
@@ -335,7 +335,7 @@ describe('EventsList - Mobile Responsive', () => {
 - [ ] **Documentation**
   - [ ] Update MOBILE_RESPONSIVE_ROADMAP.md
   - [ ] Update PR_215_SUMMARY_AND_NEXT_STEPS.md
-  - [ ] Update README.md mobile section
+  - [x] Update README.md mobile section (completed in this PR)
   - [ ] Add testing results documentation
   
 - [ ] **Remaining Pages**
