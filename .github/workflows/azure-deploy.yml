@@ -63,7 +63,7 @@ jobs:
           az webapp ssh \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --name ${{ env.BACKEND_APP_NAME }} \
-            --command "cd /app && npx prisma migrate deploy && npx prisma generate" || echo "Migration step failed or already completed"
+            --command "cd /app && npx prisma migrate deploy && npx prisma generate && node prisma/seed.js" || echo "Migration step failed or already completed"
 
       - name: Azure logout
         run: |

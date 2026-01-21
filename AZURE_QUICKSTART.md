@@ -6,7 +6,7 @@ This is a quick reference for deploying Teamly to the cloud. For complete detail
 
 - ✅ **24/7 Availability**: Your friends can access the app anytime
 - ✅ **No PC Required**: Runs in the cloud, not on your computer
-- ✅ **Low Cost**: ~$30-40/month for Basic tier
+- ✅ **Low Cost**: ~$46/month (~$30 without Redis)
 - ✅ **Easy Setup**: One script does everything
 - ✅ **Auto Updates**: Push code, auto-deploys via GitHub Actions
 
@@ -136,11 +136,17 @@ az webapp config ssl create \
 ## Cost Management
 
 ### Monthly Cost Estimate
-- **Basic Tier**: ~$30-40/month
+- **With Redis (Full Stack)**: ~$46/month
   - App Service Plan B1: $13
   - PostgreSQL B1ms: $12
   - Redis Cache C0: $16
   - Container Registry: $5
+
+- **Without Redis (Optimized)**: ~$30/month
+  - App Service Plan B1: $13
+  - PostgreSQL B1ms: $12
+  - Container Registry: $5
+  - (App uses in-memory cache fallback)
 
 ### Reduce Costs
 ```bash

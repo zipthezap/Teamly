@@ -37,10 +37,11 @@ print_header() {
     echo ""
 }
 
-# Check if Azure CLI is installed
+# Check prerequisites
 check_prerequisites() {
     print_header "Checking Prerequisites"
     
+    # Check Azure CLI
     if ! command -v az &> /dev/null; then
         print_error "Azure CLI is not installed"
         echo "Please install it from: https://docs.microsoft.com/cli/azure/install-azure-cli"
@@ -48,6 +49,7 @@ check_prerequisites() {
     fi
     print_success "Azure CLI is installed"
     
+    # Check Docker
     if ! command -v docker &> /dev/null; then
         print_error "Docker is not installed"
         echo "Please install it from: https://docs.docker.com/get-docker/"
@@ -416,7 +418,7 @@ show_deployment_info() {
     echo "View frontend logs: az webapp log tail --name $FRONTEND_APP --resource-group $RESOURCE_GROUP"
     echo "Restart backend:    az webapp restart --name $BACKEND_APP --resource-group $RESOURCE_GROUP"
     echo ""
-    echo -e "${YELLOW}Estimated monthly cost: ~$30-40 (Basic tier)${NC}"
+    echo -e "${YELLOW}Estimated monthly cost: ~\$46/month (~\$30/month if you skip Redis)${NC}"
     echo ""
     echo "Documentation: docs/AZURE_DEPLOYMENT.md"
     echo ""

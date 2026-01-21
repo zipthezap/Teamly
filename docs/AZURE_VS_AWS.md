@@ -177,20 +177,21 @@ aws acm request-certificate
 
 ## Cost Breakdown Details
 
-### Azure Monthly Cost (~$30-40)
+### Azure Monthly Cost (~$46 or ~$30 without Redis)
 
 | Service | SKU | Monthly Cost |
 |---------|-----|--------------|
 | App Service Plan | B1 (1 vCPU, 1.75GB RAM) | $13.14 |
 | PostgreSQL | Burstable B1ms | $12.41 |
-| Redis Cache | Basic C0 (250MB) | $16.06 |
+| Redis Cache | Basic C0 (250MB) | $16.06 *(optional)* |
 | Container Registry | Basic (10GB storage) | $5.00 |
 | **Total** | | **~$46.61** |
+| **Without Redis** | | **~$30.55** |
 
 **Cost Optimization Options:**
-- Skip Redis: Save $16/month (app has fallback)
+- Skip Redis: Save $16/month (app has fallback) → **~$30/month**
 - Use Free App Service tier: For testing only (60 min/day limit)
-- Use smaller PostgreSQL: B1s = $8/month
+- Use smaller PostgreSQL: B1s = $8/month (save $4/month)
 
 ### AWS Monthly Cost (~$50-70)
 

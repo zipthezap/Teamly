@@ -362,21 +362,26 @@ az webapp log tail --name teamly-backend --resource-group teamly-rg
 
 ## Cost Optimization
 
-### Free/Low-Cost Tier Configuration
+### Cost Overview
 
-For personal use with friends, you can minimize costs:
+For personal use with friends:
 
-**Monthly Estimate: ~$15-30/month**
+**Full Stack (with Redis): ~$46/month**
+- App Service Plan B1: ~$13/month (can host both backend and frontend)
+- PostgreSQL Burstable B1ms: ~$12/month
+- Redis Basic C0: ~$16/month
+- Container Registry: $5/month (Basic tier)
 
-- **App Service Plan B1**: ~$13/month (can host both backend and frontend)
-- **PostgreSQL Burstable B1ms**: ~$12/month
-- **Redis Basic C0**: ~$16/month (can be optional, app works without it)
-- **Container Registry**: $5/month (Basic tier)
+**Optimized (without Redis): ~$30/month**
+- App Service Plan B1: ~$13/month
+- PostgreSQL Burstable B1ms: ~$12/month
+- Container Registry: $5/month
+- *Skip Redis - app falls back to in-memory cache*
 
 **To reduce costs further:**
-1. Skip Redis cache (app falls back to in-memory cache)
-2. Use App Service Free tier for testing (limited hours/day)
-3. Use PostgreSQL Single Server B_Gen5_1 (~$7/month)
+1. Skip Redis cache (save $16/month) → ~$30/month
+2. Use smaller PostgreSQL SKU (save $4/month) → ~$26/month
+3. Use App Service Free tier for testing (limited hours/day)
 
 ### Free Tier Setup (For Testing)
 
