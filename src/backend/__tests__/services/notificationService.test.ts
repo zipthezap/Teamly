@@ -43,6 +43,13 @@ import {
   deleteNotifications,
   deleteAllReadNotifications
 } from '../../services/notificationService';
+import {
+  mockEventNotification,
+  mockEventNotifications,
+  mockGroupNotifications,
+  mockTeamUpNotifications,
+  mockTournamentNotifications,
+} from '../__mocks__/mockData';
 
 const mockPrisma = vi.mocked(prisma);
 
@@ -53,20 +60,8 @@ describe('NotificationService', () => {
 
   describe('getUserNotifications', () => {
     it('should get all unread notifications by default', async () => {
-      const mockEventNotifications = [
-        {
-          id: 'notif-1',
-          userId: 'user-1',
-          type: 'event_created',
-          params: { eventTitle: 'Soccer Match' },
-          read: false,
-          createdAt: new Date(),
-          event: { id: 'event-1', title: 'Soccer Match', startTime: new Date() },
-          user: { id: 'user-2', name: 'John' }
-        }
-      ];
-
-      mockPrisma.eventNotification.findMany.mockResolvedValue(mockEventNotifications);
+      // Use centralized mock data
+      mockPrisma.eventNotification.findMany.mockResolvedValue([mockEventNotification] as any);
       mockPrisma.eventNotification.count.mockResolvedValue(1);
       mockPrisma.groupNotification.findMany.mockResolvedValue([]);
       mockPrisma.groupNotification.count.mockResolvedValue(0);
@@ -169,34 +164,10 @@ describe('NotificationService', () => {
     });
 
     it('should return combined notifications from all types', async () => {
-      const mockEventNotifications = [
-        {
-          id: 'notif-1',
-          userId: 'user-1',
-          type: 'event_created',
-          params: {},
-          read: false,
-          createdAt: new Date('2024-01-01'),
-          event: { id: 'event-1', title: 'Event 1', startTime: new Date() },
-          user: { id: 'user-2', name: 'John' }
-        }
-      ];
-
-      const mockGroupNotifications = [
-        {
-          id: 'notif-2',
-          userId: 'user-1',
-          type: 'group_invite',
-          params: {},
-          read: false,
-          createdAt: new Date('2024-01-02'),
-          group: { id: 'group-1', name: 'Group 1' }
-        }
-      ];
-
-      mockPrisma.eventNotification.findMany.mockResolvedValue(mockEventNotifications);
+      // Use centralized mock data
+      mockPrisma.eventNotification.findMany.mockResolvedValue([mockEventNotifications[0]] as any);
       mockPrisma.eventNotification.count.mockResolvedValue(1);
-      mockPrisma.groupNotification.findMany.mockResolvedValue(mockGroupNotifications);
+      mockPrisma.groupNotification.findMany.mockResolvedValue([mockGroupNotifications[0]] as any);
       mockPrisma.groupNotification.count.mockResolvedValue(1);
       mockPrisma.teamUpNotification.findMany.mockResolvedValue([]);
       mockPrisma.teamUpNotification.count.mockResolvedValue(0);
@@ -208,8 +179,8 @@ describe('NotificationService', () => {
       expect(result.notifications).toHaveLength(2);
       expect(result.total).toBe(2);
       // Should be sorted by date descending
-      expect(result.notifications[0].id).toBe('notif-2');
-      expect(result.notifications[1].id).toBe('notif-1');
+      expect(result.notifications[0].id).toBe('notif-4'); // group notification
+      expect(result.notifications[1].id).toBe('notif-1'); // event notification
     });
   });
 
