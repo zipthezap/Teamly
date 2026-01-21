@@ -10,7 +10,6 @@ import { sendEmailWithQueue } from './emailQueueService';
 import { shouldSendEmailNotification } from '../utils/notificationHelper';
 import { NotificationFactory } from './notificationFactory';
 import { escapeHtml, isValidEmail } from '../utils/validation';
-import { BadRequestError, NotFoundError } from '../utils/errors';
 import { Prisma } from '@prisma/client';
 
 export interface InviteEmailData {

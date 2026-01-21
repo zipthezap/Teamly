@@ -1,9 +1,8 @@
 
 import prisma from '../config/database';
-import { sendEmailWithQueue } from '../services/emailQueueService';
-import { shouldSendEmailNotification, filterUnmutedUsers } from '../utils/notificationHelper';
+import { filterUnmutedUsers } from '../utils/notificationHelper';
 import { logger } from '../utils/logger';
-import { escapeHtml, isValidEmail, parseCoordinates, parseFloatStrict } from '../utils/validation';
+import { isValidEmail, parseCoordinates, parseFloatStrict } from '../utils/validation';
 import { hasLocation } from '../utils/typeGuards';
 import { Request, Response } from 'express';
 import path from 'path';

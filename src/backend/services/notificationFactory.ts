@@ -334,7 +334,7 @@ export class NotificationFactory {
       userIds,
       params,
       metadata,
-      checkMutePreference = true,
+      // checkMutePreference - not used for tournaments yet
       deduplicateWindow = 0
     } = input;
 
