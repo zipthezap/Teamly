@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { sanitizeInput } from '../../middleware/sanitizeInput';
 
 describe('Sanitize Input Middleware', () => {
@@ -13,7 +14,7 @@ describe('Sanitize Input Middleware', () => {
       params: {},
     };
     mockResponse = {};
-    mockNext = jest.fn();
+    mockNext = vi.fn();
   });
 
   describe('sanitizeInput', () => {

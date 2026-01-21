@@ -1,14 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { errorHandler, isPrismaError, prismaErrorHandler } from '../../middleware/errorHandler';
 import { ApiError, BadRequestError, NotFoundError, ConflictError } from '../../utils/errors';
 
 // Mock logger
-jest.mock('../../utils/logger', () => ({
+vi.mock('../../utils/logger', () => ({
   logger: {
-    error: jest.fn(),
-    warn: jest.fn(),
-    info: jest.fn(),
-    debug: jest.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
   },
 }));
 
@@ -18,22 +19,22 @@ describe('Error Handler Middleware', () => {
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
   let mockNext: NextFunction;
-  let jsonMock: jest.Mock;
-  let statusMock: jest.Mock;
+  let jsonMock: ReturnType<typeof vi.fn>;
+  let statusMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     mockRequest = {
       path: '/test-path',
       method: 'GET',
     };
-    jsonMock = jest.fn();
-    statusMock = jest.fn().mockReturnValue({ json: jsonMock });
+    jsonMock = vi.fn();
+    statusMock = vi.fn().mockReturnValue({ json: jsonMock });
     mockResponse = {
       status: statusMock,
     };
-    mockNext = jest.fn();
+    mockNext = vi.fn();
 
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('errorHandler', () => {

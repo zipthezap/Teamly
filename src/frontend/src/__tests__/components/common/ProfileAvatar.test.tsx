@@ -1,16 +1,17 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import { vi, describe, it, expect } from 'vitest';
 import { ProfileAvatar } from '../../../components/common/ProfileAvatar';
 
 // Mock imageUtils to avoid import.meta issues
-jest.mock('../../../utils/imageUtils', () => ({
-  getImageUrl: jest.fn((picture?: string | { url: string } | null) => {
+vi.mock('../../../utils/imageUtils', () => ({
+  getImageUrl: vi.fn((picture?: string | { url: string } | null) => {
     if (!picture) return undefined;
     if (typeof picture === 'string') return picture;
     if (typeof picture === 'object' && 'url' in picture) return picture.url;
     return undefined;
   }),
-  getInitials: jest.fn((name?: string) => {
+  getInitials: vi.fn((name?: string) => {
     if (!name) return '?';
     return name
       .split(' ')

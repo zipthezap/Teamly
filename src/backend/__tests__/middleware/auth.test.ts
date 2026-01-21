@@ -1,26 +1,26 @@
 import { Request, Response, NextFunction } from 'express';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import authMiddleware, { optionalAuthMiddleware } from '../../middleware/auth';
 import * as jwt from '../../utils/jwt';
 import prisma from '../../config/database';
 
 // Mock dependencies
-jest.mock('../../config/database', () => ({
-  __esModule: true,
+vi.mock('../../config/database', () => ({
   default: {
     user: {
-      findUnique: jest.fn(),
+      findUnique: vi.fn(),
     },
   },
 }));
 
-jest.mock('../../utils/jwt', () => ({
-  verifyToken: jest.fn(),
-  isTokenRevoked: jest.fn(),
+vi.mock('../../utils/jwt', () => ({
+  verifyToken: vi.fn(),
+  isTokenRevoked: vi.fn(),
 }));
 
-jest.mock('../../utils/logger', () => ({
+vi.mock('../../utils/logger', () => ({
   logger: {
-    error: jest.fn(),
+    error: vi.fn(),
   },
 }));
 
@@ -34,13 +34,13 @@ describe('Auth Middleware', () => {
       headers: {},
     };
     mockResponse = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
     };
-    mockNext = jest.fn();
+    mockNext = vi.fn();
 
     // Reset all mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('authMiddleware', () => {

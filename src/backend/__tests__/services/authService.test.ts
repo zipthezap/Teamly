@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import {
   validateRegistrationInputs,
   sanitizeUserInputs,
@@ -16,22 +17,21 @@ import {
 import prisma from '../../config/database';
 
 // Mock dependencies
-jest.mock('../../config/database', () => ({
-  __esModule: true,
+vi.mock('../../config/database', () => ({
   default: {
     user: {
-      findUnique: jest.fn(),
-      findFirst: jest.fn(),
-      update: jest.fn(),
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      update: vi.fn(),
     },
   },
 }));
 
-jest.mock('bcryptjs');
+vi.mock('bcryptjs');
 
 describe('Auth Service', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('validateRegistrationInputs', () => {

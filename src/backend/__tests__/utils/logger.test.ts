@@ -1,20 +1,21 @@
 import { logger, LogLevel } from '../../utils/logger';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('Logger', () => {
   let consoleSpy: {
-    error: jest.SpyInstance;
-    warn: jest.SpyInstance;
-    info: jest.SpyInstance;
-    debug: jest.SpyInstance;
+    error: ReturnType<typeof vi.spyOn>;
+    warn: ReturnType<typeof vi.spyOn>;
+    info: ReturnType<typeof vi.spyOn>;
+    debug: ReturnType<typeof vi.spyOn>;
   };
 
   beforeEach(() => {
     // Spy on console methods
     consoleSpy = {
-      error: jest.spyOn(console, 'error').mockImplementation(),
-      warn: jest.spyOn(console, 'warn').mockImplementation(),
-      info: jest.spyOn(console, 'info').mockImplementation(),
-      debug: jest.spyOn(console, 'debug').mockImplementation(),
+      error: vi.spyOn(console, 'error').mockImplementation(() => {}),
+      warn: vi.spyOn(console, 'warn').mockImplementation(() => {}),
+      info: vi.spyOn(console, 'info').mockImplementation(() => {}),
+      debug: vi.spyOn(console, 'debug').mockImplementation(() => {}),
     };
   });
 

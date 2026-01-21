@@ -1,10 +1,11 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { ConfirmationDialog } from '../../../components/common/ConfirmationDialog';
 
 describe('ConfirmationDialog', () => {
-  const mockOnConfirm = jest.fn();
-  const mockOnCancel = jest.fn();
+  const mockOnConfirm = vi.fn();
+  const mockOnCancel = vi.fn();
 
   beforeEach(() => {
     mockOnConfirm.mockClear();
