@@ -677,5 +677,75 @@ describe('Event Service', () => {
         'Test Group'
       );
     });
+
+    it('should handle empty participants list', async () => {
+      const { sendEmail: mockSendEmail } = await import('../../utils/emailService');
+
+      await sendEventEmailNotifications(
+        [],
+        'sender-id',
+        'eventUpdates',
+        'eventUpdate',
+        'Test Event',
+        'Test Group'
+      );
+
+      expect(mockSendEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('buildEventFilters - additional edge cases', () => {
+    const userId = 'test-user-id';
+
+    it('should handle status filter', () => {
+      const filters = buildEventFilters(userId, { status: 'upcoming' });
+
+      expect(filters.status).toBe('upcoming');
+    });
+
+    it('should handle multiple filters combined', () => {
+      const filters = buildEventFilters(userId, {
+        groupId: 'group-1',
+        eventType: 'soccer',
+        location: 'New York',
+        archived: 'false'
+      });
+
+      expect(filters.groupId).toBe('group-1');
+      expect(filters.eventType).toEqual({ contains: 'soccer', mode: 'insensitive' });
+      expect(filters.location).toEqual({ contains: 'New York', mode: 'insensitive' });
+      expect(filters.archived).toBe(false);
+    });
+
+    it('should handle empty search term', () => {
+      const filters = buildEventFilters(userId, { search: '' });
+
+      // Should not add search filter for empty string
+      expect(filters.AND).toBeUndefined();
+    });
+  });
+
+  describe('validateEventTimes - additional edge cases', () => {
+    it('should handle very short events (less than 1 hour)', () => {
+      const startDate = new Date(Date.now() + 86400000);
+      const endDate = new Date(startDate.getTime() + 1800000); // 30 minutes later
+      
+      const result = validateEventTimes(startDate.toISOString(), endDate.toISOString());
+
+      expect(result.valid).toBe(true);
+    });
+
+    it('should handle events at exact midnight boundary', () => {
+      const startDate = new Date();
+      startDate.setHours(23, 0, 0, 0);
+      startDate.setDate(startDate.getDate() + 1); // Tomorrow at 11 PM
+      
+      const endDate = new Date(startDate);
+      endDate.setHours(23, 59, 59, 999); // Same day, before midnight
+      
+      const result = validateEventTimes(startDate.toISOString(), endDate.toISOString());
+
+      expect(result.valid).toBe(true);
+    });
   });
 });

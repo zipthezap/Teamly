@@ -610,4 +610,97 @@ describe('Group Service', () => {
       expect(isGroupMember).toBe(checkGroupMember);
     });
   });
+
+  describe('buildGroupFilters - additional edge cases', () => {
+    const userId = 'test-user-id';
+
+    it('should handle empty search term', () => {
+      const filters = buildGroupFilters(userId, { search: '' });
+
+      // Should not add search filter for empty string
+      expect(filters.OR).toBeUndefined();
+    });
+
+    it('should handle multiple search and filter criteria', () => {
+      const filters = buildGroupFilters(userId, {
+        search: 'soccer',
+        city: 'New York',
+        country: 'USA',
+        isPublic: 'true'
+      });
+
+      expect(filters.OR).toBeDefined();
+      expect(filters.city).toBeDefined();
+      expect(filters.country).toBeDefined();
+      expect(filters.isPublic).toBe(true);
+    });
+
+    it('should parse isPublic string false correctly', () => {
+      const filters = buildGroupFilters(userId, { isPublic: 'false' });
+
+      expect(filters.isPublic).toBe(false);
+    });
+  });
+
+  describe('validateMaxMembers - additional edge cases', () => {
+    it('should handle boundary value at minimum (2)', () => {
+      const result = validateMaxMembers(2);
+
+      expect(result.valid).toBe(true);
+    });
+
+    it('should handle boundary value at maximum (10000)', () => {
+      const result = validateMaxMembers(10000);
+
+      expect(result.valid).toBe(true);
+    });
+
+    it('should handle string representation of boundary values', () => {
+      expect(validateMaxMembers('2').valid).toBe(true);
+      expect(validateMaxMembers('10000').valid).toBe(true);
+      expect(validateMaxMembers('1').valid).toBe(false);
+      expect(validateMaxMembers('10001').valid).toBe(false);
+    });
+
+    it('should handle non-numeric string values', () => {
+      const result = validateMaxMembers('not-a-number');
+
+      // Should return invalid for non-numeric strings
+      expect(result.valid).toBe(false);
+    });
+
+    it('should handle negative numbers', () => {
+      const result = validateMaxMembers(-5);
+
+      expect(result.valid).toBe(false);
+    });
+
+    it('should handle zero', () => {
+      const result = validateMaxMembers(0);
+
+      expect(result.valid).toBe(false);
+    });
+  });
+
+  describe('sanitizeGroupData - additional edge cases', () => {
+    it('should handle null values', () => {
+      const result = sanitizeGroupData({
+        name: null as any,
+        description: null as any
+      });
+
+      expect(result.name).toBeUndefined();
+      expect(result.description).toBeUndefined();
+    });
+
+    it('should handle mixed case and special characters', () => {
+      const result = sanitizeGroupData({
+        name: '  Test-Group_123!  ',
+        tags: '  Soccer, Basketball, Tennis  '
+      });
+
+      expect(result.name).toBe('Test-Group_123!');
+      expect(result.tags).toBe('Soccer, Basketball, Tennis');
+    });
+  });
 });
