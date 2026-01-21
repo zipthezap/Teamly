@@ -7,7 +7,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import prisma from '../../config/database';
 import {
   mockEvent,
-  mockEventWithGroup,
+  mockEventWithGroup as _mockEventWithGroup,
   mockRecurringEvent,
   mockEventParticipants,
   mockEventActivity,
@@ -56,7 +56,7 @@ describe('Event Service - Extended Tests', () => {
 
   describe('Event Creation', () => {
     it('should create event with all required fields', async () => {
-      vi.mocked(prisma.event.create).mockResolvedValueOnce(mockEvent as any);
+      vi.mocked(prisma.event.create).mockResolvedValueOnce(mockEvent as unknown);
 
       const result = await prisma.event.create({
         data: {
@@ -82,7 +82,7 @@ describe('Event Service - Extended Tests', () => {
     });
 
     it('should create recurring event with recurrence rule', async () => {
-      vi.mocked(prisma.event.create).mockResolvedValueOnce(mockRecurringEvent as any);
+      vi.mocked(prisma.event.create).mockResolvedValueOnce(mockRecurringEvent as unknown);
 
       const result = await prisma.event.create({
         data: {
@@ -102,7 +102,7 @@ describe('Event Service - Extended Tests', () => {
 
     it('should create event with max participants limit', async () => {
       const eventWithLimit = { ...mockEvent, maxParticipants: 20 };
-      vi.mocked(prisma.event.create).mockResolvedValueOnce(eventWithLimit as any);
+      vi.mocked(prisma.event.create).mockResolvedValueOnce(eventWithLimit as unknown);
 
       const result = await prisma.event.create({
         data: {
@@ -116,7 +116,7 @@ describe('Event Service - Extended Tests', () => {
 
     it('should create public event', async () => {
       const publicEvent = { ...mockEvent, visibility: 'public' };
-      vi.mocked(prisma.event.create).mockResolvedValueOnce(publicEvent as any);
+      vi.mocked(prisma.event.create).mockResolvedValueOnce(publicEvent as unknown);
 
       const result = await prisma.event.create({
         data: {
@@ -130,7 +130,7 @@ describe('Event Service - Extended Tests', () => {
 
     it('should create private event', async () => {
       const privateEvent = { ...mockEvent, visibility: 'private' };
-      vi.mocked(prisma.event.create).mockResolvedValueOnce(privateEvent as any);
+      vi.mocked(prisma.event.create).mockResolvedValueOnce(privateEvent as unknown);
 
       const result = await prisma.event.create({
         data: {
@@ -146,7 +146,7 @@ describe('Event Service - Extended Tests', () => {
   describe('Event Updates', () => {
     it('should update event title', async () => {
       const updatedEvent = { ...mockEvent, title: 'Updated Soccer Match' };
-      vi.mocked(prisma.event.update).mockResolvedValueOnce(updatedEvent as any);
+      vi.mocked(prisma.event.update).mockResolvedValueOnce(updatedEvent as unknown);
 
       const result = await prisma.event.update({
         where: { id: mockEvent.id },
@@ -159,7 +159,7 @@ describe('Event Service - Extended Tests', () => {
     it('should update event time', async () => {
       const newStartTime = new Date('2024-02-02T10:00:00Z');
       const updatedEvent = { ...mockEvent, startTime: newStartTime };
-      vi.mocked(prisma.event.update).mockResolvedValueOnce(updatedEvent as any);
+      vi.mocked(prisma.event.update).mockResolvedValueOnce(updatedEvent as unknown);
 
       const result = await prisma.event.update({
         where: { id: mockEvent.id },
@@ -171,7 +171,7 @@ describe('Event Service - Extended Tests', () => {
 
     it('should update event location', async () => {
       const updatedEvent = { ...mockEvent, location: 'Riverside Park' };
-      vi.mocked(prisma.event.update).mockResolvedValueOnce(updatedEvent as any);
+      vi.mocked(prisma.event.update).mockResolvedValueOnce(updatedEvent as unknown);
 
       const result = await prisma.event.update({
         where: { id: mockEvent.id },
@@ -183,7 +183,7 @@ describe('Event Service - Extended Tests', () => {
 
     it('should update max participants', async () => {
       const updatedEvent = { ...mockEvent, maxParticipants: 30 };
-      vi.mocked(prisma.event.update).mockResolvedValueOnce(updatedEvent as any);
+      vi.mocked(prisma.event.update).mockResolvedValueOnce(updatedEvent as unknown);
 
       const result = await prisma.event.update({
         where: { id: mockEvent.id },
@@ -195,7 +195,7 @@ describe('Event Service - Extended Tests', () => {
 
     it('should archive event', async () => {
       const archivedEvent = { ...mockEvent, archived: true };
-      vi.mocked(prisma.event.update).mockResolvedValueOnce(archivedEvent as any);
+      vi.mocked(prisma.event.update).mockResolvedValueOnce(archivedEvent as unknown);
 
       const result = await prisma.event.update({
         where: { id: mockEvent.id },
@@ -209,7 +209,7 @@ describe('Event Service - Extended Tests', () => {
   describe('Event Participant Management', () => {
     it('should add participant to event', async () => {
       const participant = mockEventParticipants[0];
-      vi.mocked(prisma.eventParticipant.create).mockResolvedValueOnce(participant as any);
+      vi.mocked(prisma.eventParticipant.create).mockResolvedValueOnce(participant as unknown);
 
       const result = await prisma.eventParticipant.create({
         data: {
@@ -223,7 +223,7 @@ describe('Event Service - Extended Tests', () => {
     });
 
     it('should list all event participants', async () => {
-      vi.mocked(prisma.eventParticipant.findMany).mockResolvedValueOnce(mockEventParticipants as any);
+      vi.mocked(prisma.eventParticipant.findMany).mockResolvedValueOnce(mockEventParticipants as unknown);
 
       const result = await prisma.eventParticipant.findMany({
         where: { eventId: 'event-1' },
@@ -245,7 +245,7 @@ describe('Event Service - Extended Tests', () => {
 
     it('should update participant status', async () => {
       const updatedParticipant = { ...mockEventParticipants[2], status: 'confirmed' };
-      vi.mocked(prisma.eventParticipant.update).mockResolvedValueOnce(updatedParticipant as any);
+      vi.mocked(prisma.eventParticipant.update).mockResolvedValueOnce(updatedParticipant as unknown);
 
       const result = await prisma.eventParticipant.update({
         where: { id: 'participant-3' },
@@ -256,7 +256,7 @@ describe('Event Service - Extended Tests', () => {
     });
 
     it('should remove participant from event', async () => {
-      vi.mocked(prisma.eventParticipant.delete).mockResolvedValueOnce(mockEventParticipants[0] as any);
+      vi.mocked(prisma.eventParticipant.delete).mockResolvedValueOnce(mockEventParticipants[0] as unknown);
 
       const result = await prisma.eventParticipant.delete({
         where: { id: 'participant-1' },
@@ -269,7 +269,7 @@ describe('Event Service - Extended Tests', () => {
   describe('Event Activity Tracking', () => {
     it('should create activity record', async () => {
       const activity = mockEventActivity[0];
-      vi.mocked(prisma.eventActivity.create).mockResolvedValueOnce(activity as any);
+      vi.mocked(prisma.eventActivity.create).mockResolvedValueOnce(activity as unknown);
 
       const result = await prisma.eventActivity.create({
         data: {
@@ -284,7 +284,7 @@ describe('Event Service - Extended Tests', () => {
     });
 
     it('should fetch event activity with user details', async () => {
-      vi.mocked(prisma.eventActivity.findMany).mockResolvedValueOnce(mockEventActivity as any);
+      vi.mocked(prisma.eventActivity.findMany).mockResolvedValueOnce(mockEventActivity as unknown);
 
       const result = await prisma.eventActivity.findMany({
         where: { eventId: 'event-1' },
@@ -298,7 +298,7 @@ describe('Event Service - Extended Tests', () => {
 
     it('should filter activity by type', async () => {
       const filteredActivity = mockEventActivity.filter(a => a.type === 'event_created');
-      vi.mocked(prisma.eventActivity.findMany).mockResolvedValueOnce(filteredActivity as any);
+      vi.mocked(prisma.eventActivity.findMany).mockResolvedValueOnce(filteredActivity as unknown);
 
       const result = await prisma.eventActivity.findMany({
         where: { eventId: 'event-1', type: 'event_created' },
@@ -311,7 +311,7 @@ describe('Event Service - Extended Tests', () => {
 
   describe('Event Queries', () => {
     it('should find event by ID', async () => {
-      vi.mocked(prisma.event.findUnique).mockResolvedValueOnce(mockEvent as any);
+      vi.mocked(prisma.event.findUnique).mockResolvedValueOnce(mockEvent as unknown);
 
       const result = await prisma.event.findUnique({
         where: { id: mockEvent.id },
@@ -322,7 +322,7 @@ describe('Event Service - Extended Tests', () => {
 
     it('should find events by group ID', async () => {
       const groupEvents = [mockEvent, mockRecurringEvent];
-      vi.mocked(prisma.event.findMany).mockResolvedValueOnce(groupEvents as any);
+      vi.mocked(prisma.event.findMany).mockResolvedValueOnce(groupEvents as unknown);
 
       const result = await prisma.event.findMany({
         where: { groupId: 'group-1' },
@@ -332,7 +332,7 @@ describe('Event Service - Extended Tests', () => {
     });
 
     it('should find events by creator', async () => {
-      vi.mocked(prisma.event.findMany).mockResolvedValueOnce([mockEvent] as any);
+      vi.mocked(prisma.event.findMany).mockResolvedValueOnce([mockEvent] as unknown);
 
       const result = await prisma.event.findMany({
         where: { creatorId: 'user-1' },
@@ -344,7 +344,7 @@ describe('Event Service - Extended Tests', () => {
 
     it('should find upcoming events', async () => {
       const upcomingEvents = [mockEvent, mockRecurringEvent];
-      vi.mocked(prisma.event.findMany).mockResolvedValueOnce(upcomingEvents as any);
+      vi.mocked(prisma.event.findMany).mockResolvedValueOnce(upcomingEvents as unknown);
 
       const now = new Date();
       const result = await prisma.event.findMany({
@@ -359,7 +359,7 @@ describe('Event Service - Extended Tests', () => {
     });
 
     it('should exclude archived events', async () => {
-      vi.mocked(prisma.event.findMany).mockResolvedValueOnce([mockEvent] as any);
+      vi.mocked(prisma.event.findMany).mockResolvedValueOnce([mockEvent] as unknown);
 
       const result = await prisma.event.findMany({
         where: { archived: false },
@@ -369,7 +369,7 @@ describe('Event Service - Extended Tests', () => {
     });
 
     it('should find events by type', async () => {
-      vi.mocked(prisma.event.findMany).mockResolvedValueOnce([mockEvent] as any);
+      vi.mocked(prisma.event.findMany).mockResolvedValueOnce([mockEvent] as unknown);
 
       const result = await prisma.event.findMany({
         where: { eventType: 'soccer' },
@@ -381,7 +381,7 @@ describe('Event Service - Extended Tests', () => {
 
   describe('Event Deletion', () => {
     it('should delete event', async () => {
-      vi.mocked(prisma.event.delete).mockResolvedValueOnce(mockEvent as any);
+      vi.mocked(prisma.event.delete).mockResolvedValueOnce(mockEvent as unknown);
 
       const result = await prisma.event.delete({
         where: { id: mockEvent.id },
@@ -392,7 +392,7 @@ describe('Event Service - Extended Tests', () => {
 
     it('should soft delete event by archiving', async () => {
       const archivedEvent = { ...mockEvent, archived: true };
-      vi.mocked(prisma.event.update).mockResolvedValueOnce(archivedEvent as any);
+      vi.mocked(prisma.event.update).mockResolvedValueOnce(archivedEvent as unknown);
 
       const result = await prisma.event.update({
         where: { id: mockEvent.id },
