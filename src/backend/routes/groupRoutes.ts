@@ -8,6 +8,9 @@ import { etagMiddleware } from '../middleware/etag';
 
 const router = Router();
 
+// Public route to get group info by invite token (no auth required for preview)
+router.get('/join/:token', distributedApiLimiter, asyncHandler(groupController.getGroupByInviteToken));
+
 // Get group info for invite preview (public groups only, optional auth)
 router.get('/invite/:groupId', optionalAuthMiddleware, distributedApiLimiter, asyncHandler(groupController.getGroupForInvite));
 
@@ -48,6 +51,12 @@ router.delete('/:id/leave', asyncHandler(groupController.leaveGroup));
 // Transfer admin before leaving
 router.post('/:id/transfer-admin', asyncHandler(groupController.transferAdmin));
 router.get('/:id/invite-link', asyncHandler(groupController.getInviteLink));
+
+// Generate or regenerate group invite token (admin/moderator only)
+router.post('/:id/invite-token', asyncHandler(groupController.generateGroupInviteToken));
+
+// Join group via invite token (authenticated)
+router.post('/join-by-token/:token', asyncHandler(groupController.joinGroupByInviteToken));
 
 // Group picture management (admin only)
 router.post(
