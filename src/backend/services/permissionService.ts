@@ -94,6 +94,61 @@ async function checkGroupAdminDirect(userId: string, groupId: string): Promise<b
 }
 
 /**
+ * Check if user has permission for an event action
+ */
+export async function hasEventPermission(
+  userId: string,
+  eventId: string,
+  permission: Permission
+): Promise<boolean> {
+  const cacheKey = getCacheKey(userId, permission, 'event', eventId);
+  
+  return await CacheService.wrap(cacheKey, PERMISSION_CACHE_TTL, async () => {
+    try {
+      const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        select: {
+          creatorId: true,
+          groupId: true
+        }
+      });
+
+      if (!event) {
+        return false;
+      }
+
+      // Event creator has all permissions
+      if (event.creatorId === userId) {
+        return true;
+      }
+
+      // If event is associated with a group, check group permissions
+      if (event.groupId) {
+        const membership = await prisma.groupMember.findUnique({
+          where: {
+            userId_groupId: {
+              userId,
+              groupId: event.groupId
+            }
+          },
+          select: { role: true }
+        });
+
+        if (membership) {
+          const rolePermissions = GroupRolePermissions[membership.role as GroupRole] || [];
+          return rolePermissions.includes(permission);
+        }
+      }
+
+      return false;
+    } catch (error) {
+      logger.error('Error checking event permission', 'PermissionService', { error, userId, eventId, permission });
+      return false;
+    }
+  });
+}
+
+/**
  * Check if user has permission for a tournament action
  */
 export async function hasTournamentPermission(
@@ -502,3 +557,21 @@ export async function getUserTeamUpRole(userId: string, teamUpId: string): Promi
     return null;
   }
 }
+
+/**
+ * Export permission service as an object for convenience
+ */
+export const permissionService = {
+  hasGroupPermission,
+  hasEventPermission,
+  hasTournamentPermission,
+  hasTeamUpPermission,
+  hasTeamPermission,
+  hasPermission,
+  hasBulkPermissions,
+  clearUserPermissionCache,
+  clearAllPermissionCache,
+  getUserGroupRole,
+  getUserTournamentRole,
+  getUserTeamUpRole
+};

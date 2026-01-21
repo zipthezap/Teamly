@@ -43,6 +43,9 @@ router.get('/:id/members', asyncHandler(groupController.getGroupMembers));
 router.delete('/:id', asyncHandler(groupController.deleteGroup));
 router.put('/:id', asyncHandler(groupController.updateGroup));
 router.post('/:id/invite', asyncHandler(groupController.inviteMember));
+router.post('/:id/invitations/revoke', asyncHandler(groupController.revokeInvitation));
+router.get('/:id/invitations/analytics', asyncHandler(groupController.getInviteAnalytics));
+router.post('/:id/invitations/generate-token', asyncHandler(groupController.generateInviteToken));
 router.delete('/:id/members/:memberId', asyncHandler(groupController.removeMember));
 // Remove member by userId (admin only)
 router.delete('/:id/members/user/:userId', asyncHandler(groupController.removeMemberByUserId));
