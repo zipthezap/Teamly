@@ -2,6 +2,8 @@
 
 A sports event organization app that allows individuals to set and organize small sports matches. Similar to how Tricount works for expense tracking, Teamly helps you invite friends, create groups, and organize sports events.
 
+> 💡 **New Contributor?** Check out **[NEXT_STEPS.md](NEXT_STEPS.md)** for immediate priorities and how to get started!
+
 ## Features
 
 - **User Management**: Register and authenticate users with JWT tokens
@@ -52,9 +54,9 @@ A sports event organization app that allows individuals to set and organize smal
   - Quick actions for navigation
   - Dedicated notification center page
 
-- **📱 Mobile Responsive (In Progress)**: Making Teamly fully mobile-friendly
-  - ✅ Phase 1 & 2 Complete: Core navigation, dashboard, auth pages, groups list
-  - 🔄 Phases 3-9 In Progress: Events, forms, tournaments, and more
+- **📱 Mobile Responsive**: Making Teamly fully mobile-friendly
+  - ✅ ~95% Complete: Core navigation, dashboard, auth pages, groups, events, tournaments
+  - 🔄 Testing & Polish: Manual validation and automated tests in progress
   - See [MOBILE_RESPONSIVE_ROADMAP.md](MOBILE_RESPONSIVE_ROADMAP.md) for details
 
 For detailed documentation on these features, see:
@@ -517,6 +519,12 @@ The test scripts will:
 - **[docs/archive/](docs/archive/)** - Historical feature implementation documentation and reports
 
 ## Contributing Ideas
+
+**Want to contribute?** Check out **[NEXT_STEPS.md](NEXT_STEPS.md)** for:
+- 🎯 Immediate priorities and tasks
+- 📋 Detailed checklists for contributors
+- ⏰ Time estimates for each task
+- 🚀 Getting started guide for new developers
 
 Looking to expand Teamly? Check out [docs/guides/FEATURE_ROADMAP.md](docs/guides/FEATURE_ROADMAP.md) for:
 - High-priority feature suggestions
