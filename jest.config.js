@@ -12,4 +12,5 @@ module.exports = {
   coverageDirectory: 'coverage',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   verbose: true,
+  setupFilesAfterEnv: ['<rootDir>/src/backend/__tests__/setup.ts'],
 };

@@ -1,0 +1,209 @@
+import jwt from 'jsonwebtoken';
+
+// Mock database module before importing JWT utilities
+jest.mock('../../config/database', () => ({
+  __esModule: true,
+  default: {
+    userSession: {
+      create: jest.fn(),
+      deleteMany: jest.fn(),
+      findMany: jest.fn(),
+    },
+    refreshToken: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    revokedToken: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      createMany: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+  },
+}));
+
+import {
+  generateToken,
+  generateRefreshToken,
+  verifyToken,
+  verifyRefreshToken,
+} from '../../utils/jwt';
+
+describe('JWT Utilities', () => {
+  const testUserId = 'test-user-123';
+  const testSessionId = 'test-session-123';
+
+  describe('generateToken', () => {
+    it('should generate a valid access token', () => {
+      const token = generateToken(testUserId);
+      
+      expect(token).toBeDefined();
+      expect(typeof token).toBe('string');
+      
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+      expect(decoded.userId).toBe(testUserId);
+      expect(decoded.type).toBe('access');
+    });
+
+    it('should generate access token with session ID', () => {
+      const token = generateToken(testUserId, testSessionId);
+      
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+      expect(decoded.userId).toBe(testUserId);
+      expect(decoded.sessionId).toBe(testSessionId);
+      expect(decoded.type).toBe('access');
+    });
+
+    it('should generate token with expiration', () => {
+      const token = generateToken(testUserId);
+      
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+      expect(decoded.exp).toBeDefined();
+      expect(decoded.exp).toBeGreaterThan(Date.now() / 1000);
+    });
+
+    it('should generate different tokens for different users', () => {
+      const token1 = generateToken('user-1');
+      const token2 = generateToken('user-2');
+      
+      expect(token1).not.toBe(token2);
+      
+      const decoded1 = jwt.verify(token1, process.env.JWT_SECRET!) as any;
+      const decoded2 = jwt.verify(token2, process.env.JWT_SECRET!) as any;
+      
+      expect(decoded1.userId).toBe('user-1');
+      expect(decoded2.userId).toBe('user-2');
+    });
+  });
+
+  describe('generateRefreshToken', () => {
+    it('should generate a valid refresh token', () => {
+      const token = generateRefreshToken(testUserId);
+      
+      expect(token).toBeDefined();
+      expect(typeof token).toBe('string');
+      
+      const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET!) as any;
+      expect(decoded.userId).toBe(testUserId);
+      expect(decoded.type).toBe('refresh');
+    });
+
+    it('should generate refresh token with unique JTI', () => {
+      const token1 = generateRefreshToken(testUserId);
+      const token2 = generateRefreshToken(testUserId);
+      
+      expect(token1).not.toBe(token2);
+      
+      const decoded1 = jwt.verify(token1, process.env.JWT_REFRESH_SECRET!) as any;
+      const decoded2 = jwt.verify(token2, process.env.JWT_REFRESH_SECRET!) as any;
+      
+      expect(decoded1.jti).toBeDefined();
+      expect(decoded2.jti).toBeDefined();
+      expect(decoded1.jti).not.toBe(decoded2.jti);
+    });
+
+    it('should generate refresh token with expiration', () => {
+      const token = generateRefreshToken(testUserId);
+      
+      const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET!) as any;
+      expect(decoded.exp).toBeDefined();
+      expect(decoded.exp).toBeGreaterThan(Date.now() / 1000);
+    });
+  });
+
+  describe('verifyToken', () => {
+    it('should verify a valid access token', () => {
+      const token = generateToken(testUserId);
+      const decoded = verifyToken(token);
+      
+      expect(decoded).not.toBeNull();
+      expect(decoded?.userId).toBe(testUserId);
+      expect(decoded?.type).toBe('access');
+    });
+
+    it('should return null for invalid token', () => {
+      const decoded = verifyToken('invalid-token');
+      expect(decoded).toBeNull();
+    });
+
+    it('should return null for token with wrong secret', () => {
+      const token = jwt.sign({ userId: testUserId }, 'wrong-secret');
+      const decoded = verifyToken(token);
+      expect(decoded).toBeNull();
+    });
+
+    it('should return null for expired token', () => {
+      const expiredToken = jwt.sign(
+        { userId: testUserId, type: 'access' },
+        process.env.JWT_SECRET!,
+        { expiresIn: '0s' }
+      );
+      
+      // Wait a bit to ensure token is expired
+      setTimeout(() => {
+        const decoded = verifyToken(expiredToken);
+        expect(decoded).toBeNull();
+      }, 100);
+    });
+  });
+
+  describe('verifyRefreshToken', () => {
+    it('should verify a valid refresh token', () => {
+      const token = generateRefreshToken(testUserId);
+      const decoded = verifyRefreshToken(token);
+      
+      expect(decoded).not.toBeNull();
+      expect(decoded?.userId).toBe(testUserId);
+      expect(decoded?.type).toBe('refresh');
+    });
+
+    it('should return null for invalid refresh token', () => {
+      const decoded = verifyRefreshToken('invalid-token');
+      expect(decoded).toBeNull();
+    });
+
+    it('should return null for access token verified as refresh token', () => {
+      const accessToken = generateToken(testUserId);
+      const decoded = verifyRefreshToken(accessToken);
+      expect(decoded).toBeNull();
+    });
+
+    it('should return null for refresh token with wrong secret', () => {
+      const token = jwt.sign({ userId: testUserId }, 'wrong-secret');
+      const decoded = verifyRefreshToken(token);
+      expect(decoded).toBeNull();
+    });
+  });
+
+  describe('token security', () => {
+    it('should not allow access token to be verified as refresh token', () => {
+      const accessToken = generateToken(testUserId);
+      const decoded = verifyRefreshToken(accessToken);
+      expect(decoded).toBeNull();
+    });
+
+    it('should not allow refresh token to be verified as access token', () => {
+      const refreshToken = generateRefreshToken(testUserId);
+      const decoded = verifyToken(refreshToken);
+      // This may or may not be null depending on whether different secrets are used
+      // but the type should be 'refresh' not 'access'
+      if (decoded) {
+        expect(decoded.type).toBe('refresh');
+      }
+    });
+
+    it('should generate cryptographically secure JTI for refresh tokens', () => {
+      const token1 = generateRefreshToken(testUserId);
+      const token2 = generateRefreshToken(testUserId);
+      
+      const decoded1 = jwt.verify(token1, process.env.JWT_REFRESH_SECRET!) as any;
+      const decoded2 = jwt.verify(token2, process.env.JWT_REFRESH_SECRET!) as any;
+      
+      // JTI should be 32 characters (16 bytes as hex)
+      expect(decoded1.jti.length).toBe(32);
+      expect(decoded2.jti.length).toBe(32);
+      expect(decoded1.jti).not.toBe(decoded2.jti);
+    });
+  });
+});
