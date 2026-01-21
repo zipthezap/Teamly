@@ -175,7 +175,7 @@ export const mockBulkNotifications = Array.from({ length: 100 }, (_, i) => {
     type: 'event_created',
     params: { eventTitle: `Event ${i}` },
     read: false,
-    createdAt: new Date(`2024-01-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00Z`),
+    createdAt: new Date(2024, 0, day, hour, minute, 0, 0), // January 2024
     eventId: `event-${i}`,
   };
 });

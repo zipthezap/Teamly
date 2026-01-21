@@ -9,7 +9,8 @@ Teamly uses Vitest as the testing framework for backend code. The testing infras
 ## Test Statistics (Updated January 2026)
 
 - **Backend Tests**: 591 tests passing
-  - Service Layer: 465 tests (includes extended test suites)
+  - Service Layer: 372 tests
+  - Extended Database Operation Tests: 93 tests (events, groups, notifications)
   - Middleware: 53 tests
   - Utilities: 58 tests
   - Routes: 15 tests (skipped - integration tests)
@@ -19,10 +20,10 @@ Teamly uses Vitest as the testing framework for backend code. The testing infras
 
 ### Recent Improvements
 - **Test Organization**: Extracted mock data into centralized `__mocks__/mockData/` folder
-- **Extended Test Coverage**: Added 93 new tests for events, groups, and notifications
-  - Event Service: +26 extended tests covering creation, updates, participants, and activity
-  - Group Service: +36 extended tests covering permissions, members, and invitations
-  - Notification Service: +31 extended tests covering filtering, bulk operations, and cross-type queries
+- **Extended Test Coverage**: Added 93 new database operation tests
+  - Event Database Operations: +26 tests covering creation, updates, participants, and activity
+  - Group Database Operations: +36 tests covering permissions, members, and invitations
+  - Notification Database Operations: +31 tests covering filtering, bulk operations, and cross-type queries
 - **notificationService**: Coverage improved from 81.48% to 93.82%
 - **eventService**: Maintaining 95.61% coverage with comprehensive edge cases
 - **groupService**: Maintaining 98.9% coverage with robust validation tests
