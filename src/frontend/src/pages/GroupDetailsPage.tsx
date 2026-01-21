@@ -1,9 +1,9 @@
 import React, { useState, useCallback } from "react";
 import AdminTransferDialog from "../components/GroupDetails/AdminTransferDialog";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, Container } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Box, Container, Snackbar, Alert } from '@mui/material';
 import GroupSettingsModal from "../components/common/GroupSettingsModal";
 import { useAuth } from "../contexts/AuthContext";
 import GroupHeader from "../components/GroupDetails/GroupHeader";
@@ -17,66 +17,19 @@ import { groupsAPI, eventsAPI, groupChatAPI } from "../services/api";
 import { EventWithDetails, UpdateGroupData } from "../../../shared/types";
 import { AxiosError } from "axios";
 import { getErrorMessage } from "../utils/errorHandler";
-
-// Simple toast system
-function Toast({ message, type, onClose }: { message: string; type: "success" | "error"; onClose: () => void }) {
-  return (
-    <Box
-      sx={{
-        position: 'fixed',
-        top: { xs: 16, sm: 24 },
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 50,
-        px: { xs: 3, sm: 4 },
-        py: { xs: 2, sm: 2.5 },
-        borderRadius: 1,
-        boxShadow: 3,
-        color: 'white',
-        bgcolor: type === "success" ? 'success.main' : 'error.main',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 2,
-        maxWidth: { xs: '90vw', sm: 'auto' },
-        minWidth: { xs: 'auto', sm: 300 },
-      }}
-    >
-      <Box sx={{ flex: 1, fontSize: { xs: '0.875rem', sm: '1rem' } }}>{message}</Box>
-      <Box
-        component="button"
-        onClick={onClose}
-        sx={{
-          background: 'none',
-          border: 'none',
-          color: 'white',
-          fontWeight: 'bold',
-          fontSize: { xs: '1.25rem', sm: '1.5rem' },
-          cursor: 'pointer',
-          padding: 0,
-          minWidth: '24px',
-          minHeight: '24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        ×
-      </Box>
-    </Box>
-  );
-}
-
+import { useNotification } from "../hooks/useNotification";
+import { useApiMutation } from "../hooks/useApiMutation";
+import { usePermissions } from "../hooks/usePermissions";
+import ConfirmationDialog from "../components/common/ConfirmationDialog";
 
 export default function GroupDetailsPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { notification, showSuccess, showError, hideNotification } = useNotification();
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<EventWithDetails | undefined>(undefined);
   const { id: groupId } = useParams();
   const queryClient = useQueryClient();
-
-  // Toast state
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   // Group settings state
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -110,6 +63,22 @@ export default function GroupDetailsPage() {
   // Use group.members for MemberList
   const members = Array.isArray(group?.members) ? group.members : [];
 
+  // Use permissions hook for centralized permission checking
+  const currentMember = members.find((m: GroupMember) => m.id === user?.id);
+  const { isAdmin, isModerator, isMember, canEdit, canManageMembers } = usePermissions({
+    resourceType: 'group',
+    creatorId: group?.creatorId,
+    userRole: currentMember?.role,
+    groupMembers: members,
+  });
+
+  // Check if user can invite members
+  const canInvite = group && user ? 
+    (canEdit || (isMember && group.allowMemberInvites)) : false;
+
+  // Check if user can copy invite link (only for public groups)
+  const canCopyLink = group && user && group.isPublic && (canEdit || (isMember && group.allowMemberCopyLink));
+
   // Fetch events for this group
   const { data: events, isLoading: eventsLoading, refetch: refetchEvents } = useQuery({
     queryKey: ["groupEvents", groupId],
@@ -135,40 +104,6 @@ export default function GroupDetailsPage() {
   });
 
 
-  // Improved admin check: use AuthContext for user email
-  const userEmail = user?.email || null;
-
-  // Fallback: if member emails are missing, check if user is group creator
-
-  // Guards: ensure group, user, and group.members are defined before logic
-
-  let isAdmin = false;
-  if (group && user && Array.isArray(group.members)) {
-    // Always use m.id === user.id, since member objects have 'id' not 'userId'
-    if (group.members.some((m: GroupMember) => m.id === user.id && m.role === "admin")) {
-      isAdmin = true;
-    } else if ((group.members.length === 0) && group.creator?.email && userEmail) {
-      isAdmin = group.creator.email === userEmail;
-    }
-  }
-
-  // Check if user is a moderator or admin (can edit but not delete)
-  const canEdit = group && user && Array.isArray(group.members)
-    ? group.members.some((m: GroupMember) => m.id === user.id && (m.role === "admin" || m.role === "moderator"))
-    : false;
-
-  // Check if user is a member of the group (admins are always considered members)
-  const isMember = isAdmin || (group && user && Array.isArray(group.members)
-    ? group.members.some((m: GroupMember) => m.id === user.id)
-    : false);
-
-  // Check if user can invite members
-  const canInvite = group && user ? 
-    (canEdit || (isMember && group.allowMemberInvites)) : false;
-
-  // Check if user can copy invite link (only for public groups, since invite links don't work for private groups)
-  const canCopyLink = group && user && group.isPublic && (canEdit || (isMember && group.allowMemberCopyLink));
-
   // Update group settings when group data loads
   React.useEffect(() => {
     if (group) {
@@ -188,7 +123,7 @@ export default function GroupDetailsPage() {
   }, [group]);
 
   // Update group mutation
-  const updateGroupMutation = useMutation({
+  const updateGroupMutation = useApiMutation({
     mutationFn: async (formData: typeof settingsForm) => {
       // Transform form data to match API expectations
       const data: UpdateGroupData = {
@@ -205,33 +140,25 @@ export default function GroupDetailsPage() {
       await groupsAPI.update(groupId!, data);
       return data;
     },
+    invalidateKeys: [["groupDetails", groupId]],
     onSuccess: () => {
-      setToast({ message: t('groupDetails.groupUpdated'), type: "success" });
-      queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
+      showSuccess(t('groupDetails.groupUpdated'));
       setSettingsOpen(false);
     },
-    onError: (err: unknown) => {
-      const errorMessage = err instanceof Error ? err.message : t('groupDetails.failedToUpdateGroup');
-      setToast({ message: errorMessage, type: "error" });
+    onError: (error) => {
+      showError(error || t('groupDetails.failedToUpdateGroup'));
     },
   });
 
   // Delete event mutation
-  const _deleteEventMutation = useMutation({
+  const _deleteEventMutation = useApiMutation({
     mutationFn: async (eventId: number) => {
       await eventsAPI.delete(eventId);
       return eventId;
     },
-    onSuccess: () => {
-      setToast({ message: t('groupDetails.eventDeleted'), type: "success" });
-      queryClient.invalidateQueries({ queryKey: ["groupEvents", groupId] });
-      // Invalidate groupsList to update event counts displayed in GroupsList
-      queryClient.invalidateQueries({ queryKey: ["groupsList"] });
-    },
-    onError: (err: unknown) => {
-      const errorMessage = err instanceof Error ? err.message : t('groupDetails.failedToDeleteEvent');
-      setToast({ message: errorMessage, type: "error" });
-    },
+    invalidateKeys: [["groupEvents", groupId], ["groupsList"]],
+    onSuccess: () => showSuccess(t('groupDetails.eventDeleted')),
+    onError: (error) => showError(error || t('groupDetails.failedToDeleteEvent')),
   });
 
   // Remove member mutation (optimistic UI)
@@ -256,13 +183,13 @@ export default function GroupDetailsPage() {
     },
     onError: (err: unknown, _memberId, context: { prevGroup?: unknown } | undefined) => {
       const errorMessage = err instanceof Error ? err.message : t('groupDetails.failedToRemove');
-      setToast({ message: errorMessage, type: "error" });
+      showError(errorMessage);
       if (context?.prevGroup) {
         queryClient.setQueryData(["groupDetails", groupId], context.prevGroup);
       }
     },
     onSuccess: () => {
-      setToast({ message: t('groupDetails.memberRemoved'), type: "success" });
+      showSuccess(t('groupDetails.memberRemoved'));
       queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
       queryClient.invalidateQueries({ queryKey: ["groupMembers", groupId] });
       // Invalidate groupsList to update member counts displayed in GroupsList
@@ -289,13 +216,13 @@ export default function GroupDetailsPage() {
     },
     onError: (err: unknown, _content, context: { prevChat?: unknown } | undefined) => {
       const errorMessage = err instanceof Error ? err.message : t('groupDetails.failedToSendMessage');
-      setToast({ message: errorMessage, type: "error" });
+      showError(errorMessage);
       if (context?.prevChat) {
         queryClient.setQueryData(["groupChat", groupId], context.prevChat);
       }
     },
     onSuccess: () => {
-      setToast({ message: t('groupDetails.messageSent'), type: "success" });
+      showSuccess(t('groupDetails.messageSent'));
       queryClient.invalidateQueries({ queryKey: ["groupChat", groupId] });
     },
   });
@@ -365,23 +292,20 @@ export default function GroupDetailsPage() {
   }, [message, sendMessageMutation]);
 
   // Delete group handler
-  const deleteGroupMutation = useMutation({
+  const deleteGroupMutation = useApiMutation({
     mutationFn: async () => {
       await groupsAPI.delete(groupId!);
     },
+    invalidateKeys: [["groupsList"], ["groupDetails"], ["groups"]],
     onSuccess: () => {
-      // Invalidate all group-related queries to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ["groupsList"] });
-      queryClient.invalidateQueries({ queryKey: ["groupDetails"] });
-      queryClient.invalidateQueries({ queryKey: ["groups"] });
-      setToast({ message: t('groupDetails.groupDeleted'), type: "success" });
+      showSuccess(t('groupDetails.groupDeleted'));
       // Navigate immediately to groups page - cache invalidation ensures fresh data
       setTimeout(() => {
         navigate('/groups', { state: { justLeftGroup: true } });
       }, 500);
     },
-    onError: (err: unknown) => {
-      setToast({ message: getErrorMessage(err) || t('groupDetails.failedToDelete'), type: "error" });
+    onError: (error) => {
+      showError(error || t('groupDetails.failedToDelete'));
     },
   });
 
@@ -405,12 +329,12 @@ export default function GroupDetailsPage() {
       ? t('groupDetails.groupDeletedAsLastMember', 'Group deleted successfully as you were the last member')
       : t('groupDetails.leftGroup');
     
-    setToast({ message, type: "success" });
+    showSuccess(message);
     // Navigate immediately to groups page - cache invalidation ensures fresh data
     setTimeout(() => {
       navigate('/groups', { state: { justLeftGroup: true } });
     }, 500);
-  }, [queryClient, t, navigate]);
+  }, [queryClient, t, navigate, showSuccess]);
 
   // Leave group handler
   const leaveGroupMutation = useMutation({
@@ -445,7 +369,7 @@ export default function GroupDetailsPage() {
       if (context?.previousGroup) {
         queryClient.setQueryData(["groupDetails", groupId], context.previousGroup);
       }
-      setToast({ message: getErrorMessage(err) || t('groupDetails.failedToLeave'), type: "error" });
+      showError(getErrorMessage(err) || t('groupDetails.failedToLeave'));
     },
   });
 
@@ -477,7 +401,7 @@ export default function GroupDetailsPage() {
       const errorMessage = err instanceof AxiosError 
         ? err.response?.data?.error || t('groupDetails.failedToLeave')
         : t('groupDetails.failedToLeave');
-      setToast({ message: errorMessage, type: "error" });
+      showError(errorMessage);
     }
   };
 
@@ -488,23 +412,18 @@ export default function GroupDetailsPage() {
   };
 
   // Invite member handler
-  const inviteMemberMutation = useMutation({
+  const inviteMemberMutation = useApiMutation({
     mutationFn: async (email: string) => {
       await groupsAPI.invite(groupId!, email);
     },
+    invalidateKeys: [["groupDetails", groupId], ["groupsList"]],
     onSuccess: () => {
-      setToast({ message: t('groupDetails.memberInvited'), type: "success" });
+      showSuccess(t('groupDetails.memberInvited'));
       setShowInviteModal(false);
       setInviteEmail("");
-      queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
-      // Invalidate groupsList to update member counts displayed in GroupsList
-      queryClient.invalidateQueries({ queryKey: ["groupsList"] });
     },
-    onError: (err: unknown) => {
-      const errorMessage = err instanceof AxiosError 
-        ? err.response?.data?.error || t('groupDetails.failedToInvite')
-        : t('groupDetails.failedToInvite');
-      setToast({ message: errorMessage, type: "error" });
+    onError: (error) => {
+      showError(error || t('groupDetails.failedToInvite'));
     },
   });
 
@@ -525,12 +444,12 @@ export default function GroupDetailsPage() {
       const res = await groupsAPI.getInviteLink(groupId!);
       const inviteLink = `${window.location.origin}/join-group/${res.data.groupId}`;
       await navigator.clipboard.writeText(inviteLink);
-      setToast({ message: `${t('groupDetails.inviteLinkCopied')}\n${t('groupDetails.inviteLinkInstructions')}` , type: "success" });
+      showSuccess(`${t('groupDetails.inviteLinkCopied')}\n${t('groupDetails.inviteLinkInstructions')}`);
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
         ? err.response?.data?.error || t('groupDetails.failedToGetInviteLink')
         : t('groupDetails.failedToGetInviteLink');
-      setToast({ message: errorMessage, type: "error" });
+      showError(errorMessage);
     }
   };
 
@@ -539,13 +458,13 @@ export default function GroupDetailsPage() {
     try {
       const response = await groupsAPI.uploadGroupPicture(groupId!, file);
       setGroupPicture(response.data.group.picture);
-      setToast({ message: t('groupDetails.groupPictureUpdated') || 'Group picture updated successfully', type: "success" });
+      showSuccess(t('groupDetails.groupPictureUpdated') || 'Group picture updated successfully');
       queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
         ? err.response?.data?.error || t('groupDetails.failedToUploadPicture') || 'Failed to upload group picture'
         : t('groupDetails.failedToUploadPicture') || 'Failed to upload group picture';
-      setToast({ message: errorMessage, type: "error" });
+      showError(errorMessage);
       throw err;
     }
   };
@@ -555,13 +474,13 @@ export default function GroupDetailsPage() {
     try {
       const response = await groupsAPI.deleteGroupPicture(groupId!);
       setGroupPicture(response.data.group.picture ?? undefined);
-      setToast({ message: t('groupDetails.groupPictureDeleted') || 'Group picture deleted successfully', type: "success" });
+      showSuccess(t('groupDetails.groupPictureDeleted') || 'Group picture deleted successfully');
       queryClient.invalidateQueries({ queryKey: ["groupDetails", groupId] });
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
         ? err.response?.data?.error || t('groupDetails.failedToDeletePicture') || 'Failed to delete group picture'
         : t('groupDetails.failedToDeletePicture') || 'Failed to delete group picture';
-      setToast({ message: errorMessage, type: "error" });
+      showError(errorMessage);
       throw err;
     }
   };
@@ -617,7 +536,6 @@ export default function GroupDetailsPage() {
         px: { xs: 2, sm: 3 },
       }}
     >
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <Container maxWidth="xl" disableGutters>
         <GroupHeader
           group={group}
@@ -673,200 +591,6 @@ export default function GroupDetailsPage() {
         initialData={editEvent}
         groupId={groupId}
       />
-      {/* Confirmation Dialog */}
-      {showConfirm.open && (
-        <Box
-          sx={{
-            position: 'fixed',
-            inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            bgcolor: 'rgba(0, 0, 0, 0.4)',
-            zIndex: 50,
-            px: { xs: 2, sm: 0 },
-          }}
-        >
-          <Box
-            sx={{
-              bgcolor: '#1e293b',
-              p: { xs: 3, sm: 4 },
-              borderRadius: 2,
-              boxShadow: 3,
-              width: { xs: '100%', sm: 400 },
-              maxWidth: '100%',
-              textAlign: 'center',
-            }}
-          >
-            <Box sx={{ mb: 3, fontSize: { xs: '1rem', sm: '1.125rem' }, fontWeight: 500 }}>
-              {t('groupDetails.removeThisMember')}
-            </Box>
-            <Box sx={{ mb: 4, color: 'grey.400', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-              {(() => {
-                const member = group?.members?.find((m: GroupMember) => m.userId === showConfirm.memberId || m.id === showConfirm.memberId);
-                const name = member?.user?.name || member?.name || '';
-                const email = member?.user?.email || member?.email || '';
-                return t('groupDetails.confirmRemoveMemberDesc', { email: name ? `${name} (${email})` : email });
-              })()}
-            </Box>
-            <Box sx={{ display: 'flex', gap: { xs: 2, sm: 3 }, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Button
-                variant="contained"
-                color="error"
-                onClick={confirmRemove}
-                disabled={removeMemberMutation.isPending}
-                sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
-              >
-                {t('groupDetails.remove')}
-              </Button>
-              <Button
-                variant="contained"
-                onClick={() => setShowConfirm({ open: false, memberId: null })}
-                sx={{
-                  minHeight: '44px',
-                  px: { xs: 2, sm: 3 },
-                  bgcolor: '#475569',
-                  '&:hover': { bgcolor: '#64748b' },
-                }}
-              >
-                {t('common.cancel')}
-              </Button>
-            </Box>
-          </Box>
-        </Box>
-      )}
-      {/* Delete Group Confirmation Dialog */}
-      {showDeleteConfirm && (
-        <Box
-          sx={{
-            position: 'fixed',
-            inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            bgcolor: 'rgba(0, 0, 0, 0.4)',
-            zIndex: 50,
-            px: { xs: 2, sm: 0 },
-          }}
-        >
-          <Box
-            sx={{
-              bgcolor: '#1e293b',
-              p: { xs: 3, sm: 4 },
-              borderRadius: 2,
-              boxShadow: 3,
-              width: { xs: '100%', sm: 450 },
-              maxWidth: '100%',
-              textAlign: 'center',
-            }}
-          >
-            <Box sx={{ mb: 3, fontSize: { xs: '1rem', sm: '1.125rem' }, fontWeight: 700 }}>
-              {t('groupDetails.deleteGroup')}?
-            </Box>
-            <Box sx={{ mb: 4, color: 'grey.400', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-              {t('groupDetails.confirmDelete')}
-            </Box>
-            <Box sx={{ display: 'flex', gap: { xs: 2, sm: 3 }, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Button
-                variant="contained"
-                color="error"
-                onClick={confirmDeleteGroup}
-                disabled={deleteGroupMutation.isPending}
-                sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
-              >
-                {t('common.delete')}
-              </Button>
-              <Button
-                variant="contained"
-                onClick={() => setShowDeleteConfirm(false)}
-                sx={{
-                  minHeight: '44px',
-                  px: { xs: 2, sm: 3 },
-                  bgcolor: '#475569',
-                  '&:hover': { bgcolor: '#64748b' },
-                }}
-              >
-                {t('common.cancel')}
-              </Button>
-            </Box>
-          </Box>
-        </Box>
-      )}
-      {/* Admin Transfer Dialog */}
-      <AdminTransferDialog
-        open={showAdminTransfer}
-        members={
-          (group?.members || []).map(m => ({
-            email: m.user?.email || '',
-            name: m.user?.name || '',
-            role: m.role
-          }))
-        }
-        selectedNewAdmin={selectedNewAdmin}
-        onSelect={setSelectedNewAdmin}
-        onConfirm={confirmAdminTransfer}
-        onCancel={() => setShowAdminTransfer(false)}
-        confirmDisabled={false}
-      />
-      {/* Leave Group Confirmation Dialog */}
-      {showLeaveConfirm && (
-        <Box
-          sx={{
-            position: 'fixed',
-            inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            bgcolor: 'rgba(0, 0, 0, 0.4)',
-            zIndex: 50,
-            px: { xs: 2, sm: 0 },
-          }}
-        >
-          <Box
-            sx={{
-              bgcolor: '#1e293b',
-              p: { xs: 3, sm: 4 },
-              borderRadius: 2,
-              boxShadow: 3,
-              width: { xs: '100%', sm: 450 },
-              maxWidth: '100%',
-              textAlign: 'center',
-            }}
-          >
-            <Box sx={{ mb: 3, fontSize: { xs: '1rem', sm: '1.125rem' }, fontWeight: 700 }}>
-              {isAdmin && isOnlyMember() ? t('groupDetails.deleteGroup') : t('groupDetails.leave')}?
-            </Box>
-            <Box sx={{ mb: 4, color: 'grey.400', fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-              {isAdmin && isOnlyMember() 
-                ? t('groupDetails.confirmLeaveAsLastMember', 'You are the last member of this group. Leaving will delete the group permanently.')
-                : t('groupDetails.confirmLeave')}
-            </Box>
-            <Box sx={{ display: 'flex', gap: { xs: 2, sm: 3 }, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Button
-                variant="contained"
-                color="error"
-                onClick={confirmLeaveGroup}
-                disabled={leaveGroupMutation.isPending}
-                sx={{ minHeight: '44px', px: { xs: 2, sm: 3 } }}
-              >
-                {isAdmin && isOnlyMember() ? t('groupDetails.deleteGroup') : t('groupDetails.leave')}
-              </Button>
-              <Button
-                variant="contained"
-                onClick={() => setShowLeaveConfirm(false)}
-                sx={{
-                  minHeight: '44px',
-                  px: { xs: 2, sm: 3 },
-                  bgcolor: '#475569',
-                  '&:hover': { bgcolor: '#64748b' },
-                }}
-              >
-                {t('common.cancel')}
-              </Button>
-            </Box>
-          </Box>
-        </Box>
-      )}
       {/* Invite Member Modal */}
       <Dialog 
         open={showInviteModal} 
@@ -918,6 +642,71 @@ export default function GroupDetailsPage() {
           </DialogActions>
         </form>
       </Dialog>
+
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={hideNotification}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={hideNotification}
+          severity={notification.severity}
+          sx={{ width: '100%' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
+
+      {/* Confirmation Dialogs using ConfirmationDialog */}
+      <ConfirmationDialog
+        open={showConfirm.open}
+        title={t('groupDetails.removeMember')}
+        message={t('groupDetails.confirmRemoveMember')}
+        confirmText={t('common.remove')}
+        confirmColor="error"
+        loading={removeMemberMutation.isPending}
+        onConfirm={confirmRemove}
+        onCancel={() => setShowConfirm({ open: false, memberId: null })}
+      />
+
+      <ConfirmationDialog
+        open={showDeleteConfirm}
+        title={t('groupDetails.deleteGroup')}
+        message={t('groupDetails.confirmDeleteGroup')}
+        confirmText={t('common.delete')}
+        confirmColor="error"
+        loading={deleteGroupMutation.isLoading}
+        onConfirm={confirmDeleteGroup}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
+
+      <ConfirmationDialog
+        open={showLeaveConfirm}
+        title={isAdmin && isOnlyMember() ? t('groupDetails.deleteGroup') : t('groupDetails.leave')}
+        message={
+          isAdmin && isOnlyMember() 
+            ? t('groupDetails.confirmLeaveAsLastMember', 'You are the last member of this group. Leaving will delete the group permanently.')
+            : t('groupDetails.confirmLeave')
+        }
+        confirmText={isAdmin && isOnlyMember() ? t('groupDetails.deleteGroup') : t('groupDetails.leave')}
+        confirmColor="error"
+        loading={leaveGroupMutation.isPending}
+        onConfirm={confirmLeaveGroup}
+        onCancel={() => setShowLeaveConfirm(false)}
+      />
+
+      {/* Admin Transfer Dialog (custom component) */}
+      <AdminTransferDialog
+        open={showAdminTransfer}
+        members={members.filter((m: GroupMember) => m.id !== user?.id)}
+        selectedNewAdmin={selectedNewAdmin}
+        setSelectedNewAdmin={setSelectedNewAdmin}
+        onConfirm={confirmAdminTransfer}
+        onCancel={() => setShowAdminTransfer(false)}
+        t={t}
+      />
     </Box>
   );
 }
