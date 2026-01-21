@@ -130,7 +130,7 @@ export class InviteService {
           groupId,
           userId: userToInviteId,
           status: 'pending',
-          createdBy: 'invite'
+          createdBy: 'INVITE'
         }
       });
 
@@ -144,7 +144,7 @@ export class InviteService {
           groupId,
           userId: userToInviteId,
           status: 'pending',
-          createdBy: 'invite'
+          createdBy: 'INVITE'
         }
       });
 
