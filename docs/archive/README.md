@@ -83,6 +83,27 @@ This folder contains historical documentation that was created during feature de
 - **Analysis Areas for Scalability Impr.txt** - Scalability analysis notes
 - **model improvement.txt** - Model improvement notes
 
+## Recent Additions (2026-01)
+
+The following documents were moved to archive as part of project cleanup:
+- AZURE_QUICKSTART.md (superseded by docs/AZURE_DEPLOYMENT.md)
+- BACKEND_SECURITY_ANALYSIS.md
+- BACKEND_TESTING_ROADMAP.md
+- EVENTDETAILS_REFACTORING_SUMMARY.md
+- FRONTEND_IMPROVEMENTS_SUMMARY.md
+- GROUP_PERMISSIONS_FIX_SUMMARY.md
+- MOBILE_RESPONSIVE_APPROACH.md, MOBILE_RESPONSIVE_FUTURE_WORK.md, MOBILE_RESPONSIVE_SUMMARY.md
+- NOTIFICATION_TESTING_ANALYSIS.md
+- OAUTH_FIX_SUMMARY.md, OAUTH_FLOW_DIAGRAM.md, OAUTH_IMPLEMENTATION_REVIEW.md
+- OPTIMIZATION_RECOMMENDATIONS.md
+- PERMISSIONS_IMPLEMENTATION_SUMMARY.md, PERMISSIONS_VERIFICATION.md
+- PHASE_3_STATUS.md
+- PR_215_SUMMARY_AND_NEXT_STEPS.md, PR_220_CONTINUATION_SUMMARY.md, PR_235_COMPLETION_SUMMARY.md
+- PULL_REQUEST_SUMMARY.md
+- SCALABILITY_SUMMARY.md
+- TESTING_IMPROVEMENTS_SUMMARY.md
+- VITEST_MIGRATION_SUMMARY.md
+
 ## Note
 
 For current, active documentation, refer to the main docs folder structure:
