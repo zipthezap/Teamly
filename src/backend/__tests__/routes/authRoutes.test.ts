@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import request from 'supertest';
-import { Request, Response, NextFunction } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { mockUser } from '../helpers/testApp';
 
 // Mock dependencies at the top level
@@ -107,7 +107,7 @@ import { createTestApp } from '../helpers/testApp';
 const mockPrisma = vi.mocked(prisma);
 
 describe.skip('Auth Routes Integration Tests', () => {
-  let app: Express.Application;
+  let app: express.Application;
 
   beforeEach(() => {
     vi.clearAllMocks();
