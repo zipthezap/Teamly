@@ -163,12 +163,19 @@ export const mockUnreadNotifications = mockAllNotifications.filter(n => !n.read)
 
 export const mockReadNotifications = mockAllNotifications.filter(n => n.read);
 
-export const mockBulkNotifications = Array.from({ length: 100 }, (_, i) => ({
-  id: `notif-bulk-${i}`,
-  userId: 'user-1',
-  type: 'event_created',
-  params: { eventTitle: `Event ${i}` },
-  read: false,
-  createdAt: new Date(`2024-01-${(i % 30) + 1}T00:00:00Z`),
-  eventId: `event-${i}`,
-}));
+export const mockBulkNotifications = Array.from({ length: 100 }, (_, i) => {
+  // Use day within valid range (1-28 to work for all months)
+  const day = (i % 28) + 1;
+  const hour = i % 24;
+  const minute = (i * 13) % 60; // Vary minutes for better distribution
+  
+  return {
+    id: `notif-bulk-${i}`,
+    userId: 'user-1',
+    type: 'event_created',
+    params: { eventTitle: `Event ${i}` },
+    read: false,
+    createdAt: new Date(`2024-01-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00Z`),
+    eventId: `event-${i}`,
+  };
+});

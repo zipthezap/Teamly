@@ -58,8 +58,8 @@ export const mockUpcomingEvent = {
   id: 'event-4',
   title: 'Future Volleyball',
   eventType: 'volleyball',
-  startTime: new Date(Date.now() + 86400000 * 7), // 7 days from now
-  endTime: new Date(Date.now() + 86400000 * 7 + 7200000), // 7 days + 2 hours
+  startTime: new Date('2024-03-01T10:00:00Z'), // Fixed future date
+  endTime: new Date('2024-03-01T12:00:00Z'), // 2 hours later
 };
 
 export const mockFullEvent = {
