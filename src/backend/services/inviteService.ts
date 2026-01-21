@@ -346,7 +346,7 @@ export class InviteService {
         where: {
           userId,
           status: 'pending',
-          createdBy: 'invite'
+          createdBy: 'INVITE'
         },
         include: {
           group: {

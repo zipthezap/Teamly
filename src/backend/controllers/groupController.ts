@@ -614,7 +614,7 @@ export const removeMember = async (req: Request, res: Response) => {
         groupId: id,
         userId: memberToRemove.userId,
         status: 'pending',
-        createdBy: 'invite'
+        createdBy: 'INVITE'
       }
     });
   });
@@ -698,7 +698,7 @@ export const removeMemberByUserId = async (req: Request, res: Response) => {
         groupId: id,
         userId: memberToRemove.userId,
         status: 'pending',
-        createdBy: 'invite'
+        createdBy: 'INVITE'
       }
     });
   });
@@ -1132,7 +1132,7 @@ export const respondToInvitation = async (req: Request, res: Response) => {
   }
 
   // Only invitations (not user-initiated requests) can be responded to by users
-  if (invitation.createdBy !== 'invite') {
+  if (invitation.createdBy !== 'INVITE') {
     throw new BadRequestError('This is not an invitation. Join requests must be handled by group admins.');
   }
 
@@ -1212,7 +1212,7 @@ export const getUserInvitations = async (req: Request, res: Response) => {
     where: {
       userId,
       status: 'pending',
-      createdBy: 'invite'
+      createdBy: 'INVITE'
     },
     include: {
       group: {
@@ -1412,7 +1412,7 @@ export const leaveGroup = async (req: Request, res: Response) => {
         groupId: id,
         userId: userId,
         status: 'pending',
-        createdBy: 'invite'
+        createdBy: 'INVITE'
       }
     });
 
