@@ -1149,12 +1149,49 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
 
   // If approved, add the user as a member
   if (action === 'approve') {
-    await prisma.groupMember.create({
-      data: {
-        groupId: id,
-        userId: joinRequest.userId,
-        role: 'member'
+    // Use transaction to check capacity and add member atomically
+    await prisma.$transaction(async (tx) => {
+      // Get group to check max members
+      const group = await tx.group.findUnique({
+        where: { id },
+        select: { maxMembers: true }
+      });
+
+      if (!group) {
+        throw new NotFoundError('Group not found');
       }
+
+      // Check if user is already a member (race condition protection)
+      const existingMembership = await tx.groupMember.findFirst({
+        where: {
+          groupId: id,
+          userId: joinRequest.userId
+        }
+      });
+
+      if (existingMembership) {
+        throw new BadRequestError('User is already a member of this group');
+      }
+
+      // Check max members limit
+      if (group.maxMembers) {
+        const currentMemberCount = await tx.groupMember.count({
+          where: { groupId: id }
+        });
+
+        if (currentMemberCount >= group.maxMembers) {
+          throw new BadRequestError('Group has reached maximum member capacity');
+        }
+      }
+
+      // Add the user as a member
+      await tx.groupMember.create({
+        data: {
+          groupId: id,
+          userId: joinRequest.userId,
+          role: 'member'
+        }
+      });
     });
 
     // Get group name for notification
@@ -1235,6 +1272,16 @@ export const respondToInvitation = async (req: Request, res: Response) => {
   // If accepting, use a transaction to ensure atomicity
   if (action === 'accept') {
     const result = await prisma.$transaction(async (tx) => {
+      // Get group to check max members
+      const group = await tx.group.findUnique({
+        where: { id },
+        select: { maxMembers: true }
+      });
+
+      if (!group) {
+        throw new NotFoundError('Group not found');
+      }
+
       // Check if user is already a member (race condition protection)
       const existingMembership = await tx.groupMember.findFirst({
         where: {
@@ -1245,6 +1292,17 @@ export const respondToInvitation = async (req: Request, res: Response) => {
 
       if (existingMembership) {
         throw new BadRequestError('You are already a member of this group');
+      }
+
+      // Check max members limit
+      if (group.maxMembers) {
+        const currentMemberCount = await tx.groupMember.count({
+          where: { groupId: id }
+        });
+
+        if (currentMemberCount >= group.maxMembers) {
+          throw new BadRequestError('Group has reached maximum member capacity');
+        }
       }
 
       // Update the invitation status

@@ -744,17 +744,24 @@ export class InviteService {
         const group = await prisma.group.findUnique({
           where: { inviteToken: token },
           select: { 
-            id: true, 
+            id: true,
+            name: true,
             inviteTokenExpiresAt: true 
           }
         });
 
         if (!group) {
-          return { valid: false, error: 'Invalid token' };
+          logger.warn('Invalid group invite token attempted', 'InviteService', { token: token.substring(0, 8) + '...' });
+          return { valid: false, error: 'Invalid invite link' };
         }
 
         if (group.inviteTokenExpiresAt && group.inviteTokenExpiresAt < now) {
-          return { valid: false, error: 'Token expired' };
+          logger.info('Expired group invite token used', 'InviteService', { 
+            groupId: group.id,
+            groupName: group.name,
+            expiresAt: group.inviteTokenExpiresAt 
+          });
+          return { valid: false, error: 'This invite link has expired' };
         }
 
         return { valid: true, resourceId: group.id };
@@ -762,17 +769,24 @@ export class InviteService {
         const event = await prisma.event.findUnique({
           where: { inviteToken: token },
           select: { 
-            id: true, 
+            id: true,
+            title: true,
             inviteTokenExpiresAt: true 
           }
         });
 
         if (!event) {
-          return { valid: false, error: 'Invalid token' };
+          logger.warn('Invalid event invite token attempted', 'InviteService', { token: token.substring(0, 8) + '...' });
+          return { valid: false, error: 'Invalid invite link' };
         }
 
         if (event.inviteTokenExpiresAt && event.inviteTokenExpiresAt < now) {
-          return { valid: false, error: 'Token expired' };
+          logger.info('Expired event invite token used', 'InviteService', { 
+            eventId: event.id,
+            eventTitle: event.title,
+            expiresAt: event.inviteTokenExpiresAt 
+          });
+          return { valid: false, error: 'This invite link has expired' };
         }
 
         return { valid: true, resourceId: event.id };
@@ -781,9 +795,9 @@ export class InviteService {
       logger.error('Failed to validate invite token', 'InviteService', {
         error,
         resourceType,
-        token
+        token: token.substring(0, 8) + '...'
       });
-      return { valid: false, error: 'Validation failed' };
+      return { valid: false, error: 'Failed to validate invite link' };
     }
   }
 }

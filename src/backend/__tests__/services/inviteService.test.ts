@@ -61,7 +61,8 @@ vi.mock('./notificationFactory', () => ({
 vi.mock('../../utils/logger', () => ({
   logger: {
     error: vi.fn(),
-    info: vi.fn()
+    info: vi.fn(),
+    warn: vi.fn()
   }
 }));
 
@@ -290,13 +291,13 @@ describe('InviteService', () => {
 
     it('should reject expired invite token', async () => {
       const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      const mockGroup = { id: 'group-1', inviteTokenExpiresAt: pastDate };
+      const mockGroup = { id: 'group-1', name: 'Test Group', inviteTokenExpiresAt: pastDate };
       vi.mocked(prisma.group.findUnique).mockResolvedValue(mockGroup as any);
 
       const result = await InviteService.validateInviteToken('group', 'expired-token');
 
       expect(result.valid).toBe(false);
-      expect(result.error).toBe('Token expired');
+      expect(result.error).toBe('This invite link has expired');
     });
 
     it('should reject invalid token', async () => {
@@ -305,7 +306,7 @@ describe('InviteService', () => {
       const result = await InviteService.validateInviteToken('group', 'invalid-token');
 
       expect(result.valid).toBe(false);
-      expect(result.error).toBe('Invalid token');
+      expect(result.error).toBe('Invalid invite link');
     });
   });
 
