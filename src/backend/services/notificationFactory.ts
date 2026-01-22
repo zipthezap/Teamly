@@ -434,16 +434,16 @@ export class NotificationFactory {
   private static getMuteKeyForGroupType(type: GroupNotificationType): keyof EmailPreference | null {
     switch (type) {
       case 'invited':
+      case 'accepted': // User being accepted into group relates to invites
         return 'muteGroupInvites';
       case 'join_request':
-      case 'accepted':
         return 'muteGroupRequests';
       case 'event_created':
         return 'muteEventCreated';
       case 'nearby_created':
         return 'muteNearbyGroups';
       case 'removed':
-        return 'muteGroupInvites';
+        return 'muteGroupRequests'; // Use group requests for group membership changes
       default:
         return null;
     }
