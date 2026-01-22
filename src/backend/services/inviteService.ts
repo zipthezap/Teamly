@@ -162,6 +162,17 @@ export class InviteService {
         return { success: false, error: 'User is already a member' };
       }
 
+      // Check group capacity before sending invitation
+      if (group.maxMembers) {
+        const currentMemberCount = await client.groupMember.count({
+          where: { groupId }
+        });
+
+        if (currentMemberCount >= group.maxMembers) {
+          return { success: false, error: 'Group is at maximum capacity' };
+        }
+      }
+
       // Check for existing pending invitation
       const existingInvitation = await client.groupJoinRequest.findFirst({
         where: {

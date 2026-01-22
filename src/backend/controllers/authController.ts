@@ -139,17 +139,25 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   const isValidPassword = await bcrypt.compare(password, user.password);
 
   if (!isValidPassword) {
-    // Increment failed login attempts
-    const failedAttempts = (user.failedLoginAttempts || 0) + 1;
-    const lockAccount = failedAttempts >= 5;
-
-    await prisma.user.update({
+    // Atomically increment failed login attempts to prevent race conditions
+    const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: {
-        failedLoginAttempts: failedAttempts,
-        accountLockedUntil: lockAccount ? new Date(Date.now() + 15 * 60 * 1000) : null // Lock for 15 minutes
-      }
+        failedLoginAttempts: { increment: 1 }
+      },
+      select: { failedLoginAttempts: true }
     });
+
+    // Check if account should be locked after atomic increment
+    const lockAccount = updatedUser.failedLoginAttempts >= 5;
+    if (lockAccount) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          accountLockedUntil: new Date(Date.now() + 15 * 60 * 1000) // Lock for 15 minutes
+        }
+      });
+    }
 
     throw new UnauthorizedError('Invalid credentials');
   }

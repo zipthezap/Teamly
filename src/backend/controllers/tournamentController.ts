@@ -730,6 +730,18 @@ export const submitScore = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Match not found' });
     }
 
+    // Prevent duplicate score submission for already completed matches
+    if (match.status === MatchStatus.COMPLETED && match.homeScore !== null && match.awayScore !== null) {
+      return res.status(409).json({ 
+        error: 'Match score has already been submitted',
+        match: {
+          homeScore: match.homeScore,
+          awayScore: match.awayScore,
+          completedAt: match.completedAt
+        }
+      });
+    }
+
     // Check permissions - organizer, team captains, registered players, or referee team members can submit scores
     const canSubmit = await tournamentService.canSubmitScore(match, tournament, userId);
 
@@ -756,23 +768,32 @@ export const submitScore = async (req: Request, res: Response) => {
       }
     }
 
-    // Update match with score
-    const updatedMatch = await prisma.tournamentMatch.update({
-      where: { id: matchId },
-      data: {
-        homeScore,
-        awayScore,
-        detailedScore: detailedScore || undefined,
-        status: MatchStatus.COMPLETED,
-        completedAt: new Date()
-      },
-      include: {
-        homeTeam: true,
-        awayTeam: true
-      }
+    // Use a transaction to ensure atomic update of match and standings
+    const updatedMatch = await prisma.$transaction(async (tx) => {
+      // Update match with score - the WHERE clause will prevent concurrent updates
+      const match = await tx.tournamentMatch.update({
+        where: { 
+          id: matchId,
+          // Ensure we only update if status is not already COMPLETED
+          status: { not: MatchStatus.COMPLETED }
+        },
+        data: {
+          homeScore,
+          awayScore,
+          detailedScore: detailedScore || undefined,
+          status: MatchStatus.COMPLETED,
+          completedAt: new Date()
+        },
+        include: {
+          homeTeam: true,
+          awayTeam: true
+        }
+      });
+
+      return match;
     });
 
-    // Update standings
+    // Update standings after transaction completes
     await tournamentService.updateStandings(matchId, tournament);
 
     // If this is a knockout stage match, check if we should advance winners
