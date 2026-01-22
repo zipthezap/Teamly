@@ -552,6 +552,11 @@ export const inviteMember = async (req: Request, res: Response) => {
     throw new NotFoundError('User not found');
   }
 
+  // Prevent inviting yourself
+  if (userToInvite.id === req.user!.id) {
+    throw new BadRequestError('You cannot invite yourself');
+  }
+
   // Use the InviteService to handle the invitation with optional custom message and expiration
   const result = await InviteService.inviteUserToGroup(id, userToInvite.id, req.user!.id, {
     customMessage,
@@ -1144,29 +1149,64 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
 
   // If approved, add the user as a member
   if (action === 'approve') {
-    await prisma.groupMember.create({
-      data: {
-        groupId: id,
-        userId: joinRequest.userId,
-        role: 'member'
-      }
-    });
+    let groupName: string | undefined;
+    
+    // Use transaction to check capacity and add member atomically
+    await prisma.$transaction(async (tx) => {
+      // Get group to check max members and get name for notification
+      const group = await tx.group.findUnique({
+        where: { id },
+        select: { maxMembers: true, name: true }
+      });
 
-    // Get group name for notification
-    const groupInfo = await prisma.group.findUnique({
-      where: { id },
-      select: { name: true }
+      if (!group) {
+        throw new NotFoundError('Group not found');
+      }
+
+      groupName = group.name;
+
+      // Check if user is already a member (race condition protection)
+      const existingMembership = await tx.groupMember.findFirst({
+        where: {
+          groupId: id,
+          userId: joinRequest.userId
+        }
+      });
+
+      if (existingMembership) {
+        throw new BadRequestError('User is already a member of this group');
+      }
+
+      // Check max members limit
+      if (group.maxMembers) {
+        const currentMemberCount = await tx.groupMember.count({
+          where: { groupId: id }
+        });
+
+        if (currentMemberCount >= group.maxMembers) {
+          throw new BadRequestError('Group has reached maximum member capacity');
+        }
+      }
+
+      // Add the user as a member
+      await tx.groupMember.create({
+        data: {
+          groupId: id,
+          userId: joinRequest.userId,
+          role: 'member'
+        }
+      });
     });
 
     // Create notification for the user who was accepted
-    if (groupInfo) {
+    if (groupName) {
       await prisma.groupNotification.create({
         data: {
           groupId: id,
           userId: joinRequest.userId,
           type: 'accepted',
           params: {
-            groupName: groupInfo.name,
+            groupName,
             name: req.user!.name
           }
         }
@@ -1227,9 +1267,29 @@ export const respondToInvitation = async (req: Request, res: Response) => {
     throw new BadRequestError('This is not an invitation. Join requests must be handled by group admins.');
   }
 
+  // Check if invitation has expired
+  if (invitation.expiresAt && invitation.expiresAt < new Date()) {
+    // Automatically mark as rejected
+    await prisma.groupJoinRequest.update({
+      where: { id: requestId },
+      data: { status: 'rejected' }
+    });
+    throw new BadRequestError('This invitation has expired');
+  }
+
   // If accepting, use a transaction to ensure atomicity
   if (action === 'accept') {
     const result = await prisma.$transaction(async (tx) => {
+      // Get group to check max members
+      const group = await tx.group.findUnique({
+        where: { id },
+        select: { maxMembers: true }
+      });
+
+      if (!group) {
+        throw new NotFoundError('Group not found');
+      }
+
       // Check if user is already a member (race condition protection)
       const existingMembership = await tx.groupMember.findFirst({
         where: {
@@ -1240,6 +1300,17 @@ export const respondToInvitation = async (req: Request, res: Response) => {
 
       if (existingMembership) {
         throw new BadRequestError('You are already a member of this group');
+      }
+
+      // Check max members limit
+      if (group.maxMembers) {
+        const currentMemberCount = await tx.groupMember.count({
+          where: { groupId: id }
+        });
+
+        if (currentMemberCount >= group.maxMembers) {
+          throw new BadRequestError('Group has reached maximum member capacity');
+        }
       }
 
       // Update the invitation status
@@ -2068,6 +2139,13 @@ export const getGroupByInviteToken = async (req: Request, res: Response) => {
 export const joinGroupByInviteToken = async (req: Request, res: Response) => {
   const { token } = req.params;
   const userId = req.user!.id;
+
+  // Validate invite token and check expiration
+  const validation = await InviteService.validateInviteToken('group', token);
+  
+  if (!validation.valid) {
+    throw new BadRequestError(validation.error || 'Invalid or expired invite link');
+  }
 
   const group = await prisma.group.findFirst({
     where: {
