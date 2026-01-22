@@ -12,8 +12,8 @@ import {
   mockGroupNotifications,
   mockTeamUpNotifications,
   mockTournamentNotifications,
-  mockUnreadNotifications,
-  mockReadNotifications,
+  mockUnreadNotifications as _mockUnreadNotifications,
+  mockReadNotifications as _mockReadNotifications,
 } from '../__mocks__/mockData';
 
 // Mock dependencies
@@ -82,7 +82,7 @@ describe('Notification Service - Extended Tests', () => {
 
   describe('Event Notifications', () => {
     it('should create event notification', async () => {
-      vi.mocked(prisma.eventNotification.create).mockResolvedValueOnce(mockEventNotification as any);
+      vi.mocked(prisma.eventNotification.create).mockResolvedValueOnce(mockEventNotification as unknown);
 
       const result = await prisma.eventNotification.create({
         data: {
@@ -112,7 +112,7 @@ describe('Notification Service - Extended Tests', () => {
     });
 
     it('should find event notifications by user', async () => {
-      vi.mocked(prisma.eventNotification.findMany).mockResolvedValueOnce(mockEventNotifications as any);
+      vi.mocked(prisma.eventNotification.findMany).mockResolvedValueOnce(mockEventNotifications as unknown);
 
       const result = await prisma.eventNotification.findMany({
         where: { userId: 'user-1' },
@@ -125,7 +125,7 @@ describe('Notification Service - Extended Tests', () => {
 
     it('should find unread event notifications', async () => {
       const unreadEvents = mockEventNotifications.filter(n => !n.read);
-      vi.mocked(prisma.eventNotification.findMany).mockResolvedValueOnce(unreadEvents as any);
+      vi.mocked(prisma.eventNotification.findMany).mockResolvedValueOnce(unreadEvents as unknown);
 
       const result = await prisma.eventNotification.findMany({
         where: { userId: 'user-1', read: false },
@@ -136,7 +136,7 @@ describe('Notification Service - Extended Tests', () => {
 
     it('should mark event notification as read', async () => {
       const readNotification = { ...mockEventNotification, read: true };
-      vi.mocked(prisma.eventNotification.update).mockResolvedValueOnce(readNotification as any);
+      vi.mocked(prisma.eventNotification.update).mockResolvedValueOnce(readNotification as unknown);
 
       const result = await prisma.eventNotification.update({
         where: { id: mockEventNotification.id },
@@ -147,7 +147,7 @@ describe('Notification Service - Extended Tests', () => {
     });
 
     it('should delete event notification', async () => {
-      vi.mocked(prisma.eventNotification.delete).mockResolvedValueOnce(mockEventNotification as any);
+      vi.mocked(prisma.eventNotification.delete).mockResolvedValueOnce(mockEventNotification as unknown);
 
       const result = await prisma.eventNotification.delete({
         where: { id: mockEventNotification.id },
@@ -179,7 +179,7 @@ describe('Notification Service - Extended Tests', () => {
 
   describe('Group Notifications', () => {
     it('should create group notification', async () => {
-      vi.mocked(prisma.groupNotification.create).mockResolvedValueOnce(mockGroupNotification as any);
+      vi.mocked(prisma.groupNotification.create).mockResolvedValueOnce(mockGroupNotification as unknown);
 
       const result = await prisma.groupNotification.create({
         data: {
@@ -209,7 +209,7 @@ describe('Notification Service - Extended Tests', () => {
     });
 
     it('should find group notifications by user', async () => {
-      vi.mocked(prisma.groupNotification.findMany).mockResolvedValueOnce(mockGroupNotifications as any);
+      vi.mocked(prisma.groupNotification.findMany).mockResolvedValueOnce(mockGroupNotifications as unknown);
 
       const result = await prisma.groupNotification.findMany({
         where: { userId: 'user-1' },
@@ -221,7 +221,7 @@ describe('Notification Service - Extended Tests', () => {
 
     it('should find unread group notifications', async () => {
       const unreadGroups = mockGroupNotifications.filter(n => !n.read);
-      vi.mocked(prisma.groupNotification.findMany).mockResolvedValueOnce(unreadGroups as any);
+      vi.mocked(prisma.groupNotification.findMany).mockResolvedValueOnce(unreadGroups as unknown);
 
       const result = await prisma.groupNotification.findMany({
         where: { userId: 'user-1', read: false },
@@ -232,7 +232,7 @@ describe('Notification Service - Extended Tests', () => {
 
     it('should mark group notification as read', async () => {
       const readNotification = { ...mockGroupNotification, read: true };
-      vi.mocked(prisma.groupNotification.update).mockResolvedValueOnce(readNotification as any);
+      vi.mocked(prisma.groupNotification.update).mockResolvedValueOnce(readNotification as unknown);
 
       const result = await prisma.groupNotification.update({
         where: { id: mockGroupNotification.id },
@@ -243,7 +243,7 @@ describe('Notification Service - Extended Tests', () => {
     });
 
     it('should delete group notification', async () => {
-      vi.mocked(prisma.groupNotification.delete).mockResolvedValueOnce(mockGroupNotification as any);
+      vi.mocked(prisma.groupNotification.delete).mockResolvedValueOnce(mockGroupNotification as unknown);
 
       const result = await prisma.groupNotification.delete({
         where: { id: mockGroupNotification.id },
@@ -271,7 +271,7 @@ describe('Notification Service - Extended Tests', () => {
       const filtered = mockEventNotifications.filter(
         n => n.createdAt >= startDate && n.createdAt <= endDate
       );
-      vi.mocked(prisma.eventNotification.findMany).mockResolvedValueOnce(filtered as any);
+      vi.mocked(prisma.eventNotification.findMany).mockResolvedValueOnce(filtered as unknown);
 
       const result = await prisma.eventNotification.findMany({
         where: {
@@ -285,7 +285,7 @@ describe('Notification Service - Extended Tests', () => {
 
     it('should filter notifications by type', async () => {
       const filtered = mockEventNotifications.filter(n => n.type === 'event_created');
-      vi.mocked(prisma.eventNotification.findMany).mockResolvedValueOnce(filtered as any);
+      vi.mocked(prisma.eventNotification.findMany).mockResolvedValueOnce(filtered as unknown);
 
       const result = await prisma.eventNotification.findMany({
         where: { userId: 'user-1', type: 'event_created' },
@@ -299,7 +299,7 @@ describe('Notification Service - Extended Tests', () => {
       const sortedNotifications = [...mockEventNotifications].sort(
         (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
       );
-      vi.mocked(prisma.eventNotification.findMany).mockResolvedValueOnce(sortedNotifications as any);
+      vi.mocked(prisma.eventNotification.findMany).mockResolvedValueOnce(sortedNotifications as unknown);
 
       const result = await prisma.eventNotification.findMany({
         where: { userId: 'user-1' },
@@ -314,7 +314,7 @@ describe('Notification Service - Extended Tests', () => {
 
     it('should paginate notifications', async () => {
       const page1 = mockEventNotifications.slice(0, 2);
-      vi.mocked(prisma.eventNotification.findMany).mockResolvedValueOnce(page1 as any);
+      vi.mocked(prisma.eventNotification.findMany).mockResolvedValueOnce(page1 as unknown);
 
       const result = await prisma.eventNotification.findMany({
         where: { userId: 'user-1' },
@@ -327,7 +327,7 @@ describe('Notification Service - Extended Tests', () => {
 
     it('should get next page of notifications', async () => {
       const page2 = mockEventNotifications.slice(2);
-      vi.mocked(prisma.eventNotification.findMany).mockResolvedValueOnce(page2 as any);
+      vi.mocked(prisma.eventNotification.findMany).mockResolvedValueOnce(page2 as unknown);
 
       const result = await prisma.eventNotification.findMany({
         where: { userId: 'user-1' },
@@ -390,10 +390,10 @@ describe('Notification Service - Extended Tests', () => {
 
   describe('Cross-Type Notification Queries', () => {
     it('should fetch all notification types for user', async () => {
-      vi.mocked(prisma.eventNotification.findMany).mockResolvedValueOnce(mockEventNotifications as any);
-      vi.mocked(prisma.groupNotification.findMany).mockResolvedValueOnce(mockGroupNotifications as any);
-      vi.mocked(prisma.teamUpNotification.findMany).mockResolvedValueOnce(mockTeamUpNotifications as any);
-      vi.mocked(prisma.tournamentNotification.findMany).mockResolvedValueOnce(mockTournamentNotifications as any);
+      vi.mocked(prisma.eventNotification.findMany).mockResolvedValueOnce(mockEventNotifications as unknown);
+      vi.mocked(prisma.groupNotification.findMany).mockResolvedValueOnce(mockGroupNotifications as unknown);
+      vi.mocked(prisma.teamUpNotification.findMany).mockResolvedValueOnce(mockTeamUpNotifications as unknown);
+      vi.mocked(prisma.tournamentNotification.findMany).mockResolvedValueOnce(mockTournamentNotifications as unknown);
 
       const eventNotifs = await prisma.eventNotification.findMany({ where: { userId: 'user-1' } });
       const groupNotifs = await prisma.groupNotification.findMany({ where: { userId: 'user-1' } });
@@ -450,7 +450,7 @@ describe('Notification Service - Extended Tests', () => {
   describe('Notification Preferences', () => {
     it('should filter by notification type preference', async () => {
       const inviteNotifs = mockGroupNotifications.filter(n => n.type === 'group_invite');
-      vi.mocked(prisma.groupNotification.findMany).mockResolvedValueOnce(inviteNotifs as any);
+      vi.mocked(prisma.groupNotification.findMany).mockResolvedValueOnce(inviteNotifs as unknown);
 
       const result = await prisma.groupNotification.findMany({
         where: { userId: 'user-1', type: 'group_invite' },
@@ -461,7 +461,7 @@ describe('Notification Service - Extended Tests', () => {
 
     it('should exclude certain notification types', async () => {
       const filtered = mockEventNotifications.filter(n => n.type !== 'event_cancelled');
-      vi.mocked(prisma.eventNotification.findMany).mockResolvedValueOnce(filtered as any);
+      vi.mocked(prisma.eventNotification.findMany).mockResolvedValueOnce(filtered as unknown);
 
       const result = await prisma.eventNotification.findMany({
         where: {

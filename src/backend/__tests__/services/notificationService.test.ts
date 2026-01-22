@@ -47,8 +47,8 @@ import {
   mockEventNotification,
   mockEventNotifications,
   mockGroupNotifications,
-  mockTeamUpNotifications,
-  mockTournamentNotifications,
+  mockTeamUpNotifications as _mockTeamUpNotifications,
+  mockTournamentNotifications as _mockTournamentNotifications,
 } from '../__mocks__/mockData';
 
 const mockPrisma = vi.mocked(prisma);
@@ -61,7 +61,7 @@ describe('NotificationService', () => {
   describe('getUserNotifications', () => {
     it('should get all unread notifications by default', async () => {
       // Use centralized mock data
-      mockPrisma.eventNotification.findMany.mockResolvedValue([mockEventNotification] as any);
+      mockPrisma.eventNotification.findMany.mockResolvedValue([mockEventNotification] as unknown);
       mockPrisma.eventNotification.count.mockResolvedValue(1);
       mockPrisma.groupNotification.findMany.mockResolvedValue([]);
       mockPrisma.groupNotification.count.mockResolvedValue(0);
@@ -165,9 +165,9 @@ describe('NotificationService', () => {
 
     it('should return combined notifications from all types', async () => {
       // Use centralized mock data
-      mockPrisma.eventNotification.findMany.mockResolvedValue([mockEventNotifications[0]] as any);
+      mockPrisma.eventNotification.findMany.mockResolvedValue([mockEventNotifications[0]] as unknown);
       mockPrisma.eventNotification.count.mockResolvedValue(1);
-      mockPrisma.groupNotification.findMany.mockResolvedValue([mockGroupNotifications[0]] as any);
+      mockPrisma.groupNotification.findMany.mockResolvedValue([mockGroupNotifications[0]] as unknown);
       mockPrisma.groupNotification.count.mockResolvedValue(1);
       mockPrisma.teamUpNotification.findMany.mockResolvedValue([]);
       mockPrisma.teamUpNotification.count.mockResolvedValue(0);

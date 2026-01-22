@@ -712,7 +712,7 @@ Non-feature enhancements to improve the codebase.
 - Load testing for scalability
 
 **Libraries:**
-- Jest - Test framework
+- Vitest - Test framework
 - Supertest - HTTP assertions
 - Artillery - Load testing
 

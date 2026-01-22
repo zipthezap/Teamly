@@ -405,7 +405,7 @@ describe('Event Service', () => {
   describe('getParticipant', () => {
     it('should find participant by event and user ID', async () => {
       const mockParticipant = { id: 'participant-1', eventId: 'event-1', userId: 'user-1' };
-      vi.mocked(prisma.eventParticipant.findFirst).mockResolvedValueOnce(mockParticipant as any);
+      vi.mocked(prisma.eventParticipant.findFirst).mockResolvedValueOnce(mockParticipant as unknown);
 
       const result = await getParticipant('event-1', 'user-1');
 
@@ -464,7 +464,7 @@ describe('Event Service', () => {
         participants: [],
         comments: []
       };
-      vi.mocked(prisma.event.findUnique).mockResolvedValueOnce(mockEvent as any);
+      vi.mocked(prisma.event.findUnique).mockResolvedValueOnce(mockEvent as unknown);
 
       const result = await getEventById('event-1');
 
@@ -487,7 +487,7 @@ describe('Event Service', () => {
           { user: { id: 'user-1', name: 'User 1', email: 'user1@test.com', emailNotifications: true } }
         ]
       };
-      vi.mocked(prisma.group.findUnique).mockResolvedValueOnce(mockGroup as any);
+      vi.mocked(prisma.group.findUnique).mockResolvedValueOnce(mockGroup as unknown);
 
       const result = await getGroupWithMembers('group-1');
 
@@ -586,7 +586,7 @@ describe('Event Service', () => {
     it('should create deletion notifications for participants', async () => {
       const { filterUnmutedUsers: mockFilterUnmuted } = await import('../../utils/notificationHelper');
       vi.mocked(mockFilterUnmuted).mockResolvedValueOnce(['user-1', 'user-2']);
-      vi.mocked(prisma.eventNotification.create).mockResolvedValue({} as any);
+      vi.mocked(prisma.eventNotification.create).mockResolvedValue({} as unknown);
 
       await createEventDeletionNotifications(
         'event-1',

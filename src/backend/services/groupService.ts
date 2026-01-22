@@ -2,11 +2,50 @@ import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import { sanitizeString } from '../utils/validation';
 import { CacheService } from './cacheService';
+import { Prisma } from '@prisma/client';
+import { BadRequestError } from '../utils/errors';
 
 /**
  * Cache TTL for group details (5 minutes)
  */
 const GROUP_DETAILS_CACHE_TTL = 300;
+
+/**
+ * Checks if group has reached maximum capacity and validates user membership
+ * Throws BadRequestError if validation fails
+ * @param groupId - The group ID
+ * @param userId - The user ID to check
+ * @param maxMembers - Maximum members allowed (null means unlimited)
+ * @param tx - Optional transaction client
+ */
+export const checkGroupCapacityAndMembership = async (
+  groupId: string,
+  userId: string,
+  maxMembers: number | null,
+  tx?: Prisma.TransactionClient
+) => {
+  const client = tx || prisma;
+
+  // Check if user is already a member (race condition protection)
+  const existingMembership = await client.groupMember.findFirst({
+    where: { groupId, userId }
+  });
+
+  if (existingMembership) {
+    throw new BadRequestError('User is already a member of this group');
+  }
+
+  // Check max members limit
+  if (maxMembers) {
+    const currentMemberCount = await client.groupMember.count({
+      where: { groupId }
+    });
+
+    if (currentMemberCount >= maxMembers) {
+      throw new BadRequestError('Group has reached maximum member capacity');
+    }
+  }
+};
 
 /**
  * Checks if user is admin of a group

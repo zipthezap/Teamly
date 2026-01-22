@@ -1,9 +1,8 @@
 
 import prisma from '../config/database';
-import { sendEmailWithQueue } from '../services/emailQueueService';
-import { shouldSendEmailNotification, filterUnmutedUsers } from '../utils/notificationHelper';
+import { filterUnmutedUsers } from '../utils/notificationHelper';
 import { logger } from '../utils/logger';
-import { escapeHtml, isValidEmail, parseCoordinates, parseFloatStrict } from '../utils/validation';
+import { isValidEmail, parseCoordinates, parseFloatStrict } from '../utils/validation';
 import { hasLocation } from '../utils/typeGuards';
 import { Request, Response } from 'express';
 import path from 'path';
@@ -22,6 +21,9 @@ import { GroupNotificationType } from '../../shared/types/event.types';
 import { CacheService } from '../services/cacheService';
 import { Permission } from '../../shared/types/permissions.types';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors';
+import { createInviteToken } from '../utils/inviteToken';
+import { NotificationFactory } from '../services/notificationFactory';
+import { InviteService } from '../services/inviteService';
 
 // Time constants for event queries
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -523,7 +525,7 @@ export const updateGroup = async (req: Request, res: Response) => {
 
 export const inviteMember = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { email } = req.body;
+  const { email, customMessage, expiresInDays } = req.body;
 
   if (!email) {
     throw new BadRequestError('Email is required');
@@ -534,32 +536,11 @@ export const inviteMember = async (req: Request, res: Response) => {
     throw new BadRequestError('Invalid email format');
   }
 
-  // Get group and user's membership in a single query
-  const [group, membership] = await Promise.all([
-    prisma.group.findUnique({
-      where: { id }
-    }),
-    prisma.groupMember.findFirst({
-      where: {
-        groupId: id,
-        userId: req.user!.id
-      }
-    })
-  ]);
-
-  if (!group) {
-    throw new NotFoundError('Group not found');
-  }
-
-  if (!membership) {
-    throw new ForbiddenError('You must be a member to invite others');
-  }
-
-  // Check if user has permission to invite members
-  const isAdminOrModerator = membership.role === 'admin' || membership.role === 'moderator';
+  // Check if user has permission to invite
+  const canInvite = await InviteService.canUserInvite(req.user!.id, id, 'group');
   
-  if (!isAdminOrModerator && !group.allowMemberInvites) {
-    throw new ForbiddenError('Only admins and moderators can invite members');
+  if (!canInvite.allowed) {
+    throw new ForbiddenError(canInvite.reason || 'You do not have permission to invite members');
   }
 
   // Find user to invite
@@ -571,106 +552,111 @@ export const inviteMember = async (req: Request, res: Response) => {
     throw new NotFoundError('User not found');
   }
 
-  // Check if user is already a member
-  const existingMembership = await prisma.groupMember.findFirst({
-    where: {
-      groupId: id,
-      userId: userToInvite.id
-    }
-  });
-
-  if (existingMembership) {
-    throw new BadRequestError('User is already a member');
+  // Prevent inviting yourself
+  if (userToInvite.id === req.user!.id) {
+    throw new BadRequestError('You cannot invite yourself');
   }
 
-  // Check if user already has a pending invitation
-  const existingInvitation = await prisma.groupJoinRequest.findFirst({
-    where: {
-      groupId: id,
-      userId: userToInvite.id,
-      status: 'pending',
-      createdBy: 'invite'
-    }
+  // Use the InviteService to handle the invitation with optional custom message and expiration
+  const result = await InviteService.inviteUserToGroup(id, userToInvite.id, req.user!.id, {
+    customMessage,
+    expiresInDays
   });
 
-  if (existingInvitation) {
-    throw new BadRequestError('User already has a pending invitation');
-  }
-
-  // Create a pending join request for the invitation
-  const invitation = await prisma.groupJoinRequest.create({
-    data: {
-      groupId: id,
-      userId: userToInvite.id,
-      status: 'pending',
-      createdBy: 'invite'
-    },
-    include: {
-      user: {
-        select: { id: true, name: true, email: true }
-      }
-    }
-  });
-
-  // Send email notification
-  const inviterUser = await prisma.user.findUnique({
-    where: { id: req.user!.id }
-  });
-
-  const shouldSend = await shouldSendEmailNotification(userToInvite.id, 'groupInvites');
-
-  if (shouldSend && inviterUser) {
-    const htmlContent = `
-      <h2>You've Been Invited to Join a Group!</h2>
-      <p>Hi ${escapeHtml(userToInvite.name)},</p>
-      <p>${escapeHtml(inviterUser.name)} has invited you to join the group:</p>
-      <h3>${escapeHtml(group.name)}</h3>
-      <p>${escapeHtml(group.description || '')}</p>
-      <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/groups/${id}">View Invitation</a></p>
-      <p>You can accept or decline this invitation from the app.</p>
-    `;
-    
-    await sendEmailWithQueue(
-      userToInvite.email,
-      `Group Invitation: ${group.name}`,
-      htmlContent,
-      {
-        templateType: 'group_invitation',
-        templateData: {
-          recipientName: userToInvite.name,
-          groupName: group.name,
-          groupDescription: group.description,
-          inviterName: inviterUser.name
-        }
-      }
-    );
-  }
-
-  // Create in-app notification for the invited user
-  if (inviterUser) {
-    // Check if user has muted group invite notifications
-    const unmutedUsers = await filterUnmutedUsers([userToInvite.id], 'muteGroupInvites');
-    
-    if (unmutedUsers.length > 0) {
-      await prisma.groupNotification.create({
-        data: {
-          groupId: id,
-          userId: userToInvite.id,
-          type: 'invited',
-          params: {
-            groupName: group.name,
-            name: inviterUser.name
-          }
-        }
-      }).catch((error: Error) => {
-        logger.error('Failed to send invitation notification', 'GroupController', { error });
-      });
-    }
+  if (!result.success) {
+    throw new BadRequestError(result.error || 'Failed to send invitation');
   }
 
   res.status(201).json({
-    message: 'Invitation sent successfully',
-    invitation
+    message: 'Invitation sent successfully'
+  });
+};
+
+/**
+ * Revoke a pending invitation
+ */
+export const revokeInvitation = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { email } = req.body;
+
+  if (!email) {
+    throw new BadRequestError('Email is required');
+  }
+
+  // Check if user has permission to revoke invites
+  const hasPermission = await permissionService.hasGroupPermission(
+    req.user!.id, 
+    id, 
+    Permission.GROUP_REVOKE_INVITES
+  );
+
+  if (!hasPermission) {
+    throw new ForbiddenError('You do not have permission to revoke invitations');
+  }
+
+  const result = await InviteService.revokeInvitation('group', id, email, req.user!.id);
+
+  if (!result.success) {
+    throw new BadRequestError(result.error || 'Failed to revoke invitation');
+  }
+
+  res.json({
+    message: 'Invitation revoked successfully'
+  });
+};
+
+/**
+ * Get invite analytics for a group
+ */
+export const getInviteAnalytics = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  // Check if user has permission to view analytics
+  const hasPermission = await permissionService.hasGroupPermission(
+    req.user!.id, 
+    id, 
+    Permission.GROUP_VIEW_INVITE_ANALYTICS
+  );
+
+  if (!hasPermission) {
+    throw new ForbiddenError('You do not have permission to view invite analytics');
+  }
+
+  const analytics = await InviteService.getInviteAnalytics('group', id);
+
+  res.json({
+    analytics
+  });
+};
+
+/**
+ * Generate a new invite token for the group
+ */
+export const generateInviteToken = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { expiresInDays = 30 } = req.body;
+
+  // Check if user has permission to manage invites
+  const hasPermission = await permissionService.hasGroupPermission(
+    req.user!.id, 
+    id, 
+    Permission.GROUP_INVITE_MEMBERS
+  );
+
+  if (!hasPermission) {
+    throw new ForbiddenError('You do not have permission to generate invite tokens');
+  }
+
+  const result = await InviteService.generateInviteToken('group', id, expiresInDays);
+
+  if (!result.success) {
+    throw new BadRequestError(result.error || 'Failed to generate invite token');
+  }
+
+  res.json({
+    message: 'Invite token generated successfully',
+    token: result.token,
+    expiresAt: result.expiresAt
   });
 };
 
@@ -724,7 +710,7 @@ export const removeMember = async (req: Request, res: Response) => {
         groupId: id,
         userId: memberToRemove.userId,
         status: 'pending',
-        createdBy: 'invite'
+        createdBy: 'INVITE'
       }
     });
   });
@@ -808,7 +794,7 @@ export const removeMemberByUserId = async (req: Request, res: Response) => {
         groupId: id,
         userId: memberToRemove.userId,
         status: 'pending',
-        createdBy: 'invite'
+        createdBy: 'INVITE'
       }
     });
   });
@@ -995,6 +981,9 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
   if (group.autoApproveJoinRequests) {
     // Use transaction to ensure atomicity
     const result = await prisma.$transaction(async (tx: typeof prisma) => {
+      // Check capacity and existing membership atomically
+      await groupService.checkGroupCapacityAndMembership(id, req.user!.id, group.maxMembers, tx);
+
       // Create approved join request for record keeping
       const joinRequest = await tx.groupJoinRequest.create({
         data: {
@@ -1163,29 +1152,44 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
 
   // If approved, add the user as a member
   if (action === 'approve') {
-    await prisma.groupMember.create({
-      data: {
-        groupId: id,
-        userId: joinRequest.userId,
-        role: 'member'
-      }
-    });
+    let groupName: string | undefined;
+    
+    // Use transaction to check capacity and add member atomically
+    await prisma.$transaction(async (tx) => {
+      // Get group to check max members and get name for notification
+      const group = await tx.group.findUnique({
+        where: { id },
+        select: { maxMembers: true, name: true }
+      });
 
-    // Get group name for notification
-    const groupInfo = await prisma.group.findUnique({
-      where: { id },
-      select: { name: true }
+      if (!group) {
+        throw new NotFoundError('Group not found');
+      }
+
+      groupName = group.name;
+
+      // Check capacity and existing membership atomically
+      await groupService.checkGroupCapacityAndMembership(id, joinRequest.userId, group.maxMembers, tx);
+
+      // Add the user as a member
+      await tx.groupMember.create({
+        data: {
+          groupId: id,
+          userId: joinRequest.userId,
+          role: 'member'
+        }
+      });
     });
 
     // Create notification for the user who was accepted
-    if (groupInfo) {
+    if (groupName) {
       await prisma.groupNotification.create({
         data: {
           groupId: id,
           userId: joinRequest.userId,
           type: 'accepted',
           params: {
-            groupName: groupInfo.name,
+            groupName,
             name: req.user!.name
           }
         }
@@ -1242,13 +1246,33 @@ export const respondToInvitation = async (req: Request, res: Response) => {
   }
 
   // Only invitations (not user-initiated requests) can be responded to by users
-  if (invitation.createdBy !== 'invite') {
+  if (invitation.createdBy !== 'INVITE') {
     throw new BadRequestError('This is not an invitation. Join requests must be handled by group admins.');
+  }
+
+  // Check if invitation has expired
+  if (invitation.expiresAt && invitation.expiresAt < new Date()) {
+    // Automatically mark as rejected
+    await prisma.groupJoinRequest.update({
+      where: { id: requestId },
+      data: { status: 'rejected' }
+    });
+    throw new BadRequestError('This invitation has expired');
   }
 
   // If accepting, use a transaction to ensure atomicity
   if (action === 'accept') {
     const result = await prisma.$transaction(async (tx) => {
+      // Get group to check max members
+      const group = await tx.group.findUnique({
+        where: { id },
+        select: { maxMembers: true }
+      });
+
+      if (!group) {
+        throw new NotFoundError('Group not found');
+      }
+
       // Check if user is already a member (race condition protection)
       const existingMembership = await tx.groupMember.findFirst({
         where: {
@@ -1259,6 +1283,17 @@ export const respondToInvitation = async (req: Request, res: Response) => {
 
       if (existingMembership) {
         throw new BadRequestError('You are already a member of this group');
+      }
+
+      // Check max members limit
+      if (group.maxMembers) {
+        const currentMemberCount = await tx.groupMember.count({
+          where: { groupId: id }
+        });
+
+        if (currentMemberCount >= group.maxMembers) {
+          throw new BadRequestError('Group has reached maximum member capacity');
+        }
       }
 
       // Update the invitation status
@@ -1322,7 +1357,7 @@ export const getUserInvitations = async (req: Request, res: Response) => {
     where: {
       userId,
       status: 'pending',
-      createdBy: 'invite'
+      createdBy: 'INVITE'
     },
     include: {
       group: {
@@ -1522,7 +1557,7 @@ export const leaveGroup = async (req: Request, res: Response) => {
         groupId: id,
         userId: userId,
         status: 'pending',
-        createdBy: 'invite'
+        createdBy: 'INVITE'
       }
     });
 
@@ -1595,8 +1630,23 @@ export const getInviteLink = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only admins and moderators can copy the invite link');
   }
 
-  // Return the group ID which can be used to construct the invite link on the frontend
-  res.json({ groupId: id });
+  // Generate invite token if not already present
+  let inviteToken = group.inviteToken;
+  
+  if (!inviteToken) {
+    inviteToken = createInviteToken();
+    await prisma.group.update({
+      where: { id },
+      data: { inviteToken }
+    });
+  }
+
+  // Return the invite token and constructed URL
+  res.json({ 
+    inviteToken,
+    inviteUrl: `/groups/join/${inviteToken}`,
+    groupId: id 
+  });
 };
 
 /**
@@ -1982,4 +2032,262 @@ export const deleteGroup = async (req: Request, res: Response) => {
   });
 
   res.json({ message: 'Group deleted successfully' });
+};
+
+/**
+ * Generate or regenerate invite token for a group
+ * Similar to event invite token generation
+ */
+export const generateGroupInviteToken = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  // Get group and check permissions
+  const group = await prisma.group.findUnique({
+    where: { id }
+  });
+
+  if (!group) {
+    throw new NotFoundError('Group not found');
+  }
+
+  // Check if user has permission to generate invite links
+  const canInvite = await InviteService.canUserInvite(req.user!.id, id, 'group');
+  
+  if (!canInvite.allowed) {
+    throw new ForbiddenError(canInvite.reason || 'Only admins and moderators can generate invite links');
+  }
+
+  // Generate new token
+  const inviteToken = createInviteToken();
+
+  const updatedGroup = await prisma.group.update({
+    where: { id },
+    data: { inviteToken }
+  });
+
+  logger.info('Group invite token generated', 'GroupController', {
+    groupId: id,
+    userId: req.user!.id
+  });
+
+  res.json({ 
+    inviteToken: updatedGroup.inviteToken,
+    inviteUrl: `/groups/join/${updatedGroup.inviteToken}`
+  });
+};
+
+/**
+ * Get group by invite token (public endpoint)
+ */
+export const getGroupByInviteToken = async (req: Request, res: Response) => {
+  const { token } = req.params;
+
+  const group = await prisma.group.findFirst({
+    where: {
+      inviteToken: token
+    },
+    include: {
+      creator: {
+        select: { id: true, name: true, profilePicture: true }
+      },
+      _count: {
+        select: { members: true, events: true }
+      }
+    }
+  });
+
+  if (!group) {
+    throw new NotFoundError('Group not found or invite link is invalid');
+  }
+
+  // Return sanitized group info (without sensitive data)
+  res.json({
+    id: group.id,
+    name: group.name,
+    description: group.description,
+    sportType: group.sportType,
+    isPublic: group.isPublic,
+    maxMembers: group.maxMembers,
+    memberCount: group._count.members,
+    eventCount: group._count.events,
+    picture: group.picture,
+    creator: group.creator,
+    tags: group.tags
+  });
+};
+
+/**
+ * Join group via invite token (authenticated endpoint)
+ */
+export const joinGroupByInviteToken = async (req: Request, res: Response) => {
+  const { token } = req.params;
+  const userId = req.user!.id;
+
+  // Validate invite token and check expiration
+  const validation = await InviteService.validateInviteToken('group', token);
+  
+  if (!validation.valid) {
+    throw new BadRequestError(validation.error || 'Invalid or expired invite link');
+  }
+
+  const group = await prisma.group.findFirst({
+    where: {
+      inviteToken: token
+    }
+  });
+
+  if (!group) {
+    throw new NotFoundError('Group not found or invite link is invalid');
+  }
+
+  // Check if user is already a member
+  const existingMembership = await prisma.groupMember.findFirst({
+    where: {
+      groupId: group.id,
+      userId
+    }
+  });
+
+  if (existingMembership) {
+    throw new BadRequestError('You are already a member of this group');
+  }
+
+  // Check max members limit
+  if (group.maxMembers) {
+    const currentMemberCount = await prisma.groupMember.count({
+      where: { groupId: group.id }
+    });
+
+    if (currentMemberCount >= group.maxMembers) {
+      throw new BadRequestError('Group has reached maximum member capacity');
+    }
+  }
+
+  // Check if there's already a pending join request
+  const existingRequest = await prisma.groupJoinRequest.findFirst({
+    where: {
+      groupId: group.id,
+      userId,
+      status: 'pending'
+    }
+  });
+
+  if (existingRequest) {
+    throw new BadRequestError('You already have a pending join request for this group');
+  }
+
+  // Create join request with LINK source
+  const joinRequest = await prisma.groupJoinRequest.create({
+    data: {
+      groupId: group.id,
+      userId,
+      status: 'pending',
+      createdBy: 'LINK'
+    }
+  });
+
+  // Auto-approve if the group setting allows it
+  if (group.autoApproveJoinRequests) {
+    await prisma.$transaction(async (tx) => {
+      // Check capacity and existing membership atomically
+      await groupService.checkGroupCapacityAndMembership(group.id, userId, group.maxMembers, tx);
+
+      // Update join request to approved
+      await tx.groupJoinRequest.update({
+        where: { id: joinRequest.id },
+        data: { status: 'approved' }
+      });
+
+      // Create membership
+      await tx.groupMember.create({
+        data: {
+          groupId: group.id,
+          userId,
+          role: 'member'
+        }
+      });
+    });
+
+    // Notify group admins about new member
+    const admins = await prisma.groupMember.findMany({
+      where: {
+        groupId: group.id,
+        role: { in: ['admin', 'moderator'] }
+      },
+      select: { userId: true }
+    });
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true }
+    });
+
+    if (admins.length > 0 && user) {
+      await NotificationFactory.createGroupNotifications({
+        groupId: group.id,
+        type: 'accepted',
+        userIds: admins.map(a => a.userId),
+        params: {
+          groupName: group.name,
+          name: user.name
+        },
+        checkMutePreference: true
+      });
+    }
+
+    logger.info('User joined group via invite link (auto-approved)', 'GroupController', {
+      groupId: group.id,
+      userId
+    });
+
+    res.status(200).json({
+      message: 'Successfully joined the group',
+      autoApproved: true,
+      groupId: group.id
+    });
+  } else {
+    // Notify admins about join request
+    const admins = await prisma.groupMember.findMany({
+      where: {
+        groupId: group.id,
+        role: { in: ['admin', 'moderator'] }
+      },
+      select: { userId: true }
+    });
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true }
+    });
+
+    if (admins.length > 0 && user) {
+      await NotificationFactory.createGroupNotifications({
+        groupId: group.id,
+        type: 'join_request',
+        userIds: admins.map(a => a.userId),
+        params: {
+          groupName: group.name,
+          name: user.name
+        },
+        checkMutePreference: true
+      });
+    }
+
+    logger.info('User requested to join group via invite link', 'GroupController', {
+      groupId: group.id,
+      userId
+    });
+
+    res.status(201).json({
+      message: 'Join request sent successfully. Waiting for approval.',
+      autoApproved: false,
+      groupId: group.id
+    });
+  }
+
+  // Invalidate caches
+  await Promise.allSettled([
+    CacheService.deletePattern(`group:${group.id}:*`),
+    CacheService.deletePattern(`user:${userId}:groups:*`)
+  ]);
 };

@@ -36,6 +36,19 @@ export enum GuestParticipantStatus {
   confirmed = 'confirmed',
   declined = 'declined',
 }
+
+export enum EventRequestStatus {
+  voting = 'voting',
+  finalized = 'finalized',
+  cancelled = 'cancelled',
+  expired = 'expired',
+}
+
+export enum EventAttendanceStatus {
+  on_time = 'on_time',
+  late = 'late',
+}
+
 /**
  * Event-related TypeScript interfaces based on Prisma schema
  */

@@ -58,6 +58,25 @@ enum GuestParticipantStatus {
   confirmed
   declined
 }
+
+enum GroupJoinRequestSource {
+  USER      // User-initiated join request
+  INVITE    // Admin/moderator invitation
+  LINK      // Joined via invite link
+}
+
+enum GroupJoinRequestStatus {
+  pending
+  approved
+  rejected
+}
+
+enum GroupMemberRole {
+  member
+  moderator
+  admin
+}
+
 model GroupMessage {
   id        String   @id @default(uuid())
   content   String
@@ -81,16 +100,22 @@ model EventReminder {
   @@index([sent]) // For efficient querying of sent reminders
 }
 
+enum EventAttendanceStatus {
+  on_time
+  late
+}
+
 model EventAttendance {
   id        String   @id @default(uuid())
   eventId   String
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  status    String   @default("on-time") // on-time, late
+  status    EventAttendanceStatus   @default(on_time)
   updatedAt DateTime @updatedAt
   
   @@unique([eventId, userId])
+  @@index([status]) // For filtering by attendance status
 }
 
 model EventNotification {
@@ -167,6 +192,35 @@ model TournamentNotification {
   @@index([userId, read]) // Composite for unread user notifications
   @@index([createdAt]) // For chronological sorting
 }
+
+// Invite audit log for tracking all invitation activity
+model InviteLog {
+  id          String   @id @default(uuid())
+  inviterType String   // "group" or "event"
+  entityId    String   // groupId or eventId
+  inviterId   String   // User who sent the invite
+  inviter     User     @relation("InviteLogInviter", fields: [inviterId], references: [id])
+  inviteeEmail String  // Email of invited user
+  inviteeId   String?  // User ID if registered
+  invitee     User?    @relation("InviteLogInvitee", fields: [inviteeId], references: [id])
+  status      String   // "sent", "accepted", "declined", "expired", "revoked"
+  sentAt      DateTime @default(now())
+  respondedAt DateTime?
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  revokedBy   String?
+  revoker     User?    @relation("InviteLogRevoker", fields: [revokedBy], references: [id])
+  message     String?  // Optional custom message with the invite
+  metadata    Json?    // Additional data
+  
+  @@index([inviterType, entityId]) // For finding all invites for a group/event
+  @@index([inviterId]) // For finding all invites sent by a user
+  @@index([inviteeEmail]) // For finding invites by email
+  @@index([status]) // For filtering by status
+  @@index([sentAt]) // For chronological queries
+  @@index([expiresAt]) // For cleanup of expired invites
+}
+
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -239,6 +293,10 @@ model User {
   teamUpNotifications TeamUpNotification[]
   tournamentNotifications TournamentNotification[]
   groupJoinRequests GroupJoinRequest[]
+  invitedGroupJoinRequests GroupJoinRequest[] @relation("GroupInviter")
+  sentInvites       InviteLog[]      @relation("InviteLogInviter")
+  receivedInvites   InviteLog[]      @relation("InviteLogInvitee")
+  revokedInvites    InviteLog[]      @relation("InviteLogRevoker")
   createdEventRequests EventRequest[]   @relation("EventRequestCreator")
   eventVotes        EventVote[]
   emailPreferences  EmailPreference?
@@ -288,6 +346,10 @@ model Group {
   tags        String?    // Comma-separated tags/interests (e.g., "competitive,weekend-warriors,beginners-welcome")
   allowMemberInvites Boolean @default(false) // Allow non-admin members to invite others to the group
   allowMemberCopyLink Boolean @default(true) // Allow non-admin members to copy the group invite link
+  
+  // Invite token for shareable group links (similar to events)
+  inviteToken String? @unique // Unique token for invite links
+  inviteTokenExpiresAt DateTime? // Optional expiration for invite tokens
 
   creatorId String
   creator   User   @relation("GroupCreator", fields: [creatorId], references: [id])
@@ -307,14 +369,21 @@ model GroupJoinRequest {
   group     Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
   userId    String
   user      User    @relation(fields: [userId], references: [id])
-  status    String  @default("pending") // pending, approved, rejected
+  status    GroupJoinRequestStatus  @default(pending)
   createdAt DateTime @default(now())
-  createdBy String   @default("user") // 'user' or 'invite'
+  createdBy GroupJoinRequestSource @default(USER) // Source of the join request
+  expiresAt DateTime? // Optional expiration for invites
+  invitedBy String?   // ID of user who sent the invite
+  inviter   User?     @relation("GroupInviter", fields: [invitedBy], references: [id])
+  
+  @@index([status]) // For filtering by status
+  @@index([userId, status]) // For user's pending requests
+  @@index([expiresAt]) // For cleaning up expired invites
 }
 
 model GroupMember {
   id        String   @id @default(uuid())
-  role      String   @default("member") // member, moderator, admin
+  role      GroupMemberRole   @default(member)
   joinedAt  DateTime @default(now())
 
   userId  String
@@ -376,6 +445,7 @@ model Event {
   // Public/Private event and invite features
   isPublic    Boolean  @default(false) // Public events can be joined by anyone with the link
   inviteToken String?  @unique // Unique token for shareable invite links
+  inviteTokenExpiresAt DateTime? // Optional expiration for event invite tokens
 
   // Recurring event fields
   isRecurring     Boolean   @default(false)
@@ -434,6 +504,13 @@ model EventParticipant {
   @@index([joinedAt]) // For joined date queries
 }
 
+enum EventRequestStatus {
+  voting
+  finalized
+  cancelled
+  expired
+}
+
 model EventRequest {
   id          String   @id @default(uuid())
   title       String
@@ -444,7 +521,7 @@ model EventRequest {
   endTime     DateTime?
   maxPlayers  Int?
   createdAt   DateTime @default(now())
-  status      String   @default("voting") // voting, finalized, cancelled, expired
+  status      EventRequestStatus   @default(voting)
   voteDeadline DateTime? // When voting closes
   voteThreshold Float?   @default(0.5) // % of votes needed (0.5 = 50%)
   
@@ -582,6 +659,13 @@ model UserSession {
   @@index([expiresAt])
 }
 
+enum EmailQueueStatus {
+  pending
+  sent
+  failed
+  retry
+}
+
 // Email notification queue for reliable delivery
 model EmailQueue {
   id          String   @id @default(uuid())
@@ -591,7 +675,7 @@ model EmailQueue {
   textContent String?
   templateType String? // eventInvitation, eventUpdate, etc.
   templateData Json?   // Data for template rendering
-  status      String   @default("pending") // pending, sent, failed, retry
+  status      EmailQueueStatus   @default(pending)
   attempts    Int      @default(0)
   maxAttempts Int      @default(3)
   lastError   String?
@@ -602,6 +686,19 @@ model EmailQueue {
   @@index([status])
   @@index([scheduledAt])
   @@index([recipient])
+}
+
+enum TeamUpRequestStatus {
+  open
+  filled
+  cancelled
+  expired
+}
+
+enum TeamUpResponseStatus {
+  pending
+  accepted
+  declined
 }
 
 // TeamUp functionality for finding substitute/replacement players
@@ -621,7 +718,7 @@ model TeamUpRequest {
   skillLevel  String?  // beginner, intermediate, advanced, any
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  status      String   @default("open") // open, filled, cancelled, expired
+  status      TeamUpRequestStatus   @default(open)
   expiresAt   DateTime? // Auto-expire after a certain time
   
   creatorId   String
@@ -646,7 +743,7 @@ model TeamUpRequest {
 model TeamUpResponse {
   id        String   @id @default(uuid())
   message   String?  // Optional message from the responder
-  status    String   @default("pending") // pending, accepted, declined
+  status    TeamUpResponseStatus   @default(pending)
   createdAt DateTime @default(now())
   
   teamUpRequestId String

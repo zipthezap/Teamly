@@ -81,7 +81,7 @@ describe('Group Service', () => {
 
   describe('checkGroupAdmin', () => {
     it('should return true if user is group admin', async () => {
-      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce({ id: 'member-1', role: 'admin' } as any);
+      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce({ id: 'member-1', role: 'admin' } as unknown);
 
       const result = await checkGroupAdmin('group-1', 'user-1');
 
@@ -106,7 +106,7 @@ describe('Group Service', () => {
 
   describe('checkGroupMember', () => {
     it('should return true if user is group member', async () => {
-      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce({ id: 'member-1', role: 'member' } as any);
+      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce({ id: 'member-1', role: 'member' } as unknown);
 
       const result = await checkGroupMember('group-1', 'user-1');
 
@@ -130,7 +130,7 @@ describe('Group Service', () => {
 
   describe('checkGroupAdminOrModerator', () => {
     it('should return true if user is admin', async () => {
-      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce({ id: 'member-1', role: 'admin' } as any);
+      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce({ id: 'member-1', role: 'admin' } as unknown);
 
       const result = await checkGroupAdminOrModerator('group-1', 'user-1');
 
@@ -145,7 +145,7 @@ describe('Group Service', () => {
     });
 
     it('should return true if user is moderator', async () => {
-      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce({ id: 'member-1', role: 'moderator' } as any);
+      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce({ id: 'member-1', role: 'moderator' } as unknown);
 
       const result = await checkGroupAdminOrModerator('group-1', 'user-1');
 
@@ -170,7 +170,7 @@ describe('Group Service', () => {
         members: [],
         events: []
       };
-      vi.mocked(prisma.group.findUnique).mockResolvedValueOnce(mockGroup as any);
+      vi.mocked(prisma.group.findUnique).mockResolvedValueOnce(mockGroup as unknown);
 
       const result = await getGroupById('group-1');
 
@@ -190,7 +190,7 @@ describe('Group Service', () => {
         members: [],
         events: []
       };
-      vi.mocked(prisma.group.findUnique).mockResolvedValueOnce(mockGroup as any);
+      vi.mocked(prisma.group.findUnique).mockResolvedValueOnce(mockGroup as unknown);
 
       await getGroupById('group-1');
 
@@ -342,7 +342,7 @@ describe('Group Service', () => {
 
   describe('createJoinRequestNotification', () => {
     it('should create notifications for all admins', async () => {
-      vi.mocked(prisma.groupNotification.create).mockResolvedValue({} as any);
+      vi.mocked(prisma.groupNotification.create).mockResolvedValue({} as unknown);
 
       await createJoinRequestNotification(
         'group-1',
@@ -379,7 +379,7 @@ describe('Group Service', () => {
 
   describe('createInvitationNotification', () => {
     it('should create invitation notification', async () => {
-      vi.mocked(prisma.groupNotification.create).mockResolvedValue({} as any);
+      vi.mocked(prisma.groupNotification.create).mockResolvedValue({} as unknown);
 
       await createInvitationNotification(
         'group-1',
@@ -402,8 +402,8 @@ describe('Group Service', () => {
 
   describe('createMemberAddedNotification', () => {
     it('should create notifications for all existing members', async () => {
-      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({ id: 'user-1', name: 'New Member' } as any);
-      vi.mocked(prisma.groupNotification.create).mockResolvedValue({} as any);
+      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({ id: 'user-1', name: 'New Member' } as unknown);
+      vi.mocked(prisma.groupNotification.create).mockResolvedValue({} as unknown);
 
       await createMemberAddedNotification(
         'group-1',
@@ -439,7 +439,7 @@ describe('Group Service', () => {
         { user: { id: 'admin-1', name: 'Admin 1', email: 'admin1@test.com' } },
         { user: { id: 'admin-2', name: 'Admin 2', email: 'admin2@test.com' } }
       ];
-      vi.mocked(prisma.groupMember.findMany).mockResolvedValueOnce(mockAdmins as any);
+      vi.mocked(prisma.groupMember.findMany).mockResolvedValueOnce(mockAdmins as unknown);
 
       const result = await getGroupAdmins('group-1');
 
@@ -465,7 +465,7 @@ describe('Group Service', () => {
         { user: { id: 'user-2', name: 'User 2', email: 'user2@test.com' } },
         { user: { id: 'user-3', name: 'User 3', email: 'user3@test.com' } }
       ];
-      vi.mocked(prisma.groupMember.findMany).mockResolvedValueOnce(mockMembers as any);
+      vi.mocked(prisma.groupMember.findMany).mockResolvedValueOnce(mockMembers as unknown);
 
       const result = await getGroupMembersExcludingUser('group-1', 'user-1');
 
@@ -583,7 +583,7 @@ describe('Group Service', () => {
   describe('getGroupMember', () => {
     it('should return group member if found', async () => {
       const mockMember = { id: 'member-1', groupId: 'group-1', userId: 'user-1', role: 'member' };
-      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce(mockMember as any);
+      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce(mockMember as unknown);
 
       const result = await getGroupMember('group-1', 'user-1');
 
@@ -685,8 +685,8 @@ describe('Group Service', () => {
   describe('sanitizeGroupData - additional edge cases', () => {
     it('should handle null values', () => {
       const result = sanitizeGroupData({
-        name: null as any,
-        description: null as any
+        name: null as unknown,
+        description: null as unknown
       });
 
       expect(result.name).toBeUndefined();

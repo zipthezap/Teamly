@@ -7,7 +7,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import prisma from '../../config/database';
 import {
   mockGroup,
-  mockGroupWithMembers,
+  mockGroupWithMembers as _mockGroupWithMembers,
   mockGroupMembers,
   mockGroupAdmins,
   mockJoinRequest,
@@ -62,7 +62,7 @@ describe('Group Service - Extended Tests', () => {
 
   describe('Group Creation', () => {
     it('should create group with all required fields', async () => {
-      vi.mocked(prisma.group.create).mockResolvedValueOnce(mockGroup as any);
+      vi.mocked(prisma.group.create).mockResolvedValueOnce(mockGroup as unknown);
 
       const result = await prisma.group.create({
         data: {
@@ -85,7 +85,7 @@ describe('Group Service - Extended Tests', () => {
     });
 
     it('should create group with location', async () => {
-      vi.mocked(prisma.group.create).mockResolvedValueOnce(mockGroup as any);
+      vi.mocked(prisma.group.create).mockResolvedValueOnce(mockGroup as unknown);
 
       const result = await prisma.group.create({
         data: {
@@ -105,7 +105,7 @@ describe('Group Service - Extended Tests', () => {
     });
 
     it('should create public group', async () => {
-      vi.mocked(prisma.group.create).mockResolvedValueOnce(mockGroup as any);
+      vi.mocked(prisma.group.create).mockResolvedValueOnce(mockGroup as unknown);
 
       const result = await prisma.group.create({
         data: {
@@ -118,7 +118,7 @@ describe('Group Service - Extended Tests', () => {
     });
 
     it('should create private group', async () => {
-      vi.mocked(prisma.group.create).mockResolvedValueOnce(mockPrivateGroup as any);
+      vi.mocked(prisma.group.create).mockResolvedValueOnce(mockPrivateGroup as unknown);
 
       const result = await prisma.group.create({
         data: {
@@ -131,7 +131,7 @@ describe('Group Service - Extended Tests', () => {
     });
 
     it('should create group with max members limit', async () => {
-      vi.mocked(prisma.group.create).mockResolvedValueOnce(mockGroup as any);
+      vi.mocked(prisma.group.create).mockResolvedValueOnce(mockGroup as unknown);
 
       const result = await prisma.group.create({
         data: {
@@ -144,7 +144,7 @@ describe('Group Service - Extended Tests', () => {
     });
 
     it('should create group with tags', async () => {
-      vi.mocked(prisma.group.create).mockResolvedValueOnce(mockGroup as any);
+      vi.mocked(prisma.group.create).mockResolvedValueOnce(mockGroup as unknown);
 
       const result = await prisma.group.create({
         data: {
@@ -160,7 +160,7 @@ describe('Group Service - Extended Tests', () => {
   describe('Group Updates', () => {
     it('should update group name', async () => {
       const updatedGroup = { ...mockGroup, name: 'Updated Group Name' };
-      vi.mocked(prisma.group.update).mockResolvedValueOnce(updatedGroup as any);
+      vi.mocked(prisma.group.update).mockResolvedValueOnce(updatedGroup as unknown);
 
       const result = await prisma.group.update({
         where: { id: mockGroup.id },
@@ -172,7 +172,7 @@ describe('Group Service - Extended Tests', () => {
 
     it('should update group description', async () => {
       const updatedGroup = { ...mockGroup, description: 'New description' };
-      vi.mocked(prisma.group.update).mockResolvedValueOnce(updatedGroup as any);
+      vi.mocked(prisma.group.update).mockResolvedValueOnce(updatedGroup as unknown);
 
       const result = await prisma.group.update({
         where: { id: mockGroup.id },
@@ -184,7 +184,7 @@ describe('Group Service - Extended Tests', () => {
 
     it('should update group privacy setting', async () => {
       const updatedGroup = { ...mockGroup, isPublic: false };
-      vi.mocked(prisma.group.update).mockResolvedValueOnce(updatedGroup as any);
+      vi.mocked(prisma.group.update).mockResolvedValueOnce(updatedGroup as unknown);
 
       const result = await prisma.group.update({
         where: { id: mockGroup.id },
@@ -196,7 +196,7 @@ describe('Group Service - Extended Tests', () => {
 
     it('should update group location', async () => {
       const updatedGroup = { ...mockGroup, city: 'Boston', country: 'USA' };
-      vi.mocked(prisma.group.update).mockResolvedValueOnce(updatedGroup as any);
+      vi.mocked(prisma.group.update).mockResolvedValueOnce(updatedGroup as unknown);
 
       const result = await prisma.group.update({
         where: { id: mockGroup.id },
@@ -208,7 +208,7 @@ describe('Group Service - Extended Tests', () => {
 
     it('should update max members', async () => {
       const updatedGroup = { ...mockGroup, maxMembers: 150 };
-      vi.mocked(prisma.group.update).mockResolvedValueOnce(updatedGroup as any);
+      vi.mocked(prisma.group.update).mockResolvedValueOnce(updatedGroup as unknown);
 
       const result = await prisma.group.update({
         where: { id: mockGroup.id },
@@ -222,7 +222,7 @@ describe('Group Service - Extended Tests', () => {
   describe('Group Member Management', () => {
     it('should add member to group', async () => {
       const member = mockGroupMembers[0];
-      vi.mocked(prisma.groupMember.create).mockResolvedValueOnce(member as any);
+      vi.mocked(prisma.groupMember.create).mockResolvedValueOnce(member as unknown);
 
       const result = await prisma.groupMember.create({
         data: {
@@ -236,7 +236,7 @@ describe('Group Service - Extended Tests', () => {
     });
 
     it('should list all group members', async () => {
-      vi.mocked(prisma.groupMember.findMany).mockResolvedValueOnce(mockGroupMembers as any);
+      vi.mocked(prisma.groupMember.findMany).mockResolvedValueOnce(mockGroupMembers as unknown);
 
       const result = await prisma.groupMember.findMany({
         where: { groupId: 'group-1' },
@@ -257,7 +257,7 @@ describe('Group Service - Extended Tests', () => {
     });
 
     it('should find group admins', async () => {
-      vi.mocked(prisma.groupMember.findMany).mockResolvedValueOnce(mockGroupAdmins as any);
+      vi.mocked(prisma.groupMember.findMany).mockResolvedValueOnce(mockGroupAdmins as unknown);
 
       const result = await prisma.groupMember.findMany({
         where: { groupId: 'group-1', role: 'admin' },
@@ -269,7 +269,7 @@ describe('Group Service - Extended Tests', () => {
 
     it('should update member role', async () => {
       const updatedMember = { ...mockGroupMembers[1], role: 'moderator' };
-      vi.mocked(prisma.groupMember.update).mockResolvedValueOnce(updatedMember as any);
+      vi.mocked(prisma.groupMember.update).mockResolvedValueOnce(updatedMember as unknown);
 
       const result = await prisma.groupMember.update({
         where: { id: 'member-2' },
@@ -280,7 +280,7 @@ describe('Group Service - Extended Tests', () => {
     });
 
     it('should remove member from group', async () => {
-      vi.mocked(prisma.groupMember.delete).mockResolvedValueOnce(mockGroupMembers[0] as any);
+      vi.mocked(prisma.groupMember.delete).mockResolvedValueOnce(mockGroupMembers[0] as unknown);
 
       const result = await prisma.groupMember.delete({
         where: { id: 'member-1' },
@@ -290,7 +290,7 @@ describe('Group Service - Extended Tests', () => {
     });
 
     it('should check if user is group member', async () => {
-      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce(mockGroupMembers[0] as any);
+      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce(mockGroupMembers[0] as unknown);
 
       const result = await prisma.groupMember.findFirst({
         where: { groupId: 'group-1', userId: 'user-1' },
@@ -313,7 +313,7 @@ describe('Group Service - Extended Tests', () => {
 
   describe('Group Permissions', () => {
     it('should verify admin permissions', async () => {
-      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce(mockGroupAdmins[0] as any);
+      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce(mockGroupAdmins[0] as unknown);
 
       const result = await prisma.groupMember.findFirst({
         where: { groupId: 'group-1', userId: 'user-1', role: 'admin' },
@@ -325,7 +325,7 @@ describe('Group Service - Extended Tests', () => {
 
     it('should verify moderator permissions', async () => {
       const moderator = mockGroupMembers[2];
-      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce(moderator as any);
+      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce(moderator as unknown);
 
       const result = await prisma.groupMember.findFirst({
         where: { groupId: 'group-1', userId: 'user-3', role: 'moderator' },
@@ -336,7 +336,7 @@ describe('Group Service - Extended Tests', () => {
     });
 
     it('should check admin or moderator role', async () => {
-      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce(mockGroupAdmins[0] as any);
+      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce(mockGroupAdmins[0] as unknown);
 
       const result = await prisma.groupMember.findFirst({
         where: {
@@ -353,7 +353,7 @@ describe('Group Service - Extended Tests', () => {
 
   describe('Join Requests', () => {
     it('should create join request', async () => {
-      vi.mocked(prisma.joinRequest.create).mockResolvedValueOnce(mockJoinRequest as any);
+      vi.mocked(prisma.joinRequest.create).mockResolvedValueOnce(mockJoinRequest as unknown);
 
       const result = await prisma.joinRequest.create({
         data: {
@@ -368,7 +368,7 @@ describe('Group Service - Extended Tests', () => {
     });
 
     it('should list pending join requests', async () => {
-      vi.mocked(prisma.joinRequest.findMany).mockResolvedValueOnce([mockJoinRequest] as any);
+      vi.mocked(prisma.joinRequest.findMany).mockResolvedValueOnce([mockJoinRequest] as unknown);
 
       const result = await prisma.joinRequest.findMany({
         where: { groupId: 'group-1', status: 'pending' },
@@ -380,7 +380,7 @@ describe('Group Service - Extended Tests', () => {
 
     it('should approve join request', async () => {
       const approvedRequest = { ...mockJoinRequest, status: 'approved' };
-      vi.mocked(prisma.joinRequest.update).mockResolvedValueOnce(approvedRequest as any);
+      vi.mocked(prisma.joinRequest.update).mockResolvedValueOnce(approvedRequest as unknown);
 
       const result = await prisma.joinRequest.update({
         where: { id: 'request-1' },
@@ -392,7 +392,7 @@ describe('Group Service - Extended Tests', () => {
 
     it('should reject join request', async () => {
       const rejectedRequest = { ...mockJoinRequest, status: 'rejected' };
-      vi.mocked(prisma.joinRequest.update).mockResolvedValueOnce(rejectedRequest as any);
+      vi.mocked(prisma.joinRequest.update).mockResolvedValueOnce(rejectedRequest as unknown);
 
       const result = await prisma.joinRequest.update({
         where: { id: 'request-1' },
@@ -405,7 +405,7 @@ describe('Group Service - Extended Tests', () => {
 
   describe('Group Invitations', () => {
     it('should create group invitation', async () => {
-      vi.mocked(prisma.groupInvitation.create).mockResolvedValueOnce(mockGroupInvitation as any);
+      vi.mocked(prisma.groupInvitation.create).mockResolvedValueOnce(mockGroupInvitation as unknown);
 
       const result = await prisma.groupInvitation.create({
         data: {
@@ -420,7 +420,7 @@ describe('Group Service - Extended Tests', () => {
     });
 
     it('should list pending invitations', async () => {
-      vi.mocked(prisma.groupInvitation.findMany).mockResolvedValueOnce([mockGroupInvitation] as any);
+      vi.mocked(prisma.groupInvitation.findMany).mockResolvedValueOnce([mockGroupInvitation] as unknown);
 
       const result = await prisma.groupInvitation.findMany({
         where: { groupId: 'group-1', status: 'pending' },
@@ -432,7 +432,7 @@ describe('Group Service - Extended Tests', () => {
 
     it('should accept invitation', async () => {
       const acceptedInvitation = { ...mockGroupInvitation, status: 'accepted' };
-      vi.mocked(prisma.groupInvitation.update).mockResolvedValueOnce(acceptedInvitation as any);
+      vi.mocked(prisma.groupInvitation.update).mockResolvedValueOnce(acceptedInvitation as unknown);
 
       const result = await prisma.groupInvitation.update({
         where: { id: 'invitation-1' },
@@ -444,7 +444,7 @@ describe('Group Service - Extended Tests', () => {
 
     it('should decline invitation', async () => {
       const declinedInvitation = { ...mockGroupInvitation, status: 'declined' };
-      vi.mocked(prisma.groupInvitation.update).mockResolvedValueOnce(declinedInvitation as any);
+      vi.mocked(prisma.groupInvitation.update).mockResolvedValueOnce(declinedInvitation as unknown);
 
       const result = await prisma.groupInvitation.update({
         where: { id: 'invitation-1' },
@@ -457,7 +457,7 @@ describe('Group Service - Extended Tests', () => {
 
   describe('Group Queries', () => {
     it('should find group by ID', async () => {
-      vi.mocked(prisma.group.findUnique).mockResolvedValueOnce(mockGroup as any);
+      vi.mocked(prisma.group.findUnique).mockResolvedValueOnce(mockGroup as unknown);
 
       const result = await prisma.group.findUnique({
         where: { id: mockGroup.id },
@@ -467,7 +467,7 @@ describe('Group Service - Extended Tests', () => {
     });
 
     it('should find groups by city', async () => {
-      vi.mocked(prisma.group.findMany).mockResolvedValueOnce([mockGroup] as any);
+      vi.mocked(prisma.group.findMany).mockResolvedValueOnce([mockGroup] as unknown);
 
       const result = await prisma.group.findMany({
         where: { city: 'New York' },
@@ -477,7 +477,7 @@ describe('Group Service - Extended Tests', () => {
     });
 
     it('should find public groups', async () => {
-      vi.mocked(prisma.group.findMany).mockResolvedValueOnce([mockGroup] as any);
+      vi.mocked(prisma.group.findMany).mockResolvedValueOnce([mockGroup] as unknown);
 
       const result = await prisma.group.findMany({
         where: { isPublic: true },
@@ -487,7 +487,7 @@ describe('Group Service - Extended Tests', () => {
     });
 
     it('should search groups by name', async () => {
-      vi.mocked(prisma.group.findMany).mockResolvedValueOnce([mockGroup] as any);
+      vi.mocked(prisma.group.findMany).mockResolvedValueOnce([mockGroup] as unknown);
 
       const result = await prisma.group.findMany({
         where: {
@@ -499,7 +499,7 @@ describe('Group Service - Extended Tests', () => {
     });
 
     it('should find groups by creator', async () => {
-      vi.mocked(prisma.group.findMany).mockResolvedValueOnce([mockGroup] as any);
+      vi.mocked(prisma.group.findMany).mockResolvedValueOnce([mockGroup] as unknown);
 
       const result = await prisma.group.findMany({
         where: { creatorId: 'user-1' },
@@ -511,7 +511,7 @@ describe('Group Service - Extended Tests', () => {
 
   describe('Group Deletion', () => {
     it('should delete group', async () => {
-      vi.mocked(prisma.group.delete).mockResolvedValueOnce(mockGroup as any);
+      vi.mocked(prisma.group.delete).mockResolvedValueOnce(mockGroup as unknown);
 
       const result = await prisma.group.delete({
         where: { id: mockGroup.id },

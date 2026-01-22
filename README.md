@@ -99,9 +99,32 @@ The application is split into two main components:
 
 > **💡 Windows Users:** For detailed Windows-specific setup instructions, see [docs/guides/WINDOWS_SETUP.md](docs/guides/WINDOWS_SETUP.md)
 
-## Quick Start with Docker (Recommended)
+## ☁️ Cloud Deployment (Azure)
 
-The easiest way to run Teamly is using Docker Compose:
+**Want to deploy this app and make it accessible to your friends 24/7?**
+
+We've made it easy to deploy Teamly to Microsoft Azure:
+
+```bash
+# Quick deployment using our automated script
+chmod +x scripts/deployment/deploy-azure.sh
+./scripts/deployment/deploy-azure.sh
+```
+
+**Benefits of Azure deployment:**
+- ✅ 24/7 availability (no need to keep your PC on)
+- ✅ Professional hosting with 99.95% uptime
+- ✅ Automated CI/CD with GitHub Actions
+- ✅ Estimated cost: ~$30-40/month (Basic tier)
+- ✅ Free tier available for testing
+
+📚 **Complete Azure deployment guide**: [docs/AZURE_DEPLOYMENT.md](docs/AZURE_DEPLOYMENT.md)
+
+---
+
+## Quick Start with Docker (Recommended for Local Development)
+
+The easiest way to run Teamly locally is using Docker Compose:
 
 ```bash
 # Clone the repository
@@ -382,7 +405,7 @@ For backend improvements details, see [docs/BACKEND_IMPROVEMENTS.md](docs/BACKEN
 
 ### Testing
 
-This project uses Jest for testing both backend and frontend code:
+This project uses Vitest for testing both backend and frontend code:
 
 ```bash
 # Run backend tests
@@ -492,7 +515,8 @@ The test scripts will:
 ### Core Documentation
 
 - **[docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)** - Detailed API reference
-- **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Production deployment guides
+- **[docs/AZURE_DEPLOYMENT.md](docs/AZURE_DEPLOYMENT.md)** - ☁️ **Azure cloud deployment guide (NEW!)**
+- **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** - General deployment guides and options
 - **[docs/QUICK_START.md](docs/QUICK_START.md)** - Quick setup instructions
 - **[docs/SECURITY.md](docs/SECURITY.md)** - Security features and best practices
 

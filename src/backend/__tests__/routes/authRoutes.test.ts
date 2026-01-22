@@ -5,6 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import request from 'supertest';
+import express, { Request, Response, NextFunction } from 'express';
 import { mockUser } from '../helpers/testApp';
 
 // Mock dependencies at the top level
@@ -50,42 +51,42 @@ vi.mock('../../utils/logger', () => ({
 }));
 
 vi.mock('../../middleware/distributedRateLimiter', () => ({
-  distributedAuthLimiter: (_req: any, _res: any, next: any) => next(),
-  distributedUploadLimiter: (_req: any, _res: any, next: any) => next(),
-  distributedPasswordResetLimiter: (_req: any, _res: any, next: any) => next(),
-  distributedEmailVerificationLimiter: (_req: any, _res: any, next: any) => next(),
-  distributedApiLimiter: (_req: any, _res: any, next: any) => next()
+  distributedAuthLimiter: (_req: Request, _res: Response, next: NextFunction) => next(),
+  distributedUploadLimiter: (_req: Request, _res: Response, next: NextFunction) => next(),
+  distributedPasswordResetLimiter: (_req: Request, _res: Response, next: NextFunction) => next(),
+  distributedEmailVerificationLimiter: (_req: Request, _res: Response, next: NextFunction) => next(),
+  distributedApiLimiter: (_req: Request, _res: Response, next: NextFunction) => next()
 }));
 
 vi.mock('../../config/passport', () => ({
   default: {
-    authenticate: vi.fn(() => (_req: any, _res: any, next: any) => next())
+    authenticate: vi.fn(() => (_req: Request, _res: Response, next: NextFunction) => next())
   }
 }));
 
 vi.mock('../../middleware/asyncHandler', () => ({
-  asyncHandler: (fn: any) => fn
+  asyncHandler: (fn: unknown) => fn
 }));
 
 vi.mock('../../middleware/cacheControl', () => ({
-  noCache: (_req: any, _res: any, next: any) => next(),
-  cacheControl: () => (_req: any, _res: any, next: any) => next()
+  noCache: (_req: Request, _res: Response, next: NextFunction) => next(),
+  cacheControl: () => (_req: Request, _res: Response, next: NextFunction) => next()
 }));
 
 vi.mock('../../middleware/etag', () => ({
-  etagMiddleware: () => (_req: any, _res: any, next: any) => next()
+  etagMiddleware: () => (_req: Request, _res: Response, next: NextFunction) => next()
 }));
 
 vi.mock('../../middleware/upload', () => ({
-  uploadProfilePicture: (_req: any, _res: any, next: any) => next()
+  uploadProfilePicture: (_req: Request, _res: Response, next: NextFunction) => next()
 }));
 
 vi.mock('../../middleware/auth', () => ({
-  default: (req: any, _res: any, next: any) => {
+  default: (req: Request, _res: Response, next: NextFunction) => {
     req.user = { id: 'test-user-id' };
     next();
   },
-  optionalAuthMiddleware: (req: any, _res: any, next: any) => {
+  optionalAuthMiddleware: (req: Request, _res: Response, next: NextFunction) => {
     req.user = { id: 'test-user-id' };
     next();
   }
@@ -106,7 +107,7 @@ import { createTestApp } from '../helpers/testApp';
 const mockPrisma = vi.mocked(prisma);
 
 describe.skip('Auth Routes Integration Tests', () => {
-  let app: any;
+  let app: express.Application;
 
   beforeEach(() => {
     vi.clearAllMocks();

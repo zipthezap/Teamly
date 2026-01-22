@@ -1,5 +1,5 @@
 /**
- * Jest Setup File
+ * Vitest Setup File
  * Configure environment and global mocks for tests
  */
 
