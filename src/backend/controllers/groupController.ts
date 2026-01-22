@@ -525,7 +525,7 @@ export const updateGroup = async (req: Request, res: Response) => {
 
 export const inviteMember = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { email } = req.body;
+  const { email, customMessage, expiresInDays } = req.body;
 
   if (!email) {
     throw new BadRequestError('Email is required');
@@ -552,8 +552,11 @@ export const inviteMember = async (req: Request, res: Response) => {
     throw new NotFoundError('User not found');
   }
 
-  // Use the InviteService to handle the invitation
-  const result = await InviteService.inviteUserToGroup(id, userToInvite.id, req.user!.id);
+  // Use the InviteService to handle the invitation with optional custom message and expiration
+  const result = await InviteService.inviteUserToGroup(id, userToInvite.id, req.user!.id, {
+    customMessage,
+    expiresInDays
+  });
 
   if (!result.success) {
     throw new BadRequestError(result.error || 'Failed to send invitation');
@@ -561,6 +564,94 @@ export const inviteMember = async (req: Request, res: Response) => {
 
   res.status(201).json({
     message: 'Invitation sent successfully'
+  });
+};
+
+/**
+ * Revoke a pending invitation
+ */
+export const revokeInvitation = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { email } = req.body;
+
+  if (!email) {
+    throw new BadRequestError('Email is required');
+  }
+
+  // Check if user has permission to revoke invites
+  const hasPermission = await permissionService.hasGroupPermission(
+    req.user!.id, 
+    id, 
+    Permission.GROUP_REVOKE_INVITES
+  );
+
+  if (!hasPermission) {
+    throw new ForbiddenError('You do not have permission to revoke invitations');
+  }
+
+  const result = await InviteService.revokeInvitation('group', id, email, req.user!.id);
+
+  if (!result.success) {
+    throw new BadRequestError(result.error || 'Failed to revoke invitation');
+  }
+
+  res.json({
+    message: 'Invitation revoked successfully'
+  });
+};
+
+/**
+ * Get invite analytics for a group
+ */
+export const getInviteAnalytics = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  // Check if user has permission to view analytics
+  const hasPermission = await permissionService.hasGroupPermission(
+    req.user!.id, 
+    id, 
+    Permission.GROUP_VIEW_INVITE_ANALYTICS
+  );
+
+  if (!hasPermission) {
+    throw new ForbiddenError('You do not have permission to view invite analytics');
+  }
+
+  const analytics = await InviteService.getInviteAnalytics('group', id);
+
+  res.json({
+    analytics
+  });
+};
+
+/**
+ * Generate a new invite token for the group
+ */
+export const generateInviteToken = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { expiresInDays = 30 } = req.body;
+
+  // Check if user has permission to manage invites
+  const hasPermission = await permissionService.hasGroupPermission(
+    req.user!.id, 
+    id, 
+    Permission.GROUP_INVITE_MEMBERS
+  );
+
+  if (!hasPermission) {
+    throw new ForbiddenError('You do not have permission to generate invite tokens');
+  }
+
+  const result = await InviteService.generateInviteToken('group', id, expiresInDays);
+
+  if (!result.success) {
+    throw new BadRequestError(result.error || 'Failed to generate invite token');
+  }
+
+  res.json({
+    message: 'Invite token generated successfully',
+    token: result.token,
+    expiresAt: result.expiresAt
   });
 };
 

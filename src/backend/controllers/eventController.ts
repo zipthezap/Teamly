@@ -28,6 +28,9 @@ import { isRequired, parseCoordinates, parseFloatStrict } from '../utils/validat
 import { isPrismaUniqueError, hasGroupId } from '../utils/typeGuards';
 import { ensureResourceExists } from '../utils/controllerHelpers';
 import { CacheService } from '../services/cacheService';
+import { InviteService, calculateExpirationDate } from '../services/inviteService';
+import { permissionService } from '../services/permissionService';
+import { Permission } from '../../shared/types/permissions.types';
 import { NotificationFactory } from '../services/notificationFactory';
 
 // ==================== EVENT CRUD OPERATIONS ====================
@@ -2001,5 +2004,189 @@ export const getGuestParticipants = async (req: Request, res: Response) => {
     guestParticipants,
     summary,
     filter: status || 'all'
+  });
+};
+
+/**
+ * Invite a user to an event
+ */
+export const inviteToEvent = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { email, customMessage, expiresInDays } = req.body;
+
+  if (!email) {
+    throw new BadRequestError('Email is required');
+  }
+
+  // Check if user has permission to invite
+  const canInvite = await InviteService.canUserInvite(req.user!.id, id, 'event');
+  
+  if (!canInvite.allowed) {
+    throw new ForbiddenError(canInvite.reason || 'You do not have permission to invite members to this event');
+  }
+
+  // Find user to invite
+  const userToInvite = await prisma.user.findUnique({
+    where: { email }
+  });
+
+  if (!userToInvite) {
+    throw new NotFoundError('User not found');
+  }
+
+  // Check if user is already a participant
+  const existingParticipant = await prisma.eventParticipant.findUnique({
+    where: {
+      eventId_userId: {
+        eventId: id,
+        userId: userToInvite.id
+      }
+    }
+  });
+
+  if (existingParticipant) {
+    throw new BadRequestError('User is already a participant');
+  }
+
+  // Get event and inviter details
+  const [event, inviter] = await Promise.all([
+    prisma.event.findUnique({ where: { id } }),
+    prisma.user.findUnique({ where: { id: req.user!.id } })
+  ]);
+
+  if (!event || !inviter) {
+    throw new NotFoundError('Event or inviter not found');
+  }
+
+  // Calculate expiration
+  const expiresAt = expiresInDays 
+    ? calculateExpirationDate(expiresInDays)
+    : undefined;
+
+  // Create event participant with pending status
+  await prisma.eventParticipant.create({
+    data: {
+      eventId: id,
+      userId: userToInvite.id,
+      status: 'pending'
+    }
+  });
+
+  // Create invite log
+  await InviteService.createInviteLog({
+    inviterType: 'event',
+    entityId: id,
+    inviterId: req.user!.id,
+    inviteeEmail: userToInvite.email,
+    inviteeId: userToInvite.id,
+    status: 'sent',
+    message: customMessage,
+    expiresAt
+  });
+
+  // Send invitation email
+  await InviteService.sendInvitationEmail({
+    recipientName: userToInvite.name,
+    recipientEmail: userToInvite.email,
+    inviterName: inviter.name,
+    resourceId: id,
+    resourceName: event.title,
+    resourceDescription: event.description || undefined,
+    resourceType: 'event',
+    actionUrl: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/events/${id}`,
+    customMessage,
+    expiresAt
+  });
+
+  res.status(201).json({
+    message: 'Invitation sent successfully'
+  });
+};
+
+/**
+ * Revoke an event invitation
+ */
+export const revokeEventInvitation = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { email } = req.body;
+
+  if (!email) {
+    throw new BadRequestError('Email is required');
+  }
+
+  // Check if user has permission to revoke invites
+  const hasPermission = await permissionService.hasEventPermission(
+    req.user!.id, 
+    id, 
+    Permission.EVENT_REVOKE_INVITES
+  );
+
+  if (!hasPermission) {
+    throw new ForbiddenError('You do not have permission to revoke event invitations');
+  }
+
+  const result = await InviteService.revokeInvitation('event', id, email, req.user!.id);
+
+  if (!result.success) {
+    throw new BadRequestError(result.error || 'Failed to revoke invitation');
+  }
+
+  res.json({
+    message: 'Invitation revoked successfully'
+  });
+};
+
+/**
+ * Get invite analytics for an event
+ */
+export const getEventInviteAnalytics = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  // Check if user has permission to view analytics
+  const hasPermission = await permissionService.hasEventPermission(
+    req.user!.id, 
+    id, 
+    Permission.EVENT_VIEW_INVITE_ANALYTICS
+  );
+
+  if (!hasPermission) {
+    throw new ForbiddenError('You do not have permission to view event invite analytics');
+  }
+
+  const analytics = await InviteService.getInviteAnalytics('event', id);
+
+  res.json({
+    analytics
+  });
+};
+
+/**
+ * Generate a new invite token for the event
+ */
+export const generateEventInviteToken = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { expiresInDays = 30 } = req.body;
+
+  // Check if user has permission to manage invites
+  const hasPermission = await permissionService.hasEventPermission(
+    req.user!.id, 
+    id, 
+    Permission.EVENT_INVITE_MEMBERS
+  );
+
+  if (!hasPermission) {
+    throw new ForbiddenError('You do not have permission to generate invite tokens');
+  }
+
+  const result = await InviteService.generateInviteToken('event', id, expiresInDays);
+
+  if (!result.success) {
+    throw new BadRequestError(result.error || 'Failed to generate invite token');
+  }
+
+  res.json({
+    message: 'Invite token generated successfully',
+    token: result.token,
+    expiresAt: result.expiresAt
   });
 };

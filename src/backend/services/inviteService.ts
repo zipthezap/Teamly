@@ -12,6 +12,17 @@ import { NotificationFactory } from './notificationFactory';
 import { escapeHtml, isValidEmail } from '../utils/validation';
 import { Prisma } from '@prisma/client';
 
+/**
+ * Calculate expiration date from days
+ * @param days Number of days from now
+ * @returns Date object for expiration
+ */
+export function calculateExpirationDate(days: number): Date {
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + days);
+  return expiresAt;
+}
+
 export interface InviteEmailData {
   recipientName: string;
   recipientEmail: string;
@@ -21,6 +32,8 @@ export interface InviteEmailData {
   resourceDescription?: string;
   resourceType: 'event' | 'group';
   actionUrl: string;
+  customMessage?: string; // Optional custom message
+  expiresAt?: Date; // Optional expiration date
 }
 
 export interface BatchInviteResult {
@@ -28,6 +41,17 @@ export interface BatchInviteResult {
   successful: number;
   failed: number;
   errors: Array<{ email: string; error: string }>;
+}
+
+export interface InviteLogEntry {
+  inviterType: 'group' | 'event';
+  entityId: string;
+  inviterId: string;
+  inviteeEmail: string;
+  inviteeId?: string;
+  status: 'sent' | 'accepted' | 'declined' | 'expired' | 'revoked';
+  message?: string;
+  expiresAt?: Date;
 }
 
 export class InviteService {
@@ -42,8 +66,18 @@ export class InviteService {
       resourceName,
       resourceDescription,
       resourceType,
-      actionUrl
+      actionUrl,
+      customMessage,
+      expiresAt
     } = data;
+
+    const expirationNotice = expiresAt 
+      ? `<p><strong>Note:</strong> This invitation expires on ${expiresAt.toLocaleDateString()}</p>` 
+      : '';
+
+    const customMessageHtml = customMessage
+      ? `<p><em>${escapeHtml(customMessage)}</em></p>`
+      : '';
 
     const htmlContent = `
       <h2>You've Been Invited!</h2>
@@ -51,6 +85,8 @@ export class InviteService {
       <p>${escapeHtml(inviterName)} has invited you to join ${resourceType === 'event' ? 'an event' : 'a group'}:</p>
       <h3>${escapeHtml(resourceName)}</h3>
       ${resourceDescription ? `<p>${escapeHtml(resourceDescription)}</p>` : ''}
+      ${customMessageHtml}
+      ${expirationNotice}
       <p><a href="${actionUrl}" style="display: inline-block; padding: 12px 24px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px; margin: 16px 0;">View ${resourceType === 'event' ? 'Event' : 'Group'}</a></p>
       <p>You can accept or decline this invitation from the app.</p>
     `;
@@ -91,6 +127,8 @@ export class InviteService {
     options: {
       skipEmailCheck?: boolean;
       tx?: Prisma.TransactionClient;
+      customMessage?: string;
+      expiresInDays?: number;
     } = {}
   ): Promise<{ success: boolean; error?: string }> {
     const client = options.tx || prisma;
@@ -138,14 +176,33 @@ export class InviteService {
         return { success: false, error: 'User already has a pending invitation' };
       }
 
+      // Calculate expiration if specified
+      const expiresAt = options.expiresInDays 
+        ? calculateExpirationDate(options.expiresInDays)
+        : undefined;
+
       // Create the invitation
       await client.groupJoinRequest.create({
         data: {
           groupId,
           userId: userToInviteId,
           status: 'pending',
-          createdBy: 'INVITE'
+          createdBy: 'INVITE',
+          invitedBy: inviterId,
+          expiresAt
         }
+      });
+
+      // Create invite log
+      await this.createInviteLog({
+        inviterType: 'group',
+        entityId: groupId,
+        inviterId,
+        inviteeEmail: userToInvite.email,
+        inviteeId: userToInviteId,
+        status: 'sent',
+        message: options.customMessage,
+        expiresAt
       });
 
       // Send email notification if not skipped
@@ -160,7 +217,9 @@ export class InviteService {
             resourceName: group.name,
             resourceDescription: group.description || undefined,
             resourceType: 'group',
-            actionUrl: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/groups/${groupId}`
+            actionUrl: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/groups/${groupId}`,
+            customMessage: options.customMessage,
+            expiresAt
           });
         }
       }
@@ -293,7 +352,7 @@ export class InviteService {
         return { allowed: true };
       }
 
-      // Group admins can invite if event is linked to a group
+      // Group admins and moderators can invite if event is linked to a group
       if (event.group && event.group.members.length > 0) {
         const membership = event.group.members[0];
         if (membership.role === 'admin' || membership.role === 'moderator') {
@@ -392,5 +451,339 @@ export class InviteService {
       events: eventInvitations,
       total: groupInvitations.length + eventInvitations.length
     };
+  }
+
+  /**
+   * Create invite log entry for auditing
+   */
+  static async createInviteLog(data: InviteLogEntry): Promise<void> {
+    try {
+      await prisma.inviteLog.create({
+        data: {
+          inviterType: data.inviterType,
+          entityId: data.entityId,
+          inviterId: data.inviterId,
+          inviteeEmail: data.inviteeEmail,
+          inviteeId: data.inviteeId,
+          status: data.status,
+          message: data.message,
+          expiresAt: data.expiresAt
+        }
+      });
+    } catch (error) {
+      logger.error('Failed to create invite log', 'InviteService', { error, data });
+    }
+  }
+
+  /**
+   * Revoke a pending invitation
+   */
+  static async revokeInvitation(
+    resourceType: 'group' | 'event',
+    resourceId: string,
+    inviteeEmail: string,
+    revokerId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      if (resourceType === 'group') {
+        // Find the user by email
+        const user = await prisma.user.findUnique({
+          where: { email: inviteeEmail }
+        });
+
+        if (!user) {
+          return { success: false, error: 'User not found' };
+        }
+
+        // Find and delete the pending invitation
+        const deletedRequest = await prisma.groupJoinRequest.deleteMany({
+          where: {
+            groupId: resourceId,
+            userId: user.id,
+            status: 'pending',
+            createdBy: 'INVITE'
+          }
+        });
+
+        if (deletedRequest.count === 0) {
+          return { success: false, error: 'No pending invitation found' };
+        }
+
+        // Update invite log
+        await prisma.inviteLog.updateMany({
+          where: {
+            inviterType: 'group',
+            entityId: resourceId,
+            inviteeEmail: inviteeEmail,
+            status: 'sent'
+          },
+          data: {
+            status: 'revoked',
+            revokedAt: new Date(),
+            revokedBy: revokerId
+          }
+        });
+
+        return { success: true };
+      } else {
+        // Event invitation revocation
+        const user = await prisma.user.findUnique({
+          where: { email: inviteeEmail }
+        });
+
+        if (!user) {
+          return { success: false, error: 'User not found' };
+        }
+
+        const deletedParticipant = await prisma.eventParticipant.deleteMany({
+          where: {
+            eventId: resourceId,
+            userId: user.id,
+            status: 'pending'
+          }
+        });
+
+        if (deletedParticipant.count === 0) {
+          return { success: false, error: 'No pending invitation found' };
+        }
+
+        // Update invite log
+        await prisma.inviteLog.updateMany({
+          where: {
+            inviterType: 'event',
+            entityId: resourceId,
+            inviteeEmail: inviteeEmail,
+            status: 'sent'
+          },
+          data: {
+            status: 'revoked',
+            revokedAt: new Date(),
+            revokedBy: revokerId
+          }
+        });
+
+        return { success: true };
+      }
+    } catch (error) {
+      logger.error('Failed to revoke invitation', 'InviteService', {
+        error,
+        resourceType,
+        resourceId,
+        inviteeEmail
+      });
+      return { success: false, error: 'Failed to revoke invitation' };
+    }
+  }
+
+  /**
+   * Check and expire old invitations
+   */
+  static async expireOldInvitations(): Promise<number> {
+    try {
+      const now = new Date();
+      
+      // Expire group join requests
+      const expiredGroupRequests = await prisma.groupJoinRequest.updateMany({
+        where: {
+          status: 'pending',
+          expiresAt: {
+            lte: now
+          }
+        },
+        data: {
+          status: 'rejected' // Mark as rejected when expired
+        }
+      });
+
+      // Update invite logs
+      await prisma.inviteLog.updateMany({
+        where: {
+          status: 'sent',
+          expiresAt: {
+            lte: now
+          }
+        },
+        data: {
+          status: 'expired'
+        }
+      });
+
+      logger.info('Expired old invitations', 'InviteService', {
+        count: expiredGroupRequests.count
+      });
+
+      return expiredGroupRequests.count;
+    } catch (error) {
+      logger.error('Failed to expire invitations', 'InviteService', { error });
+      return 0;
+    }
+  }
+
+  /**
+   * Get invite analytics for a resource
+   */
+  static async getInviteAnalytics(
+    resourceType: 'group' | 'event',
+    resourceId: string
+  ): Promise<{
+    total: number;
+    sent: number;
+    accepted: number;
+    declined: number;
+    expired: number;
+    revoked: number;
+    pending: number;
+  }> {
+    try {
+      const logs = await prisma.inviteLog.findMany({
+        where: {
+          inviterType: resourceType,
+          entityId: resourceId
+        },
+        select: {
+          status: true
+        }
+      });
+
+      const stats = {
+        total: logs.length,
+        sent: 0,
+        accepted: 0,
+        declined: 0,
+        expired: 0,
+        revoked: 0,
+        pending: 0
+      };
+
+      logs.forEach(log => {
+        if (log.status === 'sent') stats.sent++;
+        else if (log.status === 'accepted') stats.accepted++;
+        else if (log.status === 'declined') stats.declined++;
+        else if (log.status === 'expired') stats.expired++;
+        else if (log.status === 'revoked') stats.revoked++;
+      });
+
+      // Pending = sent status invitations (those not yet responded to)
+      // Note: This is a simplified calculation. In practice, some 'sent' may have expired.
+      // For accurate pending count, consider also checking expiresAt dates.
+      stats.pending = stats.sent;
+
+      return stats;
+    } catch (error) {
+      logger.error('Failed to get invite analytics', 'InviteService', {
+        error,
+        resourceType,
+        resourceId
+      });
+      return {
+        total: 0,
+        sent: 0,
+        accepted: 0,
+        declined: 0,
+        expired: 0,
+        revoked: 0,
+        pending: 0
+      };
+    }
+  }
+
+  /**
+   * Generate time-limited invite token
+   */
+  static async generateInviteToken(
+    resourceType: 'group' | 'event',
+    resourceId: string,
+    expiresInDays: number = 30
+  ): Promise<{ success: boolean; token?: string; expiresAt?: Date; error?: string }> {
+    try {
+      // Use crypto for secure token generation
+      const crypto = require('crypto');
+      const token = crypto.randomBytes(16).toString('hex');
+      const expiresAt = calculateExpirationDate(expiresInDays);
+
+      if (resourceType === 'group') {
+        await prisma.group.update({
+          where: { id: resourceId },
+          data: {
+            inviteToken: token,
+            inviteTokenExpiresAt: expiresAt
+          }
+        });
+      } else {
+        await prisma.event.update({
+          where: { id: resourceId },
+          data: {
+            inviteToken: token,
+            inviteTokenExpiresAt: expiresAt
+          }
+        });
+      }
+
+      return { success: true, token, expiresAt };
+    } catch (error) {
+      logger.error('Failed to generate invite token', 'InviteService', {
+        error,
+        resourceType,
+        resourceId
+      });
+      return { success: false, error: 'Failed to generate token' };
+    }
+  }
+
+  /**
+   * Validate invite token is not expired
+   */
+  static async validateInviteToken(
+    resourceType: 'group' | 'event',
+    token: string
+  ): Promise<{ valid: boolean; resourceId?: string; error?: string }> {
+    try {
+      const now = new Date();
+      
+      if (resourceType === 'group') {
+        const group = await prisma.group.findUnique({
+          where: { inviteToken: token },
+          select: { 
+            id: true, 
+            inviteTokenExpiresAt: true 
+          }
+        });
+
+        if (!group) {
+          return { valid: false, error: 'Invalid token' };
+        }
+
+        if (group.inviteTokenExpiresAt && group.inviteTokenExpiresAt < now) {
+          return { valid: false, error: 'Token expired' };
+        }
+
+        return { valid: true, resourceId: group.id };
+      } else {
+        const event = await prisma.event.findUnique({
+          where: { inviteToken: token },
+          select: { 
+            id: true, 
+            inviteTokenExpiresAt: true 
+          }
+        });
+
+        if (!event) {
+          return { valid: false, error: 'Invalid token' };
+        }
+
+        if (event.inviteTokenExpiresAt && event.inviteTokenExpiresAt < now) {
+          return { valid: false, error: 'Token expired' };
+        }
+
+        return { valid: true, resourceId: event.id };
+      }
+    } catch (error) {
+      logger.error('Failed to validate invite token', 'InviteService', {
+        error,
+        resourceType,
+        token
+      });
+      return { valid: false, error: 'Validation failed' };
+    }
   }
 }
