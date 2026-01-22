@@ -105,7 +105,7 @@ describe('Auth Service', () => {
         name: 'Test User',
       };
 
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+      (prisma.user.findUnique as any).mockResolvedValue(mockUser);
 
       const result = await findUserByEmail('test@example.com');
 
@@ -116,7 +116,7 @@ describe('Auth Service', () => {
     });
 
     it('should return null when user not found', async () => {
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.user.findUnique as any).mockResolvedValue(null);
 
       const result = await findUserByEmail('notfound@example.com');
 
@@ -129,7 +129,7 @@ describe('Auth Service', () => {
       const password = 'myPassword123';
       const hashedPassword = 'hashed_password';
 
-      (bcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
+      (bcrypt.hash as any).mockResolvedValue(hashedPassword);
 
       const result = await hashPassword(password);
 
@@ -219,7 +219,7 @@ describe('Auth Service', () => {
   describe('recordFailedLoginAttempt', () => {
     it('should increment failed login attempts', async () => {
       const userId = 'user-123';
-      (prisma.user.update as jest.Mock).mockResolvedValue({});
+      (prisma.user.update as any).mockResolvedValue({});
 
       const result = await recordFailedLoginAttempt(userId, 2);
 
@@ -234,7 +234,7 @@ describe('Auth Service', () => {
 
     it('should lock account after max attempts', async () => {
       const userId = 'user-123';
-      (prisma.user.update as jest.Mock).mockResolvedValue({});
+      (prisma.user.update as any).mockResolvedValue({});
 
       const result = await recordFailedLoginAttempt(userId, 4); // 5th attempt
 
@@ -252,7 +252,7 @@ describe('Auth Service', () => {
   describe('resetFailedLoginAttempts', () => {
     it('should reset failed login attempts and unlock account', async () => {
       const userId = 'user-123';
-      (prisma.user.update as jest.Mock).mockResolvedValue({});
+      (prisma.user.update as any).mockResolvedValue({});
 
       await resetFailedLoginAttempts(userId);
 
@@ -268,7 +268,7 @@ describe('Auth Service', () => {
 
   describe('verifyPassword', () => {
     it('should return true for matching passwords', async () => {
-      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      (bcrypt.compare as any).mockResolvedValue(true);
 
       const result = await verifyPassword('password123', 'hashed_password');
 
@@ -277,7 +277,7 @@ describe('Auth Service', () => {
     });
 
     it('should return false for non-matching passwords', async () => {
-      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+      (bcrypt.compare as any).mockResolvedValue(false);
 
       const result = await verifyPassword('wrongPassword', 'hashed_password');
 

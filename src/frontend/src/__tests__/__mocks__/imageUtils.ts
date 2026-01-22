@@ -1,11 +1,13 @@
 // Mock for imageUtils to avoid import.meta issues in tests
-export const getImageUrl = jest.fn((picture?: string | null): string | undefined => {
+import { vi } from 'vitest';
+
+export const getImageUrl = vi.fn((picture?: string | null): string | undefined => {
   if (!picture) return undefined;
   if (typeof picture === 'string') return picture;
   return undefined;
 });
 
-export const getInitials = jest.fn((name?: string): string => {
+export const getInitials = vi.fn((name?: string): string => {
   if (!name) return '?';
   return name
     .split(' ')
