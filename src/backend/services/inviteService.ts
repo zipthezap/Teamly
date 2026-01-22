@@ -445,7 +445,7 @@ export class InviteService {
               description: true,
               startTime: true,
               endTime: true,
-              sportType: true,
+              eventType: true,
               isPublic: true,
               creator: {
                 select: { id: true, name: true }

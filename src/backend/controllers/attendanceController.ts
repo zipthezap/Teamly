@@ -204,7 +204,7 @@ export const getAttendanceStats = asyncHandler(async (req: Request, res: Respons
   const onTimeCount = await prisma.eventAttendance.count({
     where: {
       eventId,
-      status: 'on-time'
+      status: 'on_time'
     }
   });
 

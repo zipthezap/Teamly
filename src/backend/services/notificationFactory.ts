@@ -10,10 +10,11 @@ import { filterUnmutedUsers } from '../utils/notificationHelper';
 import { 
   EventNotificationType, 
   GroupNotificationType, 
-  TeamUpNotificationType 
-} from '../../shared/types/event.types';
-import { TournamentNotificationType } from '../../shared/types/tournament.types';
-import { Prisma } from '@prisma/client';
+  TeamUpNotificationType,
+  TournamentNotificationType,
+  Prisma, 
+  EmailPreference 
+} from '@prisma/client';
 
 export interface NotificationParams {
   [key: string]: string | number | boolean | undefined;
@@ -27,6 +28,7 @@ export interface NotificationMetadata {
   imageUrl?: string;
   relatedUserId?: string;
   relatedUserName?: string;
+  [key: string]: string | number | boolean | Date | undefined;
 }
 
 interface BaseNotificationInput {
@@ -406,7 +408,7 @@ export class NotificationFactory {
   /**
    * Get mute preference key for event notification type
    */
-  private static getMuteKeyForEventType(type: EventNotificationType): string | null {
+  private static getMuteKeyForEventType(type: EventNotificationType): keyof EmailPreference | null {
     switch (type) {
       case 'join':
       case 'leave':
@@ -414,12 +416,13 @@ export class NotificationFactory {
       case 'declined':
         return 'muteEventInvites';
       case 'comment':
-        return 'muteEventComments';
+        return 'commentMentions';
       case 'event_updated':
-      case 'event_cancelled':
       case 'late':
       case 'status_change':
         return 'muteEventUpdates';
+      case 'event_cancelled':
+        return 'muteEventCancellations';
       default:
         return null;
     }
@@ -428,18 +431,19 @@ export class NotificationFactory {
   /**
    * Get mute preference key for group notification type
    */
-  private static getMuteKeyForGroupType(type: GroupNotificationType): string | null {
+  private static getMuteKeyForGroupType(type: GroupNotificationType): keyof EmailPreference | null {
     switch (type) {
       case 'invited':
+      case 'accepted': // User being accepted into group relates to invites
         return 'muteGroupInvites';
       case 'join_request':
-      case 'accepted':
-        return 'muteGroupJoinRequests';
+        return 'muteGroupRequests';
       case 'event_created':
+        return 'muteEventCreated';
       case 'nearby_created':
-        return 'muteGroupEvents';
+        return 'muteNearbyGroups';
       case 'removed':
-        return 'muteGroupUpdates';
+        return 'muteGroupRequests'; // Use group requests for group membership changes
       default:
         return null;
     }
@@ -448,16 +452,15 @@ export class NotificationFactory {
   /**
    * Get mute preference key for team-up notification type
    */
-  private static getMuteKeyForTeamUpType(type: TeamUpNotificationType): string | null {
+  private static getMuteKeyForTeamUpType(type: TeamUpNotificationType): keyof EmailPreference | null {
     switch (type) {
       case 'teamup_response':
       case 'teamup_accepted':
       case 'teamup_declined':
-        return 'muteTeamUpResponses';
-      case 'teamup_nearby':
-        return 'muteTeamUpNearby';
       case 'teamup_comment':
-        return 'muteTeamUpComments';
+        return 'nearbyTeamUps';
+      case 'teamup_nearby':
+        return 'muteNearbyTeamUps';
       default:
         return null;
     }
