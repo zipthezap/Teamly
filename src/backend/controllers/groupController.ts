@@ -552,6 +552,11 @@ export const inviteMember = async (req: Request, res: Response) => {
     throw new NotFoundError('User not found');
   }
 
+  // Prevent inviting yourself
+  if (userToInvite.id === req.user!.id) {
+    throw new BadRequestError('You cannot invite yourself');
+  }
+
   // Use the InviteService to handle the invitation with optional custom message and expiration
   const result = await InviteService.inviteUserToGroup(id, userToInvite.id, req.user!.id, {
     customMessage,
@@ -2068,6 +2073,13 @@ export const getGroupByInviteToken = async (req: Request, res: Response) => {
 export const joinGroupByInviteToken = async (req: Request, res: Response) => {
   const { token } = req.params;
   const userId = req.user!.id;
+
+  // Validate invite token and check expiration
+  const validation = await InviteService.validateInviteToken('group', token);
+  
+  if (!validation.valid) {
+    throw new BadRequestError(validation.error || 'Invalid or expired invite link');
+  }
 
   const group = await prisma.group.findFirst({
     where: {

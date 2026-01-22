@@ -2018,11 +2018,15 @@ export const inviteToEvent = async (req: Request, res: Response) => {
     throw new BadRequestError('Email is required');
   }
 
-  // Check if user has permission to invite
-  const canInvite = await InviteService.canUserInvite(req.user!.id, id, 'event');
+  // Check if user has permission to invite using proper permission system
+  const hasPermission = await permissionService.hasEventPermission(
+    req.user!.id,
+    id,
+    Permission.EVENT_INVITE_MEMBERS
+  );
   
-  if (!canInvite.allowed) {
-    throw new ForbiddenError(canInvite.reason || 'You do not have permission to invite members to this event');
+  if (!hasPermission) {
+    throw new ForbiddenError('You do not have permission to invite members to this event');
   }
 
   // Find user to invite
@@ -2034,21 +2038,12 @@ export const inviteToEvent = async (req: Request, res: Response) => {
     throw new NotFoundError('User not found');
   }
 
-  // Check if user is already a participant
-  const existingParticipant = await prisma.eventParticipant.findUnique({
-    where: {
-      eventId_userId: {
-        eventId: id,
-        userId: userToInvite.id
-      }
-    }
-  });
-
-  if (existingParticipant) {
-    throw new BadRequestError('User is already a participant');
+  // Prevent inviting yourself
+  if (userToInvite.id === req.user!.id) {
+    throw new BadRequestError('You cannot invite yourself');
   }
 
-  // Get event and inviter details
+  // Get event and inviter details first
   const [event, inviter] = await Promise.all([
     prisma.event.findUnique({ where: { id } }),
     prisma.user.findUnique({ where: { id: req.user!.id } })
@@ -2063,25 +2058,42 @@ export const inviteToEvent = async (req: Request, res: Response) => {
     ? calculateExpirationDate(expiresInDays)
     : undefined;
 
-  // Create event participant with pending status
-  await prisma.eventParticipant.create({
-    data: {
-      eventId: id,
-      userId: userToInvite.id,
-      status: 'pending'
-    }
-  });
+  // Use transaction to prevent race conditions
+  await prisma.$transaction(async (tx) => {
+    // Check if user is already a participant
+    const existingParticipant = await tx.eventParticipant.findUnique({
+      where: {
+        eventId_userId: {
+          eventId: id,
+          userId: userToInvite.id
+        }
+      }
+    });
 
-  // Create invite log
-  await InviteService.createInviteLog({
-    inviterType: 'event',
-    entityId: id,
-    inviterId: req.user!.id,
-    inviteeEmail: userToInvite.email,
-    inviteeId: userToInvite.id,
-    status: 'sent',
-    message: customMessage,
-    expiresAt
+    if (existingParticipant) {
+      throw new BadRequestError('User is already a participant or has a pending invitation');
+    }
+
+    // Create event participant with pending status
+    await tx.eventParticipant.create({
+      data: {
+        eventId: id,
+        userId: userToInvite.id,
+        status: 'pending'
+      }
+    });
+
+    // Create invite log
+    await InviteService.createInviteLog({
+      inviterType: 'event',
+      entityId: id,
+      inviterId: req.user!.id,
+      inviteeEmail: userToInvite.email,
+      inviteeId: userToInvite.id,
+      status: 'sent',
+      message: customMessage,
+      expiresAt
+    });
   });
 
   // Send invitation email
