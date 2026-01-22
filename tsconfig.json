@@ -23,5 +23,5 @@
     "types": ["node", "vitest/globals"]
   },
   "include": ["src/backend/**/*", "scripts/**/*", "prisma/**/*"],
-  "exclude": ["node_modules", "src/frontend", "src/app", "dist"]
+  "exclude": ["node_modules", "src/frontend", "src/app", "dist", "src/backend/__tests__"]
 }

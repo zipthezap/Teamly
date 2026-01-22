@@ -36,10 +36,10 @@ export const unmarkLate = asyncHandler(async (req: Request, res: Response) => {
     throw new BadRequestError('Not marked as late');
   }
 
-  // Set status back to 'confirmed' (or remove, depending on business logic)
+  // Set status back to 'on_time' (or remove, depending on business logic)
   const updated = await prisma.eventAttendance.update({
     where: { eventId_userId: { eventId, userId } },
-    data: { status: 'confirmed' },
+    data: { status: 'on_time' },
   });
 
 

@@ -990,7 +990,7 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
           groupId: id,
           userId: req.user!.id,
           status: 'approved',
-          createdBy: 'user'
+          createdBy: 'USER'
         },
         include: {
           user: {
@@ -1047,7 +1047,7 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
       groupId: id,
       userId: req.user!.id,
       status: 'pending',
-      createdBy: 'user'
+      createdBy: 'USER'
     },
     include: {
       user: {
