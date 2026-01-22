@@ -10,10 +10,11 @@ import { filterUnmutedUsers } from '../utils/notificationHelper';
 import { 
   EventNotificationType, 
   GroupNotificationType, 
-  TeamUpNotificationType 
-} from '../../shared/types/event.types';
-import { TournamentNotificationType } from '../../shared/types/tournament.types';
-import { Prisma } from '@prisma/client';
+  TeamUpNotificationType,
+  TournamentNotificationType,
+  Prisma, 
+  EmailPreference 
+} from '@prisma/client';
 
 export interface NotificationParams {
   [key: string]: string | number | boolean | undefined;
