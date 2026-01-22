@@ -1149,17 +1149,21 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
 
   // If approved, add the user as a member
   if (action === 'approve') {
+    let groupName: string | undefined;
+    
     // Use transaction to check capacity and add member atomically
     await prisma.$transaction(async (tx) => {
-      // Get group to check max members
+      // Get group to check max members and get name for notification
       const group = await tx.group.findUnique({
         where: { id },
-        select: { maxMembers: true }
+        select: { maxMembers: true, name: true }
       });
 
       if (!group) {
         throw new NotFoundError('Group not found');
       }
+
+      groupName = group.name;
 
       // Check if user is already a member (race condition protection)
       const existingMembership = await tx.groupMember.findFirst({
@@ -1194,21 +1198,15 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
       });
     });
 
-    // Get group name for notification
-    const groupInfo = await prisma.group.findUnique({
-      where: { id },
-      select: { name: true }
-    });
-
     // Create notification for the user who was accepted
-    if (groupInfo) {
+    if (groupName) {
       await prisma.groupNotification.create({
         data: {
           groupId: id,
           userId: joinRequest.userId,
           type: 'accepted',
           params: {
-            groupName: groupInfo.name,
+            groupName,
             name: req.user!.name
           }
         }

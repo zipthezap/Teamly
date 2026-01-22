@@ -751,7 +751,7 @@ export class InviteService {
         });
 
         if (!group) {
-          logger.warn('Invalid group invite token attempted', 'InviteService', { token: token.substring(0, 8) + '...' });
+          logger.warn('Invalid group invite token attempted', 'InviteService');
           return { valid: false, error: 'Invalid invite link' };
         }
 
@@ -776,7 +776,7 @@ export class InviteService {
         });
 
         if (!event) {
-          logger.warn('Invalid event invite token attempted', 'InviteService', { token: token.substring(0, 8) + '...' });
+          logger.warn('Invalid event invite token attempted', 'InviteService');
           return { valid: false, error: 'Invalid invite link' };
         }
 
@@ -792,11 +792,7 @@ export class InviteService {
         return { valid: true, resourceId: event.id };
       }
     } catch (error) {
-      logger.error('Failed to validate invite token', 'InviteService', {
-        error,
-        resourceType,
-        token: token.substring(0, 8) + '...'
-      });
+      logger.error('Failed to validate invite token', 'InviteService', { error, resourceType });
       return { valid: false, error: 'Failed to validate invite link' };
     }
   }
