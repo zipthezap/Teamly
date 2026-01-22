@@ -16,6 +16,7 @@ export interface NotificationMetadata {
   imageUrl?: string;
   relatedUserId?: string;
   relatedUserName?: string;
+  [key: string]: string | number | boolean | Date | undefined;
 }
 
 export interface NotificationParams {

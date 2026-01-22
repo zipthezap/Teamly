@@ -102,7 +102,7 @@ export const createComment = asyncHandler(async (req: Request, res: Response) =>
   }
 
   // Extract mentions from sanitized content
-  const { mentions, mentionedUsers } = findMentionedUsers(sanitizedContent, event.group.members, req.user!.id);
+  const { mentionedUsers } = findMentionedUsers(sanitizedContent, event.group.members, req.user!.id);
 
   // Use transaction to create comment and mentions atomically
   const comment = await prisma.$transaction(async (tx) => {
