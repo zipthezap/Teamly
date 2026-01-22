@@ -7,6 +7,46 @@ import { asyncHandler } from '../middleware/asyncHandler';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors';
 import { hasId, isUserWithEmail } from '../utils/typeGuards';
 
+/**
+ * Helper function to extract and find mentioned users from comment content
+ */
+const findMentionedUsers = (
+  sanitizedContent: string,
+  groupMembers: Array<{ user: { id: string; name: string; email: string } }>,
+  currentUserId: string
+) => {
+  // Extract mentions from sanitized content (@username)
+  const mentionRegex = /@(\w+)/g;
+  const mentionMatches = sanitizedContent.matchAll(mentionRegex);
+  const mentions = Array.from(mentionMatches, match => match[1]);
+
+  if (mentions.length === 0) {
+    return { mentions: [], mentionedUsers: new Set() };
+  }
+
+  // Create lookup maps for efficient matching
+  const membersByName = new Map();
+  const membersByEmail = new Map();
+
+  groupMembers.forEach(m => {
+    membersByName.set(m.user.name.toLowerCase(), m);
+    membersByEmail.set(m.user.email.split('@')[0].toLowerCase(), m);
+  });
+
+  // Find unique mentioned users
+  const mentionedUsers = new Set();
+  for (const mention of mentions) {
+    const mentionLower = mention.toLowerCase();
+    const mentionedMember = membersByName.get(mentionLower) || membersByEmail.get(mentionLower);
+
+    if (mentionedMember && mentionedMember.user.id !== currentUserId) {
+      mentionedUsers.add(mentionedMember.user);
+    }
+  }
+
+  return { mentions, mentionedUsers };
+};
+
 // Create a comment
 export const createComment = asyncHandler(async (req: Request, res: Response) => {
     res.setHeader('Cache-Control', 'no-store');
@@ -61,10 +101,8 @@ export const createComment = asyncHandler(async (req: Request, res: Response) =>
     }
   }
 
-  // Extract mentions from sanitized content (@username)
-  const mentionRegex = /@(\w+)/g;
-  const mentionMatches = sanitizedContent.matchAll(mentionRegex);
-  const mentions = Array.from(mentionMatches, match => match[1]);
+  // Extract mentions from sanitized content
+  const { mentions, mentionedUsers } = findMentionedUsers(sanitizedContent, event.group.members, req.user!.id);
 
   // Use transaction to create comment and mentions atomically
   const comment = await prisma.$transaction(async (tx) => {
@@ -90,31 +128,8 @@ export const createComment = asyncHandler(async (req: Request, res: Response) =>
       }
     });
 
-    // Process mentions if any exist
-    if (mentions.length > 0) {
-      const groupMembers = event.group.members;
-      
-      // Create lookup maps for efficient matching
-      const membersByName = new Map();
-      const membersByEmail = new Map();
-      
-      groupMembers.forEach(m => {
-        membersByName.set(m.user.name.toLowerCase(), m);
-        membersByEmail.set(m.user.email.split('@')[0].toLowerCase(), m);
-      });
-      
-      // Find unique mentioned users
-      const mentionedUsers = new Set();
-      for (const mention of mentions) {
-        const mentionLower = mention.toLowerCase();
-        const mentionedMember = membersByName.get(mentionLower) || membersByEmail.get(mentionLower);
-        
-        if (mentionedMember && mentionedMember.user.id !== req.user!.id) {
-          mentionedUsers.add(mentionedMember.user);
-        }
-      }
-      
-      // Create all mention records within transaction
+    // Create all mention records within transaction
+    if (mentionedUsers.size > 0) {
       const mentionPromises = Array.from(mentionedUsers)
         .filter(hasId)
         .map(mentionedUser => 
@@ -133,29 +148,7 @@ export const createComment = asyncHandler(async (req: Request, res: Response) =>
   });
 
   // Send email notifications outside transaction (non-critical operation)
-  if (mentions.length > 0) {
-    const groupMembers = event.group.members;
-    
-    // Create lookup maps for efficient matching
-    const membersByName = new Map();
-    const membersByEmail = new Map();
-    
-    groupMembers.forEach(m => {
-      membersByName.set(m.user.name.toLowerCase(), m);
-      membersByEmail.set(m.user.email.split('@')[0].toLowerCase(), m);
-    });
-    
-    // Find unique mentioned users
-    const mentionedUsers = new Set();
-    for (const mention of mentions) {
-      const mentionLower = mention.toLowerCase();
-      const mentionedMember = membersByName.get(mentionLower) || membersByEmail.get(mentionLower);
-      
-      if (mentionedMember && mentionedMember.user.id !== req.user!.id) {
-        mentionedUsers.add(mentionedMember.user);
-      }
-    }
-    
+  if (mentionedUsers.size > 0) {
     // Batch fetch preferences for all mentioned users
     const mentionedUserIds = Array.from(mentionedUsers)
       .filter(hasId)

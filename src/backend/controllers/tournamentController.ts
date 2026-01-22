@@ -790,11 +790,11 @@ export const submitScore = async (req: Request, res: Response) => {
         }
       });
 
+      // Update standings within the same transaction
+      await tournamentService.updateStandings(matchId, tournament, tx);
+
       return match;
     });
-
-    // Update standings after transaction completes
-    await tournamentService.updateStandings(matchId, tournament);
 
     // If this is a knockout stage match, check if we should advance winners
     if (match.stage && match.stage !== BracketStage.FINALS) {

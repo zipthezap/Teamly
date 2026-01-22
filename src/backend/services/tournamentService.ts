@@ -327,9 +327,15 @@ export const generateGroupsKnockoutBrackets = async (
 
 /**
  * Update tournament standings after a match
+ * Can accept a transaction client or use global prisma
  */
-export const updateStandings = async (matchId: string, tournament?: { sportConfig?: Prisma.JsonValue }) => {
-  const match = await prisma.tournamentMatch.findUnique({
+export const updateStandings = async (
+  matchId: string, 
+  tournament?: { sportConfig?: Prisma.JsonValue },
+  tx?: Prisma.TransactionClient
+) => {
+  const client = tx || prisma;
+  const match = await client.tournamentMatch.findUnique({
     where: { id: matchId },
     include: { homeTeam: true, awayTeam: true, tournament: true }
   });
@@ -376,7 +382,7 @@ export const updateStandings = async (matchId: string, tournament?: { sportConfi
     ? { tournamentId_teamId_groupName: { tournamentId: match.tournamentId, teamId: homeTeamId, groupName } }
     : { tournamentId_teamId_groupName: { tournamentId: match.tournamentId, teamId: homeTeamId, groupName: null } };
     
-  await prisma.tournamentStanding.upsert({
+  await client.tournamentStanding.upsert({
     where: homeWhere,
     update: {
       points: { increment: homePoints },
@@ -404,7 +410,7 @@ export const updateStandings = async (matchId: string, tournament?: { sportConfi
     ? { tournamentId_teamId_groupName: { tournamentId: match.tournamentId, teamId: awayTeamId, groupName } }
     : { tournamentId_teamId_groupName: { tournamentId: match.tournamentId, teamId: awayTeamId, groupName: null } };
     
-  await prisma.tournamentStanding.upsert({
+  await client.tournamentStanding.upsert({
     where: awayWhere,
     update: {
       points: { increment: awayPoints },
