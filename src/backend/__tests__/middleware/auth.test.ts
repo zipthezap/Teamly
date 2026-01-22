@@ -72,7 +72,7 @@ describe('Auth Middleware', () => {
 
     it('should return 401 when token is revoked', async () => {
       mockRequest.headers = { authorization: 'Bearer valid-token' };
-      (jwt.isTokenRevoked as jest.Mock).mockResolvedValue(true);
+      (jwt.isTokenRevoked as any).mockResolvedValue(true);
 
       await authMiddleware(
         mockRequest as Request,
@@ -88,8 +88,8 @@ describe('Auth Middleware', () => {
 
     it('should return 401 when token is invalid', async () => {
       mockRequest.headers = { authorization: 'Bearer invalid-token' };
-      (jwt.isTokenRevoked as jest.Mock).mockResolvedValue(false);
-      (jwt.verifyToken as jest.Mock).mockReturnValue(null);
+      (jwt.isTokenRevoked as any).mockResolvedValue(false);
+      (jwt.verifyToken as any).mockReturnValue(null);
 
       await authMiddleware(
         mockRequest as Request,
@@ -105,9 +105,9 @@ describe('Auth Middleware', () => {
 
     it('should return 401 when user is not found', async () => {
       mockRequest.headers = { authorization: 'Bearer valid-token' };
-      (jwt.isTokenRevoked as jest.Mock).mockResolvedValue(false);
-      (jwt.verifyToken as jest.Mock).mockReturnValue({ userId: 'user-123' });
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+      (jwt.isTokenRevoked as any).mockResolvedValue(false);
+      (jwt.verifyToken as any).mockReturnValue({ userId: 'user-123' });
+      (prisma.user.findUnique as any).mockResolvedValue(null);
 
       await authMiddleware(
         mockRequest as Request,
@@ -134,9 +134,9 @@ describe('Auth Middleware', () => {
       };
 
       mockRequest.headers = { authorization: 'Bearer valid-token' };
-      (jwt.isTokenRevoked as jest.Mock).mockResolvedValue(false);
-      (jwt.verifyToken as jest.Mock).mockReturnValue({ userId: 'user-123' });
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+      (jwt.isTokenRevoked as any).mockResolvedValue(false);
+      (jwt.verifyToken as any).mockReturnValue({ userId: 'user-123' });
+      (prisma.user.findUnique as any).mockResolvedValue(mockUser);
 
       await authMiddleware(
         mockRequest as Request,
@@ -152,7 +152,7 @@ describe('Auth Middleware', () => {
 
     it('should return 401 when an error occurs', async () => {
       mockRequest.headers = { authorization: 'Bearer valid-token' };
-      (jwt.isTokenRevoked as jest.Mock).mockRejectedValue(new Error('Database error'));
+      (jwt.isTokenRevoked as any).mockRejectedValue(new Error('Database error'));
 
       await authMiddleware(
         mockRequest as Request,
@@ -193,7 +193,7 @@ describe('Auth Middleware', () => {
 
     it('should call next without setting user when token is revoked', async () => {
       mockRequest.headers = { authorization: 'Bearer revoked-token' };
-      (jwt.isTokenRevoked as jest.Mock).mockResolvedValue(true);
+      (jwt.isTokenRevoked as any).mockResolvedValue(true);
 
       await optionalAuthMiddleware(
         mockRequest as Request,
@@ -207,8 +207,8 @@ describe('Auth Middleware', () => {
 
     it('should call next without setting user when token is invalid', async () => {
       mockRequest.headers = { authorization: 'Bearer invalid-token' };
-      (jwt.isTokenRevoked as jest.Mock).mockResolvedValue(false);
-      (jwt.verifyToken as jest.Mock).mockReturnValue(null);
+      (jwt.isTokenRevoked as any).mockResolvedValue(false);
+      (jwt.verifyToken as any).mockReturnValue(null);
 
       await optionalAuthMiddleware(
         mockRequest as Request,
@@ -222,9 +222,9 @@ describe('Auth Middleware', () => {
 
     it('should call next without setting user when user is not found', async () => {
       mockRequest.headers = { authorization: 'Bearer valid-token' };
-      (jwt.isTokenRevoked as jest.Mock).mockResolvedValue(false);
-      (jwt.verifyToken as jest.Mock).mockReturnValue({ userId: 'user-123' });
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+      (jwt.isTokenRevoked as any).mockResolvedValue(false);
+      (jwt.verifyToken as any).mockReturnValue({ userId: 'user-123' });
+      (prisma.user.findUnique as any).mockResolvedValue(null);
 
       await optionalAuthMiddleware(
         mockRequest as Request,
@@ -246,9 +246,9 @@ describe('Auth Middleware', () => {
       };
 
       mockRequest.headers = { authorization: 'Bearer valid-token' };
-      (jwt.isTokenRevoked as jest.Mock).mockResolvedValue(false);
-      (jwt.verifyToken as jest.Mock).mockReturnValue({ userId: 'user-123' });
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+      (jwt.isTokenRevoked as any).mockResolvedValue(false);
+      (jwt.verifyToken as any).mockReturnValue({ userId: 'user-123' });
+      (prisma.user.findUnique as any).mockResolvedValue(mockUser);
 
       await optionalAuthMiddleware(
         mockRequest as Request,
@@ -263,7 +263,7 @@ describe('Auth Middleware', () => {
 
     it('should call next without setting user when an error occurs', async () => {
       mockRequest.headers = { authorization: 'Bearer valid-token' };
-      (jwt.isTokenRevoked as jest.Mock).mockRejectedValue(new Error('Database error'));
+      (jwt.isTokenRevoked as any).mockRejectedValue(new Error('Database error'));
 
       await optionalAuthMiddleware(
         mockRequest as Request,

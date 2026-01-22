@@ -405,7 +405,7 @@ For backend improvements details, see [docs/BACKEND_IMPROVEMENTS.md](docs/BACKEN
 
 ### Testing
 
-This project uses Jest for testing both backend and frontend code:
+This project uses Vitest for testing both backend and frontend code:
 
 ```bash
 # Run backend tests

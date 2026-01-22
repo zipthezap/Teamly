@@ -3,52 +3,54 @@
  * Provides common utilities for testing
  */
 
+import { vi } from 'vitest';
+
 /**
  * Mock Prisma client for testing
  */
 export const mockPrisma = {
   user: {
-    findUnique: jest.fn(),
-    findMany: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-    deleteMany: jest.fn(),
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    deleteMany: vi.fn(),
   },
   event: {
-    findUnique: jest.fn(),
-    findMany: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
   },
   group: {
-    findUnique: jest.fn(),
-    findMany: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
   },
   userSession: {
-    findMany: jest.fn(),
-    create: jest.fn(),
-    deleteMany: jest.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    deleteMany: vi.fn(),
   },
   refreshToken: {
-    findUnique: jest.fn(),
-    create: jest.fn(),
-    deleteMany: jest.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    deleteMany: vi.fn(),
   },
   revokedToken: {
-    findUnique: jest.fn(),
-    create: jest.fn(),
-    createMany: jest.fn(),
-    deleteMany: jest.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    createMany: vi.fn(),
+    deleteMany: vi.fn(),
   },
   notification: {
-    findMany: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
   },
 };
 
@@ -98,7 +100,7 @@ export const mockGroup = {
 export const clearAllMocks = () => {
   Object.values(mockPrisma).forEach((model) => {
     Object.values(model).forEach((method) => {
-      if (jest.isMockFunction(method)) {
+      if (vi.isMockFunction(method)) {
         method.mockClear();
       }
     });
@@ -111,7 +113,7 @@ export const clearAllMocks = () => {
 export const resetAllMocks = () => {
   Object.values(mockPrisma).forEach((model) => {
     Object.values(model).forEach((method) => {
-      if (jest.isMockFunction(method)) {
+      if (vi.isMockFunction(method)) {
         method.mockReset();
       }
     });
