@@ -1269,6 +1269,16 @@ export const respondToInvitation = async (req: Request, res: Response) => {
     throw new BadRequestError('This is not an invitation. Join requests must be handled by group admins.');
   }
 
+  // Check if invitation has expired
+  if (invitation.expiresAt && invitation.expiresAt < new Date()) {
+    // Automatically mark as rejected
+    await prisma.groupJoinRequest.update({
+      where: { id: requestId },
+      data: { status: 'rejected' }
+    });
+    throw new BadRequestError('This invitation has expired');
+  }
+
   // If accepting, use a transaction to ensure atomicity
   if (action === 'accept') {
     const result = await prisma.$transaction(async (tx) => {
