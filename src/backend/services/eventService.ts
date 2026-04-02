@@ -207,9 +207,12 @@ export const createEventDeletionNotifications = async (
 ) => {
   if (participantIds.length === 0) return;
 
+  let unmutedParticipantCount = 0;
+
   try {
     // Filter out users who have muted event cancellation notifications
     const unmutedParticipantIds = await filterUnmutedUsers(participantIds, 'muteEventCancellations');
+    unmutedParticipantCount = unmutedParticipantIds.length;
 
     if (unmutedParticipantIds.length === 0) return;
 
@@ -229,7 +232,8 @@ export const createEventDeletionNotifications = async (
   } catch (error) {
     logger.error('Failed to create batch deletion notifications', 'EventService', {
       error,
-      participantCount: participantIds.length
+      participantCount: participantIds.length,
+      unmutedParticipantCount
     });
   }
 };
