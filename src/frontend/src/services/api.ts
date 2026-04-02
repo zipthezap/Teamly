@@ -187,6 +187,8 @@ export const groupChatAPI = {
 export const notificationsAPI = {
   getAll: (params?: NotificationQueryParams) => api.get('/notifications', { params }),
   markAsRead: (notificationIds?: string[]) => api.put('/notifications/read', { notificationIds }),
+  delete: (notificationIds: string[]) => api.delete('/notifications', { data: { notificationIds } }),
+  deleteAllRead: () => api.delete('/notifications/read'),
   getStats: () => api.get('/notifications/stats'),
   getUnreadCount: () => api.get('/notifications/unread-count'),
 };

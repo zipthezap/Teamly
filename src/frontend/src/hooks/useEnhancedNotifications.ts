@@ -22,9 +22,9 @@ export interface Notification {
   id: string;
   userId: string;
   type: EventNotificationType | GroupNotificationType | TeamUpNotificationType;
-  notificationType: 'event' | 'group' | 'teamup';
-  title: string;
-  message: string;
+  notificationType: 'event' | 'group' | 'teamup' | 'tournament';
+  title?: string;
+  message?: string;
   read: boolean;
   createdAt: string;
   metadata?: NotificationMetadata;
@@ -46,7 +46,7 @@ export interface Notification {
 export interface NotificationFilters {
   includeRead?: boolean;
   type?: string;
-  notificationType?: 'event' | 'group';
+  notificationType?: 'event' | 'group' | 'teamup' | 'tournament';
   startDate?: string;
   endDate?: string;
 }
@@ -55,9 +55,13 @@ export interface NotificationStats {
   unread: number;
   unreadEvent: number;
   unreadGroup: number;
+  unreadTeamUp: number;
+  unreadTournament: number;
   total: number;
   totalEvent: number;
   totalGroup: number;
+  totalTeamUp: number;
+  totalTournament: number;
   last7Days: number;
   typeCounts: Record<string, number>;
 }
@@ -102,10 +106,24 @@ export const useEnhancedNotifications = (options: UseEnhancedNotificationsOption
           offset: currentOffset,
         });
         // Map notifications to add translated message
-        const mappedNotifications = response.data.notifications.map((notif: Notification) => ({
-          ...notif,
-          message: t(`notifications.${notif.type}`, notif.params || {}),
-        }));
+        const mappedNotifications = response.data.notifications.map((notif: Notification) => {
+          const rawType = typeof notif.type === 'string' ? notif.type.trim() : '';
+          const typeKey = rawType ? `notifications.${rawType}` : 'notifications.title';
+          const messageKey = rawType ? `notifications.${rawType}Message` : 'notifications.noNotifications';
+          const translationParams = (notif.params || {}) as Record<string, unknown>;
+          const title = String(
+            t(typeKey, { ...translationParams, defaultValue: 'Notification' })
+          );
+          const message = String(
+            t(messageKey, { ...translationParams, defaultValue: 'No details available' })
+          );
+
+          return {
+            ...notif,
+            title,
+            message,
+          };
+        });
         if (resetOffset) {
           setNotifications(mappedNotifications);
           setOffset(0);

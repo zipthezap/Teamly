@@ -87,6 +87,13 @@ export const createEvent = async (req: Request, res: Response) => {
     throw new BadRequestError(recurrenceValidation.error!);
   }
 
+  // Ensure group exists before permission check to avoid misleading permission errors
+  const group = await eventService.getGroupWithMembers(groupId);
+
+  if (!group) {
+    throw new NotFoundError('Group not found');
+  }
+
   // Check if user has permission to create events in this group (admin or moderator)
   const canCreate = await permissionService.hasGroupPermission(req.user!.id, groupId, Permission.EVENT_CREATE);
   if (!canCreate) {
@@ -95,13 +102,6 @@ export const createEvent = async (req: Request, res: Response) => {
 
   // Determine event status
   const eventStatus = eventService.determineEventStatus(startTime, endTime);
-
-  // Get group members for notifications
-  const group = await eventService.getGroupWithMembers(groupId);
-
-  if (!group) {
-    throw new NotFoundError('Group not found');
-  }
 
   // Generate invite token if event is public
   const inviteToken = isPublic ? createInviteToken() : null;
