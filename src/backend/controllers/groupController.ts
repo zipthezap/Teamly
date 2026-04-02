@@ -907,7 +907,8 @@ export const updateMemberRole = async (req: Request, res: Response) => {
     CacheService.invalidate('group', id),
     CacheService.deletePattern(`user:${result.userId}:groups:*`),
     CacheService.deletePattern(`events:user:${result.userId}:group:${id}:*`),
-    CacheService.deletePattern(`events:user:${result.userId}:group:all:*`)
+    CacheService.deletePattern(`events:user:${result.userId}:group:all:*`),
+    permissionService.clearUserPermissionCache(result.userId)
   ]).catch((error: Error) => {
     logger.error('Cache invalidation error in updateMemberRole', 'GroupController', { error });
   });

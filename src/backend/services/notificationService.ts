@@ -7,6 +7,7 @@ import prisma from '../config/database';
 import { EventNotificationType, GroupNotificationType, TeamUpNotificationType } from '../../shared/types/event.types';
 import { TournamentNotificationType } from '../../shared/types/tournament.types';
 import { Prisma } from '@prisma/client';
+import { BadRequestError, ForbiddenError } from '../utils/errors';
 
 export interface NotificationMetadata {
   actionUrl?: string;
@@ -435,6 +436,8 @@ export const markNotificationsAsRead = async (
   notificationIds?: string[]
 ): Promise<void> => {
   if (notificationIds && notificationIds.length > 0) {
+    await assertNotificationOwnership(userId, notificationIds);
+
     // Mark specific notifications as read
     await Promise.all([
       prisma.eventNotification.updateMany({
@@ -532,6 +535,8 @@ export const deleteNotifications = async (
     return { deletedCount: 0 };
   }
 
+  await assertNotificationOwnership(userId, notificationIds);
+
   const [eventDeleted, groupDeleted, teamUpDeleted, tournamentDeleted] = await Promise.all([
     prisma.eventNotification.deleteMany({
       where: { id: { in: notificationIds }, userId },
@@ -549,6 +554,54 @@ export const deleteNotifications = async (
 
   return { deletedCount: eventDeleted.count + groupDeleted.count + teamUpDeleted.count + tournamentDeleted.count };
 };
+
+// Conservative upper bound to reject anomalously long IDs and keep payload validation bounded.
+const NOTIFICATION_ID_MAX_LENGTH = 191;
+
+async function assertNotificationOwnership(userId: string, notificationIds: string[]): Promise<void> {
+  const normalizedIds = new Set<string>();
+  for (const rawId of notificationIds) {
+    if (typeof rawId !== 'string') {
+      throw new BadRequestError('notificationIds must contain valid notification IDs');
+    }
+
+    const id = rawId.trim();
+    if (!id || id.length > NOTIFICATION_ID_MAX_LENGTH) {
+      throw new BadRequestError('notificationIds must contain valid notification IDs');
+    }
+
+    normalizedIds.add(id);
+  }
+
+  const dedupedIds = [...normalizedIds];
+
+  const [eventRows, groupRows, teamUpRows, tournamentRows] = await Promise.all([
+    prisma.eventNotification.findMany({
+      where: { userId, id: { in: dedupedIds } },
+      select: { id: true },
+    }),
+    prisma.groupNotification.findMany({
+      where: { userId, id: { in: dedupedIds } },
+      select: { id: true },
+    }),
+    prisma.teamUpNotification.findMany({
+      where: { userId, id: { in: dedupedIds } },
+      select: { id: true },
+    }),
+    prisma.tournamentNotification.findMany({
+      where: { userId, id: { in: dedupedIds } },
+      select: { id: true },
+    }),
+  ]);
+
+  const ownedIds = new Set(
+    [...eventRows, ...groupRows, ...teamUpRows, ...tournamentRows].map((row) => row.id)
+  );
+
+  if (ownedIds.size !== dedupedIds.length) {
+    throw new ForbiddenError('One or more notifications are inaccessible');
+  }
+}
 
 /**
  * Delete all read notifications for a user

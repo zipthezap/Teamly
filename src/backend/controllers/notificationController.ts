@@ -14,6 +14,11 @@ import {
   deleteAllReadNotifications,
 } from '../services/notificationService';
 
+// Operational safety limits to prevent oversized payloads and deep pagination abuse.
+const MAX_NOTIFICATION_BATCH_SIZE = 100;
+const MAX_NOTIFICATION_QUERY_LENGTH = 100;
+const MAX_OFFSET = 10000;
+
 /**
  * Get user notifications with filtering and pagination
  * GET /api/notifications
@@ -28,7 +33,7 @@ import {
  *  - searchQuery: string (searches in title and message)
  */
 export const getNotifications = asyncHandler(async (req: Request, res: Response) => {
-    res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Cache-Control', 'no-store');
   const userId = req.user!.id;
   const {
     includeRead = 'false',
@@ -45,6 +50,10 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
   const parsedLimit = Math.min(parseInt(limit as string, 10) || 50, 100);
   const parsedOffset = parseInt(offset as string, 10) || 0;
   const parsedIncludeRead = includeRead === 'true';
+
+  if (!Number.isInteger(parsedOffset) || parsedOffset < 0 || parsedOffset > MAX_OFFSET) {
+    throw new BadRequestError(`offset must be between 0 and ${MAX_OFFSET}`);
+  }
 
   const options: Record<string, unknown> = {
     includeRead: parsedIncludeRead,
@@ -65,15 +74,27 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
   }
 
   if (startDate) {
-    options.startDate = new Date(startDate as string);
+    const parsedStartDate = new Date(startDate as string);
+    if (Number.isNaN(parsedStartDate.getTime())) {
+      throw new BadRequestError('Invalid startDate');
+    }
+    options.startDate = parsedStartDate;
   }
 
   if (endDate) {
-    options.endDate = new Date(endDate as string);
+    const parsedEndDate = new Date(endDate as string);
+    if (Number.isNaN(parsedEndDate.getTime())) {
+      throw new BadRequestError('Invalid endDate');
+    }
+    options.endDate = parsedEndDate;
   }
 
   if (searchQuery) {
-    options.searchQuery = searchQuery as string;
+    const trimmedSearchQuery = (searchQuery as string).trim();
+    if (trimmedSearchQuery.length > MAX_NOTIFICATION_QUERY_LENGTH) {
+      throw new BadRequestError(`searchQuery must not exceed ${MAX_NOTIFICATION_QUERY_LENGTH} characters`);
+    }
+    options.searchQuery = trimmedSearchQuery;
   }
 
   const result = await getUserNotifications(userId, options);
@@ -95,6 +116,15 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
 export const markAsRead = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user!.id;
   const { notificationIds } = req.body;
+
+  if (notificationIds !== undefined) {
+    if (!Array.isArray(notificationIds)) {
+      throw new BadRequestError('notificationIds must be an array');
+    }
+    if (notificationIds.length > MAX_NOTIFICATION_BATCH_SIZE) {
+      throw new BadRequestError(`A maximum of ${MAX_NOTIFICATION_BATCH_SIZE} notifications can be updated at once`);
+    }
+  }
 
   await markNotificationsAsRead(userId, notificationIds);
 
@@ -138,6 +168,9 @@ export const deleteNotificationsEndpoint = asyncHandler(async (req: Request, res
 
   if (!notificationIds || !Array.isArray(notificationIds) || notificationIds.length === 0) {
     throw new BadRequestError('notificationIds array is required');
+  }
+  if (notificationIds.length > MAX_NOTIFICATION_BATCH_SIZE) {
+    throw new BadRequestError(`A maximum of ${MAX_NOTIFICATION_BATCH_SIZE} notifications can be deleted at once`);
   }
 
   const result = await deleteNotifications(userId, notificationIds);
