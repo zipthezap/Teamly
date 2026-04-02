@@ -100,6 +100,10 @@ export const createEvent = async (req: Request, res: Response) => {
   // Get group members for notifications
   const group = await eventService.getGroupWithMembers(groupId);
 
+  if (!group) {
+    throw new NotFoundError('Group not found');
+  }
+
   // Generate invite token if event is public
   const inviteToken = isPublic ? createInviteToken() : null;
 
@@ -219,8 +223,9 @@ export const getEvents = async (req: Request, res: Response) => {
   }
 
   // Optimize query - get participant info separately for large result sets
-  const events = await prisma.event.findMany({
-    where,
+  const [events, totalCount] = await Promise.all([
+    prisma.event.findMany({
+      where,
       include: {
         creator: {
           select: { id: true, name: true, email: true, profilePicture: true }
@@ -229,7 +234,7 @@ export const getEvents = async (req: Request, res: Response) => {
           select: { id: true, name: true }
         },
         _count: {
-          select: { 
+          select: {
             participants: true,
             guestParticipants: true,
             comments: true
@@ -242,7 +247,9 @@ export const getEvents = async (req: Request, res: Response) => {
       ],
       take: validatedLimit,
       skip: cursor ? 0 : validatedOffset // Skip only for offset pagination
-    });
+    }),
+    prisma.event.count({ where })
+  ]);
 
     // Get participant data only for returned events (batch query)
     const eventIds = events.map(e => e.id);
@@ -346,7 +353,7 @@ export const getEvents = async (req: Request, res: Response) => {
       pagination: {
         limit: validatedLimit,
         offset: validatedOffset,
-        total: enrichedEvents.length,
+        total: totalCount,
         hasMore: events.length === validatedLimit,
         nextCursor
       }
@@ -861,24 +868,31 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
       });
     }
 
-    const participant = await prisma.eventParticipant.findFirst({
-      where: {
-        eventId: id,
-        userId: req.user!.id
+    const result = await prisma.$transaction(async (tx) => {
+      const participant = await tx.eventParticipant.findFirst({
+        where: {
+          eventId: id,
+          userId: req.user!.id
+        }
+      });
+
+      if (!participant) {
+        return null;
       }
+
+      const updated = await tx.eventParticipant.update({
+        where: { id: participant.id },
+        data: { status }
+      });
+
+      return { updated, previousStatus: participant.status };
     });
 
-    if (!participant) {
+    if (!result) {
       return res.status(404).json({ error: 'Not participating in this event' });
     }
 
-    // Get the event to find the organizer
-    // (event variable removed, not used)
-
-    const updatedParticipant = await prisma.eventParticipant.update({
-      where: { id: participant.id },
-      data: { status }
-    });
+    const { updated: updatedParticipant, previousStatus } = result;
 
     // Log activity for the user who updated their status (only for confirmed/declined)
     if (status === 'confirmed' || status === 'declined') {
@@ -906,7 +920,7 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
             eventType: statusEvent.eventType,
             eventStartTime: statusEvent.startTime,
             groupId: statusEvent.groupId,
-            previousStatus: participant.status
+            previousStatus: previousStatus
           },
           checkMutePreference: false // User updating their own status
         });
@@ -1498,6 +1512,18 @@ export const joinEventAsGuest = async (req: Request, res: Response) => {
       if (totalConfirmed >= event.maxPlayers) {
         throw new BadRequestError('Event is full');
       }
+    }
+
+    // Check for duplicate guest name within this event
+    const existingGuest = await tx.guestParticipant.findFirst({
+      where: {
+        eventId: event.id,
+        name: sanitizedName
+      }
+    });
+
+    if (existingGuest) {
+      throw new BadRequestError('A guest with this name has already joined the event');
     }
 
     // Create guest participant

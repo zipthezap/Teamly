@@ -175,6 +175,19 @@ export const validateGroupCoordinates = async (latitude: unknown, longitude: unk
 };
 
 /**
+ * Validates that latitude and longitude are always provided together, never partially.
+ * Returns validation result with error message if only one is provided.
+ */
+export const validateCoordinateCompleteness = (latitude: unknown, longitude: unknown) => {
+  const hasLat = latitude !== undefined && latitude !== null;
+  const hasLon = longitude !== undefined && longitude !== null;
+  if (hasLat !== hasLon) {
+    return { valid: false, error: 'Both latitude and longitude must be provided together' };
+  }
+  return { valid: true };
+};
+
+/**
  * Validates maxMembers value
  * Returns validation result with error message if invalid
  */

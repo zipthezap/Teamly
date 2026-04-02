@@ -123,21 +123,24 @@ export async function hasEventPermission(
       }
 
       // If event is associated with a group, check group permissions
-      if (event.groupId) {
-        const membership = await prisma.groupMember.findUnique({
-          where: {
-            userId_groupId: {
-              userId,
-              groupId: event.groupId
-            }
-          },
-          select: { role: true }
-        });
+      if (!event.groupId) {
+        logger.error('Event without groupId found', 'PermissionService', { eventId });
+        return false;
+      }
 
-        if (membership) {
-          const rolePermissions = GroupRolePermissions[membership.role as GroupRole] || [];
-          return rolePermissions.includes(permission);
-        }
+      const membership = await prisma.groupMember.findUnique({
+        where: {
+          userId_groupId: {
+            userId,
+            groupId: event.groupId
+          }
+        },
+        select: { role: true }
+      });
+
+      if (membership) {
+        const rolePermissions = GroupRolePermissions[membership.role as GroupRole] || [];
+        return rolePermissions.includes(permission);
       }
 
       return false;
