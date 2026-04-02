@@ -180,6 +180,25 @@ export const getUserNotifications = async (
   const queryTake = isOffsetPagination ? offset + limit + 1 : limit + 1;
   const baseOrderBy = [{ createdAt: 'desc' as const }, { id: 'desc' as const }];
 
+  // Pre-compute which enum values for each notification table match the search query
+  // so we can push type-based filtering to the DB instead of doing it in-memory.
+  // When matches exist for a table, we restrict that table's query to those types.
+  // Params-based search (JSON field) cannot be expressed as a Prisma predicate and
+  // is handled by the in-memory filter further below.
+  const normalizedSearch = searchQuery ? searchQuery.toLowerCase().trim() : '';
+  const matchingEventTypes = normalizedSearch
+    ? (Object.values(EventNotificationType) as string[]).filter((v) => v.toLowerCase().includes(normalizedSearch))
+    : [];
+  const matchingGroupTypes = normalizedSearch
+    ? (Object.values(GroupNotificationType) as string[]).filter((v) => v.toLowerCase().includes(normalizedSearch))
+    : [];
+  const matchingTeamUpTypes = normalizedSearch
+    ? (Object.values(TeamUpNotificationType) as string[]).filter((v) => v.toLowerCase().includes(normalizedSearch))
+    : [];
+  const matchingTournamentTypes = normalizedSearch
+    ? (Object.values(TournamentNotificationType) as string[]).filter((v) => v.toLowerCase().includes(normalizedSearch))
+    : [];
+
   const appendCursorAndClause = <T extends { AND?: unknown }>(
     where: T
   ): T => {
@@ -214,6 +233,11 @@ export const getUserNotifications = async (
     if (startDate) eventWhere.createdAt.gte = startDate;
     if (endDate) eventWhere.createdAt.lte = endDate;
   }
+  // When a search query matches event type enum values, push the filter to the DB
+  // to reduce result set size. Params-based search is handled in-memory below.
+  if (matchingEventTypes.length > 0) {
+    eventWhere.type = { in: matchingEventTypes as EventNotificationType[] };
+  }
   if (parsedCursor) {
     eventWhere = {
       AND: [
@@ -240,6 +264,9 @@ export const getUserNotifications = async (
     groupWhere.createdAt = {};
     if (startDate) groupWhere.createdAt.gte = startDate;
     if (endDate) groupWhere.createdAt.lte = endDate;
+  }
+  if (matchingGroupTypes.length > 0) {
+    groupWhere.type = { in: matchingGroupTypes as GroupNotificationType[] };
   }
   if (parsedCursor) {
     groupWhere = {
@@ -307,6 +334,9 @@ export const getUserNotifications = async (
       if (startDate) teamUpWhere.createdAt.gte = startDate;
       if (endDate) teamUpWhere.createdAt.lte = endDate;
     }
+    if (matchingTeamUpTypes.length > 0) {
+      teamUpWhere.type = { in: matchingTeamUpTypes as TeamUpNotificationType[] };
+    }
     const teamUpWhereWithCursor = appendCursorAndClause(teamUpWhere);
 
     [teamUpNotifications, teamUpCount] = await Promise.all([
@@ -334,6 +364,9 @@ export const getUserNotifications = async (
       tournamentWhere.createdAt = {};
       if (startDate) tournamentWhere.createdAt.gte = startDate;
       if (endDate) tournamentWhere.createdAt.lte = endDate;
+    }
+    if (matchingTournamentTypes.length > 0) {
+      tournamentWhere.type = { in: matchingTournamentTypes as TournamentNotificationType[] };
     }
     const tournamentWhereWithCursor = appendCursorAndClause(tournamentWhere);
 
@@ -432,16 +465,14 @@ export const getUserNotifications = async (
     (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
   );
 
-  // Apply search filter if provided
-  // Note: Search is applied in-memory after fetching from database.
-  // For better performance with large datasets, consider implementing
-  // database-level full-text search or moving search to WHERE clause.
-  if (searchQuery && searchQuery.trim()) {
-    const query = searchQuery.toLowerCase().trim();
+  // Apply params-based search in-memory. Type-based search has already been pushed
+  // to the DB WHERE clause above via enum value matching (matchingEventTypes etc.).
+  // JSON params cannot be efficiently searched with a Prisma predicate, so we retain
+  // the in-memory filter only for params string values.
+  if (normalizedSearch) {
     allNotifications = allNotifications.filter(
       (n) =>
-        (n.type && n.type.toLowerCase().includes(query)) ||
-        (n.params && Object.values(n.params).some(v => typeof v === 'string' && v.toLowerCase().includes(query)))
+        n.params && Object.values(n.params).some(v => typeof v === 'string' && v.toLowerCase().includes(normalizedSearch))
     );
   }
 
@@ -583,7 +614,9 @@ export const markNotificationsAsRead = async (
  * Get notification statistics for a user
  */
 export const getNotificationStats = async (userId: string) => {
-  const [unreadEvent, unreadGroup, unreadTeamUp, unreadTournament, totalEvent, totalGroup, totalTeamUp, totalTournament, recentActivity] = await Promise.all([
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [unreadEvent, unreadGroup, unreadTeamUp, unreadTournament, totalEvent, totalGroup, totalTeamUp, totalTournament, recentActivityGroups] = await Promise.all([
     prisma.eventNotification.count({ where: { userId, read: false } }),
     prisma.groupNotification.count({ where: { userId, read: false } }),
     prisma.teamUpNotification.count({ where: { userId, read: false } }),
@@ -592,19 +625,20 @@ export const getNotificationStats = async (userId: string) => {
     prisma.groupNotification.count({ where: { userId } }),
     prisma.teamUpNotification.count({ where: { userId } }),
     prisma.tournamentNotification.count({ where: { userId } }),
-    prisma.eventNotification.findMany({
-      where: {
-        userId,
-        createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
-      },
-      select: { type: true },
+    // Use groupBy to aggregate type counts in the DB instead of fetching all records
+    prisma.eventNotification.groupBy({
+      by: ['type'],
+      where: { userId, createdAt: { gte: sevenDaysAgo } },
+      _count: { _all: true },
     }),
   ]);
 
-  // Count by type
+  // Build type counts and last7Days total from the aggregated DB result
   const typeCounts: Record<string, number> = {};
-  recentActivity.forEach((n) => {
-    typeCounts[n.type] = (typeCounts[n.type] || 0) + 1;
+  let last7Days = 0;
+  recentActivityGroups.forEach((g) => {
+    typeCounts[g.type] = g._count._all;
+    last7Days += g._count._all;
   });
 
   return {
@@ -618,7 +652,7 @@ export const getNotificationStats = async (userId: string) => {
     totalGroup,
     totalTeamUp,
     totalTournament,
-    last7Days: recentActivity.length,
+    last7Days,
     typeCounts,
   };
 };

@@ -23,7 +23,7 @@ import {
   sendEventEmailNotifications
 } from '../../services/eventService';
 import prisma from '../../config/database';
-import { EventParticipantStatus } from '../../../shared/types/event.types';
+import { EventNotificationType, EventParticipantStatus } from '../../../shared/types/event.types';
 
 // Mock dependencies
 vi.mock('../../config/database', () => ({
@@ -602,7 +602,7 @@ describe('Event Service', () => {
     it('should create deletion notifications for participants', async () => {
       const { filterUnmutedUsers: mockFilterUnmuted } = await import('../../utils/notificationHelper');
       vi.mocked(mockFilterUnmuted).mockResolvedValueOnce(['user-1', 'user-2']);
-      vi.mocked(prisma.eventNotification.create).mockResolvedValue({} as unknown);
+      vi.mocked(prisma.eventNotification.createMany).mockResolvedValue({ count: 2 });
 
       await createEventDeletionNotifications(
         'event-1',
@@ -611,7 +611,23 @@ describe('Event Service', () => {
         ['user-1', 'user-2']
       );
 
-      expect(prisma.eventNotification.create).toHaveBeenCalled();
+      expect(prisma.eventNotification.createMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.arrayContaining([
+            expect.objectContaining({
+              eventId: 'event-1',
+              userId: 'user-1',
+              type: EventNotificationType.event_cancelled
+            }),
+            expect.objectContaining({
+              eventId: 'event-1',
+              userId: 'user-2',
+              type: EventNotificationType.event_cancelled
+            })
+          ]),
+          skipDuplicates: true
+        })
+      );
     });
 
     it('should not create notifications if no participants', async () => {
@@ -622,7 +638,7 @@ describe('Event Service', () => {
         []
       );
 
-      expect(prisma.eventNotification.create).not.toHaveBeenCalled();
+      expect(prisma.eventNotification.createMany).not.toHaveBeenCalled();
     });
   });
 
