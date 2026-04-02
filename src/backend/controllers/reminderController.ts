@@ -19,7 +19,11 @@ export const createReminder = asyncHandler(async (req: Request, res: Response) =
   }
 
   const reminderDate = new Date(remindAt);
-  
+
+  if (isNaN(reminderDate.getTime())) {
+    throw new BadRequestError('Invalid reminder time format');
+  }
+
   // Validate reminder date is in the future
   if (reminderDate <= new Date()) {
     throw new BadRequestError('Reminder time must be in the future');
