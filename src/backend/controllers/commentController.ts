@@ -59,6 +59,10 @@ export const createComment = asyncHandler(async (req: Request, res: Response) =>
   // Sanitize content to prevent XSS
   const sanitizedContent = sanitizeUserInput(content);
 
+  if (sanitizedContent.length === 0) {
+    throw new BadRequestError('Comment content cannot be empty');
+  }
+
   // Check if event exists and user has access
   const event = await prisma.event.findFirst({
     where: {

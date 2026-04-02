@@ -28,6 +28,7 @@ import { InviteService } from '../services/inviteService';
 // Time constants for event queries
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+const MAX_GROUP_NAME_LENGTH = 100;
 
 export const createGroup = async (req: Request, res: Response) => {
   const { 
@@ -51,12 +52,6 @@ export const createGroup = async (req: Request, res: Response) => {
     throw new BadRequestError('Group name is required');
   }
 
-  // Validate maxMembers if provided
-  const maxMembersValidation = groupService.validateMaxMembers(maxMembers);
-  if (!maxMembersValidation.valid) {
-    throw new BadRequestError(maxMembersValidation.error || 'Invalid max members value');
-  }
-
   // Sanitize text inputs
   const sanitized = groupService.sanitizeGroupData({
     name,
@@ -67,7 +62,26 @@ export const createGroup = async (req: Request, res: Response) => {
     tags
   });
 
+  if (!sanitized.name) {
+    throw new BadRequestError('Group name cannot be empty');
+  }
+
+  if (sanitized.name.length > MAX_GROUP_NAME_LENGTH) {
+    throw new BadRequestError(`Group name must not exceed ${MAX_GROUP_NAME_LENGTH} characters`);
+  }
+
+  // Validate maxMembers if provided
+  const maxMembersValidation = groupService.validateMaxMembers(maxMembers);
+  if (!maxMembersValidation.valid) {
+    throw new BadRequestError(maxMembersValidation.error || 'Invalid max members value');
+  }
+
   // Validate coordinates if provided
+  const coordCompletenessCheck = groupService.validateCoordinateCompleteness(latitude, longitude);
+  if (!coordCompletenessCheck.valid) {
+    throw new BadRequestError(coordCompletenessCheck.error!);
+  }
+
   const coordValidation = await groupService.validateGroupCoordinates(latitude, longitude);
   if (!coordValidation.valid) {
     throw new BadRequestError(coordValidation.error || 'Invalid coordinates');
@@ -468,6 +482,12 @@ export const updateGroup = async (req: Request, res: Response) => {
     country,
     tags
   });
+
+  // Validate that coordinates are provided together (not partially)
+  const coordCompletenessCheck = groupService.validateCoordinateCompleteness(latitude, longitude);
+  if (!coordCompletenessCheck.valid) {
+    throw new BadRequestError(coordCompletenessCheck.error!);
+  }
 
   // Validate coordinates if provided
   const coordValidation = await groupService.validateGroupCoordinates(latitude, longitude);
@@ -2163,27 +2183,30 @@ export const joinGroupByInviteToken = async (req: Request, res: Response) => {
     }
   }
 
-  // Check if there's already a pending join request
-  const existingRequest = await prisma.groupJoinRequest.findFirst({
-    where: {
-      groupId: group.id,
-      userId,
-      status: 'pending'
-    }
-  });
+  // Check if there's already a pending join request AND create the join request atomically
+  // to prevent duplicate join requests under concurrent requests
+  const joinRequest = await prisma.$transaction(async (tx) => {
+    const existingRequest = await tx.groupJoinRequest.findFirst({
+      where: {
+        groupId: group.id,
+        userId,
+        status: 'pending'
+      }
+    });
 
-  if (existingRequest) {
-    throw new BadRequestError('You already have a pending join request for this group');
-  }
-
-  // Create join request with LINK source
-  const joinRequest = await prisma.groupJoinRequest.create({
-    data: {
-      groupId: group.id,
-      userId,
-      status: 'pending',
-      createdBy: 'LINK'
+    if (existingRequest) {
+      throw new BadRequestError('You already have a pending join request for this group');
     }
+
+    // Create join request with LINK source
+    return tx.groupJoinRequest.create({
+      data: {
+        groupId: group.id,
+        userId,
+        status: 'pending',
+        createdBy: 'LINK'
+      }
+    });
   });
 
   // Auto-approve if the group setting allows it

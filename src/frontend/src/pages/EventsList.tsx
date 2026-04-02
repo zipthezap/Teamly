@@ -83,6 +83,7 @@ const EventsList = () => {
         const response = await groupsAPI.getAll();
         setGroups(response.data);
       } catch {
+        // Groups are supplementary data; non-critical failure is silently ignored
       }
     }
     fetchGroups();
@@ -108,6 +109,7 @@ const EventsList = () => {
       }
       setEvents(newEvents);
     } catch {
+      setToast({ message: t('common.errorLoadingEvents', 'Failed to load events'), type: 'error' });
     } finally {
       setIsLoading(false);
       setIsFetching(false);
