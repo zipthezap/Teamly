@@ -1944,7 +1944,13 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
 // Transfer admin rights to another member
 export const transferAdmin = async (req: Request, res: Response) => {
   const { id } = req.params;
+  if (!id || typeof id !== 'string') {
+    throw new BadRequestError('Group ID is required');
+  }
   const { newAdminEmail } = req.body;
+  if (!newAdminEmail || typeof newAdminEmail !== 'string' || !newAdminEmail.trim()) {
+    throw new BadRequestError('newAdminEmail must be a non-empty string');
+  }
   
   // Get group with members for cache invalidation
   const group = await prisma.group.findUnique({
@@ -1973,11 +1979,19 @@ export const transferAdmin = async (req: Request, res: Response) => {
   if (!newAdminUser) {
     throw new NotFoundError('Selected user not found.');
   }
+  if (newAdminUser.id === req.user!.id) {
+    throw new BadRequestError('Cannot transfer admin rights to yourself.');
+  }
   const newAdminMembership = await prisma.groupMember.findFirst({
-    where: { groupId: id, userId: newAdminUser.id }
+    where: { groupId: id, userId: newAdminUser.id },
+    select: { id: true, role: true }
   });
   if (!newAdminMembership) {
     throw new NotFoundError('Selected user is not a member of the group.');
+  }
+
+  if (newAdminMembership.role === 'admin') {
+    throw new BadRequestError('Selected user is already an admin.');
   }
   // Use transaction to update roles
   await prisma.$transaction([

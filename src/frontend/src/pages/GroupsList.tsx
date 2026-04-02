@@ -224,7 +224,11 @@ const GroupsList = () => {
                             <Typography variant="caption" color="text.secondary">{t('groups.invitedBy', { name: notif.user.name })}</Typography>
                           )}
                         </>}
-                        secondary={<Typography variant="caption" color="text.secondary">{notif.message}</Typography>}
+                        secondary={
+                          <Typography variant="caption" color="text.secondary">
+                            {String(t(`notifications.${notif.type}Message`, notif.params || {}))}
+                          </Typography>
+                        }
                       />
                       <MuiBox display="flex" flexDirection={{ xs: 'row', sm: 'column' }} gap={1} ml={{ xs: 0, sm: 2 }} width={{ xs: '100%', sm: 'auto' }}>
                         <Button size="small" color="success" variant="contained" onClick={() => handleAccept(notif.id)} sx={{ minHeight: '36px', width: { xs: '100%', sm: 'auto' } }}>{t('common.accept', 'Accept')}</Button>

@@ -88,10 +88,13 @@ const NotificationsCenter: React.FC = () => {
 
   // Filter notifications by search query
   const filteredNotifications = notifications.filter((notif) => {
+    const translationParams = (notif.params || {}) as Record<string, unknown>;
+    const titleText = String(t(`notifications.${notif.type}`, { ...translationParams, defaultValue: 'Notification' }));
+    const messageText = String(t(`notifications.${notif.type}Message`, { ...translationParams, defaultValue: 'No details available' }));
     const matchesSearch =
       searchQuery === '' ||
-      notif.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      notif.message.toLowerCase().includes(searchQuery.toLowerCase());
+      titleText.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      messageText.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesType = selectedType === 'all' || notif.type === selectedType;
 
@@ -364,7 +367,7 @@ const NotificationsCenter: React.FC = () => {
                             >
                               <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
                                 <Typography variant="body1" fontWeight={!notif.read ? 600 : 400} sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                                  {String(t(`notifications.${notif.type}`, notif.params || {}))}
+                                  {String(t(`notifications.${notif.type}`, { ...(notif.params || {}), defaultValue: 'Notification' }))}
                                 </Typography>
                                 {!notif.read && (
                                   <Chip label={t('notifications.new')} size="small" color="primary" sx={{ height: 20 }} />
@@ -386,7 +389,7 @@ const NotificationsCenter: React.FC = () => {
                           secondary={
                             <Box>
                               <Typography variant="body2" color="text.secondary" mb={0.5} sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
-                                {String(t(`notifications.${notif.type}Message`, notif.params || {}))}
+                                {String(t(`notifications.${notif.type}Message`, { ...(notif.params || {}), defaultValue: 'No details available' }))}
                               </Typography>
                               <Stack direction="row" spacing={1} flexWrap="wrap">
                                 <Chip
