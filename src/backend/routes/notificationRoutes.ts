@@ -5,6 +5,7 @@
 
 import express from 'express';
 import authMiddleware from '../middleware/auth';
+import { authenticatedLimiter } from '../middleware/rateLimiter';
 import {
   getNotifications,
   markAsRead,
@@ -20,6 +21,7 @@ const router = express.Router();
 
 // All notification routes require authentication
 router.use(authMiddleware);
+router.use(authenticatedLimiter);
 
 // Get notifications with filtering and pagination
 // ETag enables 304 Not Modified responses for bandwidth optimization without HTTP caching

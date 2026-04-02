@@ -39,6 +39,7 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
     includeRead = 'false',
     limit = '50',
     offset = '0',
+    cursor,
     type,
     notificationType,
     startDate,
@@ -60,6 +61,10 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
     limit: parsedLimit,
     offset: parsedOffset,
   };
+
+  if (cursor) {
+    options.cursor = cursor as string;
+  }
 
   if (type) {
     options.type = type as string;
@@ -104,7 +109,8 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
     total: result.total,
     limit: parsedLimit,
     offset: parsedOffset,
-    hasMore: result.total > parsedOffset + parsedLimit,
+    hasMore: result.hasMore,
+    nextCursor: result.nextCursor,
   });
 });
 

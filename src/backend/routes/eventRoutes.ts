@@ -3,7 +3,7 @@ import * as eventController from '../controllers/eventController';
 import * as reminderController from '../controllers/reminderController';
 import * as attendanceController from '../controllers/attendanceController';
 import authMiddleware from '../middleware/auth';
-import { authenticatedLimiter } from '../middleware/rateLimiter';
+import { apiLimiter, authenticatedLimiter } from '../middleware/rateLimiter';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { cacheControl, noCache } from '../middleware/cacheControl';
 import { etagMiddleware } from '../middleware/etag';
@@ -11,8 +11,8 @@ import { etagMiddleware } from '../middleware/etag';
 const router = Router();
 
 // Public routes (no authentication required)
-router.get('/invite/:token', asyncHandler(eventController.getEventByInviteToken));
-router.post('/invite/:token/join', asyncHandler(eventController.joinEventAsGuest));
+router.get('/invite/:token', apiLimiter, asyncHandler(eventController.getEventByInviteToken));
+router.post('/invite/:token/join', apiLimiter, asyncHandler(eventController.joinEventAsGuest));
 
 // Protected routes (authentication required)
 router.use(authMiddleware);

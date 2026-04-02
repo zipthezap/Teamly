@@ -110,6 +110,40 @@ export interface UnifiedNotification {
   };
 }
 
+interface NotificationCursor {
+  createdAt: string;
+  id: string;
+}
+
+const encodeNotificationCursor = (notification: UnifiedNotification): string =>
+  Buffer.from(
+    JSON.stringify({
+      createdAt: notification.createdAt.toISOString(),
+      id: notification.id,
+    }),
+    'utf8'
+  ).toString('base64url');
+
+const decodeNotificationCursor = (cursor?: string): { createdAt: Date; id: string } | null => {
+  if (!cursor) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as NotificationCursor;
+    if (!parsed.createdAt || !parsed.id) {
+      throw new Error('Invalid cursor payload');
+    }
+    const createdAt = new Date(parsed.createdAt);
+    if (Number.isNaN(createdAt.getTime())) {
+      throw new Error('Invalid cursor date');
+    }
+    return { createdAt, id: parsed.id };
+  } catch {
+    throw new BadRequestError('Invalid notification cursor');
+  }
+};
+
 /**
  * Get all notifications for a user with enhanced metadata
  */
@@ -119,17 +153,19 @@ export const getUserNotifications = async (
     includeRead?: boolean;
     limit?: number;
     offset?: number;
+    cursor?: string;
     type?: string;
     notificationType?: 'event' | 'group' | 'teamup' | 'tournament';
     startDate?: Date;
     endDate?: Date;
     searchQuery?: string;
   } = {}
-): Promise<{ notifications: UnifiedNotification[]; total: number }> => {
+): Promise<{ notifications: UnifiedNotification[]; total: number; hasMore: boolean; nextCursor: string | null }> => {
   const {
     includeRead = false,
     limit = 50,
     offset = 0,
+    cursor,
     type,
     notificationType,
     startDate,
@@ -137,8 +173,36 @@ export const getUserNotifications = async (
     searchQuery,
   } = options;
 
+  const parsedCursor = decodeNotificationCursor(cursor);
+  // For offset pagination, over-fetch by one record after offset to compute hasMore
+  // without issuing an additional count query for the merged page.
+  const isOffsetPagination = !parsedCursor;
+  const queryTake = isOffsetPagination ? offset + limit + 1 : limit + 1;
+  const baseOrderBy = [{ createdAt: 'desc' as const }, { id: 'desc' as const }];
+
+  const appendCursorAndClause = <T extends { AND?: unknown }>(
+    where: T
+  ): T => {
+    if (!parsedCursor) {
+      return where;
+    }
+
+    return {
+      ...where,
+      AND: [
+        ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+        {
+          OR: [
+            { createdAt: { lt: parsedCursor.createdAt } },
+            { AND: [{ createdAt: parsedCursor.createdAt }, { id: { lt: parsedCursor.id } }] },
+          ],
+        },
+      ],
+    };
+  };
+
   // Build where clause for event notifications
-  const eventWhere: Prisma.EventNotificationWhereInput = { userId };
+  let eventWhere: Prisma.EventNotificationWhereInput = { userId };
   if (!includeRead) {
     eventWhere.read = false;
   }
@@ -150,9 +214,22 @@ export const getUserNotifications = async (
     if (startDate) eventWhere.createdAt.gte = startDate;
     if (endDate) eventWhere.createdAt.lte = endDate;
   }
+  if (parsedCursor) {
+    eventWhere = {
+      AND: [
+        eventWhere,
+        {
+          OR: [
+            { createdAt: { lt: parsedCursor.createdAt } },
+            { AND: [{ createdAt: parsedCursor.createdAt }, { id: { lt: parsedCursor.id } }] },
+          ],
+        },
+      ],
+    };
+  }
 
   // Build where clause for group notifications
-  const groupWhere: Prisma.GroupNotificationWhereInput = { userId };
+  let groupWhere: Prisma.GroupNotificationWhereInput = { userId };
   if (!includeRead) {
     groupWhere.read = false;
   }
@@ -163,6 +240,19 @@ export const getUserNotifications = async (
     groupWhere.createdAt = {};
     if (startDate) groupWhere.createdAt.gte = startDate;
     if (endDate) groupWhere.createdAt.lte = endDate;
+  }
+  if (parsedCursor) {
+    groupWhere = {
+      AND: [
+        groupWhere,
+        {
+          OR: [
+            { createdAt: { lt: parsedCursor.createdAt } },
+            { AND: [{ createdAt: parsedCursor.createdAt }, { id: { lt: parsedCursor.id } }] },
+          ],
+        },
+      ],
+    };
   }
 
   // Fetch notifications based on filter
@@ -183,9 +273,8 @@ export const getUserNotifications = async (
           event: { select: { id: true, title: true, startTime: true } },
           user: { select: { id: true, name: true } },
         },
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-        skip: offset,
+        orderBy: baseOrderBy,
+        take: queryTake,
       }),
       prisma.eventNotification.count({ where: eventWhere }),
     ]);
@@ -198,9 +287,8 @@ export const getUserNotifications = async (
         include: {
           group: { select: { id: true, name: true } },
         },
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-        skip: offset,
+        orderBy: baseOrderBy,
+        take: queryTake,
       }),
       prisma.groupNotification.count({ where: groupWhere }),
     ]);
@@ -219,16 +307,16 @@ export const getUserNotifications = async (
       if (startDate) teamUpWhere.createdAt.gte = startDate;
       if (endDate) teamUpWhere.createdAt.lte = endDate;
     }
+    const teamUpWhereWithCursor = appendCursorAndClause(teamUpWhere);
 
     [teamUpNotifications, teamUpCount] = await Promise.all([
       prisma.teamUpNotification.findMany({
-        where: teamUpWhere,
+        where: teamUpWhereWithCursor,
         include: {
           teamUpRequest: { select: { id: true, title: true, sportType: true } },
         },
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-        skip: offset,
+        orderBy: baseOrderBy,
+        take: queryTake,
       }),
       prisma.teamUpNotification.count({ where: teamUpWhere }),
     ]);
@@ -247,16 +335,16 @@ export const getUserNotifications = async (
       if (startDate) tournamentWhere.createdAt.gte = startDate;
       if (endDate) tournamentWhere.createdAt.lte = endDate;
     }
+    const tournamentWhereWithCursor = appendCursorAndClause(tournamentWhere);
 
     [tournamentNotifications, tournamentCount] = await Promise.all([
       prisma.tournamentNotification.findMany({
-        where: tournamentWhere,
+        where: tournamentWhereWithCursor,
         include: {
           tournament: { select: { id: true, name: true, sportType: true } },
         },
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-        skip: offset,
+        orderBy: baseOrderBy,
+        take: queryTake,
       }),
       prisma.tournamentNotification.count({ where: tournamentWhere }),
     ]);
@@ -357,9 +445,20 @@ export const getUserNotifications = async (
     );
   }
 
+  const slicedNotifications = isOffsetPagination
+    ? allNotifications.slice(offset, offset + limit + 1)
+    : allNotifications.slice(0, limit + 1);
+  const hasMore = slicedNotifications.length > limit;
+  const notifications = slicedNotifications.slice(0, limit);
+  const nextCursor = hasMore && notifications.length > 0
+    ? encodeNotificationCursor(notifications[notifications.length - 1])
+    : null;
+
   return {
-    notifications: allNotifications.slice(0, limit),
+    notifications,
     total: searchQuery ? allNotifications.length : eventCount + groupCount + teamUpCount + tournamentCount,
+    hasMore,
+    nextCursor,
   };
 };
 

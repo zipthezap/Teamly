@@ -31,6 +31,7 @@ import { InviteService, calculateExpirationDate } from '../services/inviteServic
 import { permissionService } from '../services/permissionService';
 import { Permission } from '../../shared/types/permissions.types';
 import { NotificationFactory } from '../services/notificationFactory';
+import { recordSearchQuery } from '../services/metricsService';
 
 // ==================== EVENT CRUD OPERATIONS ====================
 
@@ -218,7 +219,27 @@ export const getEvents = async (req: Request, res: Response) => {
 
   // Add cursor-based pagination if cursor is provided
   if (cursor) {
-    where.id = { gt: cursor as string };
+    let decodedCursor: { startTime: string; id: string };
+    try {
+      decodedCursor = JSON.parse(Buffer.from(String(cursor), 'base64url').toString('utf8')) as { startTime: string; id: string };
+    } catch {
+      throw new BadRequestError('Invalid cursor: malformed base64url payload');
+    }
+
+    const cursorStartTime = new Date(decodedCursor.startTime);
+    if (!decodedCursor.id || Number.isNaN(cursorStartTime.getTime())) {
+      throw new BadRequestError('Invalid cursor: missing id or invalid startTime');
+    }
+
+    where.AND = [
+      ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+      {
+        OR: [
+          { startTime: { gt: cursorStartTime } },
+          { AND: [{ startTime: cursorStartTime }, { id: { gt: decodedCursor.id } }] }
+        ]
+      }
+    ];
   }
 
   // Optimize query - get participant info separately for large result sets
@@ -356,8 +377,16 @@ export const getEvents = async (req: Request, res: Response) => {
       locationService.enrichWithLocationInfo(event)
     );
 
-    // Calculate next cursor for cursor-based pagination
-    const nextCursor = events.length === validatedLimit ? events[events.length - 1].id : null;
+    // Calculate next cursor for cursor-based pagination aligned with DB sort (startTime, id)
+    const nextCursor = events.length === validatedLimit
+      ? Buffer.from(
+          JSON.stringify({
+            startTime: events[events.length - 1].startTime,
+            id: events[events.length - 1].id
+          }),
+          'utf8'
+        ).toString('base64url')
+      : null;
 
     const response = {
       data: enrichedEvents,
@@ -1610,17 +1639,31 @@ export const getNearbyEvents = async (req: Request, res: Response) => {
 
   const { lat, lon } = parseCoordinates(latitude, longitude);
   const radiusKm = parseFloatStrict(radius, 'Radius');
+  const parsedLimit = parseFloatStrict(limit, 'Limit');
+  if (!Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > 100) {
+    throw new BadRequestError('Limit must be an integer between 1 and 100');
+  }
+  const safeLimit = parsedLimit;
 
   // Validate radius (max 100km to prevent excessive queries)
   if (radiusKm <= 0 || radiusKm > 100) {
     throw new BadRequestError('Radius must be between 0 and 100 kilometers');
   }
 
+  // Record search metric for observability of discovery traffic
+  recordSearchQuery('events');
+
+  const { latDelta, lonDelta } = locationService.calculateBoundingBox(lat, radiusKm);
+
   // Get all events with location data
     const events = await prisma.event.findMany({
       where: {
-        latitude: { not: null },
-        longitude: { not: null },
+        AND: [
+          { latitude: { not: null } },
+          { longitude: { not: null } },
+          { latitude: { gte: lat - latDelta, lte: lat + latDelta } },
+          { longitude: { gte: lon - lonDelta, lte: lon + lonDelta } },
+        ],
         status: 'upcoming', // Only show upcoming events
         archived: false
       },
@@ -1643,7 +1686,7 @@ export const getNearbyEvents = async (req: Request, res: Response) => {
         }
       },
       orderBy: { startTime: 'asc' },
-      take: parseInt(limit as string) * 2 // Get more than needed for filtering
+      take: Math.min(safeLimit * 10, 500) // Wider candidate set from DB bounding box
     });
 
     // Filter by location and add distance
@@ -1652,7 +1695,7 @@ export const getNearbyEvents = async (req: Request, res: Response) => {
       lat,
       lon,
       radiusKm
-    ).slice(0, parseInt(limit as string)); // Limit after filtering
+    ).slice(0, safeLimit); // Limit after filtering
 
   // Enrich with location info
   const enrichedEvents = nearbyEvents.map(event => 

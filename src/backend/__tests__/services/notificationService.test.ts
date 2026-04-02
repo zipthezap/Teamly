@@ -130,8 +130,8 @@ describe('NotificationService', () => {
 
       expect(mockPrisma.eventNotification.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          take: 10,
-          skip: 20
+          take: 31,
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }]
         })
       );
     });
@@ -182,10 +182,66 @@ describe('NotificationService', () => {
       expect(result.notifications[0].id).toBe('notif-4'); // group notification
       expect(result.notifications[1].id).toBe('notif-1'); // event notification
     });
+
+    it('should return cursor metadata for next page when more results exist', async () => {
+      const now = new Date('2026-01-01T00:00:00.000Z');
+      const older = new Date('2025-12-31T00:00:00.000Z');
+      const oldest = new Date('2025-12-30T00:00:00.000Z');
+
+      mockPrisma.eventNotification.findMany.mockResolvedValue([
+        {
+          id: 'notif-1',
+          userId: 'user-1',
+          type: 'created',
+          params: {},
+          read: false,
+          createdAt: now,
+          event: { id: 'event-1', title: 'Event 1', startTime: now },
+          user: { id: 'user-2', name: 'Alice' },
+        },
+        {
+          id: 'notif-2',
+          userId: 'user-1',
+          type: 'created',
+          params: {},
+          read: false,
+          createdAt: older,
+          event: { id: 'event-2', title: 'Event 2', startTime: older },
+          user: { id: 'user-3', name: 'Bob' },
+        },
+        {
+          id: 'notif-3',
+          userId: 'user-1',
+          type: 'created',
+          params: {},
+          read: false,
+          createdAt: oldest,
+          event: { id: 'event-3', title: 'Event 3', startTime: oldest },
+          user: { id: 'user-4', name: 'Carol' },
+        },
+      ] as unknown);
+      mockPrisma.eventNotification.count.mockResolvedValue(3);
+      mockPrisma.groupNotification.findMany.mockResolvedValue([]);
+      mockPrisma.groupNotification.count.mockResolvedValue(0);
+      mockPrisma.teamUpNotification.findMany.mockResolvedValue([]);
+      mockPrisma.teamUpNotification.count.mockResolvedValue(0);
+      mockPrisma.tournamentNotification.findMany.mockResolvedValue([]);
+      mockPrisma.tournamentNotification.count.mockResolvedValue(0);
+
+      const result = await getUserNotifications('user-1', { limit: 2 });
+
+      expect(result.notifications).toHaveLength(2);
+      expect(result.hasMore).toBe(true);
+      expect(result.nextCursor).toBeTruthy();
+    });
   });
 
   describe('markNotificationsAsRead', () => {
     it('should mark specific notifications as read', async () => {
+      mockPrisma.eventNotification.findMany.mockResolvedValue([{ id: 'notif-1' }] as unknown);
+      mockPrisma.groupNotification.findMany.mockResolvedValue([{ id: 'notif-2' }] as unknown);
+      mockPrisma.teamUpNotification.findMany.mockResolvedValue([]);
+      mockPrisma.tournamentNotification.findMany.mockResolvedValue([]);
       mockPrisma.eventNotification.updateMany.mockResolvedValue({ count: 1 });
       mockPrisma.groupNotification.updateMany.mockResolvedValue({ count: 0 });
       mockPrisma.teamUpNotification.updateMany.mockResolvedValue({ count: 0 });
@@ -297,6 +353,10 @@ describe('NotificationService', () => {
 
   describe('deleteNotifications', () => {
     it('should delete specific notifications', async () => {
+      mockPrisma.eventNotification.findMany.mockResolvedValue([{ id: 'notif-1' }, { id: 'notif-2' }] as unknown);
+      mockPrisma.groupNotification.findMany.mockResolvedValue([{ id: 'notif-3' }] as unknown);
+      mockPrisma.teamUpNotification.findMany.mockResolvedValue([]);
+      mockPrisma.tournamentNotification.findMany.mockResolvedValue([]);
       mockPrisma.eventNotification.deleteMany.mockResolvedValue({ count: 2 });
       mockPrisma.groupNotification.deleteMany.mockResolvedValue({ count: 1 });
       mockPrisma.teamUpNotification.deleteMany.mockResolvedValue({ count: 0 });
@@ -318,6 +378,10 @@ describe('NotificationService', () => {
     });
 
     it('should handle user security by checking userId', async () => {
+      mockPrisma.eventNotification.findMany.mockResolvedValue([{ id: 'notif-1' }] as unknown);
+      mockPrisma.groupNotification.findMany.mockResolvedValue([]);
+      mockPrisma.teamUpNotification.findMany.mockResolvedValue([]);
+      mockPrisma.tournamentNotification.findMany.mockResolvedValue([]);
       mockPrisma.eventNotification.deleteMany.mockResolvedValue({ count: 0 });
       mockPrisma.groupNotification.deleteMany.mockResolvedValue({ count: 0 });
       mockPrisma.teamUpNotification.deleteMany.mockResolvedValue({ count: 0 });
