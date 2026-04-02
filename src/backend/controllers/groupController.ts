@@ -28,6 +28,7 @@ import { InviteService } from '../services/inviteService';
 // Time constants for event queries
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+const MAX_GROUP_NAME_LENGTH = 100;
 
 export const createGroup = async (req: Request, res: Response) => {
   const { 
@@ -51,12 +52,6 @@ export const createGroup = async (req: Request, res: Response) => {
     throw new BadRequestError('Group name is required');
   }
 
-  // Validate maxMembers if provided
-  const maxMembersValidation = groupService.validateMaxMembers(maxMembers);
-  if (!maxMembersValidation.valid) {
-    throw new BadRequestError(maxMembersValidation.error || 'Invalid max members value');
-  }
-
   // Sanitize text inputs
   const sanitized = groupService.sanitizeGroupData({
     name,
@@ -66,6 +61,20 @@ export const createGroup = async (req: Request, res: Response) => {
     country,
     tags
   });
+
+  if (!sanitized.name) {
+    throw new BadRequestError('Group name cannot be empty');
+  }
+
+  if (sanitized.name.length > MAX_GROUP_NAME_LENGTH) {
+    throw new BadRequestError(`Group name must not exceed ${MAX_GROUP_NAME_LENGTH} characters`);
+  }
+
+  // Validate maxMembers if provided
+  const maxMembersValidation = groupService.validateMaxMembers(maxMembers);
+  if (!maxMembersValidation.valid) {
+    throw new BadRequestError(maxMembersValidation.error || 'Invalid max members value');
+  }
 
   // Validate coordinates if provided
   const coordValidation = await groupService.validateGroupCoordinates(latitude, longitude);
