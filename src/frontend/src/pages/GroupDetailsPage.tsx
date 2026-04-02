@@ -576,7 +576,7 @@ export default function GroupDetailsPage() {
             events={eventsArray}
             onEventClick={handleEventClick}
             onCreate={isMember ? handleCreateEvent : undefined}
-            isAdmin={isAdmin}
+            isAdmin={isModerator}
             groupId={groupId}
             isMember={isMember}
           />

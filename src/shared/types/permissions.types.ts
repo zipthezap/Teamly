@@ -135,7 +135,6 @@ export const GroupRolePermissions: Record<GroupRole, Permission[]> = {
   ],
   [GroupRole.MEMBER]: [
     Permission.GROUP_VIEW,
-    Permission.EVENT_CREATE,
     Permission.EVENT_VIEW,
     Permission.TOURNAMENT_VIEW,
     Permission.TOURNAMENT_SUBMIT_SCORES

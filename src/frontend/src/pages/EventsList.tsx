@@ -484,7 +484,9 @@ const EventsList = () => {
             const participantCount = event.participants?.length || 0;
             const spotsLeft = event.maxPlayers ? event.maxPlayers - participantCount : null;
             const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user.id);
-            const isAdmin = event.creatorId === user.id;
+            const isEventCreator = event.creatorId === user.id;
+            const isGroupManager = event.userGroupRole === 'admin' || event.userGroupRole === 'moderator';
+            const isAdmin = isEventCreator || isGroupManager;
             return (
               <Card 
                 key={event.id}
