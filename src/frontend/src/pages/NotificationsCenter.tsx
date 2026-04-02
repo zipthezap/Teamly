@@ -88,10 +88,12 @@ const NotificationsCenter: React.FC = () => {
 
   // Filter notifications by search query
   const filteredNotifications = notifications.filter((notif) => {
+    const titleText = String(t(`notifications.${notif.type}`, notif.params || {}));
+    const messageText = String(t(`notifications.${notif.type}Message`, notif.params || {}));
     const matchesSearch =
       searchQuery === '' ||
-      notif.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      notif.message.toLowerCase().includes(searchQuery.toLowerCase());
+      titleText.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      messageText.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesType = selectedType === 'all' || notif.type === selectedType;
 

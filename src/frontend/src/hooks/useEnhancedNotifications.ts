@@ -22,9 +22,9 @@ export interface Notification {
   id: string;
   userId: string;
   type: EventNotificationType | GroupNotificationType | TeamUpNotificationType;
-  notificationType: 'event' | 'group' | 'teamup';
-  title: string;
-  message: string;
+  notificationType: 'event' | 'group' | 'teamup' | 'tournament';
+  title?: string;
+  message?: string;
   read: boolean;
   createdAt: string;
   metadata?: NotificationMetadata;
@@ -46,7 +46,7 @@ export interface Notification {
 export interface NotificationFilters {
   includeRead?: boolean;
   type?: string;
-  notificationType?: 'event' | 'group';
+  notificationType?: 'event' | 'group' | 'teamup' | 'tournament';
   startDate?: string;
   endDate?: string;
 }
@@ -55,9 +55,13 @@ export interface NotificationStats {
   unread: number;
   unreadEvent: number;
   unreadGroup: number;
+  unreadTeamUp: number;
+  unreadTournament: number;
   total: number;
   totalEvent: number;
   totalGroup: number;
+  totalTeamUp: number;
+  totalTournament: number;
   last7Days: number;
   typeCounts: Record<string, number>;
 }
@@ -104,6 +108,7 @@ export const useEnhancedNotifications = (options: UseEnhancedNotificationsOption
         // Map notifications to add translated message
         const mappedNotifications = response.data.notifications.map((notif: Notification) => ({
           ...notif,
+          title: t(`notifications.${notif.type}`, notif.params || {}),
           message: t(`notifications.${notif.type}`, notif.params || {}),
         }));
         if (resetOffset) {
