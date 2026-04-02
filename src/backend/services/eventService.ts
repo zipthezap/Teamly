@@ -206,15 +206,16 @@ export const createEventDeletionNotifications = async (
   participantIds: string[]
 ) => {
   if (participantIds.length === 0) return;
-  
-  // Filter out users who have muted event cancellation notifications
-  const unmutedParticipantIds = await filterUnmutedUsers(participantIds, 'muteEventCancellations');
-  
-  if (unmutedParticipantIds.length === 0) return;
-  
-  await Promise.all(unmutedParticipantIds.map(userId =>
-    prisma.eventNotification.create({
-      data: {
+
+  try {
+    // Filter out users who have muted event cancellation notifications
+    const unmutedParticipantIds = await filterUnmutedUsers(participantIds, 'muteEventCancellations');
+
+    if (unmutedParticipantIds.length === 0) return;
+
+    // Use createMany for batch insert - much faster than individual creates
+    await prisma.eventNotification.createMany({
+      data: unmutedParticipantIds.map(userId => ({
         eventId,
         userId,
         type: EventNotificationType.event_cancelled,
@@ -222,11 +223,15 @@ export const createEventDeletionNotifications = async (
           eventTitle,
           name: deleterName
         }
-      }
-    }).catch(error => {
-      logger.error('Failed to create deletion notification', 'EventService', { error, userId });
-    })
-  ));
+      })),
+      skipDuplicates: true
+    });
+  } catch (error) {
+    logger.error('Failed to create batch deletion notifications', 'EventService', {
+      error,
+      participantCount: participantIds.length
+    });
+  }
 };
 
 /**
