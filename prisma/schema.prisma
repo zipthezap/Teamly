@@ -135,6 +135,8 @@ model EventNotification {
   @@index([read]) // For unread filtering
   @@index([userId, read]) // Composite for unread user notifications
   @@index([createdAt]) // For chronological sorting
+  @@index([userId, createdAt, id]) // Composite for efficient cursor-based pagination
+  @@index([userId, read, createdAt]) // Composite for unread + sorted queries
 }
 
 model GroupNotification {
@@ -153,6 +155,8 @@ model GroupNotification {
   @@index([read]) // For unread filtering
   @@index([userId, read]) // Composite for unread user notifications
   @@index([createdAt]) // For chronological sorting
+  @@index([userId, createdAt, id]) // Composite for efficient cursor-based pagination
+  @@index([userId, read, createdAt]) // Composite for unread + sorted queries
 }
 
 model TeamUpNotification {
@@ -172,6 +176,8 @@ model TeamUpNotification {
   @@index([read]) // For unread filtering
   @@index([userId, read]) // Composite for unread user notifications
   @@index([createdAt]) // For chronological sorting
+  @@index([userId, createdAt, id]) // Composite for efficient cursor-based pagination
+  @@index([userId, read, createdAt]) // Composite for unread + sorted queries
 }
 
 model TournamentNotification {
@@ -191,6 +197,8 @@ model TournamentNotification {
   @@index([read]) // For unread filtering
   @@index([userId, read]) // Composite for unread user notifications
   @@index([createdAt]) // For chronological sorting
+  @@index([userId, createdAt, id]) // Composite for efficient cursor-based pagination
+  @@index([userId, read, createdAt]) // Composite for unread + sorted queries
 }
 
 // Invite audit log for tracking all invitation activity

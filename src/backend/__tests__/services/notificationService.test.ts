@@ -10,6 +10,7 @@ vi.mock('../../config/database', () => ({
   default: {
     eventNotification: {
       findMany: vi.fn(),
+      groupBy: vi.fn(),
       count: vi.fn(),
       updateMany: vi.fn(),
       deleteMany: vi.fn()
@@ -306,11 +307,11 @@ describe('NotificationService', () => {
       mockPrisma.tournamentNotification.count
         .mockResolvedValueOnce(1) // unread
         .mockResolvedValueOnce(2); // total
-      mockPrisma.eventNotification.findMany.mockResolvedValue([
-        { type: 'event_created' },
-        { type: 'event_created' },
-        { type: 'event_updated' }
-      ]);
+      // groupBy returns aggregated type counts from the DB
+      vi.mocked(mockPrisma.eventNotification.groupBy).mockResolvedValue([
+        { type: 'event_created', _count: { _all: 2 } },
+        { type: 'event_updated', _count: { _all: 1 } }
+      ] as unknown);
 
       const stats = await getNotificationStats('user-1');
 
@@ -340,7 +341,7 @@ describe('NotificationService', () => {
       mockPrisma.tournamentNotification.count
         .mockResolvedValueOnce(0)
         .mockResolvedValueOnce(0);
-      mockPrisma.eventNotification.findMany.mockResolvedValue([]);
+      vi.mocked(mockPrisma.eventNotification.groupBy).mockResolvedValue([] as unknown);
 
       const stats = await getNotificationStats('user-1');
 
