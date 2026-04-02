@@ -23,6 +23,7 @@ import { Permission } from '../../shared/types/permissions.types';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors';
 import { createInviteToken } from '../utils/inviteToken';
 import { NotificationFactory } from '../services/notificationFactory';
+import { recordSearchQuery } from '../services/metricsService';
 import { InviteService } from '../services/inviteService';
 
 // Time constants for event queries
@@ -939,7 +940,7 @@ export const getPublicGroups = async (req: Request, res: Response) => {
     where: whereClause,
     include: {
       creator: {
-        select: { id: true, name: true, email: true, profilePicture: true }
+        select: { id: true, name: true, profilePicture: true }
       },
       _count: {
         select: { members: true, events: true }
@@ -1873,6 +1874,11 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
   }
 
   const { lat, lon } = parseCoordinates(latitude, longitude);
+  const parsedLimit = parseFloatStrict(limit, 'Limit');
+  if (!Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > 100) {
+    throw new BadRequestError('Limit must be an integer between 1 and 100');
+  }
+  const safeLimit = Math.floor(parsedLimit);
   
   // Use user's discoveryRadius if no radius provided
   let radiusKm: number;
@@ -1898,16 +1904,28 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
     throw new BadRequestError('Radius must be a number between 0 and 100 kilometers');
   }
 
+  // Record search metric for observability of discovery traffic
+  recordSearchQuery('groups');
+
+  const KM_PER_DEGREE_LAT = 111;
+  const latDelta = radiusKm / KM_PER_DEGREE_LAT;
+  const longitudeDivisor = Math.max(Math.cos((lat * Math.PI) / 180), 0.01);
+  const lonDelta = radiusKm / (KM_PER_DEGREE_LAT * longitudeDivisor);
+
   // Get all public groups with location data
   const groups = await prisma.group.findMany({
     where: {
-      latitude: { not: null },
-      longitude: { not: null },
+      AND: [
+        { latitude: { not: null } },
+        { longitude: { not: null } },
+        { latitude: { gte: lat - latDelta, lte: lat + latDelta } },
+        { longitude: { gte: lon - lonDelta, lte: lon + lonDelta } },
+      ],
       isPublic: true
     },
     include: {
       creator: {
-        select: { id: true, name: true, email: true, profilePicture: true }
+        select: { id: true, name: true, profilePicture: true }
       },
       _count: {
         select: { 
@@ -1917,7 +1935,7 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
       }
     },
     orderBy: { createdAt: 'desc' },
-    take: parseInt(limit as string) * 2 // Get more than needed for filtering
+    take: Math.min(safeLimit * 10, 500) // Wider candidate set from DB bounding box
   });
 
   // Filter by location and add distance, leveraging user's discoveryRadius
@@ -1926,7 +1944,7 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
     lat,
     lon,
     radiusKm
-  ).slice(0, parseInt(limit as string)); // Limit after filtering
+  ).slice(0, safeLimit); // Limit after filtering
 
   // Enrich with location info
   const enrichedGroups = nearbyGroups.map(group => 
