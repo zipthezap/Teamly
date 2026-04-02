@@ -134,6 +134,8 @@ export interface EventWithDetails extends Event {
     guestParticipants: number;
     comments: number;
   };
+  /** The requesting user's role in the event's group (populated by the list endpoint) */
+  userGroupRole?: string | null;
 }
 
 // Event Participant
