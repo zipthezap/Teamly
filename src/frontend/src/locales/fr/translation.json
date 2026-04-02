@@ -129,7 +129,9 @@
       "nearbyGroups": "Désactiver les groupes à proximité",
       "eventCreated": "Désactiver les événements créés",
       "nearbyTeamUps": "Désactiver les TeamUps à proximité"
-    }
+    },
+    "defaultMessage": "Aucun détail disponible",
+    "defaultTitle": "Notification"
   },
   "auth": {
     "loginTitle": "Se connecter à Teamly",
@@ -486,8 +488,8 @@
       "applyToJoin": "Postuler pour rejoindre",
       "customPoint": "point personnalisé",
       "yourLocation": "votre position"
-      }
-    },
+    }
+  },
   "groupDetails": {
     "transferAdminTitle": "Sélectionner un nouvel admin",
     "transferAdminDesc": "Vous devez choisir un nouvel admin avant de quitter le groupe.",

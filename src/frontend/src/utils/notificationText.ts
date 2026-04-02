@@ -7,8 +7,9 @@ export interface NotificationTextSource {
   message?: string;
 }
 
-const DEFAULT_TITLE = 'Notification';
-const DEFAULT_MESSAGE = 'No details available';
+const FALLBACK_TITLE = 'Notification';
+const FALLBACK_MESSAGE = 'No details available';
+const NOTIFICATION_TYPE_PATTERN = /^[a-zA-Z0-9_]+$/;
 
 const toNonEmptyString = (value: unknown): string | null => {
   if (typeof value !== 'string') return null;
@@ -25,12 +26,13 @@ export const getNotificationText = (t: TFunction, notif: NotificationTextSource)
   }
 
   const rawType = typeof notif.type === 'string' ? notif.type.trim() : '';
-  const typeKey = rawType ? `notifications.${rawType}` : 'notifications.title';
-  const messageKey = rawType ? `notifications.${rawType}Message` : 'notifications.noNotifications';
+  const safeType = NOTIFICATION_TYPE_PATTERN.test(rawType) ? rawType : '';
+  const typeKey = safeType ? `notifications.${safeType}` : 'notifications.defaultTitle';
+  const messageKey = safeType ? `notifications.${safeType}Message` : 'notifications.defaultMessage';
   const translationParams = (notif.params || {}) as Record<string, unknown>;
 
   return {
-    title: existingTitle ?? String(t(typeKey, { ...translationParams, defaultValue: DEFAULT_TITLE })),
-    message: existingMessage ?? String(t(messageKey, { ...translationParams, defaultValue: DEFAULT_MESSAGE })),
+    title: existingTitle ?? String(t(typeKey, { ...translationParams, defaultValue: FALLBACK_TITLE })),
+    message: existingMessage ?? String(t(messageKey, { ...translationParams, defaultValue: FALLBACK_MESSAGE })),
   };
 };

@@ -129,7 +129,9 @@
       "nearbyGroups": "Mute Nearby Groups",
       "eventCreated": "Mute Event Created",
       "nearbyTeamUps": "Mute Nearby TeamUps"
-    }
+    },
+    "defaultMessage": "No details available",
+    "defaultTitle": "Notification"
   },
   "auth": {
     "loginTitle": "Sign in to Teamly",
@@ -371,7 +373,7 @@
     "activityLeave": "left the event"
   },
   "groups": {
-      "failedToLoadGroups": "Failed to load groups",
+    "failedToLoadGroups": "Failed to load groups",
     "groupName": "Group Name",
     "description": "Description",
     "groupPicture": "Group Picture",
@@ -491,8 +493,8 @@
       "applyToJoin": "Apply to Join",
       "customPoint": "custom point",
       "yourLocation": "your location"
-      }
-    },
+    }
+  },
   "groupDetails": {
     "transferAdminTitle": "Select New Admin",
     "transferAdminDesc": "You must select a new admin before leaving the group.",
