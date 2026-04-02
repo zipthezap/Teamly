@@ -56,7 +56,11 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
     options.type = type as string;
   }
 
-  if (notificationType === 'event' || notificationType === 'group') {
+  const validNotificationTypes = ['event', 'group', 'teamup', 'tournament'];
+  if (notificationType) {
+    if (!validNotificationTypes.includes(notificationType as string)) {
+      throw new BadRequestError(`Invalid notificationType. Must be one of: ${validNotificationTypes.join(', ')}`);
+    }
     options.notificationType = notificationType;
   }
 

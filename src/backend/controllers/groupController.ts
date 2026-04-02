@@ -77,6 +77,11 @@ export const createGroup = async (req: Request, res: Response) => {
   }
 
   // Validate coordinates if provided
+  const coordCompletenessCheck = groupService.validateCoordinateCompleteness(latitude, longitude);
+  if (!coordCompletenessCheck.valid) {
+    throw new BadRequestError(coordCompletenessCheck.error!);
+  }
+
   const coordValidation = await groupService.validateGroupCoordinates(latitude, longitude);
   if (!coordValidation.valid) {
     throw new BadRequestError(coordValidation.error || 'Invalid coordinates');
@@ -477,6 +482,12 @@ export const updateGroup = async (req: Request, res: Response) => {
     country,
     tags
   });
+
+  // Validate that coordinates are provided together (not partially)
+  const coordCompletenessCheck = groupService.validateCoordinateCompleteness(latitude, longitude);
+  if (!coordCompletenessCheck.valid) {
+    throw new BadRequestError(coordCompletenessCheck.error!);
+  }
 
   // Validate coordinates if provided
   const coordValidation = await groupService.validateGroupCoordinates(latitude, longitude);
@@ -2172,27 +2183,30 @@ export const joinGroupByInviteToken = async (req: Request, res: Response) => {
     }
   }
 
-  // Check if there's already a pending join request
-  const existingRequest = await prisma.groupJoinRequest.findFirst({
-    where: {
-      groupId: group.id,
-      userId,
-      status: 'pending'
-    }
-  });
+  // Check if there's already a pending join request AND create the join request atomically
+  // to prevent duplicate join requests under concurrent requests
+  const joinRequest = await prisma.$transaction(async (tx) => {
+    const existingRequest = await tx.groupJoinRequest.findFirst({
+      where: {
+        groupId: group.id,
+        userId,
+        status: 'pending'
+      }
+    });
 
-  if (existingRequest) {
-    throw new BadRequestError('You already have a pending join request for this group');
-  }
-
-  // Create join request with LINK source
-  const joinRequest = await prisma.groupJoinRequest.create({
-    data: {
-      groupId: group.id,
-      userId,
-      status: 'pending',
-      createdBy: 'LINK'
+    if (existingRequest) {
+      throw new BadRequestError('You already have a pending join request for this group');
     }
+
+    // Create join request with LINK source
+    return tx.groupJoinRequest.create({
+      data: {
+        groupId: group.id,
+        userId,
+        status: 'pending',
+        createdBy: 'LINK'
+      }
+    });
   });
 
   // Auto-approve if the group setting allows it
