@@ -20,7 +20,6 @@ import { createInviteToken } from '../utils/inviteToken';
 import { TRANSACTION } from '../config/security';
 import * as eventService from '../services/eventService';
 import { EventParticipantStatus, GuestParticipantStatus, SportType } from '../../shared/types/event.types';
-import * as groupService from '../services/groupService';
 import * as locationService from '../services/locationService';
 import { exportToCSV, exportToICalendar, exportToJSON } from '../services/exportService';
 import { BadRequestError, ForbiddenError, NotFoundError } from '../utils/errors';
@@ -88,10 +87,10 @@ export const createEvent = async (req: Request, res: Response) => {
     throw new BadRequestError(recurrenceValidation.error!);
   }
 
-  // Check if user is admin of the group
-  const isAdmin = await groupService.checkGroupAdmin(groupId, req.user!.id);
-  if (!isAdmin) {
-    throw new ForbiddenError('Only group admins can create events for this group');
+  // Check if user has permission to create events in this group (admin or moderator)
+  const canCreate = await permissionService.hasGroupPermission(req.user!.id, groupId, Permission.EVENT_CREATE);
+  if (!canCreate) {
+    throw new ForbiddenError('Only group admins and moderators can create events for this group');
   }
 
   // Determine event status
@@ -301,11 +300,23 @@ export const getEvents = async (req: Request, res: Response) => {
       attendancesByEvent.get(a.eventId)!.push(a);
     });
 
-    // Attach participants and attendances to events
+    // Batch query user's membership role in all unique groups for this result set
+    const uniqueGroupIds = [...new Set(events.map(e => e.groupId).filter(Boolean))];
+    const userMemberships = await prisma.groupMember.findMany({
+      where: {
+        userId,
+        groupId: { in: uniqueGroupIds }
+      },
+      select: { groupId: true, role: true }
+    });
+    const membershipByGroupId = new Map(userMemberships.map(m => [m.groupId, m.role]));
+
+    // Attach participants, attendances, and user's group role to events
     const eventsWithParticipants = events.map(event => ({
       ...event,
       participants: participantsByEvent.get(event.id) || [],
-      eventAttendances: attendancesByEvent.get(event.id) || []
+      eventAttendances: attendancesByEvent.get(event.id) || [],
+      userGroupRole: membershipByGroupId.get(event.groupId) ?? null
     }));
 
     // Sort events by priority (in-memory for this page of results only)
@@ -501,10 +512,10 @@ export const updateEvent = async (req: Request, res: Response) => {
 
   ensureResourceExists(event, 'Event');
 
-  // Check if user has permission to manage this event
-  const { isAuthorized } = await eventService.checkEventManagementPermission(event!, req.user!.id);
-  if (!isAuthorized) {
-    throw new ForbiddenError('Only the event creator or group admins can update it');
+  // Check if user has permission to update this event (creator, moderator, or admin)
+  const canUpdate = await permissionService.hasEventPermission(req.user!.id, id, Permission.EVENT_UPDATE);
+  if (!canUpdate) {
+    throw new ForbiddenError('Only the event creator, moderators, or group admins can update it');
   }
 
   // Parse coordinates once if both are provided
@@ -571,6 +582,12 @@ export const updateEvent = async (req: Request, res: Response) => {
     event!.group.name
   );
 
+  // Send in-app notifications to participants (except updater)
+  const participantIds = updatedEvent.participants
+    .map((p) => p.userId)
+    .filter((uid) => uid !== req.user!.id);
+  await eventService.createEventUpdateNotifications(id, updatedEvent.title, req.user!.name, participantIds);
+
   // Invalidate events cache
   await CacheService.deletePattern(`events:user:*:group:${event!.groupId}:*`);
   await CacheService.deletePattern(`events:user:*:group:all:*`);
@@ -605,11 +622,16 @@ export const deleteEvent = async (req: Request, res: Response) => {
 
   ensureResourceExists(event, 'Event');
 
-  // Check if user has permission to manage this event
-  const { isAuthorized } = await eventService.checkEventManagementPermission(event!, req.user!.id);
-  if (!isAuthorized) {
+  // Check if user has permission to delete this event (creator or group admin)
+  const canDelete = await permissionService.hasEventPermission(req.user!.id, id, Permission.EVENT_DELETE);
+  if (!canDelete) {
     throw new ForbiddenError('Only the event creator or group admins can delete it');
   }
+
+  // Collect participant IDs before deletion for in-app notifications
+  const participantIds = event!.participants
+    .map((p) => p.userId)
+    .filter((uid) => uid !== req.user!.id);
 
   // Send email notifications to participants
   await eventService.sendEventEmailNotifications(
@@ -620,6 +642,9 @@ export const deleteEvent = async (req: Request, res: Response) => {
     event!.title,
     event!.group.name
   );
+
+  // Send in-app notifications to participants before deleting the event
+  await eventService.createEventDeletionNotifications(id, event!.title, req.user!.name, participantIds);
 
   await prisma.event.delete({
     where: { id }

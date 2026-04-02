@@ -79,8 +79,10 @@ vi.mock('../../utils/notificationHelper', () => ({
   ),
 }));
 
-vi.mock('../../services/groupService', () => ({
-  checkGroupAdmin: vi.fn(() => Promise.resolve(false)),
+vi.mock('../../services/permissionService', () => ({
+  permissionService: {
+    hasGroupPermission: vi.fn(() => Promise.resolve(false)),
+  },
 }));
 
 describe('Event Service', () => {
@@ -334,6 +336,20 @@ describe('Event Service', () => {
       expect(result).toBe(true);
     });
 
+    it('should return true for group moderator', () => {
+      const event = {
+        creatorId: 'user-1',
+        group: {
+          members: [
+            { userId: 'user-2', role: 'moderator' }
+          ]
+        }
+      };
+
+      const result = canModifyEvent(event, 'user-2');
+      expect(result).toBe(true);
+    });
+
     it('should return false for regular member', () => {
       const event = {
         creatorId: 'user-1',
@@ -378,8 +394,8 @@ describe('Event Service', () => {
     });
 
     it('should return authorized true for group admin', async () => {
-      const { checkGroupAdmin: mockCheckGroupAdmin } = await import('../../services/groupService');
-      vi.mocked(mockCheckGroupAdmin).mockResolvedValueOnce(true);
+      const { permissionService: mockPermissionService } = await import('../../services/permissionService');
+      vi.mocked(mockPermissionService.hasGroupPermission).mockResolvedValueOnce(true);
 
       const event = {
         id: 'event-1',

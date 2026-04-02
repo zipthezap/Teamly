@@ -6,7 +6,8 @@ import { sendEmail } from '../utils/emailService';
 import { batchShouldSendEmailNotification, filterUnmutedUsers } from '../utils/notificationHelper';
 import { sanitizeString } from '../utils/validation';
 import { ValidationResult } from '../../shared/types';
-import { checkGroupAdmin } from './groupService';
+import { permissionService } from './permissionService';
+import { Permission } from '../../shared/types/permissions.types';
 
 /**
  * Sanitizes event data inputs
@@ -411,20 +412,20 @@ export const canModifyEvent = (
   },
   userId: string
 ) => {
-  // User must be the creator or a group admin
+  // User must be the creator or a group admin or moderator
   if (event.creatorId === userId) {
     return true;
   }
   
-  const isGroupAdmin = event.group.members.some(
-    (m) => m.userId === userId && m.role === 'admin'
+  const canManage = event.group.members.some(
+    (m) => m.userId === userId && (m.role === 'admin' || m.role === 'moderator')
   );
   
-  return isGroupAdmin;
+  return canManage;
 };
 
 /**
- * Checks if user has permission to manage an event (creator or group admin)
+ * Checks if user has permission to manage an event (creator or group admin/moderator)
  * Returns an object with isAuthorized flag and individual checks
  */
 export const checkEventManagementPermission = async (
@@ -440,7 +441,7 @@ export const checkEventManagementPermission = async (
   }
 
   const isEventCreator = event.creatorId === userId;
-  const isGroupAdmin = await checkGroupAdmin(event.groupId, userId);
+  const isGroupAdmin = await permissionService.hasGroupPermission(userId, event.groupId, Permission.GROUP_MANAGE_EVENTS);
   
   return {
     isAuthorized: isEventCreator || isGroupAdmin,
