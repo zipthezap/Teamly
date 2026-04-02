@@ -91,6 +91,24 @@ export function filterByLocation<T extends { latitude: number | null; longitude:
 }
 
 /**
+ * Calculate a geographic bounding box around a center point and radius.
+ * Uses a minimum cosine clamp to avoid extreme longitude deltas near the poles.
+ */
+export function calculateBoundingBox(centerLat: number, radiusKm: number): {
+  latDelta: number;
+  lonDelta: number;
+} {
+  const KM_PER_DEGREE_LAT = 111;
+  const MIN_LATITUDE_COSINE = 0.01;
+
+  const latDelta = radiusKm / KM_PER_DEGREE_LAT;
+  const latitudeCosine = Math.max(Math.cos((centerLat * Math.PI) / 180), MIN_LATITUDE_COSINE);
+  const lonDelta = radiusKm / (KM_PER_DEGREE_LAT * latitudeCosine);
+
+  return { latDelta, lonDelta };
+}
+
+/**
  * Generate a Google Maps URL for a location
  * @param latitude Latitude
  * @param longitude Longitude

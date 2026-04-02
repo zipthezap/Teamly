@@ -39,6 +39,7 @@ vi.mock('../../services/cacheService', () => ({
 vi.mock('../../services/locationService', () => ({
   filterByLocation: vi.fn((items: unknown[]) => items),
   enrichWithLocationInfo: vi.fn((item: unknown) => item),
+  calculateBoundingBox: vi.fn(() => ({ latDelta: 1, lonDelta: 1 })),
 }));
 
 vi.mock('../../services/metricsService', () => ({

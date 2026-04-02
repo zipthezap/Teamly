@@ -223,12 +223,12 @@ export const getEvents = async (req: Request, res: Response) => {
     try {
       decodedCursor = JSON.parse(Buffer.from(String(cursor), 'base64url').toString('utf8')) as { startTime: string; id: string };
     } catch {
-      throw new BadRequestError('Invalid cursor');
+      throw new BadRequestError('Invalid cursor: malformed base64url payload');
     }
 
     const cursorStartTime = new Date(decodedCursor.startTime);
     if (!decodedCursor.id || Number.isNaN(cursorStartTime.getTime())) {
-      throw new BadRequestError('Invalid cursor');
+      throw new BadRequestError('Invalid cursor: missing id or invalid startTime');
     }
 
     where.AND = [
@@ -1643,7 +1643,7 @@ export const getNearbyEvents = async (req: Request, res: Response) => {
   if (!Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > 100) {
     throw new BadRequestError('Limit must be an integer between 1 and 100');
   }
-  const safeLimit = Math.floor(parsedLimit);
+  const safeLimit = parsedLimit;
 
   // Validate radius (max 100km to prevent excessive queries)
   if (radiusKm <= 0 || radiusKm > 100) {
@@ -1653,10 +1653,7 @@ export const getNearbyEvents = async (req: Request, res: Response) => {
   // Record search metric for observability of discovery traffic
   recordSearchQuery('events');
 
-  const KM_PER_DEGREE_LAT = 111;
-  const latDelta = radiusKm / KM_PER_DEGREE_LAT;
-  const longitudeDivisor = Math.max(Math.cos((lat * Math.PI) / 180), 0.01);
-  const lonDelta = radiusKm / (KM_PER_DEGREE_LAT * longitudeDivisor);
+  const { latDelta, lonDelta } = locationService.calculateBoundingBox(lat, radiusKm);
 
   // Get all events with location data
     const events = await prisma.event.findMany({

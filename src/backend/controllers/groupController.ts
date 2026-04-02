@@ -1878,7 +1878,7 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
   if (!Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > 100) {
     throw new BadRequestError('Limit must be an integer between 1 and 100');
   }
-  const safeLimit = Math.floor(parsedLimit);
+  const safeLimit = parsedLimit;
   
   // Use user's discoveryRadius if no radius provided
   let radiusKm: number;
@@ -1907,10 +1907,7 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
   // Record search metric for observability of discovery traffic
   recordSearchQuery('groups');
 
-  const KM_PER_DEGREE_LAT = 111;
-  const latDelta = radiusKm / KM_PER_DEGREE_LAT;
-  const longitudeDivisor = Math.max(Math.cos((lat * Math.PI) / 180), 0.01);
-  const lonDelta = radiusKm / (KM_PER_DEGREE_LAT * longitudeDivisor);
+  const { latDelta, lonDelta } = locationService.calculateBoundingBox(lat, radiusKm);
 
   // Get all public groups with location data
   const groups = await prisma.group.findMany({
