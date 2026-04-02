@@ -106,11 +106,24 @@ export const useEnhancedNotifications = (options: UseEnhancedNotificationsOption
           offset: currentOffset,
         });
         // Map notifications to add translated message
-        const mappedNotifications = response.data.notifications.map((notif: Notification) => ({
-          ...notif,
-          title: t(`notifications.${notif.type}`, notif.params || {}),
-          message: t(`notifications.${notif.type}`, notif.params || {}),
-        }));
+        const mappedNotifications = response.data.notifications.map((notif: Notification) => {
+          const rawType = typeof notif.type === 'string' ? notif.type.trim() : '';
+          const typeKey = rawType ? `notifications.${rawType}` : 'notifications.title';
+          const messageKey = rawType ? `notifications.${rawType}Message` : 'notifications.noNotifications';
+          const translationParams = (notif.params || {}) as Record<string, unknown>;
+          const title = String(
+            t(typeKey, { ...translationParams, defaultValue: 'Notification' })
+          );
+          const message = String(
+            t(messageKey, { ...translationParams, defaultValue: 'No details available' })
+          );
+
+          return {
+            ...notif,
+            title,
+            message,
+          };
+        });
         if (resetOffset) {
           setNotifications(mappedNotifications);
           setOffset(0);
