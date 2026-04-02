@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { notificationsAPI } from '../services/api';
 import { useTranslation } from 'react-i18next';
 import { EventNotificationType, GroupNotificationType, TeamUpNotificationType } from '../../../shared/types/event.types';
+import { getNotificationText } from '../utils/notificationText';
 
 export interface NotificationMetadata {
   actionUrl?: string;
@@ -105,18 +106,9 @@ export const useEnhancedNotifications = (options: UseEnhancedNotificationsOption
           limit,
           offset: currentOffset,
         });
-        // Map notifications to add translated message
+        // Map notifications to ensure safe title/message values for UI consumers
         const mappedNotifications = response.data.notifications.map((notif: Notification) => {
-          const rawType = typeof notif.type === 'string' ? notif.type.trim() : '';
-          const typeKey = rawType ? `notifications.${rawType}` : 'notifications.title';
-          const messageKey = rawType ? `notifications.${rawType}Message` : 'notifications.noNotifications';
-          const translationParams = (notif.params || {}) as Record<string, unknown>;
-          const title = String(
-            t(typeKey, { ...translationParams, defaultValue: 'Notification' })
-          );
-          const message = String(
-            t(messageKey, { ...translationParams, defaultValue: 'No details available' })
-          );
+          const { title, message } = getNotificationText(t, notif);
 
           return {
             ...notif,

@@ -42,7 +42,7 @@ export interface NotificationQueryParams {
   limit?: number;
   offset?: number;
   type?: string;
-  notificationType?: 'event' | 'group' | 'teamup';
+  notificationType?: 'event' | 'group' | 'teamup' | 'tournament';
   startDate?: string;
   endDate?: string;
 }

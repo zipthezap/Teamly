@@ -36,6 +36,7 @@ import { useTranslation } from 'react-i18next';
 import { LoadingSpinner, EmptyState } from '../components/common';
 import { ErrorState } from '../components/common/StateComponents';
 import { getImageUrl, getInitials } from '../utils/imageUtils';
+import { getNotificationText } from '../utils/notificationText';
 import UserPlusIcon from '../components/icons/UserPlusIcon';
 import { useEnhancedNotifications } from '../hooks/useEnhancedNotifications';
 
@@ -226,7 +227,7 @@ const GroupsList = () => {
                         </>}
                         secondary={
                           <Typography variant="caption" color="text.secondary">
-                            {String(t(`notifications.${notif.type}Message`, notif.params || {}))}
+                            {getNotificationText(t, notif).message}
                           </Typography>
                         }
                       />
