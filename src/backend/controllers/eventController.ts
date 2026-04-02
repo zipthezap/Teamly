@@ -518,6 +518,29 @@ export const updateEvent = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the event creator, moderators, or group admins can update it');
   }
 
+  if (maxPlayers !== undefined && maxPlayers !== null) {
+    const parsedMaxPlayers = parseInt(maxPlayers);
+
+    const confirmedParticipants = await prisma.eventParticipant.count({
+      where: {
+        eventId: id,
+        status: EventParticipantStatus.confirmed,
+      },
+    });
+
+    const confirmedGuests = await prisma.guestParticipant.count({
+      where: {
+        eventId: id,
+        status: GuestParticipantStatus.confirmed,
+      },
+    });
+
+    const currentConfirmedTotal = confirmedParticipants + confirmedGuests;
+    if (parsedMaxPlayers < currentConfirmedTotal) {
+      throw new BadRequestError(`Max players cannot be lower than current confirmed participants (${currentConfirmedTotal})`);
+    }
+  }
+
   // Parse coordinates once if both are provided
   const updateCoordinates = latitude !== undefined && longitude !== undefined && latitude && longitude 
     ? parseCoordinates(latitude, longitude) 
