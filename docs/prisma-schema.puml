@@ -1,0 +1,767 @@
+@startuml
+title Teamly Prisma Schema
+
+hide empty members
+hide circle
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+left to right direction
+
+package "Enums" {
+  enum EventNotificationType {
+    join
+    leave
+    late
+    confirmed
+    declined
+    status_change
+    comment
+    event_updated
+    event_cancelled
+  }
+
+  enum GroupNotificationType {
+    accepted
+    invited
+    join_request
+    event_created
+    nearby_created
+    removed
+  }
+
+  enum TeamUpNotificationType {
+    teamup_response
+    teamup_accepted
+    teamup_declined
+    teamup_nearby
+    teamup_comment
+  }
+
+  enum TournamentNotificationType {
+    team_registered
+    tournament_updated
+    tournament_cancelled
+    match_scheduled
+    score_submitted
+  }
+
+  enum EventParticipantStatus {
+    pending
+    confirmed
+    declined
+  }
+
+  enum GuestParticipantStatus {
+    confirmed
+    declined
+  }
+
+  enum GroupJoinRequestSource {
+    USER
+    INVITE
+    LINK
+  }
+
+  enum GroupJoinRequestStatus {
+    pending
+    approved
+    rejected
+  }
+
+  enum GroupMemberRole {
+    member
+    moderator
+    admin
+  }
+
+  enum EventAttendanceStatus {
+    on_time
+    late
+  }
+
+  enum EventStatus {
+    upcoming
+    ongoing
+    completed
+    cancelled
+  }
+
+  enum SportType {
+    football
+    basketball
+    tennis
+    volleyball
+    running
+    cycling
+    swimming
+    cricket
+    americanFootball
+    iceHockey
+    baseball
+    rugby
+    handball
+    fieldHockey
+    other
+  }
+
+  enum EventRequestStatus {
+    voting
+    finalized
+    cancelled
+    expired
+  }
+
+  enum EmailQueueStatus {
+    pending
+    sent
+    failed
+    retry
+  }
+
+  enum TeamUpRequestStatus {
+    open
+    filled
+    cancelled
+    expired
+  }
+
+  enum TeamUpResponseStatus {
+    pending
+    accepted
+    declined
+  }
+
+  enum TournamentFormat {
+    single_elimination
+    double_elimination
+    round_robin
+    groups_knockout
+  }
+
+  enum TournamentStatus {
+    draft
+    registration
+    in_progress
+    completed
+    cancelled
+  }
+
+  enum MatchStatus {
+    scheduled
+    in_progress
+    completed
+    cancelled
+  }
+
+  enum BracketStage {
+    group_stage
+    round_of_32
+    round_of_16
+    quarter_finals
+    semi_finals
+    third_place
+    finals
+  }
+
+  enum InvitationStatus {
+    pending
+    accepted
+    declined
+    expired
+    cancelled
+  }
+}
+
+package "Core" {
+  class User {
+    +id: String
+    +email: String
+    +password: String?
+    +name: String
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    +googleId: String?
+    +facebookId: String?
+    +authProvider: String?
+    +oauthProfilePicture: String?
+    +lastOAuthSync: DateTime?
+    +twoFactorEnabled: Boolean
+    +twoFactorSecret: String?
+    +twoFactorBackupCodes: String[]
+    +emailNotifications: Boolean
+    +emailVerified: Boolean
+    +emailVerificationToken: String?
+    +passwordResetToken: String?
+    +passwordResetExpires: DateTime?
+    +failedLoginAttempts: Int
+    +accountLockedUntil: DateTime?
+    +city: String?
+    +country: String?
+    +address: String?
+    +postalCode: String?
+    +discoveryRadius: Int?
+    +profilePicture: String?
+    +deletedAt: DateTime?
+    +createdBy: String?
+    +updatedBy: String?
+  }
+
+  class UserProfilePicture {
+    +id: String
+    +userId: String
+    +url: String
+    +createdAt: DateTime
+    +isCurrent: Boolean
+    +deletedAt: DateTime?
+    +createdBy: String?
+    +updatedBy: String?
+    +updatedAt: DateTime
+  }
+
+  class Group {
+    +id: String
+    +name: String
+    +description: String?
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    +isPublic: Boolean
+    +latitude: Float?
+    +longitude: Float?
+    +locationName: String?
+    +city: String?
+    +country: String?
+    +picture: String?
+    +sportType: SportType?
+    +maxMembers: Int?
+    +autoApproveJoinRequests: Boolean
+    +tags: String?
+    +allowMemberInvites: Boolean
+    +allowMemberCopyLink: Boolean
+    +inviteToken: String?
+    +inviteTokenExpiresAt: DateTime?
+    +creatorId: String
+  }
+
+  class GroupJoinRequest {
+    +id: String
+    +groupId: String
+    +userId: String
+    +status: GroupJoinRequestStatus
+    +createdAt: DateTime
+    +createdBy: GroupJoinRequestSource
+    +expiresAt: DateTime?
+    +invitedBy: String?
+  }
+
+  class GroupMember {
+    +id: String
+    +role: GroupMemberRole
+    +joinedAt: DateTime
+    +userId: String
+    +groupId: String
+  }
+
+  class GroupMessage {
+    +id: String
+    +content: String
+    +createdAt: DateTime
+    +userId: String
+    +groupId: String
+  }
+}
+
+package "Events" {
+  class Event {
+    +id: String
+    +title: String
+    +description: String?
+    +eventType: SportType
+    +location: String?
+    +latitude: Float?
+    +longitude: Float?
+    +locationName: String?
+    +city: String?
+    +country: String?
+    +startTime: DateTime
+    +endTime: DateTime?
+    +maxPlayers: Int?
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    +archived: Boolean
+    +status: EventStatus
+    +isPublic: Boolean
+    +inviteToken: String?
+    +inviteTokenExpiresAt: DateTime?
+    +isRecurring: Boolean
+    +recurrenceRule: String?
+    +recurrenceEnd: DateTime?
+    +parentEventId: String?
+    +exceptionDates: Json?
+    +creatorId: String
+    +groupId: String
+  }
+
+  class EventParticipant {
+    +id: String
+    +status: EventParticipantStatus
+    +joinedAt: DateTime
+    +eventId: String
+    +userId: String
+  }
+
+  class EventReminder {
+    +id: String
+    +eventId: String
+    +userId: String
+    +remindAt: DateTime
+    +sent: Boolean
+  }
+
+  class EventAttendance {
+    +id: String
+    +eventId: String
+    +userId: String
+    +status: EventAttendanceStatus
+    +updatedAt: DateTime
+  }
+
+  class EventNotification {
+    +id: String
+    +eventId: String
+    +userId: String
+    +type: EventNotificationType
+    +params: Json?
+    +metadata: Json?
+    +createdAt: DateTime
+    +read: Boolean
+  }
+
+  class EventRequest {
+    +id: String
+    +title: String
+    +description: String?
+    +eventType: String
+    +location: String?
+    +startTime: DateTime
+    +endTime: DateTime?
+    +maxPlayers: Int?
+    +createdAt: DateTime
+    +status: EventRequestStatus
+    +voteDeadline: DateTime?
+    +voteThreshold: Float?
+    +creatorId: String
+    +groupId: String
+    +finalizedEventId: String?
+  }
+
+  class EventVote {
+    +id: String
+    +vote: String
+    +createdAt: DateTime
+    +eventRequestId: String
+    +userId: String
+  }
+
+  class GuestParticipant {
+    +id: String
+    +name: String
+    +status: GuestParticipantStatus
+    +joinedAt: DateTime
+    +eventId: String
+  }
+
+  class Comment {
+    +id: String
+    +content: String
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    +eventId: String
+    +userId: String
+    +parentId: String?
+  }
+
+  class CommentMention {
+    +id: String
+    +commentId: String
+    +userId: String
+    +createdAt: DateTime
+  }
+}
+
+package "Notifications" {
+  class GroupNotification {
+    +id: String
+    +groupId: String
+    +userId: String
+    +type: GroupNotificationType
+    +params: Json?
+    +createdAt: DateTime
+    +read: Boolean
+  }
+
+  class TeamUpNotification {
+    +id: String
+    +teamUpRequestId: String
+    +userId: String
+    +type: TeamUpNotificationType
+    +params: Json?
+    +metadata: Json?
+    +createdAt: DateTime
+    +read: Boolean
+  }
+
+  class TournamentNotification {
+    +id: String
+    +tournamentId: String
+    +userId: String
+    +type: TournamentNotificationType
+    +params: Json?
+    +metadata: Json?
+    +createdAt: DateTime
+    +read: Boolean
+  }
+
+  class EmailPreference {
+    +id: String
+    +userId: String
+    +eventInvites: Boolean
+    +eventReminders: Boolean
+    +eventUpdates: Boolean
+    +eventCancellations: Boolean
+    +groupInvites: Boolean
+    +commentMentions: Boolean
+    +nearbyTeamUps: Boolean
+    +muteEventInvites: Boolean
+    +muteEventReminders: Boolean
+    +muteEventUpdates: Boolean
+    +muteEventCancellations: Boolean
+    +muteGroupInvites: Boolean
+    +muteGroupRequests: Boolean
+    +muteNearbyGroups: Boolean
+    +muteEventCreated: Boolean
+    +muteNearbyTeamUps: Boolean
+    +createdAt: DateTime
+    +updatedAt: DateTime
+  }
+
+  class EmailQueue {
+    +id: String
+    +recipient: String
+    +subject: String
+    +htmlContent: String
+    +textContent: String?
+    +templateType: String?
+    +templateData: Json?
+    +status: EmailQueueStatus
+    +attempts: Int
+    +maxAttempts: Int
+    +lastError: String?
+    +createdAt: DateTime
+    +scheduledAt: DateTime
+    +sentAt: DateTime?
+  }
+
+  class InviteLog {
+    +id: String
+    +inviterType: String
+    +entityId: String
+    +inviterId: String
+    +inviteeEmail: String
+    +inviteeId: String?
+    +status: String
+    +sentAt: DateTime
+    +respondedAt: DateTime?
+    +expiresAt: DateTime?
+    +revokedAt: DateTime?
+    +revokedBy: String?
+    +message: String?
+    +metadata: Json?
+  }
+}
+
+package "Auth and Sessions" {
+  class RefreshToken {
+    +id: String
+    +token: String
+    +userId: String
+    +expiresAt: DateTime
+    +createdAt: DateTime
+  }
+
+  class RevokedToken {
+    +id: String
+    +token: String
+    +userId: String
+    +revokedAt: DateTime
+    +expiresAt: DateTime
+    +reason: String?
+  }
+
+  class UserSession {
+    +id: String
+    +userId: String
+    +token: String
+    +deviceInfo: String?
+    +ipAddress: String?
+    +lastActive: DateTime
+    +createdAt: DateTime
+    +expiresAt: DateTime
+  }
+}
+
+package "TeamUp" {
+  class TeamUpRequest {
+    +id: String
+    +title: String
+    +description: String?
+    +sportType: String
+    +location: String?
+    +latitude: Float?
+    +longitude: Float?
+    +locationName: String?
+    +city: String?
+    +country: String?
+    +dateTime: DateTime
+    +playersNeeded: Int
+    +skillLevel: String?
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    +status: TeamUpRequestStatus
+    +expiresAt: DateTime?
+    +creatorId: String
+  }
+
+  class TeamUpResponse {
+    +id: String
+    +message: String?
+    +status: TeamUpResponseStatus
+    +createdAt: DateTime
+    +teamUpRequestId: String
+    +userId: String
+  }
+
+  class TeamUpComment {
+    +id: String
+    +content: String
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    +teamUpRequestId: String
+    +userId: String
+  }
+}
+
+package "Tournaments" {
+  class Tournament {
+    +id: String
+    +name: String
+    +description: String?
+    +sportType: SportType
+    +format: TournamentFormat
+    +status: TournamentStatus
+    +startDate: DateTime
+    +endDate: DateTime?
+    +maxTeams: Int?
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    +location: String?
+    +latitude: Float?
+    +longitude: Float?
+    +locationName: String?
+    +city: String?
+    +country: String?
+    +organizerId: String
+    +groupId: String?
+    +registrationDeadline: DateTime?
+    +isPublic: Boolean
+    +allowLateRegistration: Boolean
+    +autoGenerateBrackets: Boolean
+    +useManualBrackets: Boolean
+    +prizesDescription: String?
+    +rulesDescription: String?
+    +contactEmail: String?
+    +sportConfig: Json?
+    +isRecurring: Boolean
+    +recurrenceRule: String?
+    +parentTournamentId: String?
+  }
+
+  class TournamentTeam {
+    +id: String
+    +name: String
+    +captainName: String?
+    +captainEmail: String?
+    +captainUserId: String?
+    +tournamentId: String
+    +poolNumber: Int?
+    +poolName: String?
+    +seedNumber: Int?
+    +poolId: String?
+    +registrationOrder: Int?
+    +createdAt: DateTime
+    +updatedAt: DateTime
+  }
+
+  class TournamentMatch {
+    +id: String
+    +tournamentId: String
+    +homeTeamId: String
+    +awayTeamId: String
+    +refereeTeamId: String?
+    +homeScore: Int?
+    +awayScore: Int?
+    +detailedScore: Json?
+    +stage: BracketStage?
+    +roundNumber: Int?
+    +groupName: String?
+    +isManuallyCreated: Boolean
+    +matchOrder: Int?
+    +status: MatchStatus
+    +scheduledAt: DateTime?
+    +startedAt: DateTime?
+    +completedAt: DateTime?
+    +createdAt: DateTime
+    +updatedAt: DateTime
+  }
+
+  class TournamentStanding {
+    +id: String
+    +tournamentId: String
+    +teamId: String
+    +points: Int
+    +wins: Int
+    +losses: Int
+    +draws: Int
+    +goalsFor: Int
+    +goalsAgainst: Int
+    +groupName: String?
+    +updatedAt: DateTime
+  }
+
+  class TournamentPlayer {
+    +id: String
+    +teamId: String
+    +userId: String?
+    +playerName: String
+    +playerEmail: String?
+    +createdAt: DateTime
+    +updatedAt: DateTime
+  }
+
+  class TournamentPool {
+    +id: String
+    +name: String
+    +description: String?
+    +maxTeams: Int
+    +tournamentId: String
+    +createdAt: DateTime
+    +updatedAt: DateTime
+  }
+
+  class TournamentPoolWaitlist {
+    +id: String
+    +poolId: String
+    +teamId: String
+    +position: Int
+    +createdAt: DateTime
+    +updatedAt: DateTime
+  }
+
+  class TournamentTeamInvitation {
+    +id: String
+    +teamId: String
+    +inviteeEmail: String
+    +inviteeName: String?
+    +inviteeUserId: String?
+    +inviterId: String
+    +inviteToken: String
+    +status: InvitationStatus
+    +message: String?
+    +expiresAt: DateTime
+    +createdAt: DateTime
+    +updatedAt: DateTime
+  }
+}
+
+User "1" -- "0..*" UserProfilePicture : profilePictures
+User "1" -- "0..*" Group : createdGroups
+User "1" -- "0..*" GroupJoinRequest : groupJoinRequests
+User "1" -- "0..*" GroupJoinRequest : invitedGroupJoinRequests
+User "1" -- "0..*" GroupMember : groupMemberships
+User "1" -- "0..*" GroupMessage : groupMessages
+Group "1" -- "0..*" GroupJoinRequest : joinRequests
+Group "1" -- "0..*" GroupMember : members
+Group "1" -- "0..*" GroupMessage : groupMessages
+
+User "1" -- "0..*" Event : createdEvents
+Group "1" -- "0..*" Event : events
+Event "1" -- "0..*" EventParticipant : participants
+User "1" -- "0..*" EventParticipant : eventParticipants
+Event "1" -- "0..*" GuestParticipant : guestParticipants
+Event "1" -- "0..*" EventReminder : eventReminders
+User "1" -- "0..*" EventReminder : eventReminders
+Event "1" -- "0..*" EventAttendance : eventAttendances
+User "1" -- "0..*" EventAttendance : eventAttendances
+Event "1" -- "0..*" EventNotification : eventNotifications
+User "1" -- "0..*" EventNotification : eventNotifications
+Event "1" -- "0..*" Comment : comments
+User "1" -- "0..*" Comment : comments
+Comment "1" -- "0..*" CommentMention : mentions
+User "1" -- "0..*" CommentMention : commentMentions
+Event "0..1" -- "0..*" Event : recurrence
+Comment "0..1" -- "0..*" Comment : replies
+
+Group "1" -- "0..*" EventRequest : eventRequests
+User "1" -- "0..*" EventRequest : createdEventRequests
+EventRequest "1" -- "0..*" EventVote : votes
+User "1" -- "0..*" EventVote : eventVotes
+
+Group "1" -- "0..*" GroupNotification : groupNotifications
+User "1" -- "0..*" GroupNotification : groupNotifications
+User "1" -- "0..1" EmailPreference : emailPreferences
+User "1" -- "0..*" InviteLog : sentInvites
+User "1" -- "0..*" InviteLog : receivedInvites
+User "1" -- "0..*" InviteLog : revokedInvites
+
+User "1" -- "0..*" RefreshToken : refreshTokens
+User "1" -- "0..*" RevokedToken : revokedTokens
+User "1" -- "0..*" UserSession : activeSessions
+
+User "1" -- "0..*" TeamUpRequest : teamUpRequests
+TeamUpRequest "1" -- "0..*" TeamUpResponse : responses
+User "1" -- "0..*" TeamUpResponse : teamUpResponses
+TeamUpRequest "1" -- "0..*" TeamUpComment : comments
+User "1" -- "0..*" TeamUpComment : teamUpComments
+TeamUpRequest "1" -- "0..*" TeamUpNotification : notifications
+User "1" -- "0..*" TeamUpNotification : teamUpNotifications
+
+User "1" -- "0..*" Tournament : tournaments
+Group "0..1" -- "0..*" Tournament : tournaments
+Tournament "1" -- "0..*" TournamentTeam : teams
+Tournament "1" -- "0..*" TournamentMatch : matches
+Tournament "1" -- "0..*" TournamentStanding : standings
+Tournament "1" -- "0..*" TournamentPool : pools
+Tournament "1" -- "0..*" TournamentNotification : notifications
+User "1" -- "0..*" TournamentNotification : tournamentNotifications
+Tournament "0..1" -- "0..*" Tournament : recurrence
+
+User "0..1" -- "0..*" TournamentTeam : captainedTeams
+TournamentPool "0..1" -- "0..*" TournamentTeam : teams
+TournamentTeam "1" -- "0..*" TournamentPlayer : players
+User "0..1" -- "0..*" TournamentPlayer : tournamentPlayers
+TournamentTeam "1" -- "0..*" TournamentStanding : standings
+TournamentPool "1" -- "0..*" TournamentPoolWaitlist : waitlist
+TournamentTeam "1" -- "0..*" TournamentPoolWaitlist : waitlistEntries
+TournamentTeam "1" -- "0..*" TournamentTeamInvitation : invitations
+User "0..1" -- "0..*" TournamentTeamInvitation : receivedTeamInvitations
+User "1" -- "0..*" TournamentTeamInvitation : sentTeamInvitations
+
+TournamentTeam "1" -- "0..*" TournamentMatch : homeMatches
+TournamentTeam "1" -- "0..*" TournamentMatch : awayMatches
+TournamentTeam "0..1" -- "0..*" TournamentMatch : refereeingMatches
+
+note bottom of EventRequest
+  finalizedEventId is stored as a unique scalar in the schema,
+  but no Prisma relation is declared for it.
+end note
+
+@enduml

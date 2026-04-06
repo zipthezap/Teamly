@@ -25,7 +25,7 @@ import { createInviteToken } from '../utils/inviteToken';
 import { NotificationFactory } from '../services/notificationFactory';
 import { recordSearchQuery } from '../services/metricsService';
 import { InviteService } from '../services/inviteService';
-import { groupBan, auditLog, txGroupBan, txAuditLog } from '../utils/prismaExtended';
+import { groupBan, txGroupBan, txAuditLog } from '../utils/prismaExtended';
 
 // Time constants for event queries
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;

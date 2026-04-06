@@ -11,8 +11,6 @@
  *   await txAuditLog(tx).create({ data: { ... } });
  */
 
-import type { PrismaClient } from '@prisma/client';
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = any;
 
@@ -27,7 +25,3 @@ export function auditLog(client: AnyClient) {
 // Convenience aliases for transaction clients
 export const txGroupBan = groupBan;
 export const txAuditLog = auditLog;
-
-// Keep a reference to PrismaClient purely for documentation purposes
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-type _PrismaClientRef = PrismaClient;

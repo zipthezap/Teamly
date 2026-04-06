@@ -4,6 +4,17 @@ import { asyncHandler } from '../middleware/asyncHandler';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors';
 import { logger } from '../utils/logger';
 
+const ATTENDANCE_STATUS_MAP = {
+  'on-time': 'on_time',
+  late: 'late'
+} as const;
+
+type AttendanceStatusInput = keyof typeof ATTENDANCE_STATUS_MAP;
+
+function isAttendanceStatusInput(status: unknown): status is AttendanceStatusInput {
+  return typeof status === 'string' && status in ATTENDANCE_STATUS_MAP;
+}
+
 /**
  * Mark attendance for an event participant
  * POST /api/events/:eventId/attendance
@@ -14,9 +25,11 @@ export const markAttendance = asyncHandler(async (req: Request, res: Response) =
   const { userId, status } = req.body;
   const currentUserId = req.user!.id;
 
-  if (!status || !['on-time', 'late'].includes(status)) {
+  if (!isAttendanceStatusInput(status)) {
     throw new BadRequestError('Status must be either "on-time" or "late"');
   }
+
+  const prismaStatus = ATTENDANCE_STATUS_MAP[status];
 
   // If userId is not provided, mark attendance for current user
   const targetUserId = userId || currentUserId;
@@ -71,10 +84,10 @@ export const markAttendance = asyncHandler(async (req: Request, res: Response) =
     create: {
       eventId,
       userId: targetUserId,
-      status
+      status: prismaStatus
     },
     update: {
-      status
+      status: prismaStatus
     },
     include: {
       user: {
@@ -88,7 +101,7 @@ export const markAttendance = asyncHandler(async (req: Request, res: Response) =
   });
 
   // Create notification if marked as late
-  if (status === 'late') {
+  if (prismaStatus === 'late') {
     await prisma.eventNotification.create({
       data: {
         eventId,
@@ -106,7 +119,7 @@ export const markAttendance = asyncHandler(async (req: Request, res: Response) =
     attendanceId: attendance.id,
     eventId,
     userId: targetUserId,
-    status,
+    status: prismaStatus,
     markedBy: currentUserId
   });
 
@@ -204,7 +217,7 @@ export const getAttendanceStats = asyncHandler(async (req: Request, res: Respons
   const onTimeCount = await prisma.eventAttendance.count({
     where: {
       eventId,
-      status: 'on-time'
+      status: 'on_time'
     }
   });
 

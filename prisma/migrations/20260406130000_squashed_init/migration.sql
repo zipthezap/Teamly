@@ -1406,3 +1406,168 @@ ALTER TABLE "GroupBan" ADD CONSTRAINT "GroupBan_bannedBy_fkey" FOREIGN KEY ("ban
 
 -- AddForeignKey: AuditLog -> User
 ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+
+-- Repair enum-backed columns and missing enum types that were emitted as TEXT
+-- in the squashed init migration.
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type
+        WHERE typnamespace = 'public'::regnamespace
+            AND typname = 'GroupJoinRequestStatus'
+    ) THEN
+        CREATE TYPE "GroupJoinRequestStatus" AS ENUM ('pending', 'approved', 'rejected');
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type
+        WHERE typnamespace = 'public'::regnamespace
+            AND typname = 'GroupMemberRole'
+    ) THEN
+        CREATE TYPE "GroupMemberRole" AS ENUM ('member', 'moderator', 'admin');
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type
+        WHERE typnamespace = 'public'::regnamespace
+            AND typname = 'EventAttendanceStatus'
+    ) THEN
+        CREATE TYPE "EventAttendanceStatus" AS ENUM ('on_time', 'late');
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type
+        WHERE typnamespace = 'public'::regnamespace
+            AND typname = 'EventRequestStatus'
+    ) THEN
+        CREATE TYPE "EventRequestStatus" AS ENUM ('voting', 'finalized', 'cancelled', 'expired');
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type
+        WHERE typnamespace = 'public'::regnamespace
+            AND typname = 'EmailQueueStatus'
+    ) THEN
+        CREATE TYPE "EmailQueueStatus" AS ENUM ('pending', 'sent', 'failed', 'retry');
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type
+        WHERE typnamespace = 'public'::regnamespace
+            AND typname = 'TeamUpRequestStatus'
+    ) THEN
+        CREATE TYPE "TeamUpRequestStatus" AS ENUM ('open', 'filled', 'cancelled', 'expired');
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type
+        WHERE typnamespace = 'public'::regnamespace
+            AND typname = 'TeamUpResponseStatus'
+    ) THEN
+        CREATE TYPE "TeamUpResponseStatus" AS ENUM ('pending', 'accepted', 'declined');
+    END IF;
+END $$;
+
+ALTER TYPE "EventParticipantStatus" ADD VALUE IF NOT EXISTS 'waitlisted';
+ALTER TYPE "EventParticipantStatus" ADD VALUE IF NOT EXISTS 'co_organizer';
+
+UPDATE "EventAttendance"
+SET "status" = 'on_time'
+WHERE "status" = 'on-time';
+
+ALTER TABLE "EventAttendance"
+    ALTER COLUMN "status" DROP DEFAULT;
+
+ALTER TABLE "EventAttendance"
+    ALTER COLUMN "status" TYPE "EventAttendanceStatus"
+    USING "status"::"EventAttendanceStatus";
+
+ALTER TABLE "EventAttendance"
+    ALTER COLUMN "status" SET DEFAULT 'on_time';
+
+ALTER TABLE "GroupJoinRequest"
+    ALTER COLUMN "status" DROP DEFAULT;
+
+ALTER TABLE "GroupJoinRequest"
+    ALTER COLUMN "status" TYPE "GroupJoinRequestStatus"
+    USING "status"::"GroupJoinRequestStatus";
+
+ALTER TABLE "GroupJoinRequest"
+    ALTER COLUMN "status" SET DEFAULT 'pending';
+
+ALTER TABLE "GroupMember"
+    ALTER COLUMN "role" DROP DEFAULT;
+
+ALTER TABLE "GroupMember"
+    ALTER COLUMN "role" TYPE "GroupMemberRole"
+    USING "role"::"GroupMemberRole";
+
+ALTER TABLE "GroupMember"
+    ALTER COLUMN "role" SET DEFAULT 'member';
+
+ALTER TABLE "EventRequest"
+    ALTER COLUMN "status" DROP DEFAULT;
+
+ALTER TABLE "EventRequest"
+    ALTER COLUMN "status" TYPE "EventRequestStatus"
+    USING "status"::"EventRequestStatus";
+
+ALTER TABLE "EventRequest"
+    ALTER COLUMN "status" SET DEFAULT 'voting';
+
+ALTER TABLE "EmailQueue"
+    ALTER COLUMN "status" DROP DEFAULT;
+
+ALTER TABLE "EmailQueue"
+    ALTER COLUMN "status" TYPE "EmailQueueStatus"
+    USING "status"::"EmailQueueStatus";
+
+ALTER TABLE "EmailQueue"
+    ALTER COLUMN "status" SET DEFAULT 'pending';
+
+ALTER TABLE "TeamUpRequest"
+    ALTER COLUMN "status" DROP DEFAULT;
+
+ALTER TABLE "TeamUpRequest"
+    ALTER COLUMN "status" TYPE "TeamUpRequestStatus"
+    USING "status"::"TeamUpRequestStatus";
+
+ALTER TABLE "TeamUpRequest"
+    ALTER COLUMN "status" SET DEFAULT 'open';
+
+ALTER TABLE "TeamUpResponse"
+    ALTER COLUMN "status" DROP DEFAULT;
+
+ALTER TABLE "TeamUpResponse"
+    ALTER COLUMN "status" TYPE "TeamUpResponseStatus"
+    USING "status"::"TeamUpResponseStatus";
+
+ALTER TABLE "TeamUpResponse"
+    ALTER COLUMN "status" SET DEFAULT 'pending';
