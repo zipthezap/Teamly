@@ -171,9 +171,15 @@ const EventDetails = () => {
     };
   }, [event, user?.id]);
 
+  const isEventGroupMember = useMemo(() => {
+    if (!event || !user?.id) return false;
+    return (event.participants?.some((p: EventParticipant) => p.userId === user.id) ?? false);
+  }, [event, user?.id]);
+
   const canViewGroupFromEvent = useMemo(() => {
-    return Boolean(event?.group?.id && user?.id);
-  }, [event?.group?.id, user?.id]);
+    if (!event?.group?.id) return false;
+    return isEventGroupMember;
+  }, [event?.group?.id, isEventGroupMember]);
 
   const { isCreator } = usePermissions({
     creatorId: event?.creatorId,
@@ -219,6 +225,8 @@ const EventDetails = () => {
       </Container>
     );
   }
+
+  const groupId = event.group?.id;
 
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3, md: 4 }, px: { xs: 2, sm: 3 } }}>
@@ -414,11 +422,11 @@ const EventDetails = () => {
               <Typography sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, color: 'text.secondary', mt: { xs: 0, sm: 0 }, ml: { xs: 0, sm: 'auto' } }}>
                 {t('eventDetails.group')}: <Box component="span" sx={{ fontWeight: 700, color: 'primary.main' }}>{event.group?.name}</Box>
               </Typography>
-              {canViewGroupFromEvent && (
+              {canViewGroupFromEvent && groupId && (
                 <Link
                   component="button"
                   type="button"
-                  onClick={() => navigate(`/groups/${event.group?.id}`)}
+                  onClick={() => navigate(`/groups/${groupId}`)}
                   underline="hover"
                   sx={{ ml: { xs: 0, sm: 2 }, fontWeight: 600, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
                 >
