@@ -10,6 +10,20 @@ final tokenStoreProvider = Provider<AuthTokenStore>(
   (ref) => AuthTokenStore(const FlutterSecureStorage()),
 );
 
+String _extractErrorMessage(DioException error) {
+  final data = error.response?.data;
+
+  if (data is Map<String, dynamic>) {
+    final message = data['message']?.toString();
+    if (message != null && message.isNotEmpty) {
+      return message;
+    }
+    return 'Unknown API error';
+  }
+
+  return error.message ?? 'Network error';
+}
+
 final dioProvider = Provider<Dio>((ref) {
   final config = ref.watch(appConfigProvider);
   final tokenStore = ref.watch(tokenStoreProvider);
@@ -34,9 +48,7 @@ final dioProvider = Provider<Dio>((ref) {
       },
       onError: (error, handler) {
         final status = error.response?.statusCode;
-        final message = error.response?.data is Map<String, dynamic>
-            ? (error.response?.data['message']?.toString() ?? 'Unknown API error')
-            : (error.message ?? 'Network error');
+        final message = _extractErrorMessage(error);
 
         handler.reject(
           DioException(

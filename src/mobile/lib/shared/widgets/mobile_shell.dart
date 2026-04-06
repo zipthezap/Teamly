@@ -14,9 +14,19 @@ class MobileShell extends StatelessWidget {
   final Widget child;
 
   static void navigateByTab(BuildContext context, int index) {
-    if (index == 0) context.go('/dashboard');
-    if (index == 1) context.go('/groups');
-    if (index == 2) context.go('/events');
+    switch (index) {
+      case 0:
+        context.go('/dashboard');
+        return;
+      case 1:
+        context.go('/groups');
+        return;
+      case 2:
+        context.go('/events');
+        return;
+      default:
+        return;
+    }
   }
 
   @override
