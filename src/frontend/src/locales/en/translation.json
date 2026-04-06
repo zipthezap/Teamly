@@ -496,6 +496,7 @@
     }
   },
   "groupDetails": {
+    "removeMember": "Remove member",
     "transferAdminTitle": "Select New Admin",
     "transferAdminDesc": "You must select a new admin before leaving the group.",
     "selectMember": "Select member",

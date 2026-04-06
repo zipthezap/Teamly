@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import EventForm, { EventFormData } from '../components/common/EventForm';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { eventRequestsAPI, groupsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { EventRequestWithDetails, GroupWithDetails } from '../../../shared/types';
@@ -32,6 +32,7 @@ import CloseIcon from '@mui/icons-material/Close';
 
 const EventRequests = () => {
   const { groupId } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useTranslation();
   const [requests, setRequests] = useState<EventRequestWithDetails[]>([]);
@@ -267,6 +268,19 @@ const EventRequests = () => {
             </Typography>
           )}
         </Box>
+        {group?.id && (
+          <Button
+            variant="outlined"
+            onClick={() => navigate(`/groups/${group.id}`)}
+            sx={{
+              minHeight: '44px',
+              fontSize: '0.875rem',
+              width: { xs: '100%', sm: 'auto' }
+            }}
+          >
+            {t('groups.joinGroup.viewGroup')}
+          </Button>
+        )}
         {isMember && (
           <Button
             variant="contained"
