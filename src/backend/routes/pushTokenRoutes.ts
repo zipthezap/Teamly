@@ -2,6 +2,7 @@ import { Router } from 'express';
 import authMiddleware from '../middleware/auth';
 import { noCache } from '../middleware/cacheControl';
 import { authenticatedLimiter } from '../middleware/rateLimiter';
+import { distributedApiLimiter } from '../middleware/distributedRateLimiter';
 import {
   disableAllPushDevicesEndpoint,
   disablePushDeviceEndpoint,
@@ -13,6 +14,7 @@ import {
 const router = Router();
 
 router.use(authMiddleware);
+router.use(distributedApiLimiter);
 router.use(authenticatedLimiter);
 
 router.get('/', listPushDevices);

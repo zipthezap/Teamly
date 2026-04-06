@@ -11,19 +11,27 @@ vi.mock('../../config/database', () => ({
   default: {
     eventNotification: {
       createMany: vi.fn(),
-      findMany: vi.fn()
+      findMany: vi.fn(),
+      count: vi.fn().mockResolvedValue(0),
     },
     groupNotification: {
       createMany: vi.fn(),
-      findMany: vi.fn()
+      findMany: vi.fn(),
+      count: vi.fn().mockResolvedValue(0),
     },
     teamUpNotification: {
       createMany: vi.fn(),
-      findMany: vi.fn()
+      findMany: vi.fn(),
+      count: vi.fn().mockResolvedValue(0),
     },
     tournamentNotification: {
       createMany: vi.fn(),
-      findMany: vi.fn()
+      findMany: vi.fn(),
+      count: vi.fn().mockResolvedValue(0),
+    },
+    pushDeviceToken: {
+      findMany: vi.fn(),
+      updateMany: vi.fn(),
     }
   }
 }));
@@ -43,6 +51,9 @@ vi.mock('../../utils/logger', () => ({
 describe('NotificationFactory', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    if (prisma.pushDeviceToken?.findMany) {
+      vi.mocked(prisma.pushDeviceToken.findMany).mockResolvedValue([] as never);
+    }
   });
 
   describe('createEventNotifications', () => {
