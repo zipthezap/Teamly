@@ -11,6 +11,8 @@ import { shouldSendEmailNotification } from '../utils/notificationHelper';
 import { NotificationFactory } from './notificationFactory';
 import { escapeHtml, isValidEmail } from '../utils/validation';
 import { Prisma } from '@prisma/client';
+import { getRedisClient, isRedisEnabled } from '../config/redis';
+import { RateLimiterMemory, RateLimiterRedis } from 'rate-limiter-flexible';
 
 /**
  * Calculate expiration date from days
@@ -132,6 +134,15 @@ export class InviteService {
     } = {}
   ): Promise<{ success: boolean; error?: string }> {
     const client = options.tx || prisma;
+
+    // Per-user-per-group rate limit for single invites: 50 invites/hour
+    if (!options.tx) {
+      const rateLimitKey = `invite_rate:${inviterId}:${groupId}`;
+      const rateLimited = await InviteService.checkAndIncrementRateLimit(rateLimitKey, 50, 3600);
+      if (rateLimited) {
+        return { success: false, error: 'Invite rate limit exceeded. Maximum 50 invites per hour per group.' };
+      }
+    }
 
     try {
       // Get group, inviter, and invitee in parallel
@@ -267,8 +278,21 @@ export class InviteService {
   static async batchInviteToGroup(
     groupId: string,
     emails: string[],
-    inviterId: string
+    inviterId: string,
+    options: { customMessage?: string; expiresInDays?: number } = {}
   ): Promise<BatchInviteResult> {
+    // Per-user-per-group rate limit: max 50 invites per hour
+    const rateLimitKey = `invite_rate:${inviterId}:${groupId}`;
+    const rateLimitExceeded = await InviteService.checkAndIncrementRateLimit(rateLimitKey, 50, 3600);
+    if (rateLimitExceeded) {
+      return {
+        total: emails.length,
+        successful: 0,
+        failed: emails.length,
+        errors: emails.map(email => ({ email, error: 'Invite rate limit exceeded. Maximum 50 invites per hour per group.' })),
+      };
+    }
+
     const result: BatchInviteResult = {
       total: emails.length,
       successful: 0,
@@ -308,7 +332,10 @@ export class InviteService {
 
     // Invite each found user
     for (const user of users) {
-      const inviteResult = await this.inviteUserToGroup(groupId, user.id, inviterId);
+      const inviteResult = await this.inviteUserToGroup(groupId, user.id, inviterId, {
+        customMessage: options.customMessage,
+        expiresInDays: options.expiresInDays,
+      });
       
       if (inviteResult.success) {
         result.successful++;
@@ -635,7 +662,8 @@ export class InviteService {
    */
   static async getInviteAnalytics(
     resourceType: 'group' | 'event',
-    resourceId: string
+    resourceId: string,
+    options: { from?: Date; to?: Date } = {}
   ): Promise<{
     total: number;
     sent: number;
@@ -644,16 +672,23 @@ export class InviteService {
     expired: number;
     revoked: number;
     pending: number;
+    timeSeries?: Array<{ weekStart: string; sent: number; accepted: number; declined: number; expired: number; revoked: number }>;
   }> {
     try {
+      const where: Record<string, unknown> = {
+        inviterType: resourceType,
+        entityId: resourceId,
+      };
+      if (options.from || options.to) {
+        where.sentAt = {
+          ...(options.from ? { gte: options.from } : {}),
+          ...(options.to ? { lte: options.to } : {}),
+        };
+      }
+
       const logs = await prisma.inviteLog.findMany({
-        where: {
-          inviterType: resourceType,
-          entityId: resourceId
-        },
-        select: {
-          status: true
-        }
+        where,
+        select: { status: true, sentAt: true },
       });
 
       const stats = {
@@ -663,7 +698,7 @@ export class InviteService {
         declined: 0,
         expired: 0,
         revoked: 0,
-        pending: 0
+        pending: 0,
       };
 
       logs.forEach(log => {
@@ -674,12 +709,41 @@ export class InviteService {
         else if (log.status === 'revoked') stats.revoked++;
       });
 
-      // Pending = sent status invitations (those not yet responded to)
-      // Note: This is a simplified calculation. In practice, some 'sent' may have expired.
-      // For accurate pending count, consider also checking expiresAt dates.
+      // Pending = sent invitations not yet responded to
       stats.pending = stats.sent;
 
-      return stats;
+      // Build time-series when a date range is requested
+      let timeSeries: Array<{ weekStart: string; sent: number; accepted: number; declined: number; expired: number; revoked: number }> | undefined;
+      if (options.from || options.to) {
+        const bucketMap = new Map<string, { sent: number; accepted: number; declined: number; expired: number; revoked: number }>();
+
+        logs.forEach(log => {
+          const date = log.sentAt ? new Date(log.sentAt) : new Date();
+          // ISO week start (Monday)
+          const day = date.getDay();
+          const diff = (day === 0 ? -6 : 1) - day;
+          const weekStart = new Date(date);
+          weekStart.setDate(date.getDate() + diff);
+          weekStart.setHours(0, 0, 0, 0);
+          const key = weekStart.toISOString().slice(0, 10);
+
+          if (!bucketMap.has(key)) {
+            bucketMap.set(key, { sent: 0, accepted: 0, declined: 0, expired: 0, revoked: 0 });
+          }
+          const bucket = bucketMap.get(key)!;
+          if (log.status === 'sent') bucket.sent++;
+          else if (log.status === 'accepted') bucket.accepted++;
+          else if (log.status === 'declined') bucket.declined++;
+          else if (log.status === 'expired') bucket.expired++;
+          else if (log.status === 'revoked') bucket.revoked++;
+        });
+
+        timeSeries = Array.from(bucketMap.entries())
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([weekStart, counts]) => ({ weekStart, ...counts }));
+      }
+
+      return { ...stats, ...(timeSeries ? { timeSeries } : {}) };
     } catch (error) {
       logger.error('Failed to get invite analytics', 'InviteService', {
         error,
@@ -805,6 +869,45 @@ export class InviteService {
     } catch (error) {
       logger.error('Failed to validate invite token', 'InviteService', { error, resourceType });
       return { valid: false, error: 'Failed to validate invite link' };
+    }
+  }
+
+  /**
+   * Check a rate-limit counter and increment it.
+   * Returns true if the limit has been exceeded, false if the action is allowed.
+   * Uses Redis when available, falls back to in-memory.
+   */
+  private static rateLimiterCache = new Map<string, RateLimiterMemory | RateLimiterRedis>();
+
+  static async checkAndIncrementRateLimit(
+    key: string,
+    maxPoints: number,
+    durationSeconds: number
+  ): Promise<boolean> {
+    try {
+      let limiter = InviteService.rateLimiterCache.get(key);
+      if (!limiter) {
+        const redisClient = isRedisEnabled() ? getRedisClient() : null;
+        if (redisClient) {
+          limiter = new RateLimiterRedis({
+            storeClient: redisClient as ConstructorParameters<typeof RateLimiterRedis>[0]['storeClient'],
+            keyPrefix: 'invite_rl',
+            points: maxPoints,
+            duration: durationSeconds,
+          });
+        } else {
+          limiter = new RateLimiterMemory({
+            keyPrefix: 'invite_rl',
+            points: maxPoints,
+            duration: durationSeconds,
+          });
+        }
+        InviteService.rateLimiterCache.set(key, limiter);
+      }
+      await limiter.consume(key);
+      return false; // Not rate-limited
+    } catch {
+      return true; // Rate-limited
     }
   }
 }

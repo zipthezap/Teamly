@@ -13,6 +13,7 @@ import {
   getUnreadCount,
   deleteNotificationsEndpoint,
   deleteAllReadNotificationsEndpoint,
+  streamNotifications,
 } from '../controllers/notificationController';
 import { noCache } from '../middleware/cacheControl';
 import { etagMiddleware } from '../middleware/etag';
@@ -22,6 +23,9 @@ const router = express.Router();
 // All notification routes require authentication
 router.use(authMiddleware);
 router.use(authenticatedLimiter);
+
+// Real-time SSE stream (must come before rate limiter since SSE is long-lived)
+router.get('/stream', streamNotifications);
 
 // Get notifications with filtering and pagination
 // ETag enables 304 Not Modified responses for bandwidth optimization without HTTP caching

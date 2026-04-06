@@ -43,6 +43,7 @@ router.get('/:id/members', asyncHandler(groupController.getGroupMembers));
 router.delete('/:id', asyncHandler(groupController.deleteGroup));
 router.put('/:id', asyncHandler(groupController.updateGroup));
 router.post('/:id/invite', asyncHandler(groupController.inviteMember));
+router.post('/:id/invitations/bulk', asyncHandler(groupController.bulkInviteMembers));
 router.post('/:id/invitations/revoke', asyncHandler(groupController.revokeInvitation));
 router.get('/:id/invitations/analytics', asyncHandler(groupController.getInviteAnalytics));
 router.post('/:id/invitations/generate-token', asyncHandler(groupController.generateInviteToken));
