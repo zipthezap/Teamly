@@ -1,4 +1,6 @@
+import '../../../core/models/attendance_model.dart';
 import '../../../core/models/event_model.dart';
+import '../../../core/models/extended_models.dart';
 
 abstract class EventRepository {
   Future<List<EventModel>> getEvents({String? groupId});
@@ -14,4 +16,24 @@ abstract class EventRepository {
   Future<void> unmarkLate(String eventId);
   Future<List<ActivityEntryModel>> getActivityFeed(String eventId);
   Future<String> generateInviteToken(String eventId);
+
+  // Attendance
+  Future<List<AttendanceModel>> getAttendance(String eventId);
+  Future<AttendanceStatsModel> getAttendanceStats(String eventId);
+  Future<void> markAttendance(String eventId, String status);
+  Future<void> deleteAttendance(String eventId, String userId);
+
+  // Archive
+  Future<void> archiveEvent(String id);
+  Future<void> unarchiveEvent(String id);
+
+  // Participants & Guests
+  Future<(List<EventParticipantDetailModel>, ParticipantSummaryModel)>
+      getParticipants(String eventId, {String? status});
+  Future<(List<EventGuestModel>, ParticipantSummaryModel)> getGuests(
+      String eventId, {String? status});
+
+  // Statistics & Analytics
+  Future<EventStatisticsModel> getEventStatistics();
+  Future<InviteAnalyticsModel> getEventInviteAnalytics(String eventId);
 }

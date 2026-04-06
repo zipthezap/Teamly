@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/chat_model.dart';
+import '../../../core/models/extended_models.dart';
 import '../../../core/models/group_model.dart';
 import '../../../core/network/api_client.dart';
 import '../domain/group_repository.dart';
@@ -171,6 +172,37 @@ class GroupRepositoryImpl implements GroupRepository {
       '/chat/message',
       data: {'groupId': groupId, 'content': content},
     );
+  }
+
+  @override
+  Future<List<NearbyGroupModel>> getNearbyGroups({
+    required double latitude,
+    required double longitude,
+    double? radius,
+    int? limit,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/groups/nearby',
+      queryParameters: {
+        'latitude': latitude.toString(),
+        'longitude': longitude.toString(),
+        if (radius != null) 'radius': radius.toString(),
+        if (limit != null) 'limit': limit.toString(),
+      },
+    );
+    final data = response.data!;
+    final items = data['results'] as List<dynamic>? ?? [];
+    return items
+        .map((e) => NearbyGroupModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
+  Future<InviteAnalyticsModel> getGroupInviteAnalytics(String groupId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/groups/$groupId/invitations/analytics',
+    );
+    return InviteAnalyticsModel.fromJson(response.data!);
   }
 }
 

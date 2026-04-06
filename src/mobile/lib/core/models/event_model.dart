@@ -113,6 +113,7 @@ class EventModel extends Equatable {
     this.country,
     this.maxPlayers,
     this.status,
+    this.archived,
     this.participants = const [],
     this.count,
     this.userGroupRole,
@@ -133,6 +134,7 @@ class EventModel extends Equatable {
   final String? country;
   final int? maxPlayers;
   final String? status;
+  final bool? archived;
   final List<EventParticipantModel> participants;
   final EventCountModel? count;
   final String? userGroupRole;
@@ -159,6 +161,7 @@ class EventModel extends Equatable {
       country: json['country'] as String?,
       maxPlayers: (json['maxPlayers'] as num?)?.toInt(),
       status: json['status'] as String?,
+      archived: json['archived'] as bool?,
       participants: participantsList,
       count: json['_count'] != null
           ? EventCountModel.fromJson(json['_count'] as Map<String, dynamic>)
@@ -177,7 +180,7 @@ class EventModel extends Equatable {
 
   @override
   List<Object?> get props =>
-      [id, title, startTime, endTime, isPublic, creator, group, eventType, status, maxPlayers];
+      [id, title, startTime, endTime, isPublic, creator, group, eventType, status, archived, maxPlayers];
 }
 
 class ActivityEntryModel extends Equatable {

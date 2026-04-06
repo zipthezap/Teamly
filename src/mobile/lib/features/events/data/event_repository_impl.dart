@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/models/attendance_model.dart';
 import '../../../core/models/event_model.dart';
+import '../../../core/models/extended_models.dart';
 import '../../../core/network/api_client.dart';
 import '../domain/event_repository.dart';
 
@@ -111,6 +113,131 @@ class EventRepositoryImpl implements EventRepository {
     return response.data?['inviteToken'] as String? ??
         response.data?['token'] as String? ??
         '';
+  }
+
+  // ---------------------------------------------------------------------------
+  // Attendance
+  // ---------------------------------------------------------------------------
+
+  @override
+  Future<List<AttendanceModel>> getAttendance(String eventId) async {
+    final response =
+        await _dio.get<Map<String, dynamic>>('/events/$eventId/attendance');
+    final items = response.data?['attendance'] as List<dynamic>? ?? [];
+    return items
+        .map((e) => AttendanceModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
+  Future<AttendanceStatsModel> getAttendanceStats(String eventId) async {
+    final response = await _dio
+        .get<Map<String, dynamic>>('/events/$eventId/attendance/stats');
+    return AttendanceStatsModel.fromJson(response.data!);
+  }
+
+  @override
+  Future<void> markAttendance(String eventId, String status) async {
+    await _dio.post<void>(
+      '/events/$eventId/attendance',
+      data: {'status': status},
+    );
+  }
+
+  @override
+  Future<void> deleteAttendance(String eventId, String userId) async {
+    await _dio.delete<void>('/events/$eventId/attendance/$userId');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Archive
+  // ---------------------------------------------------------------------------
+
+  @override
+  Future<void> archiveEvent(String id) async {
+    await _dio.post<void>('/events/$id/archive');
+  }
+
+  @override
+  Future<void> unarchiveEvent(String id) async {
+    await _dio.post<void>('/events/$id/unarchive');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Participants & Guests
+  // ---------------------------------------------------------------------------
+
+  @override
+  Future<(List<EventParticipantDetailModel>, ParticipantSummaryModel)>
+      getParticipants(String eventId, {String? status}) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/events/$eventId/participants',
+      queryParameters: {
+        if (status != null) 'status': status,
+      },
+    );
+    final data = response.data!;
+    final items = (data['participants'] as List<dynamic>? ?? [])
+        .map((e) =>
+            EventParticipantDetailModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+    final summary = data['summary'] != null
+        ? ParticipantSummaryModel.fromJson(
+            data['summary'] as Map<String, dynamic>)
+        : ParticipantSummaryModel(
+            total: items.length,
+            filtered: items.length,
+            confirmed: items.where((p) => p.status == 'confirmed').length,
+            pending: items.where((p) => p.status == 'pending').length,
+            declined: items.where((p) => p.status == 'declined').length,
+            invited: items.where((p) => p.status == 'invited').length,
+          );
+    return (items, summary);
+  }
+
+  @override
+  Future<(List<EventGuestModel>, ParticipantSummaryModel)> getGuests(
+      String eventId, {String? status}) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/events/$eventId/guests',
+      queryParameters: {
+        if (status != null) 'status': status,
+      },
+    );
+    final data = response.data!;
+    final items = (data['guestParticipants'] as List<dynamic>? ?? [])
+        .map((e) => EventGuestModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+    final summary = data['summary'] != null
+        ? ParticipantSummaryModel.fromJson(
+            data['summary'] as Map<String, dynamic>)
+        : ParticipantSummaryModel(
+            total: items.length,
+            filtered: items.length,
+            confirmed: items.where((g) => g.status == 'confirmed').length,
+            pending: items.where((g) => g.status == 'pending').length,
+            declined: items.where((g) => g.status == 'declined').length,
+            invited: items.where((g) => g.status == 'invited').length,
+          );
+    return (items, summary);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Statistics & Analytics
+  // ---------------------------------------------------------------------------
+
+  @override
+  Future<EventStatisticsModel> getEventStatistics() async {
+    final response =
+        await _dio.get<Map<String, dynamic>>('/events/statistics');
+    return EventStatisticsModel.fromJson(response.data!);
+  }
+
+  @override
+  Future<InviteAnalyticsModel> getEventInviteAnalytics(String eventId) async {
+    final response = await _dio
+        .get<Map<String, dynamic>>('/events/$eventId/invitations/analytics');
+    return InviteAnalyticsModel.fromJson(response.data!);
   }
 }
 

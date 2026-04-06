@@ -41,6 +41,22 @@ class DiscoverPage extends StatelessWidget {
             color: Colors.orange.shade700,
             onTap: () => context.push('/tournaments'),
           ),
+          const SizedBox(height: 12),
+          _DiscoverCard(
+            icon: Icons.near_me_outlined,
+            title: 'Nearby Groups',
+            subtitle: 'Find groups close to your location',
+            color: Colors.teal.shade700,
+            onTap: () => context.push('/discover/nearby-groups'),
+          ),
+          const SizedBox(height: 12),
+          _DiscoverCard(
+            icon: Icons.bar_chart_outlined,
+            title: 'My Event Statistics',
+            subtitle: 'Track your event participation stats',
+            color: Colors.indigo.shade700,
+            onTap: () => context.push('/discover/event-statistics'),
+          ),
         ],
       ),
     );
