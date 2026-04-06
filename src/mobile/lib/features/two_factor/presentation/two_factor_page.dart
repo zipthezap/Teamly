@@ -19,7 +19,6 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
 
   // Setup state
   bool _settingUp = false;
-  String? _qrCode;
   String? _secret;
   final _tokenCtrl = TextEditingController();
   bool _verifying = false;
@@ -57,7 +56,6 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
       final data = response.data!;
       setState(() {
         _enabled = (data['enabled'] as bool?) ?? false;
-        _qrCode = data['qrCode'] as String?;
         _secret = data['secret'] as String?;
         _settingUp = false;
       });
@@ -76,7 +74,6 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
           await dio.post<Map<String, dynamic>>('/2fa/setup');
       final data = response.data!;
       setState(() {
-        _qrCode = data['qrCode'] as String?;
         _secret = data['secret'] as String?;
       });
     } on Exception catch (e) {

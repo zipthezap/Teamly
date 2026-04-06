@@ -172,7 +172,7 @@ class _EventRequestsPageState extends ConsumerState<EventRequestsPage> {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(request.title as String),
+        title: Text(request.title),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
