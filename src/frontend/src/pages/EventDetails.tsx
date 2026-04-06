@@ -171,15 +171,10 @@ const EventDetails = () => {
     };
   }, [event, user?.id]);
 
-  const isEventGroupMember = useMemo(() => {
+  const isEventParticipant = useMemo(() => {
     if (!event || !user?.id) return false;
     return (event.participants?.some((p: EventParticipant) => p.userId === user.id) ?? false);
   }, [event, user?.id]);
-
-  const canViewGroupFromEvent = useMemo(() => {
-    if (!event?.group?.id) return false;
-    return isEventGroupMember;
-  }, [event?.group?.id, isEventGroupMember]);
 
   const { isCreator } = usePermissions({
     creatorId: event?.creatorId,
@@ -422,7 +417,7 @@ const EventDetails = () => {
               <Typography sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, color: 'text.secondary', mt: { xs: 0, sm: 0 }, ml: { xs: 0, sm: 'auto' } }}>
                 {t('eventDetails.group')}: <Box component="span" sx={{ fontWeight: 700, color: 'primary.main' }}>{event.group?.name}</Box>
               </Typography>
-              {canViewGroupFromEvent && groupId && (
+              {isEventParticipant && groupId && (
                 <Link
                   component="button"
                   type="button"
