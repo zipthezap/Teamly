@@ -58,7 +58,6 @@ const MemberList: React.FC<MemberListProps> = ({ groupId, isAdmin, onRemove }) =
             const memberEmail = m.user?.email || m.email || '';
             const memberRole = m.role || 'member';
             const memberProfilePicture = m.user?.profilePicture || m.profilePicture;
-            const profilePictureUrl = getImageUrl(memberProfilePicture);
             const isOnline = m.user?.online ?? m.online ?? false;
             const memberId = m.userId || m.user?.id || m.id || '';
             const isSelfAdmin = memberRole?.toLowerCase() === 'admin' && (

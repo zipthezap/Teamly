@@ -35,6 +35,10 @@ interface PublicGroup extends GroupWithDetails {
   distance?: number | null;
 }
 
+interface PublicGroupsResponse {
+  groups?: PublicGroup[];
+}
+
 // Helper to validate Location objects
 function isValidLocation(obj: Location | null): obj is Location {
   if (!obj) return false;
@@ -54,6 +58,18 @@ function toLatLng(location: Location | null): LatLng | null {
     lat: location.latitude,
     lng: location.longitude
   };
+}
+
+function extractPublicGroups(payload: unknown): PublicGroup[] {
+  if (Array.isArray(payload)) {
+    return payload as PublicGroup[];
+  }
+
+  if (payload && typeof payload === 'object' && Array.isArray((payload as PublicGroupsResponse).groups)) {
+    return (payload as PublicGroupsResponse).groups || [];
+  }
+
+  return [];
 }
 
 const GOOGLE_MAPS_API_KEY = typeof import.meta.env.VITE_GOOGLE_MAPS_API_KEY !== 'undefined' ? import.meta.env.VITE_GOOGLE_MAPS_API_KEY : '';
@@ -155,11 +171,12 @@ const PublicGroups = () => {
     return clearMarkers;
   }, [distanceRadius, mapCenter, locationEnabled, customSearchLocation, calculateZoomLevel, filteredGroups, userLocation]);
 
-    const fetchPublicGroups = useCallback(async () => {
+  const fetchPublicGroups = useCallback(async () => {
     try {
       const response = await groupsAPI.getPublic();
-      setGroups(response.data);
-      setFilteredGroups(response.data);
+      const publicGroups = extractPublicGroups(response.data);
+      setGroups(publicGroups);
+      setFilteredGroups(publicGroups);
     } catch {
       setSnackbar({
         open: true,

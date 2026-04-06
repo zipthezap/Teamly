@@ -653,6 +653,8 @@
     "confirmed": "{{userName}} a confirmé sa présence",
     "declined": "{{userName}} a refusé",
     "statusChange": "Statut de l'événement changé en {{newStatus}}",
+    "eventUpdated": "{{userName}} a mis à jour l'événement",
+    "eventCancelled": "{{userName}} a annulé l'événement",
     "updated": "mis à jour",
     "commented": "{{userName}} a commenté l'événement",
     "default": "{{userName}} {{type}}"

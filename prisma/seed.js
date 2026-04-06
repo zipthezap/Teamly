@@ -525,6 +525,65 @@ async function main() {
     console.log('Seeded event:', eventData.title);
   }
 
+  const weekendFootballEvent = createdEvents.find(event => event.title === 'Weekend Football Match');
+  const springSoccerEvent = createdEvents.find(event => event.title === 'Spring Soccer Kickoff');
+  const autumnRunningEvent = createdEvents.find(event => event.title === 'Autumn Running Meetup');
+  const morningYogaEvent = createdEvents.find(event => event.title === 'Morning Yoga Session');
+
+  if (!weekendFootballEvent || !springSoccerEvent || !autumnRunningEvent || !morningYogaEvent) {
+    throw new Error('Required seed events were not created successfully');
+  }
+
+  // Seed newer event participant states introduced after the original seed set.
+  await prisma.eventParticipant.upsert({
+    where: {
+      eventId_userId: {
+        eventId: weekendFootballEvent.id,
+        userId: user4.id,
+      }
+    },
+    update: { status: 'waitlisted' },
+    create: {
+      id: 'seed-event-participant-waitlisted-1',
+      eventId: weekendFootballEvent.id,
+      userId: user4.id,
+      status: 'waitlisted'
+    }
+  });
+
+  await prisma.eventParticipant.upsert({
+    where: {
+      eventId_userId: {
+        eventId: springSoccerEvent.id,
+        userId: user3.id,
+      }
+    },
+    update: { status: 'co_organizer' },
+    create: {
+      id: 'seed-event-participant-coorganizer-1',
+      eventId: springSoccerEvent.id,
+      userId: user3.id,
+      status: 'co_organizer'
+    }
+  });
+
+  // Seed invite-link metadata on one public group and one event.
+  await prisma.group.update({
+    where: { id: group1.id },
+    data: {
+      inviteToken: 'seed-group-invite-token-1',
+      inviteTokenExpiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+    }
+  });
+
+  await prisma.event.update({
+    where: { id: weekendFootballEvent.id },
+    data: {
+      inviteToken: 'seed-event-invite-token-1',
+      inviteTokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    }
+  });
+
   // Create group notifications
   console.log('\nSeeding group notifications...');
   await prisma.groupNotification.upsert({
@@ -631,7 +690,197 @@ async function main() {
       createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000) // 3 hours ago
     }
   });
-  console.log('Seeded 4 event notifications');
+
+  await prisma.eventNotification.upsert({
+    where: { id: 'seed-event-notif-5' },
+    update: {},
+    create: {
+      id: 'seed-event-notif-5',
+      eventId: weekendFootballEvent.id,
+      userId: user3.id,
+      type: 'event_updated',
+      params: { userName: user3.name, eventTitle: weekendFootballEvent.title },
+      metadata: { updatedFields: ['location', 'startTime'] },
+      read: false,
+      createdAt: new Date(Date.now() - 90 * 60 * 1000)
+    }
+  });
+
+  await prisma.eventNotification.upsert({
+    where: { id: 'seed-event-notif-6' },
+    update: {},
+    create: {
+      id: 'seed-event-notif-6',
+      eventId: morningYogaEvent.id,
+      userId: user1.id,
+      type: 'event_cancelled',
+      params: { userName: user1.name, eventTitle: morningYogaEvent.title },
+      metadata: { reason: 'Weather alert' },
+      read: true,
+      createdAt: new Date(Date.now() - 45 * 60 * 1000)
+    }
+  });
+  console.log('Seeded 6 event notifications');
+
+  // Seed newer moderation, invitation, and attendance models.
+  await prisma.groupJoinRequest.upsert({
+    where: { id: 'seed-group-request-1' },
+    update: {},
+    create: {
+      id: 'seed-group-request-1',
+      groupId: group4.id,
+      userId: user1.id,
+      status: 'pending',
+      createdBy: 'USER'
+    }
+  });
+
+  await prisma.groupJoinRequest.upsert({
+    where: { id: 'seed-group-request-2' },
+    update: {},
+    create: {
+      id: 'seed-group-request-2',
+      groupId: group1.id,
+      userId: user4.id,
+      status: 'pending',
+      createdBy: 'INVITE',
+      invitedBy: user1.id,
+      expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)
+    }
+  });
+
+  await prisma.inviteLog.upsert({
+    where: { id: 'seed-invite-log-1' },
+    update: {},
+    create: {
+      id: 'seed-invite-log-1',
+      inviterType: 'group',
+      entityId: group1.id,
+      inviterId: user1.id,
+      inviteeEmail: user4.email,
+      inviteeId: user4.id,
+      status: 'sent',
+      expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+      message: 'Join our weekly sports group!'
+    }
+  });
+
+  await prisma.inviteLog.upsert({
+    where: { id: 'seed-invite-log-2' },
+    update: {},
+    create: {
+      id: 'seed-invite-log-2',
+      inviterType: 'event',
+      entityId: weekendFootballEvent.id,
+      inviterId: user3.id,
+      inviteeEmail: user4.email,
+      inviteeId: user4.id,
+      status: 'accepted',
+      respondedAt: new Date(Date.now() - 30 * 60 * 1000),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      metadata: { source: 'seed-script' }
+    }
+  });
+
+  await prisma.groupBan.upsert({
+    where: { id: 'seed-group-ban-1' },
+    update: {},
+    create: {
+      id: 'seed-group-ban-1',
+      groupId: group5.id,
+      userId: user1.id,
+      bannedBy: user4.id,
+      reason: 'Seeded moderation example'
+    }
+  });
+
+  await prisma.auditLog.upsert({
+    where: { id: 'seed-audit-log-1' },
+    update: {},
+    create: {
+      id: 'seed-audit-log-1',
+      entityType: 'group',
+      entityId: group5.id,
+      actorId: user4.id,
+      action: 'ban_user',
+      metadata: { targetUserId: user1.id, reason: 'Seeded moderation example' }
+    }
+  });
+
+  await prisma.auditLog.upsert({
+    where: { id: 'seed-audit-log-2' },
+    update: {},
+    create: {
+      id: 'seed-audit-log-2',
+      entityType: 'group',
+      entityId: group1.id,
+      actorId: user1.id,
+      action: 'invite_user',
+      metadata: { invitedUserId: user4.id }
+    }
+  });
+
+  await prisma.auditLog.upsert({
+    where: { id: 'seed-audit-log-3' },
+    update: {},
+    create: {
+      id: 'seed-audit-log-3',
+      entityType: 'event',
+      entityId: weekendFootballEvent.id,
+      actorId: user3.id,
+      action: 'update_event',
+      metadata: { updatedFields: ['location', 'startTime'] }
+    }
+  });
+
+  await prisma.eventAttendance.upsert({
+    where: {
+      eventId_userId: {
+        eventId: autumnRunningEvent.id,
+        userId: user1.id,
+      }
+    },
+    update: { status: 'on_time' },
+    create: {
+      id: 'seed-attendance-1',
+      eventId: autumnRunningEvent.id,
+      userId: user1.id,
+      status: 'on_time'
+    }
+  });
+
+  await prisma.eventAttendance.upsert({
+    where: {
+      eventId_userId: {
+        eventId: autumnRunningEvent.id,
+        userId: user3.id,
+      }
+    },
+    update: { status: 'late' },
+    create: {
+      id: 'seed-attendance-2',
+      eventId: autumnRunningEvent.id,
+      userId: user3.id,
+      status: 'late'
+    }
+  });
+
+  await prisma.eventAttendance.upsert({
+    where: {
+      eventId_userId: {
+        eventId: morningYogaEvent.id,
+        userId: user2.id,
+      }
+    },
+    update: { status: 'on_time' },
+    create: {
+      id: 'seed-attendance-3',
+      eventId: morningYogaEvent.id,
+      userId: user2.id,
+      status: 'on_time'
+    }
+  });
+  console.log('Seeded join requests, invite logs, bans, audit logs, and attendance records');
 
   // Create TeamUp requests
   console.log('\nSeeding TeamUp requests...');
@@ -1769,6 +2018,23 @@ async function main() {
     }
   });
 
+  await prisma.tournamentTeamInvitation.upsert({
+    where: { id: 'seed-team-invitation-1' },
+    update: {},
+    create: {
+      id: 'seed-team-invitation-1',
+      teamId: pool4ATeams[0].id,
+      inviteeEmail: user4.email,
+      inviteeName: user4.name,
+      inviteeUserId: user4.id,
+      inviterId: user1.id,
+      inviteToken: 'seed-team-invite-token-1',
+      status: 'pending',
+      message: 'Join our elite hockey roster for the playoffs.',
+      expiresAt: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000)
+    }
+  });
+
   // Create matches for Pool A with different timestamps
   const baseDate = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000); // 5 days from now
   
@@ -2050,15 +2316,21 @@ async function main() {
   console.log('- Groups: 6 (5 public, 1 private)');
   console.log('  - 2 groups in Sherbrooke, QC (Alice is NOT a member)');
   console.log('  - 1 group in Montreal, QC (Charlie as admin)');
-  console.log('- Events: 7 (across all groups)');
+  console.log('- Events: 10 (across all groups)');
   console.log('- Group Notifications: 3');
-  console.log('- Event Notifications: 4');
+  console.log('- Event Notifications: 6');
+  console.log('- Group Join Requests: 2');
+  console.log('- Invite Logs: 2');
+  console.log('- Event Attendance Records: 3');
+  console.log('- Group Bans: 1');
+  console.log('- Audit Logs: 3');
   console.log('- TeamUp Requests: 3');
   console.log('- TeamUp Responses: 4');
   console.log('- TeamUp Notifications: 5');
   console.log('- Event Reminders: 3');
   console.log('- Event Comments: 4');
   console.log('- Guest Participants: 3');
+  console.log('- Tournament Team Invitations: 1');
   console.log('- Tournaments: 4 (3 upcoming, 1 in progress)');
   console.log('  - Montreal Winter Hockey Championship (in_progress) with 4 pools and scheduled matches');
   console.log('- Tournament Pools: 13 (with varying team capacities)');

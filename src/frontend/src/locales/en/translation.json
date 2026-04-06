@@ -658,6 +658,8 @@
     "confirmed": "{{userName}} confirmed attendance",
     "declined": "{{userName}} declined",
     "statusChange": "Event status changed to {{newStatus}}",
+    "eventUpdated": "{{userName}} updated the event",
+    "eventCancelled": "{{userName}} cancelled the event",
     "updated": "updated",
     "commented": "{{userName}} commented on the event",
     "default": "{{userName}} {{type}}"

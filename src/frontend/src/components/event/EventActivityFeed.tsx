@@ -25,6 +25,7 @@ interface EventNotification {
   userId: string;
   user?: PublicUser;
   createdAt: Date | string;
+  params?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
 }
 
@@ -51,6 +52,10 @@ const getActivityMessage = (notif: EventNotification, t: TranslateFunction) => {
       return t('activityFeed.declined', { userName });
     case 'status_change':
       return t('activityFeed.statusChange', { newStatus: metadata.newStatus || t('activityFeed.updated') });
+    case 'event_updated':
+      return t('activityFeed.eventUpdated', { userName });
+    case 'event_cancelled':
+      return t('activityFeed.eventCancelled', { userName });
     case 'comment':
       return t('activityFeed.commented', { userName });
     default:
@@ -72,6 +77,10 @@ const getActivityIcon = (type: string) => {
       return '❌';
     case 'status_change':
       return '🔄';
+    case 'event_updated':
+      return '📝';
+    case 'event_cancelled':
+      return '🚫';
     case 'comment':
       return '💬';
     default:
