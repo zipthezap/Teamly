@@ -1,0 +1,4 @@
+{
+  "env": "staging",
+  "apiBaseUrl": "https://staging-api.teamly.app/api"
+}
