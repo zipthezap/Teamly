@@ -18,8 +18,11 @@ import '../features/groups/state/groups_notifier.dart';
 import '../features/notification_preferences/presentation/notification_preferences_page.dart';
 import '../features/notifications/presentation/notifications_page.dart';
 import '../features/profile/presentation/profile_page.dart';
+import '../features/reminders/presentation/reminders_page.dart';
 import '../features/teamup/presentation/teamup_page.dart';
 import '../features/tournaments/presentation/tournaments_page.dart';
+import '../features/two_factor/presentation/two_factor_page.dart';
+import '../features/event_requests/presentation/event_requests_page.dart';
 
 final _routerProvider = Provider<GoRouter>((ref) {
   final authNotifier = ref.watch(authNotifierProvider.notifier);
@@ -65,6 +68,11 @@ final _routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => EventFormPage(
                   groupId: state.pathParameters['id']!,
                 ),
+              ),
+              GoRoute(
+                path: 'event-requests',
+                builder: (context, state) => EventRequestsPage(
+                    groupId: state.pathParameters['id']!),
               ),
             ],
           ),
@@ -152,6 +160,14 @@ final _routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'notification-preferences',
             builder: (context, state) => const NotificationPreferencesPage(),
+          ),
+          GoRoute(
+            path: 'two-factor',
+            builder: (context, state) => const TwoFactorPage(),
+          ),
+          GoRoute(
+            path: 'reminders',
+            builder: (context, state) => const RemindersPage(),
           ),
         ],
       ),

@@ -5,12 +5,20 @@ import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/error/app_exception.dart';
+import '../../../core/models/comment_model.dart';
 import '../../../core/models/event_model.dart';
 import '../../../features/auth/state/auth_notifier.dart';
+import '../../../features/comments/data/comment_repository_impl.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../data/event_repository_impl.dart';
 import '../state/events_notifier.dart';
+
+final _eventCommentsProvider =
+    FutureProvider.family<List<CommentModel>, String>(
+  (ref, eventId) =>
+      ref.watch(commentRepositoryProvider).getEventComments(eventId),
+);
 
 class EventDetailPage extends ConsumerStatefulWidget {
   const EventDetailPage({super.key, required this.eventId});
@@ -281,6 +289,14 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
 
                 // Activity feed
                 _ActivityFeedSection(eventId: widget.eventId),
+
+                const SizedBox(height: 24),
+
+                // Comments
+                _CommentsSection(
+                  eventId: widget.eventId,
+                  currentUserId: currentUserId ?? '',
+                ),
               ],
             ),
           );
@@ -340,6 +356,257 @@ class _ActivityFeedSection extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+
+  String _formatTime(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt.toLocal());
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return DateFormat.MMMd().format(dt.toLocal());
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Comments section
+// ---------------------------------------------------------------------------
+
+class _CommentsSection extends ConsumerStatefulWidget {
+  const _CommentsSection(
+      {required this.eventId, required this.currentUserId});
+  final String eventId;
+  final String currentUserId;
+
+  @override
+  ConsumerState<_CommentsSection> createState() => _CommentsSectionState();
+}
+
+class _CommentsSectionState extends ConsumerState<_CommentsSection> {
+  final _textCtrl = TextEditingController();
+  bool _sending = false;
+  String? _editingCommentId;
+  final _editCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _textCtrl.dispose();
+    _editCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendComment() async {
+    final text = _textCtrl.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _sending = true);
+    try {
+      await ref
+          .read(commentRepositoryProvider)
+          .createComment(widget.eventId, text);
+      _textCtrl.clear();
+      ref.invalidate(_eventCommentsProvider(widget.eventId));
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _deleteComment(String commentId) async {
+    try {
+      await ref.read(commentRepositoryProvider).deleteComment(commentId);
+      ref.invalidate(_eventCommentsProvider(widget.eventId));
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    }
+  }
+
+  Future<void> _submitEdit(String commentId) async {
+    final text = _editCtrl.text.trim();
+    if (text.isEmpty) return;
+    try {
+      await ref
+          .read(commentRepositoryProvider)
+          .updateComment(commentId, text);
+      setState(() => _editingCommentId = null);
+      ref.invalidate(_eventCommentsProvider(widget.eventId));
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final commentsAsync =
+        ref.watch(_eventCommentsProvider(widget.eventId));
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        commentsAsync.when(
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
+          data: (comments) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text('Comments', style: theme.textTheme.titleMedium),
+                  const SizedBox(width: 8),
+                  if (comments.isNotEmpty)
+                    Chip(
+                      label: Text('${comments.length}'),
+                      padding: EdgeInsets.zero,
+                      labelPadding:
+                          const EdgeInsets.symmetric(horizontal: 6),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (comments.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text('No comments yet.',
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: Colors.grey)),
+                )
+              else
+                ...comments.map((c) {
+                  final isOwner = c.userId == widget.currentUserId;
+                  final isEditing = _editingCommentId == c.id;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        UserAvatar(
+                          name: c.userName,
+                          imageUrl: c.userPicture,
+                          radius: 16,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(c.userName,
+                                      style: theme.textTheme.labelMedium
+                                          ?.copyWith(
+                                              fontWeight: FontWeight.bold)),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _formatTime(c.createdAt),
+                                    style: theme.textTheme.labelSmall
+                                        ?.copyWith(color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                              if (isEditing) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _editCtrl,
+                                        decoration: const InputDecoration(
+                                          isDense: true,
+                                          border: OutlineInputBorder(),
+                                        ),
+                                        autofocus: true,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.check, size: 18),
+                                      onPressed: () => _submitEdit(c.id),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.close, size: 18),
+                                      onPressed: () => setState(
+                                          () => _editingCommentId = null),
+                                    ),
+                                  ],
+                                ),
+                              ] else
+                                Text(c.content,
+                                    style: theme.textTheme.bodySmall),
+                            ],
+                          ),
+                        ),
+                        if (isOwner && !isEditing) ...[
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 16),
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () {
+                              _editCtrl.text = c.content;
+                              setState(() => _editingCommentId = c.id);
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 16),
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => _deleteComment(c.id),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                }),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _textCtrl,
+                decoration: InputDecoration(
+                  hintText: 'Add a comment…',
+                  border:
+                      OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+                textCapitalization: TextCapitalization.sentences,
+                minLines: 1,
+                maxLines: 3,
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton.filled(
+              onPressed: _sending ? null : _sendComment,
+              icon: _sending
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.send),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+      ],
     );
   }
 
