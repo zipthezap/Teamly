@@ -769,7 +769,15 @@ export const joinEvent = async (req: Request, res: Response) => {
         const totalConfirmed = confirmedCount + guestCount;
         
         if (totalConfirmed >= event.maxPlayers) {
-          throw new Error('EVENT_FULL');
+          // Add to waitlist instead of rejecting
+          const waitlistParticipant = await tx.eventParticipant.create({
+            data: {
+              eventId: id,
+              userId: req.user!.id,
+              status: 'waitlisted'
+            }
+          });
+          return { participant: waitlistParticipant, eventTitle: event.title, groupId: event.groupId, waitlisted: true };
         }
       }
 
@@ -806,7 +814,7 @@ export const joinEvent = async (req: Request, res: Response) => {
         tx
       );
 
-      return { participant, eventTitle: event.title, groupId: event.groupId };
+      return { participant, eventTitle: event.title, groupId: event.groupId, waitlisted: false };
     }, {
       isolationLevel: 'Serializable', // Highest isolation level to prevent race conditions
       maxWait: TRANSACTION.MAX_WAIT_MS,
@@ -817,7 +825,14 @@ export const joinEvent = async (req: Request, res: Response) => {
     await CacheService.deletePattern(`events:user:*:group:${result.groupId}:*`);
     await CacheService.deletePattern(`events:user:*:group:all:*`);
 
-    res.status(201).json(result.participant);
+    const status = result.waitlisted ? 202 : 201;
+    res.status(status).json({
+      ...result.participant,
+      waitlisted: result.waitlisted,
+      message: result.waitlisted
+        ? 'Event is full. You have been added to the waitlist.'
+        : 'Successfully joined the event.',
+    });
   } catch (error: unknown) {
     logger.error('Join event error', 'EventController', { error });
     
@@ -828,9 +843,6 @@ export const joinEvent = async (req: Request, res: Response) => {
     }
     if (errorMessage === 'ALREADY_JOINED') {
       return res.status(400).json({ error: 'Already joined this event' });
-    }
-    if (errorMessage === 'EVENT_FULL') {
-      return res.status(400).json({ error: 'Event is full' });
     }
     
     // Handle unique constraint violations
@@ -888,6 +900,26 @@ export const leaveEvent = async (req: Request, res: Response) => {
         }
       });
 
+      // Promote first waitlisted participant if a spot opened up
+      let promotedUserId: string | undefined;
+      const eventWithMax = await tx.event.findUnique({
+        where: { id },
+        select: { maxPlayers: true, title: true }
+      });
+      if (eventWithMax?.maxPlayers && participant.status === 'confirmed') {
+        const firstWaitlisted = await tx.eventParticipant.findFirst({
+          where: { eventId: id, status: 'waitlisted' },
+          orderBy: { joinedAt: 'asc' },
+        });
+        if (firstWaitlisted) {
+          await tx.eventParticipant.update({
+            where: { id: firstWaitlisted.id },
+            data: { status: 'confirmed' },
+          });
+          promotedUserId = firstWaitlisted.userId;
+        }
+      }
+
       // Log activity for the user who left using NotificationFactory
       await NotificationFactory.createEventNotifications(
         {
@@ -908,12 +940,24 @@ export const leaveEvent = async (req: Request, res: Response) => {
         tx
       );
 
-      return { groupId: event.groupId };
+      return { groupId: event.groupId, promotedUserId, eventTitle: event.title };
     });
 
     // Invalidate events cache for all group members
     await CacheService.deletePattern(`events:user:*:group:${result.groupId}:*`);
     await CacheService.deletePattern(`events:user:*:group:all:*`);
+
+    // Notify the promoted waitlisted user (non-blocking)
+    if (result.promotedUserId) {
+      NotificationFactory.createEventNotifications({
+        eventId: id,
+        type: 'confirmed',
+        userIds: [result.promotedUserId],
+        params: { eventTitle: result.eventTitle },
+        metadata: { promotedFromWaitlist: true },
+        checkMutePreference: true,
+      }).catch(err => logger.error('Failed to notify promoted waitlist user', 'EventController', { error: err }));
+    }
 
     res.json({ message: 'Left event successfully' });
   } catch (error: unknown) {

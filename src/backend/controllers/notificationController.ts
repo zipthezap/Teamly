@@ -13,11 +13,96 @@ import {
   deleteNotifications,
   deleteAllReadNotifications,
 } from '../services/notificationService';
+import { logger } from '../utils/logger';
 
 // Operational safety limits to prevent oversized payloads and deep pagination abuse.
 const MAX_NOTIFICATION_BATCH_SIZE = 100;
 const MAX_NOTIFICATION_QUERY_LENGTH = 100;
 const MAX_OFFSET = 10000;
+
+// SSE: track active streams per userId so we can push from notification creation paths
+const sseClients = new Map<string, Set<Response>>();
+
+/**
+ * Register an SSE connection for a user
+ */
+function registerSseClient(userId: string, res: Response): void {
+  if (!sseClients.has(userId)) {
+    sseClients.set(userId, new Set());
+  }
+  sseClients.get(userId)!.add(res);
+}
+
+/**
+ * Remove an SSE connection
+ */
+function removeSseClient(userId: string, res: Response): void {
+  const clients = sseClients.get(userId);
+  if (clients) {
+    clients.delete(res);
+    if (clients.size === 0) {
+      sseClients.delete(userId);
+    }
+  }
+}
+
+/**
+ * Push a new-notification event to all SSE connections for a user.
+ * Called internally after creating notifications.
+ */
+export function pushNotificationToUser(userId: string, payload: unknown): void {
+  const clients = sseClients.get(userId);
+  if (!clients || clients.size === 0) return;
+  const data = JSON.stringify(payload);
+  clients.forEach(res => {
+    try {
+      res.write(`event: notification\ndata: ${data}\n\n`);
+    } catch {
+      // Client may have already disconnected
+    }
+  });
+}
+
+/**
+ * Server-Sent Events stream for real-time notification delivery
+ * GET /api/notifications/stream
+ *
+ * The client opens this endpoint and receives:
+ *   - A `connected` event immediately
+ *   - A `notification` event whenever a new notification is created for this user
+ *   - A `heartbeat` event every 30 s to keep the connection alive
+ */
+export const streamNotifications = (req: Request, res: Response): void => {
+  const userId = req.user!.id;
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+  res.flushHeaders();
+
+  // Send initial connected event
+  res.write(`event: connected\ndata: ${JSON.stringify({ userId })}\n\n`);
+
+  registerSseClient(userId, res);
+  logger.info('SSE client connected', 'NotificationController', { userId });
+
+  // Heartbeat every 30 seconds to prevent proxy timeouts
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(`event: heartbeat\ndata: ${JSON.stringify({ ts: Date.now() })}\n\n`);
+    } catch {
+      clearInterval(heartbeat);
+    }
+  }, 30_000);
+
+  // Cleanup on disconnect
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    removeSseClient(userId, res);
+    logger.info('SSE client disconnected', 'NotificationController', { userId });
+  });
+};
 
 /**
  * Get user notifications with filtering and pagination

@@ -25,6 +25,7 @@ import { createInviteToken } from '../utils/inviteToken';
 import { NotificationFactory } from '../services/notificationFactory';
 import { recordSearchQuery } from '../services/metricsService';
 import { InviteService } from '../services/inviteService';
+import { groupBan, auditLog, txGroupBan, txAuditLog } from '../utils/prismaExtended';
 
 // Time constants for event queries
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -129,56 +130,62 @@ export const createGroup = async (req: Request, res: Response) => {
     }
   });
 
-  // Notify users nearby (within 10km) except creator
-  if (latitude && longitude) {
-    // Future feature: Find nearby users and notify them
-    // const R = 6371; // km
-    // const toRad = deg => deg * Math.PI / 180;
-    const users = await prisma.user.findMany({
-      where: {
-        id: { not: req.user!.id }
-      },
-      select: { id: true }
-    });
-    // Calculate which users are nearby - unused for now but kept for future feature
-    // const isNearby = (lat1, lon1, lat2, lon2) => {
-    //   const dLat = toRad(lat2 - lat1);
-    //   const dLon = toRad(lon2 - lon1);
-    //   const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-    //             Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-    //             Math.sin(dLon/2) * Math.sin(dLon/2);
-    //   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    //   return R * c < 10; // 10km
-    // };
-    const nearbyUserIds = users.map(u => u.id);
-    
-    // Filter out users who have muted nearby group notifications
-    const unmutedUserIds = await filterUnmutedUsers(nearbyUserIds, 'muteNearbyGroups');
-    
-    // Use Promise.allSettled to handle individual notification failures gracefully
-    const notificationResults = await Promise.allSettled(
-      unmutedUserIds.map(userId =>
-        prisma.groupNotification.create({
-          data: {
-            groupId: group.id,
-            userId,
-            type: GroupNotificationType.nearby_created,
-            params: {
-              groupName: group.name,
-              name: req.user!.name
-            }
-          }
-        })
-      )
-    );
+  // Notify users nearby (in same city) except creator
+  if (group.isPublic && (group.city || group.country)) {
+    try {
+      // Find users in the same city/country (city-based proximity since User has no lat/lon)
+      const cityConditions = [];
+      if (group.city) cityConditions.push({ city: { equals: group.city, mode: 'insensitive' as const } });
+      if (group.country) cityConditions.push({ country: { equals: group.country, mode: 'insensitive' as const } });
 
-    // Log any failures but don't block group creation
-    const failures = notificationResults.filter(r => r.status === 'rejected');
-    if (failures.length > 0) {
-      logger.warn('Some nearby user notifications failed', 'GroupController', { 
-        failureCount: failures.length,
-        totalUsers: unmutedUserIds.length 
+      const nearbyUserCandidates = await prisma.user.findMany({
+        where: {
+          id: { not: req.user!.id },
+          OR: cityConditions,
+        },
+        select: { id: true },
       });
+
+      const nearbyUserIds = nearbyUserCandidates.map(u => u.id);
+
+      if (nearbyUserIds.length > 0) {
+        // Filter out users who have muted nearby group notifications
+        const unmutedUserIds = await filterUnmutedUsers(nearbyUserIds, 'muteNearbyGroups');
+
+        if (unmutedUserIds.length > 0) {
+          const notificationResults = await Promise.allSettled(
+            unmutedUserIds.map(nUserId =>
+              prisma.groupNotification.create({
+                data: {
+                  groupId: group.id,
+                  userId: nUserId,
+                  type: GroupNotificationType.nearby_created,
+                  params: {
+                    groupName: group.name,
+                    name: req.user!.name,
+                  },
+                },
+              })
+            )
+          );
+
+          const failures = notificationResults.filter(r => r.status === 'rejected');
+          if (failures.length > 0) {
+            logger.warn('Some nearby user notifications failed', 'GroupController', {
+              failureCount: failures.length,
+              totalUsers: unmutedUserIds.length,
+            });
+          }
+
+          logger.info('Sent nearby group notifications', 'GroupController', {
+            groupId: group.id,
+            notifiedUsers: unmutedUserIds.length,
+          });
+        }
+      }
+    } catch (notifyError) {
+      // Non-fatal: group creation should not fail if notifications fail
+      logger.error('Error sending nearby group notifications', 'GroupController', { error: notifyError });
     }
   }
 
@@ -631,6 +638,7 @@ export const revokeInvitation = async (req: Request, res: Response) => {
  */
 export const getInviteAnalytics = async (req: Request, res: Response) => {
   const { id } = req.params;
+  const { from, to } = req.query;
 
   // Check if user has permission to view analytics
   const hasPermission = await permissionService.hasGroupPermission(
@@ -643,10 +651,57 @@ export const getInviteAnalytics = async (req: Request, res: Response) => {
     throw new ForbiddenError('You do not have permission to view invite analytics');
   }
 
-  const analytics = await InviteService.getInviteAnalytics('group', id);
+  let fromDate: Date | undefined;
+  let toDate: Date | undefined;
 
-  res.json({
-    analytics
+  if (from) {
+    fromDate = new Date(from as string);
+    if (isNaN(fromDate.getTime())) throw new BadRequestError('Invalid from date');
+  }
+  if (to) {
+    toDate = new Date(to as string);
+    if (isNaN(toDate.getTime())) throw new BadRequestError('Invalid to date');
+  }
+
+  const analytics = await InviteService.getInviteAnalytics('group', id, { from: fromDate, to: toDate });
+
+  res.json({ analytics });
+};
+
+/**
+ * Bulk invite members to a group by email list
+ * POST /groups/:id/invitations/bulk
+ */
+export const bulkInviteMembers = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { emails, customMessage, expiresInDays } = req.body;
+
+  if (!emails || !Array.isArray(emails) || emails.length === 0) {
+    throw new BadRequestError('emails must be a non-empty array');
+  }
+
+  const MAX_BULK = 50;
+  if (emails.length > MAX_BULK) {
+    throw new BadRequestError(`Cannot invite more than ${MAX_BULK} users at once`);
+  }
+
+  // Check permission
+  const canInvite = await InviteService.canUserInvite(req.user!.id, id, 'group');
+  if (!canInvite.allowed) {
+    throw new ForbiddenError(canInvite.reason || 'You do not have permission to invite members');
+  }
+
+  const result = await InviteService.batchInviteToGroup(id, emails, req.user!.id, {
+    customMessage,
+    expiresInDays,
+  });
+
+  res.status(207).json({
+    message: 'Bulk invite completed',
+    total: result.total,
+    successful: result.successful,
+    failed: result.failed,
+    errors: result.errors,
   });
 };
 
@@ -733,6 +788,24 @@ export const removeMember = async (req: Request, res: Response) => {
         status: 'pending',
         createdBy: 'INVITE'
       }
+    });
+
+    // Create a ban record to prevent re-joining (ignored if already banned)
+    await txGroupBan(tx).upsert({
+      where: { groupId_userId: { groupId: id, userId: memberToRemove.userId } },
+      create: { groupId: id, userId: memberToRemove.userId, bannedBy: req.user!.id },
+      update: { bannedBy: req.user!.id, bannedAt: new Date() },
+    });
+
+    // Audit log
+    await txAuditLog(tx).create({
+      data: {
+        entityType: 'group',
+        entityId: id,
+        actorId: req.user!.id,
+        action: 'member_removed',
+        metadata: { removedUserId: memberToRemove.userId, removedUserName: memberToRemove.user.name },
+      },
     });
   });
 
@@ -899,6 +972,17 @@ export const updateMemberRole = async (req: Request, res: Response) => {
       }
     });
 
+    // Audit log
+    await txAuditLog(tx).create({
+      data: {
+        entityType: 'group',
+        entityId: id,
+        actorId: req.user!.id,
+        action: 'role_changed',
+        metadata: { targetUserId: memberToUpdate.userId, previousRole: memberToUpdate.role, newRole: role },
+      },
+    });
+
     return updatedMember;
   });
 
@@ -921,40 +1005,109 @@ export const updateMemberRole = async (req: Request, res: Response) => {
 export const getPublicGroups = async (req: Request, res: Response) => {
   // SECURITY FIX: Use optional chaining since this endpoint uses optionalAuthMiddleware
   const userId = req.user?.id;
-  
-  // Build where clause to exclude groups user is already a member of
-  const whereClause: Record<string, unknown> = {
-    isPublic: true
-  };
-  
-  // If user is authenticated, exclude groups they're already a member of
+
+  const {
+    q,
+    sportType,
+    sort = 'newest',
+    limit = '20',
+    cursor,
+  } = req.query;
+
+  const parsedLimit = Math.min(parseInt(limit as string, 10) || 20, 100);
+  const validSorts = ['newest', 'most_members', 'most_events', 'most_active'];
+  const sortField = validSorts.includes(sort as string) ? (sort as string) : 'newest';
+
+  // Build where clause
+  const whereClause: Record<string, unknown> = { isPublic: true };
+
+  // Exclude groups the user already belongs to
   if (userId) {
-    whereClause.members = {
-      none: {
-        userId: userId
-      }
-    };
+    whereClause.members = { none: { userId } };
   }
-  
+
+  // Full-text search on name, description, tags
+  if (q) {
+    const query = (q as string).trim().slice(0, 100);
+    if (query) {
+      whereClause.OR = [
+        { name: { contains: query, mode: 'insensitive' } },
+        { description: { contains: query, mode: 'insensitive' } },
+        { tags: { contains: query, mode: 'insensitive' } },
+        { city: { contains: query, mode: 'insensitive' } },
+      ];
+    }
+  }
+
+  // Filter by sport type
+  if (sportType) {
+    whereClause.sportType = sportType as string;
+  }
+
+  // Cursor-based pagination (cursor = last group's createdAt:id)
+  if (cursor) {
+    try {
+      const [cursorTime, cursorId] = (cursor as string).split('_');
+      const cursorDate = new Date(cursorTime);
+      if (!isNaN(cursorDate.getTime())) {
+        whereClause.AND = [
+          {
+            OR: [
+              { createdAt: { lt: cursorDate } },
+              { createdAt: cursorDate, id: { lt: cursorId } },
+            ],
+          },
+        ];
+      }
+    } catch {
+      // Ignore invalid cursor
+    }
+  }
+
+  // Determine order
+  let orderBy: Record<string, unknown> | Array<Record<string, unknown>>;
+  if (sortField === 'most_members') {
+    orderBy = { members: { _count: 'desc' } };
+  } else if (sortField === 'most_events') {
+    orderBy = { events: { _count: 'desc' } };
+  } else if (sortField === 'most_active') {
+    // Most active = most recently updated (proxies for recent event/member activity)
+    orderBy = [{ updatedAt: 'desc' }, { id: 'desc' }];
+  } else {
+    orderBy = [{ createdAt: 'desc' }, { id: 'desc' }];
+  }
+
   const groups = await prisma.group.findMany({
     where: whereClause,
     include: {
-      creator: {
-        select: { id: true, name: true, profilePicture: true }
-      },
-      _count: {
-        select: { members: true, events: true }
-      }
+      creator: { select: { id: true, name: true, profilePicture: true } },
+      _count: { select: { members: true, events: true } },
     },
-    orderBy: { createdAt: 'desc' }
+    orderBy,
+    take: parsedLimit + 1, // Fetch one extra to determine hasMore
   });
 
+  const hasMore = groups.length > parsedLimit;
+  const pageGroups = hasMore ? groups.slice(0, parsedLimit) : groups;
+
+  // Build next cursor from last item
+  let nextCursor: string | null = null;
+  if (hasMore && pageGroups.length > 0) {
+    const last = pageGroups[pageGroups.length - 1];
+    nextCursor = `${last.createdAt.toISOString()}_${last.id}`;
+  }
+
   // Enrich with location info
-  const enrichedGroups = groups.map(group => 
+  const enrichedGroups = pageGroups.map(group =>
     locationService.enrichWithLocationInfo(group)
   );
 
-  res.json(enrichedGroups);
+  res.json({
+    groups: enrichedGroups,
+    hasMore,
+    nextCursor,
+    total: enrichedGroups.length,
+  });
 };
 
 // Request to join a public group
@@ -972,6 +1125,14 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
 
   if (!group.isPublic) {
     throw new ForbiddenError('Group is not public');
+  }
+
+  // Check if user is banned from this group
+  const ban = await groupBan(prisma).findUnique({
+    where: { groupId_userId: { groupId: id, userId: req.user!.id } }
+  });
+  if (ban) {
+    throw new ForbiddenError('You have been banned from this group.');
   }
 
   // Check if already a member
@@ -1200,6 +1361,17 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
           userId: joinRequest.userId,
           role: 'member'
         }
+      });
+
+      // Audit log
+      await txAuditLog(tx).create({
+        data: {
+          entityType: 'group',
+          entityId: id,
+          actorId: req.user!.id,
+          action: 'join_request_approved',
+          metadata: { requestId, requestedUserId: joinRequest.userId },
+        },
       });
     });
 
@@ -1442,9 +1614,18 @@ export const getGroupForInvite = async (req: Request, res: Response) => {
     throw new NotFoundError('Group not found');
   }
 
-  // Only allow preview for public groups via invite link
+  // Allow preview for both public groups and private groups that have a valid invite token
+  // If the group is private, the caller must supply the token as a query param
   if (!group.isPublic) {
-    throw new ForbiddenError('This is a private group. Invite links only work for public groups.');
+    const { token } = req.query;
+    if (!token) {
+      throw new ForbiddenError('This is a private group. An invite token is required to preview it.');
+    }
+    // Verify the token matches the group's current invite token and is not expired
+    const tokenValidation = await InviteService.validateInviteToken('group', token as string);
+    if (!tokenValidation.valid || tokenValidation.resourceId !== groupId) {
+      throw new ForbiddenError('Invalid or expired invite token for this group.');
+    }
   }
 
   // Check if user is already a member (if authenticated)
@@ -1486,13 +1667,16 @@ export const joinGroupByInvite = async (req: Request, res: Response) => {
     throw new NotFoundError('Group not found');
   }
 
-  // Only allow joining public groups via invite link
-  // LIMITATION: Private groups cannot be joined via invite link
-  // To enable this: Add inviteToken field to Group model in schema, 
-  // generate tokens in getInviteLink(), validate tokens here,
-  // and optionally add token expiration
+  // Join is allowed for public groups, OR private groups with a valid invite token
   if (!group.isPublic) {
-    throw new ForbiddenError('This group is private. Please contact the group admin for an invitation.');
+    const token = req.body.token || req.query.token;
+    if (!token) {
+      throw new ForbiddenError('This group is private. Please use the invite token link to join.');
+    }
+    const tokenValidation = await InviteService.validateInviteToken('group', token as string);
+    if (!tokenValidation.valid || tokenValidation.resourceId !== groupId) {
+      throw new ForbiddenError('Invalid or expired invite token for this group.');
+    }
   }
 
   // Check if already a member
@@ -2188,6 +2372,14 @@ export const joinGroupByInviteToken = async (req: Request, res: Response) => {
 
   if (!group) {
     throw new NotFoundError('Group not found or invite link is invalid');
+  }
+
+  // Check if user is banned from this group
+  const ban = await groupBan(prisma).findUnique({
+    where: { groupId_userId: { groupId: group.id, userId } }
+  });
+  if (ban) {
+    throw new ForbiddenError('You have been banned from this group.');
   }
 
   // Check if user is already a member

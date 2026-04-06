@@ -15,6 +15,7 @@ import {
   Prisma, 
   EmailPreference 
 } from '@prisma/client';
+import { pushNotificationToUser } from '../controllers/notificationController';
 
 export interface NotificationParams {
   [key: string]: string | number | boolean | undefined;
@@ -127,6 +128,12 @@ export class NotificationFactory {
         skipDuplicates: true
       });
 
+      // Push real-time SSE events to connected clients (non-blocking)
+      const ssePayload = { type: 'event', notificationType: type, eventId, params, metadata };
+      targetUserIds.forEach(userId => {
+        try { pushNotificationToUser(userId, ssePayload); } catch { /* ignore SSE errors */ }
+      });
+
       logger.debug(`Created ${targetUserIds.length} event notifications`, 'NotificationFactory', {
         type,
         eventId,
@@ -211,6 +218,12 @@ export class NotificationFactory {
       await client.groupNotification.createMany({
         data: notifications,
         skipDuplicates: true
+      });
+
+      // Push real-time SSE events to connected clients (non-blocking)
+      const ssePayload = { type: 'group', notificationType: type, groupId, params };
+      targetUserIds.forEach(userId => {
+        try { pushNotificationToUser(userId, ssePayload); } catch { /* ignore SSE errors */ }
       });
 
       logger.debug(`Created ${targetUserIds.length} group notifications`, 'NotificationFactory', {

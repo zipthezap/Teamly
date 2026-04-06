@@ -30,6 +30,8 @@ export enum EventParticipantStatus {
   pending = 'pending',
   confirmed = 'confirmed',
   declined = 'declined',
+  waitlisted = 'waitlisted',
+  co_organizer = 'co_organizer',
 }
 
 export enum GuestParticipantStatus {

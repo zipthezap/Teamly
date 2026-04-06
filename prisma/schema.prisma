@@ -52,6 +52,8 @@ enum EventParticipantStatus {
   pending
   confirmed
   declined
+  waitlisted
+  co_organizer
 }
 
 enum GuestParticipantStatus {
@@ -321,6 +323,9 @@ model User {
   tournamentPlayers TournamentPlayer[] @relation("TournamentPlayer")
   receivedTeamInvitations TournamentTeamInvitation[] @relation("TeamInvitations")
   sentTeamInvitations     TournamentTeamInvitation[] @relation("SentTeamInvitations")
+  groupBans         GroupBan[]
+  issuedGroupBans   GroupBan[]       @relation("GroupBanner")
+  auditLogs         AuditLog[]
   
   @@index([email]) // For faster email lookups
   @@index([emailVerificationToken]) // For email verification
@@ -369,6 +374,7 @@ model Group {
   groupNotifications GroupNotification[]
   eventRequests EventRequest[]
   tournaments Tournament[]
+  groupBans   GroupBan[]
 }
 
 model GroupJoinRequest {
@@ -404,6 +410,39 @@ model GroupMember {
   @@index([groupId]) // For group members queries
   @@index([role]) // For admin/moderator/member filtering
   @@index([groupId, role]) // Composite index for efficient role-based queries within a group (scalability)
+}
+
+// Banned users - prevents rejoining after removal
+model GroupBan {
+  id        String   @id @default(uuid())
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  bannedBy  String   // userId of admin/moderator who banned
+  banner    User     @relation("GroupBanner", fields: [bannedBy], references: [id])
+  reason    String?
+  bannedAt  DateTime @default(now())
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@index([groupId])
+}
+
+// Generic audit log for admin actions
+model AuditLog {
+  id         String   @id @default(uuid())
+  entityType String   // 'group' | 'event' | 'tournament'
+  entityId   String
+  actorId    String
+  actor      User     @relation(fields: [actorId], references: [id])
+  action     String   // 'member_removed' | 'role_changed' | 'join_request_approved' | etc.
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
 }
 
 enum EventStatus {
