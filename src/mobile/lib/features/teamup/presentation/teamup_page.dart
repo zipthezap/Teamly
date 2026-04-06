@@ -552,7 +552,7 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppThemeTokens.darkTextSecondary.shade300,
+                  color: AppThemeTokens.darkTextSecondary.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
