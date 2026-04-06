@@ -20,6 +20,8 @@ class EventDetailPage extends ConsumerStatefulWidget {
 }
 
 class _EventDetailPageState extends ConsumerState<EventDetailPage> {
+  static const _kUnknown = 'Unknown';
+
   bool _actionLoading = false;
 
   String _errorMessage(Exception e) {
@@ -196,10 +198,10 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                         (p) => ListTile(
                           contentPadding: EdgeInsets.zero,
                           leading: UserAvatar(
-                            name: p.name ?? 'Unknown',
+                            name: p.name ?? _kUnknown,
                             imageUrl: p.profilePicture,
                           ),
-                          title: Text(p.name ?? 'Unknown'),
+                          title: Text(p.name ?? _kUnknown),
                           trailing: p.status == 'waitlisted'
                               ? const Chip(label: Text('Waitlisted'))
                               : null,

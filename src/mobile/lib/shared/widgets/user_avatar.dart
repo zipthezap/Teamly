@@ -14,7 +14,7 @@ class UserAvatar extends StatelessWidget {
   final double radius;
 
   String get _initials {
-    final parts = name.trim().split(RegExp(r'\s+'));
+    final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts[0][0].toUpperCase();
     return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
