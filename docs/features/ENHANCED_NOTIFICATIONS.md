@@ -46,6 +46,24 @@ The notification system has been completely enhanced to provide users with a com
 - Quick endpoint for badge counts
 - Returns: `{ count, eventCount, groupCount }`
 
+**GET /api/push-devices**
+- List authenticated user's registered mobile push devices
+
+**POST /api/push-devices**
+- Register (or re-enable) a mobile push device token
+- Body: `{ token, platform, locale?, timezone?, appVersion?, deviceModel? }`
+
+**PUT /api/push-devices/refresh**
+- Rotate device token after FCM/APNs refresh
+- Body: `{ oldToken, newToken, platform, locale?, timezone?, appVersion?, deviceModel? }`
+
+**DELETE /api/push-devices**
+- Disable one device token (logout/device revoke)
+- Body: `{ token }`
+
+**DELETE /api/push-devices/all**
+- Disable all mobile push devices for current user
+
 ### 2. Rich Notification Metadata
 
 Each notification now includes:
@@ -249,6 +267,17 @@ function NotificationBadge() {
 5. **Auto-refresh**: Frontend polls for new notifications every 30 seconds
 6. **Mark as Read**: When user interacts with notification, it's marked as read
 7. **History**: All notifications are preserved for historical access
+8. **Mobile push fan-out**: Notification creation also dispatches FCM push to active iOS/Android tokens
+9. **Badge sync**: Mobile app icon badge is synchronized with unread count
+
+### Mobile Push Notes
+
+- Push delivery uses Firebase Cloud Messaging (FCM) from backend.
+- Backend uses environment variables:
+  - `FCM_PROJECT_ID`
+  - `FCM_SERVICE_ACCOUNT_JSON`
+- Push delivery is non-blocking: notification DB writes and SSE are not interrupted if push send fails.
+- Invalid/unregistered device tokens are automatically disabled.
 
 ### Database Schema
 

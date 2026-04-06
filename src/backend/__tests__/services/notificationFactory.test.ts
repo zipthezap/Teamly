@@ -29,7 +29,8 @@ vi.mock('../../config/database', () => ({
 }));
 
 vi.mock('../../utils/notificationHelper', () => ({
-  filterUnmutedUsers: vi.fn((userIds) => Promise.resolve(userIds))
+  filterUnmutedUsers: vi.fn((userIds) => Promise.resolve(userIds)),
+  shouldSendPushNotification: vi.fn(async () => true),
 }));
 
 vi.mock('../../utils/logger', () => ({
