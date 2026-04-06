@@ -7,11 +7,13 @@ class MobileShell extends StatelessWidget {
     required this.title,
     required this.currentIndex,
     required this.child,
+    this.actions,
   });
 
   final String title;
   final int currentIndex;
   final Widget child;
+  final List<Widget>? actions;
 
   static void navigateByTab(BuildContext context, int index) {
     switch (index) {
@@ -32,7 +34,7 @@ class MobileShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(title: Text(title), actions: actions),
       body: child,
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,
