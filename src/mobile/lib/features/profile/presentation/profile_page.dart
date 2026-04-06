@@ -437,12 +437,32 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
           const Divider(),
 
+          // Two-factor authentication
+          ListTile(
+            leading: const Icon(Icons.security_outlined),
+            title: const Text('Two-factor authentication'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/profile/two-factor'),
+          ),
+
+          const Divider(),
+
           // Notification preferences
           ListTile(
             leading: const Icon(Icons.notifications_outlined),
             title: const Text('Notification preferences'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/profile/notification-preferences'),
+          ),
+
+          const Divider(),
+
+          // Reminders
+          ListTile(
+            leading: const Icon(Icons.alarm_outlined),
+            title: const Text('My reminders'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/profile/reminders'),
           ),
 
           const Divider(),

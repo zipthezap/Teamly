@@ -77,6 +77,12 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
                           leading: Icon(Icons.link),
                           title: Text('Copy invite link'),
                           contentPadding: EdgeInsets.zero)),
+                  const PopupMenuItem(
+                      value: 'event_requests',
+                      child: ListTile(
+                          leading: Icon(Icons.how_to_vote_outlined),
+                          title: Text('Event Requests'),
+                          contentPadding: EdgeInsets.zero)),
                   const PopupMenuDivider(),
                   const PopupMenuItem(
                       value: 'delete',
@@ -147,6 +153,9 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
                 .showSnackBar(SnackBar(content: Text(_extractMsg(e))));
           }
         }
+        break;
+      case 'event_requests':
+        context.push('/groups/${widget.groupId}/event-requests');
         break;
       case 'delete':
         final ok = await showDialog<bool>(
