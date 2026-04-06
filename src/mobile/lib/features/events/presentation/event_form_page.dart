@@ -5,13 +5,14 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/event_model.dart';
+import '../../../features/groups/state/groups_notifier.dart';
 import '../data/event_repository_impl.dart';
 import '../state/events_notifier.dart';
 
 class EventFormPage extends ConsumerStatefulWidget {
   const EventFormPage({
     super.key,
-    required this.groupId,
+    this.groupId = '',
     this.existingEvent,
   });
 
@@ -34,15 +35,18 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   String _eventType = 'match';
   bool _isPublic = true;
   DateTime _startTime = DateTime.now().add(const Duration(days: 1));
-  DateTime _endTime =
-      DateTime.now().add(const Duration(days: 1, hours: 2));
+  DateTime _endTime = DateTime.now().add(const Duration(days: 1, hours: 2));
   bool _saving = false;
+
+  /// Resolved group id — may be picked by the user when widget.groupId is empty.
+  late String _selectedGroupId;
 
   bool get _isEditing => widget.existingEvent != null;
 
   @override
   void initState() {
     super.initState();
+    _selectedGroupId = widget.groupId;
     final e = widget.existingEvent;
     _titleCtrl = TextEditingController(text: e?.title ?? '');
     _descCtrl = TextEditingController(text: e?.description ?? '');
@@ -105,6 +109,12 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   }
 
   Future<void> _submit() async {
+    if (_selectedGroupId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a group for this event')),
+      );
+      return;
+    }
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_endTime.isBefore(_startTime)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -116,7 +126,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
 
     final data = <String, dynamic>{
       'title': _titleCtrl.text.trim(),
-      'groupId': widget.groupId,
+      'groupId': _selectedGroupId,
       'startTime': _startTime.toUtc().toIso8601String(),
       'endTime': _endTime.toUtc().toIso8601String(),
       'isPublic': _isPublic,
@@ -183,6 +193,15 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            // Group picker (shown when navigating from Events tab without a pre-selected group)
+            if (widget.groupId.isEmpty) ...[
+              _GroupPickerField(
+                selectedGroupId: _selectedGroupId,
+                onChanged: (id) => setState(() => _selectedGroupId = id),
+              ),
+              const SizedBox(height: 16),
+            ],
+
             // Title
             TextFormField(
               controller: _titleCtrl,
@@ -318,6 +337,70 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Group picker for when event is created from the Events list (no groupId)
+// ---------------------------------------------------------------------------
+
+class _GroupPickerField extends ConsumerWidget {
+  const _GroupPickerField({
+    required this.selectedGroupId,
+    required this.onChanged,
+  });
+
+  final String selectedGroupId;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final groupsAsync = ref.watch(groupsNotifierProvider);
+
+    return groupsAsync.when(
+      loading: () => const InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Group *',
+          border: OutlineInputBorder(),
+        ),
+        child: Text('Loading groups…'),
+      ),
+      error: (_, __) => const InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Group *',
+          border: OutlineInputBorder(),
+        ),
+        child: Text('Could not load groups'),
+      ),
+      data: (groups) {
+        if (groups.isEmpty) {
+          return const InputDecorator(
+            decoration: InputDecoration(
+              labelText: 'Group *',
+              border: OutlineInputBorder(),
+            ),
+            child: Text('No groups — create a group first'),
+          );
+        }
+        final selected = selectedGroupId.isNotEmpty &&
+                groups.any((g) => g.id == selectedGroupId)
+            ? selectedGroupId
+            : '';
+        return DropdownButtonFormField<String>(
+          value: selected.isEmpty ? null : selected,
+          decoration: const InputDecoration(
+            labelText: 'Group *',
+            prefixIcon: Icon(Icons.group_outlined),
+            border: OutlineInputBorder(),
+          ),
+          hint: const Text('Select a group'),
+          items: groups
+              .map((g) => DropdownMenuItem(value: g.id, child: Text(g.name)))
+              .toList(),
+          onChanged: (v) => onChanged(v ?? ''),
+        );
+      },
     );
   }
 }
