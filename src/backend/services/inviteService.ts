@@ -128,6 +128,7 @@ export class InviteService {
     inviterId: string,
     options: {
       skipEmailCheck?: boolean;
+      skipRateLimit?: boolean;
       tx?: Prisma.TransactionClient;
       customMessage?: string;
       expiresInDays?: number;
@@ -136,7 +137,8 @@ export class InviteService {
     const client = options.tx || prisma;
 
     // Per-user-per-group rate limit for single invites: 50 invites/hour
-    if (!options.tx) {
+    // Skipped when called from batchInviteToGroup (which does its own check)
+    if (!options.tx && !options.skipRateLimit) {
       const rateLimitKey = `invite_rate:${inviterId}:${groupId}`;
       const rateLimited = await InviteService.checkAndIncrementRateLimit(rateLimitKey, 50, 3600);
       if (rateLimited) {
@@ -281,18 +283,6 @@ export class InviteService {
     inviterId: string,
     options: { customMessage?: string; expiresInDays?: number } = {}
   ): Promise<BatchInviteResult> {
-    // Per-user-per-group rate limit: max 50 invites per hour
-    const rateLimitKey = `invite_rate:${inviterId}:${groupId}`;
-    const rateLimitExceeded = await InviteService.checkAndIncrementRateLimit(rateLimitKey, 50, 3600);
-    if (rateLimitExceeded) {
-      return {
-        total: emails.length,
-        successful: 0,
-        failed: emails.length,
-        errors: emails.map(email => ({ email, error: 'Invite rate limit exceeded. Maximum 50 invites per hour per group.' })),
-      };
-    }
-
     const result: BatchInviteResult = {
       total: emails.length,
       successful: 0,
@@ -300,7 +290,7 @@ export class InviteService {
       errors: []
     };
 
-    // Validate all emails first
+    // Validate all emails first (before consuming rate limit points)
     const validEmails = emails.filter(email => {
       if (!isValidEmail(email)) {
         result.failed++;
@@ -311,6 +301,17 @@ export class InviteService {
     });
 
     if (validEmails.length === 0) {
+      return result;
+    }
+
+    // Per-user-per-group rate limit: max 50 invites per hour (checked after validation)
+    const rateLimitKey = `invite_rate:${inviterId}:${groupId}`;
+    const rateLimitExceeded = await InviteService.checkAndIncrementRateLimit(rateLimitKey, 50, 3600);
+    if (rateLimitExceeded) {
+      validEmails.forEach(email => {
+        result.failed++;
+        result.errors.push({ email, error: 'Invite rate limit exceeded. Maximum 50 invites per hour per group.' });
+      });
       return result;
     }
 
@@ -335,6 +336,7 @@ export class InviteService {
       const inviteResult = await this.inviteUserToGroup(groupId, user.id, inviterId, {
         customMessage: options.customMessage,
         expiresInDays: options.expiresInDays,
+        skipRateLimit: true, // Rate already checked for the full batch above
       });
       
       if (inviteResult.success) {
@@ -718,7 +720,8 @@ export class InviteService {
         const bucketMap = new Map<string, { sent: number; accepted: number; declined: number; expired: number; revoked: number }>();
 
         logs.forEach(log => {
-          const date = log.sentAt ? new Date(log.sentAt) : new Date();
+          if (!log.sentAt) return; // Skip records with missing timestamps
+          const date = new Date(log.sentAt);
           // ISO week start (Monday)
           const day = date.getDay();
           const diff = (day === 0 ? -6 : 1) - day;
@@ -876,16 +879,22 @@ export class InviteService {
    * Check a rate-limit counter and increment it.
    * Returns true if the limit has been exceeded, false if the action is allowed.
    * Uses Redis when available, falls back to in-memory.
+   *
+   * The limiter instance is keyed by (maxPoints, durationSeconds) so it is shared across
+   * all callers with the same configuration. The `key` parameter is passed to `consume()`
+   * as the per-caller identifier (e.g., "user123:group456").
    */
-  private static rateLimiterCache = new Map<string, RateLimiterMemory | RateLimiterRedis>();
+  private static readonly rateLimiterInstances = new Map<string, RateLimiterMemory | RateLimiterRedis>();
 
   static async checkAndIncrementRateLimit(
     key: string,
     maxPoints: number,
     durationSeconds: number
   ): Promise<boolean> {
+    // Cache key for the limiter instance (shared across callers with the same config)
+    const limiterCacheKey = `${maxPoints}:${durationSeconds}`;
     try {
-      let limiter = InviteService.rateLimiterCache.get(key);
+      let limiter = InviteService.rateLimiterInstances.get(limiterCacheKey);
       if (!limiter) {
         const redisClient = isRedisEnabled() ? getRedisClient() : null;
         if (redisClient) {
@@ -902,8 +911,9 @@ export class InviteService {
             duration: durationSeconds,
           });
         }
-        InviteService.rateLimiterCache.set(key, limiter);
+        InviteService.rateLimiterInstances.set(limiterCacheKey, limiter);
       }
+      // `key` is the per-caller identifier (user:group)
       await limiter.consume(key);
       return false; // Not rate-limited
     } catch {

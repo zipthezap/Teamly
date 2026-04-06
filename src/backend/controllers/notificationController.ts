@@ -104,11 +104,6 @@ export const streamNotifications = (req: Request, res: Response): void => {
   });
 };
 
-// Operational safety limits to prevent oversized payloads and deep pagination abuse.
-const MAX_NOTIFICATION_BATCH_SIZE = 100;
-const MAX_NOTIFICATION_QUERY_LENGTH = 100;
-const MAX_OFFSET = 10000;
-
 /**
  * Get user notifications with filtering and pagination
  * GET /api/notifications

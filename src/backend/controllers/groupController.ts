@@ -1070,8 +1070,8 @@ export const getPublicGroups = async (req: Request, res: Response) => {
   } else if (sortField === 'most_events') {
     orderBy = { events: { _count: 'desc' } };
   } else if (sortField === 'most_active') {
-    // Most active = most events in last 30 days (approximate via total events)
-    orderBy = { events: { _count: 'desc' } };
+    // Most active = most recently updated (proxies for recent event/member activity)
+    orderBy = [{ updatedAt: 'desc' }, { id: 'desc' }];
   } else {
     orderBy = [{ createdAt: 'desc' }, { id: 'desc' }];
   }
