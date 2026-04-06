@@ -570,3 +570,11 @@ Additional features we're considering:
 ## License
 
 ISC
+## Flutter Mobile Migration
+
+A parallel Flutter mobile app scaffold now exists at `src/mobile` for staged migration from the React web frontend while keeping the existing backend API as the single source of truth.
+
+- Migration baseline: `docs/MOBILE_FLUTTER_MIGRATION.md`
+- Mobile app scaffold: `src/mobile/README.md`
+- Mobile CI workflow: `.github/workflows/flutter-mobile.yml`
+
