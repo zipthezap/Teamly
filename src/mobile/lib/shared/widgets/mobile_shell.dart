@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class MobileShell extends StatelessWidget {
   const MobileShell({
@@ -6,13 +7,17 @@ class MobileShell extends StatelessWidget {
     required this.title,
     required this.currentIndex,
     required this.child,
-    required this.onTabSelected,
   });
 
   final String title;
   final int currentIndex;
   final Widget child;
-  final ValueChanged<int> onTabSelected;
+
+  static void navigateByTab(BuildContext context, int index) {
+    if (index == 0) context.go('/dashboard');
+    if (index == 1) context.go('/groups');
+    if (index == 2) context.go('/events');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +26,7 @@ class MobileShell extends StatelessWidget {
       body: child,
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,
-        onDestinationSelected: onTabSelected,
+        onDestinationSelected: (i) => navigateByTab(context, i),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
           NavigationDestination(icon: Icon(Icons.groups_outlined), label: 'Groups'),
