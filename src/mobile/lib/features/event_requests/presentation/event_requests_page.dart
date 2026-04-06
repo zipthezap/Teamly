@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -38,7 +39,7 @@ class _EventRequestsPageState extends ConsumerState<EventRequestsPage> {
       case 'approved':
         return Colors.green;
       case 'cancelled':
-        return Colors.grey;
+        return AppThemeTokens.darkTextSecondary;
       default:
         return Theme.of(context).colorScheme.primary;
     }
@@ -93,7 +94,7 @@ class _EventRequestsPageState extends ConsumerState<EventRequestsPage> {
                             .format(_requestedDate!)
                         : 'Select preferred date (optional)',
                     style: _requestedDate == null
-                        ? const TextStyle(color: Colors.grey)
+                        ? const TextStyle(color: AppThemeTokens.darkTextSecondary)
                         : null,
                   ),
                   onTap: () async {
@@ -255,7 +256,7 @@ class _EventRequestsPageState extends ConsumerState<EventRequestsPage> {
           child: requests.isEmpty
               ? const Center(
                   child: Text('No event requests yet.',
-                      style: TextStyle(color: Colors.grey)),
+                      style: TextStyle(color: AppThemeTokens.darkTextSecondary)),
                 )
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(8, 8, 8, 80),
@@ -292,7 +293,7 @@ class _EventRequestsPageState extends ConsumerState<EventRequestsPage> {
                           Text(
                             '${req.voteCount} votes',
                             style: theme.textTheme.bodySmall
-                                ?.copyWith(color: Colors.grey),
+                                ?.copyWith(color: AppThemeTokens.darkTextSecondary),
                           ),
                         ],
                       ),

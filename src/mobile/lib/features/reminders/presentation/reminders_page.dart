@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -183,10 +184,10 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.alarm_off_outlined,
-                          size: 48, color: Colors.grey),
+                          size: 48, color: AppThemeTokens.darkTextSecondary),
                       SizedBox(height: 12),
                       Text('No reminders set.',
-                          style: TextStyle(color: Colors.grey)),
+                          style: TextStyle(color: AppThemeTokens.darkTextSecondary)),
                     ],
                   ),
                 )
@@ -233,7 +234,7 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
                             Text(
                               '${_minutesLabel(r.minutesBefore)} before',
                               style: theme.textTheme.labelSmall
-                                  ?.copyWith(color: Colors.grey),
+                                  ?.copyWith(color: AppThemeTokens.darkTextSecondary),
                             ),
                           ],
                         ),

@@ -71,3 +71,85 @@ class UiSectionTitle extends StatelessWidget {
     );
   }
 }
+
+class UiEmptyState extends StatelessWidget {
+  const UiEmptyState({
+    super.key,
+    required this.icon,
+    required this.message,
+    this.action,
+    this.actionLabel,
+    this.actionIcon,
+  });
+
+  final IconData icon;
+  final String message;
+  final VoidCallback? action;
+  final String? actionLabel;
+  final IconData? actionIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 56, color: AppThemeTokens.darkTextSecondary),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppThemeTokens.darkTextSecondary),
+            ),
+            if (action != null && actionLabel != null) ...[
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: action,
+                icon: Icon(actionIcon ?? Icons.add),
+                label: Text(actionLabel!),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class UiInfoRow extends StatelessWidget {
+  const UiInfoRow({
+    super.key,
+    required this.icon,
+    required this.label,
+    this.iconColor,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color? iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: iconColor ?? AppThemeTokens.darkTextSecondary,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(color: AppThemeTokens.darkTextSecondary, fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

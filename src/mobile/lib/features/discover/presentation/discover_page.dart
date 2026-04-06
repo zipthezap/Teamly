@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/mobile_shell.dart';
 
 class DiscoverPage extends StatelessWidget {
@@ -16,13 +17,18 @@ class DiscoverPage extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('Find new opportunities', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey)),
+          Text(
+            'Find new opportunities',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppThemeTokens.darkTextSecondary,
+            ),
+          ),
           const SizedBox(height: 16),
           _DiscoverCard(
             icon: Icons.explore_outlined,
             title: 'Public Groups',
             subtitle: 'Find and join groups near you',
-            color: Colors.blue.shade700,
+            iconColor: AppThemeTokens.primary500,
             onTap: () => context.push('/discover/public-groups'),
           ),
           const SizedBox(height: 12),
@@ -30,7 +36,7 @@ class DiscoverPage extends StatelessWidget {
             icon: Icons.handshake_outlined,
             title: 'TeamUp',
             subtitle: 'Find players or join a team',
-            color: Colors.purple.shade700,
+            iconColor: const Color(0xFF9C27B0),
             onTap: () => context.push('/teamup'),
           ),
           const SizedBox(height: 12),
@@ -38,7 +44,7 @@ class DiscoverPage extends StatelessWidget {
             icon: Icons.emoji_events_outlined,
             title: 'Tournaments',
             subtitle: 'Browse and compete in tournaments',
-            color: Colors.orange.shade700,
+            iconColor: const Color(0xFFFF9800),
             onTap: () => context.push('/tournaments'),
           ),
           const SizedBox(height: 12),
@@ -46,7 +52,7 @@ class DiscoverPage extends StatelessWidget {
             icon: Icons.near_me_outlined,
             title: 'Nearby Groups',
             subtitle: 'Find groups close to your location',
-            color: Colors.teal.shade700,
+            iconColor: const Color(0xFF009688),
             onTap: () => context.push('/discover/nearby-groups'),
           ),
           const SizedBox(height: 12),
@@ -54,7 +60,7 @@ class DiscoverPage extends StatelessWidget {
             icon: Icons.bar_chart_outlined,
             title: 'My Event Statistics',
             subtitle: 'Track your event participation stats',
-            color: Colors.indigo.shade700,
+            iconColor: const Color(0xFF3F51B5),
             onTap: () => context.push('/discover/event-statistics'),
           ),
         ],
@@ -68,14 +74,14 @@ class _DiscoverCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.color,
+    required this.iconColor,
     required this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
-  final Color color;
+  final Color iconColor;
   final VoidCallback onTap;
 
   @override
@@ -92,10 +98,10 @@ class _DiscoverCard extends StatelessWidget {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
+                  color: iconColor.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(icon, color: color, size: 28),
+                child: Icon(icon, color: iconColor, size: 28),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -112,12 +118,12 @@ class _DiscoverCard extends StatelessWidget {
                       style: Theme.of(context)
                           .textTheme
                           .bodySmall
-                          ?.copyWith(color: Colors.grey),
+                          ?.copyWith(color: AppThemeTokens.darkTextSecondary),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: Colors.grey),
+              const Icon(Icons.chevron_right, color: AppThemeTokens.darkTextSecondary),
             ],
           ),
         ),

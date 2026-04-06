@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -119,14 +120,14 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.search_off, size: 56, color: Colors.grey),
+                    const Icon(Icons.search_off, size: 56, color: AppThemeTokens.darkTextSecondary),
                     const SizedBox(height: 12),
                     Text(
                       _searchQuery.isNotEmpty
                           ? 'No groups match "$_searchQuery"'
                           : 'No public groups found.',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.grey),
+                      style: const TextStyle(color: AppThemeTokens.darkTextSecondary),
                     ),
                   ],
                 ),

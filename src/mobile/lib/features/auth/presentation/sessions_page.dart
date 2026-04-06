@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -57,7 +58,7 @@ class SessionsPage extends ConsumerWidget {
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Text(
               'Your account is currently active on these devices.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12, color: AppThemeTokens.darkTextSecondary),
             ),
           ),
           const Divider(),
@@ -75,7 +76,7 @@ class SessionsPage extends ConsumerWidget {
                     child: Text(
                       'No sessions found.',
                       style: theme.textTheme.bodyMedium
-                          ?.copyWith(color: Colors.grey),
+                          ?.copyWith(color: AppThemeTokens.darkTextSecondary),
                     ),
                   );
                 }

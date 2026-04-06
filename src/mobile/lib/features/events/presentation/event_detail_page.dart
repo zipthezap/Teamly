@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
@@ -472,7 +473,7 @@ class _ActivityFeedSection extends ConsumerWidget {
                 trailing: Text(
                   _formatTime(entry.createdAt),
                   style: theme.textTheme.labelSmall
-                      ?.copyWith(color: Colors.grey),
+                      ?.copyWith(color: AppThemeTokens.darkTextSecondary),
                 ),
               ),
             ),
@@ -609,7 +610,7 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Text('No comments yet.',
                       style: theme.textTheme.bodySmall
-                          ?.copyWith(color: Colors.grey)),
+                          ?.copyWith(color: AppThemeTokens.darkTextSecondary)),
                 )
               else
                 ...comments.map((c) {
@@ -640,7 +641,7 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                                   Text(
                                     _formatTime(c.createdAt),
                                     style: theme.textTheme.labelSmall
-                                        ?.copyWith(color: Colors.grey),
+                                        ?.copyWith(color: AppThemeTokens.darkTextSecondary),
                                   ),
                                 ],
                               ),
@@ -755,7 +756,7 @@ class _DetailRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: Colors.grey),
+          Icon(icon, size: 18, color: AppThemeTokens.darkTextSecondary),
           const SizedBox(width: 8),
           Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyMedium)),
         ],

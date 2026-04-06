@@ -179,7 +179,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                 const SizedBox(height: 4),
                 Text(
                   _isRegister ? 'Create your account' : 'Sign in to continue',
-                  style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                  style: theme.textTheme.bodyMedium?.copyWith(color: AppThemeTokens.darkTextSecondary),
                 ),
                 const SizedBox(height: 24),
 

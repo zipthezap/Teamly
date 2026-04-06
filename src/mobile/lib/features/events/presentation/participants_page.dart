@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/extended_models.dart';
@@ -152,7 +153,7 @@ class _MembersTabState extends ConsumerState<_MembersTab> {
                   ? Center(
                       child: Text('No participants.',
                           style: theme.textTheme.bodyMedium
-                              ?.copyWith(color: Colors.grey)))
+                              ?.copyWith(color: AppThemeTokens.darkTextSecondary)))
                   : RefreshIndicator(
                       onRefresh: () async => ref
                           .invalidate(eventParticipantsProvider(widget.eventId)),
@@ -230,7 +231,7 @@ class _GuestsTab extends ConsumerWidget {
                   ? Center(
                       child: Text('No guests.',
                           style: theme.textTheme.bodyMedium
-                              ?.copyWith(color: Colors.grey)))
+                              ?.copyWith(color: AppThemeTokens.darkTextSecondary)))
                   : RefreshIndicator(
                       onRefresh: () async =>
                           ref.invalidate(eventGuestsProvider(eventId)),

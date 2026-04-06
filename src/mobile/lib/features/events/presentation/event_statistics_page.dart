@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/widgets/error_display.dart';
@@ -74,7 +75,7 @@ class EventStatisticsPage extends ConsumerWidget {
                       icon: Icons.history,
                       label: 'Past',
                       value: '${stats.pastEvents}',
-                      color: Colors.grey,
+                      color: AppThemeTokens.darkTextSecondary,
                     ),
                   ),
                 ],

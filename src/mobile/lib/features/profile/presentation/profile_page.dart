@@ -340,7 +340,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   Text(user.name, style: theme.textTheme.titleLarge),
                   Text(
                     user.email,
-                    style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+                    style: theme.textTheme.bodySmall?.copyWith(color: AppThemeTokens.darkTextSecondary),
                   ),
                   if (!user.emailVerified)
                     const Padding(

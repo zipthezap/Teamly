@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -143,7 +144,7 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
                         const SizedBox(height: 12),
                         const Text(
                           'No TeamUp requests found.',
-                          style: TextStyle(color: Colors.grey),
+                          style: const TextStyle(color: AppThemeTokens.darkTextSecondary),
                         ),
                       ],
                     ),
@@ -196,12 +197,12 @@ class _MyRequestsTab extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.inbox_outlined, size: 56, color: Colors.grey),
+                  Icon(Icons.inbox_outlined, size: 56, color: AppThemeTokens.darkTextSecondary),
                   SizedBox(height: 12),
                   Text(
                     "You haven't made any TeamUp requests yet.",
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey),
+                    style: const TextStyle(color: AppThemeTokens.darkTextSecondary),
                   ),
                 ],
               ),
@@ -466,7 +467,7 @@ class _RequestTile extends StatelessWidget {
             fontSize: 11,
             color: request.status == 'open'
                 ? theme.colorScheme.onPrimaryContainer
-                : Colors.grey,
+                : AppThemeTokens.darkTextSecondary,
           ),
         ),
       ),
@@ -563,7 +564,7 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: AppThemeTokens.darkTextSecondary.shade300,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -639,7 +640,7 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                       data: (responses) {
                         if (responses.isEmpty) {
                           return const Text('No responses yet.',
-                              style: TextStyle(color: Colors.grey));
+                              style: const TextStyle(color: AppThemeTokens.darkTextSecondary));
                         }
                         return Column(
                           children: responses
@@ -657,10 +658,10 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                                         horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
                                       color: resp.status == 'accepted'
-                                          ? Colors.green.shade100
+                                          ? const Color(0xFF1B5E20)
                                           : resp.status == 'rejected'
-                                              ? Colors.red.shade100
-                                              : Colors.grey.shade100,
+                                              ? const Color(0xFFB71C1C)
+                                              : AppThemeTokens.darkCardHover,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(

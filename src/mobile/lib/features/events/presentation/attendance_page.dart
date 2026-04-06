@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -219,7 +220,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                       Text(
                         'Attendance rate: ${stats.attendanceRate.toStringAsFixed(1)}%',
                         style: theme.textTheme.bodySmall
-                            ?.copyWith(color: Colors.grey),
+                            ?.copyWith(color: AppThemeTokens.darkTextSecondary),
                       ),
                     ],
                   ),
@@ -249,7 +250,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                       child: Text(
                         'No attendance records yet.',
                         style: theme.textTheme.bodyMedium
-                            ?.copyWith(color: Colors.grey),
+                            ?.copyWith(color: AppThemeTokens.darkTextSecondary),
                       ),
                     ),
                   );

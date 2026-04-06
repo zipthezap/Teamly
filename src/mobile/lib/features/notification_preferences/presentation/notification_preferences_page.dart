@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/notification_preferences_repository_impl.dart';
@@ -63,7 +64,7 @@ class _NotificationPreferencesPageState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, color: Colors.grey, size: 48),
+              const Icon(Icons.error_outline, color: AppThemeTokens.darkTextSecondary, size: 48),
               const SizedBox(height: 12),
               Text(e.toString()),
               const SizedBox(height: 12),
@@ -88,7 +89,7 @@ class _NotificationPreferencesPageState
                   style: Theme.of(context)
                       .textTheme
                       .bodySmall
-                      ?.copyWith(color: Colors.grey),
+                      ?.copyWith(color: AppThemeTokens.darkTextSecondary),
                 ),
               ),
               ..._labels.entries.map((entry) {

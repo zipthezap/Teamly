@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -43,11 +44,11 @@ class _TournamentsPageState extends ConsumerState<TournamentsPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.emoji_events_outlined, size: 56, color: Colors.grey),
+                    Icon(Icons.emoji_events_outlined, size: 56, color: AppThemeTokens.darkTextSecondary),
                     SizedBox(height: 12),
                     Text(
                       'No tournaments yet.',
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(color: AppThemeTokens.darkTextSecondary),
                     ),
                   ],
                 ),
@@ -223,11 +224,11 @@ class TournamentDetailPage extends ConsumerWidget {
   Color? _statusColor(String s, ThemeData theme) {
     switch (s) {
       case 'active':
-        return Colors.green.shade100;
+        return const Color(0xFF1B5E20);
       case 'registration':
         return theme.colorScheme.primaryContainer;
       case 'completed':
-        return Colors.grey.shade200;
+        return AppThemeTokens.darkBorder;
       default:
         return null;
     }
@@ -252,7 +253,7 @@ class _TeamsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     if (teams.isEmpty) {
       return const Center(
-        child: Text('No teams registered yet.', style: TextStyle(color: Colors.grey)),
+        child: Text('No teams registered yet.', style: TextStyle(color: AppThemeTokens.darkTextSecondary)),
       );
     }
 
@@ -320,7 +321,7 @@ class _StandingsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     if (teams.isEmpty) {
       return const Center(
-        child: Text('No standings yet.', style: TextStyle(color: Colors.grey)),
+        child: Text('No standings yet.', style: TextStyle(color: AppThemeTokens.darkTextSecondary)),
       );
     }
 
@@ -333,7 +334,7 @@ class _StandingsTab extends StatelessWidget {
           style: Theme.of(context)
               .textTheme
               .bodyMedium
-              ?.copyWith(color: Colors.grey),
+              ?.copyWith(color: AppThemeTokens.darkTextSecondary),
           textAlign: TextAlign.center,
         ),
       );
@@ -398,7 +399,7 @@ class _StandingsTab extends StatelessWidget {
                 color: isTop3
                     ? [
                         Colors.amber.withValues(alpha: 0.15),
-                        Colors.grey.shade300.withValues(alpha: 0.3),
+                        AppThemeTokens.darkBorder.withOpacity(0.3),
                         Colors.brown.shade200.withValues(alpha: 0.2),
                       ][i]
                     : null,
@@ -462,7 +463,7 @@ class _MatchesTab extends StatelessWidget {
   Widget build(BuildContext context) {
     if (matches.isEmpty) {
       return const Center(
-        child: Text('No matches scheduled yet.', style: TextStyle(color: Colors.grey)),
+        child: Text('No matches scheduled yet.', style: TextStyle(color: AppThemeTokens.darkTextSecondary)),
       );
     }
 
@@ -706,7 +707,7 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
                       ? DateFormat.yMMMd().format(_startDate!)
                       : 'Tap to select',
                   style: TextStyle(
-                    color: _startDate == null ? Colors.grey : null,
+                    color: _startDate == null ? AppThemeTokens.darkTextSecondary : null,
                   ),
                 ),
               ),
