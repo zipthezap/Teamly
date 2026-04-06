@@ -42,6 +42,35 @@ import { useEnhancedNotifications } from '../hooks/useEnhancedNotifications';
 
 import { GroupNotificationType, GroupWithDetails, GroupMember } from '../../../shared/types';
 
+type GroupAccessLevel = 'owner' | 'admin' | 'member';
+
+const getGroupAccessLevel = (group: GroupWithDetails, userId?: string): GroupAccessLevel => {
+  if (!userId) {
+    return 'member';
+  }
+
+  if (group.creatorId === userId) {
+    return 'owner';
+  }
+
+  const membership = group.members?.find((member: GroupMember) => member.userId === userId);
+  return membership?.role === 'admin' ? 'admin' : 'member';
+};
+
+const getGroupSortPriority = (group: GroupWithDetails, userId?: string) => {
+  const accessLevel = getGroupAccessLevel(group, userId);
+
+  if (accessLevel === 'owner') {
+    return 0;
+  }
+
+  if (accessLevel === 'admin') {
+    return 1;
+  }
+
+  return 2;
+};
+
 
 const GroupsList = () => {
   // All hooks at top level, never inside conditionals or loops
@@ -92,10 +121,18 @@ const GroupsList = () => {
     } else if (filter === 'private') {
       filtered = filtered.filter(group => !group.isPublic);
     } else if (filter === 'admin') {
-      filtered = filtered.filter(group =>
-        group.members?.some((m: GroupMember) => m.id === user?.id && m.role === 'admin')
-      );
+      filtered = filtered.filter(group => getGroupAccessLevel(group, user?.id) !== 'member');
     }
+    filtered.sort((leftGroup, rightGroup) => {
+      const priorityDifference = getGroupSortPriority(leftGroup, user?.id) - getGroupSortPriority(rightGroup, user?.id);
+
+      if (priorityDifference !== 0) {
+        return priorityDifference;
+      }
+
+      return new Date(rightGroup.updatedAt).getTime() - new Date(leftGroup.updatedAt).getTime();
+    });
+
     return filtered;
   }, [groups, searchTerm, filter, user?.id]);
 
@@ -103,7 +140,7 @@ const GroupsList = () => {
     total: Array.isArray(groups) ? groups.length : 0,
     public: Array.isArray(groups) ? groups.filter((g: GroupWithDetails) => g.isPublic).length : 0,
     private: Array.isArray(groups) ? groups.filter((g: GroupWithDetails) => !g.isPublic).length : 0,
-    admin: Array.isArray(groups) ? groups.filter((g: GroupWithDetails) => g.members?.some((m: GroupMember) => m.id === user?.id && m.role === 'admin')).length : 0,
+    admin: Array.isArray(groups) ? groups.filter((g: GroupWithDetails) => getGroupAccessLevel(g, user?.id) !== 'member').length : 0,
   }), [groups, user?.id]);
 
     // --- Group Invite Requests Popover State ---
@@ -370,7 +407,7 @@ const GroupsList = () => {
           {filteredGroups.map((group, _idx) => {
             // DEBUG: Log each group in the map
             // Inline getUserRole logic
-            const role = group.members?.find((m: GroupMember) => m.id === user.id)?.role;
+            const accessLevel = getGroupAccessLevel(group, user.id);
             const memberCount = group.members?.length || 0;
             // Only count future events
             const now = new Date();
@@ -419,7 +456,10 @@ const GroupsList = () => {
                             ) : (
                               <Chip label={t('groups.private')} size="small" />
                             )}
-                            {role === 'admin' && (
+                            {accessLevel === 'owner' && (
+                              <Chip label={t('groups.owner')} size="small" color="success" />
+                            )}
+                            {accessLevel === 'admin' && (
                               <Chip label={t('groups.admin')} size="small" color="secondary" />
                             )}
                           </MuiBox>

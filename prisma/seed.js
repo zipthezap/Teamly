@@ -833,6 +833,195 @@ async function main() {
     }
   });
 
+  console.log('\nSeeding event requests...');
+  const eventRequest1 = await prisma.eventRequest.upsert({
+    where: { id: 'seed-event-request-1' },
+    update: {},
+    create: {
+      id: 'seed-event-request-1',
+      title: 'Saturday Skills Clinic',
+      description: 'Requesting a coached clinic before the next football match for positioning and passing drills.',
+      eventType: 'football',
+      location: 'Central Park Training Zone',
+      startTime: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000),
+      endTime: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000 + 90 * 60 * 1000),
+      maxPlayers: 16,
+      status: 'voting',
+      voteDeadline: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
+      voteThreshold: 0.6,
+      creatorId: user2.id,
+      groupId: group1.id,
+    }
+  });
+
+  const eventRequest2 = await prisma.eventRequest.upsert({
+    where: { id: 'seed-event-request-2' },
+    update: {},
+    create: {
+      id: 'seed-event-request-2',
+      title: 'Sunrise Recovery Run',
+      description: 'A low-intensity group recovery run after the autumn meetup series.',
+      eventType: 'running',
+      location: 'Reservoir Loop',
+      startTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000),
+      endTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000 + 75 * 60 * 1000),
+      maxPlayers: 12,
+      status: 'finalized',
+      voteDeadline: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      voteThreshold: 0.5,
+      creatorId: user3.id,
+      groupId: group1.id,
+      finalizedEventId: springSoccerEvent.id,
+    }
+  });
+
+  const eventRequest3 = await prisma.eventRequest.upsert({
+    where: { id: 'seed-event-request-3' },
+    update: {},
+    create: {
+      id: 'seed-event-request-3',
+      title: 'Late Night Half-Court Shootout',
+      description: 'Short-format half-court games with music and scorekeeping.',
+      eventType: 'basketball',
+      location: 'Downtown Gym Annex',
+      startTime: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      endTime: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
+      maxPlayers: 10,
+      status: 'cancelled',
+      voteDeadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+      voteThreshold: 0.5,
+      creatorId: user4.id,
+      groupId: group2.id,
+    }
+  });
+
+  const eventRequest4 = await prisma.eventRequest.upsert({
+    where: { id: 'seed-event-request-4' },
+    update: {},
+    create: {
+      id: 'seed-event-request-4',
+      title: 'Montreal Mixed-Sports Social',
+      description: 'A social event with rotating mini-games for new members to meet each other.',
+      eventType: 'other',
+      location: 'Parc du Mont-Royal',
+      startTime: new Date(Date.now() + 18 * 24 * 60 * 60 * 1000),
+      endTime: new Date(Date.now() + 18 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000),
+      maxPlayers: 24,
+      status: 'expired',
+      voteDeadline: new Date(Date.now() - 6 * 60 * 60 * 1000),
+      voteThreshold: 0.55,
+      creatorId: user4.id,
+      groupId: group6.id,
+    }
+  });
+
+  await prisma.eventVote.upsert({
+    where: {
+      eventRequestId_userId: {
+        eventRequestId: eventRequest1.id,
+        userId: user1.id,
+      }
+    },
+    update: { vote: 'yes' },
+    create: {
+      eventRequestId: eventRequest1.id,
+      userId: user1.id,
+      vote: 'yes'
+    }
+  });
+
+  await prisma.eventVote.upsert({
+    where: {
+      eventRequestId_userId: {
+        eventRequestId: eventRequest1.id,
+        userId: user3.id,
+      }
+    },
+    update: { vote: 'yes' },
+    create: {
+      eventRequestId: eventRequest1.id,
+      userId: user3.id,
+      vote: 'yes'
+    }
+  });
+
+  await prisma.eventVote.upsert({
+    where: {
+      eventRequestId_userId: {
+        eventRequestId: eventRequest2.id,
+        userId: user1.id,
+      }
+    },
+    update: { vote: 'yes' },
+    create: {
+      eventRequestId: eventRequest2.id,
+      userId: user1.id,
+      vote: 'yes'
+    }
+  });
+
+  await prisma.eventVote.upsert({
+    where: {
+      eventRequestId_userId: {
+        eventRequestId: eventRequest2.id,
+        userId: user2.id,
+      }
+    },
+    update: { vote: 'yes' },
+    create: {
+      eventRequestId: eventRequest2.id,
+      userId: user2.id,
+      vote: 'yes'
+    }
+  });
+
+  await prisma.eventVote.upsert({
+    where: {
+      eventRequestId_userId: {
+        eventRequestId: eventRequest3.id,
+        userId: user2.id,
+      }
+    },
+    update: { vote: 'yes' },
+    create: {
+      eventRequestId: eventRequest3.id,
+      userId: user2.id,
+      vote: 'yes'
+    }
+  });
+
+  await prisma.eventVote.upsert({
+    where: {
+      eventRequestId_userId: {
+        eventRequestId: eventRequest3.id,
+        userId: user1.id,
+      }
+    },
+    update: { vote: 'no' },
+    create: {
+      eventRequestId: eventRequest3.id,
+      userId: user1.id,
+      vote: 'no'
+    }
+  });
+
+  await prisma.eventVote.upsert({
+    where: {
+      eventRequestId_userId: {
+        eventRequestId: eventRequest4.id,
+        userId: user3.id,
+      }
+    },
+    update: { vote: 'yes' },
+    create: {
+      eventRequestId: eventRequest4.id,
+      userId: user3.id,
+      vote: 'yes'
+    }
+  });
+
+  console.log('Seeded 4 event requests and 7 event votes');
+
   await prisma.eventAttendance.upsert({
     where: {
       eventId_userId: {
@@ -1216,7 +1405,67 @@ async function main() {
       joinedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000) // 1 day ago
     }
   });
-  console.log('Seeded 3 guest participants');
+
+  await prisma.guestParticipant.upsert({
+    where: { id: 'seed-guest-4' },
+    update: {},
+    create: {
+      id: 'seed-guest-4',
+      eventId: springSoccerEvent.id,
+      name: 'Sophie Turner',
+      status: 'confirmed',
+      joinedAt: new Date(Date.now() - 36 * 60 * 60 * 1000)
+    }
+  });
+
+  await prisma.guestParticipant.upsert({
+    where: { id: 'seed-guest-5' },
+    update: {},
+    create: {
+      id: 'seed-guest-5',
+      eventId: springSoccerEvent.id,
+      name: 'Liam Carter',
+      status: 'confirmed',
+      joinedAt: new Date(Date.now() - 30 * 60 * 60 * 1000)
+    }
+  });
+
+  await prisma.guestParticipant.upsert({
+    where: { id: 'seed-guest-6' },
+    update: {},
+    create: {
+      id: 'seed-guest-6',
+      eventId: weekendFootballEvent.id,
+      name: 'Emma Brooks',
+      status: 'declined',
+      joinedAt: new Date(Date.now() - 18 * 60 * 60 * 1000)
+    }
+  });
+
+  await prisma.guestParticipant.upsert({
+    where: { id: 'seed-guest-7' },
+    update: {},
+    create: {
+      id: 'seed-guest-7',
+      eventId: createdEvents[7].id,
+      name: 'Noah Ramirez',
+      status: 'confirmed',
+      joinedAt: new Date(Date.now() - 20 * 60 * 60 * 1000)
+    }
+  });
+
+  await prisma.guestParticipant.upsert({
+    where: { id: 'seed-guest-8' },
+    update: {},
+    create: {
+      id: 'seed-guest-8',
+      eventId: createdEvents[9].id,
+      name: 'Olivia Martin',
+      status: 'confirmed',
+      joinedAt: new Date(Date.now() - 8 * 60 * 60 * 1000)
+    }
+  });
+  console.log('Seeded 8 guest participants');
 
   // Create tournaments with multiple pools
   console.log('\nSeeding tournaments with pools...');
@@ -2319,6 +2568,8 @@ async function main() {
   console.log('- Events: 10 (across all groups)');
   console.log('- Group Notifications: 3');
   console.log('- Event Notifications: 6');
+  console.log('- Event Requests: 4');
+  console.log('- Event Votes: 7');
   console.log('- Group Join Requests: 2');
   console.log('- Invite Logs: 2');
   console.log('- Event Attendance Records: 3');
@@ -2329,7 +2580,7 @@ async function main() {
   console.log('- TeamUp Notifications: 5');
   console.log('- Event Reminders: 3');
   console.log('- Event Comments: 4');
-  console.log('- Guest Participants: 3');
+  console.log('- Guest Participants: 8');
   console.log('- Tournament Team Invitations: 1');
   console.log('- Tournaments: 4 (3 upcoming, 1 in progress)');
   console.log('  - Montreal Winter Hockey Championship (in_progress) with 4 pools and scheduled matches');

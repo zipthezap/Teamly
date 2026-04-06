@@ -400,6 +400,7 @@
     "allGroups": "All Groups",
     "public": "Public",
     "private": "Private",
+    "owner": "Owner",
     "admin": "Admin",
     "createFirstGroupDesc": "Start by creating a group to connect and organize events!",
     "createFirstGroup": "Create Your First Group",
@@ -496,6 +497,7 @@
     }
   },
   "groupDetails": {
+    "removeMember": "Remove member",
     "transferAdminTitle": "Select New Admin",
     "transferAdminDesc": "You must select a new admin before leaving the group.",
     "selectMember": "Select member",
