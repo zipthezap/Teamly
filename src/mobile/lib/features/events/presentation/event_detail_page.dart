@@ -13,6 +13,9 @@ import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../data/event_repository_impl.dart';
 import '../state/events_notifier.dart';
+import 'attendance_page.dart';
+import 'event_invite_analytics_page.dart';
+import 'participants_page.dart';
 
 final _eventCommentsProvider =
     FutureProvider.family<List<CommentModel>, String>(
@@ -34,6 +37,7 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
 
   bool _actionLoading = false;
   bool _markingLate = false;
+  bool _archiving = false;
 
   String _errorMessage(Exception e) {
     if (e is DioException) {
@@ -43,6 +47,34 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
     }
     if (e is AppException) return e.message;
     return e.toString().replaceFirst('Exception: ', '');
+  }
+
+  Future<void> _toggleArchive(bool archived) async {
+    setState(() => _archiving = true);
+    try {
+      final repo = ref.read(eventRepositoryProvider);
+      if (archived) {
+        await repo.unarchiveEvent(widget.eventId);
+      } else {
+        await repo.archiveEvent(widget.eventId);
+      }
+      ref.invalidate(eventDetailProvider(widget.eventId));
+      ref.read(eventsNotifierProvider.notifier).load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(archived ? 'Event unarchived' : 'Event archived')),
+        );
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(_errorMessage(e)),
+            backgroundColor: Theme.of(context).colorScheme.error));
+      }
+    } finally {
+      if (mounted) setState(() => _archiving = false);
+    }
   }
 
   Future<void> _markLate(bool isLate) async {
@@ -162,9 +194,100 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
             tooltip: 'Copy invite link',
             onPressed: _copyInviteLink,
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(eventDetailProvider(widget.eventId)),
+          eventAsync.maybeWhen(
+            data: (event) {
+              final isCreator = event.creator.id == currentUserId;
+              return PopupMenuButton<String>(
+                onSelected: (action) {
+                  switch (action) {
+                    case 'archive':
+                      _toggleArchive(event.archived ?? false);
+                      break;
+                    case 'participants':
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => ParticipantsPage(
+                          eventId: widget.eventId,
+                          eventTitle: event.title,
+                        ),
+                      ));
+                      break;
+                    case 'attendance':
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => AttendancePage(
+                          eventId: widget.eventId,
+                          eventTitle: event.title,
+                        ),
+                      ));
+                      break;
+                    case 'analytics':
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => EventInviteAnalyticsPage(
+                          eventId: widget.eventId,
+                          eventTitle: event.title,
+                        ),
+                      ));
+                      break;
+                    case 'refresh':
+                      ref.invalidate(eventDetailProvider(widget.eventId));
+                      break;
+                  }
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: 'participants',
+                    child: ListTile(
+                      leading: Icon(Icons.people_outline),
+                      title: Text('Participants & Guests'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'attendance',
+                    child: ListTile(
+                      leading: Icon(Icons.how_to_reg_outlined),
+                      title: Text('Attendance'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  if (isCreator) ...[
+                    const PopupMenuItem(
+                      value: 'analytics',
+                      child: ListTile(
+                        leading: Icon(Icons.analytics_outlined),
+                        title: Text('Invite Analytics'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'archive',
+                      child: ListTile(
+                        leading: Icon(
+                          event.archived ?? false
+                              ? Icons.unarchive_outlined
+                              : Icons.archive_outlined,
+                        ),
+                        title: Text(
+                            event.archived ?? false ? 'Unarchive' : 'Archive'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ],
+                  const PopupMenuItem(
+                    value: 'refresh',
+                    child: ListTile(
+                      leading: Icon(Icons.refresh),
+                      title: Text('Refresh'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
+              );
+            },
+            orElse: () => IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () =>
+                  ref.invalidate(eventDetailProvider(widget.eventId)),
+            ),
           ),
         ],
       ),

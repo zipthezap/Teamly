@@ -144,7 +144,7 @@ class TournamentDetailPage extends ConsumerWidget {
           onRefresh: () async =>
               ref.invalidate(tournamentDetailProvider(tournamentId)),
           child: DefaultTabController(
-            length: 2,
+            length: 3,
             child: NestedScrollView(
               headerSliverBuilder: (context, _) => [
                 SliverToBoxAdapter(
@@ -189,6 +189,7 @@ class TournamentDetailPage extends ConsumerWidget {
                       tabs: [
                         Tab(text: 'Teams'),
                         Tab(text: 'Matches'),
+                        Tab(text: 'Standings'),
                       ],
                     ),
                   ),
@@ -197,8 +198,9 @@ class TournamentDetailPage extends ConsumerWidget {
               ],
               body: TabBarView(
                 children: [
-                  _TeamsTab(teams: t.teams),
+                  _TeamsTab(teams: t.teams, format: t.format),
                   _MatchesTab(matches: t.matches),
+                  _StandingsTab(teams: t.teams, format: t.format),
                 ],
               ),
             ),
@@ -242,8 +244,9 @@ class TournamentDetailPage extends ConsumerWidget {
 }
 
 class _TeamsTab extends StatelessWidget {
-  const _TeamsTab({required this.teams});
+  const _TeamsTab({required this.teams, required this.format});
   final List<TournamentTeamModel> teams;
+  final String format;
 
   @override
   Widget build(BuildContext context) {
@@ -252,6 +255,43 @@ class _TeamsTab extends StatelessWidget {
         child: Text('No teams registered yet.', style: TextStyle(color: Colors.grey)),
       );
     }
+
+    // Group by pool if pool format
+    final hasPools = format == 'pool' &&
+        teams.any((t) => t.poolId != null);
+
+    if (hasPools) {
+      final pools = <String, List<TournamentTeamModel>>{};
+      for (final team in teams) {
+        final poolKey = team.poolId ?? 'No Pool';
+        pools.putIfAbsent(poolKey, () => []).add(team);
+      }
+      return ListView(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        children: pools.entries.map((entry) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: Text('Pool ${entry.key}',
+                    style: Theme.of(context).textTheme.titleSmall),
+              ),
+              ...entry.value.asMap().entries.map((e) => ListTile(
+                    leading: CircleAvatar(child: Text('${e.key + 1}')),
+                    title: Text(e.value.name),
+                    trailing: e.value.wins + e.value.losses > 0
+                        ? Text('${e.value.wins}W / ${e.value.losses}L',
+                            style: const TextStyle(fontSize: 12))
+                        : null,
+                  )),
+              const Divider(),
+            ],
+          );
+        }).toList(),
+      );
+    }
+
     return ListView.separated(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: teams.length,
@@ -267,6 +307,149 @@ class _TeamsTab extends StatelessWidget {
               : null,
         );
       },
+    );
+  }
+}
+
+class _StandingsTab extends StatelessWidget {
+  const _StandingsTab({required this.teams, required this.format});
+  final List<TournamentTeamModel> teams;
+  final String format;
+
+  @override
+  Widget build(BuildContext context) {
+    if (teams.isEmpty) {
+      return const Center(
+        child: Text('No standings yet.', style: TextStyle(color: Colors.grey)),
+      );
+    }
+
+    final hasStats = teams.any((t) => t.wins + t.losses > 0);
+
+    if (!hasStats) {
+      return Center(
+        child: Text(
+          'Standings will be available once matches are played.',
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: Colors.grey),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+
+    // Sort by points desc, then wins desc
+    final sorted = [...teams]
+      ..sort((a, b) {
+        final ptsDiff = b.points.compareTo(a.points);
+        if (ptsDiff != 0) return ptsDiff;
+        return b.wins.compareTo(a.wins);
+      });
+
+    final theme = Theme.of(context);
+
+    return Column(
+      children: [
+        // Header row
+        Container(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: theme.colorScheme.surfaceContainerHighest,
+          child: Row(
+            children: [
+              const SizedBox(width: 36),
+              const Expanded(
+                child: Text('Team',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 12)),
+              ),
+              const SizedBox(
+                  width: 40,
+                  child: Text('W',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 12))),
+              const SizedBox(
+                  width: 40,
+                  child: Text('L',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 12))),
+              const SizedBox(
+                  width: 40,
+                  child: Text('Pts',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 12))),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView.separated(
+            padding: EdgeInsets.zero,
+            itemCount: sorted.length,
+            separatorBuilder: (_, __) =>
+                const Divider(height: 1, indent: 16),
+            itemBuilder: (ctx, i) {
+              final team = sorted[i];
+              final isTop3 = i < 3;
+              return Container(
+                color: isTop3
+                    ? [
+                        Colors.amber.withValues(alpha: 0.15),
+                        Colors.grey.shade300.withValues(alpha: 0.3),
+                        Colors.brown.shade200.withValues(alpha: 0.2),
+                      ][i]
+                    : null,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 36,
+                        child: Text(
+                          '${i + 1}',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: isTop3 ? theme.colorScheme.primary : null),
+                        ),
+                      ),
+                      Expanded(
+                          child: Text(team.name,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w500))),
+                      SizedBox(
+                          width: 40,
+                          child: Text('${team.wins}',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.bold))),
+                      SizedBox(
+                          width: 40,
+                          child: Text('${team.losses}',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold))),
+                      SizedBox(
+                          width: 40,
+                          child: Text('${team.points}',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.bold))),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

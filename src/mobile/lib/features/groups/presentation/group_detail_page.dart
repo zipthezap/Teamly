@@ -13,6 +13,7 @@ import '../../../shared/widgets/user_avatar.dart';
 import '../data/group_repository_impl.dart';
 import '../state/groups_notifier.dart';
 import 'group_form_page.dart';
+import 'group_invite_analytics_page.dart';
 
 class GroupDetailPage extends ConsumerStatefulWidget {
   const GroupDetailPage({super.key, required this.groupId});
@@ -82,6 +83,12 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
                       child: ListTile(
                           leading: Icon(Icons.how_to_vote_outlined),
                           title: Text('Event Requests'),
+                          contentPadding: EdgeInsets.zero)),
+                  const PopupMenuItem(
+                      value: 'invite_analytics',
+                      child: ListTile(
+                          leading: Icon(Icons.analytics_outlined),
+                          title: Text('Invite Analytics'),
                           contentPadding: EdgeInsets.zero)),
                   const PopupMenuDivider(),
                   const PopupMenuItem(
@@ -156,6 +163,14 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
         break;
       case 'event_requests':
         context.push('/groups/${widget.groupId}/event-requests');
+        break;
+      case 'invite_analytics':
+        await Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => GroupInviteAnalyticsPage(
+            groupId: widget.groupId,
+            groupName: group.name,
+          ),
+        ));
         break;
       case 'delete':
         final ok = await showDialog<bool>(

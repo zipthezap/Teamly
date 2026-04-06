@@ -3,23 +3,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/presentation/auth_page.dart';
+import '../features/auth/presentation/sessions_page.dart';
 import '../features/auth/state/auth_notifier.dart';
 import '../features/dashboard/presentation/dashboard_page.dart';
 import '../features/discover/presentation/discover_page.dart';
 import '../features/events/presentation/event_detail_page.dart';
 import '../features/events/presentation/event_form_page.dart';
+import '../features/events/presentation/event_statistics_page.dart';
 import '../features/events/presentation/events_page.dart';
 import '../features/events/data/event_repository_impl.dart';
 import '../features/groups/data/group_repository_impl.dart';
 import '../features/groups/presentation/group_detail_page.dart';
 import '../features/groups/presentation/group_form_page.dart';
 import '../features/groups/presentation/groups_page.dart';
+import '../features/groups/presentation/nearby_groups_page.dart';
 import '../features/groups/presentation/public_groups_page.dart';
 import '../features/groups/state/groups_notifier.dart';
 import '../features/notification_preferences/presentation/notification_preferences_page.dart';
 import '../features/notifications/presentation/notifications_page.dart';
 import '../features/push_notifications/state/push_notifications_controller.dart';
+import '../features/profile/presentation/oauth_connections_page.dart';
 import '../features/profile/presentation/profile_page.dart';
+import '../features/profile/presentation/profile_pictures_page.dart';
 import '../features/reminders/presentation/reminders_page.dart';
 import '../features/teamup/presentation/teamup_page.dart';
 import '../features/tournaments/presentation/tournaments_page.dart';
@@ -142,6 +147,14 @@ final _routerProvider = Provider<GoRouter>((ref) {
             path: 'public-groups',
             builder: (context, state) => const PublicGroupsPage(),
           ),
+          GoRoute(
+            path: 'nearby-groups',
+            builder: (context, state) => const NearbyGroupsPage(),
+          ),
+          GoRoute(
+            path: 'event-statistics',
+            builder: (context, state) => const EventStatisticsPage(),
+          ),
         ],
       ),
 
@@ -190,6 +203,18 @@ final _routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'reminders',
             builder: (context, state) => const RemindersPage(),
+          ),
+          GoRoute(
+            path: 'sessions',
+            builder: (context, state) => const SessionsPage(),
+          ),
+          GoRoute(
+            path: 'pictures',
+            builder: (context, state) => const ProfilePicturesPage(),
+          ),
+          GoRoute(
+            path: 'connected-accounts',
+            builder: (context, state) => const OAuthConnectionsPage(),
           ),
         ],
       ),

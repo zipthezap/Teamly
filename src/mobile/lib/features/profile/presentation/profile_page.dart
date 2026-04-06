@@ -457,6 +457,36 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
           const Divider(),
 
+          // Active sessions
+          ListTile(
+            leading: const Icon(Icons.devices_outlined),
+            title: const Text('Active sessions'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/profile/sessions'),
+          ),
+
+          const Divider(),
+
+          // Profile picture history
+          ListTile(
+            leading: const Icon(Icons.photo_library_outlined),
+            title: const Text('Profile picture history'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/profile/pictures'),
+          ),
+
+          const Divider(),
+
+          // Connected accounts (OAuth)
+          ListTile(
+            leading: const Icon(Icons.link_outlined),
+            title: const Text('Connected accounts'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/profile/connected-accounts'),
+          ),
+
+          const Divider(),
+
           // Reminders
           ListTile(
             leading: const Icon(Icons.alarm_outlined),

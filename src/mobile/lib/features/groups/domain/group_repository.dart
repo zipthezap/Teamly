@@ -1,4 +1,5 @@
 import '../../../core/models/chat_model.dart';
+import '../../../core/models/extended_models.dart';
 import '../../../core/models/group_model.dart';
 
 abstract class GroupRepository {
@@ -15,8 +16,15 @@ abstract class GroupRepository {
   Future<void> updateMemberRole(String groupId, String memberId, String role);
   Future<void> transferAdmin(String groupId, String newAdminId);
   Future<List<GroupModel>> getPublicGroups({double? latitude, double? longitude, double? radius});
+  Future<List<NearbyGroupModel>> getNearbyGroups({
+    required double latitude,
+    required double longitude,
+    double? radius,
+    int? limit,
+  });
   Future<String> getInviteLink(String groupId);
   Future<void> joinGroupByInvite(String groupId);
   Future<List<ChatMessageModel>> getChatMessages(String groupId, {int page = 1});
   Future<void> sendChatMessage(String groupId, String content);
+  Future<InviteAnalyticsModel> getGroupInviteAnalytics(String groupId);
 }
