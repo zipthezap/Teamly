@@ -34,8 +34,23 @@ class EventRepositoryImpl implements EventRepository {
   }
 
   @override
+  Future<EventModel> getEventByInviteToken(String token) async {
+    final response =
+        await _dio.get<Map<String, dynamic>>('/events/invite/$token');
+    return EventModel.fromJson(response.data!);
+  }
+
+  @override
   Future<void> joinEvent(String id) async {
     await _dio.post<void>('/events/$id/join');
+  }
+
+  @override
+  Future<void> joinEventAsGuest(String token, String name) async {
+    await _dio.post<void>(
+      '/events/invite/$token/join',
+      data: {'name': name},
+    );
   }
 
   @override

@@ -9,6 +9,7 @@ import '../features/discover/presentation/discover_page.dart';
 import '../features/events/presentation/event_detail_page.dart';
 import '../features/events/presentation/event_form_page.dart';
 import '../features/events/presentation/events_page.dart';
+import '../features/events/data/event_repository_impl.dart';
 import '../features/groups/data/group_repository_impl.dart';
 import '../features/groups/presentation/group_detail_page.dart';
 import '../features/groups/presentation/group_form_page.dart';
@@ -32,10 +33,17 @@ final _routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/dashboard',
     redirect: (context, state) {
       final authState = ref.read(authNotifierProvider);
+      final path = state.uri.path;
       final isAuthRoute = state.matchedLocation == '/auth';
+      final isPublicEventInviteRoute =
+          path.startsWith('/events/invite/') || path.startsWith('/events/join/');
 
       if (authState.status == AuthStatus.unknown) return null;
-      if (!authState.isAuthenticated && !isAuthRoute) return '/auth';
+      if (!authState.isAuthenticated &&
+          !isAuthRoute &&
+          !isPublicEventInviteRoute) {
+        return '/auth';
+      }
       if (authState.isAuthenticated && isAuthRoute) return '/dashboard';
       return null;
     },
@@ -86,6 +94,12 @@ final _routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) =>
             _GroupInviteLandingPage(groupId: state.pathParameters['groupId']!),
       ),
+      // Web-compatible group invite route alias
+      GoRoute(
+        path: '/join-group/:groupId',
+        builder: (context, state) =>
+            _GroupInviteLandingPage(groupId: state.pathParameters['groupId']!),
+      ),
 
       // Events
       GoRoute(
@@ -106,6 +120,12 @@ final _routerProvider = Provider<GoRouter>((ref) {
           // Event invite deep link
           GoRoute(
             path: 'invite/:token',
+            builder: (context, state) => _EventInviteLandingPage(
+                token: state.pathParameters['token']!),
+          ),
+          // Web-compatible event invite route alias
+          GoRoute(
+            path: 'join/:token',
             builder: (context, state) => _EventInviteLandingPage(
                 token: state.pathParameters['token']!),
           ),
@@ -280,21 +300,143 @@ class _EventInviteLandingPage extends StatefulWidget {
 }
 
 class _EventInviteLandingPageState extends State<_EventInviteLandingPage> {
+  bool _loading = true;
+  bool _done = false;
+  String? _error;
+  String? _eventId;
+  bool _joinedAsGuest = false;
+  final _guestNameController = TextEditingController();
+  bool _joiningGuest = false;
+
   @override
   void initState() {
     super.initState();
-    // Redirect to events list; token-based join is handled server-side via
-    // the guest join flow. In a full implementation this would POST
-    // /events/invite/:token/join as a guest or navigate to the event.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.go('/events');
+    WidgetsBinding.instance.addPostFrameCallback((_) => _resolveAndJoin());
+  }
+
+  @override
+  void dispose() {
+    _guestNameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _resolveAndJoin() async {
+    final container = ProviderScope.containerOf(context, listen: false);
+    setState(() {
+      _loading = true;
+      _error = null;
     });
+    try {
+      final event = await container
+          .read(eventRepositoryProvider)
+          .getEventByInviteToken(widget.token);
+      _eventId = event.id;
+      final authState = container.read(authNotifierProvider);
+      if (authState.isAuthenticated) {
+        await container.read(eventRepositoryProvider).joinEvent(event.id);
+        setState(() => _done = true);
+      }
+    } catch (e) {
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _joinAsGuest() async {
+    final name = _guestNameController.text.trim();
+    if (name.isEmpty) {
+      setState(() => _error = 'Name is required');
+      return;
+    }
+    final container = ProviderScope.containerOf(context, listen: false);
+    setState(() {
+      _joiningGuest = true;
+      _error = null;
+    });
+    try {
+      await container.read(eventRepositoryProvider).joinEventAsGuest(
+            widget.token,
+            name,
+          );
+      setState(() {
+        _joinedAsGuest = true;
+        _done = true;
+      });
+    } catch (e) {
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _joiningGuest = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Join Event')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: _loading
+              ? const Column(mainAxisSize: MainAxisSize.min, children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Joining event…'),
+                ])
+              : _done
+                  ? Column(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.check_circle_outline,
+                          color: Colors.green, size: 64),
+                      const SizedBox(height: 16),
+                      const Text('You joined the event!'),
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: () => _joinedAsGuest
+                            ? context.go('/auth')
+                            : context.go('/events/${_eventId ?? ''}'),
+                        child: Text(_joinedAsGuest ? 'Sign In' : 'View Event'),
+                      ),
+                    ])
+                  : _eventId != null
+                      ? Column(mainAxisSize: MainAxisSize.min, children: [
+                          const Text('Enter your name to join this event'),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _guestNameController,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              labelText: 'Your name',
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: _joiningGuest ? null : _joinAsGuest,
+                              child: _joiningGuest
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    )
+                                  : const Text('Join as Guest'),
+                            ),
+                          ),
+                        ])
+                  : Column(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.error_outline,
+                          color: Theme.of(context).colorScheme.error, size: 64),
+                      const SizedBox(height: 16),
+                      Text(_error ?? 'Unable to join event'),
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: _resolveAndJoin,
+                        child: const Text('Try Again'),
+                      ),
+                    ]),
+        ),
+      ),
     );
   }
 }

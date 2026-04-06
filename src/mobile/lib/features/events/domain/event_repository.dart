@@ -3,7 +3,9 @@ import '../../../core/models/event_model.dart';
 abstract class EventRepository {
   Future<List<EventModel>> getEvents({String? groupId});
   Future<EventModel> getEvent(String id);
+  Future<EventModel> getEventByInviteToken(String token);
   Future<void> joinEvent(String id);
+  Future<void> joinEventAsGuest(String token, String name);
   Future<void> leaveEvent(String id);
   Future<EventModel> createEvent(Map<String, dynamic> data);
   Future<EventModel> updateEvent(String id, Map<String, dynamic> data);
