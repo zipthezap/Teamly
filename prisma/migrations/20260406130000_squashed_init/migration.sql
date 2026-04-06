@@ -1,3 +1,6 @@
+-- Squashed migration created by combining historical migrations
+-- Order preserved from original migration timestamps
+
 -- CreateEnum
 CREATE TYPE "EventNotificationType" AS ENUM ('join', 'leave', 'late', 'confirmed', 'declined', 'status_change', 'comment', 'event_updated', 'event_cancelled');
 
@@ -1229,3 +1232,177 @@ ALTER TABLE "TournamentTeamInvitation" ADD CONSTRAINT "TournamentTeamInvitation_
 
 -- AddForeignKey
 ALTER TABLE "TournamentTeamInvitation" ADD CONSTRAINT "TournamentTeamInvitation_inviterId_fkey" FOREIGN KEY ("inviterId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+
+-- Next migration: 20260121225308_add_group_invite_token_and_improve_join_request
+
+-- CreateEnum for GroupJoinRequestSource
+CREATE TYPE "GroupJoinRequestSource" AS ENUM ('USER', 'INVITE', 'LINK');
+
+-- Add inviteToken to Group table
+ALTER TABLE "Group" ADD COLUMN "inviteToken" TEXT;
+
+-- Add unique constraint for inviteToken
+CREATE UNIQUE INDEX "Group_inviteToken_key" ON "Group"("inviteToken");
+
+-- Migrate existing GroupJoinRequest.createdBy from String to Enum
+-- First, update existing data to match enum values
+UPDATE "GroupJoinRequest" 
+SET "createdBy" = CASE 
+  WHEN "createdBy" = 'user' THEN 'USER'
+  WHEN "createdBy" = 'invite' THEN 'INVITE'
+  ELSE 'USER'
+END;
+
+-- Alter column type to use the new enum
+ALTER TABLE "GroupJoinRequest" 
+ALTER COLUMN "createdBy" DROP DEFAULT,
+ALTER COLUMN "createdBy" TYPE "GroupJoinRequestSource" USING "createdBy"::"GroupJoinRequestSource",
+ALTER COLUMN "createdBy" SET DEFAULT 'USER';
+
+
+-- Next migration: 20260121232658_enhance_roles_and_permissions
+
+-- AlterTable: Add invite tracking fields to GroupJoinRequest
+ALTER TABLE "GroupJoinRequest" ADD COLUMN "expiresAt" TIMESTAMP(3);
+ALTER TABLE "GroupJoinRequest" ADD COLUMN "invitedBy" TEXT;
+
+-- AlterTable: Add invite token expiration to Group
+ALTER TABLE "Group" ADD COLUMN "inviteTokenExpiresAt" TIMESTAMP(3);
+
+-- AlterTable: Add invite token expiration to Event
+ALTER TABLE "Event" ADD COLUMN "inviteTokenExpiresAt" TIMESTAMP(3);
+
+-- CreateTable: Create InviteLog for auditing
+CREATE TABLE "InviteLog" (
+    "id" TEXT NOT NULL,
+    "inviterType" TEXT NOT NULL,
+    "entityId" TEXT NOT NULL,
+    "inviterId" TEXT NOT NULL,
+    "inviteeEmail" TEXT NOT NULL,
+    "inviteeId" TEXT,
+    "status" TEXT NOT NULL,
+    "sentAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "respondedAt" TIMESTAMP(3),
+    "expiresAt" TIMESTAMP(3),
+    "revokedAt" TIMESTAMP(3),
+    "revokedBy" TEXT,
+    "message" TEXT,
+    "metadata" JSONB,
+
+    CONSTRAINT "InviteLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE INDEX "GroupJoinRequest_expiresAt_idx" ON "GroupJoinRequest"("expiresAt");
+
+-- CreateIndex
+CREATE INDEX "InviteLog_inviterType_entityId_idx" ON "InviteLog"("inviterType", "entityId");
+
+-- CreateIndex
+CREATE INDEX "InviteLog_inviterId_idx" ON "InviteLog"("inviterId");
+
+-- CreateIndex
+CREATE INDEX "InviteLog_inviteeEmail_idx" ON "InviteLog"("inviteeEmail");
+
+-- CreateIndex
+CREATE INDEX "InviteLog_status_idx" ON "InviteLog"("status");
+
+-- CreateIndex
+CREATE INDEX "InviteLog_sentAt_idx" ON "InviteLog"("sentAt");
+
+-- CreateIndex
+CREATE INDEX "InviteLog_expiresAt_idx" ON "InviteLog"("expiresAt");
+
+-- AddForeignKey
+ALTER TABLE "GroupJoinRequest" ADD CONSTRAINT "GroupJoinRequest_invitedBy_fkey" FOREIGN KEY ("invitedBy") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InviteLog" ADD CONSTRAINT "InviteLog_inviterId_fkey" FOREIGN KEY ("inviterId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InviteLog" ADD CONSTRAINT "InviteLog_inviteeId_fkey" FOREIGN KEY ("inviteeId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InviteLog" ADD CONSTRAINT "InviteLog_revokedBy_fkey" FOREIGN KEY ("revokedBy") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+
+-- Next migration: 20260402000000_add_notification_composite_indexes
+
+-- AddIndex: Composite indexes for cursor-based pagination on notification tables.
+-- (userId, createdAt, id) covers the ORDER BY createdAt DESC, id DESC pattern used
+-- by getUserNotifications cursor pagination.
+CREATE INDEX "EventNotification_userId_createdAt_id_idx" ON "EventNotification"("userId", "createdAt", "id");
+CREATE INDEX "GroupNotification_userId_createdAt_id_idx" ON "GroupNotification"("userId", "createdAt", "id");
+CREATE INDEX "TeamUpNotification_userId_createdAt_id_idx" ON "TeamUpNotification"("userId", "createdAt", "id");
+CREATE INDEX "TournamentNotification_userId_createdAt_id_idx" ON "TournamentNotification"("userId", "createdAt", "id");
+
+-- AddIndex: Composite indexes for unread + sorted queries.
+-- (userId, read, createdAt) covers the common WHERE userId = ? AND read = false ORDER BY createdAt
+-- access pattern used by getNotificationStats and getUserNotifications unread queries.
+CREATE INDEX "EventNotification_userId_read_createdAt_idx" ON "EventNotification"("userId", "read", "createdAt");
+CREATE INDEX "GroupNotification_userId_read_createdAt_idx" ON "GroupNotification"("userId", "read", "createdAt");
+CREATE INDEX "TeamUpNotification_userId_read_createdAt_idx" ON "TeamUpNotification"("userId", "read", "createdAt");
+CREATE INDEX "TournamentNotification_userId_read_createdAt_idx" ON "TournamentNotification"("userId", "read", "createdAt");
+
+
+-- Next migration: 20260406000000_add_waitlist_ban_auditlog
+
+-- AlterEnum: Add waitlisted and co_organizer values to EventParticipantStatus
+ALTER TYPE "EventParticipantStatus" ADD VALUE IF NOT EXISTS 'waitlisted';
+ALTER TYPE "EventParticipantStatus" ADD VALUE IF NOT EXISTS 'co_organizer';
+
+-- CreateTable: GroupBan
+CREATE TABLE "GroupBan" (
+    "id" TEXT NOT NULL,
+    "groupId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "bannedBy" TEXT NOT NULL,
+    "reason" TEXT,
+    "bannedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "GroupBan_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable: AuditLog
+CREATE TABLE "AuditLog" (
+    "id" TEXT NOT NULL,
+    "entityType" TEXT NOT NULL,
+    "entityId" TEXT NOT NULL,
+    "actorId" TEXT NOT NULL,
+    "action" TEXT NOT NULL,
+    "metadata" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "AuditLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex: GroupBan unique on (groupId, userId)
+CREATE UNIQUE INDEX "GroupBan_groupId_userId_key" ON "GroupBan"("groupId", "userId");
+
+-- CreateIndex
+CREATE INDEX "GroupBan_userId_idx" ON "GroupBan"("userId");
+
+-- CreateIndex
+CREATE INDEX "GroupBan_groupId_idx" ON "GroupBan"("groupId");
+
+-- CreateIndex
+CREATE INDEX "AuditLog_entityType_entityId_idx" ON "AuditLog"("entityType", "entityId");
+
+-- CreateIndex
+CREATE INDEX "AuditLog_actorId_idx" ON "AuditLog"("actorId");
+
+-- CreateIndex
+CREATE INDEX "AuditLog_createdAt_idx" ON "AuditLog"("createdAt");
+
+-- AddForeignKey: GroupBan -> Group
+ALTER TABLE "GroupBan" ADD CONSTRAINT "GroupBan_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "Group"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey: GroupBan -> User (banned user)
+ALTER TABLE "GroupBan" ADD CONSTRAINT "GroupBan_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey: GroupBan -> User (banner)
+ALTER TABLE "GroupBan" ADD CONSTRAINT "GroupBan_bannedBy_fkey" FOREIGN KEY ("bannedBy") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey: AuditLog -> User
+ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
