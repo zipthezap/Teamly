@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:styled_widget/styled_widget.dart';
 
 import '../../../features/auth/state/auth_notifier.dart';
 import '../../../features/events/state/events_notifier.dart';
 import '../../../features/groups/state/groups_notifier.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/mobile_shell.dart';
+import '../../../shared/widgets/ui_primitives.dart';
 import '../../../shared/widgets/user_avatar.dart';
 
 class DashboardPage extends ConsumerWidget {
@@ -44,6 +47,7 @@ class DashboardPage extends ConsumerWidget {
             // Welcome card
             if (user != null)
               Card(
+                margin: EdgeInsets.zero,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(
@@ -60,7 +64,7 @@ class DashboardPage extends ConsumerWidget {
                           children: [
                             Text(
                               'Welcome back,',
-                              style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+                              style: theme.textTheme.bodySmall?.copyWith(color: AppThemeTokens.darkTextSecondary),
                             ),
                             Text(
                               user.name,
@@ -71,7 +75,7 @@ class DashboardPage extends ConsumerWidget {
                             if (user.city != null)
                               Text(
                                 user.city!,
-                                style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+                                style: theme.textTheme.bodySmall?.copyWith(color: AppThemeTokens.darkTextSecondary),
                               ),
                           ],
                         ),
@@ -115,7 +119,7 @@ class DashboardPage extends ConsumerWidget {
             const SizedBox(height: 20),
 
             // Upcoming events
-            Text('Upcoming Events', style: theme.textTheme.titleMedium),
+            const UiSectionTitle('Upcoming Events'),
             const SizedBox(height: 8),
 
             eventsAsync.when(
@@ -135,7 +139,7 @@ class DashboardPage extends ConsumerWidget {
                     padding: EdgeInsets.symmetric(vertical: 16),
                     child: Text(
                       'No upcoming events.',
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(color: AppThemeTokens.darkTextSecondary),
                     ),
                   );
                 }
@@ -170,7 +174,7 @@ class DashboardPage extends ConsumerWidget {
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () => context.push('/events/${event.id}'),
                           ),
-                        ),
+                        ).clipRRect(all: AppThemeTokens.radiusMd),
                       )
                       .toList(),
                 );
@@ -202,6 +206,7 @@ class _StatCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Card(
+        margin: EdgeInsets.zero,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -212,7 +217,7 @@ class _StatCard extends StatelessWidget {
                 value,
                 style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
-              Text(label, style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey)),
+              Text(label, style: theme.textTheme.bodySmall?.copyWith(color: AppThemeTokens.darkTextSecondary)),
             ],
           ),
         ),

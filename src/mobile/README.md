@@ -22,6 +22,25 @@ flutter run \
   --dart-define=API_BASE_URL=http://localhost:3000/api
 ```
 
+## Mobile Push Notifications
+
+This app now includes Firebase push notification integration (`firebase_messaging`).
+
+### Setup requirements
+- Add Firebase app configuration files for your platforms:
+  - Android: `google-services.json`
+  - iOS: `GoogleService-Info.plist`
+- Ensure backend is configured with:
+  - `FCM_PROJECT_ID`
+  - `FCM_SERVICE_ACCOUNT_JSON`
+
+### Behavior implemented
+- Requests push permission on startup.
+- Registers/refreshes device token with backend endpoint `/api/push-devices`.
+- Disables device token on logout.
+- Handles foreground/background/tapped notification routing.
+- Syncs app icon badge with unread notification count.
+
 ## Architecture
 - Routing: `go_router`
 - State/bootstrap: `flutter_riverpod`

@@ -29,6 +29,11 @@ class _NotificationPreferencesPageState
     'teamUpResponse': 'Someone responds to your TeamUp request',
     'tournamentUpdate': 'Tournament update',
     'nearbyGroup': 'New group near you',
+    'pushEnabled': 'Enable mobile push notifications',
+    'pushEvents': 'Push notifications for event updates',
+    'pushGroups': 'Push notifications for group updates',
+    'pushTeamUp': 'Push notifications for TeamUp updates',
+    'pushTournaments': 'Push notifications for tournament updates',
   };
 
   @override

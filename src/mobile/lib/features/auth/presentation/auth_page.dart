@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:styled_widget/styled_widget.dart';
 
 import '../../../core/error/app_exception.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
+import '../../../shared/widgets/ui_primitives.dart';
 import '../state/auth_notifier.dart';
 
 class AuthPage extends ConsumerStatefulWidget {
@@ -149,10 +152,19 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [AppThemeTokens.darkBg, AppThemeTokens.darkCard],
+            ),
+          ),
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 // Logo / Title
                 Icon(Icons.groups_rounded, size: 64, color: theme.colorScheme.primary),
@@ -169,86 +181,73 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                   _isRegister ? 'Create your account' : 'Sign in to continue',
                   style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
 
                 // Form
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      if (_isRegister) ...[
-                        TextFormField(
-                          controller: _nameCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Full name',
-                            prefixIcon: Icon(Icons.person_outline),
-                            border: OutlineInputBorder(),
+                UiCard(
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        if (_isRegister) ...[
+                          TextFormField(
+                            controller: _nameCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'Full name',
+                              prefixIcon: Icon(Icons.person_outline),
+                            ),
+                            textCapitalization: TextCapitalization.words,
+                            validator: (v) {
+                              if (v == null || v.trim().isEmpty) return 'Name is required';
+                              if (v.trim().length < 2) return 'Name must be at least 2 characters';
+                              return null;
+                            },
                           ),
-                          textCapitalization: TextCapitalization.words,
+                          const SizedBox(height: 16),
+                        ],
+                        TextFormField(
+                          controller: _emailCtrl,
+                          decoration: const InputDecoration(
+                            labelText: 'Email',
+                            prefixIcon: Icon(Icons.email_outlined),
+                          ),
+                          keyboardType: TextInputType.emailAddress,
+                          autocorrect: false,
                           validator: (v) {
-                            if (v == null || v.trim().isEmpty) return 'Name is required';
-                            if (v.trim().length < 2) return 'Name must be at least 2 characters';
+                            if (v == null || v.trim().isEmpty) return 'Email is required';
+                            final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+                            if (!emailRegex.hasMatch(v.trim())) return 'Enter a valid email';
                             return null;
                           },
                         ),
                         const SizedBox(height: 16),
-                      ],
-                      TextFormField(
-                        controller: _emailCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Email',
-                          prefixIcon: Icon(Icons.email_outlined),
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                        autocorrect: false,
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'Email is required';
-                          final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-                          if (!emailRegex.hasMatch(v.trim())) return 'Enter a valid email';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _passwordCtrl,
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          border: const OutlineInputBorder(),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                        TextFormField(
+                          controller: _passwordCtrl,
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                              ),
+                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                             ),
-                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                           ),
+                          obscureText: _obscurePassword,
+                          validator: (v) {
+                            if (v == null || v.isEmpty) return 'Password is required';
+                            if (_isRegister && v.length < 8) return 'Password must be at least 8 characters';
+                            return null;
+                          },
                         ),
-                        obscureText: _obscurePassword,
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Password is required';
-                          if (_isRegister && v.length < 8) return 'Password must be at least 8 characters';
-                          return null;
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Submit button
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: FilledButton(
-                    onPressed: authState.isLoading ? null : _submit,
-                    child: authState.isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : Text(_isRegister ? 'Create Account' : 'Sign In'),
+                        const SizedBox(height: 24),
+                        UiPrimaryButton(
+                          text: _isRegister ? 'Create Account' : 'Sign In',
+                          loading: authState.isLoading,
+                          onPressed: authState.isLoading ? null : _submit,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
 

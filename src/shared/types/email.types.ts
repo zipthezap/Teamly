@@ -30,6 +30,11 @@ export interface EmailPreference {
   muteNearbyGroups: boolean;
   muteEventCreated: boolean;
   muteNearbyTeamUps: boolean;
+  pushEnabled: boolean;
+  pushEvents: boolean;
+  pushGroups: boolean;
+  pushTeamUp: boolean;
+  pushTournaments: boolean;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -52,6 +57,11 @@ export interface UpdateEmailPreferenceData {
   muteNearbyGroups?: boolean;
   muteEventCreated?: boolean;
   muteNearbyTeamUps?: boolean;
+  pushEnabled?: boolean;
+  pushEvents?: boolean;
+  pushGroups?: boolean;
+  pushTeamUp?: boolean;
+  pushTournaments?: boolean;
 }
 
 // Email Queue

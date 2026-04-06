@@ -141,6 +141,54 @@ export const filterUnmutedUsers = async (userIds: string[], muteField: keyof Ema
 };
 
 /**
+ * Check whether a user has mobile push enabled globally and for a specific channel.
+ */
+export const shouldSendPushNotification = async (
+  userId: string,
+  channel: 'event' | 'group' | 'teamup' | 'tournament'
+): Promise<boolean> => {
+  try {
+    const [user, preferences] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { emailNotifications: true },
+      }),
+      prisma.emailPreference.findUnique({
+        where: { userId },
+      }),
+    ]);
+
+    if (!user || !user.emailNotifications) {
+      return false;
+    }
+
+    // Defaults follow schema defaults (enabled when no preference row exists yet)
+    const pushEnabled = preferences ? getBooleanValue(preferences.pushEnabled, true) : true;
+    if (!pushEnabled) return false;
+
+    switch (channel) {
+      case 'event':
+        return preferences ? getBooleanValue(preferences.pushEvents, true) : true;
+      case 'group':
+        return preferences ? getBooleanValue(preferences.pushGroups, true) : true;
+      case 'teamup':
+        return preferences ? getBooleanValue(preferences.pushTeamUp, true) : true;
+      case 'tournament':
+        return preferences ? getBooleanValue(preferences.pushTournaments, true) : true;
+      default:
+        return false;
+    }
+  } catch (error) {
+    logger.error('Error checking push notification preference', 'NotificationHelper', {
+      userId,
+      channel,
+      error,
+    });
+    return false;
+  }
+};
+
+/**
  * Batch check if multiple users should receive a specific type of email notification
  * @param {string[]} userIds - Array of user IDs
  * @param {keyof EmailPreference} notificationType - The type of notification

@@ -17,6 +17,7 @@ import '../features/groups/presentation/public_groups_page.dart';
 import '../features/groups/state/groups_notifier.dart';
 import '../features/notification_preferences/presentation/notification_preferences_page.dart';
 import '../features/notifications/presentation/notifications_page.dart';
+import '../features/push_notifications/state/push_notifications_controller.dart';
 import '../features/profile/presentation/profile_page.dart';
 import '../features/reminders/presentation/reminders_page.dart';
 import '../features/teamup/presentation/teamup_page.dart';
@@ -172,6 +173,9 @@ final _routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
     ],
+    observers: [
+      _PushNavigationObserver(ref),
+    ],
     errorBuilder: (context, state) => Scaffold(
       appBar: AppBar(title: const Text('Not Found')),
       body: Center(child: Text('Route not found: ${state.uri.path}')),
@@ -308,3 +312,26 @@ class RouterNotifier extends ChangeNotifier {
 }
 
 GoRouter buildRouter(WidgetRef ref) => ref.watch(_routerProvider);
+
+class _PushNavigationObserver extends NavigatorObserver {
+  _PushNavigationObserver(this.ref);
+  final Ref ref;
+
+  void _consume(Route<dynamic>? route) {
+    final context = route?.navigator?.context;
+    if (context == null) return;
+    ref.read(pushNotificationsControllerProvider).consumePendingRouteAndNavigate(context);
+  }
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _consume(route);
+    super.didPush(route, previousRoute);
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _consume(previousRoute);
+    super.didPop(route, previousRoute);
+  }
+}
