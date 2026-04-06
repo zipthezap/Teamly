@@ -37,7 +37,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
             setState(() => _includeRead = !_includeRead);
             ref
                 .read(notificationsNotifierProvider.notifier)
-                .load(includeRead: !_includeRead);
+                .load(includeRead: _includeRead);
           },
         ),
         // Mark all as read
