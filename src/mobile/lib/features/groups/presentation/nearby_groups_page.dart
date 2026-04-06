@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -211,7 +212,7 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
                     child: Text(
                       'Enter your location to find nearby groups',
                       style: theme.textTheme.bodyMedium
-                          ?.copyWith(color: Colors.grey),
+                          ?.copyWith(color: AppThemeTokens.darkTextSecondary),
                       textAlign: TextAlign.center,
                     ),
                   )

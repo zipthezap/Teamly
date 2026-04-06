@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/mobile_shell.dart';
+import '../../../shared/widgets/ui_primitives.dart';
 import '../state/notifications_notifier.dart';
 
 class NotificationsPage extends ConsumerStatefulWidget {
@@ -62,21 +64,9 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
         ),
         data: (notifications) {
           if (notifications.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.notifications_none, size: 56, color: Colors.grey),
-                    SizedBox(height: 12),
-                    Text(
-                      'No notifications.',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
+            return const UiEmptyState(
+              icon: Icons.notifications_none,
+              message: 'No notifications.',
             );
           }
 
@@ -119,13 +109,13 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                     leading: CircleAvatar(
                       backgroundColor: isUnread
                           ? theme.colorScheme.primaryContainer
-                          : theme.colorScheme.surfaceContainerHighest,
+                          : AppThemeTokens.darkCardHover,
                       child: Icon(
                         icon,
                         size: 18,
                         color: isUnread
                             ? theme.colorScheme.primary
-                            : Colors.grey,
+                            : AppThemeTokens.darkTextSecondary,
                       ),
                     ),
                     title: Text(
@@ -139,7 +129,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                     ),
                     subtitle: Text(
                       timeLabel,
-                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      style: const TextStyle(fontSize: 11, color: AppThemeTokens.darkTextSecondary),
                     ),
                     onTap: () async {
                       // Mark as read on tap

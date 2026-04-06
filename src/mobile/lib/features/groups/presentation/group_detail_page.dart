@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -287,7 +288,7 @@ class _OverviewTab extends StatelessWidget {
         const SizedBox(height: 16),
         Text(
           'Created ${DateFormat.yMMMd().format(group.createdAt)}',
-          style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+          style: theme.textTheme.bodySmall?.copyWith(color: AppThemeTokens.darkTextSecondary),
         ),
       ],
     );
@@ -550,7 +551,7 @@ class _EventsTab extends ConsumerWidget {
           events.isEmpty
               ? const Center(
                   child: Text('No events yet.',
-                      style: TextStyle(color: Colors.grey)))
+                      style: TextStyle(color: AppThemeTokens.darkTextSecondary)))
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(8, 8, 8, 80),
                   itemCount: events.length,
@@ -660,7 +661,7 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
               if (messages.isEmpty) {
                 return const Center(
                   child: Text('No messages yet. Be the first!',
-                      style: TextStyle(color: Colors.grey)),
+                      style: TextStyle(color: AppThemeTokens.darkTextSecondary)),
                 );
               }
               return RefreshIndicator(
@@ -699,7 +700,7 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
                                 if (!isMe)
                                   Text(msg.senderName,
                                       style: theme.textTheme.labelSmall
-                                          ?.copyWith(color: Colors.grey)),
+                                          ?.copyWith(color: AppThemeTokens.darkTextSecondary)),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 12, vertical: 8),
@@ -726,7 +727,7 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
                                   DateFormat('h:mm a')
                                       .format(msg.createdAt.toLocal()),
                                   style: theme.textTheme.labelSmall
-                                      ?.copyWith(color: Colors.grey),
+                                      ?.copyWith(color: AppThemeTokens.darkTextSecondary),
                                 ),
                               ],
                             ),

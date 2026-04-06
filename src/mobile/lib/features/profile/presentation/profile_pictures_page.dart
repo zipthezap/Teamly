@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -51,7 +52,7 @@ class ProfilePicturesPage extends ConsumerWidget {
           if (pictures.isEmpty) {
             return const Center(
               child: Text('No picture history available.',
-                  style: TextStyle(color: Colors.grey)),
+                  style: TextStyle(color: AppThemeTokens.darkTextSecondary)),
             );
           }
           return GridView.builder(

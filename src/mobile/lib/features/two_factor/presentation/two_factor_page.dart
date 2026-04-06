@@ -313,7 +313,7 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
                               children: [
                                 Text('Secret Key',
                                     style: theme.textTheme.labelMedium
-                                        ?.copyWith(color: Colors.grey)),
+                                        ?.copyWith(color: AppThemeTokens.darkTextSecondary)),
                                 const SizedBox(height: 4),
                                 SelectableText(
                                   _secret!,
@@ -330,7 +330,7 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
                             'Enter this key in your authenticator app, then '
                             'type the 6-digit code it generates below.',
                             style: theme.textTheme.bodySmall
-                                ?.copyWith(color: Colors.grey),
+                                ?.copyWith(color: AppThemeTokens.darkTextSecondary),
                           ),
                         ],
                         const SizedBox(height: 16),

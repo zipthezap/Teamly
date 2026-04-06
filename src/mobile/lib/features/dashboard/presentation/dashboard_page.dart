@@ -16,6 +16,13 @@ import '../../../shared/widgets/user_avatar.dart';
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
 
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning,';
+    if (hour < 17) return 'Good afternoon,';
+    return 'Good evening,';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authNotifierProvider);
@@ -63,8 +70,10 @@ class DashboardPage extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Welcome back,',
-                              style: theme.textTheme.bodySmall?.copyWith(color: AppThemeTokens.darkTextSecondary),
+                              _greeting(),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppThemeTokens.darkTextSecondary,
+                              ),
                             ),
                             Text(
                               user.name,
@@ -73,9 +82,21 @@ class DashboardPage extends ConsumerWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                             if (user.city != null)
-                              Text(
-                                user.city!,
-                                style: theme.textTheme.bodySmall?.copyWith(color: AppThemeTokens.darkTextSecondary),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.place_outlined,
+                                    size: 12,
+                                    color: AppThemeTokens.darkTextSecondary,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    user.city!,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: AppThemeTokens.darkTextSecondary,
+                                    ),
+                                  ),
+                                ],
                               ),
                           ],
                         ),
@@ -118,8 +139,55 @@ class DashboardPage extends ConsumerWidget {
 
             const SizedBox(height: 20),
 
+            // Quick actions
+            const UiSectionTitle('Quick Actions'),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _QuickActionButton(
+                    icon: Icons.add_circle_outline,
+                    label: 'New Event',
+                    onTap: () => context.push('/events/new'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _QuickActionButton(
+                    icon: Icons.group_add_outlined,
+                    label: 'New Group',
+                    onTap: () => context.push('/groups/new'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _QuickActionButton(
+                    icon: Icons.explore_outlined,
+                    label: 'Discover',
+                    onTap: () => context.go('/discover'),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
             // Upcoming events
-            const UiSectionTitle('Upcoming Events'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const UiSectionTitle('Upcoming Events'),
+                TextButton(
+                  onPressed: () => context.go('/events'),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('See all'),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
 
             eventsAsync.when(
@@ -135,48 +203,110 @@ class DashboardPage extends ConsumerWidget {
                     .toList();
 
                 if (upcoming.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Text(
-                      'No upcoming events.',
-                      style: TextStyle(color: AppThemeTokens.darkTextSecondary),
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.event_outlined,
+                          size: 20,
+                          color: AppThemeTokens.darkTextSecondary,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'No upcoming events.',
+                          style: TextStyle(color: AppThemeTokens.darkTextSecondary),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () => context.push('/events/new'),
+                          child: const Text('Create one'),
+                        ),
+                      ],
                     ),
                   );
                 }
 
                 return Column(
-                  children: upcoming
-                      .map(
-                        (event) => Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: theme.colorScheme.primaryContainer,
-                              child: Text(
-                                DateFormat('d').format(event.startTime.toLocal()),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.onPrimaryContainer,
+                  children: upcoming.map((event) {
+                    final local = event.startTime.toLocal();
+                    final dayNum = DateFormat('d').format(local);
+                    final monthAbbr = DateFormat('MMM').format(local).toUpperCase();
+                    final timeStr = DateFormat.jm().format(local);
+
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: () => context.push('/events/${event.id}'),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      monthAbbr,
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w600,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    ),
+                                    Text(
+                                      dayNum,
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        height: 1.1,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                            title: Text(
-                              event.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Text(
-                              '${event.group.name} · ${DateFormat.jm().format(event.startTime.toLocal())}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () => context.push('/events/${event.id}'),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      event.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.titleSmall,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${event.group.name} · $timeStr',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppThemeTokens.darkTextSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.chevron_right,
+                                color: AppThemeTokens.darkTextSecondary,
+                              ),
+                            ],
                           ),
-                        ).clipRRect(all: AppThemeTokens.radiusMd),
-                      )
-                      .toList(),
+                        ),
+                      ),
+                    ).clipRRect(all: AppThemeTokens.radiusMd);
+                  }).toList(),
                 );
               },
             ),
@@ -207,17 +337,68 @@ class _StatCard extends StatelessWidget {
       onTap: onTap,
       child: Card(
         margin: EdgeInsets.zero,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Icon(icon, size: 28, color: theme.colorScheme.primary),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppThemeTokens.darkTextSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickActionButton extends StatelessWidget {
+  const _QuickActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           child: Column(
             children: [
-              Icon(icon, size: 32, color: theme.colorScheme.primary),
-              const SizedBox(height: 8),
+              Icon(icon, size: 22, color: theme.colorScheme.primary),
+              const SizedBox(height: 4),
               Text(
-                value,
-                style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppThemeTokens.darkTextSecondary,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
               ),
-              Text(label, style: theme.textTheme.bodySmall?.copyWith(color: AppThemeTokens.darkTextSecondary)),
             ],
           ),
         ),

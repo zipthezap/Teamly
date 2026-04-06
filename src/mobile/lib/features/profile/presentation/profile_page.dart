@@ -340,14 +340,18 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   Text(user.name, style: theme.textTheme.titleLarge),
                   Text(
                     user.email,
-                    style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+                    style: theme.textTheme.bodySmall?.copyWith(color: AppThemeTokens.darkTextSecondary),
                   ),
                   if (!user.emailVerified)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
                       child: Chip(
-                        label: Text('Email not verified'),
-                        backgroundColor: Colors.orange,
+                        label: const Text('Email not verified', style: TextStyle(fontSize: 12)),
+                        backgroundColor: const Color(0xFFF57C00).withOpacity(0.2),
+                        side: const BorderSide(color: Color(0xFFF57C00)),
+                        avatar: const Icon(Icons.warning_outlined, size: 14, color: Color(0xFFF57C00)),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                     ),
                 ],
@@ -427,86 +431,115 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             const Divider(),
           ],
 
-          // Change password
-          ListTile(
-            leading: const Icon(Icons.lock_outline),
-            title: const Text('Change password'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: _changePassword,
+          // Security section
+          _SectionLabel('Security'),
+          Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.lock_outline),
+                  title: const Text('Change password'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: _changePassword,
+                ),
+                const Divider(height: 1, indent: 56),
+                ListTile(
+                  leading: const Icon(Icons.security_outlined),
+                  title: const Text('Two-factor authentication'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/profile/two-factor'),
+                ),
+                const Divider(height: 1, indent: 56),
+                ListTile(
+                  leading: const Icon(Icons.devices_outlined),
+                  title: const Text('Active sessions'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/profile/sessions'),
+                ),
+              ],
+            ),
           ),
 
-          const Divider(),
-
-          // Two-factor authentication
-          ListTile(
-            leading: const Icon(Icons.security_outlined),
-            title: const Text('Two-factor authentication'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/profile/two-factor'),
+          // Preferences section
+          _SectionLabel('Preferences'),
+          Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.notifications_outlined),
+                  title: const Text('Notification preferences'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/profile/notification-preferences'),
+                ),
+                const Divider(height: 1, indent: 56),
+                ListTile(
+                  leading: const Icon(Icons.alarm_outlined),
+                  title: const Text('My reminders'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/profile/reminders'),
+                ),
+              ],
+            ),
           ),
 
-          const Divider(),
-
-          // Notification preferences
-          ListTile(
-            leading: const Icon(Icons.notifications_outlined),
-            title: const Text('Notification preferences'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/profile/notification-preferences'),
+          // Account section
+          _SectionLabel('Account'),
+          Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.photo_library_outlined),
+                  title: const Text('Profile picture history'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/profile/pictures'),
+                ),
+                const Divider(height: 1, indent: 56),
+                ListTile(
+                  leading: const Icon(Icons.link_outlined),
+                  title: const Text('Connected accounts'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/profile/connected-accounts'),
+                ),
+              ],
+            ),
           ),
-
-          const Divider(),
-
-          // Active sessions
-          ListTile(
-            leading: const Icon(Icons.devices_outlined),
-            title: const Text('Active sessions'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/profile/sessions'),
-          ),
-
-          const Divider(),
-
-          // Profile picture history
-          ListTile(
-            leading: const Icon(Icons.photo_library_outlined),
-            title: const Text('Profile picture history'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/profile/pictures'),
-          ),
-
-          const Divider(),
-
-          // Connected accounts (OAuth)
-          ListTile(
-            leading: const Icon(Icons.link_outlined),
-            title: const Text('Connected accounts'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/profile/connected-accounts'),
-          ),
-
-          const Divider(),
-
-          // Reminders
-          ListTile(
-            leading: const Icon(Icons.alarm_outlined),
-            title: const Text('My reminders'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/profile/reminders'),
-          ),
-
-          const Divider(),
 
           // Sign out
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text('Sign out', style: TextStyle(color: Colors.red)),
-            onTap: () async {
-              await ref.read(authNotifierProvider.notifier).logout();
-              if (context.mounted) context.go('/auth');
-            },
+          Card(
+            margin: const EdgeInsets.only(bottom: 24),
+            child: ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text('Sign out', style: TextStyle(color: Colors.red)),
+              onTap: () async {
+                await ref.read(authNotifierProvider.notifier).logout();
+                if (context.mounted) context.go('/auth');
+              },
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 6),
+      child: Text(
+        text.toUpperCase(),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: AppThemeTokens.darkTextSecondary,
+          letterSpacing: 0.8,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/models/reminder_model.dart';
 import '../../../shared/widgets/error_display.dart';
+import '../../../shared/widgets/ui_primitives.dart';
 import '../data/reminder_repository_impl.dart';
 import '../domain/reminder_repository.dart';
 
@@ -178,17 +180,9 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
         data: (reminders) => RefreshIndicator(
           onRefresh: () async => ref.invalidate(_remindersProvider),
           child: reminders.isEmpty
-              ? const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.alarm_off_outlined,
-                          size: 48, color: Colors.grey),
-                      SizedBox(height: 12),
-                      Text('No reminders set.',
-                          style: TextStyle(color: Colors.grey)),
-                    ],
-                  ),
+              ? const UiEmptyState(
+                  icon: Icons.alarm_off_outlined,
+                  message: 'No reminders set.',
                 )
               : ListView.separated(
                   padding: const EdgeInsets.symmetric(vertical: 8),
@@ -233,7 +227,7 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
                             Text(
                               '${_minutesLabel(r.minutesBefore)} before',
                               style: theme.textTheme.labelSmall
-                                  ?.copyWith(color: Colors.grey),
+                                  ?.copyWith(color: AppThemeTokens.darkTextSecondary),
                             ),
                           ],
                         ),
