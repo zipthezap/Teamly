@@ -18,7 +18,9 @@ class EventsPage extends ConsumerWidget {
     return MobileShell(
       title: 'Events',
       currentIndex: 2,
-      child: eventsAsync.when(
+      child: Stack(
+        children: [
+          eventsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(
           message: e.toString(),
@@ -26,15 +28,15 @@ class EventsPage extends ConsumerWidget {
         ),
         data: (events) {
           if (events.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(32),
+                padding: const EdgeInsets.all(32),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.event_outlined, size: 56, color: Colors.grey),
-                    SizedBox(height: 12),
-                    Text(
+                    const Icon(Icons.event_outlined, size: 56, color: Colors.grey),
+                    const SizedBox(height: 12),
+                    const Text(
                       'No upcoming events.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.grey),
@@ -48,7 +50,7 @@ class EventsPage extends ConsumerWidget {
           return RefreshIndicator(
             onRefresh: () => ref.read(eventsNotifierProvider.notifier).load(),
             child: ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.fromLTRB(0, 8, 0, 80),
               itemCount: events.length,
               separatorBuilder: (_, __) => const Divider(height: 1, indent: 16),
               itemBuilder: (context, index) {
@@ -88,6 +90,18 @@ class EventsPage extends ConsumerWidget {
             ),
           );
         },
+      ),
+          // FAB
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: FloatingActionButton(
+              onPressed: () => context.push('/events/new'),
+              tooltip: 'Create event',
+              child: const Icon(Icons.add),
+            ),
+          ),
+        ],
       ),
     );
   }

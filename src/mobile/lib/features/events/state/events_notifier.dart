@@ -42,3 +42,12 @@ final groupEventsProvider =
     FutureProvider.family<List<EventModel>, String>((ref, groupId) async {
   return ref.watch(eventRepositoryProvider).getEvents(groupId: groupId);
 });
+
+// ---------------------------------------------------------------------------
+// Activity feed for an event
+// ---------------------------------------------------------------------------
+
+final activityFeedProvider =
+    FutureProvider.family<List<ActivityEntryModel>, String>((ref, eventId) async {
+  return ref.watch(eventRepositoryProvider).getActivityFeed(eventId);
+});

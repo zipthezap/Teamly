@@ -46,6 +46,42 @@ class GroupCountModel extends Equatable {
   List<Object?> get props => [events, members];
 }
 
+class JoinRequestModel extends Equatable {
+  const JoinRequestModel({
+    required this.id,
+    required this.userId,
+    required this.userName,
+    required this.status,
+    required this.createdAt,
+    this.userPicture,
+    this.userEmail,
+  });
+
+  final String id;
+  final String userId;
+  final String userName;
+  final String status; // pending, approved, rejected
+  final DateTime createdAt;
+  final String? userPicture;
+  final String? userEmail;
+
+  factory JoinRequestModel.fromJson(Map<String, dynamic> json) {
+    final user = json['user'] as Map<String, dynamic>?;
+    return JoinRequestModel(
+      id: json['id'] as String,
+      userId: (json['userId'] ?? user?['id']) as String,
+      userName: user?['name'] as String? ?? 'Unknown',
+      status: json['status'] as String? ?? 'pending',
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      userPicture: user?['profilePicture'] as String?,
+      userEmail: user?['email'] as String?,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, userId, status, createdAt];
+}
+
 class GroupModel extends Equatable {
   const GroupModel({
     required this.id,
@@ -59,8 +95,13 @@ class GroupModel extends Equatable {
     this.country,
     this.locationName,
     this.maxMembers,
+    this.tags,
+    this.autoApproveJoinRequests = false,
+    this.allowMemberInvites = true,
     this.members = const [],
     this.count,
+    this.creatorId,
+    this.distance,
   });
 
   final String id;
@@ -74,8 +115,13 @@ class GroupModel extends Equatable {
   final String? country;
   final String? locationName;
   final int? maxMembers;
+  final String? tags;
+  final bool autoApproveJoinRequests;
+  final bool allowMemberInvites;
   final List<GroupMemberModel> members;
   final GroupCountModel? count;
+  final String? creatorId;
+  final double? distance;
 
   factory GroupModel.fromJson(Map<String, dynamic> json) {
     final membersList = (json['members'] as List<dynamic>?)
@@ -95,10 +141,15 @@ class GroupModel extends Equatable {
       country: json['country'] as String?,
       locationName: json['locationName'] as String?,
       maxMembers: (json['maxMembers'] as num?)?.toInt(),
+      tags: json['tags'] as String?,
+      autoApproveJoinRequests: (json['autoApproveJoinRequests'] as bool?) ?? false,
+      allowMemberInvites: (json['allowMemberInvites'] as bool?) ?? true,
       members: membersList,
       count: json['_count'] != null
           ? GroupCountModel.fromJson(json['_count'] as Map<String, dynamic>)
           : null,
+      creatorId: json['creatorId'] as String?,
+      distance: (json['distance'] as num?)?.toDouble(),
     );
   }
 

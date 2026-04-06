@@ -30,6 +30,9 @@ class MobileShell extends ConsumerWidget {
         context.go('/events');
         return;
       case 3:
+        context.go('/discover');
+        return;
+      case 4:
         context.go('/notifications');
         return;
       default:
@@ -63,6 +66,11 @@ class MobileShell extends ConsumerWidget {
             icon: Icon(Icons.event_outlined),
             selectedIcon: Icon(Icons.event),
             label: 'Events',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.explore_outlined),
+            selectedIcon: Icon(Icons.explore),
+            label: 'Discover',
           ),
           NavigationDestination(
             icon: Badge(

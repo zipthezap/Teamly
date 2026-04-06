@@ -179,3 +179,60 @@ class EventModel extends Equatable {
   List<Object?> get props =>
       [id, title, startTime, endTime, isPublic, creator, group, eventType, status, maxPlayers];
 }
+
+class ActivityEntryModel extends Equatable {
+  const ActivityEntryModel({
+    required this.id,
+    required this.type,
+    required this.createdAt,
+    this.userId,
+    this.userName,
+    this.userPicture,
+    this.metadata,
+  });
+
+  final String id;
+  final String type;
+  final DateTime createdAt;
+  final String? userId;
+  final String? userName;
+  final String? userPicture;
+  final Map<String, dynamic>? metadata;
+
+  factory ActivityEntryModel.fromJson(Map<String, dynamic> json) {
+    final user = json['user'] as Map<String, dynamic>?;
+    return ActivityEntryModel(
+      id: json['id'] as String,
+      type: json['type'] as String? ?? json['action'] as String? ?? 'unknown',
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      userId: user?['id'] as String? ?? json['userId'] as String?,
+      userName: user?['name'] as String?,
+      userPicture: user?['profilePicture'] as String?,
+      metadata: json['metadata'] as Map<String, dynamic>?,
+    );
+  }
+
+  String get summary {
+    final name = userName ?? 'Someone';
+    switch (type) {
+      case 'join':
+      case 'joined':
+        return '$name joined';
+      case 'leave':
+      case 'left':
+        return '$name left';
+      case 'late':
+      case 'marked_late':
+        return '$name marked as late';
+      case 'unmark_late':
+        return '$name is no longer late';
+      case 'status_update':
+        return '$name updated their status';
+      default:
+        return '$name: ${type.replaceAll('_', ' ')}';
+    }
+  }
+
+  @override
+  List<Object?> get props => [id, type, createdAt, userId];
+}

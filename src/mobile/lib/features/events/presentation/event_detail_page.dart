@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/error/app_exception.dart';
+import '../../../core/models/event_model.dart';
 import '../../../features/auth/state/auth_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/user_avatar.dart';
@@ -23,6 +25,7 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
   static const _kUnknown = 'Unknown';
 
   bool _actionLoading = false;
+  bool _markingLate = false;
 
   String _errorMessage(Exception e) {
     if (e is DioException) {
@@ -32,6 +35,54 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
     }
     if (e is AppException) return e.message;
     return e.toString().replaceFirst('Exception: ', '');
+  }
+
+  Future<void> _markLate(bool isLate) async {
+    setState(() => _markingLate = true);
+    try {
+      final repo = ref.read(eventRepositoryProvider);
+      if (isLate) {
+        await repo.markLate(widget.eventId);
+      } else {
+        await repo.unmarkLate(widget.eventId);
+      }
+      ref.invalidate(eventDetailProvider(widget.eventId));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(isLate ? 'Marked as late' : 'Removed late status')),
+        );
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(_errorMessage(e)),
+            backgroundColor: Theme.of(context).colorScheme.error));
+      }
+    } finally {
+      if (mounted) setState(() => _markingLate = false);
+    }
+  }
+
+  Future<void> _copyInviteLink() async {
+    try {
+      final token = await ref
+          .read(eventRepositoryProvider)
+          .generateInviteToken(widget.eventId);
+      final link = 'teamly://events/invite/$token';
+      await Clipboard.setData(ClipboardData(text: link));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invite link copied!')),
+        );
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(_errorMessage(e)),
+            backgroundColor: Theme.of(context).colorScheme.error));
+      }
+    }
   }
 
   Future<void> _join() async {
@@ -98,6 +149,11 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
           orElse: () => const Text('Event'),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.link),
+            tooltip: 'Copy invite link',
+            onPressed: _copyInviteLink,
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.invalidate(eventDetailProvider(widget.eventId)),
@@ -208,12 +264,92 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                         ),
                       ),
                 ],
+
+                // Mark late button (only for participants)
+                if (isParticipant) ...[
+                  const SizedBox(height: 16),
+                  _markingLate
+                      ? const Center(child: CircularProgressIndicator())
+                      : OutlinedButton.icon(
+                          onPressed: () => _markLate(true),
+                          icon: const Icon(Icons.access_time),
+                          label: const Text('Mark me as late'),
+                        ),
+                ],
+
+                const SizedBox(height: 24),
+
+                // Activity feed
+                _ActivityFeedSection(eventId: widget.eventId),
               ],
             ),
           );
         },
       ),
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Activity feed section
+// ---------------------------------------------------------------------------
+
+class _ActivityFeedSection extends ConsumerWidget {
+  const _ActivityFeedSection({required this.eventId});
+  final String eventId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final feedAsync = ref.watch(activityFeedProvider(eventId));
+    final theme = Theme.of(context);
+
+    return feedAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (entries) {
+        if (entries.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Activity', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            ...entries.take(10).map(
+              (entry) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: entry.userPicture != null || entry.userName != null
+                    ? UserAvatar(
+                        name: entry.userName ?? '?',
+                        imageUrl: entry.userPicture,
+                        radius: 16,
+                      )
+                    : CircleAvatar(
+                        radius: 16,
+                        backgroundColor:
+                            theme.colorScheme.surfaceContainerHighest,
+                        child: const Icon(Icons.info_outline, size: 14),
+                      ),
+                title: Text(entry.summary,
+                    style: theme.textTheme.bodySmall),
+                trailing: Text(
+                  _formatTime(entry.createdAt),
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: Colors.grey),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _formatTime(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt.toLocal());
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return DateFormat.MMMd().format(dt.toLocal());
   }
 }
 

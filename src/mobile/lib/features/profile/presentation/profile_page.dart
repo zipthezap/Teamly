@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/user_model.dart';
@@ -25,6 +28,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   bool _editing = false;
   bool _saving = false;
+  bool _uploadingPicture = false;
 
   @override
   void initState() {
@@ -53,6 +57,53 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     }
     if (e is AppException) return e.message;
     return e.toString().replaceFirst('Exception: ', '');
+  }
+
+  Future<void> _pickAndUploadProfilePicture() async {
+    final picker = ImagePicker();
+    final file = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 85,
+    );
+    if (file == null || !mounted) return;
+
+    setState(() => _uploadingPicture = true);
+    try {
+      final dio = ref.read(dioProvider);
+      final formData = FormData.fromMap({
+        'profilePicture': await MultipartFile.fromFile(
+          file.path,
+          filename: 'profile.jpg',
+        ),
+      });
+      final response = await dio.put<Map<String, dynamic>>(
+        '/auth/profile',
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      final updatedUser = UserModel.fromJson(
+        (response.data?['user'] ?? response.data!) as Map<String, dynamic>,
+      );
+      ref.read(authNotifierProvider.notifier).updateUser(updatedUser);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile picture updated')),
+        );
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_errorMsg(e)),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingPicture = false);
+    }
   }
 
   Future<void> _saveProfile() async {
@@ -244,10 +295,45 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           Center(
             child: Column(
               children: [
-                UserAvatar(
-                  name: user.name,
-                  imageUrl: user.profilePicture,
-                  radius: 42,
+                Stack(
+                  children: [
+                    UserAvatar(
+                      name: user.name,
+                      imageUrl: user.profilePicture,
+                      radius: 42,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: GestureDetector(
+                        onTap: _uploadingPicture
+                            ? null
+                            : _pickAndUploadProfilePicture,
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Theme.of(context).scaffoldBackgroundColor,
+                              width: 2,
+                            ),
+                          ),
+                          child: _uploadingPicture
+                              ? const Padding(
+                                  padding: EdgeInsets.all(6),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.camera_alt,
+                                  size: 14, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 if (!_editing) ...[
@@ -347,6 +433,16 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             title: const Text('Change password'),
             trailing: const Icon(Icons.chevron_right),
             onTap: _changePassword,
+          ),
+
+          const Divider(),
+
+          // Notification preferences
+          ListTile(
+            leading: const Icon(Icons.notifications_outlined),
+            title: const Text('Notification preferences'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/profile/notification-preferences'),
           ),
 
           const Divider(),

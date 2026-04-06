@@ -24,7 +24,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
 
     return MobileShell(
       title: 'Notifications',
-      currentIndex: 3,
+      currentIndex: 4,
       actions: [
         // Toggle showing read notifications
         IconButton(
