@@ -7,6 +7,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/teamup_model.dart';
 import '../../../shared/widgets/error_display.dart';
+import '../../../shared/widgets/ui_primitives.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../data/teamup_repository_impl.dart';
 import '../state/teamup_notifier.dart';
@@ -191,22 +192,9 @@ class _MyRequestsTab extends ConsumerWidget {
       ),
       data: (requests) {
         if (requests.isEmpty) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.inbox_outlined, size: 56, color: AppThemeTokens.darkTextSecondary),
-                  SizedBox(height: 12),
-                  Text(
-                    "You haven't made any TeamUp requests yet.",
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppThemeTokens.darkTextSecondary),
-                  ),
-                ],
-              ),
-            ),
+          return const UiEmptyState(
+            icon: Icons.inbox_outlined,
+            message: "You haven't made any TeamUp requests yet.",
           );
         }
         return RefreshIndicator(

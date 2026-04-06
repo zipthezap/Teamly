@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/group_model.dart';
 import '../../../shared/widgets/error_display.dart';
+import '../../../shared/widgets/ui_primitives.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../data/group_repository_impl.dart';
 import '../state/groups_notifier.dart';
@@ -114,24 +115,11 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
                   .toList();
 
           if (filtered.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.search_off, size: 56, color: AppThemeTokens.darkTextSecondary),
-                    const SizedBox(height: 12),
-                    Text(
-                      _searchQuery.isNotEmpty
-                          ? 'No groups match "$_searchQuery"'
-                          : 'No public groups found.',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppThemeTokens.darkTextSecondary),
-                    ),
-                  ],
-                ),
-              ),
+            return UiEmptyState(
+              icon: Icons.search_off,
+              message: _searchQuery.isNotEmpty
+                  ? 'No groups match "$_searchQuery"'
+                  : 'No public groups found.',
             );
           }
 

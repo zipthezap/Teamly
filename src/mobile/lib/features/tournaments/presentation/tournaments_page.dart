@@ -8,6 +8,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/tournament_model.dart';
 import '../../../shared/widgets/error_display.dart';
+import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
 import '../state/tournaments_notifier.dart';
 
@@ -38,21 +39,9 @@ class _TournamentsPageState extends ConsumerState<TournamentsPage> {
         ),
         data: (tournaments) {
           if (tournaments.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.emoji_events_outlined, size: 56, color: AppThemeTokens.darkTextSecondary),
-                    SizedBox(height: 12),
-                    Text(
-                      'No tournaments yet.',
-                      style: TextStyle(color: AppThemeTokens.darkTextSecondary),
-                    ),
-                  ],
-                ),
-              ),
+            return const UiEmptyState(
+              icon: Icons.emoji_events_outlined,
+              message: 'No tournaments yet.',
             );
           }
 
