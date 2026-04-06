@@ -25,6 +25,7 @@ import '../features/teamup/presentation/teamup_page.dart';
 import '../features/tournaments/presentation/tournaments_page.dart';
 import '../features/two_factor/presentation/two_factor_page.dart';
 import '../features/event_requests/presentation/event_requests_page.dart';
+import '../core/error/app_exception.dart';
 
 final _routerProvider = Provider<GoRouter>((ref) {
   final authNotifier = ref.watch(authNotifierProvider.notifier);
@@ -337,7 +338,7 @@ class _EventInviteLandingPageState extends State<_EventInviteLandingPage> {
         setState(() => _done = true);
       }
     } catch (e) {
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => _error = _errorText(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -364,10 +365,15 @@ class _EventInviteLandingPageState extends State<_EventInviteLandingPage> {
         _done = true;
       });
     } catch (e) {
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => _error = _errorText(e));
     } finally {
       if (mounted) setState(() => _joiningGuest = false);
     }
+  }
+
+  String _errorText(Object e) {
+    if (e is AppException) return e.message;
+    return 'An unexpected error occurred. Please try again.';
   }
 
   @override
@@ -391,9 +397,18 @@ class _EventInviteLandingPageState extends State<_EventInviteLandingPage> {
                       const Text('You joined the event!'),
                       const SizedBox(height: 16),
                       FilledButton(
-                        onPressed: () => _joinedAsGuest
-                            ? context.go('/auth')
-                            : context.go('/events/${_eventId ?? ''}'),
+                        onPressed: () {
+                          if (_joinedAsGuest) {
+                            context.go('/auth');
+                            return;
+                          }
+                          final eventId = _eventId;
+                          if (eventId?.isNotEmpty ?? false) {
+                            context.go('/events/$eventId');
+                            return;
+                          }
+                          context.go('/events');
+                        },
                         child: Text(_joinedAsGuest ? 'Sign In' : 'View Event'),
                       ),
                     ])
