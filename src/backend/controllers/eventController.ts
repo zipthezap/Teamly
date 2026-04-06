@@ -902,11 +902,11 @@ export const leaveEvent = async (req: Request, res: Response) => {
 
       // Promote first waitlisted participant if a spot opened up
       let promotedUserId: string | undefined;
-      const event_with_max = await tx.event.findUnique({
+      const eventWithMax = await tx.event.findUnique({
         where: { id },
         select: { maxPlayers: true, title: true }
       });
-      if (event_with_max?.maxPlayers && participant.status === 'confirmed') {
+      if (eventWithMax?.maxPlayers && participant.status === 'confirmed') {
         const firstWaitlisted = await tx.eventParticipant.findFirst({
           where: { eventId: id, status: 'waitlisted' },
           orderBy: { joinedAt: 'asc' },

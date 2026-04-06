@@ -25,6 +25,7 @@ import { createInviteToken } from '../utils/inviteToken';
 import { NotificationFactory } from '../services/notificationFactory';
 import { recordSearchQuery } from '../services/metricsService';
 import { InviteService } from '../services/inviteService';
+import { groupBan, auditLog, txGroupBan, txAuditLog } from '../utils/prismaExtended';
 
 // Time constants for event queries
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -790,14 +791,14 @@ export const removeMember = async (req: Request, res: Response) => {
     });
 
     // Create a ban record to prevent re-joining (ignored if already banned)
-    await (tx as any).groupBan.upsert({
+    await txGroupBan(tx).upsert({
       where: { groupId_userId: { groupId: id, userId: memberToRemove.userId } },
       create: { groupId: id, userId: memberToRemove.userId, bannedBy: req.user!.id },
       update: { bannedBy: req.user!.id, bannedAt: new Date() },
     });
 
     // Audit log
-    await (tx as any).auditLog.create({
+    await txAuditLog(tx).create({
       data: {
         entityType: 'group',
         entityId: id,
@@ -972,7 +973,7 @@ export const updateMemberRole = async (req: Request, res: Response) => {
     });
 
     // Audit log
-    await (tx as any).auditLog.create({
+    await txAuditLog(tx).create({
       data: {
         entityType: 'group',
         entityId: id,
@@ -1127,7 +1128,7 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
   }
 
   // Check if user is banned from this group
-  const ban = await (prisma as any).groupBan.findUnique({
+  const ban = await groupBan(prisma).findUnique({
     where: { groupId_userId: { groupId: id, userId: req.user!.id } }
   });
   if (ban) {
@@ -1363,7 +1364,7 @@ export const handleJoinRequest = async (req: Request, res: Response) => {
       });
 
       // Audit log
-      await (tx as any).auditLog.create({
+      await txAuditLog(tx).create({
         data: {
           entityType: 'group',
           entityId: id,
@@ -2374,7 +2375,7 @@ export const joinGroupByInviteToken = async (req: Request, res: Response) => {
   }
 
   // Check if user is banned from this group
-  const ban = await (prisma as any).groupBan.findUnique({
+  const ban = await groupBan(prisma).findUnique({
     where: { groupId_userId: { groupId: group.id, userId } }
   });
   if (ban) {
