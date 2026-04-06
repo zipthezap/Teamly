@@ -33,3 +33,12 @@ final eventsNotifierProvider =
 final eventDetailProvider = FutureProvider.family<EventModel, String>((ref, id) async {
   return ref.watch(eventRepositoryProvider).getEvent(id);
 });
+
+// ---------------------------------------------------------------------------
+// Events filtered by group (used in group detail page)
+// ---------------------------------------------------------------------------
+
+final groupEventsProvider =
+    FutureProvider.family<List<EventModel>, String>((ref, groupId) async {
+  return ref.watch(eventRepositoryProvider).getEvents(groupId: groupId);
+});

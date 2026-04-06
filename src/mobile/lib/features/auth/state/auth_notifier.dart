@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/user_model.dart';
+import '../../../core/network/session_expired_notifier.dart';
 import '../data/auth_repository_impl.dart';
 import '../domain/auth_repository.dart';
 
@@ -113,7 +114,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = const AuthState.unauthenticated();
   }
 
+  /// Called by the profile page after a successful PUT /auth/profile.
+  void updateUser(UserModel user) {
+    state = state.copyWith(user: user);
+  }
+
   void clearError() => state = state.copyWith(clearError: true);
+
+  /// Called by the token-refresh interceptor when no refresh is possible.
+  void forceLogout() {
+    state = const AuthState.unauthenticated();
+  }
 
   String _extractMessage(Exception e) {
     // DioException carries the AppException in its .error field
@@ -131,5 +142,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
 final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final repo = ref.watch(authRepositoryProvider);
-  return AuthNotifier(repo);
+  final notifier = AuthNotifier(repo);
+
+  // Force logout when the token refresh interceptor signals session expiry.
+  ref.listen<int>(sessionExpiredProvider, (_, __) {
+    notifier.forceLogout();
+  });
+
+  return notifier;
 });

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../features/events/state/events_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../state/groups_notifier.dart';
@@ -132,6 +133,13 @@ class GroupDetailPage extends ConsumerWidget {
 
                 const SizedBox(height: 20),
 
+                // Events section
+                Text('Events', style: theme.textTheme.titleMedium),
+                const SizedBox(height: 8),
+                _GroupEventsSection(groupId: group.id),
+
+                const SizedBox(height: 20),
+
                 // Created at
                 Text(
                   'Created ${DateFormat.yMMMd().format(group.createdAt)}',
@@ -157,7 +165,7 @@ class _InfoChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -168,6 +176,76 @@ class _InfoChip extends StatelessWidget {
           Text(label, style: const TextStyle(fontSize: 12)),
         ],
       ),
+    );
+  }
+}
+
+class _GroupEventsSection extends ConsumerWidget {
+  const _GroupEventsSection({required this.groupId});
+
+  final String groupId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final eventsAsync = ref.watch(groupEventsProvider(groupId));
+    final theme = Theme.of(context);
+
+    return eventsAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+      error: (e, _) => Text(
+        'Could not load events: $e',
+        style: TextStyle(color: theme.colorScheme.error, fontSize: 12),
+      ),
+      data: (events) {
+        final upcoming = events
+            .where((e) => e.startTime.isAfter(DateTime.now()))
+            .take(5)
+            .toList();
+
+        if (upcoming.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'No upcoming events.',
+              style: TextStyle(color: Colors.grey),
+            ),
+          );
+        }
+
+        return Column(
+          children: upcoming.map((event) {
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(
+                backgroundColor: theme.colorScheme.primaryContainer,
+                child: Text(
+                  DateFormat('d').format(event.startTime.toLocal()),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onPrimaryContainer,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              title: Text(
+                event.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                DateFormat('EEE, MMM d · h:mm a')
+                    .format(event.startTime.toLocal()),
+                style: const TextStyle(fontSize: 11),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/events/${event.id}'),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 }

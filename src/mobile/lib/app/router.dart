@@ -9,6 +9,7 @@ import '../features/events/presentation/event_detail_page.dart';
 import '../features/events/presentation/events_page.dart';
 import '../features/groups/presentation/group_detail_page.dart';
 import '../features/groups/presentation/groups_page.dart';
+import '../features/notifications/presentation/notifications_page.dart';
 import '../features/profile/presentation/profile_page.dart';
 
 // The router needs access to auth state for the redirect guard.
@@ -61,6 +62,10 @@ final _routerProvider = Provider<GoRouter>((ref) {
                 EventDetailPage(eventId: state.pathParameters['id']!),
           ),
         ],
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationsPage(),
       ),
       GoRoute(
         path: '/profile',

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/error/app_exception.dart';
+import '../../../core/network/api_client.dart';
 import '../state/auth_notifier.dart';
 
 class AuthPage extends ConsumerStatefulWidget {
@@ -26,6 +28,81 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     _passwordCtrl.dispose();
     _nameCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _showForgotPassword() async {
+    final emailCtrl = TextEditingController(text: _emailCtrl.text.trim());
+    final formKey = GlobalKey<FormState>();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset Password'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: emailCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Email address',
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.emailAddress,
+            autocorrect: false,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Email is required';
+              final r = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+              if (!r.hasMatch(v.trim())) return 'Enter a valid email';
+              return null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                Navigator.of(ctx).pop(true);
+              }
+            },
+            child: const Text('Send Reset Link'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final dio = ref.read(dioProvider);
+      await dio.post<void>(
+        '/auth/forgot-password',
+        data: {'email': emailCtrl.text.trim()},
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('If an account exists, a reset link has been sent.'),
+          ),
+        );
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        final msg = e is AppException
+            ? e.message
+            : e.toString().replaceFirst('Exception: ', '');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } finally {
+      emailCtrl.dispose();
+    }
   }
 
   Future<void> _submit() async {
@@ -189,6 +266,12 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                         : "Don't have an account? Create one",
                   ),
                 ),
+
+                if (!_isRegister)
+                  TextButton(
+                    onPressed: _showForgotPassword,
+                    child: const Text('Forgot password?'),
+                  ),
               ],
             ),
           ),
