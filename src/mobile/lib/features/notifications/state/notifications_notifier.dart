@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/notification_model.dart';
 import '../data/notification_repository_impl.dart';
 import '../domain/notification_repository.dart';
+import '../../push_notifications/state/push_notifications_controller.dart';
 
 // ---------------------------------------------------------------------------
 // Notifications list
@@ -10,17 +11,19 @@ import '../domain/notification_repository.dart';
 
 class NotificationsNotifier
     extends StateNotifier<AsyncValue<List<NotificationModel>>> {
-  NotificationsNotifier(this._repo) : super(const AsyncValue.loading()) {
+  NotificationsNotifier(this._repo, this._ref) : super(const AsyncValue.loading()) {
     load();
   }
 
   final NotificationRepository _repo;
+  final Ref _ref;
 
   Future<void> load({bool includeRead = false}) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(
       () => _repo.getNotifications(includeRead: includeRead),
     );
+    await _safeBadgeSync();
   }
 
   Future<void> markAllRead() async {
@@ -29,6 +32,7 @@ class NotificationsNotifier
     state.whenData((list) {
       state = AsyncValue.data(list.map(_markRead).toList());
     });
+    await _safeBadgeSync();
   }
 
   Future<void> markRead(String id) async {
@@ -38,6 +42,14 @@ class NotificationsNotifier
         list.map((n) => n.id == id ? _markRead(n) : n).toList(),
       );
     });
+    await _safeBadgeSync();
+  }
+  Future<void> _safeBadgeSync() async {
+    try {
+      await _ref.read(pushNotificationsControllerProvider).syncBadgeCount();
+    } catch (_) {
+      // no-op
+    }
   }
   NotificationModel _markRead(NotificationModel n) {
     return NotificationModel(
@@ -58,7 +70,7 @@ class NotificationsNotifier
 
 final notificationsNotifierProvider = StateNotifierProvider<NotificationsNotifier,
     AsyncValue<List<NotificationModel>>>((ref) {
-  return NotificationsNotifier(ref.watch(notificationRepositoryProvider));
+  return NotificationsNotifier(ref.watch(notificationRepositoryProvider), ref);
 });
 
 // ---------------------------------------------------------------------------

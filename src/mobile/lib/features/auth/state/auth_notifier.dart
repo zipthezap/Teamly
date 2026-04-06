@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/network/session_expired_notifier.dart';
+import '../../push_notifications/state/push_notifications_controller.dart';
 import '../data/auth_repository_impl.dart';
 import '../domain/auth_repository.dart';
 
@@ -57,11 +58,12 @@ class AuthState extends Equatable {
 // ---------------------------------------------------------------------------
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier(this._repo) : super(const AuthState.unknown()) {
+  AuthNotifier(this._repo, this._ref) : super(const AuthState.unknown()) {
     _initAuth();
   }
 
   final AuthRepository _repo;
+  final Ref _ref;
 
   Future<void> _initAuth() async {
     try {
@@ -82,6 +84,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final user = await _repo.login(email: email, password: password);
       state = AuthState(status: AuthStatus.authenticated, user: user);
+      await _registerPushTokenSafely();
     } on Exception catch (e) {
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
@@ -100,6 +103,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final user = await _repo.register(email: email, password: password, name: name);
       state = AuthState(status: AuthStatus.authenticated, user: user);
+      await _registerPushTokenSafely();
     } on Exception catch (e) {
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
@@ -110,6 +114,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    await _disablePushTokenSafely();
     await _repo.logout();
     state = const AuthState.unauthenticated();
   }
@@ -124,6 +129,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// Called by the token-refresh interceptor when no refresh is possible.
   void forceLogout() {
     state = const AuthState.unauthenticated();
+  }
+
+  Future<void> _registerPushTokenSafely() async {
+    try {
+      await _ref.read(pushNotificationsControllerProvider).registerCurrentToken();
+      await _ref.read(pushNotificationsControllerProvider).syncBadgeCount();
+    } catch (_) {
+      // no-op
+    }
+  }
+
+  Future<void> _disablePushTokenSafely() async {
+    try {
+      await _ref.read(pushNotificationsControllerProvider).disableCurrentToken();
+    } catch (_) {
+      // no-op
+    }
   }
 
   String _extractMessage(Exception e) {
@@ -142,7 +164,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
 final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final repo = ref.watch(authRepositoryProvider);
-  final notifier = AuthNotifier(repo);
+  final notifier = AuthNotifier(repo, ref);
 
   // Force logout when the token refresh interceptor signals session expiry.
   ref.listen<int>(sessionExpiredProvider, (_, __) {

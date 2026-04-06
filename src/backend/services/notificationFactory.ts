@@ -16,6 +16,7 @@ import {
   EmailPreference 
 } from '@prisma/client';
 import { pushNotificationToUser } from '../controllers/notificationController';
+import { dispatchPushNotifications } from './pushNotificationService';
 
 export interface NotificationParams {
   [key: string]: string | number | boolean | undefined;
@@ -134,6 +135,15 @@ export class NotificationFactory {
         try { pushNotificationToUser(userId, ssePayload); } catch { /* ignore SSE errors */ }
       });
 
+      void dispatchPushNotifications({
+        userIds: targetUserIds,
+        notificationKind: 'event',
+        notificationType: type,
+        entityId: eventId,
+        params,
+        metadata,
+      });
+
       logger.debug(`Created ${targetUserIds.length} event notifications`, 'NotificationFactory', {
         type,
         eventId,
@@ -226,6 +236,14 @@ export class NotificationFactory {
         try { pushNotificationToUser(userId, ssePayload); } catch { /* ignore SSE errors */ }
       });
 
+      void dispatchPushNotifications({
+        userIds: targetUserIds,
+        notificationKind: 'group',
+        notificationType: type,
+        entityId: groupId,
+        params,
+      });
+
       logger.debug(`Created ${targetUserIds.length} group notifications`, 'NotificationFactory', {
         type,
         groupId,
@@ -314,6 +332,15 @@ export class NotificationFactory {
         skipDuplicates: true
       });
 
+      void dispatchPushNotifications({
+        userIds: targetUserIds,
+        notificationKind: 'teamup',
+        notificationType: type,
+        entityId: teamUpRequestId,
+        params,
+        metadata,
+      });
+
       logger.debug(`Created ${targetUserIds.length} team-up notifications`, 'NotificationFactory', {
         type,
         teamUpRequestId,
@@ -395,6 +422,15 @@ export class NotificationFactory {
       await client.tournamentNotification.createMany({
         data: notifications,
         skipDuplicates: true
+      });
+
+      void dispatchPushNotifications({
+        userIds: finalUserIds,
+        notificationKind: 'tournament',
+        notificationType: type,
+        entityId: tournamentId,
+        params,
+        metadata,
       });
 
       logger.debug(`Created ${finalUserIds.length} tournament notifications`, 'NotificationFactory', {

@@ -34,7 +34,12 @@ export const updateNotificationPreferences = asyncHandler(async (req: Request, r
       ...(data.muteGroupRequests !== undefined && { muteGroupRequests: data.muteGroupRequests }),
       ...(data.muteNearbyGroups !== undefined && { muteNearbyGroups: data.muteNearbyGroups }),
       ...(data.muteEventCreated !== undefined && { muteEventCreated: data.muteEventCreated }),
-      ...(data.muteNearbyTeamUps !== undefined && { muteNearbyTeamUps: data.muteNearbyTeamUps })
+      ...(data.muteNearbyTeamUps !== undefined && { muteNearbyTeamUps: data.muteNearbyTeamUps }),
+      ...(data.pushEnabled !== undefined && { pushEnabled: data.pushEnabled }),
+      ...(data.pushEvents !== undefined && { pushEvents: data.pushEvents }),
+      ...(data.pushGroups !== undefined && { pushGroups: data.pushGroups }),
+      ...(data.pushTeamUp !== undefined && { pushTeamUp: data.pushTeamUp }),
+      ...(data.pushTournaments !== undefined && { pushTournaments: data.pushTournaments }),
     },
     create: {
       userId: req.user!.id,
@@ -53,7 +58,12 @@ export const updateNotificationPreferences = asyncHandler(async (req: Request, r
       muteGroupRequests: data.muteGroupRequests ?? false,
       muteNearbyGroups: data.muteNearbyGroups ?? false,
       muteEventCreated: data.muteEventCreated ?? false,
-      muteNearbyTeamUps: data.muteNearbyTeamUps ?? false
+      muteNearbyTeamUps: data.muteNearbyTeamUps ?? false,
+      pushEnabled: data.pushEnabled ?? true,
+      pushEvents: data.pushEvents ?? true,
+      pushGroups: data.pushGroups ?? true,
+      pushTeamUp: data.pushTeamUp ?? true,
+      pushTournaments: data.pushTournaments ?? true,
     }
   });
   res.json(prefs);

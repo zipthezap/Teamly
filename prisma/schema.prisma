@@ -48,6 +48,12 @@ enum TournamentNotificationType {
   match_scheduled
   score_submitted
 }
+
+enum PushDevicePlatform {
+  android
+  ios
+  web
+}
 enum EventParticipantStatus {
   pending
   confirmed
@@ -326,6 +332,7 @@ model User {
   groupBans         GroupBan[]
   issuedGroupBans   GroupBan[]       @relation("GroupBanner")
   auditLogs         AuditLog[]
+  pushDeviceTokens  PushDeviceToken[]
   
   @@index([email]) // For faster email lookups
   @@index([emailVerificationToken]) // For email verification
@@ -615,8 +622,33 @@ model EmailPreference {
   muteNearbyGroups    Boolean  @default(false)
   muteEventCreated    Boolean  @default(false)
   muteNearbyTeamUps   Boolean  @default(false)
+  pushEnabled         Boolean  @default(true)
+  pushEvents          Boolean  @default(true)
+  pushGroups          Boolean  @default(true)
+  pushTeamUp          Boolean  @default(true)
+  pushTournaments     Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model PushDeviceToken {
+  id        String             @id @default(uuid())
+  userId    String
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform  PushDevicePlatform
+  token     String             @unique
+  enabled   Boolean            @default(true)
+  locale    String?
+  timezone  String?
+  appVersion String?
+  deviceModel String?
+  lastSeen  DateTime           @default(now())
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@index([userId, enabled])
+  @@index([lastSeen])
+  @@index([platform])
 }
 
 model Comment {
