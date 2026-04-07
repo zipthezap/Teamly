@@ -18,6 +18,122 @@ import '../state/groups_notifier.dart';
 import 'group_form_page.dart';
 import 'group_invite_analytics_page.dart';
 
+// ---------------------------------------------------------------------------
+// Shared group-action helpers (top-level to avoid duplication)
+// ---------------------------------------------------------------------------
+
+String _groupExtractMsg(Exception e) {
+  if (e is AppException) return e.message;
+  return e.toString().replaceFirst('Exception: ', '');
+}
+
+Future<void> _groupShowInviteMemberDialog(
+    BuildContext context, WidgetRef ref, String groupId) async {
+  final emailCtrl = TextEditingController();
+  try {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Invite member'),
+        content: TextField(
+          controller: emailCtrl,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(
+            labelText: 'Email address',
+            hintText: 'user@example.com',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Send invite')),
+        ],
+      ),
+    );
+    if (ok == true && context.mounted) {
+      final email = emailCtrl.text.trim();
+      if (email.isEmpty) return;
+      try {
+        await ref.read(groupRepositoryProvider).inviteMember(groupId, email);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Invite sent to $email')));
+        }
+      } on Exception catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
+        }
+      }
+    }
+  } finally {
+    emailCtrl.dispose();
+  }
+}
+
+Future<void> _groupPickAndUploadPicture(
+    BuildContext context, WidgetRef ref, String groupId) async {
+  final picker = ImagePicker();
+  final picked =
+      await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+  if (picked == null || !context.mounted) return;
+  try {
+    await ref
+        .read(groupRepositoryProvider)
+        .uploadGroupPicture(groupId, picked.path);
+    ref.invalidate(groupDetailProvider(groupId));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Group picture updated!')));
+    }
+  } on Exception catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
+    }
+  }
+}
+
+Future<void> _groupDeletePicture(
+    BuildContext context, WidgetRef ref, String groupId) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Remove picture'),
+      content: const Text('Remove the group picture?'),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel')),
+        FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(ctx).colorScheme.error),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Remove')),
+      ],
+    ),
+  );
+  if (ok == true && context.mounted) {
+    try {
+      await ref.read(groupRepositoryProvider).deleteGroupPicture(groupId);
+      ref.invalidate(groupDetailProvider(groupId));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Group picture removed.')));
+      }
+    } on Exception catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
+      }
+    }
+  }
+}
+
 class GroupDetailPage extends ConsumerStatefulWidget {
   const GroupDetailPage({super.key, required this.groupId});
   final String groupId;
@@ -46,11 +162,6 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
       userId != null &&
       (group.creatorId == userId ||
           group.members.any((m) => m.id == userId && m.role == 'admin'));
-
-  String _extractMsg(Exception e) {
-    if (e is AppException) return e.message;
-    return e.toString().replaceFirst('Exception: ', '');
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -187,7 +298,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
         ref.invalidate(groupDetailProvider(widget.groupId));
         break;
       case 'invite_member':
-        await _showInviteMemberDialog();
+        await _groupShowInviteMemberDialog(context, ref, widget.groupId);
         break;
       case 'invite_link':
         try {
@@ -202,12 +313,12 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
         } on Exception catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context)
-                .showSnackBar(SnackBar(content: Text(_extractMsg(e))));
+                .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
           }
         }
         break;
       case 'upload_picture':
-        await _pickAndUploadPicture();
+        await _groupPickAndUploadPicture(context, ref, widget.groupId);
         break;
       case 'event_requests':
         context.push('/groups/${widget.groupId}/event-requests');
@@ -246,78 +357,12 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
           } on Exception catch (e) {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(_extractMsg(e)),
+                  content: Text(_groupExtractMsg(e)),
                   backgroundColor: Theme.of(context).colorScheme.error));
             }
           }
         }
         break;
-    }
-  }
-
-  Future<void> _showInviteMemberDialog() async {
-    final emailCtrl = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Invite member'),
-        content: TextField(
-          controller: emailCtrl,
-          keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(
-            labelText: 'Email address',
-            hintText: 'user@example.com',
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel')),
-          FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Send invite')),
-        ],
-      ),
-    );
-    if (ok == true && mounted) {
-      final email = emailCtrl.text.trim();
-      if (email.isEmpty) return;
-      try {
-        await ref
-            .read(groupRepositoryProvider)
-            .inviteMember(widget.groupId, email);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Invite sent to $email')));
-        }
-      } on Exception catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(_extractMsg(e))));
-        }
-      }
-    }
-  }
-
-  Future<void> _pickAndUploadPicture() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (picked == null || !mounted) return;
-    try {
-      await ref
-          .read(groupRepositoryProvider)
-          .uploadGroupPicture(widget.groupId, picked.path);
-      ref.invalidate(groupDetailProvider(widget.groupId));
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Group picture updated!')));
-      }
-    } on Exception catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(_extractMsg(e))));
-      }
     }
   }
 
@@ -356,7 +401,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_extractMsg(e)),
+            content: Text(_groupExtractMsg(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -375,113 +420,6 @@ class _OverviewTab extends ConsumerWidget {
   final GroupModel group;
   final bool isAdmin;
   final String groupId;
-
-  String _extractMsg(Exception e) {
-    if (e is AppException) return e.message;
-    return e.toString().replaceFirst('Exception: ', '');
-  }
-
-  Future<void> _showInviteMemberDialog(
-      BuildContext context, WidgetRef ref) async {
-    final emailCtrl = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Invite member'),
-        content: TextField(
-          controller: emailCtrl,
-          keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(
-            labelText: 'Email address',
-            hintText: 'user@example.com',
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel')),
-          FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Send invite')),
-        ],
-      ),
-    );
-    if (ok == true && context.mounted) {
-      final email = emailCtrl.text.trim();
-      if (email.isEmpty) return;
-      try {
-        await ref.read(groupRepositoryProvider).inviteMember(groupId, email);
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Invite sent to $email')));
-        }
-      } on Exception catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(_extractMsg(e))));
-        }
-      }
-    }
-  }
-
-  Future<void> _pickAndUploadPicture(
-      BuildContext context, WidgetRef ref) async {
-    final picker = ImagePicker();
-    final picked =
-        await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (picked == null || !context.mounted) return;
-    try {
-      await ref
-          .read(groupRepositoryProvider)
-          .uploadGroupPicture(groupId, picked.path);
-      ref.invalidate(groupDetailProvider(groupId));
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Group picture updated!')));
-      }
-    } on Exception catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(_extractMsg(e))));
-      }
-    }
-  }
-
-  Future<void> _deletePicture(BuildContext context, WidgetRef ref) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Remove picture'),
-        content: const Text('Remove the group picture?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel')),
-          FilledButton(
-              style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(ctx).colorScheme.error),
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Remove')),
-        ],
-      ),
-    );
-    if (ok == true && context.mounted) {
-      try {
-        await ref.read(groupRepositoryProvider).deleteGroupPicture(groupId);
-        ref.invalidate(groupDetailProvider(groupId));
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Group picture removed.')));
-        }
-      } on Exception catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(_extractMsg(e))));
-        }
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -724,7 +662,8 @@ class _OverviewTab extends ConsumerWidget {
         if (isAdmin) ...[
           const SizedBox(height: 8),
           OutlinedButton.icon(
-            onPressed: () => _showInviteMemberDialog(context, ref),
+            onPressed: () =>
+                _groupShowInviteMemberDialog(context, ref, groupId),
             icon: const Icon(Icons.person_add_outlined),
             label: const Text('Invite Member'),
             style: OutlinedButton.styleFrom(
@@ -738,7 +677,8 @@ class _OverviewTab extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
-            onPressed: () => _pickAndUploadPicture(context, ref),
+            onPressed: () =>
+                _groupPickAndUploadPicture(context, ref, groupId),
             icon: const Icon(Icons.photo_camera_outlined),
             label: const Text('Change Picture'),
             style: OutlinedButton.styleFrom(
@@ -753,7 +693,7 @@ class _OverviewTab extends ConsumerWidget {
           if (group.profilePicture != null) ...[
             const SizedBox(height: 8),
             OutlinedButton.icon(
-              onPressed: () => _deletePicture(context, ref),
+              onPressed: () => _groupDeletePicture(context, ref, groupId),
               icon: const Icon(Icons.hide_image_outlined,
                   color: AppThemeTokens.error),
               label: const Text('Remove Picture',
@@ -843,11 +783,6 @@ class _MembersTab extends ConsumerWidget {
   final GroupModel group;
   final bool isAdmin;
   final String? currentUserId;
-
-  String _extractMsg(Exception e) {
-    if (e is AppException) return e.message;
-    return e.toString().replaceFirst('Exception: ', '');
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1053,7 +988,7 @@ class _MembersTab extends ConsumerWidget {
     } on Exception catch (e) {
       if (ctx.mounted) {
         ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-            content: Text(_extractMsg(e)),
+            content: Text(_groupExtractMsg(e)),
             backgroundColor: Theme.of(ctx).colorScheme.error));
       }
     }
@@ -1089,7 +1024,7 @@ class _MembersTab extends ConsumerWidget {
           } on Exception catch (e) {
             if (ctx.mounted) {
               ScaffoldMessenger.of(ctx)
-                  .showSnackBar(SnackBar(content: Text(_extractMsg(e))));
+                  .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
             }
           }
         }
@@ -1103,7 +1038,7 @@ class _MembersTab extends ConsumerWidget {
         } on Exception catch (e) {
           if (ctx.mounted) {
             ScaffoldMessenger.of(ctx)
-                .showSnackBar(SnackBar(content: Text(_extractMsg(e))));
+                .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
           }
         }
         break;
@@ -1133,7 +1068,7 @@ class _MembersTab extends ConsumerWidget {
           } on Exception catch (e) {
             if (ctx.mounted) {
               ScaffoldMessenger.of(ctx)
-                  .showSnackBar(SnackBar(content: Text(_extractMsg(e))));
+                  .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
             }
           }
         }
