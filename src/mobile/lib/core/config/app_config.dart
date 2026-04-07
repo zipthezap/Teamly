@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AppConfig {
@@ -16,10 +18,23 @@ class AppConfig {
       defaultValue: 'http://localhost:3000/api',
     );
 
-    return const AppConfig(
+    final resolvedApiBaseUrl = _resolveApiBaseUrl(apiBaseUrl);
+
+    return AppConfig(
       environment: env,
-      apiBaseUrl: apiBaseUrl,
+      apiBaseUrl: resolvedApiBaseUrl,
     );
+  }
+
+  static String _resolveApiBaseUrl(String rawUrl) {
+    if (!Platform.isWindows) return rawUrl;
+
+    final uri = Uri.tryParse(rawUrl);
+    if (uri == null || uri.host.toLowerCase() != 'localhost') {
+      return rawUrl;
+    }
+
+    return uri.replace(host: '127.0.0.1').toString();
   }
 }
 
