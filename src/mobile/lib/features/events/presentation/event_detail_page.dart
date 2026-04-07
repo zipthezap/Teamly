@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -467,9 +468,8 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                                 children: [
                                   if (event.eventType != null)
                                     UiStatusBadge(
-                                      label: event.eventType!,
-                                      status: UiStatusBadge.fromString(
-                                          event.eventType!),
+                                      label: sportTypeLabel(event.eventType),
+                                      status: UiStatusType.info,
                                       dot: true,
                                     ),
                                   UiStatusBadge(
