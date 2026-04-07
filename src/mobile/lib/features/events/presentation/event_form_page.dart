@@ -48,7 +48,12 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   @override
   void initState() {
     super.initState();
-    _selectedGroupId = widget.groupId;
+    // When editing an event that was opened without an explicit groupId (e.g.
+    // from EventDetailPage), fall back to the existing event's group so that
+    // submit validation doesn't block with "Please select a group".
+    _selectedGroupId = widget.groupId.isNotEmpty
+        ? widget.groupId
+        : (widget.existingEvent?.group.id ?? '');
     final e = widget.existingEvent;
     _titleCtrl = TextEditingController(text: e?.title ?? '');
     _descCtrl = TextEditingController(text: e?.description ?? '');
@@ -111,7 +116,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   }
 
   Future<void> _submit() async {
-    if (_selectedGroupId.isEmpty) {
+    if (_selectedGroupId.isEmpty && !_isEditing) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a group for this event')),
       );
@@ -145,8 +150,10 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
       if (_isEditing) {
         await repo.updateEvent(widget.existingEvent!.id, data);
         ref.invalidate(eventDetailProvider(widget.existingEvent!.id));
+        ref.invalidate(groupEventsProvider(_selectedGroupId));
       } else {
         await repo.createEvent(data);
+        ref.invalidate(groupEventsProvider(_selectedGroupId));
       }
       ref.read(eventsNotifierProvider.notifier).load();
       if (mounted) {
@@ -195,8 +202,8 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            // Group picker (shown when navigating from Events tab without a pre-selected group)
-            if (widget.groupId.isEmpty) ...[
+            // Group picker (shown only when creating an event without a pre-selected group)
+            if (widget.groupId.isEmpty && !_isEditing) ...[
               _GroupPickerField(
                 selectedGroupId: _selectedGroupId,
                 onChanged: (id) => setState(() => _selectedGroupId = id),

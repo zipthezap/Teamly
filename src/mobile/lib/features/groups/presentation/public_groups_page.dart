@@ -39,6 +39,7 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
     try {
       await ref.read(groupRepositoryProvider).joinGroupByInvite(group.id);
       ref.read(groupsNotifierProvider.notifier).load();
+      ref.invalidate(publicGroupsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Joined "${group.name}"!')),

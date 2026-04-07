@@ -58,6 +58,8 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
   }
 
   Future<void> _toggleArchive(bool archived) async {
+    final groupId =
+        ref.read(eventDetailProvider(widget.eventId)).value?.group.id;
     try {
       final repo = ref.read(eventRepositoryProvider);
       if (archived) {
@@ -67,6 +69,7 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
       }
       ref.invalidate(eventDetailProvider(widget.eventId));
       ref.read(eventsNotifierProvider.notifier).load();
+      if (groupId != null) ref.invalidate(groupEventsProvider(groupId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -132,11 +135,14 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
   }
 
   Future<void> _join() async {
+    final groupId =
+        ref.read(eventDetailProvider(widget.eventId)).value?.group.id;
     setState(() => _actionLoading = true);
     try {
       await ref.read(eventRepositoryProvider).joinEvent(widget.eventId);
       ref.invalidate(eventDetailProvider(widget.eventId));
       ref.read(eventsNotifierProvider.notifier).load();
+      if (groupId != null) ref.invalidate(groupEventsProvider(groupId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Joined event!')),
@@ -157,11 +163,14 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
   }
 
   Future<void> _leave() async {
+    final groupId =
+        ref.read(eventDetailProvider(widget.eventId)).value?.group.id;
     setState(() => _actionLoading = true);
     try {
       await ref.read(eventRepositoryProvider).leaveEvent(widget.eventId);
       ref.invalidate(eventDetailProvider(widget.eventId));
       ref.read(eventsNotifierProvider.notifier).load();
+      if (groupId != null) ref.invalidate(groupEventsProvider(groupId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Left event.')),
@@ -182,6 +191,8 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
   }
 
   Future<void> _deleteEvent(String title) async {
+    final groupId =
+        ref.read(eventDetailProvider(widget.eventId)).value?.group.id;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -209,6 +220,7 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
     try {
       await ref.read(eventRepositoryProvider).deleteEvent(widget.eventId);
       ref.read(eventsNotifierProvider.notifier).load();
+      if (groupId != null) ref.invalidate(groupEventsProvider(groupId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Event deleted.')),
