@@ -62,6 +62,9 @@ class NotificationsNotifier
       eventTitle: n.eventTitle,
       groupId: n.groupId,
       groupName: n.groupName,
+      tournamentId: n.tournamentId,
+      tournamentName: n.tournamentName,
+      teamupId: n.teamupId,
       actorName: n.actorName,
       params: n.params,
     );

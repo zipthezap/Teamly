@@ -85,6 +85,10 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                         context.push('/events/${n.eventId}');
                       } else if (n.groupId != null) {
                         context.push('/groups/${n.groupId}');
+                      } else if (n.tournamentId != null) {
+                        context.push('/tournaments/${n.tournamentId}');
+                      } else if (n.teamupId != null) {
+                        context.push('/teamup');
                       }
                     },
                     onDismiss: () async {
