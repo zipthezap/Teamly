@@ -11,6 +11,7 @@ import '../../../core/models/user_model.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../features/auth/state/auth_notifier.dart';
+import '../../../shared/widgets/ui_primitives.dart';
 import '../../../shared/widgets/user_avatar.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
@@ -123,7 +124,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         },
       );
 
-      // Refresh profile in auth state
       final updatedUser = UserModel.fromJson(
         (response.data?['user'] ?? response.data!) as Map<String, dynamic>,
       );
@@ -166,20 +166,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             children: [
               TextFormField(
                 controller: currentPwCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Current password',
-                  border: OutlineInputBorder(),
-                ),
+                decoration: const InputDecoration(labelText: 'Current password'),
                 obscureText: true,
                 validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: newPwCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'New password',
-                  border: OutlineInputBorder(),
-                ),
+                decoration: const InputDecoration(labelText: 'New password'),
                 obscureText: true,
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'Required';
@@ -190,10 +184,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: confirmPwCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Confirm new password',
-                  border: OutlineInputBorder(),
-                ),
+                decoration:
+                    const InputDecoration(labelText: 'Confirm new password'),
                 obscureText: true,
                 validator: (v) =>
                     v != newPwCtrl.text ? 'Passwords do not match' : null,
@@ -250,281 +242,488 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     }
   }
 
+  // ─── Build ──────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authNotifierProvider);
     final user = authState.user;
-    final theme = Theme.of(context);
 
     if (user == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        actions: [
-          if (!_editing)
-            IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              tooltip: 'Edit profile',
-              onPressed: () => setState(() => _editing = true),
-            )
-          else ...[
-            TextButton(
-              onPressed: () => setState(() => _editing = false),
-              child: const Text('Cancel'),
+      extendBodyBehindAppBar: true,
+      appBar: _buildAppBar(),
+      body: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          _buildHero(user),
+          // Animated edit form
+          AnimatedSize(
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeOutCubic,
+            child: _editing ? _buildEditForm() : const SizedBox.shrink(),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SectionHeader('Security'),
+                const SizedBox(height: 8),
+                _SettingsCard(tiles: [
+                  _TileData(
+                    icon: Icons.lock_outline_rounded,
+                    color: const Color(0xFF2196F3),
+                    label: 'Change password',
+                    onTap: _changePassword,
+                  ),
+                  _TileData(
+                    icon: Icons.security_rounded,
+                    color: const Color(0xFF7C4DFF),
+                    label: 'Two-factor authentication',
+                    onTap: () => context.push('/profile/two-factor'),
+                  ),
+                  _TileData(
+                    icon: Icons.devices_rounded,
+                    color: const Color(0xFF00BCD4),
+                    label: 'Active sessions',
+                    onTap: () => context.push('/profile/sessions'),
+                  ),
+                ]),
+                const SizedBox(height: 24),
+                _SectionHeader('Preferences'),
+                const SizedBox(height: 8),
+                _SettingsCard(tiles: [
+                  _TileData(
+                    icon: Icons.notifications_outlined,
+                    color: const Color(0xFFFF9800),
+                    label: 'Notification preferences',
+                    onTap: () =>
+                        context.push('/profile/notification-preferences'),
+                  ),
+                  _TileData(
+                    icon: Icons.alarm_rounded,
+                    color: const Color(0xFF4CAF50),
+                    label: 'My reminders',
+                    onTap: () => context.push('/profile/reminders'),
+                  ),
+                ]),
+                const SizedBox(height: 24),
+                _SectionHeader('Account'),
+                const SizedBox(height: 8),
+                _SettingsCard(tiles: [
+                  _TileData(
+                    icon: Icons.photo_library_outlined,
+                    color: const Color(0xFF00BCD4),
+                    label: 'Profile picture history',
+                    onTap: () => context.push('/profile/pictures'),
+                  ),
+                  _TileData(
+                    icon: Icons.link_rounded,
+                    color: const Color(0xFF7C4DFF),
+                    label: 'Connected accounts',
+                    onTap: () => context.push('/profile/connected-accounts'),
+                  ),
+                ]),
+                const SizedBox(height: 32),
+                // Sign out
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      await ref
+                          .read(authNotifierProvider.notifier)
+                          .logout();
+                      if (context.mounted) context.go('/auth');
+                    },
+                    icon: const Icon(Icons.logout_rounded,
+                        color: AppThemeTokens.error, size: 18),
+                    label: const Text(
+                      'Sign out',
+                      style: TextStyle(
+                        color: AppThemeTokens.error,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppThemeTokens.error,
+                      side: BorderSide(
+                          color: AppThemeTokens.error.withValues(alpha: 0.45)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(AppThemeTokens.radiusMd),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 40),
+              ],
             ),
-            TextButton(
+          ),
+        ],
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      foregroundColor: AppThemeTokens.darkText,
+      title: _editing
+          ? const Text(
+              'Edit Profile',
+              style: TextStyle(
+                color: AppThemeTokens.darkText,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+              ),
+            )
+          : null,
+      actions: [
+        if (!_editing)
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: _AppBarIconButton(
+              icon: Icons.edit_outlined,
+              onTap: () => setState(() => _editing = true),
+            ),
+          )
+        else ...[
+          TextButton(
+            onPressed: () => setState(() => _editing = false),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppThemeTokens.darkTextSecondary),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: TextButton(
               onPressed: _saving ? null : _saveProfile,
               child: _saving
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppThemeTokens.primary400),
                     )
-                  : const Text('Save'),
+                  : const Text(
+                      'Save',
+                      style: TextStyle(
+                          color: AppThemeTokens.primary400,
+                          fontWeight: FontWeight.w700),
+                    ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildHero(UserModel user) {
+    final topPadding = MediaQuery.of(context).padding.top;
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: AppThemeTokens.heroGradient,
+      ),
+      child: Column(
+        children: [
+          SizedBox(height: topPadding + 64),
+          // Avatar with gradient border ring + camera button
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: const BoxDecoration(
+                  gradient: AppThemeTokens.primaryGradient,
+                  shape: BoxShape.circle,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF0D1B2E),
+                    shape: BoxShape.circle,
+                  ),
+                  child: UserAvatar(
+                    name: user.name,
+                    imageUrl: user.profilePicture,
+                    radius: 48,
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 2,
+                right: 2,
+                child: GestureDetector(
+                  onTap: _uploadingPicture
+                      ? null
+                      : _pickAndUploadProfilePicture,
+                  child: Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      gradient: _uploadingPicture
+                          ? null
+                          : AppThemeTokens.primaryGradient,
+                      color: _uploadingPicture
+                          ? AppThemeTokens.darkCardElevated
+                          : null,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                          color: const Color(0xFF0D1B2E), width: 2.5),
+                    ),
+                    child: _uploadingPicture
+                        ? const Padding(
+                            padding: EdgeInsets.all(8),
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.camera_alt_rounded,
+                            size: 16, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          // Name
+          Text(
+            user.name,
+            style: const TextStyle(
+              color: AppThemeTokens.darkText,
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.4,
+            ),
+          ),
+          const SizedBox(height: 4),
+          // Email
+          Text(
+            user.email,
+            style: const TextStyle(
+              color: AppThemeTokens.darkTextSecondary,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Verified / unverified badge
+          if (user.emailVerified)
+            UiStatusBadge(
+              label: 'Verified',
+              status: UiStatusType.success,
+              dot: true,
+            )
+          else
+            UiStatusBadge(
+              label: 'Email not verified',
+              status: UiStatusType.warning,
+              dot: true,
+            ),
+          // Location row
+          if ((user.city != null && user.city!.isNotEmpty) ||
+              (user.country != null && user.country!.isNotEmpty)) ...[
+            const SizedBox(height: 10),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.place_rounded,
+                    size: 14, color: AppThemeTokens.darkTextMuted),
+                const SizedBox(width: 4),
+                Text(
+                  [user.city, user.country]
+                      .whereType<String>()
+                      .where((s) => s.isNotEmpty)
+                      .join(', '),
+                  style: const TextStyle(
+                    color: AppThemeTokens.darkTextMuted,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
             ),
           ],
+          // Stat pills — only in view mode
+          if (!_editing) ...[
+            const SizedBox(height: 22),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                _StatPill(label: 'Upcoming', value: '0'),
+                SizedBox(width: 12),
+                _StatPill(label: 'Groups', value: '0'),
+              ],
+            ),
+          ],
+          const SizedBox(height: 32),
         ],
       ),
-      body: ListView(
+    );
+  }
+
+  Widget _buildEditForm() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+      child: UiCard(
         padding: const EdgeInsets.all(20),
-        children: [
-          // Avatar + name header
-          Center(
-            child: Column(
-              children: [
-                Stack(
-                  children: [
-                    UserAvatar(
-                      name: user.name,
-                      imageUrl: user.profilePicture,
-                      radius: 42,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: GestureDetector(
-                        onTap: _uploadingPicture
-                            ? null
-                            : _pickAndUploadProfilePicture,
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Theme.of(context).scaffoldBackgroundColor,
-                              width: 2,
-                            ),
-                          ),
-                          child: _uploadingPicture
-                              ? const Padding(
-                                  padding: EdgeInsets.all(6),
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Icon(Icons.camera_alt,
-                                  size: 14, color: Colors.white),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Personal info',
+                style: TextStyle(
+                  color: AppThemeTokens.darkText,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 18),
+              TextFormField(
+                controller: _nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Full name',
+                  prefixIcon: Icon(Icons.person_outline_rounded),
+                ),
+                textCapitalization: TextCapitalization.words,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Name is required' : null,
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _emailCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  prefixIcon: Icon(Icons.email_outlined),
+                ),
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Email is required';
+                  final r = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+                  if (!r.hasMatch(v.trim())) return 'Enter a valid email';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _cityCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'City (optional)',
+                  prefixIcon: Icon(Icons.location_city_outlined),
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _countryCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Country (optional)',
+                  prefixIcon: Icon(Icons.flag_outlined),
+                ),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => setState(() => _editing = false),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        side: const BorderSide(
+                            color: AppThemeTokens.darkBorder),
+                        foregroundColor: AppThemeTokens.darkTextSecondary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppThemeTokens.radiusMd),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (!_editing) ...[
-                  Text(user.name, style: theme.textTheme.titleLarge),
-                  Text(
-                    user.email,
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: AppThemeTokens.darkTextSecondary),
-                  ),
-                  if (!user.emailVerified)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Chip(
-                        label: const Text('Email not verified',
-                            style: TextStyle(fontSize: 12)),
-                        backgroundColor:
-                            const Color(0xFFF57C00).withOpacity(0.2),
-                        side: const BorderSide(color: Color(0xFFF57C00)),
-                        avatar: const Icon(Icons.warning_outlined,
-                            size: 14, color: Color(0xFFF57C00)),
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                ],
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          if (_editing) ...[
-            // Edit form
-            Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  TextFormField(
-                    controller: _nameCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Full name',
-                      prefixIcon: Icon(Icons.person_outline),
-                      border: OutlineInputBorder(),
-                    ),
-                    textCapitalization: TextCapitalization.words,
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? 'Name is required'
-                        : null,
-                  ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _emailCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                    autocorrect: false,
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty)
-                        return 'Email is required';
-                      final r = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-                      if (!r.hasMatch(v.trim())) return 'Enter a valid email';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _cityCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'City (optional)',
-                      prefixIcon: Icon(Icons.location_city_outlined),
-                      border: OutlineInputBorder(),
+                      child: const Text('Cancel'),
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _countryCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Country (optional)',
-                      prefixIcon: Icon(Icons.flag_outlined),
-                      border: OutlineInputBorder(),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: UiPrimaryButton(
+                      text: 'Save',
+                      loading: _saving,
+                      onPressed: _saving ? null : _saveProfile,
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
-            const Divider(),
-          ] else ...[
-            // View-only location
-            if (user.city != null || user.country != null)
-              ListTile(
-                leading: const Icon(Icons.place_outlined),
-                title: Text(
-                  [user.city, user.country].whereType<String>().join(', '),
-                ),
-                subtitle: const Text('Location'),
-              ),
-            const Divider(),
-          ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
-          // Security section
-          _SectionLabel('Security'),
-          Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.lock_outline),
-                  title: const Text('Change password'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: _changePassword,
-                ),
-                const Divider(height: 1, indent: 56),
-                ListTile(
-                  leading: const Icon(Icons.security_outlined),
-                  title: const Text('Two-factor authentication'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/profile/two-factor'),
-                ),
-                const Divider(height: 1, indent: 56),
-                ListTile(
-                  leading: const Icon(Icons.devices_outlined),
-                  title: const Text('Active sessions'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/profile/sessions'),
-                ),
-              ],
+// ─── Supporting widgets ──────────────────────────────────────────────────────
+
+class _AppBarIconButton extends StatelessWidget {
+  const _AppBarIconButton({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: AppThemeTokens.darkCard.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+          border: Border.all(color: AppThemeTokens.darkBorder),
+        ),
+        child: Icon(icon, size: 18, color: AppThemeTokens.darkText),
+      ),
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  const _StatPill({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppThemeTokens.darkCard.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        border: Border.all(color: AppThemeTokens.darkBorder),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppThemeTokens.darkText,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.5,
             ),
           ),
-
-          // Preferences section
-          _SectionLabel('Preferences'),
-          Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.notifications_outlined),
-                  title: const Text('Notification preferences'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () =>
-                      context.push('/profile/notification-preferences'),
-                ),
-                const Divider(height: 1, indent: 56),
-                ListTile(
-                  leading: const Icon(Icons.alarm_outlined),
-                  title: const Text('My reminders'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/profile/reminders'),
-                ),
-              ],
-            ),
-          ),
-
-          // Account section
-          _SectionLabel('Account'),
-          Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.photo_library_outlined),
-                  title: const Text('Profile picture history'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/profile/pictures'),
-                ),
-                const Divider(height: 1, indent: 56),
-                ListTile(
-                  leading: const Icon(Icons.link_outlined),
-                  title: const Text('Connected accounts'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/profile/connected-accounts'),
-                ),
-              ],
-            ),
-          ),
-
-          // Sign out
-          Card(
-            margin: const EdgeInsets.only(bottom: 24),
-            child: ListTile(
-              leading: const Icon(Icons.logout, color: AppThemeTokens.error),
-              title:
-                  const Text('Sign out', style: TextStyle(color: AppThemeTokens.error)),
-              onTap: () async {
-                await ref.read(authNotifierProvider.notifier).logout();
-                if (context.mounted) context.go('/auth');
-              },
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppThemeTokens.darkTextSecondary,
+              fontSize: 12,
             ),
           ),
         ],
@@ -533,21 +732,101 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 }
 
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader(this.text);
   final String text;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 6),
+      padding: const EdgeInsets.only(left: 2, bottom: 2),
       child: Text(
         text.toUpperCase(),
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppThemeTokens.darkTextSecondary,
-              letterSpacing: 0.8,
-              fontWeight: FontWeight.w600,
-            ),
+        style: const TextStyle(
+          color: AppThemeTokens.darkTextMuted,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.1,
+        ),
+      ),
+    );
+  }
+}
+
+class _TileData {
+  const _TileData({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.onTap,
+  });
+  final IconData icon;
+  final Color color;
+  final String label;
+  final VoidCallback onTap;
+}
+
+class _SettingsCard extends StatelessWidget {
+  const _SettingsCard({required this.tiles});
+  final List<_TileData> tiles;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppThemeTokens.darkCard,
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        border: Border.all(color: AppThemeTokens.darkBorder),
+      ),
+      child: Column(
+        children: [
+          for (int i = 0; i < tiles.length; i++) ...[
+            _SettingsTile(data: tiles[i]),
+            if (i < tiles.length - 1)
+              Divider(
+                height: 1,
+                indent: 60,
+                endIndent: 0,
+                color: AppThemeTokens.darkBorder.withValues(alpha: 0.6),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsTile extends StatelessWidget {
+  const _SettingsTile({required this.data});
+  final _TileData data;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      onTap: data.onTap,
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+      leading: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: data.color.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+        ),
+        child: Icon(data.icon, size: 18, color: data.color),
+      ),
+      title: Text(
+        data.label,
+        style: const TextStyle(
+          color: AppThemeTokens.darkText,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      trailing: const Icon(
+        Icons.arrow_forward_ios_rounded,
+        size: 14,
+        color: AppThemeTokens.darkTextMuted,
       ),
     );
   }
