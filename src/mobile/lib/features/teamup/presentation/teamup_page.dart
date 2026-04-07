@@ -12,6 +12,26 @@ import '../../../shared/widgets/user_avatar.dart';
 import '../data/teamup_repository_impl.dart';
 import '../state/teamup_notifier.dart';
 
+Color _sportAccentColor(String sport) {
+  const colors = {
+    'football': Color(0xFF4CAF50),
+    'basketball': Color(0xFFFF9800),
+    'tennis': Color(0xFF9C27B0),
+    'volleyball': Color(0xFF00BCD4),
+    'running': Color(0xFFF44336),
+    'cycling': Color(0xFF2196F3),
+    'swimming': Color(0xFF0097A7),
+    'cricket': Color(0xFF795548),
+    'americanFootball': Color(0xFF607D8B),
+    'iceHockey': Color(0xFF03A9F4),
+    'baseball': Color(0xFFFF5722),
+    'rugby': Color(0xFF8BC34A),
+    'handball': Color(0xFFE91E63),
+    'fieldHockey': Color(0xFF009688),
+  };
+  return colors[sport] ?? AppThemeTokens.primary500;
+}
+
 class TeamUpPage extends ConsumerStatefulWidget {
   const TeamUpPage({super.key});
 
@@ -42,6 +62,12 @@ class _TeamUpPageState extends ConsumerState<TeamUpPage>
         title: const Text('TeamUp'),
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: AppThemeTokens.primary500,
+          indicatorWeight: 2,
+          labelColor: AppThemeTokens.primary400,
+          unselectedLabelColor: AppThemeTokens.darkTextSecondary,
+          labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
           tabs: const [
             Tab(text: 'Browse'),
             Tab(text: 'My Requests'),
@@ -79,46 +105,50 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
   @override
   Widget build(BuildContext context) {
     final requestsAsync = ref.watch(teamUpNotifierProvider);
-    final theme = Theme.of(context);
 
     return Column(
       children: [
         // Filters
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(
-            children: [
-              _FilterChip(
-                label: 'Sport',
-                value: _sportFilter,
-                options: kSportTypes
-                    .where((s) => s['value']!.isNotEmpty)
-                    .map((s) => MapEntry(s['value']!, s['label']!))
-                    .toList(),
-                onSelected: (v) {
-                  setState(() => _sportFilter = v);
-                  ref
-                      .read(teamUpNotifierProvider.notifier)
-                      .load(sportType: v, requestType: _typeFilter);
-                },
-              ),
-              const SizedBox(width: 8),
-              _FilterChip(
-                label: 'Type',
-                value: _typeFilter,
-                options: const [
-                  MapEntry('looking_for_play', 'Looking to play'),
-                  MapEntry('need_players', 'Need players'),
-                ],
-                onSelected: (v) {
-                  setState(() => _typeFilter = v);
-                  ref
-                      .read(teamUpNotifierProvider.notifier)
-                      .load(sportType: _sportFilter, requestType: v);
-                },
-              ),
-            ],
+        Container(
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: AppThemeTokens.darkBorder)),
+          ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              children: [
+                _FilterChip(
+                  label: 'Sport',
+                  value: _sportFilter,
+                  options: kSportTypes
+                      .where((s) => s['value']!.isNotEmpty)
+                      .map((s) => MapEntry(s['value']!, s['label']!))
+                      .toList(),
+                  onSelected: (v) {
+                    setState(() => _sportFilter = v);
+                    ref
+                        .read(teamUpNotifierProvider.notifier)
+                        .load(sportType: v, requestType: _typeFilter);
+                  },
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: 'Type',
+                  value: _typeFilter,
+                  options: const [
+                    MapEntry('looking_for_play', 'Looking to play'),
+                    MapEntry('need_players', 'Need players'),
+                  ],
+                  onSelected: (v) {
+                    setState(() => _typeFilter = v);
+                    ref
+                        .read(teamUpNotifierProvider.notifier)
+                        .load(sportType: _sportFilter, requestType: v);
+                  },
+                ),
+              ],
+            ),
           ),
         ),
 
@@ -134,22 +164,10 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
             ),
             data: (requests) {
               if (requests.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.handshake_outlined,
-                            size: 56, color: theme.colorScheme.outline),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'No TeamUp requests found.',
-                          style: const TextStyle(color: AppThemeTokens.darkTextSecondary),
-                        ),
-                      ],
-                    ),
-                  ),
+                return const UiEmptyState(
+                  icon: Icons.handshake_outlined,
+                  title: 'No requests found',
+                  message: 'Try adjusting your filters or be the first to post a TeamUp request.',
                 );
               }
 
@@ -157,13 +175,10 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
                 onRefresh: () => ref
                     .read(teamUpNotifierProvider.notifier)
                     .load(sportType: _sportFilter, requestType: _typeFilter),
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   itemCount: requests.length,
-                  separatorBuilder: (_, __) =>
-                      const Divider(height: 1, indent: 16),
-                  itemBuilder: (context, i) =>
-                      _RequestTile(request: requests[i]),
+                  itemBuilder: (context, i) => _RequestTile(request: requests[i]),
                 ),
               );
             },
@@ -194,15 +209,15 @@ class _MyRequestsTab extends ConsumerWidget {
         if (requests.isEmpty) {
           return const UiEmptyState(
             icon: Icons.inbox_outlined,
+            title: 'No requests yet',
             message: "You haven't made any TeamUp requests yet.",
           );
         }
         return RefreshIndicator(
           onRefresh: () async => ref.invalidate(myTeamUpRequestsProvider),
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             itemCount: requests.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, indent: 16),
             itemBuilder: (context, i) => _RequestTile(request: requests[i]),
           ),
         );
@@ -303,7 +318,7 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
             controller: _titleCtrl,
             decoration: const InputDecoration(
               labelText: 'Title *',
-              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.title_outlined),
             ),
             validator: (v) =>
                 (v == null || v.trim().isEmpty) ? 'Required' : null,
@@ -315,8 +330,9 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
             value: _requestType,
             decoration: const InputDecoration(
               labelText: 'Request type',
-              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.category_outlined),
             ),
+            dropdownColor: AppThemeTokens.darkCardElevated,
             items: const [
               DropdownMenuItem(
                   value: 'looking_for_play', child: Text('Looking to play')),
@@ -332,8 +348,9 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
             value: _sportType,
             decoration: const InputDecoration(
               labelText: 'Sport type',
-              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.sports_outlined),
             ),
+            dropdownColor: AppThemeTokens.darkCardElevated,
             items: kSportTypes
                 .map(
                   (s) => DropdownMenuItem(
@@ -351,7 +368,8 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
             controller: _descCtrl,
             decoration: const InputDecoration(
               labelText: 'Details (optional)',
-              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.notes_outlined),
+              alignLabelWithHint: true,
             ),
             maxLines: 3,
           ),
@@ -362,7 +380,7 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
             controller: _playersCtrl,
             decoration: const InputDecoration(
               labelText: 'Players needed (optional)',
-              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.group_outlined),
             ),
             keyboardType: TextInputType.number,
           ),
@@ -373,7 +391,7 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
             controller: _cityCtrl,
             decoration: const InputDecoration(
               labelText: 'City (optional)',
-              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.location_city_outlined),
             ),
           ),
           const SizedBox(height: 16),
@@ -383,26 +401,16 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
             controller: _locationCtrl,
             decoration: const InputDecoration(
               labelText: 'Specific location (optional)',
-              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.place_outlined),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 28),
 
-          SizedBox(
-            height: 48,
-            child: FilledButton(
-              onPressed: _submitting ? null : _submit,
-              child: _submitting
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('Post Request'),
-            ),
+          UiPrimaryButton(
+            text: 'Post Request',
+            icon: Icons.send_outlined,
+            onPressed: _submitting ? null : _submit,
+            loading: _submitting,
           ),
         ],
       ),
@@ -421,45 +429,130 @@ class _RequestTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final df = DateFormat('MMM d');
-    return ListTile(
-      leading: UserAvatar(name: request.creatorName, imageUrl: request.creatorPicture),
-      title: Text(request.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        [
-          if (request.sportType.isNotEmpty) sportTypeLabel(request.sportType),
-          request.requestType == 'need_players' ? 'Need players' : 'Looking to play',
-          if (request.city != null) request.city!,
-          if (request.availableFrom != null)
-            df.format(request.availableFrom!.toLocal()),
-          if (request.responseCount > 0)
-            '${request.responseCount} response${request.responseCount == 1 ? '' : 's'}',
-        ].join(' · '),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: 12),
-      ),
-      isThreeLine: true,
-      trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: request.status == 'open'
-              ? theme.colorScheme.primaryContainer
-              : theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          request.status == 'open' ? 'Open' : 'Closed',
-          style: TextStyle(
-            fontSize: 11,
-            color: request.status == 'open'
-                ? theme.colorScheme.onPrimaryContainer
-                : AppThemeTokens.darkTextSecondary,
-          ),
-        ),
-      ),
+    final accent = _sportAccentColor(request.sportType);
+
+    return GestureDetector(
       onTap: () => _showDetail(context, request),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: AppThemeTokens.darkCard,
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+          border: Border.all(color: AppThemeTokens.darkBorder),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Left accent bar
+            Container(
+              width: 4,
+              decoration: BoxDecoration(
+                color: accent,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(AppThemeTokens.radiusMd),
+                  bottomLeft: Radius.circular(AppThemeTokens.radiusMd),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top row: avatar + name + status badge
+                    Row(
+                      children: [
+                        UserAvatar(
+                          name: request.creatorName,
+                          imageUrl: request.creatorPicture,
+                          radius: 14,
+                          borderColor: accent.withValues(alpha: 0.4),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            request.creatorName,
+                            style: const TextStyle(
+                              color: AppThemeTokens.darkTextSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        UiStatusBadge(
+                          label: request.status == 'open' ? 'Open' : 'Closed',
+                          status: request.status == 'open'
+                              ? UiStatusType.success
+                              : UiStatusType.defaultStatus,
+                          dot: true,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Title
+                    Text(
+                      request.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppThemeTokens.darkText,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Meta row
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 4,
+                      children: [
+                        if (request.sportType.isNotEmpty)
+                          _MetaChip(
+                            icon: Icons.sports_outlined,
+                            label: sportTypeLabel(request.sportType),
+                            color: accent,
+                          ),
+                        _MetaChip(
+                          icon: request.requestType == 'need_players'
+                              ? Icons.group_add_outlined
+                              : Icons.person_search_outlined,
+                          label: request.requestType == 'need_players'
+                              ? 'Need players'
+                              : 'Looking to play',
+                          color: AppThemeTokens.primary400,
+                        ),
+                        if (request.city != null)
+                          _MetaChip(
+                            icon: Icons.place_outlined,
+                            label: request.city!,
+                            color: AppThemeTokens.darkTextSecondary,
+                          ),
+                        if (request.availableFrom != null)
+                          _MetaChip(
+                            icon: Icons.calendar_today_outlined,
+                            label: df.format(request.availableFrom!.toLocal()),
+                            color: AppThemeTokens.darkTextSecondary,
+                          ),
+                        if (request.responseCount > 0)
+                          _MetaChip(
+                            icon: Icons.chat_bubble_outline,
+                            label:
+                                '${request.responseCount} response${request.responseCount == 1 ? '' : 's'}',
+                            color: AppThemeTokens.info,
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -468,6 +561,32 @@ class _RequestTile extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       builder: (_) => _RequestDetailSheet(request: request),
+    );
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  const _MetaChip({required this.icon, required this.label, required this.color});
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: color.withValues(alpha: 0.8)),
+        const SizedBox(width: 3),
+        Text(
+          label,
+          style: TextStyle(
+            color: color.withValues(alpha: 0.8),
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -534,6 +653,7 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
     final responsesAsync =
         ref.watch(teamUpRequestResponsesProvider(r.id));
     final theme = Theme.of(context);
+    final accent = _sportAccentColor(r.sportType);
 
     return DraggableScrollableSheet(
       expand: false,
@@ -548,11 +668,11 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
             children: [
               // Handle
               Container(
-                margin: const EdgeInsets.symmetric(vertical: 8),
+                margin: const EdgeInsets.symmetric(vertical: 10),
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppThemeTokens.darkTextSecondary.withOpacity(0.5),
+                  color: AppThemeTokens.darkBorder,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -562,62 +682,143 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                   controller: scrollCtrl,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   children: [
-                    Text(r.title, style: theme.textTheme.titleLarge),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        Chip(label: Text(sportTypeLabel(r.sportType))),
-                        Chip(
-                          label: Text(
-                            r.requestType == 'need_players'
-                                ? 'Need players'
-                                : 'Looking to play',
-                          ),
-                        ),
-                        Chip(
-                          label: Text(r.status == 'open' ? 'Open' : 'Closed'),
-                          backgroundColor: r.status == 'open'
-                              ? theme.colorScheme.primaryContainer
-                              : null,
-                        ),
-                      ],
-                    ),
-                    if (r.description != null) ...[
-                      const SizedBox(height: 12),
-                      Text(r.description!),
-                    ],
-                    if (r.playersNeeded != null) ...[
-                      const SizedBox(height: 8),
-                      Text('Players needed: ${r.playersNeeded}'),
-                    ],
-                    if (r.city != null) ...[
-                      const SizedBox(height: 8),
-                      Row(
+                    // Header card
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: AppThemeTokens.heroGradient,
+                        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+                        border: Border.all(color: AppThemeTokens.darkBorder),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.place_outlined, size: 16),
-                          const SizedBox(width: 4),
-                          Text(r.city!),
+                          Row(
+                            children: [
+                              Container(
+                                width: 4,
+                                height: 40,
+                                margin: const EdgeInsets.only(right: 12),
+                                decoration: BoxDecoration(
+                                  color: accent,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  r.title,
+                                  style: theme.textTheme.titleLarge,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              if (r.sportType.isNotEmpty)
+                                UiStatusBadge(
+                                  label: sportTypeLabel(r.sportType),
+                                  customColor: accent,
+                                ),
+                              UiStatusBadge(
+                                label: r.requestType == 'need_players'
+                                    ? 'Need players'
+                                    : 'Looking to play',
+                                status: UiStatusType.info,
+                              ),
+                              UiStatusBadge(
+                                label: r.status == 'open' ? 'Open' : 'Closed',
+                                status: r.status == 'open'
+                                    ? UiStatusType.success
+                                    : UiStatusType.defaultStatus,
+                                dot: true,
+                              ),
+                            ],
+                          ),
                         ],
                       ),
-                    ],
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        UserAvatar(
-                            name: r.creatorName,
-                            imageUrl: r.creatorPicture,
-                            radius: 14),
-                        const SizedBox(width: 8),
-                        Text(r.creatorName,
-                            style: theme.textTheme.bodySmall),
-                      ],
                     ),
-                    const Divider(height: 24),
+                    const SizedBox(height: 16),
 
-                    // Responses
-                    Text('Responses', style: theme.textTheme.titleMedium),
-                    const SizedBox(height: 8),
+                    // Description
+                    if (r.description != null) ...[
+                      UiCard(
+                        padding: const EdgeInsets.all(14),
+                        child: Text(
+                          r.description!,
+                          style: const TextStyle(
+                            color: AppThemeTokens.darkTextSecondary,
+                            fontSize: 14,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
+                    // Meta rows
+                    UiCard(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      child: Column(
+                        children: [
+                          if (r.playersNeeded != null)
+                            UiInfoRow(
+                              icon: Icons.group_outlined,
+                              label: 'Players needed',
+                              value: '${r.playersNeeded}',
+                              iconColor: AppThemeTokens.primary400,
+                            ),
+                          if (r.city != null)
+                            UiInfoRow(
+                              icon: Icons.place_outlined,
+                              label: r.city!,
+                              iconColor: AppThemeTokens.warning,
+                            ),
+                          if (r.availableFrom != null)
+                            UiInfoRow(
+                              icon: Icons.calendar_today_outlined,
+                              label: 'Available from',
+                              value: DateFormat.yMMMd().format(r.availableFrom!.toLocal()),
+                              iconColor: AppThemeTokens.info,
+                            ),
+                          Row(
+                            children: [
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: AppThemeTokens.primary500.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+                                ),
+                                child: const Icon(Icons.person_outline,
+                                    size: 14, color: AppThemeTokens.primary400),
+                              ),
+                              const SizedBox(width: 10),
+                              UserAvatar(
+                                name: r.creatorName,
+                                imageUrl: r.creatorPicture,
+                                radius: 12,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                r.creatorName,
+                                style: const TextStyle(
+                                  color: AppThemeTokens.darkTextSecondary,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Responses section
+                    const UiSectionTitle('Responses'),
+                    const SizedBox(height: 10),
                     responsesAsync.when(
                       loading: () => const Center(
                           child: CircularProgressIndicator(strokeWidth: 2)),
@@ -627,42 +828,91 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                       ),
                       data: (responses) {
                         if (responses.isEmpty) {
-                          return const Text('No responses yet.',
-                              style: const TextStyle(color: AppThemeTokens.darkTextSecondary));
+                          return Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppThemeTokens.darkCardElevated,
+                              borderRadius:
+                                  BorderRadius.circular(AppThemeTokens.radiusMd),
+                              border: Border.all(color: AppThemeTokens.darkBorder),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.chat_bubble_outline,
+                                    size: 16,
+                                    color: AppThemeTokens.darkTextMuted),
+                                SizedBox(width: 8),
+                                Text(
+                                  'No responses yet.',
+                                  style: TextStyle(
+                                      color: AppThemeTokens.darkTextSecondary,
+                                      fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          );
                         }
                         return Column(
                           children: responses
                               .map(
-                                (resp) => ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  leading: UserAvatar(
-                                    name: resp.responderName,
-                                    imageUrl: resp.responderPicture,
+                                (resp) => Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: AppThemeTokens.darkCardElevated,
+                                    borderRadius: BorderRadius.circular(
+                                        AppThemeTokens.radiusMd),
+                                    border: Border.all(
+                                        color: AppThemeTokens.darkBorder),
                                   ),
-                                  title: Text(resp.responderName),
-                                  subtitle: Text(resp.message),
-                                  trailing: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: resp.status == 'accepted'
-                                          ? AppThemeTokens.success.withValues(alpha: 0.15)
-                                          : resp.status == 'rejected'
-                                              ? AppThemeTokens.error.withValues(alpha: 0.15)
-                                              : AppThemeTokens.darkCardHover,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      resp.status,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: resp.status == 'accepted'
-                                            ? AppThemeTokens.success
-                                            : resp.status == 'rejected'
-                                                ? AppThemeTokens.error
-                                                : AppThemeTokens.darkTextSecondary,
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      UserAvatar(
+                                        name: resp.responderName,
+                                        imageUrl: resp.responderPicture,
+                                        radius: 16,
                                       ),
-                                    ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    resp.responderName,
+                                                    style: const TextStyle(
+                                                      fontWeight: FontWeight.w600,
+                                                      fontSize: 13,
+                                                      color: AppThemeTokens.darkText,
+                                                    ),
+                                                  ),
+                                                ),
+                                                UiStatusBadge(
+                                                  label: resp.status,
+                                                  status: UiStatusBadge.fromString(
+                                                      resp.status),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              resp.message,
+                                              style: const TextStyle(
+                                                color: AppThemeTokens.darkTextSecondary,
+                                                fontSize: 13,
+                                                height: 1.4,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               )
@@ -674,34 +924,41 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
 
                     // Respond form (only if open and not own request)
                     if (r.status == 'open') ...[
-                      Text('Send a response',
-                          style: theme.textTheme.titleSmall),
-                      const SizedBox(height: 8),
+                      const UiSectionTitle('Send a response'),
+                      const SizedBox(height: 10),
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Expanded(
                             child: TextField(
                               controller: _msgCtrl,
                               decoration: const InputDecoration(
                                 hintText: 'Your message…',
-                                border: OutlineInputBorder(),
                               ),
                               maxLines: 2,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          IconButton.filled(
-                            onPressed: _sending ? null : _respond,
-                            icon: _sending
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.send),
+                          const SizedBox(width: 10),
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: AppThemeTokens.primaryGradient,
+                              borderRadius:
+                                  BorderRadius.circular(AppThemeTokens.radiusMd),
+                            ),
+                            child: IconButton(
+                              onPressed: _sending ? null : _respond,
+                              icon: _sending
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.send_rounded,
+                                      color: Colors.white),
+                            ),
                           ),
                         ],
                       ),
@@ -741,10 +998,8 @@ class _FilterChip extends StatelessWidget {
     final displayLabel =
         selected ? options.firstWhere((e) => e.key == value).value : label;
 
-    return FilterChip(
-      label: Text(displayLabel),
-      selected: selected,
-      onSelected: (_) async {
+    return GestureDetector(
+      onTap: () async {
         final result = await showDialog<String>(
           context: context,
           builder: (ctx) => SimpleDialog(
@@ -765,6 +1020,49 @@ class _FilterChip extends StatelessWidget {
         );
         if (result != null) onSelected(result);
       },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppThemeTokens.primary500.withValues(alpha: 0.15)
+              : AppThemeTokens.darkCardElevated,
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+          border: Border.all(
+            color: selected ? AppThemeTokens.primary500 : AppThemeTokens.darkBorder,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (selected)
+              Padding(
+                padding: const EdgeInsets.only(right: 5),
+                child: Icon(Icons.check_circle_rounded,
+                    size: 13, color: AppThemeTokens.primary400),
+              ),
+            Text(
+              displayLabel,
+              style: TextStyle(
+                color: selected
+                    ? AppThemeTokens.primary400
+                    : AppThemeTokens.darkTextSecondary,
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 16,
+              color: selected
+                  ? AppThemeTokens.primary400
+                  : AppThemeTokens.darkTextMuted,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
