@@ -12,6 +12,11 @@ final tokenStoreProvider = Provider<AuthTokenStore>(
 );
 
 String _extractErrorMessage(DioException error) {
+  final innerError = error.error;
+  if (innerError is AppException && innerError.message.isNotEmpty) {
+    return innerError.message;
+  }
+
   final data = error.response?.data;
 
   if (data is Map<String, dynamic>) {
@@ -20,6 +25,18 @@ String _extractErrorMessage(DioException error) {
       return message;
     }
     return 'Unknown API error';
+  }
+
+  if (error.type == DioExceptionType.connectionTimeout) {
+    return 'Connection timed out while reaching the API';
+  }
+
+  if (error.type == DioExceptionType.receiveTimeout) {
+    return 'API response timed out';
+  }
+
+  if (error.type == DioExceptionType.connectionError) {
+    return 'Could not connect to the API server';
   }
 
   return error.message ?? 'Network error';

@@ -4,17 +4,19 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/comment_model.dart';
-import '../../../core/models/event_model.dart';
 import '../../../features/auth/state/auth_notifier.dart';
 import '../../../features/comments/data/comment_repository_impl.dart';
 import '../../../shared/widgets/error_display.dart';
+import '../../../shared/widgets/ui_primitives.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../data/event_repository_impl.dart';
 import '../state/events_notifier.dart';
 import 'attendance_page.dart';
+import 'event_form_page.dart';
 import 'event_invite_analytics_page.dart';
 import 'participants_page.dart';
 
@@ -38,7 +40,6 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
 
   bool _actionLoading = false;
   bool _markingLate = false;
-  bool _archiving = false;
   // Tracks the late status locally for the current session.
   // The backend doesn't expose "is late" directly on EventModel participants,
   // so we default to false and toggle in-session. The correct server state
@@ -56,7 +57,6 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
   }
 
   Future<void> _toggleArchive(bool archived) async {
-    setState(() => _archiving = true);
     try {
       final repo = ref.read(eventRepositoryProvider);
       if (archived) {
@@ -78,8 +78,6 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
             content: Text(_errorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error));
       }
-    } finally {
-      if (mounted) setState(() => _archiving = false);
     }
   }
 
@@ -182,6 +180,52 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
     }
   }
 
+  Future<void> _deleteEvent(String title) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete event'),
+        content: Text('Delete "$title"? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) {
+      return;
+    }
+
+    try {
+      await ref.read(eventRepositoryProvider).deleteEvent(widget.eventId);
+      ref.read(eventsNotifierProvider.notifier).load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Event deleted.')),
+        );
+        context.go('/events');
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_errorMessage(e)),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final eventAsync = ref.watch(eventDetailProvider(widget.eventId));
@@ -207,6 +251,14 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
               return PopupMenuButton<String>(
                 onSelected: (action) {
                   switch (action) {
+                    case 'edit':
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => EventFormPage(existingEvent: event),
+                      ));
+                      break;
+                    case 'delete':
+                      _deleteEvent(event.title);
+                      break;
                     case 'archive':
                       _toggleArchive(event.archived ?? false);
                       break;
@@ -258,6 +310,14 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                   ),
                   if (isCreator) ...[
                     const PopupMenuItem(
+                      value: 'edit',
+                      child: ListTile(
+                        leading: Icon(Icons.edit_outlined),
+                        title: Text('Edit Event'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    const PopupMenuItem(
                       value: 'analytics',
                       child: ListTile(
                         leading: Icon(Icons.analytics_outlined),
@@ -275,6 +335,20 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                         ),
                         title: Text(
                             event.archived ?? false ? 'Unarchive' : 'Archive'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.delete_outline,
+                          color: AppThemeTokens.error,
+                        ),
+                        title: Text(
+                          'Delete Event',
+                          style: TextStyle(color: AppThemeTokens.error),
+                        ),
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),
@@ -305,59 +379,220 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
           onRetry: () => ref.invalidate(eventDetailProvider(widget.eventId)),
         ),
         data: (event) {
-          final isParticipant = currentUserId != null && event.isParticipant(currentUserId);
+          final isParticipant =
+              currentUserId != null && event.isParticipant(currentUserId);
           final confirmedCount = event.participantCount;
+          final localStart = event.startTime.toLocal();
+          final localEnd = event.endTime.toLocal();
+          final isCreator = event.creator.id == currentUserId;
+          final isPast = localEnd.isBefore(DateTime.now());
+          final spotsRemaining = event.maxPlayers != null
+              ? event.maxPlayers! - confirmedCount
+              : null;
 
           return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(eventDetailProvider(widget.eventId)),
+            onRefresh: () async =>
+                ref.invalidate(eventDetailProvider(widget.eventId)),
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                // Title & type
-                Text(event.title, style: theme.textTheme.headlineSmall),
-                const SizedBox(height: 8),
-                if (event.eventType != null)
-                  Chip(label: Text(event.eventType!)),
+                UiCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(event.title, style: theme.textTheme.headlineSmall),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          if (event.eventType != null)
+                            _EventMetaChip(label: event.eventType!),
+                          _EventMetaChip(
+                            label: event.isPublic ? 'Public' : 'Private',
+                            icon: event.isPublic
+                                ? Icons.public_outlined
+                                : Icons.lock_outline,
+                          ),
+                          _EventMetaChip(
+                            label:
+                                event.archived == true ? 'Archived' : 'Active',
+                            icon: event.archived == true
+                                ? Icons.archive_outlined
+                                : Icons.check_circle_outline,
+                          ),
+                          _EventMetaChip(
+                            label: event.maxPlayers != null
+                                ? '$confirmedCount/${event.maxPlayers} players'
+                                : '$confirmedCount participant${confirmedCount == 1 ? '' : 's'}',
+                            icon: Icons.people_outline,
+                          ),
+                          if (isPast)
+                            const _EventMetaChip(
+                              label: 'Past event',
+                              icon: Icons.history,
+                            ),
+                          if (!event.isFull && spotsRemaining != null)
+                            _EventMetaChip(
+                              label: '$spotsRemaining spots left',
+                              icon: Icons.event_seat_outlined,
+                            ),
+                          if (event.isFull)
+                            const _EventMetaChip(
+                              label: 'Full',
+                              icon: Icons.group_off_outlined,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      _DetailRow(
+                        icon: Icons.calendar_today_outlined,
+                        label: DateFormat('EEEE, MMMM d, y').format(localStart),
+                      ),
+                      _DetailRow(
+                        icon: Icons.access_time,
+                        label:
+                            '${DateFormat.jm().format(localStart)} – ${DateFormat.jm().format(localEnd)}',
+                      ),
+                      if (event.locationName != null || event.location != null)
+                        _DetailRow(
+                          icon: Icons.place_outlined,
+                          label: event.locationName ?? event.location!,
+                        ),
+                      if (event.city != null || event.country != null)
+                        _DetailRow(
+                          icon: Icons.location_city_outlined,
+                          label: [event.city, event.country]
+                              .whereType<String>()
+                              .join(', '),
+                        ),
+                      InkWell(
+                        onTap: () => context.push('/groups/${event.group.id}'),
+                        borderRadius:
+                            BorderRadius.circular(AppThemeTokens.radiusMd),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.group_outlined,
+                                  size: 18,
+                                  color: AppThemeTokens.darkTextSecondary),
+                              const SizedBox(width: 10),
+                              Expanded(child: Text(event.group.name)),
+                              const Icon(Icons.chevron_right,
+                                  color: AppThemeTokens.darkTextSecondary),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
                 const SizedBox(height: 16),
 
-                // Date & time
-                _DetailRow(
-                  icon: Icons.calendar_today_outlined,
-                  label: DateFormat('EEEE, MMMM d, y').format(event.startTime.toLocal()),
-                ),
-                _DetailRow(
-                  icon: Icons.access_time,
-                  label:
-                      '${DateFormat.jm().format(event.startTime.toLocal())} – ${DateFormat.jm().format(event.endTime.toLocal())}',
-                ),
-
-                // Location
-                if (event.locationName != null || event.location != null)
-                  _DetailRow(
-                    icon: Icons.place_outlined,
-                    label: event.locationName ?? event.location!,
+                UiCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Host', style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          UserAvatar(
+                            name: event.creator.name,
+                            imageUrl: event.creator.profilePicture,
+                            radius: 22,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(event.creator.name,
+                                    style: theme.textTheme.titleSmall),
+                                Text(
+                                  event.creator.email,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: AppThemeTokens.darkTextSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                if (event.city != null)
-                  _DetailRow(icon: Icons.location_city_outlined, label: event.city!),
-
-                // Group
-                _DetailRow(icon: Icons.group_outlined, label: event.group.name),
-
-                // Participants count
-                _DetailRow(
-                  icon: Icons.people_outline,
-                  label: event.maxPlayers != null
-                      ? '$confirmedCount / ${event.maxPlayers} players'
-                      : '$confirmedCount participant${confirmedCount == 1 ? '' : 's'}',
                 ),
 
-                if (event.description != null && event.description!.isNotEmpty) ...[
+                if (event.description != null &&
+                    event.description!.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  Text('About', style: theme.textTheme.titleMedium),
-                  const SizedBox(height: 6),
-                  Text(event.description!),
+                  UiCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('About', style: theme.textTheme.titleMedium),
+                        const SizedBox(height: 8),
+                        Text(event.description!),
+                      ],
+                    ),
+                  ),
                 ],
+
+                const SizedBox(height: 20),
+
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (isCreator)
+                      FilledButton.icon(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => EventFormPage(existingEvent: event),
+                          ),
+                        ),
+                        icon: const Icon(Icons.edit_outlined),
+                        label: const Text('Edit'),
+                      ),
+                    OutlinedButton.icon(
+                      onPressed: () =>
+                          Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => ParticipantsPage(
+                          eventId: widget.eventId,
+                          eventTitle: event.title,
+                        ),
+                      )),
+                      icon: const Icon(Icons.people_outline),
+                      label: const Text('Participants'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () =>
+                          Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => AttendancePage(
+                          eventId: widget.eventId,
+                          eventTitle: event.title,
+                        ),
+                      )),
+                      icon: const Icon(Icons.how_to_reg_outlined),
+                      label: const Text('Attendance'),
+                    ),
+                    if (event.creator.id == currentUserId)
+                      OutlinedButton.icon(
+                        onPressed: () =>
+                            Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => EventInviteAnalyticsPage(
+                            eventId: widget.eventId,
+                            eventTitle: event.title,
+                          ),
+                        )),
+                        icon: const Icon(Icons.analytics_outlined),
+                        label: const Text('Analytics'),
+                      ),
+                  ],
+                ),
 
                 const SizedBox(height: 20),
 
@@ -377,7 +612,8 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                           : FilledButton.icon(
                               onPressed: event.isFull ? null : _join,
                               icon: const Icon(Icons.add),
-                              label: Text(event.isFull ? 'Event Full' : 'Join Event'),
+                              label: Text(
+                                  event.isFull ? 'Event Full' : 'Join Event'),
                             ),
 
                 const SizedBox(height: 24),
@@ -466,29 +702,29 @@ class _ActivityFeedSection extends ConsumerWidget {
             Text('Activity', style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             ...entries.take(10).map(
-              (entry) => ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: entry.userPicture != null || entry.userName != null
-                    ? UserAvatar(
-                        name: entry.userName ?? '?',
-                        imageUrl: entry.userPicture,
-                        radius: 16,
-                      )
-                    : CircleAvatar(
-                        radius: 16,
-                        backgroundColor:
-                            theme.colorScheme.surfaceContainerHighest,
-                        child: const Icon(Icons.info_outline, size: 14),
-                      ),
-                title: Text(entry.summary,
-                    style: theme.textTheme.bodySmall),
-                trailing: Text(
-                  _formatTime(entry.createdAt),
-                  style: theme.textTheme.labelSmall
-                      ?.copyWith(color: AppThemeTokens.darkTextSecondary),
+                  (entry) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: entry.userPicture != null || entry.userName != null
+                        ? UserAvatar(
+                            name: entry.userName ?? '?',
+                            imageUrl: entry.userPicture,
+                            radius: 16,
+                          )
+                        : CircleAvatar(
+                            radius: 16,
+                            backgroundColor:
+                                theme.colorScheme.surfaceContainerHighest,
+                            child: const Icon(Icons.info_outline, size: 14),
+                          ),
+                    title:
+                        Text(entry.summary, style: theme.textTheme.bodySmall),
+                    trailing: Text(
+                      _formatTime(entry.createdAt),
+                      style: theme.textTheme.labelSmall
+                          ?.copyWith(color: AppThemeTokens.darkTextSecondary),
+                    ),
+                  ),
                 ),
-              ),
-            ),
           ],
         );
       },
@@ -510,8 +746,7 @@ class _ActivityFeedSection extends ConsumerWidget {
 // ---------------------------------------------------------------------------
 
 class _CommentsSection extends ConsumerStatefulWidget {
-  const _CommentsSection(
-      {required this.eventId, required this.currentUserId});
+  const _CommentsSection({required this.eventId, required this.currentUserId});
   final String eventId;
   final String currentUserId;
 
@@ -572,9 +807,7 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
     final text = _editCtrl.text.trim();
     if (text.isEmpty) return;
     try {
-      await ref
-          .read(commentRepositoryProvider)
-          .updateComment(commentId, text);
+      await ref.read(commentRepositoryProvider).updateComment(commentId, text);
       setState(() => _editingCommentId = null);
       ref.invalidate(_eventCommentsProvider(widget.eventId));
     } on Exception catch (e) {
@@ -589,8 +822,7 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
 
   @override
   Widget build(BuildContext context) {
-    final commentsAsync =
-        ref.watch(_eventCommentsProvider(widget.eventId));
+    final commentsAsync = ref.watch(_eventCommentsProvider(widget.eventId));
     final theme = Theme.of(context);
 
     return Column(
@@ -610,8 +842,7 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                     Chip(
                       label: Text('${comments.length}'),
                       padding: EdgeInsets.zero,
-                      labelPadding:
-                          const EdgeInsets.symmetric(horizontal: 6),
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 6),
                       visualDensity: VisualDensity.compact,
                     ),
                 ],
@@ -652,8 +883,9 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                                   const SizedBox(width: 6),
                                   Text(
                                     _formatTime(c.createdAt),
-                                    style: theme.textTheme.labelSmall
-                                        ?.copyWith(color: AppThemeTokens.darkTextSecondary),
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                        color:
+                                            AppThemeTokens.darkTextSecondary),
                                   ),
                                 ],
                               ),
@@ -718,8 +950,8 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                 controller: _textCtrl,
                 decoration: InputDecoration(
                   hintText: 'Add a comment…',
-                  border:
-                      OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24)),
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 ),
@@ -770,7 +1002,44 @@ class _DetailRow extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: AppThemeTokens.darkTextSecondary),
           const SizedBox(width: 8),
-          Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyMedium)),
+          Expanded(
+              child:
+                  Text(label, style: Theme.of(context).textTheme.bodyMedium)),
+        ],
+      ),
+    );
+  }
+}
+
+class _EventMetaChip extends StatelessWidget {
+  const _EventMetaChip({required this.label, this.icon});
+
+  final String label;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppThemeTokens.darkCardHover,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppThemeTokens.darkBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: AppThemeTokens.darkTextSecondary),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppThemeTokens.darkTextSecondary,
+            ),
+          ),
         ],
       ),
     );
