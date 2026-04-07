@@ -286,7 +286,7 @@ class _GroupFormPageState extends ConsumerState<GroupFormPage> {
             const SizedBox(height: 24),
 
             UiPrimaryButton(
-              label: _isEditing ? 'Update Group' : 'Create Group',
+              text: _isEditing ? 'Update Group' : 'Create Group',
               onPressed: _saving ? null : _submit,
               loading: _saving,
             ),

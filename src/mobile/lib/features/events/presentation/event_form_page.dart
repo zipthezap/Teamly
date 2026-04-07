@@ -319,18 +319,17 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
             const SizedBox(height: 16),
 
             // Public toggle
-            SwitchListTile(
-              title: const Text('Public event'),
-              subtitle: const Text('Anyone can see and join this event'),
+            _EventSwitchRow(
+              title: 'Public event',
+              subtitle: 'Anyone can see and join this event',
               value: _isPublic,
               onChanged: (v) => setState(() => _isPublic = v),
-              contentPadding: EdgeInsets.zero,
             ),
 
             const SizedBox(height: 24),
 
             UiPrimaryButton(
-              label: _isEditing ? 'Update Event' : 'Create Event',
+              text: _isEditing ? 'Update Event' : 'Create Event',
               onPressed: _saving ? null : _submit,
               loading: _saving,
             ),
@@ -401,6 +400,65 @@ class _GroupPickerField extends ConsumerWidget {
           onChanged: (v) => onChanged(v ?? ''),
         );
       },
+    );
+  }
+}
+
+class _EventSwitchRow extends StatelessWidget {
+  const _EventSwitchRow({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppThemeTokens.darkCard,
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        border: Border.all(color: AppThemeTokens.darkBorder),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppThemeTokens.primary500.withValues(alpha: 0.15),
+              borderRadius:
+                  BorderRadius.circular(AppThemeTokens.radiusSm),
+            ),
+            child: const Icon(Icons.public_rounded,
+                color: AppThemeTokens.primary500, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: AppThemeTokens.darkText)),
+                Text(subtitle,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        color: AppThemeTokens.darkTextSecondary)),
+              ],
+            ),
+          ),
+          Switch(value: value, onChanged: onChanged),
+        ],
+      ),
     );
   }
 }
