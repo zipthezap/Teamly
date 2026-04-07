@@ -7,6 +7,7 @@ import 'package:flutter_app_badger/flutter_app_badger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/firebase_runtime.dart';
 import '../../auth/state/auth_notifier.dart';
 import '../../notifications/data/notification_repository_impl.dart';
 import '../data/push_device_api.dart';
@@ -20,13 +21,13 @@ class PushNotificationsController {
 
   StreamSubscription<String>? _tokenRefreshSub;
   StreamSubscription<RemoteMessage>? _foregroundSub;
-  ProviderSubscription<AuthState>? _authSub;
 
   bool _initialized = false;
 
   Future<void> initialize() async {
     if (_initialized) return;
     _initialized = true;
+    if (!_ref.read(firebaseEnabledProvider)) return;
 
     await FirebaseMessaging.instance.requestPermission(
       alert: true,
@@ -53,24 +54,12 @@ class PushNotificationsController {
       }
     }
 
-    _tokenRefreshSub = FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+    _tokenRefreshSub =
+        FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
       final oldToken = _ref.read(_lastPushTokenProvider);
       await _registerOrRefreshToken(newToken: newToken, oldToken: oldToken);
       _ref.read(_lastPushTokenProvider.notifier).state = newToken;
     });
-
-    _authSub = _ref.listenManual<AuthState>(
-      authNotifierProvider,
-      (previous, next) async {
-        if (next.isAuthenticated) {
-          await registerCurrentToken();
-          await syncBadgeCount();
-        } else if (previous?.isAuthenticated == true && !next.isAuthenticated) {
-          await disableCurrentToken();
-          await FlutterAppBadger.removeBadge();
-        }
-      },
-    );
 
     if (_ref.read(authNotifierProvider).isAuthenticated) {
       await registerCurrentToken();
@@ -81,10 +70,10 @@ class PushNotificationsController {
   void dispose() {
     _tokenRefreshSub?.cancel();
     _foregroundSub?.cancel();
-    _authSub?.cancel();
   }
 
   Future<void> registerCurrentToken() async {
+    if (!_ref.read(firebaseEnabledProvider)) return;
     final token = await FirebaseMessaging.instance.getToken();
     if (token == null || token.isEmpty) return;
     final oldToken = _ref.read(_lastPushTokenProvider);
@@ -93,6 +82,10 @@ class PushNotificationsController {
   }
 
   Future<void> disableCurrentToken() async {
+    if (!_ref.read(firebaseEnabledProvider)) {
+      _ref.read(_lastPushTokenProvider.notifier).state = null;
+      return;
+    }
     final token = _ref.read(_lastPushTokenProvider);
     if (token == null || token.isEmpty) return;
     try {
@@ -105,9 +98,11 @@ class PushNotificationsController {
   }
 
   Future<void> syncBadgeCount() async {
+    if (!_ref.read(firebaseEnabledProvider)) return;
     if (!_ref.read(authNotifierProvider).isAuthenticated) return;
     try {
-      final unread = await _ref.read(notificationRepositoryProvider).getUnreadCount();
+      final unread =
+          await _ref.read(notificationRepositoryProvider).getUnreadCount();
       if (unread <= 0) {
         await FlutterAppBadger.removeBadge();
       } else {
@@ -134,7 +129,8 @@ class PushNotificationsController {
   }) async {
     if (!_ref.read(authNotifierProvider).isAuthenticated) return;
     final api = _ref.read(pushDeviceApiProvider);
-    final locale = WidgetsBinding.instance.platformDispatcher.locale.toLanguageTag();
+    final locale =
+        WidgetsBinding.instance.platformDispatcher.locale.toLanguageTag();
     final timezone = DateTime.now().timeZoneName;
     final platform = _platformString();
     if (oldToken != null && oldToken.isNotEmpty && oldToken != newToken) {
@@ -188,7 +184,8 @@ class PushNotificationsController {
   }
 }
 
-final pushNotificationsControllerProvider = Provider<PushNotificationsController>((ref) {
+final pushNotificationsControllerProvider =
+    Provider<PushNotificationsController>((ref) {
   final controller = PushNotificationsController(ref);
   unawaited(controller.initialize());
   ref.onDispose(controller.dispose);

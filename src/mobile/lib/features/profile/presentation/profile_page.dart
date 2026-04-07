@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../features/auth/state/auth_notifier.dart';
 import '../../../shared/widgets/user_avatar.dart';
 
@@ -170,8 +171,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   border: OutlineInputBorder(),
                 ),
                 obscureText: true,
-                validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Required' : null,
+                validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -340,16 +340,20 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   Text(user.name, style: theme.textTheme.titleLarge),
                   Text(
                     user.email,
-                    style: theme.textTheme.bodySmall?.copyWith(color: AppThemeTokens.darkTextSecondary),
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: AppThemeTokens.darkTextSecondary),
                   ),
                   if (!user.emailVerified)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Chip(
-                        label: const Text('Email not verified', style: TextStyle(fontSize: 12)),
-                        backgroundColor: const Color(0xFFF57C00).withOpacity(0.2),
+                        label: const Text('Email not verified',
+                            style: TextStyle(fontSize: 12)),
+                        backgroundColor:
+                            const Color(0xFFF57C00).withOpacity(0.2),
                         side: const BorderSide(color: Color(0xFFF57C00)),
-                        avatar: const Icon(Icons.warning_outlined, size: 14, color: Color(0xFFF57C00)),
+                        avatar: const Icon(Icons.warning_outlined,
+                            size: 14, color: Color(0xFFF57C00)),
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
@@ -375,8 +379,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       border: OutlineInputBorder(),
                     ),
                     textCapitalization: TextCapitalization.words,
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Name is required' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Name is required'
+                        : null,
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
@@ -389,7 +394,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     keyboardType: TextInputType.emailAddress,
                     autocorrect: false,
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty) return 'Email is required';
+                      if (v == null || v.trim().isEmpty)
+                        return 'Email is required';
                       final r = RegExp(r'^[^@]+@[^@]+\.[^@]+');
                       if (!r.hasMatch(v.trim())) return 'Enter a valid email';
                       return null;
@@ -471,7 +477,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   leading: const Icon(Icons.notifications_outlined),
                   title: const Text('Notification preferences'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/profile/notification-preferences'),
+                  onTap: () =>
+                      context.push('/profile/notification-preferences'),
                 ),
                 const Divider(height: 1, indent: 56),
                 ListTile(
@@ -512,7 +519,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             margin: const EdgeInsets.only(bottom: 24),
             child: ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Sign out', style: TextStyle(color: Colors.red)),
+              title:
+                  const Text('Sign out', style: TextStyle(color: Colors.red)),
               onTap: () async {
                 await ref.read(authNotifierProvider.notifier).logout();
                 if (context.mounted) context.go('/auth');
@@ -536,10 +544,10 @@ class _SectionLabel extends StatelessWidget {
       child: Text(
         text.toUpperCase(),
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: AppThemeTokens.darkTextSecondary,
-          letterSpacing: 0.8,
-          fontWeight: FontWeight.w600,
-        ),
+              color: AppThemeTokens.darkTextSecondary,
+              letterSpacing: 0.8,
+              fontWeight: FontWeight.w600,
+            ),
       ),
     );
   }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/error/app_exception.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/theme/app_theme.dart';
 
 class TwoFactorPage extends ConsumerStatefulWidget {
   const TwoFactorPage({super.key});
@@ -70,8 +71,7 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
     setState(() => _settingUp = true);
     try {
       final dio = ref.read(dioProvider);
-      final response =
-          await dio.post<Map<String, dynamic>>('/2fa/setup');
+      final response = await dio.post<Map<String, dynamic>>('/2fa/setup');
       final data = response.data!;
       setState(() {
         _secret = data['secret'] as String?;
@@ -169,8 +169,7 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Two-factor authentication disabled.')),
+          const SnackBar(content: Text('Two-factor authentication disabled.')),
         );
       }
       await _loadStatus();
@@ -246,9 +245,8 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
                                 Text(
                                   _enabled ? 'Enabled' : 'Disabled',
                                   style: theme.textTheme.titleSmall?.copyWith(
-                                    color: _enabled
-                                        ? Colors.green
-                                        : Colors.orange,
+                                    color:
+                                        _enabled ? Colors.green : Colors.orange,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -262,8 +260,7 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
                             ),
                           ),
                           Chip(
-                            label:
-                                Text(_enabled ? 'Active' : 'Inactive'),
+                            label: Text(_enabled ? 'Active' : 'Inactive'),
                             backgroundColor: _enabled
                                 ? Colors.green.withOpacity(0.2)
                                 : Colors.orange.withOpacity(0.2),
@@ -313,7 +310,9 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
                               children: [
                                 Text('Secret Key',
                                     style: theme.textTheme.labelMedium
-                                        ?.copyWith(color: AppThemeTokens.darkTextSecondary)),
+                                        ?.copyWith(
+                                            color: AppThemeTokens
+                                                .darkTextSecondary)),
                                 const SizedBox(height: 4),
                                 SelectableText(
                                   _secret!,
@@ -329,8 +328,8 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
                           Text(
                             'Enter this key in your authenticator app, then '
                             'type the 6-digit code it generates below.',
-                            style: theme.textTheme.bodySmall
-                                ?.copyWith(color: AppThemeTokens.darkTextSecondary),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                                color: AppThemeTokens.darkTextSecondary),
                           ),
                         ],
                         const SizedBox(height: 16),
@@ -357,8 +356,7 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
                           label: const Text('Verify & Enable'),
                         ),
                         TextButton(
-                          onPressed: () =>
-                              setState(() => _settingUp = false),
+                          onPressed: () => setState(() => _settingUp = false),
                           child: const Text('Cancel'),
                         ),
                       ],

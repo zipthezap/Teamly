@@ -91,26 +91,23 @@ class EventStatisticsPage extends ConsumerWidget {
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _SmallStat(
-                              label: 'Total Events',
-                              value:
-                                  '${stats.createdEventsStats.total}'),
-                          _SmallStat(
-                              label: 'Total Players',
-                              value:
-                                  '${stats.createdEventsStats.totalParticipants}'),
-                          _SmallStat(
-                              label: 'Avg Players',
-                              value: stats.createdEventsStats
-                                  .avgParticipantsPerEvent
-                                  .toStringAsFixed(1)),
-                        ],
-                      ),
-                    ],
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _SmallStat(
+                            label: 'Total Events',
+                            value: '${stats.createdEventsStats.total}'),
+                        _SmallStat(
+                            label: 'Total Players',
+                            value:
+                                '${stats.createdEventsStats.totalParticipants}'),
+                        _SmallStat(
+                            label: 'Avg Players',
+                            value: stats
+                                .createdEventsStats.avgParticipantsPerEvent
+                                .toStringAsFixed(1)),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -136,15 +133,13 @@ class EventStatisticsPage extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(entry.key,
                                     style: theme.textTheme.bodyMedium),
                                 Text('${entry.value}',
-                                    style: theme.textTheme.bodyMedium
-                                        ?.copyWith(
-                                            fontWeight: FontWeight.bold)),
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                        fontWeight: FontWeight.bold)),
                               ],
                             ),
                             const SizedBox(height: 6),
@@ -153,8 +148,8 @@ class EventStatisticsPage extends ConsumerWidget {
                               child: LinearProgressIndicator(
                                 value: pct.clamp(0.0, 1.0),
                                 minHeight: 6,
-                                backgroundColor: theme.colorScheme
-                                    .surfaceContainerHighest,
+                                backgroundColor:
+                                    theme.colorScheme.surfaceContainerHighest,
                               ),
                             ),
                           ],
@@ -202,8 +197,7 @@ class _StatCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(label,
-                style: theme.textTheme.bodySmall,
-                textAlign: TextAlign.center),
+                style: theme.textTheme.bodySmall, textAlign: TextAlign.center),
           ],
         ),
       ),

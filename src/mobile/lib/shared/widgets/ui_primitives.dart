@@ -4,20 +4,23 @@ import 'package:styled_widget/styled_widget.dart';
 import '../../core/theme/app_theme.dart';
 
 class UiCard extends StatelessWidget {
-  const UiCard({super.key, required this.child, this.padding = const EdgeInsets.all(16)});
+  const UiCard(
+      {super.key,
+      required this.child,
+      this.padding = const EdgeInsets.all(16)});
   final Widget child;
   final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
-    return child
-        .padding(all: 0)
-        .decorated(
-          color: AppThemeTokens.darkCard,
-          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-          border: Border.all(color: AppThemeTokens.darkBorder),
-        )
-        .padding(padding: padding);
+    return Padding(
+      padding: padding,
+      child: child.decorated(
+        color: AppThemeTokens.darkCard,
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        border: Border.all(color: AppThemeTokens.darkBorder),
+      ),
+    );
   }
 }
 
@@ -51,7 +54,8 @@ class UiPrimaryButton extends StatelessWidget {
           ? const SizedBox(
               width: 18,
               height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Colors.white),
             )
           : Text(text),
     );
@@ -67,7 +71,10 @@ class UiSectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+      style: Theme.of(context)
+          .textTheme
+          .titleMedium
+          ?.copyWith(fontWeight: FontWeight.w700),
     );
   }
 }
@@ -145,7 +152,8 @@ class UiInfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(color: AppThemeTokens.darkTextSecondary, fontSize: 13),
+              style: const TextStyle(
+                  color: AppThemeTokens.darkTextSecondary, fontSize: 13),
             ),
           ),
         ],
