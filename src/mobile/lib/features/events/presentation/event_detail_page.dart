@@ -929,6 +929,8 @@ class _ActivityFeedSection extends ConsumerStatefulWidget {
   const _ActivityFeedSection({required this.eventId});
   final String eventId;
 
+  static const _maxEntries = 20;
+
   @override
   ConsumerState<_ActivityFeedSection> createState() =>
       _ActivityFeedSectionState();
@@ -968,7 +970,7 @@ class _ActivityFeedSectionState extends ConsumerState<_ActivityFeedSection> {
             ),
             if (_expanded) ...[
               const SizedBox(height: 10),
-              ...entries.take(20).map(
+              ...entries.take(_ActivityFeedSection._maxEntries).map(
                     (entry) => Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.symmetric(
