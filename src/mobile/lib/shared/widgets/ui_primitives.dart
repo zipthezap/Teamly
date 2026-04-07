@@ -1,29 +1,33 @@
 import 'package:flutter/material.dart';
-import 'package:styled_widget/styled_widget.dart';
 
 import '../../core/theme/app_theme.dart';
 
+/// A premium card with a subtle gradient background and border.
 class UiCard extends StatelessWidget {
-  const UiCard(
-      {super.key,
-      required this.child,
-      this.padding = const EdgeInsets.all(16)});
+  const UiCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(20),
+    this.gradient,
+  });
   final Widget child;
   final EdgeInsetsGeometry padding;
+  final Gradient? gradient;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: padding,
-      child: child.decorated(
-        color: AppThemeTokens.darkCard,
+    return Container(
+      decoration: BoxDecoration(
+        gradient: gradient ?? AppThemeTokens.subtleGradient,
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
         border: Border.all(color: AppThemeTokens.darkBorder),
       ),
+      child: Padding(padding: padding, child: child),
     );
   }
 }
 
+/// A gradient-backed primary action button.
 class UiPrimaryButton extends StatelessWidget {
   const UiPrimaryButton({
     super.key,
@@ -31,54 +35,117 @@ class UiPrimaryButton extends StatelessWidget {
     required this.onPressed,
     this.loading = false,
     this.fullWidth = true,
+    this.icon,
   });
 
   final String text;
   final VoidCallback? onPressed;
   final bool loading;
   final bool fullWidth;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
-    final button = FilledButton(
-      onPressed: loading ? null : onPressed,
-      style: FilledButton.styleFrom(
-        minimumSize: const Size(0, 48),
-        backgroundColor: AppThemeTokens.primary500,
-        disabledBackgroundColor: AppThemeTokens.primary700.withOpacity(0.5),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+    final inner = Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+      child: InkWell(
+        onTap: loading ? null : onPressed,
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        splashColor: Colors.white.withValues(alpha: 0.1),
+        child: Container(
+          height: 50,
+          decoration: BoxDecoration(
+            gradient: onPressed == null || loading
+                ? LinearGradient(
+                    colors: [
+                      AppThemeTokens.primary700.withValues(alpha: 0.5),
+                      AppThemeTokens.primary700.withValues(alpha: 0.4),
+                    ],
+                  )
+                : AppThemeTokens.primaryGradient,
+            borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+          ),
+          alignment: Alignment.center,
+          child: loading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (icon != null) ...[
+                      Icon(icon, size: 18, color: Colors.white),
+                      const SizedBox(width: 8),
+                    ],
+                    Text(
+                      text,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
         ),
       ),
-      child: loading
-          ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                  strokeWidth: 2, color: Colors.white),
-            )
-          : Text(text),
     );
-    return fullWidth ? SizedBox(width: double.infinity, child: button) : button;
+
+    return fullWidth ? SizedBox(width: double.infinity, child: inner) : inner;
   }
 }
 
+/// Section title with optional "see all" trailing action.
 class UiSectionTitle extends StatelessWidget {
-  const UiSectionTitle(this.text, {super.key});
+  const UiSectionTitle(
+    this.text, {
+    super.key,
+    this.trailing,
+    this.trailingLabel,
+    this.onTrailingTap,
+  });
   final String text;
+  final Widget? trailing;
+  final String? trailingLabel;
+  final VoidCallback? onTrailingTap;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: Theme.of(context)
-          .textTheme
-          .titleMedium
-          ?.copyWith(fontWeight: FontWeight.w700),
+    return Row(
+      children: [
+        Text(
+          text,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
+              ),
+        ),
+        const Spacer(),
+        if (trailing != null)
+          trailing!
+        else if (trailingLabel != null)
+          GestureDetector(
+            onTap: onTrailingTap,
+            child: Text(
+              trailingLabel!,
+              style: const TextStyle(
+                color: AppThemeTokens.primary400,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
 
+/// Modern empty state with icon circle, title, message and optional action.
 class UiEmptyState extends StatelessWidget {
   const UiEmptyState({
     super.key,
@@ -102,96 +169,129 @@ class UiEmptyState extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
-        child: Container(
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(
-            color: AppThemeTokens.primary500.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(AppThemeTokens.radiusLg),
-            border: Border.all(
-              color: AppThemeTokens.darkBorder,
-              width: 1.5,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppThemeTokens.primary500.withValues(alpha: 0.2),
+                    AppThemeTokens.primary700.withValues(alpha: 0.1),
+                  ],
+                ),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppThemeTokens.primary500.withValues(alpha: 0.25),
+                  width: 1.5,
+                ),
+              ),
+              child: Icon(icon, size: 36, color: AppThemeTokens.primary400),
             ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppThemeTokens.primary500.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, size: 40, color: AppThemeTokens.primary500),
-              ),
-              const SizedBox(height: 16),
-              if (title != null) ...[
-                Text(
-                  title!,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppThemeTokens.darkText,
-                      ),
-                ),
-                const SizedBox(height: 6),
-              ],
+            const SizedBox(height: 20),
+            if (title != null) ...[
               Text(
-                message,
+                title!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: AppThemeTokens.darkTextSecondary, fontSize: 14),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
               ),
-              if (action != null && actionLabel != null) ...[
-                const SizedBox(height: 20),
-                FilledButton.icon(
-                  onPressed: action,
-                  icon: Icon(actionIcon ?? Icons.add),
-                  label: Text(actionLabel!),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppThemeTokens.primary500,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
-                  ),
-                ),
-              ],
+              const SizedBox(height: 8),
             ],
-          ),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppThemeTokens.darkTextSecondary,
+                fontSize: 14,
+                height: 1.5,
+              ),
+            ),
+            if (action != null && actionLabel != null) ...[
+              const SizedBox(height: 24),
+              UiPrimaryButton(
+                text: actionLabel!,
+                onPressed: action,
+                fullWidth: false,
+                icon: actionIcon ?? Icons.add,
+              ),
+            ],
+          ],
         ),
       ),
     );
   }
 }
 
+/// Row with icon + text metadata, used in detail pages.
 class UiInfoRow extends StatelessWidget {
   const UiInfoRow({
     super.key,
     required this.icon,
     required this.label,
     this.iconColor,
+    this.value,
   });
 
   final IconData icon;
   final String label;
   final Color? iconColor;
+  final String? value;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 16,
-            color: iconColor ?? AppThemeTokens.darkTextSecondary,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                  color: AppThemeTokens.darkTextSecondary, fontSize: 13),
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: (iconColor ?? AppThemeTokens.primary500).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
             ),
+            child: Icon(
+              icon,
+              size: 14,
+              color: iconColor ?? AppThemeTokens.primary400,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: value != null
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          color: AppThemeTokens.darkTextSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      Text(
+                        value!,
+                        style: const TextStyle(
+                          color: AppThemeTokens.darkText,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(
+                    label,
+                    style: const TextStyle(
+                      color: AppThemeTokens.darkTextSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
           ),
         ],
       ),
@@ -200,7 +300,6 @@ class UiInfoRow extends StatelessWidget {
 }
 
 /// Status badge mirroring the frontend's StatusBadge component.
-/// Maps semantic status strings to consistent pill-shaped color indicators.
 enum UiStatusType { success, error, warning, info, defaultStatus }
 
 class UiStatusBadge extends StatelessWidget {
@@ -209,11 +308,13 @@ class UiStatusBadge extends StatelessWidget {
     required this.label,
     this.status = UiStatusType.defaultStatus,
     this.customColor,
+    this.dot = false,
   });
 
   final String label;
   final UiStatusType status;
   final Color? customColor;
+  final bool dot;
 
   static UiStatusType fromString(String s) {
     switch (s.toLowerCase()) {
@@ -222,17 +323,21 @@ class UiStatusBadge extends StatelessWidget {
       case 'on_time':
       case 'on-time':
       case 'accepted':
+      case 'active':
         return UiStatusType.success;
       case 'pending':
       case 'warning':
       case 'late':
+      case 'registration':
         return UiStatusType.warning;
       case 'declined':
       case 'error':
       case 'rejected':
+      case 'cancelled':
         return UiStatusType.error;
       case 'invited':
       case 'info':
+      case 'draft':
         return UiStatusType.info;
       default:
         return UiStatusType.defaultStatus;
@@ -250,19 +355,19 @@ class UiStatusBadge extends StatelessWidget {
       switch (status) {
         case UiStatusType.success:
           fg = AppThemeTokens.success;
-          bg = AppThemeTokens.success.withValues(alpha: 0.15);
+          bg = AppThemeTokens.success.withValues(alpha: 0.12);
           break;
         case UiStatusType.warning:
           fg = AppThemeTokens.warning;
-          bg = AppThemeTokens.warning.withValues(alpha: 0.15);
+          bg = AppThemeTokens.warning.withValues(alpha: 0.12);
           break;
         case UiStatusType.error:
           fg = AppThemeTokens.error;
-          bg = AppThemeTokens.error.withValues(alpha: 0.15);
+          bg = AppThemeTokens.error.withValues(alpha: 0.12);
           break;
         case UiStatusType.info:
           fg = AppThemeTokens.info;
-          bg = AppThemeTokens.info.withValues(alpha: 0.15);
+          bg = AppThemeTokens.info.withValues(alpha: 0.12);
           break;
         case UiStatusType.defaultStatus:
           fg = AppThemeTokens.darkTextSecondary;
@@ -271,20 +376,81 @@ class UiStatusBadge extends StatelessWidget {
       }
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
-        border: Border.all(color: fg.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(color: fg.withValues(alpha: 0.25), width: 1),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          color: fg,
-          fontWeight: FontWeight.w600,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (dot) ...[
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(color: fg, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 5),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: fg,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A shimmer-style loading placeholder.
+class UiSkeletonBox extends StatelessWidget {
+  const UiSkeletonBox({super.key, this.height = 16, this.width, this.radius});
+  final double height;
+  final double? width;
+  final double? radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      width: width,
+      decoration: BoxDecoration(
+        color: AppThemeTokens.darkCardHover,
+        borderRadius: BorderRadius.circular(radius ?? AppThemeTokens.radiusSm),
+      ),
+    );
+  }
+}
+
+/// Divider with optional label.
+class UiLabeledDivider extends StatelessWidget {
+  const UiLabeledDivider(this.label, {super.key});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Expanded(child: Divider()),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: AppThemeTokens.darkTextMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ),
-      ),
+        const Expanded(child: Divider()),
+      ],
     );
   }
 }

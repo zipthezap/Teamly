@@ -388,7 +388,7 @@ class _StandingsTab extends StatelessWidget {
                 color: isTop3
                     ? [
                         Colors.amber.withValues(alpha: 0.15),
-                        AppThemeTokens.darkBorder.withOpacity(0.3),
+                        AppThemeTokens.darkBorder.withValues(alpha: 0.3),
                         Colors.brown.shade200.withValues(alpha: 0.2),
                       ][i]
                     : null,
