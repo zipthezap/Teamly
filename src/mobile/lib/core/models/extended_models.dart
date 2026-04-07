@@ -302,7 +302,48 @@ class NearbyGroupModel extends Equatable {
   List<Object?> get props => [id, name, distance];
 }
 
-class ProfilePictureModel extends Equatable {
+class NearbyEventModel extends Equatable {
+  const NearbyEventModel({
+    required this.id,
+    required this.title,
+    required this.distance,
+    this.startTime,
+    this.location,
+    this.city,
+    this.sportType,
+    this.groupName,
+  });
+
+  final String id;
+  final String title;
+  final double distance;
+  final DateTime? startTime;
+  final String? location;
+  final String? city;
+  final String? sportType;
+  final String? groupName;
+
+  factory NearbyEventModel.fromJson(Map<String, dynamic> json) {
+    final group = json['group'] as Map<String, dynamic>?;
+    return NearbyEventModel(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      distance: (json['distance'] as num?)?.toDouble() ?? 0.0,
+      startTime: json['startTime'] != null
+          ? DateTime.tryParse(json['startTime'] as String)
+          : null,
+      location: json['location'] as String?,
+      city: json['city'] as String?,
+      sportType: json['sportType'] as String?,
+      groupName: group?['name'] as String?,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, title, distance];
+}
+
+
   const ProfilePictureModel({
     required this.id,
     required this.url,

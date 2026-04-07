@@ -311,7 +311,7 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
     return Form(
       key: _formKey,
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         children: [
           // Title
           TextFormField(
@@ -327,7 +327,8 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
 
           // Request type
           DropdownButtonFormField<String>(
-            value: _requestType,
+            key: ValueKey(_requestType),
+            initialValue: _requestType,
             decoration: const InputDecoration(
               labelText: 'Request type',
               prefixIcon: Icon(Icons.category_outlined),
@@ -345,7 +346,8 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
 
           // Sport type
           DropdownButtonFormField<String>(
-            value: _sportType,
+            key: ValueKey(_sportType),
+            initialValue: _sportType,
             decoration: const InputDecoration(
               labelText: 'Sport type',
               prefixIcon: Icon(Icons.sports_outlined),
@@ -457,7 +459,7 @@ class _RequestTile extends StatelessWidget {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -680,7 +682,7 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
               Expanded(
                 child: ListView(
                   controller: scrollCtrl,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   children: [
                     // Header card
                     Container(

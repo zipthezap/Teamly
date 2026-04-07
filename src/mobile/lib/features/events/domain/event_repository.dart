@@ -36,4 +36,11 @@ abstract class EventRepository {
   // Statistics & Analytics
   Future<EventStatisticsModel> getEventStatistics();
   Future<InviteAnalyticsModel> getEventInviteAnalytics(String eventId);
+
+  // Nearby
+  Future<List<NearbyEventModel>> getNearbyEvents({
+    required double latitude,
+    required double longitude,
+    double radius = 25.0,
+  });
 }
