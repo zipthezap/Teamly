@@ -238,7 +238,7 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
                               const Tooltip(
                                 message: 'Sent',
                                 child: Icon(Icons.check_circle_outline,
-                                    size: 16, color: Colors.green),
+                                    size: 16, color: AppThemeTokens.success),
                               ),
                             IconButton(
                               icon: const Icon(Icons.edit_outlined),

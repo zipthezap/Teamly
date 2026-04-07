@@ -95,9 +95,9 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
                   const PopupMenuItem(
                       value: 'delete',
                       child: ListTile(
-                          leading: Icon(Icons.delete_outline, color: Colors.red),
+                          leading: Icon(Icons.delete_outline, color: AppThemeTokens.error),
                           title: Text('Delete group',
-                              style: TextStyle(color: Colors.red)),
+                              style: TextStyle(color: AppThemeTokens.error)),
                           contentPadding: EdgeInsets.zero)),
                 ],
               );
@@ -346,13 +346,13 @@ class _MembersTab extends ConsumerWidget {
                           children: [
                             IconButton(
                               icon: const Icon(Icons.check_circle_outline,
-                                  color: Colors.green),
+                                  color: AppThemeTokens.success),
                               onPressed: () => _handleJoinReq(
                                   context, ref, group.id, req.id, 'approve'),
                             ),
                             IconButton(
                               icon: const Icon(Icons.cancel_outlined,
-                                  color: Colors.red),
+                                  color: AppThemeTokens.error),
                               onPressed: () => _handleJoinReq(
                                   context, ref, group.id, req.id, 'reject'),
                             ),
@@ -414,7 +414,7 @@ class _MembersTab extends ConsumerWidget {
                       const PopupMenuItem(
                           value: 'kick',
                           child: Text('Remove from group',
-                              style: TextStyle(color: Colors.red))),
+                              style: TextStyle(color: AppThemeTokens.error))),
                     ],
                   ),
               ],

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -222,11 +223,11 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
                           horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
                         color: _enabled
-                            ? Colors.green.withOpacity(0.1)
-                            : Colors.orange.withOpacity(0.1),
+                            ? AppThemeTokens.success.withValues(alpha: 0.1)
+                            : AppThemeTokens.warning.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: _enabled ? Colors.green : Colors.orange,
+                          color: _enabled ? AppThemeTokens.success : AppThemeTokens.warning,
                         ),
                       ),
                       child: Row(
@@ -235,7 +236,7 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
                             _enabled
                                 ? Icons.verified_user_outlined
                                 : Icons.security_outlined,
-                            color: _enabled ? Colors.green : Colors.orange,
+                            color: _enabled ? AppThemeTokens.success : AppThemeTokens.warning,
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -246,7 +247,7 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
                                   _enabled ? 'Enabled' : 'Disabled',
                                   style: theme.textTheme.titleSmall?.copyWith(
                                     color:
-                                        _enabled ? Colors.green : Colors.orange,
+                                        _enabled ? AppThemeTokens.success : AppThemeTokens.warning,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -262,8 +263,8 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
                           Chip(
                             label: Text(_enabled ? 'Active' : 'Inactive'),
                             backgroundColor: _enabled
-                                ? Colors.green.withOpacity(0.2)
-                                : Colors.orange.withOpacity(0.2),
+                                ? AppThemeTokens.success.withValues(alpha: 0.2)
+                                : AppThemeTokens.warning.withValues(alpha: 0.2),
                             side: BorderSide.none,
                           ),
                         ],

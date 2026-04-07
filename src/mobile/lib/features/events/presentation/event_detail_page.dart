@@ -39,6 +39,7 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
   bool _actionLoading = false;
   bool _markingLate = false;
   bool _archiving = false;
+  bool _isMarkedLate = false;
 
   String _errorMessage(Exception e) {
     if (e is DioException) {
@@ -87,6 +88,7 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
       } else {
         await repo.unmarkLate(widget.eventId);
       }
+      setState(() => _isMarkedLate = isLate);
       ref.invalidate(eventDetailProvider(widget.eventId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -402,11 +404,17 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                   const SizedBox(height: 16),
                   _markingLate
                       ? const Center(child: CircularProgressIndicator())
-                      : OutlinedButton.icon(
-                          onPressed: () => _markLate(true),
-                          icon: const Icon(Icons.access_time),
-                          label: const Text('Mark me as late'),
-                        ),
+                      : _isMarkedLate
+                          ? OutlinedButton.icon(
+                              onPressed: () => _markLate(false),
+                              icon: const Icon(Icons.check_circle_outline),
+                              label: const Text('Remove late status'),
+                            )
+                          : OutlinedButton.icon(
+                              onPressed: () => _markLate(true),
+                              icon: const Icon(Icons.access_time),
+                              label: const Text('Mark me as late'),
+                            ),
                 ],
 
                 const SizedBox(height: 24),

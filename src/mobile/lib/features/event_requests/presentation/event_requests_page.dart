@@ -37,7 +37,7 @@ class _EventRequestsPageState extends ConsumerState<EventRequestsPage> {
   Color _statusColor(String status, BuildContext context) {
     switch (status) {
       case 'approved':
-        return Colors.green;
+        return AppThemeTokens.success;
       case 'cancelled':
         return AppThemeTokens.darkTextSecondary;
       default:

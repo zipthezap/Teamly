@@ -7,6 +7,7 @@ import '../../../core/error/app_exception.dart';
 import '../../../core/models/attendance_model.dart';
 import '../../../features/auth/state/auth_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
+import '../../../shared/widgets/ui_primitives.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../data/event_repository_impl.dart';
 import '../state/events_notifier.dart';
@@ -134,7 +135,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                             icon: const Icon(Icons.check_circle_outline),
                             label: const Text('On Time'),
                             style: FilledButton.styleFrom(
-                              backgroundColor: Colors.green,
+                              backgroundColor: AppThemeTokens.success,
                             ),
                           ),
                         ),
@@ -191,12 +192,12 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                           _StatItem(
                             label: 'On Time',
                             value: '${stats.onTime}',
-                            color: Colors.green,
+                            color: AppThemeTokens.success,
                           ),
                           _StatItem(
                             label: 'Late',
                             value: '${stats.late}',
-                            color: Colors.orange,
+                            color: AppThemeTokens.warning,
                           ),
                           _StatItem(
                             label: 'No Show',
@@ -213,7 +214,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                           minHeight: 8,
                           backgroundColor:
                               theme.colorScheme.surfaceContainerHighest,
-                          color: Colors.green,
+                          color: AppThemeTokens.success,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -333,15 +334,15 @@ class _AttendanceChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: isOnTime
-            ? Colors.green.withValues(alpha: 0.15)
-            : Colors.orange.withValues(alpha: 0.15),
+            ? AppThemeTokens.success.withValues(alpha: 0.15)
+            : AppThemeTokens.warning.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         isOnTime ? 'On Time' : 'Late',
         style: TextStyle(
           fontSize: 12,
-          color: isOnTime ? Colors.green : Colors.orange,
+          color: isOnTime ? AppThemeTokens.success : AppThemeTokens.warning,
           fontWeight: FontWeight.w600,
         ),
       ),

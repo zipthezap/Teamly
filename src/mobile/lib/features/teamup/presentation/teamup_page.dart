@@ -646,15 +646,22 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                                         horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
                                       color: resp.status == 'accepted'
-                                          ? const Color(0xFF1B5E20)
+                                          ? AppThemeTokens.success.withValues(alpha: 0.15)
                                           : resp.status == 'rejected'
-                                              ? const Color(0xFFB71C1C)
+                                              ? AppThemeTokens.error.withValues(alpha: 0.15)
                                               : AppThemeTokens.darkCardHover,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
                                       resp.status,
-                                      style: const TextStyle(fontSize: 11),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: resp.status == 'accepted'
+                                            ? AppThemeTokens.success
+                                            : resp.status == 'rejected'
+                                                ? AppThemeTokens.error
+                                                : AppThemeTokens.darkTextSecondary,
+                                      ),
                                     ),
                                   ),
                                 ),

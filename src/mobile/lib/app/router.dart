@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/theme/app_theme.dart';
 import '../features/auth/presentation/auth_page.dart';
 import '../features/auth/presentation/sessions_page.dart';
 import '../features/auth/state/auth_notifier.dart';
@@ -285,8 +286,8 @@ class _GroupInviteLandingPageState
                 ])
               : _done
                   ? Column(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.check_circle_outline,
-                          color: Colors.green, size: 64),
+                      Icon(Icons.check_circle_outline,
+                          color: AppThemeTokens.success, size: 64),
                       const SizedBox(height: 16),
                       const Text('You joined the group!'),
                       const SizedBox(height: 16),
@@ -331,6 +332,9 @@ class _EventInviteLandingPageState extends State<_EventInviteLandingPage> {
   String? _error;
   String? _eventId;
   bool _joinedAsGuest = false;
+  // True only when the event was resolved and the user is unauthenticated,
+  // meaning they should provide a guest name to join.
+  bool _needsGuestName = false;
   final _guestNameController = TextEditingController();
   bool _joiningGuest = false;
 
@@ -351,6 +355,7 @@ class _EventInviteLandingPageState extends State<_EventInviteLandingPage> {
     setState(() {
       _loading = true;
       _error = null;
+      _needsGuestName = false;
     });
     try {
       final event = await container
@@ -361,6 +366,8 @@ class _EventInviteLandingPageState extends State<_EventInviteLandingPage> {
       if (authState.isAuthenticated) {
         await container.read(eventRepositoryProvider).joinEvent(event.id);
         setState(() => _done = true);
+      } else {
+        setState(() => _needsGuestName = true);
       }
     } catch (e) {
       setState(() => _error = _errorText(e));
@@ -416,8 +423,8 @@ class _EventInviteLandingPageState extends State<_EventInviteLandingPage> {
                 ])
               : _done
                   ? Column(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.check_circle_outline,
-                          color: Colors.green, size: 64),
+                      Icon(Icons.check_circle_outline,
+                          color: AppThemeTokens.success, size: 64),
                       const SizedBox(height: 16),
                       const Text('You joined the event!'),
                       const SizedBox(height: 16),
@@ -437,10 +444,21 @@ class _EventInviteLandingPageState extends State<_EventInviteLandingPage> {
                         child: Text(_joinedAsGuest ? 'Sign In' : 'View Event'),
                       ),
                     ])
-                  : _eventId != null
+                  : _needsGuestName
                       ? Column(mainAxisSize: MainAxisSize.min, children: [
                           const Text('Enter your name to join this event'),
                           const SizedBox(height: 12),
+                          if (_error != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Text(
+                                _error!,
+                                style: TextStyle(
+                                    color:
+                                        Theme.of(context).colorScheme.error),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
                           TextField(
                             controller: _guestNameController,
                             decoration: const InputDecoration(
@@ -468,7 +486,8 @@ class _EventInviteLandingPageState extends State<_EventInviteLandingPage> {
                       Icon(Icons.error_outline,
                           color: Theme.of(context).colorScheme.error, size: 64),
                       const SizedBox(height: 16),
-                      Text(_error ?? 'Unable to join event'),
+                      Text(_error ?? 'Unable to join event',
+                          textAlign: TextAlign.center),
                       const SizedBox(height: 16),
                       FilledButton(
                         onPressed: _resolveAndJoin,

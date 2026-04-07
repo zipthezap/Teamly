@@ -11,6 +11,16 @@ class AppThemeTokens {
   static const Color primary500 = Color(0xFF2196F3);
   static const Color primary700 = Color(0xFF1976D2);
 
+  // Semantic status colors (mirrors frontend StatusBadge palette)
+  static const Color success = Color(0xFF4ADE80);   // green-400
+  static const Color successBg = Color(0xFF14532D); // green-900
+  static const Color warning = Color(0xFFFBBF24);   // amber-400
+  static const Color warningBg = Color(0xFF78350F); // amber-900
+  static const Color error = Color(0xFFF87171);     // red-400
+  static const Color errorBg = Color(0xFF7F1D1D);   // red-900
+  static const Color info = Color(0xFF60A5FA);      // blue-400
+  static const Color infoBg = Color(0xFF1E3A5F);    // blue-900
+
   static const double radiusSm = 8;
   static const double radiusMd = 12;
   static const double radiusLg = 16;

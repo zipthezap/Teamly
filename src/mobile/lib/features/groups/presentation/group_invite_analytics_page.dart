@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/extended_models.dart';
@@ -68,7 +69,7 @@ class GroupInviteAnalyticsPage extends ConsumerWidget {
                       value:
                           '${analytics.acceptanceRate.toStringAsFixed(1)}%',
                       icon: Icons.trending_up,
-                      color: Colors.green,
+                      color: AppThemeTokens.success,
                     ),
                   ),
                 ],
@@ -96,17 +97,17 @@ class GroupInviteAnalyticsPage extends ConsumerWidget {
                                 if (analytics.accepted > 0)
                                   Expanded(
                                     flex: analytics.accepted,
-                                    child: Container(color: Colors.green),
+                                    child: Container(color: AppThemeTokens.success),
                                   ),
                                 if (analytics.pending > 0)
                                   Expanded(
                                     flex: analytics.pending,
-                                    child: Container(color: Colors.orange),
+                                    child: Container(color: AppThemeTokens.warning),
                                   ),
                                 if (analytics.rejected > 0)
                                   Expanded(
                                     flex: analytics.rejected,
-                                    child: Container(color: Colors.red),
+                                    child: Container(color: AppThemeTokens.error),
                                   ),
                               ],
                             ),
@@ -117,17 +118,17 @@ class GroupInviteAnalyticsPage extends ConsumerWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           _LegendItem(
-                            color: Colors.green,
+                            color: AppThemeTokens.success,
                             label: 'Accepted',
                             count: analytics.accepted,
                           ),
                           _LegendItem(
-                            color: Colors.orange,
+                            color: AppThemeTokens.warning,
                             label: 'Pending',
                             count: analytics.pending,
                           ),
                           _LegendItem(
-                            color: Colors.red,
+                            color: AppThemeTokens.error,
                             label: 'Rejected',
                             count: analytics.rejected,
                           ),

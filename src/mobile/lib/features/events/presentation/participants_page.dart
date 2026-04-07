@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/extended_models.dart';
 import '../../../shared/widgets/error_display.dart';
+import '../../../shared/widgets/ui_primitives.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../state/events_notifier.dart';
 
@@ -116,7 +117,7 @@ class _MembersTabState extends ConsumerState<_MembersTab> {
                     _SummaryChip(
                         label: 'Confirmed',
                         count: summary.confirmed,
-                        color: Colors.green,
+                        color: AppThemeTokens.success,
                         selected: _statusFilter == 'confirmed',
                         onTap: () =>
                             setState(() => _statusFilter = 'confirmed')),
@@ -124,7 +125,7 @@ class _MembersTabState extends ConsumerState<_MembersTab> {
                     _SummaryChip(
                         label: 'Pending',
                         count: summary.pending,
-                        color: Colors.orange,
+                        color: AppThemeTokens.warning,
                         selected: _statusFilter == 'pending',
                         onTap: () =>
                             setState(() => _statusFilter = 'pending')),
@@ -132,7 +133,7 @@ class _MembersTabState extends ConsumerState<_MembersTab> {
                     _SummaryChip(
                         label: 'Declined',
                         count: summary.declined,
-                        color: Colors.red,
+                        color: AppThemeTokens.error,
                         selected: _statusFilter == 'declined',
                         onTap: () =>
                             setState(() => _statusFilter = 'declined')),
@@ -175,7 +176,10 @@ class _MembersTabState extends ConsumerState<_MembersTab> {
                                     .whereType<String>()
                                     .join(', '))
                                 : null,
-                            trailing: _StatusChip(status: p.status),
+                            trailing: UiStatusBadge(
+                              label: p.status[0].toUpperCase() + p.status.substring(1),
+                              status: UiStatusBadge.fromString(p.status),
+                            ),
                           );
                         },
                       ),
@@ -251,7 +255,10 @@ class _GuestsTab extends ConsumerWidget {
                               ),
                             ),
                             title: Text(g.name),
-                            trailing: _StatusChip(status: g.status),
+                            trailing: UiStatusBadge(
+                              label: g.status[0].toUpperCase() + g.status.substring(1),
+                              status: UiStatusBadge.fromString(g.status),
+                            ),
                           );
                         },
                       ),
@@ -331,37 +338,3 @@ class _SummaryChip extends StatelessWidget {
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    Color color;
-    switch (status) {
-      case 'confirmed':
-        color = Colors.green;
-        break;
-      case 'pending':
-        color = Colors.orange;
-        break;
-      case 'declined':
-        color = Colors.red;
-        break;
-      default:
-        color = Colors.blue;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        status[0].toUpperCase() + status.substring(1),
-        style: TextStyle(
-            fontSize: 11, color: color, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-}
