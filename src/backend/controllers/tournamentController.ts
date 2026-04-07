@@ -689,8 +689,8 @@ export const generateBrackets = async (req: Request, res: Response) => {
     });
   } catch (error: unknown) {
     logger.error('Error generating brackets', 'TournamentController', { error });
-    res.status(500).json({
-      error: (error as Error).message || 'Failed to generate brackets'
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : 'Failed to generate brackets'
     });
   }
 };
@@ -810,7 +810,7 @@ export const submitScore = async (req: Request, res: Response) => {
     res.json(updatedMatch);
   } catch (error) {
     logger.error('Error submitting score', 'TournamentController', { error });
-    res.status(500).json({ error: 'Failed to submit score' });
+    return res.status(500).json({ error: 'Failed to submit score' });
   }
 };
 
@@ -946,7 +946,7 @@ export const createMatch = async (req: Request, res: Response) => {
     res.status(201).json(match);
   } catch (error) {
     logger.error('Error creating match', 'TournamentController', { error });
-    res.status(500).json({ error: 'Failed to create match' });
+    return res.status(500).json({ error: 'Failed to create match' });
   }
 };
 
@@ -1051,7 +1051,7 @@ export const updateMatch = async (req: Request, res: Response) => {
     res.json(updatedMatch);
   } catch (error) {
     logger.error('Error updating match', 'TournamentController', { error });
-    res.status(500).json({ error: 'Failed to update match' });
+    return res.status(500).json({ error: 'Failed to update match' });
   }
 };
 
@@ -1105,7 +1105,7 @@ export const deleteMatch = async (req: Request, res: Response) => {
     res.json({ message: 'Match deleted successfully' });
   } catch (error) {
     logger.error('Error deleting match', 'TournamentController', { error });
-    res.status(500).json({ error: 'Failed to delete match' });
+    return res.status(500).json({ error: 'Failed to delete match' });
   }
 };
 
@@ -1179,7 +1179,7 @@ export const assignReferee = async (req: Request, res: Response) => {
     res.json(updatedMatch);
   } catch (error) {
     logger.error('Error assigning referee', 'TournamentController', { error });
-    res.status(500).json({ error: 'Failed to assign referee' });
+    return res.status(500).json({ error: 'Failed to assign referee' });
   }
 };
 
@@ -1408,7 +1408,7 @@ export const updatePlayer = async (req: Request, res: Response) => {
       });
     }
     logger.error('Error updating player', 'TournamentController', { error });
-    res.status(500).json({ error: 'Failed to update player' });
+    return res.status(500).json({ error: 'Failed to update player' });
   }
 };
 
@@ -1468,7 +1468,7 @@ export const removePlayer = async (req: Request, res: Response) => {
     res.json({ message: 'Player removed successfully' });
   } catch (error) {
     logger.error('Error removing player', 'TournamentController', { error });
-    res.status(500).json({ error: 'Failed to remove player' });
+    return res.status(500).json({ error: 'Failed to remove player' });
   }
 };
 
@@ -1497,7 +1497,7 @@ export const getPools = async (req: Request, res: Response) => {
     res.json(pools);
   } catch (error) {
     logger.error('Error fetching pools', 'TournamentController', { error });
-    res.status(500).json({ error: 'Failed to fetch pools' });
+    return res.status(500).json({ error: 'Failed to fetch pools' });
   }
 };
 
@@ -1545,7 +1545,7 @@ export const getPoolDetails = async (req: Request, res: Response) => {
     res.json(pool);
   } catch (error) {
     logger.error('Error fetching pool details', 'TournamentController', { error });
-    res.status(500).json({ error: 'Failed to fetch pool details' });
+    return res.status(500).json({ error: 'Failed to fetch pool details' });
   }
 };
 
@@ -1607,7 +1607,7 @@ export const createPool = async (req: Request, res: Response) => {
       });
     }
     logger.error('Error creating pool', 'TournamentController', { error });
-    res.status(500).json({ error: 'Failed to create pool' });
+    return res.status(500).json({ error: 'Failed to create pool' });
   }
 };
 
@@ -1756,7 +1756,7 @@ export const registerTeamToPool = async (req: Request, res: Response) => {
     res.json(updatedTeam);
   } catch (error) {
     logger.error('Error registering team to pool', 'TournamentController', { error });
-    res.status(500).json({ error: 'Failed to register team to pool' });
+    return res.status(500).json({ error: 'Failed to register team to pool' });
   }
 };
 
@@ -1886,7 +1886,7 @@ export const removeTeamFromPool = async (req: Request, res: Response) => {
     res.json({ message: 'Team removed from pool successfully' });
   } catch (error) {
     logger.error('Error removing team from pool', 'TournamentController', { error });
-    res.status(500).json({ error: 'Failed to remove team from pool' });
+    return res.status(500).json({ error: 'Failed to remove team from pool' });
   }
 };
 
@@ -1969,7 +1969,7 @@ export const removeTeamFromWaitlist = async (req: Request, res: Response) => {
     res.json({ message: 'Team removed from waitlist successfully' });
   } catch (error) {
     logger.error('Error removing team from waitlist', 'TournamentController', { error });
-    res.status(500).json({ error: 'Failed to remove team from waitlist' });
+    return res.status(500).json({ error: 'Failed to remove team from waitlist' });
   }
 };
 

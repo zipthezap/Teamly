@@ -113,7 +113,7 @@ export const createEventRequest = async (req: Request, res: Response) => {
     res.status(201).json(eventRequest);
   } catch (error) {
     logger.error('Failed to create event request', 'eventRequestController', { error });
-    res.status(500).json({ error: 'Failed to create event request' });
+    return res.status(500).json({ error: 'Failed to create event request' });
   }
 };
 

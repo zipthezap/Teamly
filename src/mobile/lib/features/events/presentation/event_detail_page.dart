@@ -95,6 +95,7 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
       } else {
         await repo.unmarkLate(widget.eventId);
       }
+      if (!mounted) return;
       setState(() => _isMarkedLate = isLate);
       ref.invalidate(eventDetailProvider(widget.eventId));
       if (mounted) {
@@ -1230,6 +1231,7 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
     if (text.isEmpty) return;
     try {
       await ref.read(commentRepositoryProvider).updateComment(commentId, text);
+      if (!mounted) return;
       setState(() => _editingCommentId = null);
       ref.invalidate(_eventCommentsProvider(widget.eventId));
     } on Exception catch (e) {

@@ -837,7 +837,7 @@ export const joinEvent = async (req: Request, res: Response) => {
     logger.error('Join event error', 'EventController', { error });
     
     // Handle specific error cases
-    const errorMessage = (error as Error).message;
+    const errorMessage = error instanceof Error ? error.message : String(error);
     if (errorMessage === 'EVENT_NOT_FOUND') {
       return res.status(404).json({ error: 'Event not found' });
     }
@@ -850,7 +850,7 @@ export const joinEvent = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Already joined this event' });
     }
     
-    res.status(500).json({ error: 'Failed to join event' });
+    return res.status(500).json({ error: 'Failed to join event' });
   }
 };
 
@@ -964,7 +964,7 @@ export const leaveEvent = async (req: Request, res: Response) => {
     logger.error('Failed to leave event', 'EventController', { error });
     
     // Handle specific error cases
-    const errorMessage = (error as Error).message;
+    const errorMessage = error instanceof Error ? error.message : String(error);
     if (errorMessage === 'EVENT_NOT_FOUND') {
       return res.status(404).json({ error: 'Event not found' });
     }
@@ -972,7 +972,7 @@ export const leaveEvent = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Not participating in this event' });
     }
     
-    res.status(500).json({ error: 'Failed to leave event' });
+    return res.status(500).json({ error: 'Failed to leave event' });
   }
 };
 
@@ -1055,7 +1055,7 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
     res.json(updatedParticipant);
   } catch (error) {
     logger.error('Update participation status error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to update participation status' });
+    return res.status(500).json({ error: 'Failed to update participation status' });
   }
 };
 
@@ -1138,7 +1138,7 @@ export const getRecurringEventInstances = async (req: Request, res: Response) =>
     res.json(eventInstances);
   } catch (error) {
     logger.error('Failed to get recurring event instances', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to get recurring event instances' });
+    return res.status(500).json({ error: 'Failed to get recurring event instances' });
   }
 };
 
@@ -1193,7 +1193,7 @@ export const addRecurringEventException = async (req: Request, res: Response) =>
     res.json(updatedEvent);
   } catch (error) {
     logger.error('Add recurring event exception error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to add exception' });
+    return res.status(500).json({ error: 'Failed to add exception' });
   }
 };
 
@@ -1242,7 +1242,7 @@ export const removeRecurringEventException = async (req: Request, res: Response)
     res.json(updatedEvent);
   } catch (error) {
     logger.error('Failed to remove recurring event exception', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to remove exception' });
+    return res.status(500).json({ error: 'Failed to remove exception' });
   }
 };
 
@@ -1336,7 +1336,7 @@ export const getUserStatistics = async (req: Request, res: Response) => {
     res.json(statistics);
   } catch (error) {
     logger.error('Get user statistics error', 'EventController', { error });
-    res.status(500).json({ error: 'Failed to get statistics' });
+    return res.status(500).json({ error: 'Failed to get statistics' });
   }
 };
 

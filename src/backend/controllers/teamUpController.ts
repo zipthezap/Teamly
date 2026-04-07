@@ -126,7 +126,7 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
     res.status(201).json(enrichedRequest);
   } catch (error) {
     logger.error('Create TeamUp request error:', 'teamUpController', { error });
-    res.status(500).json({ error: 'Failed to create TeamUp request' });
+    return res.status(500).json({ error: 'Failed to create TeamUp request' });
   }
 };
 
