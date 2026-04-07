@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/group_model.dart';
+import '../../../core/utils/maps_utils.dart';
 import '../../../features/auth/state/auth_notifier.dart';
 import '../../../features/events/state/events_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
@@ -523,6 +524,7 @@ class _OverviewTab extends ConsumerWidget {
           label: 'Location',
           value: group.locationName!,
           iconColor: AppThemeTokens.info,
+          onTap: () => openInMaps(context, group.locationName!),
         ),
       if (group.city != null)
         UiInfoRow(
@@ -530,6 +532,8 @@ class _OverviewTab extends ConsumerWidget {
           label: 'City',
           value: group.city!,
           iconColor: AppThemeTokens.info,
+          onTap: () => openInMaps(context,
+              [group.city, group.country].whereType<String>().join(', ')),
         ),
       if (group.country != null)
         UiInfoRow(
@@ -537,6 +541,7 @@ class _OverviewTab extends ConsumerWidget {
           label: 'Country',
           value: group.country!,
           iconColor: AppThemeTokens.info,
+          onTap: () => openInMaps(context, group.country!),
         ),
       if (group.maxMembers != null)
         UiInfoRow(
@@ -749,6 +754,28 @@ class _OverviewTab extends ConsumerWidget {
         // ── Quick Actions ─────────────────────────────────────────────────
         UiSectionTitle('Quick Actions'),
         const SizedBox(height: 10),
+        // Edit group: admins only
+        if (isAdmin) ...[
+          OutlinedButton.icon(
+            onPressed: () async {
+              await Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => GroupFormPage(existingGroup: group)));
+              ref.invalidate(groupDetailProvider(groupId));
+            },
+            icon: const Icon(Icons.edit_outlined),
+            label: const Text('Edit Group'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppThemeTokens.primary400,
+              side: BorderSide(
+                  color: AppThemeTokens.primary400.withValues(alpha: 0.5)),
+              minimumSize: const Size(double.infinity, 44),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
         // All members can create events
         UiPrimaryButton(
           text: 'Create Event',

@@ -236,16 +236,18 @@ class UiInfoRow extends StatelessWidget {
     required this.label,
     this.iconColor,
     this.value,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final Color? iconColor;
   final String? value;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [
@@ -277,25 +279,49 @@ class UiInfoRow extends StatelessWidget {
                       ),
                       Text(
                         value!,
-                        style: const TextStyle(
-                          color: AppThemeTokens.darkText,
+                        style: TextStyle(
+                          color: onTap != null
+                              ? AppThemeTokens.primary400
+                              : AppThemeTokens.darkText,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
+                          decoration: onTap != null
+                              ? TextDecoration.underline
+                              : null,
+                          decorationColor: AppThemeTokens.primary400,
                         ),
                       ),
                     ],
                   )
                 : Text(
                     label,
-                    style: const TextStyle(
-                      color: AppThemeTokens.darkTextSecondary,
+                    style: TextStyle(
+                      color: onTap != null
+                          ? AppThemeTokens.primary400
+                          : AppThemeTokens.darkTextSecondary,
                       fontSize: 13,
+                      decoration:
+                          onTap != null ? TextDecoration.underline : null,
+                      decorationColor: AppThemeTokens.primary400,
                     ),
                   ),
           ),
+          if (onTap != null) ...[
+            const SizedBox(width: 4),
+            Icon(Icons.open_in_new,
+                size: 13, color: AppThemeTokens.primary400),
+          ],
         ],
       ),
     );
+    if (onTap != null) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+        child: row,
+      );
+    }
+    return row;
   }
 }
 

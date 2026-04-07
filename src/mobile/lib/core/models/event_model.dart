@@ -73,6 +73,29 @@ class EventParticipantModel extends Equatable {
   List<Object?> get props => [id, userId, status];
 }
 
+class GuestParticipantModel extends Equatable {
+  const GuestParticipantModel({
+    required this.id,
+    required this.name,
+    required this.status,
+  });
+
+  final String id;
+  final String name;
+  final String status;
+
+  factory GuestParticipantModel.fromJson(Map<String, dynamic> json) {
+    return GuestParticipantModel(
+      id: json['id'] as String,
+      name: json['name'] as String? ?? 'Guest',
+      status: json['status'] as String? ?? 'confirmed',
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, name, status];
+}
+
 class EventCountModel extends Equatable {
   const EventCountModel({
     required this.participants,
@@ -115,6 +138,7 @@ class EventModel extends Equatable {
     this.status,
     this.archived,
     this.participants = const [],
+    this.guestParticipants = const [],
     this.count,
     this.userGroupRole,
   });
@@ -136,12 +160,18 @@ class EventModel extends Equatable {
   final String? status;
   final bool? archived;
   final List<EventParticipantModel> participants;
+  final List<GuestParticipantModel> guestParticipants;
   final EventCountModel? count;
   final String? userGroupRole;
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
     final participantsList = (json['participants'] as List<dynamic>?)
             ?.map((p) => EventParticipantModel.fromJson(p as Map<String, dynamic>))
+            .toList() ??
+        [];
+
+    final guestParticipantsList = (json['guestParticipants'] as List<dynamic>?)
+            ?.map((g) => GuestParticipantModel.fromJson(g as Map<String, dynamic>))
             .toList() ??
         [];
 
@@ -163,6 +193,7 @@ class EventModel extends Equatable {
       status: json['status'] as String?,
       archived: json['archived'] as bool?,
       participants: participantsList,
+      guestParticipants: guestParticipantsList,
       count: json['_count'] != null
           ? EventCountModel.fromJson(json['_count'] as Map<String, dynamic>)
           : null,
@@ -174,7 +205,11 @@ class EventModel extends Equatable {
     if (count != null) {
       return count!.participants + count!.guestParticipants;
     }
-    return participants.where((p) => p.status == 'confirmed').length;
+    final confirmedParticipants =
+        participants.where((p) => p.status == 'confirmed').length;
+    final confirmedGuests =
+        guestParticipants.where((g) => g.status == 'confirmed').length;
+    return confirmedParticipants + confirmedGuests;
   }
 
   bool isParticipant(String userId) =>

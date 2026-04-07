@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/comment_model.dart';
+import '../../../core/utils/maps_utils.dart';
 import '../../../features/auth/state/auth_notifier.dart';
 import '../../../features/comments/data/comment_repository_impl.dart';
 import '../../../shared/widgets/error_display.dart';
@@ -541,23 +542,35 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                               if (event.locationName != null ||
                                   event.location != null) ...[
                                 const SizedBox(height: 8),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.place_outlined,
-                                        size: 13,
-                                        color: Color(0xFF2DD4BF)),
-                                    const SizedBox(width: 5),
-                                    Flexible(
-                                      child: Text(
-                                        event.locationName ?? event.location!,
-                                        style: const TextStyle(
-                                          color: AppThemeTokens.darkTextSecondary,
-                                          fontSize: 13,
+                                InkWell(
+                                  onTap: () => openInMaps(context,
+                                      event.locationName ?? event.location!),
+                                  borderRadius: BorderRadius.circular(
+                                      AppThemeTokens.radiusSm),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.place_outlined,
+                                          size: 13,
+                                          color: Color(0xFF2DD4BF)),
+                                      const SizedBox(width: 5),
+                                      Flexible(
+                                        child: Text(
+                                          event.locationName ?? event.location!,
+                                          style: const TextStyle(
+                                            color: Color(0xFF2DD4BF),
+                                            fontSize: 13,
+                                            decoration: TextDecoration.underline,
+                                            decorationColor: Color(0xFF2DD4BF),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 4),
+                                      const Icon(Icons.open_in_new,
+                                          size: 11,
+                                          color: Color(0xFF2DD4BF)),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ],
@@ -597,6 +610,8 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                           icon: Icons.place_outlined,
                           label: event.locationName ?? event.location!,
                           iconColor: const Color(0xFF2DD4BF),
+                          onTap: () => openInMaps(context,
+                              event.locationName ?? event.location!),
                         ),
                       if (event.city != null || event.country != null)
                         UiInfoRow(
@@ -605,6 +620,11 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                               .whereType<String>()
                               .join(', '),
                           iconColor: const Color(0xFF2DD4BF),
+                          onTap: () => openInMaps(
+                              context,
+                              [event.city, event.country]
+                                  .whereType<String>()
+                                  .join(', ')),
                         ),
                       UiInfoRow(
                         icon: Icons.group_outlined,
@@ -856,49 +876,37 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                 const SizedBox(height: 24),
 
                 // ── Participants section ───────────────────────────────────
-                if (event.participants.isNotEmpty) ...[
+                if (event.participants.isNotEmpty ||
+                    event.guestParticipants.isNotEmpty) ...[
                   const UiSectionTitle('Participants'),
-                  const SizedBox(height: 10),
-                  ...event.participants
-                      .where((p) => p.status != 'cancelled')
-                      .map(
-                        (p) => Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: AppThemeTokens.darkCard,
-                            borderRadius: BorderRadius.circular(
-                                AppThemeTokens.radiusMd),
-                            border:
-                                Border.all(color: AppThemeTokens.darkBorder),
-                          ),
-                          child: Row(
-                            children: [
-                              UserAvatar(
-                                name: p.name ?? _kUnknown,
-                                imageUrl: p.profilePicture,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  p.name ?? _kUnknown,
-                                  style: const TextStyle(
-                                    color: AppThemeTokens.darkText,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              if (p.status == 'waitlisted')
-                                UiStatusBadge(
-                                  label: 'Waitlisted',
-                                  status: UiStatusBadge.fromString('pending'),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppThemeTokens.darkCard,
+                      borderRadius:
+                          BorderRadius.circular(AppThemeTokens.radiusMd),
+                      border: Border.all(color: AppThemeTokens.darkBorder),
+                    ),
+                    child: Column(
+                      children: [
+                        ...event.participants
+                            .where((p) => p.status != 'cancelled')
+                            .map((p) => _CompactParticipantRow(
+                                  name: p.name ?? _kUnknown,
+                                  imageUrl: p.profilePicture,
+                                  isWaitlisted: p.status == 'waitlisted',
+                                  isGuest: false,
+                                )),
+                        ...event.guestParticipants
+                            .where((g) => g.status != 'cancelled')
+                            .map((g) => _CompactParticipantRow(
+                                  name: g.name,
+                                  isWaitlisted: g.status == 'waitlisted',
+                                  isGuest: true,
+                                )),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 16),
                 ],
 
@@ -916,6 +924,85 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Compact participant row
+// ---------------------------------------------------------------------------
+
+class _CompactParticipantRow extends StatelessWidget {
+  const _CompactParticipantRow({
+    required this.name,
+    this.imageUrl,
+    required this.isWaitlisted,
+    required this.isGuest,
+  });
+
+  final String name;
+  final String? imageUrl;
+  final bool isWaitlisted;
+  final bool isGuest;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      child: Row(
+        children: [
+          UserAvatar(name: name, imageUrl: imageUrl, radius: 14),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              name,
+              style: const TextStyle(
+                color: AppThemeTokens.darkText,
+                fontSize: 13,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (isGuest)
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppThemeTokens.info.withValues(alpha: 0.15),
+                borderRadius:
+                    BorderRadius.circular(AppThemeTokens.radiusSm),
+              ),
+              child: const Text(
+                'Guest',
+                style: TextStyle(
+                  color: AppThemeTokens.info,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          if (isWaitlisted) ...[
+            const SizedBox(width: 4),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppThemeTokens.warning.withValues(alpha: 0.15),
+                borderRadius:
+                    BorderRadius.circular(AppThemeTokens.radiusSm),
+              ),
+              child: const Text(
+                'Waitlisted',
+                style: TextStyle(
+                  color: AppThemeTokens.warning,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
