@@ -122,14 +122,23 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
             orElse: () => const SizedBox.shrink(),
           ),
         ],
-        bottom: TabBar(
-          controller: _tabCtrl,
-          tabs: const [
-            Tab(text: 'Overview'),
-            Tab(text: 'Members'),
-            Tab(text: 'Events'),
-            Tab(text: 'Chat'),
-          ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(49),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TabBar(
+                controller: _tabCtrl,
+                tabs: const [
+                  Tab(text: 'Overview'),
+                  Tab(text: 'Members'),
+                  Tab(text: 'Events'),
+                  Tab(text: 'Chat'),
+                ],
+              ),
+              const Divider(height: 1, color: AppThemeTokens.darkBorder),
+            ],
+          ),
         ),
       ),
       body: groupAsync.when(
@@ -279,34 +288,170 @@ class _OverviewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final detailRows = <Widget>[
+      if (group.sportType != null)
+        UiInfoRow(
+          icon: Icons.sports_outlined,
+          label: 'Sport',
+          value: group.sportType!,
+          iconColor: AppThemeTokens.primary500,
+        ),
+      if (group.locationName != null)
+        UiInfoRow(
+          icon: Icons.pin_drop_outlined,
+          label: 'Location',
+          value: group.locationName!,
+          iconColor: AppThemeTokens.info,
+        ),
+      if (group.city != null)
+        UiInfoRow(
+          icon: Icons.place_outlined,
+          label: 'City',
+          value: group.city!,
+          iconColor: AppThemeTokens.info,
+        ),
+      if (group.country != null)
+        UiInfoRow(
+          icon: Icons.flag_outlined,
+          label: 'Country',
+          value: group.country!,
+          iconColor: AppThemeTokens.info,
+        ),
+      if (group.maxMembers != null)
+        UiInfoRow(
+          icon: Icons.groups_2_outlined,
+          label: 'Capacity',
+          value: '${group.memberCount}/${group.maxMembers} members',
+          iconColor: AppThemeTokens.warning,
+        ),
+      UiInfoRow(
+        icon: Icons.calendar_today_outlined,
+        label: 'Created',
+        value: DateFormat.yMMMd().format(group.createdAt),
+        iconColor: AppThemeTokens.darkTextSecondary,
+      ),
+    ];
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
+        // ── Hero Card ─────────────────────────────────────────────────────
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: AppThemeTokens.heroGradient,
+            borderRadius: BorderRadius.circular(AppThemeTokens.radiusLg),
+            border: Border.all(color: AppThemeTokens.darkBorder),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppThemeTokens.radiusLg),
+            child: Stack(
               children: [
-                UserAvatar(
-                    name: group.name,
-                    imageUrl: group.profilePicture,
-                    radius: 32),
-                const SizedBox(width: 16),
-                Expanded(
+                Positioned(
+                  top: -30,
+                  right: -20,
+                  child: Container(
+                    width: 130,
+                    height: 130,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppThemeTokens.primaryGlow,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: -40,
+                  left: -20,
+                  child: Container(
+                    width: 110,
+                    height: 110,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppThemeTokens.primary500.withValues(alpha: 0.06),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(group.name, style: theme.textTheme.titleLarge),
-                      if (group.sportType != null) ...[
-                        const SizedBox(height: 4),
-                        Chip(
-                          label: Text(group.sportType!),
-                          padding: EdgeInsets.zero,
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      ],
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppThemeTokens.primary500,
+                                width: 2,
+                              ),
+                            ),
+                            child: UserAvatar(
+                              name: group.name,
+                              imageUrl: group.profilePicture,
+                              radius: 36,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  group.name,
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppThemeTokens.darkText,
+                                  ),
+                                ),
+                                if (group.description != null &&
+                                    group.description!.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    group.description!,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: AppThemeTokens.darkTextSecondary,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          if (group.sportType != null)
+                            _HeroPill(
+                              label: group.sportType!,
+                              color: AppThemeTokens.primary500,
+                            ),
+                          _HeroPill(
+                            icon: group.isPublic
+                                ? Icons.public
+                                : Icons.lock_outline,
+                            label: group.isPublic ? 'Public' : 'Private',
+                            color: group.isPublic
+                                ? AppThemeTokens.success
+                                : AppThemeTokens.warning,
+                          ),
+                          _HeroPill(
+                            icon: Icons.people_outline,
+                            label:
+                                '${group.memberCount} member${group.memberCount == 1 ? '' : 's'}',
+                            color: AppThemeTokens.info,
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -314,31 +459,43 @@ class _OverviewTab extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: 20),
+
+        // ── Group Details ─────────────────────────────────────────────────
+        UiSectionTitle('Group Details'),
+        const SizedBox(height: 10),
+        Container(
+          decoration: BoxDecoration(
+            color: AppThemeTokens.darkCard,
+            borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+            border: Border.all(color: AppThemeTokens.darkBorder),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Column(
+              children: [
+                for (int i = 0; i < detailRows.length; i++) ...[
+                  detailRows[i],
+                  if (i < detailRows.length - 1)
+                    const Divider(
+                        height: 1, color: AppThemeTokens.darkBorderSubtle),
+                ],
+              ],
+            ),
+          ),
+        ),
         const SizedBox(height: 12),
+
+        // ── Stats chips ───────────────────────────────────────────────────
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            _InfoChip(
-                icon: Icons.people_outline,
-                label:
-                    '${group.memberCount} member${group.memberCount == 1 ? '' : 's'}'),
             if (group.count?.events != null)
               _InfoChip(
                   icon: Icons.event_outlined,
                   label:
                       '${group.count!.events} event${group.count!.events == 1 ? '' : 's'}'),
-            _InfoChip(
-                icon: group.isPublic ? Icons.public : Icons.lock_outline,
-                label: group.isPublic ? 'Public' : 'Private'),
-            if (group.city != null)
-              _InfoChip(icon: Icons.place_outlined, label: group.city!),
-            if (group.country != null)
-              _InfoChip(icon: Icons.public_outlined, label: group.country!),
-            if (group.maxMembers != null)
-              _InfoChip(
-                  icon: Icons.groups_2_outlined,
-                  label: 'Max ${group.maxMembers}'),
             _InfoChip(
               icon: group.allowMemberInvites
                   ? Icons.person_add_alt_1_outlined
@@ -357,72 +514,71 @@ class _OverviewTab extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        Text('Quick Actions', style: theme.textTheme.titleMedium),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            FilledButton.icon(
-              onPressed: () => context.push('/groups/${group.id}/events/new'),
-              icon: const Icon(Icons.add_circle_outline),
-              label: const Text('Create Event'),
-            ),
-            OutlinedButton.icon(
-              onPressed: () => context.push('/discover/public-groups'),
-              icon: const Icon(Icons.explore_outlined),
-              label: const Text('Discover More'),
-            ),
-          ],
+        const SizedBox(height: 20),
+
+        // ── Quick Actions ─────────────────────────────────────────────────
+        UiSectionTitle('Quick Actions'),
+        const SizedBox(height: 10),
+        UiPrimaryButton(
+          text: 'Create Event',
+          icon: Icons.add_circle_outline,
+          onPressed: () => context.push('/groups/${group.id}/events/new'),
         ),
-        if (group.locationName != null ||
-            group.country != null ||
-            group.maxMembers != null) ...[
-          const SizedBox(height: 16),
-          Text('Group Details', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
-          if (group.locationName != null)
-            _OverviewInfoRow(
-              icon: Icons.pin_drop_outlined,
-              label: 'Location',
-              value: group.locationName!,
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () => context.push('/discover/public-groups'),
+          icon: const Icon(Icons.explore_outlined),
+          label: const Text('Discover More'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppThemeTokens.darkTextSecondary,
+            side: const BorderSide(color: AppThemeTokens.darkBorder),
+            minimumSize: const Size(double.infinity, 44),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
             ),
-          if (group.country != null)
-            _OverviewInfoRow(
-              icon: Icons.flag_outlined,
-              label: 'Country',
-              value: group.country!,
-            ),
-          if (group.maxMembers != null)
-            _OverviewInfoRow(
-              icon: Icons.manage_accounts_outlined,
-              label: 'Capacity',
-              value: '${group.memberCount}/${group.maxMembers} members',
-            ),
-        ],
+          ),
+        ),
+
+        // ── About ─────────────────────────────────────────────────────────
         if (group.description != null && group.description!.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Text('About', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 6),
-          Text(group.description!),
+          const SizedBox(height: 20),
+          UiSectionTitle('About'),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppThemeTokens.darkCard,
+              borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+              border: Border.all(color: AppThemeTokens.darkBorder),
+            ),
+            child: Text(
+              group.description!,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppThemeTokens.darkTextSecondary,
+                height: 1.5,
+              ),
+            ),
+          ),
         ],
+
+        // ── Tags ──────────────────────────────────────────────────────────
         if (group.tags != null && group.tags!.isNotEmpty) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Wrap(
-            spacing: 6,
+            spacing: 8,
+            runSpacing: 6,
             children: group.tags!
                 .split(',')
-                .map((t) => Chip(label: Text(t.trim())))
+                .map((t) => _InfoChip(
+                      icon: Icons.label_outline,
+                      label: t.trim(),
+                    ))
                 .toList(),
           ),
         ],
-        const SizedBox(height: 16),
-        Text(
-          'Created ${DateFormat.yMMMd().format(group.createdAt)}',
-          style: theme.textTheme.bodySmall
-              ?.copyWith(color: AppThemeTokens.darkTextSecondary),
-        ),
+        const SizedBox(height: 24),
       ],
     );
   }
@@ -452,7 +608,7 @@ class _MembersTab extends ConsumerWidget {
         isAdmin ? ref.watch(joinRequestsProvider(group.id)) : null;
 
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       children: [
         // Pending join requests
         if (isAdmin && joinAsync != null)
@@ -464,35 +620,73 @@ class _MembersTab extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                    child: Text('Join Requests (${pending.length})',
-                        style: Theme.of(context).textTheme.titleSmall),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: UiSectionTitle('Join Requests (${pending.length})'),
                   ),
-                  ...pending.map((req) => ListTile(
-                        leading: UserAvatar(
-                            name: req.userName, imageUrl: req.userPicture),
-                        title: Text(req.userName),
-                        subtitle:
-                            req.userEmail != null ? Text(req.userEmail!) : null,
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.check_circle_outline,
-                                  color: AppThemeTokens.success),
-                              onPressed: () => _handleJoinReq(
-                                  context, ref, group.id, req.id, 'approve'),
+                  ...pending.map((req) => Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppThemeTokens.darkCard,
+                            borderRadius:
+                                BorderRadius.circular(AppThemeTokens.radiusMd),
+                            border:
+                                Border.all(color: AppThemeTokens.darkBorder),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              children: [
+                                UserAvatar(
+                                    name: req.userName,
+                                    imageUrl: req.userPicture),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        req.userName,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: AppThemeTokens.darkText,
+                                        ),
+                                      ),
+                                      if (req.userEmail != null)
+                                        Text(
+                                          req.userEmail!,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppThemeTokens
+                                                .darkTextSecondary,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                      Icons.check_circle_outline,
+                                      color: AppThemeTokens.success),
+                                  onPressed: () => _handleJoinReq(context, ref,
+                                      group.id, req.id, 'approve'),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.cancel_outlined,
+                                      color: AppThemeTokens.error),
+                                  onPressed: () => _handleJoinReq(context, ref,
+                                      group.id, req.id, 'reject'),
+                                ),
+                              ],
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.cancel_outlined,
-                                  color: AppThemeTokens.error),
-                              onPressed: () => _handleJoinReq(
-                                  context, ref, group.id, req.id, 'reject'),
-                            ),
-                          ],
+                          ),
                         ),
                       )),
-                  const Divider(),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    child: Divider(color: AppThemeTokens.darkBorder),
+                  ),
                 ],
               );
             },
@@ -501,55 +695,95 @@ class _MembersTab extends ConsumerWidget {
 
         // Member list header
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-          child: Text('Members (${group.memberCount})',
-              style: Theme.of(context).textTheme.titleSmall),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: UiSectionTitle('Members (${group.memberCount})'),
         ),
         ...group.members.map((member) {
           final isSelf = member.id == currentUserId;
           final memberIsAdmin = member.role == 'admin';
-          return ListTile(
-            leading:
-                UserAvatar(name: member.name, imageUrl: member.profilePicture),
-            title: Text(member.name),
-            subtitle: Text(member.email),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (memberIsAdmin)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
+          final isCreator = member.id == group.creatorId;
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppThemeTokens.darkCard,
+                borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+                border: Border.all(color: AppThemeTokens.darkBorder),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 10),
+                child: Row(
+                  children: [
+                    UserAvatar(
+                        name: member.name,
+                        imageUrl: member.profilePicture),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            member.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppThemeTokens.darkText,
+                            ),
+                          ),
+                          Text(
+                            member.email,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppThemeTokens.darkTextSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: Text('Admin',
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onPrimaryContainer)),
-                  ),
-                if (isAdmin && !isSelf)
-                  PopupMenuButton<String>(
-                    onSelected: (a) =>
-                        _handleMemberAction(context, ref, group.id, member, a),
-                    itemBuilder: (_) => [
-                      if (!memberIsAdmin)
-                        const PopupMenuItem(
-                            value: 'promote', child: Text('Promote to admin')),
-                      if (!memberIsAdmin)
-                        const PopupMenuItem(
-                            value: 'transfer',
-                            child: Text('Transfer admin role')),
-                      const PopupMenuItem(
-                          value: 'kick',
-                          child: Text('Remove from group',
-                              style: TextStyle(color: AppThemeTokens.error))),
-                    ],
-                  ),
-              ],
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isCreator)
+                          const Padding(
+                            padding: EdgeInsets.only(right: 4),
+                            child: UiStatusBadge(
+                              label: 'Creator',
+                              status: UiStatusType.success,
+                            ),
+                          )
+                        else if (memberIsAdmin)
+                          const Padding(
+                            padding: EdgeInsets.only(right: 4),
+                            child: UiStatusBadge(
+                              label: 'Admin',
+                              status: UiStatusType.info,
+                            ),
+                          ),
+                        if (isAdmin && !isSelf)
+                          PopupMenuButton<String>(
+                            onSelected: (a) => _handleMemberAction(
+                                context, ref, group.id, member, a),
+                            itemBuilder: (_) => [
+                              if (!memberIsAdmin)
+                                const PopupMenuItem(
+                                    value: 'promote',
+                                    child: Text('Promote to admin')),
+                              if (!memberIsAdmin)
+                                const PopupMenuItem(
+                                    value: 'transfer',
+                                    child: Text('Transfer admin role')),
+                              const PopupMenuItem(
+                                  value: 'kick',
+                                  child: Text('Remove from group',
+                                      style: TextStyle(
+                                          color: AppThemeTokens.error))),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
           );
         }),
@@ -673,7 +907,6 @@ class _EventsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final eventsAsync = ref.watch(groupEventsProvider(groupId));
-    final theme = Theme.of(context);
     final now = DateTime.now();
 
     return eventsAsync.when(
@@ -695,88 +928,156 @@ class _EventsTab extends ConsumerWidget {
                     actionLabel: isAdmin ? 'Create event' : null,
                   ),
                 )
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 80),
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
                   itemCount: events.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (ctx, i) {
                     final e = events[i];
                     final local = e.startTime.toLocal();
                     final isPast = !e.startTime.isAfter(now);
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: Container(
-                          width: 44,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            color: isPast
-                                ? AppThemeTokens.darkCardHover
-                                : theme.colorScheme.primaryContainer,
-                            borderRadius:
-                                BorderRadius.circular(AppThemeTokens.radiusSm),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                DateFormat('MMM').format(local).toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w600,
-                                  color: isPast
-                                      ? AppThemeTokens.darkTextSecondary
-                                      : theme.colorScheme.onPrimaryContainer,
-                                ),
-                              ),
-                              Text(
-                                DateFormat('d').format(local),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: isPast
-                                      ? AppThemeTokens.darkTextSecondary
-                                      : theme.colorScheme.onPrimaryContainer,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
-                          ),
+                    return GestureDetector(
+                      onTap: () => context.push('/events/${e.id}'),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: AppThemeTokens.darkCard,
+                          borderRadius:
+                              BorderRadius.circular(AppThemeTokens.radiusMd),
+                          border:
+                              Border.all(color: AppThemeTokens.darkBorder),
                         ),
-                        title: Text(e.title,
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
                           children: [
-                            const SizedBox(height: 2),
-                            Text(
-                              DateFormat('EEE, MMM d · h:mm a').format(local),
-                              style: const TextStyle(fontSize: 11),
+                            // Colored date strip
+                            Container(
+                              width: 60,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 18),
+                              decoration: BoxDecoration(
+                                color: isPast
+                                    ? AppThemeTokens.darkCardElevated
+                                    : AppThemeTokens.primaryGlow,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(
+                                      AppThemeTokens.radiusMd),
+                                  bottomLeft: Radius.circular(
+                                      AppThemeTokens.radiusMd),
+                                ),
+                                border: const Border(
+                                  right: BorderSide(
+                                      color: AppThemeTokens.darkBorder),
+                                ),
+                              ),
+                              child: Column(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    DateFormat('MMM')
+                                        .format(local)
+                                        .toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.5,
+                                      color: isPast
+                                          ? AppThemeTokens.darkTextMuted
+                                          : AppThemeTokens.primary400,
+                                    ),
+                                  ),
+                                  Text(
+                                    DateFormat('d').format(local),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 20,
+                                      color: isPast
+                                          ? AppThemeTokens.darkTextSecondary
+                                          : AppThemeTokens.primary400,
+                                    ),
+                                  ),
+                                  Text(
+                                    DateFormat('EEE')
+                                        .format(local)
+                                        .toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 8,
+                                      letterSpacing: 0.3,
+                                      color: isPast
+                                          ? AppThemeTokens.darkTextMuted
+                                          : AppThemeTokens
+                                              .darkTextSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            const SizedBox(height: 4),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: [
-                                if (e.eventType != null)
-                                  _EventBadge(label: e.eventType!),
-                                _EventBadge(
-                                  label: e.isPublic ? 'Public' : 'Private',
-                                  icon: e.isPublic
-                                      ? Icons.public_outlined
-                                      : Icons.lock_outline,
+                            // Event info
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 10),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      e.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                        color: AppThemeTokens.darkText,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      DateFormat('EEE, MMM d · h:mm a')
+                                          .format(local),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: AppThemeTokens
+                                            .darkTextSecondary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 4,
+                                      children: [
+                                        if (e.eventType != null)
+                                          _EventBadge(
+                                              label: e.eventType!),
+                                        _EventBadge(
+                                          label: e.isPublic
+                                              ? 'Public'
+                                              : 'Private',
+                                          icon: e.isPublic
+                                              ? Icons.public_outlined
+                                              : Icons.lock_outline,
+                                        ),
+                                        _EventBadge(
+                                          label: e.maxPlayers != null
+                                              ? '${e.participantCount}/${e.maxPlayers}'
+                                              : '${e.participantCount} joined',
+                                          icon: Icons.people_outline,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
-                                _EventBadge(
-                                  label: e.maxPlayers != null
-                                      ? '${e.participantCount}/${e.maxPlayers}'
-                                      : '${e.participantCount} joined',
-                                  icon: Icons.people_outline,
-                                ),
-                              ],
+                              ),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.only(right: 12),
+                              child: Icon(
+                                Icons.chevron_right,
+                                color: AppThemeTokens.darkTextMuted,
+                                size: 18,
+                              ),
                             ),
                           ],
                         ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => context.push('/events/${e.id}'),
                       ),
                     );
                   },
@@ -797,44 +1098,6 @@ class _EventsTab extends ConsumerWidget {
   }
 }
 
-class _OverviewInfoRow extends StatelessWidget {
-  const _OverviewInfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: AppThemeTokens.darkTextSecondary),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelSmall
-                        ?.copyWith(color: AppThemeTokens.darkTextSecondary)),
-                Text(value, style: Theme.of(context).textTheme.bodyMedium),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _EventBadge extends StatelessWidget {
   const _EventBadge({required this.label, this.icon});
 
@@ -846,8 +1109,9 @@ class _EventBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: AppThemeTokens.darkCardHover,
+        color: AppThemeTokens.darkCardElevated,
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppThemeTokens.darkBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -982,8 +1246,7 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
                                   decoration: BoxDecoration(
                                     color: isMe
                                         ? theme.colorScheme.primary
-                                        : theme.colorScheme
-                                            .surfaceContainerHighest,
+                                        : AppThemeTokens.darkCardElevated,
                                     borderRadius: BorderRadius.only(
                                       topLeft: const Radius.circular(16),
                                       topRight: const Radius.circular(16),
@@ -995,7 +1258,9 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
                                   ),
                                   child: Text(msg.content,
                                       style: TextStyle(
-                                          color: isMe ? Colors.white : null)),
+                                          color: isMe
+                                              ? Colors.white
+                                              : AppThemeTokens.darkText)),
                                 ),
                                 Text(
                                   DateFormat('h:mm a')
@@ -1018,9 +1283,10 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
         Container(
           padding: EdgeInsets.fromLTRB(
               12, 8, 12, MediaQuery.of(context).viewInsets.bottom + 8),
-          decoration: BoxDecoration(
-            color: theme.scaffoldBackgroundColor,
-            border: Border(top: BorderSide(color: theme.dividerColor)),
+          decoration: const BoxDecoration(
+            color: AppThemeTokens.darkCard,
+            border: Border(
+                top: BorderSide(color: AppThemeTokens.darkBorder)),
           ),
           child: Row(
             children: [
@@ -1028,7 +1294,7 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
                 child: TextField(
                   controller: _msgCtrl,
                   decoration: InputDecoration(
-                    hintText: 'Message…',
+                    hintText: 'Message\u2026',
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24)),
                     contentPadding:
@@ -1060,8 +1326,45 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
 }
 
 // ---------------------------------------------------------------------------
-// Shared
+// Shared helpers
 // ---------------------------------------------------------------------------
+
+class _HeroPill extends StatelessWidget {
+  const _HeroPill({required this.label, required this.color, this.icon});
+
+  final String label;
+  final Color color;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _InfoChip extends StatelessWidget {
   const _InfoChip({required this.icon, required this.label});
@@ -1071,17 +1374,24 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(20),
+        color: AppThemeTokens.darkCardElevated,
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+        border: Border.all(color: AppThemeTokens.darkBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14),
-          const SizedBox(width: 4),
-          Text(label, style: const TextStyle(fontSize: 12)),
+          Icon(icon, size: 13, color: AppThemeTokens.primary400),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppThemeTokens.darkTextSecondary,
+            ),
+          ),
         ],
       ),
     );
