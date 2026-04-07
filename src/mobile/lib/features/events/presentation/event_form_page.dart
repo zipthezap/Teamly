@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/event_model.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../features/groups/state/groups_notifier.dart';
+import '../../../shared/widgets/ui_primitives.dart';
 import '../data/event_repository_impl.dart';
 import '../state/events_notifier.dart';
 
@@ -208,7 +210,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Title *',
                 prefixIcon: Icon(Icons.event_outlined),
-                border: OutlineInputBorder(),
+                
               ),
               textCapitalization: TextCapitalization.words,
               validator: (v) =>
@@ -222,7 +224,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Event type',
                 prefixIcon: Icon(Icons.sports_outlined),
-                border: OutlineInputBorder(),
+                
               ),
               items: kEventTypes
                   .map(
@@ -243,7 +245,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                 decoration: const InputDecoration(
                   labelText: 'Start time *',
                   prefixIcon: Icon(Icons.calendar_today_outlined),
-                  border: OutlineInputBorder(),
+                  
                 ),
                 child: Text(df.format(_startTime.toLocal())),
               ),
@@ -257,7 +259,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                 decoration: const InputDecoration(
                   labelText: 'End time *',
                   prefixIcon: Icon(Icons.access_time),
-                  border: OutlineInputBorder(),
+                  
                 ),
                 child: Text(df.format(_endTime.toLocal())),
               ),
@@ -270,7 +272,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Description (optional)',
                 prefixIcon: Icon(Icons.description_outlined),
-                border: OutlineInputBorder(),
+                
               ),
               maxLines: 3,
             ),
@@ -282,7 +284,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Location (optional)',
                 prefixIcon: Icon(Icons.place_outlined),
-                border: OutlineInputBorder(),
+                
               ),
             ),
             const SizedBox(height: 16),
@@ -293,7 +295,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               decoration: const InputDecoration(
                 labelText: 'City (optional)',
                 prefixIcon: Icon(Icons.location_city_outlined),
-                border: OutlineInputBorder(),
+                
               ),
             ),
             const SizedBox(height: 16),
@@ -304,7 +306,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Max players (optional)',
                 prefixIcon: Icon(Icons.people_outline),
-                border: OutlineInputBorder(),
+                
               ),
               keyboardType: TextInputType.number,
               validator: (v) {
@@ -327,12 +329,10 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
 
             const SizedBox(height: 24),
 
-            SizedBox(
-              height: 48,
-              child: FilledButton(
-                onPressed: _saving ? null : _submit,
-                child: Text(_isEditing ? 'Update Event' : 'Create Event'),
-              ),
+            UiPrimaryButton(
+              label: _isEditing ? 'Update Event' : 'Create Event',
+              onPressed: _saving ? null : _submit,
+              loading: _saving,
             ),
           ],
         ),
@@ -362,14 +362,14 @@ class _GroupPickerField extends ConsumerWidget {
       loading: () => const InputDecorator(
         decoration: InputDecoration(
           labelText: 'Group *',
-          border: OutlineInputBorder(),
+          
         ),
         child: Text('Loading groups…'),
       ),
       error: (_, __) => const InputDecorator(
         decoration: InputDecoration(
           labelText: 'Group *',
-          border: OutlineInputBorder(),
+          
         ),
         child: Text('Could not load groups'),
       ),
@@ -378,7 +378,7 @@ class _GroupPickerField extends ConsumerWidget {
           return const InputDecorator(
             decoration: InputDecoration(
               labelText: 'Group *',
-              border: OutlineInputBorder(),
+              
             ),
             child: Text('No groups — create a group first'),
           );
@@ -392,7 +392,7 @@ class _GroupPickerField extends ConsumerWidget {
           decoration: const InputDecoration(
             labelText: 'Group *',
             prefixIcon: Icon(Icons.group_outlined),
-            border: OutlineInputBorder(),
+            
           ),
           hint: const Text('Select a group'),
           items: groups
