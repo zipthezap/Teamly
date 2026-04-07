@@ -204,6 +204,31 @@ class GroupRepositoryImpl implements GroupRepository {
     );
     return InviteAnalyticsModel.fromJson(response.data!);
   }
+
+  @override
+  Future<void> inviteMember(String groupId, String email) async {
+    await _dio.post<void>(
+      '/groups/$groupId/invite',
+      data: {'email': email},
+    );
+  }
+
+  @override
+  Future<String> uploadGroupPicture(String groupId, String filePath) async {
+    final formData = FormData.fromMap({
+      'picture': await MultipartFile.fromFile(filePath),
+    });
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/groups/$groupId/picture',
+      data: formData,
+    );
+    return response.data?['profilePicture'] as String? ?? '';
+  }
+
+  @override
+  Future<void> deleteGroupPicture(String groupId) async {
+    await _dio.delete<void>('/groups/$groupId/picture');
+  }
 }
 
 final groupRepositoryProvider = Provider<GroupRepository>((ref) {

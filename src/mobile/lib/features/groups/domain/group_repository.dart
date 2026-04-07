@@ -27,4 +27,7 @@ abstract class GroupRepository {
   Future<List<ChatMessageModel>> getChatMessages(String groupId, {int page = 1});
   Future<void> sendChatMessage(String groupId, String content);
   Future<InviteAnalyticsModel> getGroupInviteAnalytics(String groupId);
+  Future<void> inviteMember(String groupId, String email);
+  Future<String> uploadGroupPicture(String groupId, String filePath);
+  Future<void> deleteGroupPicture(String groupId);
 }

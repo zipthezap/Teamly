@@ -170,8 +170,12 @@ class EventModel extends Equatable {
     );
   }
 
-  int get participantCount =>
-      count?.participants ?? participants.where((p) => p.status == 'confirmed').length;
+  int get participantCount {
+    if (count != null) {
+      return count!.participants + count!.guestParticipants;
+    }
+    return participants.where((p) => p.status == 'confirmed').length;
+  }
 
   bool isParticipant(String userId) =>
       participants.any((p) => p.userId == userId && p.status != 'cancelled');

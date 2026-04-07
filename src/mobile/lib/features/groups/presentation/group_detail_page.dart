@@ -3,6 +3,7 @@ import '../../../core/theme/app_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/error/app_exception.dart';
@@ -42,7 +43,9 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
   }
 
   bool _isAdmin(GroupModel group, String? userId) =>
-      group.members.any((m) => m.id == userId && m.role == 'admin');
+      userId != null &&
+      (group.creatorId == userId ||
+          group.members.any((m) => m.id == userId && m.role == 'admin'));
 
   String _extractMsg(Exception e) {
     if (e is AppException) return e.message;
@@ -90,10 +93,22 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
                           title: Text('Edit group'),
                           contentPadding: EdgeInsets.zero)),
                   const PopupMenuItem(
+                      value: 'invite_member',
+                      child: ListTile(
+                          leading: Icon(Icons.person_add_outlined),
+                          title: Text('Invite member'),
+                          contentPadding: EdgeInsets.zero)),
+                  const PopupMenuItem(
                       value: 'invite_link',
                       child: ListTile(
                           leading: Icon(Icons.link),
                           title: Text('Copy invite link'),
+                          contentPadding: EdgeInsets.zero)),
+                  const PopupMenuItem(
+                      value: 'upload_picture',
+                      child: ListTile(
+                          leading: Icon(Icons.photo_camera_outlined),
+                          title: Text('Change group picture'),
                           contentPadding: EdgeInsets.zero)),
                   const PopupMenuItem(
                       value: 'event_requests',
@@ -152,7 +167,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
           return TabBarView(
             controller: _tabCtrl,
             children: [
-              _OverviewTab(group: group),
+              _OverviewTab(group: group, isAdmin: admin, groupId: widget.groupId),
               _MembersTab(
                   group: group, isAdmin: admin, currentUserId: currentUserId),
               _EventsTab(groupId: group.id, isAdmin: admin),
@@ -171,6 +186,9 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
             builder: (_) => GroupFormPage(existingGroup: group)));
         ref.invalidate(groupDetailProvider(widget.groupId));
         break;
+      case 'invite_member':
+        await _showInviteMemberDialog();
+        break;
       case 'invite_link':
         try {
           final link = await ref
@@ -187,6 +205,9 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
                 .showSnackBar(SnackBar(content: Text(_extractMsg(e))));
           }
         }
+        break;
+      case 'upload_picture':
+        await _pickAndUploadPicture();
         break;
       case 'event_requests':
         context.push('/groups/${widget.groupId}/event-requests');
@@ -231,6 +252,72 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
           }
         }
         break;
+    }
+  }
+
+  Future<void> _showInviteMemberDialog() async {
+    final emailCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Invite member'),
+        content: TextField(
+          controller: emailCtrl,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(
+            labelText: 'Email address',
+            hintText: 'user@example.com',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Send invite')),
+        ],
+      ),
+    );
+    if (ok == true && mounted) {
+      final email = emailCtrl.text.trim();
+      if (email.isEmpty) return;
+      try {
+        await ref
+            .read(groupRepositoryProvider)
+            .inviteMember(widget.groupId, email);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Invite sent to $email')));
+        }
+      } on Exception catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(_extractMsg(e))));
+        }
+      }
+    }
+  }
+
+  Future<void> _pickAndUploadPicture() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked == null || !mounted) return;
+    try {
+      await ref
+          .read(groupRepositoryProvider)
+          .uploadGroupPicture(widget.groupId, picked.path);
+      ref.invalidate(groupDetailProvider(widget.groupId));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Group picture updated!')));
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(_extractMsg(e))));
+      }
     }
   }
 
@@ -282,12 +369,122 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
 // Overview tab
 // ---------------------------------------------------------------------------
 
-class _OverviewTab extends StatelessWidget {
-  const _OverviewTab({required this.group});
+class _OverviewTab extends ConsumerWidget {
+  const _OverviewTab(
+      {required this.group, required this.isAdmin, required this.groupId});
   final GroupModel group;
+  final bool isAdmin;
+  final String groupId;
+
+  String _extractMsg(Exception e) {
+    if (e is AppException) return e.message;
+    return e.toString().replaceFirst('Exception: ', '');
+  }
+
+  Future<void> _showInviteMemberDialog(
+      BuildContext context, WidgetRef ref) async {
+    final emailCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Invite member'),
+        content: TextField(
+          controller: emailCtrl,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(
+            labelText: 'Email address',
+            hintText: 'user@example.com',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Send invite')),
+        ],
+      ),
+    );
+    if (ok == true && context.mounted) {
+      final email = emailCtrl.text.trim();
+      if (email.isEmpty) return;
+      try {
+        await ref.read(groupRepositoryProvider).inviteMember(groupId, email);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Invite sent to $email')));
+        }
+      } on Exception catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(_extractMsg(e))));
+        }
+      }
+    }
+  }
+
+  Future<void> _pickAndUploadPicture(
+      BuildContext context, WidgetRef ref) async {
+    final picker = ImagePicker();
+    final picked =
+        await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked == null || !context.mounted) return;
+    try {
+      await ref
+          .read(groupRepositoryProvider)
+          .uploadGroupPicture(groupId, picked.path);
+      ref.invalidate(groupDetailProvider(groupId));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Group picture updated!')));
+      }
+    } on Exception catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(_extractMsg(e))));
+      }
+    }
+  }
+
+  Future<void> _deletePicture(BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove picture'),
+        content: const Text('Remove the group picture?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel')),
+          FilledButton(
+              style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(ctx).colorScheme.error),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Remove')),
+        ],
+      ),
+    );
+    if (ok == true && context.mounted) {
+      try {
+        await ref.read(groupRepositoryProvider).deleteGroupPicture(groupId);
+        ref.invalidate(groupDetailProvider(groupId));
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Group picture removed.')));
+        }
+      } on Exception catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(_extractMsg(e))));
+        }
+      }
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final detailRows = <Widget>[
       if (group.sportType != null)
         UiInfoRow(
@@ -524,6 +721,56 @@ class _OverviewTab extends StatelessWidget {
           icon: Icons.add_circle_outline,
           onPressed: () => context.push('/groups/${group.id}/events/new'),
         ),
+        if (isAdmin) ...[
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => _showInviteMemberDialog(context, ref),
+            icon: const Icon(Icons.person_add_outlined),
+            label: const Text('Invite Member'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppThemeTokens.darkTextSecondary,
+              side: const BorderSide(color: AppThemeTokens.darkBorder),
+              minimumSize: const Size(double.infinity, 44),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => _pickAndUploadPicture(context, ref),
+            icon: const Icon(Icons.photo_camera_outlined),
+            label: const Text('Change Picture'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppThemeTokens.darkTextSecondary,
+              side: const BorderSide(color: AppThemeTokens.darkBorder),
+              minimumSize: const Size(double.infinity, 44),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+              ),
+            ),
+          ),
+          if (group.profilePicture != null) ...[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => _deletePicture(context, ref),
+              icon: const Icon(Icons.hide_image_outlined,
+                  color: AppThemeTokens.error),
+              label: const Text('Remove Picture',
+                  style: TextStyle(color: AppThemeTokens.error)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppThemeTokens.error,
+                side: BorderSide(
+                    color: AppThemeTokens.error.withValues(alpha: 0.4)),
+                minimumSize: const Size(double.infinity, 44),
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(AppThemeTokens.radiusMd),
+                ),
+              ),
+            ),
+          ],
+        ],
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: () => context.push('/discover/public-groups'),
