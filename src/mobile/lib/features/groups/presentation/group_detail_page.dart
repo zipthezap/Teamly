@@ -840,43 +840,48 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: primary
-              ? AppThemeTokens.primary500.withValues(alpha: 0.12)
-              : AppThemeTokens.darkCard,
-          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-          border: Border.all(
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
             color: primary
-                ? AppThemeTokens.primary500.withValues(alpha: 0.4)
-                : AppThemeTokens.darkBorder,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 16,
+                ? AppThemeTokens.primary500.withValues(alpha: 0.12)
+                : AppThemeTokens.darkCard,
+            borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+            border: Border.all(
               color: primary
-                  ? AppThemeTokens.primary400
-                  : AppThemeTokens.darkTextSecondary,
+                  ? AppThemeTokens.primary500.withValues(alpha: 0.4)
+                  : AppThemeTokens.darkBorder,
             ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
                 color: primary
                     ? AppThemeTokens.primary400
                     : AppThemeTokens.darkTextSecondary,
               ),
-            ),
-          ],
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: primary
+                      ? AppThemeTokens.primary400
+                      : AppThemeTokens.darkTextSecondary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

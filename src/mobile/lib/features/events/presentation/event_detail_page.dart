@@ -919,29 +919,34 @@ class _CompactActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: AppThemeTokens.darkCard,
-          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-          border: Border.all(color: AppThemeTokens.darkBorder),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 20, color: AppThemeTokens.primary400),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: AppThemeTokens.darkTextSecondary,
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: AppThemeTokens.darkCard,
+            borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+            border: Border.all(color: AppThemeTokens.darkBorder),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 20, color: AppThemeTokens.primary400),
+              const SizedBox(height: 5),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: AppThemeTokens.darkTextSecondary,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
