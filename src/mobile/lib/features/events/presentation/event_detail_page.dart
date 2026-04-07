@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -94,6 +95,7 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
       } else {
         await repo.unmarkLate(widget.eventId);
       }
+      if (!mounted) return;
       setState(() => _isMarkedLate = isLate);
       ref.invalidate(eventDetailProvider(widget.eventId));
       if (mounted) {
@@ -467,9 +469,8 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                                 children: [
                                   if (event.eventType != null)
                                     UiStatusBadge(
-                                      label: event.eventType!,
-                                      status: UiStatusBadge.fromString(
-                                          event.eventType!),
+                                      label: sportTypeLabel(event.eventType),
+                                      status: UiStatusType.info,
                                       dot: true,
                                     ),
                                   UiStatusBadge(
@@ -552,11 +553,19 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                                 ],
                               ),
                               if (event.locationName != null ||
-                                  event.location != null) ...[
+                                  event.location != null ||
+                                  event.city != null ||
+                                  event.country != null) ...[
                                 const SizedBox(height: 8),
                                 InkWell(
-                                  onTap: () => openInMaps(context,
-                                      event.locationName ?? event.location!),
+                                  onTap: () => openInMaps(
+                                    context,
+                                    [
+                                      event.locationName ?? event.location,
+                                      event.city,
+                                      event.country,
+                                    ].whereType<String>().join(', '),
+                                  ),
                                   borderRadius: BorderRadius.circular(
                                       AppThemeTokens.radiusSm),
                                   child: Row(
@@ -568,7 +577,11 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                                       const SizedBox(width: 5),
                                       Flexible(
                                         child: Text(
-                                          event.locationName ?? event.location!,
+                                          [
+                                            event.locationName ?? event.location,
+                                            event.city,
+                                            event.country,
+                                          ].whereType<String>().join(', '),
                                           style: const TextStyle(
                                             color: Color(0xFF2DD4BF),
                                             fontSize: 13,
@@ -704,26 +717,23 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                             '${DateFormat.jm().format(localStart)} – ${DateFormat.jm().format(localEnd)}',
                         iconColor: AppThemeTokens.primary400,
                       ),
-                      if (event.locationName != null || event.location != null)
+                      if (event.locationName != null || event.location != null || event.city != null || event.country != null)
                         UiInfoRow(
                           icon: Icons.place_outlined,
-                          label: event.locationName ?? event.location!,
-                          iconColor: const Color(0xFF2DD4BF),
-                          onTap: () => openInMaps(context,
-                              event.locationName ?? event.location!),
-                        ),
-                      if (event.city != null || event.country != null)
-                        UiInfoRow(
-                          icon: Icons.location_city_outlined,
-                          label: [event.city, event.country]
-                              .whereType<String>()
-                              .join(', '),
+                          label: [
+                            event.locationName ?? event.location,
+                            event.city,
+                            event.country,
+                          ].whereType<String>().join(', '),
                           iconColor: const Color(0xFF2DD4BF),
                           onTap: () => openInMaps(
-                              context,
-                              [event.city, event.country]
-                                  .whereType<String>()
-                                  .join(', ')),
+                            context,
+                            [
+                              event.locationName ?? event.location,
+                              event.city,
+                              event.country,
+                            ].whereType<String>().join(', '),
+                          ),
                         ),
                       UiInfoRow(
                         icon: Icons.group_outlined,
@@ -1230,6 +1240,7 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
     if (text.isEmpty) return;
     try {
       await ref.read(commentRepositoryProvider).updateComment(commentId, text);
+      if (!mounted) return;
       setState(() => _editingCommentId = null);
       ref.invalidate(_eventCommentsProvider(widget.eventId));
     } on Exception catch (e) {

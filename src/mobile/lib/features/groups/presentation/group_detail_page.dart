@@ -516,30 +516,20 @@ class _OverviewTab extends ConsumerWidget {
           value: group.sportType!,
           iconColor: AppThemeTokens.primary500,
         ),
-      if (group.locationName != null)
+      if (group.locationName != null || group.city != null || group.country != null)
         UiInfoRow(
           icon: Icons.pin_drop_outlined,
           label: 'Location',
-          value: group.locationName!,
+          value: [group.locationName, group.city, group.country]
+              .whereType<String>()
+              .join(', '),
           iconColor: AppThemeTokens.info,
-          onTap: () => openInMaps(context, group.locationName!),
-        ),
-      if (group.city != null)
-        UiInfoRow(
-          icon: Icons.place_outlined,
-          label: 'City',
-          value: group.city!,
-          iconColor: AppThemeTokens.info,
-          onTap: () => openInMaps(context,
-              [group.city, group.country].whereType<String>().join(', ')),
-        ),
-      if (group.country != null)
-        UiInfoRow(
-          icon: Icons.flag_outlined,
-          label: 'Country',
-          value: group.country!,
-          iconColor: AppThemeTokens.info,
-          onTap: () => openInMaps(context, group.country!),
+          onTap: () => openInMaps(
+            context,
+            [group.locationName, group.city, group.country]
+                .whereType<String>()
+                .join(', '),
+          ),
         ),
       if (group.maxMembers != null)
         UiInfoRow(
@@ -1272,7 +1262,19 @@ class _EventsTab extends ConsumerWidget {
         message: e.toString(),
         onRetry: () => ref.invalidate(groupEventsProvider(groupId)),
       ),
-      data: (events) => Stack(
+      data: (rawEvents) {
+        // Sort: upcoming events ascending, then past events descending (most recent first)
+        final upcoming = rawEvents
+            .where((e) => e.startTime.isAfter(now))
+            .toList()
+          ..sort((a, b) => a.startTime.compareTo(b.startTime));
+        final past = rawEvents
+            .where((e) => !e.startTime.isAfter(now))
+            .toList()
+          ..sort((a, b) => b.startTime.compareTo(a.startTime));
+        final events = [...upcoming, ...past];
+
+        return Stack(
         children: [
           events.isEmpty
               ? Center(
@@ -1463,7 +1465,8 @@ class _EventsTab extends ConsumerWidget {
               ),
             ),
         ],
-      ),
+      );
+      },
     );
   }
 }

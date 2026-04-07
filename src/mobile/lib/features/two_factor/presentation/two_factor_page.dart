@@ -56,12 +56,14 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
       final dio = ref.read(dioProvider);
       final response = await dio.get<Map<String, dynamic>>('/2fa/status');
       final data = response.data!;
+      if (!mounted) return;
       setState(() {
         _enabled = (data['enabled'] as bool?) ?? false;
         _secret = data['secret'] as String?;
         _settingUp = false;
       });
     } on Exception catch (e) {
+      if (!mounted) return;
       setState(() => _error = _extractMsg(e));
     } finally {
       if (mounted) setState(() => _loading = false);

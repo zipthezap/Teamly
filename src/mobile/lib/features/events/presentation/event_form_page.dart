@@ -11,6 +11,11 @@ import '../../../shared/widgets/ui_primitives.dart';
 import '../data/event_repository_impl.dart';
 import '../state/events_notifier.dart';
 
+/// Sport types valid in the backend (excludes the empty "None/Mixed" option
+/// that is only used for group filtering, since eventType is required).
+final _kSportTypeItems =
+    kSportTypes.where((s) => s['value']!.isNotEmpty).toList();
+
 class EventFormPage extends ConsumerStatefulWidget {
   const EventFormPage({
     super.key,
@@ -34,7 +39,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   late TextEditingController _cityCtrl;
   late TextEditingController _maxPlayersCtrl;
 
-  String _eventType = 'match';
+  String _eventType = 'football';
   bool _isPublic = true;
   DateTime _startTime = DateTime.now().add(const Duration(days: 1));
   DateTime _endTime = DateTime.now().add(const Duration(days: 1, hours: 2));
@@ -62,7 +67,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     _maxPlayersCtrl = TextEditingController(
       text: e?.maxPlayers != null ? '${e!.maxPlayers}' : '',
     );
-    _eventType = e?.eventType ?? 'match';
+    _eventType = _validSportType(e?.eventType);
     _isPublic = e?.isPublic ?? true;
     if (e != null) {
       _startTime = e.startTime;
@@ -78,6 +83,16 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
     _cityCtrl.dispose();
     _maxPlayersCtrl.dispose();
     super.dispose();
+  }
+
+  /// Returns [value] if it is a valid sport type, otherwise falls back to
+  /// 'football'. This guards against stale/unknown eventType values from the API.
+  static String _validSportType(String? value) {
+    if (value != null &&
+        _kSportTypeItems.any((s) => s['value'] == value)) {
+      return value;
+    }
+    return 'football';
   }
 
   String _extractMsg(Exception e) {
@@ -202,13 +217,67 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            // ── Form header ──────────────────────────────────────────────
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: AppThemeTokens.heroGradient,
+                borderRadius: BorderRadius.circular(AppThemeTokens.radiusLg),
+                border: Border.all(color: AppThemeTokens.darkBorder),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppThemeTokens.primary500.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+                    ),
+                    child: const Icon(Icons.sports_outlined,
+                        color: AppThemeTokens.primary400, size: 22),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _isEditing ? 'Edit Event' : 'New Event',
+                          style: const TextStyle(
+                            color: AppThemeTokens.darkText,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          _isEditing
+                              ? 'Update event details below'
+                              : 'Fill in the details to create your event',
+                          style: const TextStyle(
+                            color: AppThemeTokens.darkTextSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // ── Section: Basic Info ───────────────────────────────────
+            const _FormSectionTitle(title: 'Basic Info', icon: Icons.info_outline_rounded),
+            const SizedBox(height: 12),
+
             // Group picker (shown only when creating an event without a pre-selected group)
             if (widget.groupId.isEmpty && !_isEditing) ...[
               _GroupPickerField(
                 selectedGroupId: _selectedGroupId,
                 onChanged: (id) => setState(() => _selectedGroupId = id),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
             ],
 
             // Title
@@ -217,23 +286,21 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Title *',
                 prefixIcon: Icon(Icons.event_outlined),
-                
               ),
               textCapitalization: TextCapitalization.words,
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Title is required' : null,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
-            // Event type
+            // Sport type
             DropdownButtonFormField<String>(
               value: _eventType,
               decoration: const InputDecoration(
-                labelText: 'Event type',
-                prefixIcon: Icon(Icons.sports_outlined),
-                
+                labelText: 'Sport',
+                prefixIcon: Icon(Icons.sports_soccer_outlined),
               ),
-              items: kEventTypes
+              items: _kSportTypeItems
                   .map(
                     (t) => DropdownMenuItem(
                       value: t['value'],
@@ -241,37 +308,45 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                     ),
                   )
                   .toList(),
-              onChanged: (v) => setState(() => _eventType = v ?? 'match'),
+              onChanged: (v) => setState(() => _eventType = v ?? 'football'),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
+
+            // ── Section: Schedule ─────────────────────────────────────
+            const _FormSectionTitle(title: 'Schedule', icon: Icons.calendar_month_outlined),
+            const SizedBox(height: 12),
 
             // Start time
             InkWell(
               onTap: () => _pickDateTime(isStart: true),
+              borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
               child: InputDecorator(
                 decoration: const InputDecoration(
                   labelText: 'Start time *',
                   prefixIcon: Icon(Icons.calendar_today_outlined),
-                  
                 ),
                 child: Text(df.format(_startTime.toLocal())),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
             // End time
             InkWell(
               onTap: () => _pickDateTime(isStart: false),
+              borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
               child: InputDecorator(
                 decoration: const InputDecoration(
                   labelText: 'End time *',
                   prefixIcon: Icon(Icons.access_time),
-                  
                 ),
                 child: Text(df.format(_endTime.toLocal())),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
+
+            // ── Section: Details ──────────────────────────────────────
+            const _FormSectionTitle(title: 'Details', icon: Icons.notes_rounded),
+            const SizedBox(height: 12),
 
             // Description
             TextFormField(
@@ -279,11 +354,10 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Description (optional)',
                 prefixIcon: Icon(Icons.description_outlined),
-                
               ),
               maxLines: 3,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
             // Location
             TextFormField(
@@ -291,10 +365,9 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Location (optional)',
                 prefixIcon: Icon(Icons.place_outlined),
-                
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
             // City
             TextFormField(
@@ -302,10 +375,9 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               decoration: const InputDecoration(
                 labelText: 'City (optional)',
                 prefixIcon: Icon(Icons.location_city_outlined),
-                
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
             // Max players
             TextFormField(
@@ -313,7 +385,6 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Max players (optional)',
                 prefixIcon: Icon(Icons.people_outline),
-                
               ),
               keyboardType: TextInputType.number,
               validator: (v) {
@@ -323,7 +394,11 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
+
+            // ── Section: Settings ─────────────────────────────────────
+            const _FormSectionTitle(title: 'Settings', icon: Icons.tune_rounded),
+            const SizedBox(height: 12),
 
             // Public toggle
             _EventSwitchRow(
@@ -333,13 +408,14 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               onChanged: (v) => setState(() => _isPublic = v),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
 
             UiPrimaryButton(
               text: _isEditing ? 'Update Event' : 'Create Event',
               onPressed: _saving ? null : _submit,
               loading: _saving,
             ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -466,6 +542,43 @@ class _EventSwitchRow extends StatelessWidget {
           Switch(value: value, onChanged: onChanged),
         ],
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Section title widget used to visually group form fields
+// ---------------------------------------------------------------------------
+
+class _FormSectionTitle extends StatelessWidget {
+  const _FormSectionTitle({required this.title, required this.icon});
+
+  final String title;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 15, color: AppThemeTokens.primary400),
+        const SizedBox(width: 7),
+        Text(
+          title.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: AppThemeTokens.darkTextSecondary,
+            letterSpacing: 1.1,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Container(
+            height: 1,
+            color: AppThemeTokens.darkBorderSubtle,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,3 +1,4 @@
+import '../../../core/constants/app_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -329,16 +330,25 @@ class _EventListCard extends StatelessWidget {
   final bool isHosting;
 
   Color _accentColor() {
-    switch ((event.eventType as String?)?.toLowerCase()) {
-      case 'match':
-      case 'game':
+    switch (event.eventType as String?) {
+      case 'football':
+      case 'americanFootball':
+      case 'rugby':
+      case 'handball':
+      case 'fieldHockey':
         return AppThemeTokens.primary500;
-      case 'training':
-      case 'practice':
-        return const Color(0xFF4CAF50);
-      case 'tournament':
+      case 'basketball':
+      case 'volleyball':
         return const Color(0xFFFF9800);
-      case 'social':
+      case 'tennis':
+      case 'baseball':
+      case 'cricket':
+        return const Color(0xFF4CAF50);
+      case 'running':
+      case 'cycling':
+      case 'swimming':
+        return const Color(0xFF00BCD4);
+      case 'iceHockey':
         return const Color(0xFF7C4DFF);
       default:
         return AppThemeTokens.primary500;
@@ -473,7 +483,7 @@ class _EventListCard extends StatelessWidget {
                             children: [
                               if (event.eventType != null)
                                 _MiniTag(
-                                  label: event.eventType as String,
+                                  label: sportTypeLabel(event.eventType as String?),
                                   color: accent,
                                 ),
                               _MiniTag(

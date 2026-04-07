@@ -11,6 +11,9 @@ class NotificationModel extends Equatable {
     this.eventTitle,
     this.groupId,
     this.groupName,
+    this.tournamentId,
+    this.tournamentName,
+    this.teamupId,
     this.actorName,
     this.params,
   });
@@ -24,12 +27,17 @@ class NotificationModel extends Equatable {
   final String? eventTitle;
   final String? groupId;
   final String? groupName;
+  final String? tournamentId;
+  final String? tournamentName;
+  final String? teamupId;
   final String? actorName;
   final Map<String, dynamic>? params;
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     final event = json['event'] as Map<String, dynamic>?;
     final group = json['group'] as Map<String, dynamic>?;
+    final tournament = json['tournament'] as Map<String, dynamic>?;
+    final teamUpRequest = json['teamUpRequest'] as Map<String, dynamic>?;
     final user = json['user'] as Map<String, dynamic>?;
     final rawParams = json['params'];
 
@@ -43,6 +51,9 @@ class NotificationModel extends Equatable {
       eventTitle: event?['title'] as String?,
       groupId: group?['id'] as String?,
       groupName: group?['name'] as String?,
+      tournamentId: tournament?['id'] as String?,
+      tournamentName: tournament?['name'] as String?,
+      teamupId: teamUpRequest?['id'] as String?,
       actorName: user?['name'] as String?,
       params: rawParams is Map<String, dynamic> ? rawParams : null,
     );
@@ -54,6 +65,7 @@ class NotificationModel extends Equatable {
     final title =
         eventTitle ?? params?['eventTitle'] as String? ?? 'an event';
     final gName = groupName ?? params?['groupName'] as String? ?? 'a group';
+    final tName = tournamentName ?? params?['tournamentName'] as String? ?? 'a tournament';
 
     switch (type) {
       case 'join':
@@ -76,6 +88,26 @@ class NotificationModel extends Equatable {
         return '$name joined $gName';
       case 'nearby_created':
         return 'New group "$gName" near you';
+      // TeamUp types
+      case 'teamup_request':
+        return '$name sent a TeamUp request';
+      case 'teamup_accepted':
+        return '$name accepted your TeamUp request';
+      case 'teamup_declined':
+        return '$name declined your TeamUp request';
+      case 'teamup_response':
+        return '$name responded to your TeamUp request';
+      case 'teamup_comment':
+        return '$name commented on a TeamUp request';
+      // Tournament types
+      case 'team_registered':
+        return 'A team registered for "$tName"';
+      case 'score_submitted':
+        return 'A score was submitted in "$tName"';
+      case 'tournament_cancelled':
+        return 'Tournament "$tName" was cancelled';
+      case 'tournament_started':
+        return 'Tournament "$tName" has started';
       default:
         return type.replaceAll('_', ' ');
     }
