@@ -5,28 +5,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/extended_models.dart';
-import '../../../shared/widgets/error_display.dart';
+import '../../../shared/widgets/ui_primitives.dart';
+import '../../../shared/widgets/user_avatar.dart';
 import '../data/group_repository_impl.dart';
 import '../state/groups_notifier.dart';
-
-// Simple state for the nearby groups search
-class _NearbyState {
-  _NearbyState({
-    this.latitude,
-    this.longitude,
-    this.radius = 25.0,
-    this.results = const [],
-    this.loading = false,
-    this.error,
-  });
-
-  final double? latitude;
-  final double? longitude;
-  final double radius;
-  final List<NearbyGroupModel> results;
-  final bool loading;
-  final String? error;
-}
 
 class NearbyGroupsPage extends ConsumerStatefulWidget {
   const NearbyGroupsPage({super.key});
@@ -113,176 +95,412 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Nearby Groups')),
+      appBar: AppBar(
+        title: const Text('Nearby Groups'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: AppThemeTokens.darkBorder),
+        ),
+      ),
       body: Column(
         children: [
-          // Search form
-          Card(
-            margin: const EdgeInsets.all(12),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Search by location',
-                      style: theme.textTheme.titleSmall),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _latCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Latitude',
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                          keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true, signed: true),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: _lngCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Longitude',
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                          keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true, signed: true),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Text(
-                          'Radius: ${_radius.toStringAsFixed(0)} km',
-                          style: theme.textTheme.bodySmall),
-                      Expanded(
-                        child: Slider(
-                          value: _radius,
-                          min: 5,
-                          max: 100,
-                          divisions: 19,
-                          label: '${_radius.toStringAsFixed(0)} km',
-                          onChanged: (v) => setState(() => _radius = v),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _loading ? null : _search,
-                      icon: _loading
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child:
-                                  CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.search),
-                      label: const Text('Search'),
-                    ),
-                  ),
-                  if (_error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(_error!,
-                          style: TextStyle(
-                              color: theme.colorScheme.error,
-                              fontSize: 12)),
-                    ),
-                ],
-              ),
-            ),
+          _SearchForm(
+            latCtrl: _latCtrl,
+            lngCtrl: _lngCtrl,
+            radius: _radius,
+            loading: _loading,
+            error: _error,
+            onRadiusChanged: (v) => setState(() => _radius = v),
+            onSearch: _search,
           ),
-
-          // Results
           Expanded(
             child: _results.isEmpty
-                ? Center(
-                    child: Text(
-                      'Enter your location to find nearby groups',
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(color: AppThemeTokens.darkTextSecondary),
-                      textAlign: TextAlign.center,
-                    ),
+                ? UiEmptyState(
+                    icon: Icons.location_on_outlined,
+                    title: 'Find groups near you',
+                    message: 'Enter your coordinates above\nto discover nearby groups.',
                   )
-                : ListView.separated(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 4),
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                     itemCount: _results.length,
-                    separatorBuilder: (_, __) =>
-                        const Divider(height: 1),
                     itemBuilder: (ctx, i) {
                       final g = _results[i];
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor:
-                              theme.colorScheme.primaryContainer,
-                          child: Text(
-                            g.name.isNotEmpty
-                                ? g.name[0].toUpperCase()
-                                : '?',
-                            style: TextStyle(
-                              color:
-                                  theme.colorScheme.onPrimaryContainer,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _NearbyGroupCard(
+                          group: g,
+                          joining: _joining,
+                          onView: () => ctx.push('/groups/${g.id}'),
+                          onJoin: () => _requestJoin(g),
                         ),
-                        title: Text(g.name),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (g.sportType != null)
-                              Text(g.sportType!,
-                                  style: const TextStyle(fontSize: 11)),
-                            Row(
-                              children: [
-                                const Icon(Icons.place_outlined, size: 12),
-                                const SizedBox(width: 2),
-                                Text(
-                                  '${g.distance.toStringAsFixed(1)} km away',
-                                  style: const TextStyle(fontSize: 11),
-                                ),
-                                if (g.memberCount != null) ...[
-                                  const SizedBox(width: 8),
-                                  const Icon(Icons.people_outline,
-                                      size: 12),
-                                  const SizedBox(width: 2),
-                                  Text('${g.memberCount}',
-                                      style: const TextStyle(fontSize: 11)),
-                                ],
-                              ],
-                            ),
-                          ],
-                        ),
-                        isThreeLine: g.sportType != null,
-                        trailing: _joining
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2))
-                            : OutlinedButton(
-                                onPressed: () => context.push('/groups/${g.id}'),
-                                child: const Text('View'),
-                              ),
-                        onTap: () => context.push('/groups/${g.id}'),
                       );
                     },
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Search form ───────────────────────────────────────────────────────────────
+
+class _SearchForm extends StatelessWidget {
+  const _SearchForm({
+    required this.latCtrl,
+    required this.lngCtrl,
+    required this.radius,
+    required this.loading,
+    required this.error,
+    required this.onRadiusChanged,
+    required this.onSearch,
+  });
+
+  final TextEditingController latCtrl;
+  final TextEditingController lngCtrl;
+  final double radius;
+  final bool loading;
+  final String? error;
+  final ValueChanged<double> onRadiusChanged;
+  final VoidCallback onSearch;
+
+  InputDecoration _fieldDecor(String label) => InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(
+            color: AppThemeTokens.darkTextSecondary, fontSize: 13),
+        filled: true,
+        fillColor: AppThemeTokens.darkBg,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+          borderSide: const BorderSide(color: AppThemeTokens.darkBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+          borderSide: const BorderSide(color: AppThemeTokens.darkBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+          borderSide: const BorderSide(color: AppThemeTokens.primary500),
+        ),
+        isDense: true,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: AppThemeTokens.heroGradient,
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusLg),
+        border: Border.all(color: AppThemeTokens.darkBorder),
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: AppThemeTokens.primary500.withValues(alpha: 0.15),
+                  borderRadius:
+                      BorderRadius.circular(AppThemeTokens.radiusSm),
+                ),
+                child: const Icon(Icons.my_location_rounded,
+                    size: 16, color: AppThemeTokens.primary400),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Search by location',
+                style: TextStyle(
+                  color: AppThemeTokens.darkText,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: latCtrl,
+                  style: const TextStyle(
+                      color: AppThemeTokens.darkText, fontSize: 14),
+                  decoration: _fieldDecor('Latitude'),
+                  keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true, signed: true),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  controller: lngCtrl,
+                  style: const TextStyle(
+                      color: AppThemeTokens.darkText, fontSize: 14),
+                  decoration: _fieldDecor('Longitude'),
+                  keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true, signed: true),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Icon(Icons.radar_rounded,
+                  size: 14, color: AppThemeTokens.darkTextSecondary),
+              const SizedBox(width: 6),
+              Text(
+                'Radius: ${radius.toStringAsFixed(0)} km',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppThemeTokens.darkTextSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Expanded(
+                child: SliderTheme(
+                  data: SliderThemeData(
+                    activeTrackColor: AppThemeTokens.primary500,
+                    inactiveTrackColor:
+                        AppThemeTokens.darkBorder,
+                    thumbColor: AppThemeTokens.primary400,
+                    overlayColor:
+                        AppThemeTokens.primary500.withValues(alpha: 0.15),
+                    trackHeight: 3,
+                  ),
+                  child: Slider(
+                    value: radius,
+                    min: 5,
+                    max: 100,
+                    divisions: 19,
+                    label: '${radius.toStringAsFixed(0)} km',
+                    onChanged: onRadiusChanged,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          UiPrimaryButton(
+            text: 'Search',
+            icon: Icons.search_rounded,
+            onPressed: loading ? null : onSearch,
+            loading: loading,
+          ),
+          if (error != null) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Icon(Icons.error_outline_rounded,
+                    size: 14, color: AppThemeTokens.error),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    error!,
+                    style: const TextStyle(
+                      color: AppThemeTokens.error,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Nearby group card ─────────────────────────────────────────────────────────
+
+class _NearbyGroupCard extends StatelessWidget {
+  const _NearbyGroupCard({
+    required this.group,
+    required this.joining,
+    required this.onView,
+    required this.onJoin,
+  });
+
+  final NearbyGroupModel group;
+  final bool joining;
+  final VoidCallback onView;
+  final VoidCallback onJoin;
+
+  Color _sportColor() {
+    switch (group.sportType?.toLowerCase()) {
+      case 'football':
+      case 'soccer':
+        return const Color(0xFF4CAF50);
+      case 'basketball':
+        return const Color(0xFFFF9800);
+      case 'tennis':
+        return const Color(0xFFFFEB3B);
+      case 'running':
+        return const Color(0xFF00BCD4);
+      case 'cycling':
+        return const Color(0xFF2196F3);
+      case 'volleyball':
+        return const Color(0xFF9C27B0);
+      default:
+        return AppThemeTokens.primary500;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sportColor = _sportColor();
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+      child: InkWell(
+        onTap: onView,
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppThemeTokens.darkCard,
+            borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+            border: Border.all(color: AppThemeTokens.darkBorder),
+          ),
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              // Avatar with sport-color ring
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: sportColor.withValues(alpha: 0.45), width: 2),
+                ),
+                child: UserAvatar(
+                  name: group.name,
+                  radius: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Name + sport pill
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            group.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: AppThemeTokens.darkText,
+                            ),
+                          ),
+                        ),
+                        if (group.sportType != null)
+                          Container(
+                            margin: const EdgeInsets.only(left: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: sportColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(100),
+                            ),
+                            child: Text(
+                              group.sportType!,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: sportColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    // Distance + member count
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppThemeTokens.primary500
+                                .withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.place_outlined,
+                                  size: 10,
+                                  color: AppThemeTokens.primary400),
+                              const SizedBox(width: 3),
+                              Text(
+                                '${group.distance.toStringAsFixed(1)} km',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: AppThemeTokens.primary400,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (group.memberCount != null) ...[
+                          const SizedBox(width: 8),
+                          const Icon(Icons.people_outline_rounded,
+                              size: 12,
+                              color: AppThemeTokens.darkTextSecondary),
+                          const SizedBox(width: 3),
+                          Text(
+                            '${group.memberCount}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppThemeTokens.darkTextSecondary,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              // View button
+              GestureDetector(
+                onTap: onView,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppThemeTokens.primary500),
+                    borderRadius:
+                        BorderRadius.circular(AppThemeTokens.radiusSm),
+                  ),
+                  child: const Text(
+                    'View',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppThemeTokens.primary400,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
