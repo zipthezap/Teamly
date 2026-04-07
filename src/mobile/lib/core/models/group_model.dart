@@ -98,6 +98,7 @@ class GroupModel extends Equatable {
     this.tags,
     this.autoApproveJoinRequests = false,
     this.allowMemberInvites = true,
+    this.allowMemberCopyLink = true,
     this.members = const [],
     this.count,
     this.creatorId,
@@ -118,6 +119,7 @@ class GroupModel extends Equatable {
   final String? tags;
   final bool autoApproveJoinRequests;
   final bool allowMemberInvites;
+  final bool allowMemberCopyLink;
   final List<GroupMemberModel> members;
   final GroupCountModel? count;
   final String? creatorId;
@@ -144,6 +146,7 @@ class GroupModel extends Equatable {
       tags: json['tags'] as String?,
       autoApproveJoinRequests: (json['autoApproveJoinRequests'] as bool?) ?? false,
       allowMemberInvites: (json['allowMemberInvites'] as bool?) ?? true,
+      allowMemberCopyLink: (json['allowMemberCopyLink'] as bool?) ?? true,
       members: membersList,
       count: json['_count'] != null
           ? GroupCountModel.fromJson(json['_count'] as Map<String, dynamic>)

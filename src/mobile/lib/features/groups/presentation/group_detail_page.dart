@@ -158,10 +158,22 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
     super.dispose();
   }
 
+  // Admin = creator or member with 'admin' role (can edit settings, delete, manage analytics)
   bool _isAdmin(GroupModel group, String? userId) =>
       userId != null &&
       (group.creatorId == userId ||
           group.members.any((m) => m.id == userId && m.role == 'admin'));
+
+  // Moderator = admin + members with 'moderator' role (can manage members/events, invite)
+  bool _isModerator(GroupModel group, String? userId) =>
+      _isAdmin(group, userId) ||
+      (userId != null &&
+          group.members.any((m) => m.id == userId && m.role == 'moderator'));
+
+  // Any member of the group
+  bool _isMember(GroupModel group, String? userId) =>
+      userId != null &&
+      group.members.any((m) => m.id == userId);
 
   @override
   Widget build(BuildContext context) {
@@ -175,13 +187,10 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
           orElse: () => const Text('Group'),
         ),
         actions: [
+          // Leave button — visible to all members (admins who are sole member see "Delete")
           groupAsync.maybeWhen(
             data: (group) {
-              final admin = _isAdmin(group, currentUserId);
-              final isCreator = group.creatorId == currentUserId;
-              if (admin || isCreator || currentUserId == null) {
-                return const SizedBox.shrink();
-              }
+              if (!_isMember(group, currentUserId)) return const SizedBox.shrink();
               return IconButton(
                 icon: const Icon(Icons.logout),
                 tooltip: 'Leave group',
@@ -190,19 +199,39 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
             },
             orElse: () => const SizedBox.shrink(),
           ),
+          // Copy-link icon for members with canCopyLink (not admin — already in popup)
+          groupAsync.maybeWhen(
+            data: (group) {
+              final canCopyLink = group.isPublic &&
+                  _isMember(group, currentUserId) &&
+                  !_isAdmin(group, currentUserId) &&
+                  group.allowMemberCopyLink;
+              if (!canCopyLink) return const SizedBox.shrink();
+              return IconButton(
+                icon: const Icon(Icons.link),
+                tooltip: 'Copy invite link',
+                onPressed: () => _copyInviteLink(),
+              );
+            },
+            orElse: () => const SizedBox.shrink(),
+          ),
+          // Admin popup (full actions)
           groupAsync.maybeWhen(
             data: (group) {
               final admin = _isAdmin(group, currentUserId);
-              if (!admin) return const SizedBox.shrink();
+              final moderator = _isModerator(group, currentUserId);
+              if (!moderator) return const SizedBox.shrink();
               return PopupMenuButton<String>(
                 onSelected: (a) => _handleAdminAction(a, group),
                 itemBuilder: (_) => [
-                  const PopupMenuItem(
-                      value: 'edit',
-                      child: ListTile(
-                          leading: Icon(Icons.edit_outlined),
-                          title: Text('Edit group'),
-                          contentPadding: EdgeInsets.zero)),
+                  if (admin) ...[
+                    const PopupMenuItem(
+                        value: 'edit',
+                        child: ListTile(
+                            leading: Icon(Icons.edit_outlined),
+                            title: Text('Edit group'),
+                            contentPadding: EdgeInsets.zero)),
+                  ],
                   const PopupMenuItem(
                       value: 'invite_member',
                       child: ListTile(
@@ -215,33 +244,38 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
                           leading: Icon(Icons.link),
                           title: Text('Copy invite link'),
                           contentPadding: EdgeInsets.zero)),
-                  const PopupMenuItem(
-                      value: 'upload_picture',
-                      child: ListTile(
-                          leading: Icon(Icons.photo_camera_outlined),
-                          title: Text('Change group picture'),
-                          contentPadding: EdgeInsets.zero)),
+                  if (admin) ...[
+                    const PopupMenuItem(
+                        value: 'upload_picture',
+                        child: ListTile(
+                            leading: Icon(Icons.photo_camera_outlined),
+                            title: Text('Change group picture'),
+                            contentPadding: EdgeInsets.zero)),
+                  ],
                   const PopupMenuItem(
                       value: 'event_requests',
                       child: ListTile(
                           leading: Icon(Icons.how_to_vote_outlined),
                           title: Text('Event Requests'),
                           contentPadding: EdgeInsets.zero)),
-                  const PopupMenuItem(
-                      value: 'invite_analytics',
-                      child: ListTile(
-                          leading: Icon(Icons.analytics_outlined),
-                          title: Text('Invite Analytics'),
-                          contentPadding: EdgeInsets.zero)),
-                  const PopupMenuDivider(),
-                  const PopupMenuItem(
-                      value: 'delete',
-                      child: ListTile(
-                          leading: Icon(Icons.delete_outline,
-                              color: AppThemeTokens.error),
-                          title: Text('Delete group',
-                              style: TextStyle(color: AppThemeTokens.error)),
-                          contentPadding: EdgeInsets.zero)),
+                  if (admin) ...[
+                    const PopupMenuItem(
+                        value: 'invite_analytics',
+                        child: ListTile(
+                            leading: Icon(Icons.analytics_outlined),
+                            title: Text('Invite Analytics'),
+                            contentPadding: EdgeInsets.zero)),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                        value: 'delete',
+                        child: ListTile(
+                            leading: Icon(Icons.delete_outline,
+                                color: AppThemeTokens.error),
+                            title: Text('Delete group',
+                                style:
+                                    TextStyle(color: AppThemeTokens.error)),
+                            contentPadding: EdgeInsets.zero)),
+                  ],
                 ],
               );
             },
@@ -275,19 +309,60 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
         ),
         data: (group) {
           final admin = _isAdmin(group, currentUserId);
+          final moderator = _isModerator(group, currentUserId);
+          final member = _isMember(group, currentUserId);
+          final canInvite = admin ||
+              (member && group.allowMemberInvites);
+          final canCopyLink = group.isPublic &&
+              (admin || (member && group.allowMemberCopyLink));
           return TabBarView(
             controller: _tabCtrl,
             children: [
-              _OverviewTab(group: group, isAdmin: admin, groupId: widget.groupId),
+              _OverviewTab(
+                group: group,
+                isAdmin: admin,
+                isModerator: moderator,
+                isMember: member,
+                canInvite: canInvite,
+                canCopyLink: canCopyLink,
+                groupId: widget.groupId,
+              ),
               _MembersTab(
-                  group: group, isAdmin: admin, currentUserId: currentUserId),
-              _EventsTab(groupId: group.id, isAdmin: admin),
+                group: group,
+                isAdmin: admin,
+                isModerator: moderator,
+                currentUserId: currentUserId,
+              ),
+              _EventsTab(
+                groupId: group.id,
+                isAdmin: admin,
+                isModerator: moderator,
+                isMember: member,
+              ),
               _ChatTab(groupId: group.id, currentUserId: currentUserId ?? ''),
             ],
           );
         },
       ),
     );
+  }
+
+  Future<void> _copyInviteLink() async {
+    try {
+      final link = await ref
+          .read(groupRepositoryProvider)
+          .getInviteLink(widget.groupId);
+      await Clipboard.setData(ClipboardData(text: link));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Invite link copied!')));
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
+      }
+    }
   }
 
   Future<void> _handleAdminAction(String action, GroupModel group) async {
@@ -301,21 +376,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
         await _groupShowInviteMemberDialog(context, ref, widget.groupId);
         break;
       case 'invite_link':
-        try {
-          final link = await ref
-              .read(groupRepositoryProvider)
-              .getInviteLink(widget.groupId);
-          await Clipboard.setData(ClipboardData(text: link));
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Invite link copied!')));
-          }
-        } on Exception catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context)
-                .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
-          }
-        }
+        await _copyInviteLink();
         break;
       case 'upload_picture':
         await _groupPickAndUploadPicture(context, ref, widget.groupId);
@@ -367,33 +428,47 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
   }
 
   Future<void> _leaveGroup(GroupModel group) async {
+    final isAdmin = _isAdmin(group, ref.read(authNotifierProvider).user?.id);
+    final isOnlyMember = group.memberCount <= 1;
+    // If admin and sole member, action is "delete group" not "leave"
+    final title = isAdmin && isOnlyMember ? 'Delete group' : 'Leave group';
+    final message = isAdmin && isOnlyMember
+        ? 'You are the only member. Leaving will delete "${group.name}".'
+        : 'Leave "${group.name}"?';
+    final confirmText = isAdmin && isOnlyMember ? 'Delete' : 'Leave';
+
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Leave group'),
-        content: Text('Leave "${group.name}"?'),
+        title: Text(title),
+        content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
             child: const Text('Cancel'),
           ),
           FilledButton(
+            style: isAdmin && isOnlyMember
+                ? FilledButton.styleFrom(
+                    backgroundColor: Theme.of(ctx).colorScheme.error)
+                : null,
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Leave'),
+            child: Text(confirmText),
           ),
         ],
       ),
     );
-    if (ok != true) {
-      return;
-    }
+    if (ok != true) return;
 
     try {
       await ref.read(groupRepositoryProvider).leaveGroup(widget.groupId);
       ref.read(groupsNotifierProvider.notifier).load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('You left the group.')),
+          SnackBar(
+              content: Text(isAdmin && isOnlyMember
+                  ? 'Group deleted.'
+                  : 'You left the group.')),
         );
         context.go('/groups');
       }
@@ -415,10 +490,21 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
 // ---------------------------------------------------------------------------
 
 class _OverviewTab extends ConsumerWidget {
-  const _OverviewTab(
-      {required this.group, required this.isAdmin, required this.groupId});
+  const _OverviewTab({
+    required this.group,
+    required this.isAdmin,
+    required this.isModerator,
+    required this.isMember,
+    required this.canInvite,
+    required this.canCopyLink,
+    required this.groupId,
+  });
   final GroupModel group;
   final bool isAdmin;
+  final bool isModerator;
+  final bool isMember;
+  final bool canInvite;
+  final bool canCopyLink;
   final String groupId;
 
   @override
@@ -639,6 +725,15 @@ class _OverviewTab extends ConsumerWidget {
                   ? 'Member invites on'
                   : 'Member invites off',
             ),
+            if (group.isPublic)
+              _InfoChip(
+                icon: group.allowMemberCopyLink
+                    ? Icons.link_outlined
+                    : Icons.link_off_outlined,
+                label: group.allowMemberCopyLink
+                    ? 'Link sharing on'
+                    : 'Link sharing off',
+              ),
             _InfoChip(
               icon: group.autoApproveJoinRequests
                   ? Icons.flash_on_outlined
@@ -654,12 +749,14 @@ class _OverviewTab extends ConsumerWidget {
         // ── Quick Actions ─────────────────────────────────────────────────
         UiSectionTitle('Quick Actions'),
         const SizedBox(height: 10),
+        // All members can create events
         UiPrimaryButton(
           text: 'Create Event',
           icon: Icons.add_circle_outline,
           onPressed: () => context.push('/groups/${group.id}/events/new'),
         ),
-        if (isAdmin) ...[
+        // Invite: admin always, or members when allowMemberInvites
+        if (canInvite) ...[
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: () =>
@@ -675,6 +772,41 @@ class _OverviewTab extends ConsumerWidget {
               ),
             ),
           ),
+        ],
+        // Copy invite link: for public groups when canCopyLink and not in admin popup
+        if (canCopyLink && !isModerator) ...[
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final repo = ref.read(groupRepositoryProvider);
+              try {
+                final link = await repo.getInviteLink(groupId);
+                await Clipboard.setData(ClipboardData(text: link));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Invite link copied!')));
+                }
+              } on Exception catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(_groupExtractMsg(e))));
+                }
+              }
+            },
+            icon: const Icon(Icons.link),
+            label: const Text('Copy Invite Link'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppThemeTokens.darkTextSecondary,
+              side: const BorderSide(color: AppThemeTokens.darkBorder),
+              minimumSize: const Size(double.infinity, 44),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+              ),
+            ),
+          ),
+        ],
+        // Picture management: admins only
+        if (isAdmin) ...[
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: () =>
@@ -776,24 +908,28 @@ class _OverviewTab extends ConsumerWidget {
 // ---------------------------------------------------------------------------
 
 class _MembersTab extends ConsumerWidget {
-  const _MembersTab(
-      {required this.group,
-      required this.isAdmin,
-      required this.currentUserId});
+  const _MembersTab({
+    required this.group,
+    required this.isAdmin,
+    required this.isModerator,
+    required this.currentUserId,
+  });
   final GroupModel group;
   final bool isAdmin;
+  final bool isModerator;
   final String? currentUserId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Moderators can also see and handle join requests
     final joinAsync =
-        isAdmin ? ref.watch(joinRequestsProvider(group.id)) : null;
+        isModerator ? ref.watch(joinRequestsProvider(group.id)) : null;
 
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 12),
       children: [
-        // Pending join requests
-        if (isAdmin && joinAsync != null)
+        // Pending join requests (visible to admin and moderator)
+        if (isModerator && joinAsync != null)
           joinAsync.maybeWhen(
             data: (reqs) {
               final pending = reqs.where((r) => r.status == 'pending').toList();
@@ -883,6 +1019,7 @@ class _MembersTab extends ConsumerWidget {
         ...group.members.map((member) {
           final isSelf = member.id == currentUserId;
           final memberIsAdmin = member.role == 'admin';
+          final memberIsModerator = member.role == 'moderator';
           final isCreator = member.id == group.creatorId;
           return Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -940,25 +1077,47 @@ class _MembersTab extends ConsumerWidget {
                               label: 'Admin',
                               status: UiStatusType.info,
                             ),
+                          )
+                        else if (memberIsModerator)
+                          const Padding(
+                            padding: EdgeInsets.only(right: 4),
+                            child: UiStatusBadge(
+                              label: 'Moderator',
+                              status: UiStatusType.warning,
+                            ),
                           ),
-                        if (isAdmin && !isSelf)
+                        // Moderator can kick; admin can also promote/transfer
+                        if (isModerator && !isSelf)
                           PopupMenuButton<String>(
                             onSelected: (a) => _handleMemberAction(
                                 context, ref, group.id, member, a),
                             itemBuilder: (_) => [
-                              if (!memberIsAdmin)
-                                const PopupMenuItem(
+                              // Admin-only role management actions
+                              if (isAdmin && !memberIsAdmin && !isCreator) ...[
+                                PopupMenuItem(
                                     value: 'promote',
-                                    child: Text('Promote to admin')),
-                              if (!memberIsAdmin)
+                                    child: Text(memberIsModerator
+                                        ? 'Promote to admin'
+                                        : 'Promote to admin')),
+                                if (!memberIsModerator)
+                                  const PopupMenuItem(
+                                      value: 'make_moderator',
+                                      child: Text('Make moderator')),
+                                if (memberIsModerator)
+                                  const PopupMenuItem(
+                                      value: 'demote',
+                                      child: Text('Demote to member')),
                                 const PopupMenuItem(
                                     value: 'transfer',
                                     child: Text('Transfer admin role')),
-                              const PopupMenuItem(
-                                  value: 'kick',
-                                  child: Text('Remove from group',
-                                      style: TextStyle(
-                                          color: AppThemeTokens.error))),
+                              ],
+                              // Moderators can kick any non-admin/non-creator member
+                              if (!memberIsAdmin && !isCreator)
+                                const PopupMenuItem(
+                                    value: 'kick',
+                                    child: Text('Remove from group',
+                                        style: TextStyle(
+                                            color: AppThemeTokens.error))),
                             ],
                           ),
                       ],
@@ -1002,7 +1161,7 @@ class _MembersTab extends ConsumerWidget {
           context: ctx,
           builder: (c) => AlertDialog(
             title: const Text('Remove member'),
-            content: Text('Remove ${member.name} from the group?'),
+            content: Text('Remove \${member.name} from the group?'),
             actions: [
               TextButton(
                   onPressed: () => Navigator.of(c).pop(false),
@@ -1042,13 +1201,39 @@ class _MembersTab extends ConsumerWidget {
           }
         }
         break;
+      case 'make_moderator':
+        try {
+          await ref
+              .read(groupRepositoryProvider)
+              .updateMemberRole(groupId, member.id, 'moderator');
+          ref.invalidate(groupDetailProvider(groupId));
+        } on Exception catch (e) {
+          if (ctx.mounted) {
+            ScaffoldMessenger.of(ctx)
+                .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
+          }
+        }
+        break;
+      case 'demote':
+        try {
+          await ref
+              .read(groupRepositoryProvider)
+              .updateMemberRole(groupId, member.id, 'member');
+          ref.invalidate(groupDetailProvider(groupId));
+        } on Exception catch (e) {
+          if (ctx.mounted) {
+            ScaffoldMessenger.of(ctx)
+                .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
+          }
+        }
+        break;
       case 'transfer':
         final ok = await showDialog<bool>(
           context: ctx,
           builder: (c) => AlertDialog(
             title: const Text('Transfer admin'),
             content: Text(
-                'Transfer admin role to ${member.name}? You will become a regular member.'),
+                'Transfer admin role to \${member.name}? You will become a regular member.'),
             actions: [
               TextButton(
                   onPressed: () => Navigator.of(c).pop(false),
@@ -1082,9 +1267,16 @@ class _MembersTab extends ConsumerWidget {
 // ---------------------------------------------------------------------------
 
 class _EventsTab extends ConsumerWidget {
-  const _EventsTab({required this.groupId, required this.isAdmin});
+  const _EventsTab({
+    required this.groupId,
+    required this.isAdmin,
+    required this.isModerator,
+    required this.isMember,
+  });
   final String groupId;
   final bool isAdmin;
+  final bool isModerator;
+  final bool isMember;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1104,10 +1296,10 @@ class _EventsTab extends ConsumerWidget {
                   child: UiEmptyState(
                     icon: Icons.event_busy_outlined,
                     message: 'This group has no events yet.',
-                    action: isAdmin
+                    action: isModerator
                         ? () => context.push('/groups/$groupId/events/new')
                         : null,
-                    actionLabel: isAdmin ? 'Create event' : null,
+                    actionLabel: isModerator ? 'Create event' : null,
                   ),
                 )
               : ListView.builder(
@@ -1264,7 +1456,8 @@ class _EventsTab extends ConsumerWidget {
                     );
                   },
                 ),
-          if (isAdmin)
+          // Create event FAB for admins/moderators
+          if (isModerator)
             Positioned(
               bottom: 16,
               right: 16,
@@ -1272,6 +1465,18 @@ class _EventsTab extends ConsumerWidget {
                 onPressed: () => context.push('/groups/$groupId/events/new'),
                 tooltip: 'Create event',
                 child: const Icon(Icons.add),
+              ),
+            ),
+          // Request event button for regular members
+          if (isMember && !isModerator)
+            Positioned(
+              bottom: 16,
+              right: 16,
+              child: FloatingActionButton.extended(
+                onPressed: () =>
+                    context.push('/groups/$groupId/event-requests'),
+                icon: const Icon(Icons.event_available_outlined),
+                label: const Text('Request Event'),
               ),
             ),
         ],

@@ -34,6 +34,7 @@ class _GroupFormPageState extends ConsumerState<GroupFormPage> {
   String _privacy = 'public';
   bool _autoApprove = false;
   bool _allowMemberInvites = true;
+  bool _allowMemberCopyLink = true;
   bool _saving = false;
 
   bool get _isEditing => widget.existingGroup != null;
@@ -54,6 +55,7 @@ class _GroupFormPageState extends ConsumerState<GroupFormPage> {
     _privacy = (g?.isPublic ?? true) ? 'public' : 'private';
     _autoApprove = g?.autoApproveJoinRequests ?? false;
     _allowMemberInvites = g?.allowMemberInvites ?? true;
+    _allowMemberCopyLink = g?.allowMemberCopyLink ?? true;
   }
 
   @override
@@ -90,6 +92,7 @@ class _GroupFormPageState extends ConsumerState<GroupFormPage> {
       if (_tagsCtrl.text.trim().isNotEmpty) 'tags': _tagsCtrl.text.trim(),
       'autoApproveJoinRequests': _autoApprove,
       'allowMemberInvites': _allowMemberInvites,
+      'allowMemberCopyLink': _allowMemberCopyLink,
     };
 
     try {
@@ -281,6 +284,18 @@ class _GroupFormPageState extends ConsumerState<GroupFormPage> {
               icon: Icons.person_add_rounded,
               color: AppThemeTokens.info,
               onChanged: (v) => setState(() => _allowMemberInvites = v),
+            ),
+
+            const SizedBox(height: 10),
+
+            // Allow members to copy invite link
+            _SwitchRow(
+              title: 'Allow copy invite link',
+              subtitle: 'Members can copy the invite link',
+              value: _allowMemberCopyLink,
+              icon: Icons.link_rounded,
+              color: AppThemeTokens.info,
+              onChanged: (v) => setState(() => _allowMemberCopyLink = v),
             ),
 
             const SizedBox(height: 24),
