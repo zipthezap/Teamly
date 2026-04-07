@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/models/event_request_model.dart';
 import '../../../features/auth/state/auth_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
+import '../../../shared/widgets/ui_primitives.dart';
 import '../state/event_requests_notifier.dart';
 
 class EventRequestsPage extends ConsumerStatefulWidget {
@@ -34,14 +35,14 @@ class _EventRequestsPageState extends ConsumerState<EventRequestsPage> {
   String _extractMsg(Exception e) =>
       e.toString().replaceFirst('Exception: ', '');
 
-  Color _statusColor(String status, BuildContext context) {
+  UiStatusType _statusType(String status) {
     switch (status) {
       case 'approved':
-        return AppThemeTokens.success;
-      case 'cancelled':
-        return AppThemeTokens.darkTextSecondary;
+        return UiStatusType.success;
+      case 'pending':
+        return UiStatusType.info;
       default:
-        return Theme.of(context).colorScheme.primary;
+        return UiStatusType.defaultStatus;
     }
   }
 
@@ -64,15 +65,15 @@ class _EventRequestsPageState extends ConsumerState<EventRequestsPage> {
                   controller: _titleCtrl,
                   decoration: const InputDecoration(
                     labelText: 'Title *',
-                    border: OutlineInputBorder(),
+                    hintText: 'e.g. Weekend Football Match',
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _descCtrl,
                   decoration: const InputDecoration(
-                    labelText: 'Description (optional)',
-                    border: OutlineInputBorder(),
+                    labelText: 'Description',
+                    hintText: 'Briefly describe the event (optional)',
                   ),
                   maxLines: 3,
                 ),
@@ -80,8 +81,8 @@ class _EventRequestsPageState extends ConsumerState<EventRequestsPage> {
                 TextField(
                   controller: _sportCtrl,
                   decoration: const InputDecoration(
-                    labelText: 'Sport type (optional)',
-                    border: OutlineInputBorder(),
+                    labelText: 'Sport type',
+                    hintText: 'e.g. Football, Basketball (optional)',
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -90,21 +91,21 @@ class _EventRequestsPageState extends ConsumerState<EventRequestsPage> {
                   leading: const Icon(Icons.calendar_today_outlined),
                   title: Text(
                     _requestedDate != null
-                        ? DateFormat('MMM d, y')
-                            .format(_requestedDate!)
+                        ? DateFormat('MMM d, y').format(_requestedDate!)
                         : 'Select preferred date (optional)',
                     style: _requestedDate == null
-                        ? const TextStyle(color: AppThemeTokens.darkTextSecondary)
+                        ? const TextStyle(
+                            color: AppThemeTokens.darkTextSecondary)
                         : null,
                   ),
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: ctx,
-                      initialDate: DateTime.now()
-                          .add(const Duration(days: 7)),
+                      initialDate:
+                          DateTime.now().add(const Duration(days: 7)),
                       firstDate: DateTime.now(),
-                      lastDate: DateTime.now()
-                          .add(const Duration(days: 365)),
+                      lastDate:
+                          DateTime.now().add(const Duration(days: 365)),
                     );
                     if (picked != null) {
                       setDialogState(() => _requestedDate = picked);
@@ -131,8 +132,7 @@ class _EventRequestsPageState extends ConsumerState<EventRequestsPage> {
                 Navigator.of(ctx).pop();
                 try {
                   await ref
-                      .read(eventRequestsNotifierProvider(
-                              widget.groupId)
+                      .read(eventRequestsNotifierProvider(widget.groupId)
                           .notifier)
                       .create({
                     'groupId': widget.groupId,
@@ -211,8 +211,7 @@ class _EventRequestsPageState extends ConsumerState<EventRequestsPage> {
               const SizedBox(height: 4),
               Text('Requested by: ${request.createdByName ?? 'Unknown'}'),
               const SizedBox(height: 4),
-              Text(
-                  'Created: ${DateFormat('MMM d, y').format(request.createdAt)}'),
+              Text('Created: ${DateFormat('MMM d, y').format(request.createdAt)}'),
             ],
           ),
         ),
@@ -232,14 +231,13 @@ class _EventRequestsPageState extends ConsumerState<EventRequestsPage> {
         ref.watch(eventRequestsNotifierProvider(widget.groupId));
     final currentUserId =
         ref.watch(authNotifierProvider).user?.id;
-    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Event Requests')),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _showCreateDialog,
-        tooltip: 'New request',
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('New Request'),
       ),
       body: requestsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -254,81 +252,48 @@ class _EventRequestsPageState extends ConsumerState<EventRequestsPage> {
               .read(eventRequestsNotifierProvider(widget.groupId).notifier)
               .load(widget.groupId),
           child: requests.isEmpty
-              ? const Center(
-                  child: Text('No event requests yet.',
-                      style: TextStyle(color: AppThemeTokens.darkTextSecondary)),
+              ? const UiEmptyState(
+                  icon: Icons.event_note_outlined,
+                  title: 'No Event Requests',
+                  message:
+                      'Be the first to suggest an event for your group.',
                 )
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 80),
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
                   itemCount: requests.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (ctx, i) {
                     final req = requests[i];
                     final isOwner = req.createdById == currentUserId;
                     final isPending = req.status == 'pending';
-                    return ListTile(
-                      onTap: () => _showDetailDialog(req),
-                      title: Text(req.title,
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
-                      subtitle: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: _statusColor(req.status, context)
-                                  .withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              req.status,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: _statusColor(req.status, context),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${req.voteCount} votes',
-                            style: theme.textTheme.bodySmall
-                                ?.copyWith(color: AppThemeTokens.darkTextSecondary),
-                          ),
-                        ],
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (isPending)
-                            IconButton(
-                              icon: const Icon(Icons.thumb_up_outlined),
-                              tooltip: 'Upvote',
-                              onPressed: () async {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _RequestCard(
+                        request: req,
+                        statusType: _statusType(req.status),
+                        onTap: () => _showDetailDialog(req),
+                        onUpvote: isPending
+                            ? () async {
                                 try {
                                   await ref
                                       .read(eventRequestsNotifierProvider(
                                               widget.groupId)
                                           .notifier)
-                                      .vote(req.id, true,
-                                          widget.groupId);
+                                      .vote(req.id, true, widget.groupId);
                                 } on Exception catch (e) {
                                   if (mounted) {
                                     ScaffoldMessenger.of(context)
                                         .showSnackBar(SnackBar(
                                       content: Text(_extractMsg(e)),
-                                      backgroundColor: theme
-                                          .colorScheme.error,
+                                      backgroundColor: Theme.of(context)
+                                          .colorScheme
+                                          .error,
                                     ));
                                   }
                                 }
-                              },
-                            ),
-                          if (isOwner && isPending) ...[
-                            IconButton(
-                              icon: const Icon(Icons.check_circle_outline),
-                              tooltip: 'Finalize',
-                              onPressed: () async {
+                              }
+                            : null,
+                        onFinalize: isOwner && isPending
+                            ? () async {
                                 try {
                                   await ref
                                       .read(eventRequestsNotifierProvider(
@@ -340,17 +305,16 @@ class _EventRequestsPageState extends ConsumerState<EventRequestsPage> {
                                     ScaffoldMessenger.of(context)
                                         .showSnackBar(SnackBar(
                                       content: Text(_extractMsg(e)),
-                                      backgroundColor: theme
-                                          .colorScheme.error,
+                                      backgroundColor: Theme.of(context)
+                                          .colorScheme
+                                          .error,
                                     ));
                                   }
                                 }
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.cancel_outlined),
-                              tooltip: 'Cancel request',
-                              onPressed: () async {
+                              }
+                            : null,
+                        onCancel: isOwner && isPending
+                            ? () async {
                                 try {
                                   await ref
                                       .read(eventRequestsNotifierProvider(
@@ -362,19 +326,203 @@ class _EventRequestsPageState extends ConsumerState<EventRequestsPage> {
                                     ScaffoldMessenger.of(context)
                                         .showSnackBar(SnackBar(
                                       content: Text(_extractMsg(e)),
-                                      backgroundColor: theme
-                                          .colorScheme.error,
+                                      backgroundColor: Theme.of(context)
+                                          .colorScheme
+                                          .error,
                                     ));
                                   }
                                 }
-                              },
-                            ),
-                          ],
-                        ],
+                              }
+                            : null,
                       ),
                     );
                   },
                 ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RequestCard extends StatelessWidget {
+  const _RequestCard({
+    required this.request,
+    required this.statusType,
+    required this.onTap,
+    this.onUpvote,
+    this.onFinalize,
+    this.onCancel,
+  });
+
+  final EventRequestModel request;
+  final UiStatusType statusType;
+  final VoidCallback onTap;
+  final VoidCallback? onUpvote;
+  final VoidCallback? onFinalize;
+  final VoidCallback? onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasActions =
+        onUpvote != null || onFinalize != null || onCancel != null;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppThemeTokens.darkCard,
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+          border: Border.all(color: AppThemeTokens.darkBorder),
+        ),
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              request.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppThemeTokens.darkText,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                UiStatusBadge(
+                  label: request.status,
+                  status: statusType,
+                  dot: true,
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppThemeTokens.darkCardElevated,
+                    borderRadius: BorderRadius.circular(100),
+                    border: Border.all(color: AppThemeTokens.darkBorder),
+                  ),
+                  child: Text(
+                    '${request.voteCount} votes',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppThemeTokens.darkTextSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                if (request.requestedDate != null) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppThemeTokens.infoBg,
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.calendar_today_outlined,
+                            size: 10, color: AppThemeTokens.info),
+                        const SizedBox(width: 4),
+                        Text(
+                          DateFormat('MMM d')
+                              .format(request.requestedDate!),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppThemeTokens.info,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            if (hasActions) ...[
+              const SizedBox(height: 10),
+              const Divider(height: 1, color: AppThemeTokens.darkBorder),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  if (onUpvote != null)
+                    _ActionButton(
+                      icon: Icons.thumb_up_outlined,
+                      label: 'Upvote',
+                      color: AppThemeTokens.info,
+                      onPressed: onUpvote!,
+                    ),
+                  if (onFinalize != null) ...[
+                    const SizedBox(width: 8),
+                    _ActionButton(
+                      icon: Icons.check_circle_outline,
+                      label: 'Finalize',
+                      color: AppThemeTokens.success,
+                      onPressed: onFinalize!,
+                    ),
+                  ],
+                  if (onCancel != null) ...[
+                    const SizedBox(width: 8),
+                    _ActionButton(
+                      icon: Icons.cancel_outlined,
+                      label: 'Cancel',
+                      color: AppThemeTokens.error,
+                      onPressed: onCancel!,
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
     );
