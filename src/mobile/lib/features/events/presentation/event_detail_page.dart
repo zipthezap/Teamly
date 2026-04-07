@@ -925,13 +925,23 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
 // Activity feed section
 // ---------------------------------------------------------------------------
 
-class _ActivityFeedSection extends ConsumerWidget {
+class _ActivityFeedSection extends ConsumerStatefulWidget {
   const _ActivityFeedSection({required this.eventId});
   final String eventId;
 
+  static const _maxEntries = 20;
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final feedAsync = ref.watch(activityFeedProvider(eventId));
+  ConsumerState<_ActivityFeedSection> createState() =>
+      _ActivityFeedSectionState();
+}
+
+class _ActivityFeedSectionState extends ConsumerState<_ActivityFeedSection> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final feedAsync = ref.watch(activityFeedProvider(widget.eventId));
 
     return feedAsync.when(
       loading: () => const SizedBox.shrink(),
@@ -941,61 +951,79 @@ class _ActivityFeedSection extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const UiSectionTitle('Activity'),
-            const SizedBox(height: 10),
-            ...entries.take(10).map(
-                  (entry) => Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: AppThemeTokens.darkCard,
-                      borderRadius:
-                          BorderRadius.circular(AppThemeTokens.radiusMd),
-                      border: Border.all(color: AppThemeTokens.darkBorder),
-                    ),
-                    child: Row(
-                      children: [
-                        entry.userPicture != null || entry.userName != null
-                            ? UserAvatar(
-                                name: entry.userName ?? '?',
-                                imageUrl: entry.userPicture,
-                                radius: 16,
-                              )
-                            : Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color: AppThemeTokens.darkCardElevated,
-                                  borderRadius: BorderRadius.circular(
-                                      AppThemeTokens.radiusSm),
+            OutlinedButton.icon(
+              onPressed: () => setState(() => _expanded = !_expanded),
+              icon: Icon(
+                _expanded ? Icons.expand_less : Icons.history_outlined,
+                size: 18,
+              ),
+              label: Text('Activity (${entries.length})'),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppThemeTokens.darkBorder),
+                foregroundColor: AppThemeTokens.darkTextSecondary,
+                minimumSize: const Size(double.infinity, 44),
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(AppThemeTokens.radiusMd),
+                ),
+              ),
+            ),
+            if (_expanded) ...[
+              const SizedBox(height: 10),
+              ...entries.take(_ActivityFeedSection._maxEntries).map(
+                    (entry) => Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppThemeTokens.darkCard,
+                        borderRadius:
+                            BorderRadius.circular(AppThemeTokens.radiusMd),
+                        border: Border.all(color: AppThemeTokens.darkBorder),
+                      ),
+                      child: Row(
+                        children: [
+                          entry.userPicture != null || entry.userName != null
+                              ? UserAvatar(
+                                  name: entry.userName ?? '?',
+                                  imageUrl: entry.userPicture,
+                                  radius: 16,
+                                )
+                              : Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: AppThemeTokens.darkCardElevated,
+                                    borderRadius: BorderRadius.circular(
+                                        AppThemeTokens.radiusSm),
+                                  ),
+                                  child: const Icon(Icons.info_outline,
+                                      size: 14,
+                                      color: AppThemeTokens.darkTextSecondary),
                                 ),
-                                child: const Icon(Icons.info_outline,
-                                    size: 14,
-                                    color: AppThemeTokens.darkTextSecondary),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              entry.summary,
+                              style: const TextStyle(
+                                color: AppThemeTokens.darkTextSecondary,
+                                fontSize: 13,
                               ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            entry.summary,
-                            style: const TextStyle(
-                              color: AppThemeTokens.darkTextSecondary,
-                              fontSize: 13,
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _formatTime(entry.createdAt),
-                          style: const TextStyle(
-                            color: AppThemeTokens.darkTextMuted,
-                            fontSize: 11,
+                          const SizedBox(width: 8),
+                          Text(
+                            _formatTime(entry.createdAt),
+                            style: const TextStyle(
+                              color: AppThemeTokens.darkTextMuted,
+                              fontSize: 11,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
+            ],
           ],
         );
       },
