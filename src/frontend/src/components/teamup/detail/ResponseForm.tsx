@@ -41,10 +41,10 @@ export const ResponseForm: React.FC<ResponseFormProps> = ({
           mb: 2,
           '& .MuiOutlinedInput-root': {
             '&:hover fieldset': {
-              borderColor: '#667eea'
+              borderColor: '#2196f3'
             },
             '&.Mui-focused fieldset': {
-              borderColor: '#667eea'
+              borderColor: '#2196f3'
             }
           }
         }}
@@ -56,7 +56,7 @@ export const ResponseForm: React.FC<ResponseFormProps> = ({
         disabled={isSubmitting || spotsLeft === 0}
         startIcon={<SendIcon />}
         sx={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: '#2196f3',
           color: 'white',
           fontWeight: 600,
           textTransform: 'none',

@@ -16,7 +16,7 @@ export const FormContainer: React.FC<FormContainerProps> = ({
 }) => {
   return (
     <div className={`mx-auto mt-16 w-full`} style={{ maxWidth }}>
-      <div className={`bg-white dark:bg-[#1a2233] rounded-xl shadow-md p-8 ${className}`}>
+      <div className={`bg-[#1a202c] rounded-xl shadow-md p-8 border border-[#374151] ${className}`}>
         <div className="flex flex-col items-center">
           {children}
         </div>

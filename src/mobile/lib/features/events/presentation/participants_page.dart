@@ -177,7 +177,9 @@ class _MembersTabState extends ConsumerState<_MembersTab> {
                                     .join(', '))
                                 : null,
                             trailing: UiStatusBadge(
-                              label: p.status[0].toUpperCase() + p.status.substring(1),
+                              label: p.status.isNotEmpty
+                                  ? p.status[0].toUpperCase() + p.status.substring(1)
+                                  : 'Unknown',
                               status: UiStatusBadge.fromString(p.status),
                             ),
                           );
@@ -256,7 +258,9 @@ class _GuestsTab extends ConsumerWidget {
                             ),
                             title: Text(g.name),
                             trailing: UiStatusBadge(
-                              label: g.status[0].toUpperCase() + g.status.substring(1),
+                              label: g.status.isNotEmpty
+                                  ? g.status[0].toUpperCase() + g.status.substring(1)
+                                  : 'Unknown',
                               status: UiStatusBadge.fromString(g.status),
                             ),
                           );

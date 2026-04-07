@@ -29,7 +29,7 @@ export const CommentsList: React.FC<CommentsListProps> = ({ comments, currentUse
   return (
     <Box>
       <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600 }}>
-        <ChatIcon sx={{ color: '#667eea' }} /> {t('teamup.comments')} ({comments.length})
+        <ChatIcon sx={{ color: '#2196f3' }} /> {t('teamup.comments')} ({comments.length})
       </Typography>
       <List sx={{ bgcolor: 'background.paper', borderRadius: 2 }}>
         {comments.map((comment, index) => (

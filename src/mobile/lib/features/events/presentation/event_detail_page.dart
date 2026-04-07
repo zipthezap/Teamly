@@ -39,6 +39,10 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
   bool _actionLoading = false;
   bool _markingLate = false;
   bool _archiving = false;
+  // Tracks the late status locally for the current session.
+  // The backend doesn't expose "is late" directly on EventModel participants,
+  // so we default to false and toggle in-session. The correct server state
+  // is reflected after the user explicitly marks/unmarks late.
   bool _isMarkedLate = false;
 
   String _errorMessage(Exception e) {

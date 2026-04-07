@@ -28,7 +28,7 @@ export const RequestDetailsTab: React.FC<RequestDetailsTabProps> = ({ request, i
           label={request.sportType}
           size="small"
           sx={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: '#2196f3',
             color: 'white',
             fontWeight: 600,
             fontSize: '0.75rem'
@@ -56,8 +56,8 @@ export const RequestDetailsTab: React.FC<RequestDetailsTabProps> = ({ request, i
             size="small"
             variant="outlined"
             sx={{
-              borderColor: '#667eea',
-              color: '#667eea',
+              borderColor: '#2196f3',
+              color: '#2196f3',
               fontWeight: 600,
               fontSize: '0.75rem'
             }}
@@ -122,7 +122,7 @@ export const RequestDetailsTab: React.FC<RequestDetailsTabProps> = ({ request, i
                     borderRadius: 1,
                     backgroundColor: 'grey.200',
                     '& .MuiLinearProgress-bar': {
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                      background: '#2196f3'
                     }
                   }} 
                 />
