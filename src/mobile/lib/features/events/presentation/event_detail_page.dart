@@ -58,6 +58,8 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
   }
 
   Future<void> _toggleArchive(bool archived) async {
+    final groupId =
+        ref.read(eventDetailProvider(widget.eventId)).value?.group.id;
     try {
       final repo = ref.read(eventRepositoryProvider);
       if (archived) {
@@ -67,6 +69,7 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
       }
       ref.invalidate(eventDetailProvider(widget.eventId));
       ref.read(eventsNotifierProvider.notifier).load();
+      if (groupId != null) ref.invalidate(groupEventsProvider(groupId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -132,11 +135,14 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
   }
 
   Future<void> _join() async {
+    final groupId =
+        ref.read(eventDetailProvider(widget.eventId)).value?.group.id;
     setState(() => _actionLoading = true);
     try {
       await ref.read(eventRepositoryProvider).joinEvent(widget.eventId);
       ref.invalidate(eventDetailProvider(widget.eventId));
       ref.read(eventsNotifierProvider.notifier).load();
+      if (groupId != null) ref.invalidate(groupEventsProvider(groupId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Joined event!')),
@@ -157,11 +163,14 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
   }
 
   Future<void> _leave() async {
+    final groupId =
+        ref.read(eventDetailProvider(widget.eventId)).value?.group.id;
     setState(() => _actionLoading = true);
     try {
       await ref.read(eventRepositoryProvider).leaveEvent(widget.eventId);
       ref.invalidate(eventDetailProvider(widget.eventId));
       ref.read(eventsNotifierProvider.notifier).load();
+      if (groupId != null) ref.invalidate(groupEventsProvider(groupId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Left event.')),
@@ -182,6 +191,8 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
   }
 
   Future<void> _deleteEvent(String title) async {
+    final groupId =
+        ref.read(eventDetailProvider(widget.eventId)).value?.group.id;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -209,6 +220,7 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
     try {
       await ref.read(eventRepositoryProvider).deleteEvent(widget.eventId);
       ref.read(eventsNotifierProvider.notifier).load();
+      if (groupId != null) ref.invalidate(groupEventsProvider(groupId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Event deleted.')),
@@ -581,6 +593,93 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                   ),
                 ),
 
+                const SizedBox(height: 12),
+
+                // ── Primary action: Join / Leave ───────────────────────────
+                if (currentUserId != null && !isCreator) ...[
+                  if (_actionLoading)
+                    const Center(
+                        child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: CircularProgressIndicator(),
+                    ))
+                  else if (isParticipant)
+                    OutlinedButton.icon(
+                      onPressed: _leave,
+                      icon: const Icon(Icons.exit_to_app, size: 18),
+                      label: const Text('Leave Event'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppThemeTokens.error,
+                        side: BorderSide(
+                            color: AppThemeTokens.error.withValues(alpha: 0.4)),
+                        minimumSize: const Size(double.infinity, 44),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppThemeTokens.radiusMd),
+                        ),
+                      ),
+                    )
+                  else
+                    UiPrimaryButton(
+                      text: event.isFull ? 'Event Full' : 'Join Event',
+                      icon: Icons.add,
+                      onPressed: event.isFull ? null : _join,
+                    ),
+                  const SizedBox(height: 12),
+                ],
+
+                // ── Navigation actions ─────────────────────────────────────
+                Row(
+                  children: [
+                    Expanded(
+                      child: _CompactActionCard(
+                        icon: Icons.people_outline,
+                        label: 'Participants',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ParticipantsPage(
+                              eventId: widget.eventId,
+                              eventTitle: event.title,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _CompactActionCard(
+                        icon: Icons.how_to_reg_outlined,
+                        label: 'Attendance',
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => AttendancePage(
+                              eventId: widget.eventId,
+                              eventTitle: event.title,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (isCreator) ...[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _CompactActionCard(
+                          icon: Icons.analytics_outlined,
+                          label: 'Analytics',
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => EventInviteAnalyticsPage(
+                                eventId: widget.eventId,
+                                eventTitle: event.title,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+
                 const SizedBox(height: 16),
 
                 // ── Event details card ─────────────────────────────────────
@@ -724,156 +823,42 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
 
                 const SizedBox(height: 20),
 
-                // ── Quick actions card ─────────────────────────────────────
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppThemeTokens.darkCard,
-                    borderRadius:
-                        BorderRadius.circular(AppThemeTokens.radiusMd),
-                    border: Border.all(color: AppThemeTokens.darkBorder),
-                  ),
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const UiSectionTitle('Actions'),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          if (isCreator)
-                            UiPrimaryButton(
-                              text: 'Edit',
-                              icon: Icons.edit_outlined,
-                              fullWidth: false,
-                              onPressed: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      EventFormPage(existingEvent: event),
-                                ),
-                              ),
-                            ),
-                          OutlinedButton.icon(
-                            onPressed: () => Navigator.of(context)
-                                .push(MaterialPageRoute(
-                              builder: (_) => ParticipantsPage(
-                                eventId: widget.eventId,
-                                eventTitle: event.title,
-                              ),
-                            )),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(
-                                  color: AppThemeTokens.darkBorder),
-                              foregroundColor: AppThemeTokens.darkTextSecondary,
-                            ),
-                            icon: const Icon(Icons.people_outline),
-                            label: const Text('Participants'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: () => Navigator.of(context)
-                                .push(MaterialPageRoute(
-                              builder: (_) => AttendancePage(
-                                eventId: widget.eventId,
-                                eventTitle: event.title,
-                              ),
-                            )),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(
-                                  color: AppThemeTokens.darkBorder),
-                              foregroundColor: AppThemeTokens.darkTextSecondary,
-                            ),
-                            icon: const Icon(Icons.how_to_reg_outlined),
-                            label: const Text('Attendance'),
-                          ),
-                          if (event.creator.id == currentUserId)
-                            OutlinedButton.icon(
-                              onPressed: () => Navigator.of(context)
-                                  .push(MaterialPageRoute(
-                                builder: (_) => EventInviteAnalyticsPage(
-                                  eventId: widget.eventId,
-                                  eventTitle: event.title,
-                                ),
-                              )),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(
-                                    color: AppThemeTokens.darkBorder),
-                                foregroundColor:
-                                    AppThemeTokens.darkTextSecondary,
-                              ),
-                              icon: const Icon(Icons.analytics_outlined),
-                              label: const Text('Analytics'),
-                            ),
-                        ],
+                // ── Mark late toggle (participants only) ───────────────────
+                if (isParticipant)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppThemeTokens.darkCard,
+                      borderRadius:
+                          BorderRadius.circular(AppThemeTokens.radiusMd),
+                      border: Border.all(color: AppThemeTokens.darkBorder),
+                    ),
+                    child: ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.access_time,
+                          size: 18,
+                          color: AppThemeTokens.darkTextSecondary),
+                      title: const Text(
+                        'Mark me as late',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppThemeTokens.darkText,
+                        ),
                       ),
-                      if (currentUserId != null) ...[
-                        const SizedBox(height: 12),
-                        const Divider(color: AppThemeTokens.darkBorder, height: 1),
-                        const SizedBox(height: 12),
-                        if (_actionLoading)
-                          const Center(child: CircularProgressIndicator())
-                        else if (isParticipant)
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: _leave,
-                              icon: const Icon(Icons.exit_to_app),
-                              label: const Text('Leave Event'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppThemeTokens.error,
-                                side: BorderSide(
-                                    color: AppThemeTokens.error
-                                        .withValues(alpha: 0.4)),
-                              ),
+                      trailing: _markingLate
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Switch.adaptive(
+                              value: _isMarkedLate,
+                              onChanged: _markLate,
+                              activeColor: AppThemeTokens.warning,
                             ),
-                          )
-                        else
-                          UiPrimaryButton(
-                            text: event.isFull ? 'Event Full' : 'Join Event',
-                            icon: Icons.add,
-                            onPressed: event.isFull ? null : _join,
-                          ),
-                      ],
-                      if (isParticipant) ...[
-                        const SizedBox(height: 10),
-                        if (_markingLate)
-                          const Center(child: CircularProgressIndicator())
-                        else if (_isMarkedLate)
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: () => _markLate(false),
-                              icon: const Icon(Icons.check_circle_outline),
-                              label: const Text('Remove late status'),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(
-                                    color: AppThemeTokens.darkBorder),
-                                foregroundColor:
-                                    AppThemeTokens.darkTextSecondary,
-                              ),
-                            ),
-                          )
-                        else
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: () => _markLate(true),
-                              icon: const Icon(Icons.access_time),
-                              label: const Text('Mark me as late'),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(
-                                    color: AppThemeTokens.darkBorder),
-                                foregroundColor:
-                                    AppThemeTokens.darkTextSecondary,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ],
+                    ),
                   ),
-                ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
                 // ── Participants section ───────────────────────────────────
                 if (event.participants.isNotEmpty ||
@@ -924,6 +909,57 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Compact action card (Participants / Attendance / Analytics)
+// ---------------------------------------------------------------------------
+
+class _CompactActionCard extends StatelessWidget {
+  const _CompactActionCard({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: AppThemeTokens.darkCard,
+            borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+            border: Border.all(color: AppThemeTokens.darkBorder),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 20, color: AppThemeTokens.primary400),
+              const SizedBox(height: 5),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: AppThemeTokens.darkTextSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

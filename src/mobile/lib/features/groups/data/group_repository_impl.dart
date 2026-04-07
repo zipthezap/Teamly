@@ -216,7 +216,7 @@ class GroupRepositoryImpl implements GroupRepository {
   @override
   Future<String> uploadGroupPicture(String groupId, String filePath) async {
     final formData = FormData.fromMap({
-      'picture': await MultipartFile.fromFile(filePath),
+      'groupPicture': await MultipartFile.fromFile(filePath),
     });
     final response = await _dio.post<Map<String, dynamic>>(
       '/groups/$groupId/picture',

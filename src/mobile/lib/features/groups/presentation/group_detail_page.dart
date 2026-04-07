@@ -325,7 +325,6 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
                 isModerator: moderator,
                 isMember: member,
                 canInvite: canInvite,
-                canCopyLink: canCopyLink,
                 groupId: widget.groupId,
               ),
               _MembersTab(
@@ -463,6 +462,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
 
     try {
       await ref.read(groupRepositoryProvider).leaveGroup(widget.groupId);
+      ref.invalidate(groupDetailProvider(widget.groupId));
       ref.read(groupsNotifierProvider.notifier).load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -497,7 +497,6 @@ class _OverviewTab extends ConsumerWidget {
     required this.isModerator,
     required this.isMember,
     required this.canInvite,
-    required this.canCopyLink,
     required this.groupId,
   });
   final GroupModel group;
@@ -505,7 +504,6 @@ class _OverviewTab extends ConsumerWidget {
   final bool isModerator;
   final bool isMember;
   final bool canInvite;
-  final bool canCopyLink;
   final String groupId;
 
   @override
@@ -749,141 +747,34 @@ class _OverviewTab extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
 
-        // ── Quick Actions ─────────────────────────────────────────────────
-        UiSectionTitle('Quick Actions'),
-        const SizedBox(height: 10),
-        // Edit group: admins only
-        if (isAdmin) ...[
-          OutlinedButton.icon(
-            onPressed: () async {
-              await Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => GroupFormPage(existingGroup: group)));
-              ref.invalidate(groupDetailProvider(groupId));
-            },
-            icon: const Icon(Icons.edit_outlined),
-            label: const Text('Edit Group'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppThemeTokens.primary400,
-              side: BorderSide(
-                  color: AppThemeTokens.primary400.withValues(alpha: 0.5)),
-              minimumSize: const Size(double.infinity, 44),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
-        // All members can create events
-        UiPrimaryButton(
-          text: 'Create Event',
-          icon: Icons.add_circle_outline,
-          onPressed: () => context.push('/groups/${group.id}/events/new'),
-        ),
-        // Invite: admin always, or members when allowMemberInvites
-        if (canInvite) ...[
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: () =>
-                _groupShowInviteMemberDialog(context, ref, groupId),
-            icon: const Icon(Icons.person_add_outlined),
-            label: const Text('Invite Member'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppThemeTokens.darkTextSecondary,
-              side: const BorderSide(color: AppThemeTokens.darkBorder),
-              minimumSize: const Size(double.infinity, 44),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-              ),
-            ),
-          ),
-        ],
-        // Copy invite link: for public groups when canCopyLink and not in admin popup
-        if (canCopyLink && !isModerator) ...[
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: () async {
-              final repo = ref.read(groupRepositoryProvider);
-              try {
-                final link = await repo.getInviteLink(groupId);
-                await Clipboard.setData(ClipboardData(text: link));
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Invite link copied!')));
-                }
-              } on Exception catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(_groupExtractMsg(e))));
-                }
-              }
-            },
-            icon: const Icon(Icons.link),
-            label: const Text('Copy Invite Link'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppThemeTokens.darkTextSecondary,
-              side: const BorderSide(color: AppThemeTokens.darkBorder),
-              minimumSize: const Size(double.infinity, 44),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-              ),
-            ),
-          ),
-        ],
-        // Picture management: admins only
-        if (isAdmin) ...[
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: () =>
-                _groupPickAndUploadPicture(context, ref, groupId),
-            icon: const Icon(Icons.photo_camera_outlined),
-            label: const Text('Change Picture'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppThemeTokens.darkTextSecondary,
-              side: const BorderSide(color: AppThemeTokens.darkBorder),
-              minimumSize: const Size(double.infinity, 44),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-              ),
-            ),
-          ),
-          if (group.profilePicture != null) ...[
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: () => _groupDeletePicture(context, ref, groupId),
-              icon: const Icon(Icons.hide_image_outlined,
-                  color: AppThemeTokens.error),
-              label: const Text('Remove Picture',
-                  style: TextStyle(color: AppThemeTokens.error)),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppThemeTokens.error,
-                side: BorderSide(
-                    color: AppThemeTokens.error.withValues(alpha: 0.4)),
-                minimumSize: const Size(double.infinity, 44),
-                shape: RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(AppThemeTokens.radiusMd),
+        // ── Compact member actions ─────────────────────────────────────────
+        if (isMember)
+          Row(
+            children: [
+              Expanded(
+                child: _ActionButton(
+                  icon: Icons.add_circle_outline,
+                  label: 'Create Event',
+                  primary: true,
+                  onPressed: () =>
+                      context.push('/groups/${group.id}/events/new'),
                 ),
               ),
-            ),
-          ],
-        ],
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
-          onPressed: () => context.push('/discover/public-groups'),
-          icon: const Icon(Icons.explore_outlined),
-          label: const Text('Discover More'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppThemeTokens.darkTextSecondary,
-            side: const BorderSide(color: AppThemeTokens.darkBorder),
-            minimumSize: const Size(double.infinity, 44),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-            ),
+              if (canInvite) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _ActionButton(
+                    icon: Icons.person_add_outlined,
+                    label: 'Invite',
+                    onPressed: () =>
+                        _groupShowInviteMemberDialog(context, ref, groupId),
+                  ),
+                ),
+              ],
+            ],
           ),
-        ),
 
         // ── About ─────────────────────────────────────────────────────────
         if (group.description != null && group.description!.isNotEmpty) ...[
@@ -926,6 +817,73 @@ class _OverviewTab extends ConsumerWidget {
         ],
         const SizedBox(height: 24),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Compact action button (for Overview tab member actions)
+// ---------------------------------------------------------------------------
+
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    this.primary = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+  final bool primary;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: primary
+                ? AppThemeTokens.primary500.withValues(alpha: 0.12)
+                : AppThemeTokens.darkCard,
+            borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+            border: Border.all(
+              color: primary
+                  ? AppThemeTokens.primary500.withValues(alpha: 0.4)
+                  : AppThemeTokens.darkBorder,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: primary
+                    ? AppThemeTokens.primary400
+                    : AppThemeTokens.darkTextSecondary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: primary
+                      ? AppThemeTokens.primary400
+                      : AppThemeTokens.darkTextSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
