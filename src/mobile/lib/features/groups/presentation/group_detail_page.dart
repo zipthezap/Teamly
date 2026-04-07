@@ -1094,11 +1094,9 @@ class _MembersTab extends ConsumerWidget {
                             itemBuilder: (_) => [
                               // Admin-only role management actions
                               if (isAdmin && !memberIsAdmin && !isCreator) ...[
-                                PopupMenuItem(
+                                const PopupMenuItem(
                                     value: 'promote',
-                                    child: Text(memberIsModerator
-                                        ? 'Promote to admin'
-                                        : 'Promote to admin')),
+                                    child: Text('Promote to admin')),
                                 if (!memberIsModerator)
                                   const PopupMenuItem(
                                       value: 'make_moderator',
@@ -1161,7 +1159,7 @@ class _MembersTab extends ConsumerWidget {
           context: ctx,
           builder: (c) => AlertDialog(
             title: const Text('Remove member'),
-            content: Text('Remove \${member.name} from the group?'),
+            content: Text('Remove ${member.name} from the group?'),
             actions: [
               TextButton(
                   onPressed: () => Navigator.of(c).pop(false),
@@ -1233,7 +1231,7 @@ class _MembersTab extends ConsumerWidget {
           builder: (c) => AlertDialog(
             title: const Text('Transfer admin'),
             content: Text(
-                'Transfer admin role to \${member.name}? You will become a regular member.'),
+                'Transfer admin role to ${member.name}? You will become a regular member.'),
             actions: [
               TextButton(
                   onPressed: () => Navigator.of(c).pop(false),
