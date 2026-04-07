@@ -86,7 +86,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
   }
 
   /// Returns [value] if it is a valid sport type, otherwise falls back to
-  /// 'other'. This guards against stale/unknown eventType values from the API.
+  /// 'football'. This guards against stale/unknown eventType values from the API.
   static String _validSportType(String? value) {
     if (value != null &&
         _kSportTypeItems.any((s) => s['value'] == value)) {
