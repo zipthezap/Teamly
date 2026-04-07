@@ -425,7 +425,7 @@ const PublicGroups = () => {
 
       {/* Location Filter Section */}
       <Box sx={{ 
-        bgcolor: '#202334', 
+        bgcolor: '#1a202c', 
         borderRadius: 2, 
         boxShadow: 1, 
         p: { xs: 2, sm: 2.5, md: 3 }, 
@@ -530,7 +530,7 @@ const PublicGroups = () => {
                     border: 1, 
                     borderColor: 'grey.700', 
                     borderRadius: 1, 
-                    bgcolor: '#181c24', 
+                    bgcolor: '#0f1419', 
                     color: 'white',
                     fontSize: { xs: '0.875rem', sm: '1rem' },
                     '&:focus': {
@@ -565,7 +565,7 @@ const PublicGroups = () => {
                   border: 1, 
                   borderColor: 'grey.700', 
                   borderRadius: 1, 
-                  bgcolor: '#181c24', 
+                  bgcolor: '#0f1419', 
                   color: 'white',
                   fontSize: { xs: '0.875rem', sm: '1rem' },
                   '&:disabled': {

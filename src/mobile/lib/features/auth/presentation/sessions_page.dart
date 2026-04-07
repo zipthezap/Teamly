@@ -42,13 +42,13 @@ class SessionsPage extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: OutlinedButton.icon(
               onPressed: () => _revokeAllSessions(context, ref),
-              icon: const Icon(Icons.logout, color: Colors.red),
+              icon: const Icon(Icons.logout, color: AppThemeTokens.error),
               label: const Text(
                 'Sign out of all other devices',
-                style: TextStyle(color: Colors.red),
+                style: TextStyle(color: AppThemeTokens.error),
               ),
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.red),
+                side: const BorderSide(color: AppThemeTokens.error),
                 minimumSize: const Size(double.infinity, 44),
               ),
             ),
@@ -242,13 +242,13 @@ class _SessionTile extends StatelessWidget {
             const Text('Expired',
                 style: TextStyle(
                     fontSize: 11,
-                    color: Colors.red,
+                    color: AppThemeTokens.error,
                     fontWeight: FontWeight.bold)),
         ],
       ),
       isThreeLine: true,
       trailing: IconButton(
-        icon: const Icon(Icons.logout, color: Colors.red),
+        icon: const Icon(Icons.logout, color: AppThemeTokens.error),
         tooltip: 'Revoke session',
         onPressed: onRevoke,
       ),

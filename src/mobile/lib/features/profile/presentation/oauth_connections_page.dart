@@ -53,7 +53,7 @@ class OAuthConnectionsPage extends ConsumerWidget {
             // Google
             _ConnectionTile(
               icon: Icons.g_mobiledata,
-              iconColor: Colors.red,
+              iconColor: AppThemeTokens.error,
               provider: 'Google',
               connected: status.googleConnected,
               isPrimary: status.primaryProvider == 'google',
@@ -66,7 +66,7 @@ class OAuthConnectionsPage extends ConsumerWidget {
             // Facebook
             _ConnectionTile(
               icon: Icons.facebook,
-              iconColor: Colors.blue.shade700,
+              iconColor: AppThemeTokens.info,
               provider: 'Facebook',
               connected: status.facebookConnected,
               isPrimary: status.primaryProvider == 'facebook',
@@ -82,17 +82,17 @@ class OAuthConnectionsPage extends ConsumerWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.12),
+                  color: AppThemeTokens.success.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.lock_outline, color: Colors.green),
+                child: const Icon(Icons.lock_outline, color: AppThemeTokens.success),
               ),
               title: const Text('Password'),
               subtitle: Text(status.hasLocalPassword
                   ? 'Password is set'
                   : 'No password — sign in only via social accounts'),
               trailing: status.hasLocalPassword
-                  ? const Icon(Icons.check_circle, color: Colors.green)
+                  ? const Icon(Icons.check_circle, color: AppThemeTokens.success)
                   : null,
             ),
 
@@ -103,7 +103,7 @@ class OAuthConnectionsPage extends ConsumerWidget {
                   padding: EdgeInsets.all(12),
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline, size: 18, color: Colors.blue),
+                      Icon(Icons.info_outline, size: 18, color: AppThemeTokens.info),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -224,12 +224,12 @@ class _ConnectionTile extends StatelessWidget {
               ? const Tooltip(
                   message: 'Cannot unlink primary account',
                   child:
-                      Icon(Icons.check_circle, color: Colors.green),
+                      Icon(Icons.check_circle, color: AppThemeTokens.success),
                 )
               : TextButton(
                   onPressed: onUnlink,
                   child: const Text('Unlink',
-                      style: TextStyle(color: Colors.red)),
+                      style: TextStyle(color: AppThemeTokens.error)),
                 )
           : FilledButton.tonal(
               onPressed: onLink,

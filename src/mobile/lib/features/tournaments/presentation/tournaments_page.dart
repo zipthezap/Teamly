@@ -416,14 +416,14 @@ class _StandingsTab extends StatelessWidget {
                           child: Text('${team.wins}',
                               textAlign: TextAlign.center,
                               style: const TextStyle(
-                                  color: Colors.green,
+                                  color: AppThemeTokens.success,
                                   fontWeight: FontWeight.bold))),
                       SizedBox(
                           width: 40,
                           child: Text('${team.losses}',
                               textAlign: TextAlign.center,
                               style: const TextStyle(
-                                  color: Colors.red,
+                                  color: AppThemeTokens.error,
                                   fontWeight: FontWeight.bold))),
                       SizedBox(
                           width: 40,

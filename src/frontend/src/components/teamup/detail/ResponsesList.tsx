@@ -40,7 +40,7 @@ export const ResponsesList: React.FC<ResponsesListProps> = ({
       )}
 
       <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600 }}>
-        <PeopleIcon sx={{ color: '#667eea' }} /> {t('teamup.responses')} ({responses.length})
+        <PeopleIcon sx={{ color: '#2196f3' }} /> {t('teamup.responses')} ({responses.length})
       </Typography>
       
       <Stack spacing={2}>

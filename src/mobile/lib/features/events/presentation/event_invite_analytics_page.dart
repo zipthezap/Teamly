@@ -62,7 +62,7 @@ class EventInviteAnalyticsPage extends ConsumerWidget {
                       value:
                           '${analytics.acceptanceRate.toStringAsFixed(1)}%',
                       icon: Icons.trending_up,
-                      color: Colors.green,
+                      color: AppThemeTokens.success,
                     ),
                   ),
                 ],
@@ -90,15 +90,15 @@ class EventInviteAnalyticsPage extends ConsumerWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           _LegendItem(
-                              color: Colors.green,
+                              color: AppThemeTokens.success,
                               label: 'Accepted',
                               count: analytics.accepted),
                           _LegendItem(
-                              color: Colors.red,
+                              color: AppThemeTokens.error,
                               label: 'Rejected',
                               count: analytics.rejected),
                           _LegendItem(
-                              color: Colors.orange,
+                              color: AppThemeTokens.warning,
                               label: 'Pending',
                               count: analytics.pending),
                         ],
@@ -270,17 +270,17 @@ class _BreakdownBar extends StatelessWidget {
             if (accepted > 0)
               Expanded(
                 flex: accepted,
-                child: Container(color: Colors.green),
+                child: Container(color: AppThemeTokens.success),
               ),
             if (pending > 0)
               Expanded(
                 flex: pending,
-                child: Container(color: Colors.orange),
+                child: Container(color: AppThemeTokens.warning),
               ),
             if (rejected > 0)
               Expanded(
                 flex: rejected,
-                child: Container(color: Colors.red),
+                child: Container(color: AppThemeTokens.error),
               ),
           ],
         ),

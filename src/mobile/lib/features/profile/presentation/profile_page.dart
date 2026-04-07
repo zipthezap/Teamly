@@ -518,9 +518,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           Card(
             margin: const EdgeInsets.only(bottom: 24),
             child: ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
+              leading: const Icon(Icons.logout, color: AppThemeTokens.error),
               title:
-                  const Text('Sign out', style: TextStyle(color: Colors.red)),
+                  const Text('Sign out', style: TextStyle(color: AppThemeTokens.error)),
               onTap: () async {
                 await ref.read(authNotifierProvider.notifier).logout();
                 if (context.mounted) context.go('/auth');

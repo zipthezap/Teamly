@@ -112,10 +112,10 @@ const Dashboard = () => {
             alignSelf: { md: 'flex-start' },
             maxHeight: { md: 'calc(100vh - 100px)' },
             overflowY: { md: 'auto' },
-            background: 'rgba(30, 41, 59, 0.98)',
+            background: '#1a202c',
             borderRadius: { xs: 2, md: 3 },
             boxShadow: 3,
-            border: '1.5px solid #22304a',
+            border: '1px solid #374151',
             p: { xs: 2, sm: 2.5, md: 3 },
           }}
         >
@@ -181,7 +181,7 @@ const Dashboard = () => {
         </Box>
 
         {/* Main Content */}
-        <Box sx={{ flex: 1, minWidth: 0, background: 'rgba(30, 41, 59, 0.98)', borderRadius: { xs: 2, md: 3 }, boxShadow: 3, border: '1.5px solid #22304a', p: { xs: 2, sm: 2.5, md: 3 } }}>
+        <Box sx={{ flex: 1, minWidth: 0, background: '#1a202c', borderRadius: { xs: 2, md: 3 }, boxShadow: 3, border: '1px solid #374151', p: { xs: 2, sm: 2.5, md: 3 } }}>
           {/* Statistics Section */}
           <Box sx={{ mb: { xs: 3, md: 4 } }}>
             <UserStatistics />

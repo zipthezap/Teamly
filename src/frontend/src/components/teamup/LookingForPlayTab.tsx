@@ -157,7 +157,7 @@ const LookingForPlayTab = () => {
           onChange={handleViewChange}
           aria-label="view selection"
           sx={{
-            backgroundColor: 'white',
+            backgroundColor: '#1a202c',
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             borderRadius: 2,
             '& .MuiToggleButton-root': {
@@ -170,13 +170,13 @@ const LookingForPlayTab = () => {
               fontSize: { xs: '0.813rem', sm: '0.95rem' },
               transition: 'all 0.3s ease',
               '&:hover': {
-                backgroundColor: 'rgba(102, 126, 234, 0.08)'
+                backgroundColor: 'rgba(33, 150, 243, 0.08)'
               },
               '&.Mui-selected': {
-                backgroundColor: '#667eea',
+                backgroundColor: '#2196f3',
                 color: 'white',
                 '&:hover': {
-                  backgroundColor: '#5568d3'
+                  backgroundColor: '#1976d2'
                 }
               }
             }
@@ -198,7 +198,7 @@ const LookingForPlayTab = () => {
           <Box sx={{ 
             mb: { xs: 2, sm: 3 }, 
             p: { xs: 2, sm: 2.5, md: 3 }, 
-            backgroundColor: 'white',
+            backgroundColor: '#1a202c',
             borderRadius: 2,
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
           }}>
@@ -216,10 +216,10 @@ const LookingForPlayTab = () => {
                     },
                     '& .MuiOutlinedInput-root': {
                       '&:hover fieldset': {
-                        borderColor: '#667eea'
+                        borderColor: '#2196f3'
                       },
                       '&.Mui-focused fieldset': {
-                        borderColor: '#667eea'
+                        borderColor: '#2196f3'
                       }
                     }
                   }}
@@ -245,10 +245,10 @@ const LookingForPlayTab = () => {
                     },
                     '& .MuiOutlinedInput-root': {
                       '&:hover fieldset': {
-                        borderColor: '#667eea'
+                        borderColor: '#2196f3'
                       },
                       '&.Mui-focused fieldset': {
-                        borderColor: '#667eea'
+                        borderColor: '#2196f3'
                       }
                     }
                   }}
@@ -267,10 +267,10 @@ const LookingForPlayTab = () => {
                     },
                     '& .MuiOutlinedInput-root': {
                       '&:hover fieldset': {
-                        borderColor: '#667eea'
+                        borderColor: '#2196f3'
                       },
                       '&.Mui-focused fieldset': {
-                        borderColor: '#667eea'
+                        borderColor: '#2196f3'
                       }
                     }
                   }}
@@ -289,7 +289,7 @@ const LookingForPlayTab = () => {
             <Box sx={{ 
               textAlign: 'center', 
               py: { xs: 6, sm: 8 },
-              backgroundColor: 'white',
+              backgroundColor: '#1a202c',
               borderRadius: 2,
               boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
             }}>
@@ -375,7 +375,7 @@ const LookingForPlayTab = () => {
                               label={request.sportType}
                               size="small"
                               sx={{
-                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                background: '#2196f3',
                                 color: 'white',
                                 fontWeight: 600,
                                 fontSize: '0.7rem',
@@ -445,7 +445,7 @@ const LookingForPlayTab = () => {
                                 borderRadius: 4,
                                 background: spotsLeft === 0 
                                   ? 'linear-gradient(90deg, #4caf50 0%, #8bc34a 100%)'
-                                  : 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)'
+                                  : '#2196f3'
                               }
                             }}
                           />
@@ -457,8 +457,8 @@ const LookingForPlayTab = () => {
                             variant="outlined"
                             sx={{ 
                               mt: 1,
-                              borderColor: '#667eea',
-                              color: '#667eea',
+                              borderColor: '#2196f3',
+                              color: '#2196f3',
                               fontWeight: 600
                             }}
                           />
@@ -509,7 +509,7 @@ const LookingForPlayTab = () => {
             <Box sx={{ 
               textAlign: 'center', 
               py: { xs: 6, sm: 8 },
-              backgroundColor: 'white',
+              backgroundColor: '#1a202c',
               borderRadius: 2,
               boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
             }}>
@@ -557,7 +557,7 @@ const LookingForPlayTab = () => {
                         size="small"
                         sx={{ 
                           mb: 2,
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          background: '#2196f3',
                           color: 'white',
                           fontWeight: 600
                         }}
@@ -575,7 +575,7 @@ const LookingForPlayTab = () => {
                           bgcolor: 'grey.50', 
                           borderRadius: 2,
                           borderLeft: 3,
-                          borderColor: '#667eea'
+                          borderColor: '#2196f3'
                         }}>
                           <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" sx={{ mb: 0.5 }}>
                             {t('teamup.yourMessage')}:

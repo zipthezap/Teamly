@@ -178,7 +178,7 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
         alignItems: 'center',
         borderBottom: 1,
         borderColor: 'divider',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: '#2196f3',
         color: 'white',
         py: 2
       }}>
@@ -216,16 +216,16 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
             minHeight: 64,
             transition: 'all 0.3s ease',
             '&:hover': {
-              backgroundColor: 'rgba(102, 126, 234, 0.08)'
+              backgroundColor: 'rgba(33, 150, 243, 0.08)'
             },
             '&.Mui-selected': {
-              color: '#667eea'
+              color: '#2196f3'
             }
           },
           '& .MuiTabs-indicator': {
             height: 3,
             borderRadius: '3px 3px 0 0',
-            backgroundColor: '#667eea'
+            backgroundColor: '#2196f3'
           }
         }}
       >
@@ -345,12 +345,12 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
                       maxRows={3}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          backgroundColor: 'white',
+                          backgroundColor: '#1a202c',
                           '&:hover fieldset': {
-                            borderColor: '#667eea'
+                            borderColor: '#2196f3'
                           },
                           '&.Mui-focused fieldset': {
-                            borderColor: '#667eea'
+                            borderColor: '#2196f3'
                           }
                         }
                       }}
@@ -359,7 +359,7 @@ const TeamUpDetailModal: React.FC<TeamUpDetailModalProps> = ({ open, onClose, re
                       onClick={handleAddComment}
                       disabled={!newComment.trim() || submittingComment}
                       sx={{
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        background: '#2196f3',
                         color: 'white',
                         boxShadow: '0 2px 8px rgba(102, 126, 234, 0.4)',
                         '&:hover': {

@@ -250,7 +250,7 @@ const NeedPlayersTab = () => {
           onChange={handleViewChange}
           aria-label="view selection"
           sx={{
-            backgroundColor: 'white',
+            backgroundColor: '#1a202c',
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             borderRadius: 2,
             '& .MuiToggleButton-root': {
@@ -263,13 +263,13 @@ const NeedPlayersTab = () => {
               fontSize: { xs: '0.813rem', sm: '0.95rem' },
               transition: 'all 0.3s ease',
               '&:hover': {
-                backgroundColor: 'rgba(102, 126, 234, 0.08)'
+                backgroundColor: 'rgba(33, 150, 243, 0.08)'
               },
               '&.Mui-selected': {
-                backgroundColor: '#667eea',
+                backgroundColor: '#2196f3',
                 color: 'white',
                 '&:hover': {
-                  backgroundColor: '#5568d3'
+                  backgroundColor: '#1976d2'
                 }
               }
             }
@@ -293,7 +293,7 @@ const NeedPlayersTab = () => {
             startIcon={<AddIcon />}
             onClick={() => handleOpenDialog()}
             sx={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: '#2196f3',
               color: 'white',
               fontWeight: 600,
               textTransform: 'none',
@@ -305,7 +305,7 @@ const NeedPlayersTab = () => {
               boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
               transition: 'all 0.3s ease',
               '&:hover': {
-                background: 'linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)',
+                background: '#1976d2',
                 transform: 'translateY(-2px)',
                 boxShadow: '0 6px 16px rgba(102, 126, 234, 0.5)'
               }
@@ -323,7 +323,7 @@ const NeedPlayersTab = () => {
             <Box sx={{ 
               textAlign: 'center', 
               py: { xs: 6, sm: 8 },
-              backgroundColor: 'white',
+              backgroundColor: '#1a202c',
               borderRadius: 2,
               boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
             }}>
@@ -380,7 +380,7 @@ const NeedPlayersTab = () => {
                         size="small"
                         sx={{ 
                           mb: 2,
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          background: '#2196f3',
                           color: 'white',
                           fontWeight: 600
                         }}
@@ -448,11 +448,11 @@ const NeedPlayersTab = () => {
                         size="small"
                         onClick={() => handleOpenDialog(request)}
                         sx={{
-                          color: '#667eea',
+                          color: '#2196f3',
                           minWidth: '44px',
                           minHeight: '44px',
                           '&:hover': {
-                            backgroundColor: 'rgba(102, 126, 234, 0.08)'
+                            backgroundColor: 'rgba(33, 150, 243, 0.08)'
                           }
                         }}
                         title={t('common.edit')}
@@ -480,16 +480,16 @@ const NeedPlayersTab = () => {
                         startIcon={<VisibilityIcon />}
                         onClick={() => handleOpenDetailModal(request.id)}
                         sx={{
-                          borderColor: '#667eea',
-                          color: '#667eea',
+                          borderColor: '#2196f3',
+                          color: '#2196f3',
                           textTransform: 'none',
                           fontWeight: 600,
                           minHeight: '44px',
                           fontSize: { xs: '0.813rem', sm: '0.875rem' },
                           px: { xs: 1.5, sm: 2 },
                           '&:hover': {
-                            borderColor: '#5568d3',
-                            backgroundColor: 'rgba(102, 126, 234, 0.08)'
+                            borderColor: '#1976d2',
+                            backgroundColor: 'rgba(33, 150, 243, 0.08)'
                           }
                         }}
                       >
@@ -549,7 +549,7 @@ const NeedPlayersTab = () => {
             <Box sx={{ 
               textAlign: 'center', 
               py: { xs: 6, sm: 8 },
-              backgroundColor: 'white',
+              backgroundColor: '#1a202c',
               borderRadius: 2,
               boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
             }}>
@@ -591,7 +591,7 @@ const NeedPlayersTab = () => {
                             label={request.sportType}
                             size="small"
                             sx={{ 
-                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                              background: '#2196f3',
                               color: 'white',
                               fontWeight: 600
                             }}
@@ -606,7 +606,7 @@ const NeedPlayersTab = () => {
                             label={`${stats.pending} ${t('teamup.pending')}`}
                             size="small"
                             sx={{
-                              backgroundColor: 'grey.200',
+                              backgroundColor: '#374151',
                               fontWeight: 600
                             }}
                           />
