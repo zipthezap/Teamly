@@ -239,6 +239,13 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
           data: (e) => Text(e.title),
           orElse: () => const Text('Event'),
         ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            height: 1,
+            color: AppThemeTokens.darkBorder,
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.link),
@@ -396,107 +403,247 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                UiCard(
+                // ── Hero card ──────────────────────────────────────────────
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: AppThemeTokens.heroGradient,
+                    borderRadius:
+                        BorderRadius.circular(AppThemeTokens.radiusLg),
+                    border: Border.all(color: AppThemeTokens.darkBorder),
+                  ),
+                  child: ClipRRect(
+                    borderRadius:
+                        BorderRadius.circular(AppThemeTokens.radiusLg),
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          top: -30,
+                          right: -20,
+                          child: Container(
+                            width: 130,
+                            height: 130,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppThemeTokens.primary500
+                                  .withValues(alpha: 0.07),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: -40,
+                          left: -20,
+                          child: Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppThemeTokens.primary500
+                                  .withValues(alpha: 0.05),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: [
+                                  if (event.eventType != null)
+                                    UiStatusBadge(
+                                      label: event.eventType!,
+                                      status: UiStatusBadge.fromString(
+                                          event.eventType!),
+                                      dot: true,
+                                    ),
+                                  UiStatusBadge(
+                                    label: event.isPublic ? 'Public' : 'Private',
+                                    status: UiStatusType.info,
+                                    dot: true,
+                                  ),
+                                  if (event.archived == true)
+                                    const UiStatusBadge(
+                                      label: 'Archived',
+                                      status: UiStatusType.warning,
+                                      dot: true,
+                                    ),
+                                  if (isPast)
+                                    const UiStatusBadge(
+                                      label: 'Past',
+                                      status: UiStatusType.defaultStatus,
+                                      dot: true,
+                                    ),
+                                  if (event.isFull)
+                                    const UiStatusBadge(
+                                      label: 'Full',
+                                      status: UiStatusType.error,
+                                      dot: true,
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                event.title,
+                                style: const TextStyle(
+                                  color: AppThemeTokens.darkText,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              InkWell(
+                                onTap: () =>
+                                    context.push('/groups/${event.group.id}'),
+                                borderRadius: BorderRadius.circular(
+                                    AppThemeTokens.radiusSm),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.group_outlined,
+                                        size: 13,
+                                        color: AppThemeTokens.darkTextSecondary),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      event.group.name,
+                                      style: const TextStyle(
+                                        color: AppThemeTokens.darkTextSecondary,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    const Icon(Icons.chevron_right,
+                                        size: 13,
+                                        color: AppThemeTokens.darkTextSecondary),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                children: [
+                                  _HeroPill(
+                                    icon: Icons.calendar_today_outlined,
+                                    label: DateFormat('MMM d, y')
+                                        .format(localStart),
+                                  ),
+                                  _HeroPill(
+                                    icon: Icons.access_time,
+                                    label:
+                                        '${DateFormat.jm().format(localStart)} – ${DateFormat.jm().format(localEnd)}',
+                                  ),
+                                ],
+                              ),
+                              if (event.locationName != null ||
+                                  event.location != null) ...[
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.place_outlined,
+                                        size: 13,
+                                        color: Color(0xFF2DD4BF)),
+                                    const SizedBox(width: 5),
+                                    Flexible(
+                                      child: Text(
+                                        event.locationName ?? event.location!,
+                                        style: const TextStyle(
+                                          color: AppThemeTokens.darkTextSecondary,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // ── Event details card ─────────────────────────────────────
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppThemeTokens.darkCard,
+                    borderRadius:
+                        BorderRadius.circular(AppThemeTokens.radiusMd),
+                    border: Border.all(color: AppThemeTokens.darkBorder),
+                  ),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(event.title, style: theme.textTheme.headlineSmall),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          if (event.eventType != null)
-                            _EventMetaChip(label: event.eventType!),
-                          _EventMetaChip(
-                            label: event.isPublic ? 'Public' : 'Private',
-                            icon: event.isPublic
-                                ? Icons.public_outlined
-                                : Icons.lock_outline,
-                          ),
-                          _EventMetaChip(
-                            label:
-                                event.archived == true ? 'Archived' : 'Active',
-                            icon: event.archived == true
-                                ? Icons.archive_outlined
-                                : Icons.check_circle_outline,
-                          ),
-                          _EventMetaChip(
-                            label: event.maxPlayers != null
-                                ? '$confirmedCount/${event.maxPlayers} players'
-                                : '$confirmedCount participant${confirmedCount == 1 ? '' : 's'}',
-                            icon: Icons.people_outline,
-                          ),
-                          if (isPast)
-                            const _EventMetaChip(
-                              label: 'Past event',
-                              icon: Icons.history,
-                            ),
-                          if (!event.isFull && spotsRemaining != null)
-                            _EventMetaChip(
-                              label: '$spotsRemaining spots left',
-                              icon: Icons.event_seat_outlined,
-                            ),
-                          if (event.isFull)
-                            const _EventMetaChip(
-                              label: 'Full',
-                              icon: Icons.group_off_outlined,
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      _DetailRow(
+                      UiInfoRow(
                         icon: Icons.calendar_today_outlined,
                         label: DateFormat('EEEE, MMMM d, y').format(localStart),
+                        iconColor: AppThemeTokens.primary400,
                       ),
-                      _DetailRow(
+                      UiInfoRow(
                         icon: Icons.access_time,
                         label:
                             '${DateFormat.jm().format(localStart)} – ${DateFormat.jm().format(localEnd)}',
+                        iconColor: AppThemeTokens.primary400,
                       ),
                       if (event.locationName != null || event.location != null)
-                        _DetailRow(
+                        UiInfoRow(
                           icon: Icons.place_outlined,
                           label: event.locationName ?? event.location!,
+                          iconColor: const Color(0xFF2DD4BF),
                         ),
                       if (event.city != null || event.country != null)
-                        _DetailRow(
+                        UiInfoRow(
                           icon: Icons.location_city_outlined,
                           label: [event.city, event.country]
                               .whereType<String>()
                               .join(', '),
+                          iconColor: const Color(0xFF2DD4BF),
                         ),
-                      InkWell(
-                        onTap: () => context.push('/groups/${event.group.id}'),
-                        borderRadius:
-                            BorderRadius.circular(AppThemeTokens.radiusMd),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.group_outlined,
-                                  size: 18,
-                                  color: AppThemeTokens.darkTextSecondary),
-                              const SizedBox(width: 10),
-                              Expanded(child: Text(event.group.name)),
-                              const Icon(Icons.chevron_right,
-                                  color: AppThemeTokens.darkTextSecondary),
-                            ],
-                          ),
-                        ),
+                      UiInfoRow(
+                        icon: Icons.group_outlined,
+                        label: event.group.name,
+                        iconColor: const Color(0xFFA78BFA),
                       ),
+                      UiInfoRow(
+                        icon: Icons.people_outline,
+                        label: event.maxPlayers != null
+                            ? '$confirmedCount/${event.maxPlayers} participants'
+                            : '$confirmedCount participant${confirmedCount == 1 ? '' : 's'}',
+                        iconColor: AppThemeTokens.success,
+                      ),
+                      if (!event.isFull && spotsRemaining != null)
+                        UiInfoRow(
+                          icon: Icons.event_seat_outlined,
+                          label: '$spotsRemaining spot${spotsRemaining == 1 ? '' : 's'} remaining',
+                          iconColor: AppThemeTokens.warning,
+                        ),
                     ],
                   ),
                 ),
 
                 const SizedBox(height: 16),
 
-                UiCard(
+                // ── Host card ──────────────────────────────────────────────
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppThemeTokens.darkCard,
+                    borderRadius:
+                        BorderRadius.circular(AppThemeTokens.radiusMd),
+                    border: Border.all(color: AppThemeTokens.darkBorder),
+                  ),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Host', style: theme.textTheme.titleMedium),
-                      const SizedBox(height: 8),
+                      const UiSectionTitle('Host'),
+                      const SizedBox(height: 12),
                       Row(
                         children: [
                           UserAvatar(
@@ -529,13 +676,27 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                 if (event.description != null &&
                     event.description!.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  UiCard(
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppThemeTokens.darkCard,
+                      borderRadius:
+                          BorderRadius.circular(AppThemeTokens.radiusMd),
+                      border: Border.all(color: AppThemeTokens.darkBorder),
+                    ),
+                    padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('About', style: theme.textTheme.titleMedium),
-                        const SizedBox(height: 8),
-                        Text(event.description!),
+                        const UiSectionTitle('About'),
+                        const SizedBox(height: 10),
+                        Text(
+                          event.description!,
+                          style: const TextStyle(
+                            color: AppThemeTokens.darkTextSecondary,
+                            fontSize: 14,
+                            height: 1.5,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -543,128 +704,210 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
 
                 const SizedBox(height: 20),
 
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (isCreator)
-                      FilledButton.icon(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => EventFormPage(existingEvent: event),
+                // ── Quick actions card ─────────────────────────────────────
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppThemeTokens.darkCard,
+                    borderRadius:
+                        BorderRadius.circular(AppThemeTokens.radiusMd),
+                    border: Border.all(color: AppThemeTokens.darkBorder),
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const UiSectionTitle('Actions'),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          if (isCreator)
+                            UiPrimaryButton(
+                              text: 'Edit',
+                              icon: Icons.edit_outlined,
+                              fullWidth: false,
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      EventFormPage(existingEvent: event),
+                                ),
+                              ),
+                            ),
+                          OutlinedButton.icon(
+                            onPressed: () => Navigator.of(context)
+                                .push(MaterialPageRoute(
+                              builder: (_) => ParticipantsPage(
+                                eventId: widget.eventId,
+                                eventTitle: event.title,
+                              ),
+                            )),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(
+                                  color: AppThemeTokens.darkBorder),
+                              foregroundColor: AppThemeTokens.darkTextSecondary,
+                            ),
+                            icon: const Icon(Icons.people_outline),
+                            label: const Text('Participants'),
                           ),
-                        ),
-                        icon: const Icon(Icons.edit_outlined),
-                        label: const Text('Edit'),
-                      ),
-                    OutlinedButton.icon(
-                      onPressed: () =>
-                          Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => ParticipantsPage(
-                          eventId: widget.eventId,
-                          eventTitle: event.title,
-                        ),
-                      )),
-                      icon: const Icon(Icons.people_outline),
-                      label: const Text('Participants'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () =>
-                          Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => AttendancePage(
-                          eventId: widget.eventId,
-                          eventTitle: event.title,
-                        ),
-                      )),
-                      icon: const Icon(Icons.how_to_reg_outlined),
-                      label: const Text('Attendance'),
-                    ),
-                    if (event.creator.id == currentUserId)
-                      OutlinedButton.icon(
-                        onPressed: () =>
-                            Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => EventInviteAnalyticsPage(
-                            eventId: widget.eventId,
-                            eventTitle: event.title,
+                          OutlinedButton.icon(
+                            onPressed: () => Navigator.of(context)
+                                .push(MaterialPageRoute(
+                              builder: (_) => AttendancePage(
+                                eventId: widget.eventId,
+                                eventTitle: event.title,
+                              ),
+                            )),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(
+                                  color: AppThemeTokens.darkBorder),
+                              foregroundColor: AppThemeTokens.darkTextSecondary,
+                            ),
+                            icon: const Icon(Icons.how_to_reg_outlined),
+                            label: const Text('Attendance'),
                           ),
-                        )),
-                        icon: const Icon(Icons.analytics_outlined),
-                        label: const Text('Analytics'),
+                          if (event.creator.id == currentUserId)
+                            OutlinedButton.icon(
+                              onPressed: () => Navigator.of(context)
+                                  .push(MaterialPageRoute(
+                                builder: (_) => EventInviteAnalyticsPage(
+                                  eventId: widget.eventId,
+                                  eventTitle: event.title,
+                                ),
+                              )),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(
+                                    color: AppThemeTokens.darkBorder),
+                                foregroundColor:
+                                    AppThemeTokens.darkTextSecondary,
+                              ),
+                              icon: const Icon(Icons.analytics_outlined),
+                              label: const Text('Analytics'),
+                            ),
+                        ],
                       ),
-                  ],
-                ),
-
-                const SizedBox(height: 20),
-
-                // Join / Leave button
-                if (currentUserId != null)
-                  _actionLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : isParticipant
-                          ? OutlinedButton.icon(
+                      if (currentUserId != null) ...[
+                        const SizedBox(height: 12),
+                        const Divider(color: AppThemeTokens.darkBorder, height: 1),
+                        const SizedBox(height: 12),
+                        if (_actionLoading)
+                          const Center(child: CircularProgressIndicator())
+                        else if (isParticipant)
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
                               onPressed: _leave,
                               icon: const Icon(Icons.exit_to_app),
                               label: const Text('Leave Event'),
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: theme.colorScheme.error,
+                                foregroundColor: AppThemeTokens.error,
+                                side: BorderSide(
+                                    color: AppThemeTokens.error
+                                        .withValues(alpha: 0.4)),
                               ),
-                            )
-                          : FilledButton.icon(
-                              onPressed: event.isFull ? null : _join,
-                              icon: const Icon(Icons.add),
-                              label: Text(
-                                  event.isFull ? 'Event Full' : 'Join Event'),
                             ),
-
-                const SizedBox(height: 24),
-
-                // Participants list
-                if (event.participants.isNotEmpty) ...[
-                  Text('Participants', style: theme.textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  ...event.participants
-                      .where((p) => p.status != 'cancelled')
-                      .map(
-                        (p) => ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: UserAvatar(
-                            name: p.name ?? _kUnknown,
-                            imageUrl: p.profilePicture,
+                          )
+                        else
+                          UiPrimaryButton(
+                            text: event.isFull ? 'Event Full' : 'Join Event',
+                            icon: Icons.add,
+                            onPressed: event.isFull ? null : _join,
                           ),
-                          title: Text(p.name ?? _kUnknown),
-                          trailing: p.status == 'waitlisted'
-                              ? const Chip(label: Text('Waitlisted'))
-                              : null,
-                        ),
-                      ),
-                ],
-
-                // Mark late button (only for participants)
-                if (isParticipant) ...[
-                  const SizedBox(height: 16),
-                  _markingLate
-                      ? const Center(child: CircularProgressIndicator())
-                      : _isMarkedLate
-                          ? OutlinedButton.icon(
+                      ],
+                      if (isParticipant) ...[
+                        const SizedBox(height: 10),
+                        if (_markingLate)
+                          const Center(child: CircularProgressIndicator())
+                        else if (_isMarkedLate)
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
                               onPressed: () => _markLate(false),
                               icon: const Icon(Icons.check_circle_outline),
                               label: const Text('Remove late status'),
-                            )
-                          : OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(
+                                    color: AppThemeTokens.darkBorder),
+                                foregroundColor:
+                                    AppThemeTokens.darkTextSecondary,
+                              ),
+                            ),
+                          )
+                        else
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
                               onPressed: () => _markLate(true),
                               icon: const Icon(Icons.access_time),
                               label: const Text('Mark me as late'),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(
+                                    color: AppThemeTokens.darkBorder),
+                                foregroundColor:
+                                    AppThemeTokens.darkTextSecondary,
+                              ),
                             ),
-                ],
+                          ),
+                      ],
+                    ],
+                  ),
+                ),
 
                 const SizedBox(height: 24),
 
-                // Activity feed
+                // ── Participants section ───────────────────────────────────
+                if (event.participants.isNotEmpty) ...[
+                  const UiSectionTitle('Participants'),
+                  const SizedBox(height: 10),
+                  ...event.participants
+                      .where((p) => p.status != 'cancelled')
+                      .map(
+                        (p) => Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: AppThemeTokens.darkCard,
+                            borderRadius: BorderRadius.circular(
+                                AppThemeTokens.radiusMd),
+                            border:
+                                Border.all(color: AppThemeTokens.darkBorder),
+                          ),
+                          child: Row(
+                            children: [
+                              UserAvatar(
+                                name: p.name ?? _kUnknown,
+                                imageUrl: p.profilePicture,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  p.name ?? _kUnknown,
+                                  style: const TextStyle(
+                                    color: AppThemeTokens.darkText,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              if (p.status == 'waitlisted')
+                                UiStatusBadge(
+                                  label: 'Waitlisted',
+                                  status: UiStatusBadge.fromString('pending'),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  const SizedBox(height: 16),
+                ],
+
+                // ── Activity feed ──────────────────────────────────────────
                 _ActivityFeedSection(eventId: widget.eventId),
 
                 const SizedBox(height: 24),
 
-                // Comments
+                // ── Comments ───────────────────────────────────────────────
                 _CommentsSection(
                   eventId: widget.eventId,
                   currentUserId: currentUserId ?? '',
@@ -689,7 +932,6 @@ class _ActivityFeedSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final feedAsync = ref.watch(activityFeedProvider(eventId));
-    final theme = Theme.of(context);
 
     return feedAsync.when(
       loading: () => const SizedBox.shrink(),
@@ -699,29 +941,58 @@ class _ActivityFeedSection extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Activity', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
+            const UiSectionTitle('Activity'),
+            const SizedBox(height: 10),
             ...entries.take(10).map(
-                  (entry) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: entry.userPicture != null || entry.userName != null
-                        ? UserAvatar(
-                            name: entry.userName ?? '?',
-                            imageUrl: entry.userPicture,
-                            radius: 16,
-                          )
-                        : CircleAvatar(
-                            radius: 16,
-                            backgroundColor:
-                                theme.colorScheme.surfaceContainerHighest,
-                            child: const Icon(Icons.info_outline, size: 14),
+                  (entry) => Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppThemeTokens.darkCard,
+                      borderRadius:
+                          BorderRadius.circular(AppThemeTokens.radiusMd),
+                      border: Border.all(color: AppThemeTokens.darkBorder),
+                    ),
+                    child: Row(
+                      children: [
+                        entry.userPicture != null || entry.userName != null
+                            ? UserAvatar(
+                                name: entry.userName ?? '?',
+                                imageUrl: entry.userPicture,
+                                radius: 16,
+                              )
+                            : Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: AppThemeTokens.darkCardElevated,
+                                  borderRadius: BorderRadius.circular(
+                                      AppThemeTokens.radiusSm),
+                                ),
+                                child: const Icon(Icons.info_outline,
+                                    size: 14,
+                                    color: AppThemeTokens.darkTextSecondary),
+                              ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            entry.summary,
+                            style: const TextStyle(
+                              color: AppThemeTokens.darkTextSecondary,
+                              fontSize: 13,
+                            ),
                           ),
-                    title:
-                        Text(entry.summary, style: theme.textTheme.bodySmall),
-                    trailing: Text(
-                      _formatTime(entry.createdAt),
-                      style: theme.textTheme.labelSmall
-                          ?.copyWith(color: AppThemeTokens.darkTextSecondary),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatTime(entry.createdAt),
+                          style: const TextStyle(
+                            color: AppThemeTokens.darkTextMuted,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -823,7 +1094,6 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
   @override
   Widget build(BuildContext context) {
     final commentsAsync = ref.watch(_eventCommentsProvider(widget.eventId));
-    final theme = Theme.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -834,33 +1104,52 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
           data: (comments) => Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Text('Comments', style: theme.textTheme.titleMedium),
-                  const SizedBox(width: 8),
-                  if (comments.isNotEmpty)
-                    Chip(
-                      label: Text('${comments.length}'),
-                      padding: EdgeInsets.zero,
-                      labelPadding: const EdgeInsets.symmetric(horizontal: 6),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                ],
+              UiSectionTitle(
+                'Comments',
+                trailing: comments.isNotEmpty
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppThemeTokens.primaryGlow,
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                        child: Text(
+                          '${comments.length}',
+                          style: const TextStyle(
+                            color: AppThemeTokens.primary400,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      )
+                    : null,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               if (comments.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text('No comments yet.',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: AppThemeTokens.darkTextSecondary)),
+                  child: const Text(
+                    'No comments yet.',
+                    style: TextStyle(
+                      color: AppThemeTokens.darkTextSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
                 )
               else
                 ...comments.map((c) {
                   final isOwner = c.userId == widget.currentUserId;
                   final isEditing = _editingCommentId == c.id;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppThemeTokens.darkCard,
+                      borderRadius:
+                          BorderRadius.circular(AppThemeTokens.radiusMd),
+                      border: Border.all(color: AppThemeTokens.darkBorder),
+                    ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -869,60 +1158,87 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                           imageUrl: c.userPicture,
                           radius: 16,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 children: [
-                                  Text(c.userName,
-                                      style: theme.textTheme.labelMedium
-                                          ?.copyWith(
-                                              fontWeight: FontWeight.bold)),
+                                  Text(
+                                    c.userName,
+                                    style: const TextStyle(
+                                      color: AppThemeTokens.darkText,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                   const SizedBox(width: 6),
                                   Text(
                                     _formatTime(c.createdAt),
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                        color:
-                                            AppThemeTokens.darkTextSecondary),
+                                    style: const TextStyle(
+                                      color: AppThemeTokens.darkTextMuted,
+                                      fontSize: 11,
+                                    ),
                                   ),
                                 ],
                               ),
                               if (isEditing) ...[
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 6),
                                 Row(
                                   children: [
                                     Expanded(
                                       child: TextField(
                                         controller: _editCtrl,
-                                        decoration: const InputDecoration(
+                                        decoration: InputDecoration(
                                           isDense: true,
-                                          border: OutlineInputBorder(),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                                AppThemeTokens.radiusSm),
+                                            borderSide: const BorderSide(
+                                                color: AppThemeTokens.darkBorder),
+                                          ),
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                  horizontal: 10, vertical: 8),
                                         ),
                                         autofocus: true,
                                       ),
                                     ),
                                     IconButton(
-                                      icon: const Icon(Icons.check, size: 18),
+                                      icon: const Icon(Icons.check,
+                                          size: 18,
+                                          color: AppThemeTokens.success),
                                       onPressed: () => _submitEdit(c.id),
                                     ),
                                     IconButton(
-                                      icon: const Icon(Icons.close, size: 18),
+                                      icon: const Icon(Icons.close,
+                                          size: 18,
+                                          color: AppThemeTokens.darkTextSecondary),
                                       onPressed: () => setState(
                                           () => _editingCommentId = null),
                                     ),
                                   ],
                                 ),
-                              ] else
-                                Text(c.content,
-                                    style: theme.textTheme.bodySmall),
+                              ] else ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  c.content,
+                                  style: const TextStyle(
+                                    color: AppThemeTokens.darkTextSecondary,
+                                    fontSize: 13,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
                         if (isOwner && !isEditing) ...[
                           IconButton(
-                            icon: const Icon(Icons.edit_outlined, size: 16),
+                            icon: const Icon(Icons.edit_outlined,
+                                size: 15,
+                                color: AppThemeTokens.darkTextSecondary),
                             visualDensity: VisualDensity.compact,
                             onPressed: () {
                               _editCtrl.text = c.content;
@@ -930,7 +1246,8 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                             },
                           ),
                           IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 16),
+                            icon: const Icon(Icons.delete_outline,
+                                size: 15, color: AppThemeTokens.error),
                             visualDensity: VisualDensity.compact,
                             onPressed: () => _deleteComment(c.id),
                           ),
@@ -942,34 +1259,68 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Expanded(
               child: TextField(
                 controller: _textCtrl,
                 decoration: InputDecoration(
                   hintText: 'Add a comment…',
+                  hintStyle: const TextStyle(
+                      color: AppThemeTokens.darkTextMuted, fontSize: 13),
+                  filled: true,
+                  fillColor: AppThemeTokens.darkCardElevated,
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24)),
+                    borderRadius:
+                        BorderRadius.circular(AppThemeTokens.radiusMd),
+                    borderSide:
+                        const BorderSide(color: AppThemeTokens.darkBorder),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius:
+                        BorderRadius.circular(AppThemeTokens.radiusMd),
+                    borderSide:
+                        const BorderSide(color: AppThemeTokens.darkBorder),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius:
+                        BorderRadius.circular(AppThemeTokens.radiusMd),
+                    borderSide: const BorderSide(
+                        color: AppThemeTokens.primary400, width: 1.5),
+                  ),
                   contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 ),
+                style: const TextStyle(
+                    color: AppThemeTokens.darkText, fontSize: 13),
                 textCapitalization: TextCapitalization.sentences,
                 minLines: 1,
                 maxLines: 3,
               ),
             ),
             const SizedBox(width: 8),
-            IconButton.filled(
-              onPressed: _sending ? null : _sendComment,
-              icon: _sending
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.send),
+            Container(
+              decoration: BoxDecoration(
+                gradient: _sending
+                    ? null
+                    : AppThemeTokens.primaryGradient,
+                color: _sending ? AppThemeTokens.darkCardElevated : null,
+                borderRadius:
+                    BorderRadius.circular(AppThemeTokens.radiusMd),
+              ),
+              child: IconButton(
+                onPressed: _sending ? null : _sendComment,
+                icon: _sending
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppThemeTokens.primary400))
+                    : const Icon(Icons.send, color: Colors.white, size: 18),
+              ),
             ),
           ],
         ),
@@ -988,56 +1339,34 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
   }
 }
 
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.icon, required this.label});
+/// A small pill-shaped chip used in the hero card for date/time display.
+class _HeroPill extends StatelessWidget {
+  const _HeroPill({required this.icon, required this.label});
 
   final IconData icon;
   final String label;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: AppThemeTokens.darkTextSecondary),
-          const SizedBox(width: 8),
-          Expanded(
-              child:
-                  Text(label, style: Theme.of(context).textTheme.bodyMedium)),
-        ],
-      ),
-    );
-  }
-}
-
-class _EventMetaChip extends StatelessWidget {
-  const _EventMetaChip({required this.label, this.icon});
-
-  final String label;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppThemeTokens.darkCardHover,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppThemeTokens.darkBorder),
+        color: AppThemeTokens.primary500.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+        border: Border.all(
+            color: AppThemeTokens.primary500.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) ...[
-            Icon(icon, size: 14, color: AppThemeTokens.darkTextSecondary),
-            const SizedBox(width: 6),
-          ],
+          Icon(icon, size: 12, color: AppThemeTokens.primary400),
+          const SizedBox(width: 5),
           Text(
             label,
             style: const TextStyle(
+              color: AppThemeTokens.primary400,
               fontSize: 12,
-              color: AppThemeTokens.darkTextSecondary,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],

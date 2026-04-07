@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:styled_widget/styled_widget.dart';
 
 import '../../../features/auth/state/auth_notifier.dart';
 import '../../../features/events/state/events_notifier.dart';
@@ -18,9 +17,9 @@ class DashboardPage extends ConsumerWidget {
 
   String _greeting() {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning,';
-    if (hour < 17) return 'Good afternoon,';
-    return 'Good evening,';
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
   }
 
   @override
@@ -33,12 +32,15 @@ class DashboardPage extends ConsumerWidget {
     final user = authState.user;
 
     return MobileShell(
-      title: 'Dashboard',
+      title: 'Teamly',
       currentIndex: 0,
       actions: [
         IconButton(
-          icon: const Icon(Icons.person_outline),
+          icon: user?.profilePicture != null
+              ? UserAvatar(name: user!.name, imageUrl: user.profilePicture, radius: 14)
+              : const Icon(Icons.account_circle_outlined),
           onPressed: () => context.push('/profile'),
+          tooltip: 'Profile',
         ),
       ],
       child: RefreshIndicator(
@@ -49,152 +51,125 @@ class DashboardPage extends ConsumerWidget {
           ]);
         },
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.zero,
           children: [
-            // Welcome card
-            if (user != null)
-              Card(
-                margin: EdgeInsets.zero,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      UserAvatar(
-                        name: user.name,
-                        imageUrl: user.profilePicture,
-                        radius: 28,
+            // ── Hero welcome card ──────────────────────────────────────────
+            if (user != null) _HeroCard(user: user, greeting: _greeting()),
+
+            // ── Stat pills ─────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _StatPill(
+                      label: 'Groups',
+                      value: groupsAsync.maybeWhen(
+                        data: (g) => '${g.length}',
+                        orElse: () => '—',
                       ),
-                      const SizedBox(width: 14),
+                      icon: Icons.groups_2_rounded,
+                      color: AppThemeTokens.primary500,
+                      onTap: () => context.go('/groups'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _StatPill(
+                      label: 'Events',
+                      value: eventsAsync.maybeWhen(
+                        data: (e) => '${e.length}',
+                        orElse: () => '—',
+                      ),
+                      icon: Icons.event_rounded,
+                      color: const Color(0xFF7C4DFF),
+                      onTap: () => context.go('/events'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _StatPill(
+                      label: 'Upcoming',
+                      value: eventsAsync.maybeWhen(
+                        data: (e) => '${e.where((ev) => ev.startTime.isAfter(DateTime.now())).length}',
+                        orElse: () => '—',
+                      ),
+                      icon: Icons.upcoming_rounded,
+                      color: const Color(0xFF00BCD4),
+                      onTap: () => context.go('/events'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Quick actions ──────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  UiSectionTitle('Quick Actions'),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _greeting(),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: AppThemeTokens.darkTextSecondary,
-                              ),
-                            ),
-                            Text(
-                              user.name,
-                              style: theme.textTheme.titleLarge,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            if (user.city != null)
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.place_outlined,
-                                    size: 12,
-                                    color: AppThemeTokens.darkTextSecondary,
-                                  ),
-                                  const SizedBox(width: 3),
-                                  Text(
-                                    user.city!,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: AppThemeTokens.darkTextSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                          ],
+                        child: _ActionTile(
+                          icon: Icons.add_circle_rounded,
+                          label: 'New Event',
+                          color: AppThemeTokens.primary500,
+                          onTap: () => context.push('/events/new'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _ActionTile(
+                          icon: Icons.group_add_rounded,
+                          label: 'New Group',
+                          color: const Color(0xFF7C4DFF),
+                          onTap: () => context.push('/groups/new'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _ActionTile(
+                          icon: Icons.emoji_events_rounded,
+                          label: 'Tournaments',
+                          color: const Color(0xFFFF9800),
+                          onTap: () => context.push('/tournaments'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _ActionTile(
+                          icon: Icons.explore_rounded,
+                          label: 'Discover',
+                          color: const Color(0xFF00BCD4),
+                          onTap: () => context.go('/discover'),
                         ),
                       ),
                     ],
                   ),
-                ),
+                ],
               ),
-
-            const SizedBox(height: 16),
-
-            // Stats row
-            Row(
-              children: [
-                Expanded(
-                  child: _StatCard(
-                    label: 'Groups',
-                    value: groupsAsync.maybeWhen(
-                      data: (g) => '${g.length}',
-                      orElse: () => '—',
-                    ),
-                    icon: Icons.group_outlined,
-                    onTap: () => context.go('/groups'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _StatCard(
-                    label: 'Events',
-                    value: eventsAsync.maybeWhen(
-                      data: (e) => '${e.length}',
-                      orElse: () => '—',
-                    ),
-                    icon: Icons.event_outlined,
-                    onTap: () => context.go('/events'),
-                  ),
-                ),
-              ],
             ),
 
-            const SizedBox(height: 20),
-
-            // Quick actions
-            const UiSectionTitle('Quick Actions'),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _QuickActionButton(
-                    icon: Icons.add_circle_outline,
-                    label: 'New Event',
-                    onTap: () => context.push('/events/new'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _QuickActionButton(
-                    icon: Icons.group_add_outlined,
-                    label: 'New Group',
-                    onTap: () => context.push('/groups/new'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _QuickActionButton(
-                    icon: Icons.explore_outlined,
-                    label: 'Discover',
-                    onTap: () => context.go('/discover'),
-                  ),
-                ),
-              ],
+            // ── Upcoming events ────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+              child: UiSectionTitle(
+                'Upcoming Events',
+                trailingLabel: 'See all',
+                onTrailingTap: () => context.go('/events'),
+              ),
             ),
-
-            const SizedBox(height: 20),
-
-            // Upcoming events
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const UiSectionTitle('Upcoming Events'),
-                TextButton(
-                  onPressed: () => context.go('/events'),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text('See all'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
 
             eventsAsync.when(
-              loading: () => const Center(child: Padding(
+              loading: () => const Padding(
                 padding: EdgeInsets.all(24),
-                child: CircularProgressIndicator(),
-              )),
+                child: Center(child: CircularProgressIndicator()),
+              ),
               error: (e, _) => ErrorDisplay(message: e.toString()),
               data: (events) {
                 final upcoming = events
@@ -204,111 +179,218 @@ class DashboardPage extends ConsumerWidget {
 
                 if (upcoming.isEmpty) {
                   return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.event_outlined,
-                          size: 20,
-                          color: AppThemeTokens.darkTextSecondary,
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'No upcoming events.',
-                          style: TextStyle(color: AppThemeTokens.darkTextSecondary),
-                        ),
-                        const Spacer(),
-                        TextButton(
-                          onPressed: () => context.push('/events/new'),
-                          child: const Text('Create one'),
-                        ),
-                      ],
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _NoEventsCard(
+                      onCreateTap: () => context.push('/events/new'),
                     ),
                   );
                 }
 
                 return Column(
                   children: upcoming.map((event) {
-                    final local = event.startTime.toLocal();
-                    final dayNum = DateFormat('d').format(local);
-                    final monthAbbr = DateFormat('MMM').format(local).toUpperCase();
-                    final timeStr = DateFormat.jm().format(local);
-
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      clipBehavior: Clip.antiAlias,
-                      child: InkWell(
-                        onTap: () => context.push('/events/${event.id}'),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 42,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      monthAbbr,
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w600,
-                                        color: theme.colorScheme.primary,
-                                      ),
-                                    ),
-                                    Text(
-                                      dayNum,
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        height: 1.1,
-                                        color: theme.colorScheme.primary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      event.title,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: theme.textTheme.titleSmall,
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      '${event.group.name} · $timeStr',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppThemeTokens.darkTextSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const Icon(
-                                Icons.chevron_right,
-                                color: AppThemeTokens.darkTextSecondary,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ).clipRRect(all: AppThemeTokens.radiusMd);
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                      child: _EventCard(event: event),
+                    );
                   }).toList(),
                 );
               },
+            ),
+
+            const SizedBox(height: 24),
+
+            // ── My groups ──────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+              child: UiSectionTitle(
+                'My Groups',
+                trailingLabel: 'See all',
+                onTrailingTap: () => context.go('/groups'),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            groupsAsync.when(
+              loading: () => const SizedBox(height: 40),
+              error: (_, __) => const SizedBox.shrink(),
+              data: (groups) {
+                if (groups.isEmpty) return const SizedBox.shrink();
+                return SizedBox(
+                  height: 88,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: groups.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemBuilder: (ctx, i) => _GroupChip(
+                      group: groups[i],
+                      onTap: () => context.push('/groups/${groups[i].id}'),
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Hero card ─────────────────────────────────────────────────────────────────
+
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({required this.user, required this.greeting});
+  final dynamic user;
+  final String greeting;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      decoration: BoxDecoration(
+        gradient: AppThemeTokens.heroGradient,
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusLg),
+        border: Border.all(color: AppThemeTokens.primary500.withValues(alpha: 0.25)),
+      ),
+      child: Stack(
+        children: [
+          // Decorative circles
+          Positioned(
+            right: -20,
+            top: -20,
+            child: Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppThemeTokens.primary500.withValues(alpha: 0.07),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 30,
+            bottom: -15,
+            child: Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppThemeTokens.primary500.withValues(alpha: 0.05),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                UserAvatar(
+                  name: user.name as String,
+                  imageUrl: user.profilePicture as String?,
+                  radius: 30,
+                  borderColor: AppThemeTokens.primary500.withValues(alpha: 0.4),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$greeting 👋',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppThemeTokens.darkTextSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        user.name as String,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: AppThemeTokens.darkText,
+                          letterSpacing: -0.5,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if ((user.city as String?) != null)
+                        Row(
+                          children: [
+                            const Icon(Icons.place_rounded, size: 12, color: AppThemeTokens.primary400),
+                            const SizedBox(width: 3),
+                            Text(
+                              user.city as String,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppThemeTokens.darkTextSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Stat pill ─────────────────────────────────────────────────────────────────
+
+class _StatPill extends StatelessWidget {
+  const _StatPill({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+        decoration: BoxDecoration(
+          color: AppThemeTokens.darkCard,
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+          border: Border.all(color: AppThemeTokens.darkBorder),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 22, color: color),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: color,
+                letterSpacing: -0.5,
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                color: AppThemeTokens.darkTextSecondary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -317,47 +399,179 @@ class DashboardPage extends ConsumerWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.label,
-    required this.value,
+// ── Action tile ───────────────────────────────────────────────────────────────
+
+class _ActionTile extends StatelessWidget {
+  const _ActionTile({
     required this.icon,
+    required this.label,
+    required this.color,
     required this.onTap,
   });
 
-  final String label;
-  final String value;
   final IconData icon;
+  final String label;
+  final Color color;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return GestureDetector(
       onTap: onTap,
-      child: Card(
-        margin: EdgeInsets.zero,
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                Icon(icon, size: 28, color: theme.colorScheme.primary),
-                const SizedBox(height: 6),
-                Text(
-                  value,
-                  style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  label,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppThemeTokens.darkTextSecondary,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 24, color: color),
+            const SizedBox(height: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Event card ────────────────────────────────────────────────────────────────
+
+class _EventCard extends StatelessWidget {
+  const _EventCard({required this.event});
+  final dynamic event;
+
+  @override
+  Widget build(BuildContext context) {
+    final local = (event.startTime as DateTime).toLocal();
+    final dayNum = DateFormat('d').format(local);
+    final monthAbbr = DateFormat('MMM').format(local).toUpperCase();
+    final timeStr = DateFormat.jm().format(local);
+    final weekday = DateFormat('EEE').format(local);
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+      child: InkWell(
+        onTap: () => context.push('/events/${event.id}'),
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppThemeTokens.darkCard,
+            borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+            border: Border.all(color: AppThemeTokens.darkBorder),
+          ),
+          child: Row(
+            children: [
+              // Date strip
+              Container(
+                width: 56,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  gradient: AppThemeTokens.primaryGradient,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(AppThemeTokens.radiusMd),
+                    bottomLeft: Radius.circular(AppThemeTokens.radiusMd),
                   ),
                 ),
-              ],
-            ),
+                child: Column(
+                  children: [
+                    Text(
+                      weekday,
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white70,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    Text(
+                      dayNum,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        height: 1.1,
+                      ),
+                    ),
+                    Text(
+                      monthAbbr,
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white70,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        event.title as String,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: AppThemeTokens.darkText,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.access_time_rounded, size: 12, color: AppThemeTokens.darkTextSecondary),
+                          const SizedBox(width: 3),
+                          Text(
+                            timeStr,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppThemeTokens.darkTextSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          const Icon(Icons.groups_2_outlined, size: 12, color: AppThemeTokens.darkTextSecondary),
+                          const SizedBox(width: 3),
+                          Expanded(
+                            child: Text(
+                              event.group.name as String,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppThemeTokens.darkTextSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(right: 12),
+                child: Icon(Icons.chevron_right_rounded, color: AppThemeTokens.darkTextSecondary, size: 20),
+              ),
+            ],
           ),
         ),
       ),
@@ -365,42 +579,96 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _QuickActionButton extends StatelessWidget {
-  const _QuickActionButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
+// ── No events placeholder ─────────────────────────────────────────────────────
 
-  final IconData icon;
-  final String label;
+class _NoEventsCard extends StatelessWidget {
+  const _NoEventsCard({required this.onCreateTap});
+  final VoidCallback onCreateTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppThemeTokens.darkCard,
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        border: Border.all(color: AppThemeTokens.darkBorder),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppThemeTokens.primary500.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+            ),
+            child: const Icon(Icons.event_outlined, size: 22, color: AppThemeTokens.primary400),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'No upcoming events',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Create one to get started!',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppThemeTokens.darkTextSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: onCreateTap,
+            child: const Text('Create', style: TextStyle(fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Group chip ────────────────────────────────────────────────────────────────
+
+class _GroupChip extends StatelessWidget {
+  const _GroupChip({required this.group, required this.onTap});
+  final dynamic group;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-          child: Column(
-            children: [
-              Icon(icon, size: 22, color: theme.colorScheme.primary),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppThemeTokens.darkTextSecondary,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 76,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            UserAvatar(
+              name: group.name as String,
+              imageUrl: group.profilePicture as String?,
+              radius: 26,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              group.name as String,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppThemeTokens.darkText,
+                height: 1.3,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

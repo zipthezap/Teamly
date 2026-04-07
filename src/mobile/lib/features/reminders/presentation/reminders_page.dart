@@ -62,6 +62,7 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
               DropdownButton<int>(
                 value: selectedMinutes,
                 isExpanded: true,
+                dropdownColor: AppThemeTokens.darkCardElevated,
                 items: _minuteOptions
                     .map((m) => DropdownMenuItem(
                           value: m,
@@ -69,9 +70,7 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
                         ))
                     .toList(),
                 onChanged: (v) {
-                  if (v != null) {
-                    setDialogState(() => selectedMinutes = v);
-                  }
+                  if (v != null) setDialogState(() => selectedMinutes = v);
                 },
               ),
             ],
@@ -159,17 +158,20 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
   @override
   Widget build(BuildContext context) {
     final remindersAsync = ref.watch(_remindersProvider);
-    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Reminders'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             onPressed: () => ref.invalidate(_remindersProvider),
           ),
         ],
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, color: AppThemeTokens.darkBorder),
+        ),
       ),
       body: remindersAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -181,84 +183,207 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
           onRefresh: () async => ref.invalidate(_remindersProvider),
           child: reminders.isEmpty
               ? const UiEmptyState(
-                  icon: Icons.alarm_off_outlined,
-                  message: 'No reminders set.',
+                  icon: Icons.alarm_off_rounded,
+                  title: 'No reminders',
+                  message:
+                      'Reminders you set for events\nwill appear here.',
                 )
-              : ListView.separated(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+              : ListView.builder(
+                  padding:
+                      const EdgeInsets.fromLTRB(16, 12, 16, 32),
                   itemCount: reminders.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (ctx, i) {
                     final r = reminders[i];
                     final eventLabel =
                         r.eventTitle ?? 'Event ${r.eventId}';
-                    return Dismissible(
-                      key: ValueKey(r.id),
-                      direction: DismissDirection.endToStart,
-                      background: Container(
-                        color: theme.colorScheme.error,
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.only(right: 16),
-                        child: const Icon(Icons.delete_outline,
-                            color: Colors.white),
-                      ),
-                      confirmDismiss: (_) => _confirmDelete(),
-                      onDismissed: (_) => _deleteReminder(r.id),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor:
-                              theme.colorScheme.primaryContainer,
-                          child: Icon(
-                            Icons.alarm_outlined,
-                            color: theme.colorScheme.onPrimaryContainer,
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Dismissible(
+                        key: ValueKey(r.id),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          decoration: BoxDecoration(
+                            color: AppThemeTokens.error
+                                .withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(
+                                AppThemeTokens.radiusMd),
+                            border: Border.all(
+                                color: AppThemeTokens.error
+                                    .withValues(alpha: 0.4)),
                           ),
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          child: const Icon(Icons.delete_rounded,
+                              color: AppThemeTokens.error),
                         ),
-                        title: Text(eventLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              DateFormat('MMM d, y · h:mm a')
-                                  .format(r.reminderTime.toLocal()),
-                              style: theme.textTheme.bodySmall,
-                            ),
-                            Text(
-                              '${_minutesLabel(r.minutesBefore)} before',
-                              style: theme.textTheme.labelSmall
-                                  ?.copyWith(color: AppThemeTokens.darkTextSecondary),
-                            ),
-                          ],
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (r.sent)
-                              const Tooltip(
-                                message: 'Sent',
-                                child: Icon(Icons.check_circle_outline,
-                                    size: 16, color: AppThemeTokens.success),
-                              ),
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined),
-                              onPressed: () => _showEditDialog(r),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline),
-                              onPressed: () async {
-                                if (await _confirmDelete()) {
-                                  _deleteReminder(r.id);
-                                }
-                              },
-                            ),
-                          ],
+                        confirmDismiss: (_) => _confirmDelete(),
+                        onDismissed: (_) => _deleteReminder(r.id),
+                        child: _ReminderCard(
+                          reminder: r,
+                          eventLabel: eventLabel,
+                          minutesLabel: _minutesLabel(r.minutesBefore),
+                          onEdit: () => _showEditDialog(r),
+                          onDelete: () async {
+                            if (await _confirmDelete()) {
+                              _deleteReminder(r.id);
+                            }
+                          },
                         ),
                       ),
                     );
                   },
                 ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Reminder card ─────────────────────────────────────────────────────────────
+
+class _ReminderCard extends StatelessWidget {
+  const _ReminderCard({
+    required this.reminder,
+    required this.eventLabel,
+    required this.minutesLabel,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final ReminderModel reminder;
+  final String eventLabel;
+  final String minutesLabel;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final isPast = reminder.reminderTime.isBefore(DateTime.now());
+    final accentColor =
+        reminder.sent ? AppThemeTokens.success : AppThemeTokens.primary500;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppThemeTokens.darkCard,
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        border: Border.all(color: AppThemeTokens.darkBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            // Icon container
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: 0.12),
+                borderRadius:
+                    BorderRadius.circular(AppThemeTokens.radiusSm),
+              ),
+              child: Icon(
+                reminder.sent
+                    ? Icons.check_circle_rounded
+                    : Icons.alarm_rounded,
+                color: accentColor,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    eventLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: AppThemeTokens.darkText,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    DateFormat('EEE, MMM d · h:mm a')
+                        .format(reminder.reminderTime.toLocal()),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isPast
+                          ? AppThemeTokens.darkTextMuted
+                          : AppThemeTokens.darkTextSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  // Time-before pill
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: accentColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                    child: Text(
+                      '$minutesLabel before${reminder.sent ? ' · Sent' : ''}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: accentColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Actions
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _ActionBtn(
+                  icon: Icons.edit_rounded,
+                  color: AppThemeTokens.info,
+                  onTap: onEdit,
+                ),
+                const SizedBox(height: 6),
+                _ActionBtn(
+                  icon: Icons.delete_rounded,
+                  color: AppThemeTokens.error,
+                  onTap: onDelete,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionBtn extends StatelessWidget {
+  const _ActionBtn({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+        ),
+        child: Icon(icon, color: color, size: 16),
       ),
     );
   }

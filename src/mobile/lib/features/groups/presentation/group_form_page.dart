@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/group_model.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/ui_primitives.dart';
 import '../data/group_repository_impl.dart';
 import '../state/groups_notifier.dart';
 
@@ -152,7 +154,7 @@ class _GroupFormPageState extends ConsumerState<GroupFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Group name *',
                 prefixIcon: Icon(Icons.group_outlined),
-                border: OutlineInputBorder(),
+                
               ),
               textCapitalization: TextCapitalization.words,
               validator: (v) =>
@@ -166,7 +168,7 @@ class _GroupFormPageState extends ConsumerState<GroupFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Description (optional)',
                 prefixIcon: Icon(Icons.description_outlined),
-                border: OutlineInputBorder(),
+                
               ),
               maxLines: 3,
             ),
@@ -178,7 +180,7 @@ class _GroupFormPageState extends ConsumerState<GroupFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Sport type',
                 prefixIcon: Icon(Icons.sports_outlined),
-                border: OutlineInputBorder(),
+                
               ),
               items: kSportTypes
                   .map(
@@ -198,7 +200,7 @@ class _GroupFormPageState extends ConsumerState<GroupFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Privacy',
                 prefixIcon: Icon(Icons.lock_outline),
-                border: OutlineInputBorder(),
+                
               ),
               items: const [
                 DropdownMenuItem(value: 'public', child: Text('Public')),
@@ -214,7 +216,7 @@ class _GroupFormPageState extends ConsumerState<GroupFormPage> {
               decoration: const InputDecoration(
                 labelText: 'City (optional)',
                 prefixIcon: Icon(Icons.location_city_outlined),
-                border: OutlineInputBorder(),
+                
               ),
             ),
             const SizedBox(height: 16),
@@ -225,7 +227,7 @@ class _GroupFormPageState extends ConsumerState<GroupFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Country (optional)',
                 prefixIcon: Icon(Icons.flag_outlined),
-                border: OutlineInputBorder(),
+                
               ),
             ),
             const SizedBox(height: 16),
@@ -236,7 +238,7 @@ class _GroupFormPageState extends ConsumerState<GroupFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Max members (optional)',
                 prefixIcon: Icon(Icons.people_outline),
-                border: OutlineInputBorder(),
+                
               ),
               keyboardType: TextInputType.number,
               validator: (v) {
@@ -254,50 +256,103 @@ class _GroupFormPageState extends ConsumerState<GroupFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Tags (optional, comma-separated)',
                 prefixIcon: Icon(Icons.label_outline),
-                border: OutlineInputBorder(),
+                
               ),
             ),
             const SizedBox(height: 16),
 
             // Auto approve
-            SwitchListTile(
-              title: const Text('Auto-approve join requests'),
-              subtitle: const Text(
-                  'New members join without needing admin approval'),
+            _SwitchRow(
+              title: 'Auto-approve join requests',
+              subtitle: 'New members join without needing admin approval',
               value: _autoApprove,
+              icon: Icons.how_to_reg_rounded,
+              color: AppThemeTokens.success,
               onChanged: (v) => setState(() => _autoApprove = v),
-              contentPadding: EdgeInsets.zero,
             ),
 
+            const SizedBox(height: 10),
+
             // Allow member invites
-            SwitchListTile(
-              title: const Text('Allow member invites'),
-              subtitle: const Text('Members can invite others'),
+            _SwitchRow(
+              title: 'Allow member invites',
+              subtitle: 'Members can invite others',
               value: _allowMemberInvites,
+              icon: Icons.person_add_rounded,
+              color: AppThemeTokens.info,
               onChanged: (v) => setState(() => _allowMemberInvites = v),
-              contentPadding: EdgeInsets.zero,
             ),
 
             const SizedBox(height: 24),
 
-            SizedBox(
-              height: 48,
-              child: FilledButton(
-                onPressed: _saving ? null : _submit,
-                child: _saving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Text(_isEditing ? 'Update Group' : 'Create Group'),
-              ),
+            UiPrimaryButton(
+              text: _isEditing ? 'Update Group' : 'Create Group',
+              onPressed: _saving ? null : _submit,
+              loading: _saving,
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SwitchRow extends StatelessWidget {
+  const _SwitchRow({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.icon,
+    required this.color,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool value;
+  final IconData icon;
+  final Color color;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppThemeTokens.darkCard,
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        border: Border.all(color: AppThemeTokens.darkBorder),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: AppThemeTokens.darkText)),
+                Text(subtitle,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        color: AppThemeTokens.darkTextSecondary)),
+              ],
+            ),
+          ),
+          Switch(value: value, onChanged: onChanged),
+        ],
       ),
     );
   }

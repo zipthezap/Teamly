@@ -31,7 +31,6 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
   @override
   Widget build(BuildContext context) {
     final groupsAsync = ref.watch(groupsNotifierProvider);
-    final theme = Theme.of(context);
     final query = _searchCtrl.text.trim().toLowerCase();
 
     return MobileShell(
@@ -78,11 +77,13 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
 
               if (groups.isEmpty) {
                 return UiEmptyState(
-                  icon: Icons.group_outlined,
+                  icon: Icons.groups_2_rounded,
+                  title: 'No groups yet',
                   message:
                       "You're not in any groups yet.\nCreate or join one to get started!",
                   action: () => context.push('/groups/new'),
                   actionLabel: 'Create Group',
+                  actionIcon: Icons.group_add_rounded,
                 );
               }
 
@@ -90,54 +91,70 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
                 onRefresh: () =>
                     ref.read(groupsNotifierProvider.notifier).load(),
                 child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 92),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
                   itemCount: filteredGroups.length + 1,
                   itemBuilder: (context, index) {
                     if (index == 0) {
                       final publicCount =
                           groups.where((g) => g.isPublic).length;
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.only(bottom: 16),
                         child: Column(
                           children: [
+                            // Stats row
                             Row(
                               children: [
                                 Expanded(
-                                  child: _GroupSummaryTile(
+                                  child: _GroupStatPill(
                                     label: 'Groups',
                                     value: '${groups.length}',
-                                    icon: Icons.group_outlined,
+                                    icon: Icons.groups_2_rounded,
+                                    color: AppThemeTokens.primary500,
+                                    onTap: () => setState(
+                                        () => _filter = _GroupFilter.all),
+                                    selected: _filter == _GroupFilter.all,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 10),
                                 Expanded(
-                                  child: _GroupSummaryTile(
+                                  child: _GroupStatPill(
                                     label: 'Public',
                                     value: '$publicCount',
-                                    icon: Icons.public_outlined,
+                                    icon: Icons.public_rounded,
+                                    color: const Color(0xFF4CAF50),
+                                    onTap: () => setState(
+                                        () => _filter = _GroupFilter.publicOnly),
+                                    selected:
+                                        _filter == _GroupFilter.publicOnly,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 10),
                                 Expanded(
-                                  child: _GroupSummaryTile(
+                                  child: _GroupStatPill(
                                     label: 'Private',
                                     value: '${groups.length - publicCount}',
-                                    icon: Icons.lock_outline,
+                                    icon: Icons.lock_rounded,
+                                    color: const Color(0xFF7C4DFF),
+                                    onTap: () => setState(() =>
+                                        _filter = _GroupFilter.privateOnly),
+                                    selected:
+                                        _filter == _GroupFilter.privateOnly,
                                   ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 12),
+                            // Search field
                             TextField(
                               controller: _searchCtrl,
                               onChanged: (_) => setState(() {}),
                               decoration: InputDecoration(
-                                hintText: 'Search groups, sports, tags',
-                                prefixIcon: const Icon(Icons.search),
+                                hintText: 'Search groups, sports, tags…',
+                                prefixIcon: const Icon(Icons.search_rounded),
                                 suffixIcon: query.isEmpty
                                     ? null
                                     : IconButton(
-                                        icon: const Icon(Icons.close),
+                                        icon: const Icon(Icons.close_rounded),
                                         onPressed: () {
                                           _searchCtrl.clear();
                                           setState(() {});
@@ -146,6 +163,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
                               ),
                             ),
                             const SizedBox(height: 10),
+                            // Filter chips
                             Row(
                               children: _GroupFilter.values.map((filter) {
                                 final label = switch (filter) {
@@ -168,12 +186,13 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
                               Padding(
                                 padding: const EdgeInsets.only(top: 24),
                                 child: UiEmptyState(
-                                  icon: Icons.search_off_outlined,
+                                  icon: Icons.search_off_rounded,
                                   message:
                                       'No groups match the current filters.',
                                   action: () {
                                     _searchCtrl.clear();
-                                    setState(() => _filter = _GroupFilter.all);
+                                    setState(
+                                        () => _filter = _GroupFilter.all);
                                   },
                                   actionLabel: 'Reset filters',
                                 ),
@@ -184,133 +203,23 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
                     }
 
                     final group = filteredGroups[index - 1];
-                    final meta = [
-                      if (group.sportType != null) group.sportType!,
-                      '${group.memberCount} member${group.memberCount == 1 ? '' : 's'}',
-                      if (group.count?.events != null)
-                        '${group.count!.events} event${group.count!.events == 1 ? '' : 's'}',
-                      if (group.city != null) group.city!,
-                    ].join(' · ');
-
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Card(
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: () => context.push('/groups/${group.id}'),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 12),
-                            child: Row(
-                              children: [
-                                UserAvatar(
-                                  name: group.name,
-                                  imageUrl: group.profilePicture,
-                                  radius: 24,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        group.name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: theme.textTheme.titleSmall,
-                                      ),
-                                      if (meta.isNotEmpty) ...[
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          meta,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: AppThemeTokens
-                                                .darkTextSecondary,
-                                          ),
-                                        ),
-                                      ],
-                                      if (group.description != null &&
-                                          group.description!.isNotEmpty) ...[
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          group.description!,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: AppThemeTokens
-                                                .darkTextSecondary,
-                                          ),
-                                        ),
-                                      ],
-                                      const SizedBox(height: 6),
-                                      Wrap(
-                                        spacing: 6,
-                                        runSpacing: 6,
-                                        children: [
-                                          _GroupTag(
-                                            label: group.isPublic
-                                                ? 'Public'
-                                                : 'Private',
-                                            icon: group.isPublic
-                                                ? Icons.public_outlined
-                                                : Icons.lock_outline,
-                                          ),
-                                          if (group.maxMembers != null)
-                                            _GroupTag(
-                                              label:
-                                                  '${group.memberCount}/${group.maxMembers}',
-                                              icon: Icons.people_outline,
-                                            ),
-                                          if (group.allowMemberInvites)
-                                            const _GroupTag(
-                                              label: 'Member invites',
-                                              icon: Icons
-                                                  .person_add_alt_1_outlined,
-                                            ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    const Icon(
-                                      Icons.chevron_right,
-                                      color: AppThemeTokens.darkTextSecondary,
-                                    ),
-                                    if (!group.isPublic)
-                                      const Icon(
-                                        Icons.lock_outline,
-                                        size: 14,
-                                        color: AppThemeTokens.darkTextSecondary,
-                                      ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _GroupCard(group: group),
                     );
                   },
                 ),
               );
             },
           ),
-          // FAB overlay
           Positioned(
-            bottom: 16,
-            right: 16,
-            child: FloatingActionButton(
+            bottom: 20,
+            right: 20,
+            child: FloatingActionButton.extended(
               onPressed: () => context.push('/groups/new'),
-              tooltip: 'Create group',
-              child: const Icon(Icons.add),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('New Group',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
             ),
           ),
         ],
@@ -319,66 +228,298 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
   }
 }
 
-class _GroupSummaryTile extends StatelessWidget {
-  const _GroupSummaryTile({
+// ── Group stat pill ───────────────────────────────────────────────────────────
+
+class _GroupStatPill extends StatelessWidget {
+  const _GroupStatPill({
     required this.label,
     required this.value,
     required this.icon,
+    required this.color,
+    required this.onTap,
+    required this.selected,
   });
 
   final String label;
   final String value;
   final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return UiCard(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: theme.colorScheme.primary),
-          const SizedBox(height: 10),
-          Text(value, style: theme.textTheme.titleLarge),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: AppThemeTokens.darkTextSecondary),
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        decoration: BoxDecoration(
+          color: selected
+              ? color.withValues(alpha: 0.12)
+              : AppThemeTokens.darkCard,
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+          border: Border.all(
+            color: selected
+                ? color.withValues(alpha: 0.4)
+                : AppThemeTokens.darkBorder,
           ),
-        ],
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(height: 5),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: color,
+                letterSpacing: -0.5,
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                color: AppThemeTokens.darkTextSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _GroupTag extends StatelessWidget {
-  const _GroupTag({required this.label, this.icon});
+// ── Group card ────────────────────────────────────────────────────────────────
 
-  final String label;
-  final IconData? icon;
+class _GroupCard extends StatelessWidget {
+  const _GroupCard({required this.group});
+  final dynamic group;
+
+  Color _sportColor() {
+    switch ((group.sportType as String?)?.toLowerCase()) {
+      case 'football':
+      case 'soccer':
+        return const Color(0xFF4CAF50);
+      case 'basketball':
+        return const Color(0xFFFF9800);
+      case 'tennis':
+        return const Color(0xFFFFEB3B);
+      case 'running':
+        return const Color(0xFF00BCD4);
+      case 'cycling':
+        return const Color(0xFF2196F3);
+      case 'volleyball':
+        return const Color(0xFF9C27B0);
+      default:
+        return AppThemeTokens.primary500;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final sportColor = _sportColor();
+    final memberCount = group.memberCount as int? ?? 0;
+
+    final meta = [
+      if ((group.sportType as String?) != null) group.sportType as String,
+      '$memberCount member${memberCount == 1 ? '' : 's'}',
+      if ((group.count?.events as int?) != null)
+        '${group.count!.events} event${group.count!.events == 1 ? '' : 's'}',
+      if ((group.city as String?) != null) group.city as String,
+    ].join(' · ');
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+      child: InkWell(
+        onTap: () => context.push('/groups/${group.id}'),
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppThemeTokens.darkCard,
+            borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+            border: Border.all(color: AppThemeTokens.darkBorder),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                // Avatar with sport color ring
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: sportColor.withValues(alpha: 0.4),
+                      width: 2,
+                    ),
+                  ),
+                  child: UserAvatar(
+                    name: group.name as String,
+                    imageUrl: group.profilePicture as String?,
+                    radius: 24,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              group.name as String,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                color: AppThemeTokens.darkText,
+                              ),
+                            ),
+                          ),
+                          if ((group.sportType as String?) != null)
+                            Container(
+                              margin: const EdgeInsets.only(left: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: sportColor.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(100),
+                              ),
+                              child: Text(
+                                group.sportType as String,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: sportColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      if (meta.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          meta,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppThemeTokens.darkTextSecondary,
+                          ),
+                        ),
+                      ],
+                      if ((group.description as String?) != null &&
+                          (group.description as String).isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          group.description as String,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppThemeTokens.darkTextSecondary,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          _GroupTag(
+                            label: (group.isPublic as bool? ?? true)
+                                ? 'Public'
+                                : 'Private',
+                            icon: (group.isPublic as bool? ?? true)
+                                ? Icons.public_rounded
+                                : Icons.lock_rounded,
+                            color: (group.isPublic as bool? ?? true)
+                                ? const Color(0xFF4CAF50)
+                                : const Color(0xFF7C4DFF),
+                          ),
+                          if ((group.maxMembers as int?) != null)
+                            _GroupTag(
+                              label:
+                                  '$memberCount/${group.maxMembers as int}',
+                              icon: Icons.people_outline,
+                            ),
+                          if (group.allowMemberInvites as bool? ?? false)
+                            const _GroupTag(
+                              label: 'Member invites',
+                              icon: Icons.person_add_alt_1_rounded,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppThemeTokens.darkTextSecondary,
+                      size: 20,
+                    ),
+                    if (!(group.isPublic as bool? ?? true))
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Icon(
+                          Icons.lock_rounded,
+                          size: 13,
+                          color: AppThemeTokens.darkTextSecondary,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Group tag chip ────────────────────────────────────────────────────────────
+
+class _GroupTag extends StatelessWidget {
+  const _GroupTag({required this.label, this.icon, this.color});
+
+  final String label;
+  final IconData? icon;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = color ?? AppThemeTokens.darkTextSecondary;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: AppThemeTokens.darkCardHover,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppThemeTokens.darkBorder),
+        color: fg.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(color: fg.withValues(alpha: 0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 12, color: AppThemeTokens.darkTextSecondary),
-            const SizedBox(width: 4),
+            Icon(icon, size: 11, color: fg),
+            const SizedBox(width: 3),
           ],
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppThemeTokens.darkTextSecondary,
+            style: TextStyle(
+              fontSize: 10,
+              color: fg,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

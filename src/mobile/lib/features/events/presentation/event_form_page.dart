@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/event_model.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../features/groups/state/groups_notifier.dart';
+import '../../../shared/widgets/ui_primitives.dart';
 import '../data/event_repository_impl.dart';
 import '../state/events_notifier.dart';
 
@@ -208,7 +210,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Title *',
                 prefixIcon: Icon(Icons.event_outlined),
-                border: OutlineInputBorder(),
+                
               ),
               textCapitalization: TextCapitalization.words,
               validator: (v) =>
@@ -222,7 +224,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Event type',
                 prefixIcon: Icon(Icons.sports_outlined),
-                border: OutlineInputBorder(),
+                
               ),
               items: kEventTypes
                   .map(
@@ -243,7 +245,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                 decoration: const InputDecoration(
                   labelText: 'Start time *',
                   prefixIcon: Icon(Icons.calendar_today_outlined),
-                  border: OutlineInputBorder(),
+                  
                 ),
                 child: Text(df.format(_startTime.toLocal())),
               ),
@@ -257,7 +259,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                 decoration: const InputDecoration(
                   labelText: 'End time *',
                   prefixIcon: Icon(Icons.access_time),
-                  border: OutlineInputBorder(),
+                  
                 ),
                 child: Text(df.format(_endTime.toLocal())),
               ),
@@ -270,7 +272,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Description (optional)',
                 prefixIcon: Icon(Icons.description_outlined),
-                border: OutlineInputBorder(),
+                
               ),
               maxLines: 3,
             ),
@@ -282,7 +284,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Location (optional)',
                 prefixIcon: Icon(Icons.place_outlined),
-                border: OutlineInputBorder(),
+                
               ),
             ),
             const SizedBox(height: 16),
@@ -293,7 +295,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               decoration: const InputDecoration(
                 labelText: 'City (optional)',
                 prefixIcon: Icon(Icons.location_city_outlined),
-                border: OutlineInputBorder(),
+                
               ),
             ),
             const SizedBox(height: 16),
@@ -304,7 +306,7 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
               decoration: const InputDecoration(
                 labelText: 'Max players (optional)',
                 prefixIcon: Icon(Icons.people_outline),
-                border: OutlineInputBorder(),
+                
               ),
               keyboardType: TextInputType.number,
               validator: (v) {
@@ -317,22 +319,19 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
             const SizedBox(height: 16),
 
             // Public toggle
-            SwitchListTile(
-              title: const Text('Public event'),
-              subtitle: const Text('Anyone can see and join this event'),
+            _EventSwitchRow(
+              title: 'Public event',
+              subtitle: 'Anyone can see and join this event',
               value: _isPublic,
               onChanged: (v) => setState(() => _isPublic = v),
-              contentPadding: EdgeInsets.zero,
             ),
 
             const SizedBox(height: 24),
 
-            SizedBox(
-              height: 48,
-              child: FilledButton(
-                onPressed: _saving ? null : _submit,
-                child: Text(_isEditing ? 'Update Event' : 'Create Event'),
-              ),
+            UiPrimaryButton(
+              text: _isEditing ? 'Update Event' : 'Create Event',
+              onPressed: _saving ? null : _submit,
+              loading: _saving,
             ),
           ],
         ),
@@ -362,14 +361,14 @@ class _GroupPickerField extends ConsumerWidget {
       loading: () => const InputDecorator(
         decoration: InputDecoration(
           labelText: 'Group *',
-          border: OutlineInputBorder(),
+          
         ),
         child: Text('Loading groups…'),
       ),
       error: (_, __) => const InputDecorator(
         decoration: InputDecoration(
           labelText: 'Group *',
-          border: OutlineInputBorder(),
+          
         ),
         child: Text('Could not load groups'),
       ),
@@ -378,7 +377,7 @@ class _GroupPickerField extends ConsumerWidget {
           return const InputDecorator(
             decoration: InputDecoration(
               labelText: 'Group *',
-              border: OutlineInputBorder(),
+              
             ),
             child: Text('No groups — create a group first'),
           );
@@ -392,7 +391,7 @@ class _GroupPickerField extends ConsumerWidget {
           decoration: const InputDecoration(
             labelText: 'Group *',
             prefixIcon: Icon(Icons.group_outlined),
-            border: OutlineInputBorder(),
+            
           ),
           hint: const Text('Select a group'),
           items: groups
@@ -401,6 +400,65 @@ class _GroupPickerField extends ConsumerWidget {
           onChanged: (v) => onChanged(v ?? ''),
         );
       },
+    );
+  }
+}
+
+class _EventSwitchRow extends StatelessWidget {
+  const _EventSwitchRow({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppThemeTokens.darkCard,
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        border: Border.all(color: AppThemeTokens.darkBorder),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppThemeTokens.primary500.withValues(alpha: 0.15),
+              borderRadius:
+                  BorderRadius.circular(AppThemeTokens.radiusSm),
+            ),
+            child: const Icon(Icons.public_rounded,
+                color: AppThemeTokens.primary500, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: AppThemeTokens.darkText)),
+                Text(subtitle,
+                    style: const TextStyle(
+                        fontSize: 12,
+                        color: AppThemeTokens.darkTextSecondary)),
+              ],
+            ),
+          ),
+          Switch(value: value, onChanged: onChanged),
+        ],
+      ),
     );
   }
 }

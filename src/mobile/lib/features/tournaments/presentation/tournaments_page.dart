@@ -48,34 +48,13 @@ class _TournamentsPageState extends ConsumerState<TournamentsPage> {
           return RefreshIndicator(
             onRefresh: () =>
                 ref.read(tournamentsNotifierProvider.notifier).load(),
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               itemCount: tournaments.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (ctx, i) {
                 final t = tournaments[i];
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor:
-                        Theme.of(ctx).colorScheme.primaryContainer,
-                    child: Icon(
-                      Icons.emoji_events_outlined,
-                      color: Theme.of(ctx).colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                  title: Text(t.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text(
-                    [
-                      sportTypeLabel(t.sportType),
-                      _formatStatus(t.status),
-                      '${t.teamCount} team${t.teamCount == 1 ? '' : 's'}',
-                      if (t.startDate != null)
-                        DateFormat('MMM d, y').format(t.startDate!.toLocal()),
-                    ].join(' · '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
+                return _TournamentCard(
+                  tournament: t,
                   onTap: () => context.push('/tournaments/${t.id}'),
                 );
               },
@@ -99,6 +78,171 @@ class _TournamentsPageState extends ConsumerState<TournamentsPage> {
       default:
         return status;
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tournament list card
+// ---------------------------------------------------------------------------
+
+class _TournamentCard extends StatelessWidget {
+  const _TournamentCard({required this.tournament, required this.onTap});
+
+  final TournamentModel tournament;
+  final VoidCallback onTap;
+
+  static const _accentColor = Color(0xFFFF9800);
+
+  String _formatStatus(String s) {
+    const m = {
+      'draft': 'Draft',
+      'registration': 'Registration',
+      'active': 'Active',
+      'completed': 'Completed',
+    };
+    return m[s] ?? s;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = tournament;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: AppThemeTokens.darkCard,
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+          border: Border.all(color: AppThemeTokens.darkBorder),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Left accent bar
+            Container(
+              width: 4,
+              decoration: const BoxDecoration(
+                color: _accentColor,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(AppThemeTokens.radiusMd),
+                  bottomLeft: Radius.circular(AppThemeTokens.radiusMd),
+                ),
+              ),
+            ),
+            // Trophy icon
+            Container(
+              margin: const EdgeInsets.all(14),
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFFF9800), Color(0xFFE65100)],
+                ),
+                borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+              ),
+              child: const Icon(Icons.emoji_events_outlined,
+                  color: Colors.white, size: 24),
+            ),
+            // Content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Name + status badge
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            t.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppThemeTokens.darkText,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        UiStatusBadge(
+                          label: _formatStatus(t.status),
+                          status: UiStatusBadge.fromString(t.status),
+                          dot: true,
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    // Sport + teams + date
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 3,
+                      children: [
+                        if (t.sportType.isNotEmpty)
+                          _TournamentMeta(
+                            icon: Icons.sports_outlined,
+                            label: sportTypeLabel(t.sportType),
+                            color: _accentColor,
+                          ),
+                        _TournamentMeta(
+                          icon: Icons.group_outlined,
+                          label:
+                              '${t.teamCount} team${t.teamCount == 1 ? '' : 's'}',
+                          color: AppThemeTokens.primary400,
+                        ),
+                        if (t.startDate != null)
+                          _TournamentMeta(
+                            icon: Icons.calendar_today_outlined,
+                            label: DateFormat('MMM d, y')
+                                .format(t.startDate!.toLocal()),
+                            color: AppThemeTokens.darkTextSecondary,
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Chevron
+            const Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: Icon(Icons.chevron_right_rounded,
+                  color: AppThemeTokens.darkTextMuted, size: 20),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TournamentMeta extends StatelessWidget {
+  const _TournamentMeta(
+      {required this.icon, required this.label, required this.color});
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: color.withValues(alpha: 0.8)),
+        const SizedBox(width: 3),
+        Text(
+          label,
+          style: TextStyle(
+              color: color.withValues(alpha: 0.8),
+              fontSize: 11,
+              fontWeight: FontWeight.w500),
+        ),
+      ],
+    );
   }
 }
 
@@ -138,37 +282,104 @@ class TournamentDetailPage extends ConsumerWidget {
             child: NestedScrollView(
               headerSliverBuilder: (context, _) => [
                 SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: const BoxDecoration(
+                      gradient: AppThemeTokens.heroGradient,
+                      border: Border(
+                        bottom: BorderSide(color: AppThemeTokens.darkBorder),
+                      ),
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Status chip + sport
+                        // Icon + title row
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xFFFF9800),
+                                    Color(0xFFE65100),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                    AppThemeTokens.radiusMd),
+                              ),
+                              child: const Icon(Icons.emoji_events_outlined,
+                                  color: Colors.white, size: 26),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    t.name,
+                                    style: theme.textTheme.titleLarge,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  UiStatusBadge(
+                                    label: _statusLabel(t.status),
+                                    status: UiStatusBadge.fromString(t.status),
+                                    dot: true,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        // Badges row
                         Wrap(
                           spacing: 8,
+                          runSpacing: 6,
                           children: [
-                            Chip(label: Text(sportTypeLabel(t.sportType))),
-                            Chip(
-                              label: Text(_statusLabel(t.status)),
-                              backgroundColor: _statusColor(t.status, theme),
+                            if (t.sportType.isNotEmpty)
+                              UiStatusBadge(
+                                label: sportTypeLabel(t.sportType),
+                                customColor: const Color(0xFFFF9800),
+                              ),
+                            UiStatusBadge(
+                              label: _formatLabel(t.format),
+                              status: UiStatusType.info,
                             ),
-                            Chip(label: Text(_formatLabel(t.format))),
+                            UiStatusBadge(
+                              label:
+                                  '${t.teamCount} team${t.teamCount == 1 ? '' : 's'}${t.maxTeams != null ? ' / ${t.maxTeams} max' : ''}',
+                              status: UiStatusType.defaultStatus,
+                            ),
                           ],
                         ),
                         if (t.description != null) ...[
-                          const SizedBox(height: 8),
-                          Text(t.description!),
-                        ],
-                        const SizedBox(height: 8),
-                        Text(
-                          '${t.teamCount} team${t.teamCount == 1 ? '' : 's'}${t.maxTeams != null ? ' / ${t.maxTeams} max' : ''}',
-                          style: theme.textTheme.bodySmall,
-                        ),
-                        if (t.startDate != null)
+                          const SizedBox(height: 12),
                           Text(
-                            'Starts: ${DateFormat.yMMMd().format(t.startDate!.toLocal())}',
-                            style: theme.textTheme.bodySmall,
+                            t.description!,
+                            style: const TextStyle(
+                              color: AppThemeTokens.darkTextSecondary,
+                              fontSize: 13,
+                              height: 1.5,
+                            ),
                           ),
+                        ],
+                        if (t.startDate != null) ...[
+                          const SizedBox(height: 10),
+                          UiInfoRow(
+                            icon: Icons.calendar_today_outlined,
+                            label: 'Starts',
+                            value: DateFormat.yMMMd()
+                                .format(t.startDate!.toLocal()),
+                            iconColor: AppThemeTokens.info,
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -210,19 +421,6 @@ class TournamentDetailPage extends ConsumerWidget {
     return m[s] ?? s;
   }
 
-  Color? _statusColor(String s, ThemeData theme) {
-    switch (s) {
-      case 'active':
-        return const Color(0xFF1B5E20);
-      case 'registration':
-        return theme.colorScheme.primaryContainer;
-      case 'completed':
-        return AppThemeTokens.darkBorder;
-      default:
-        return null;
-    }
-  }
-
   String _formatLabel(String f) {
     const m = {
       'bracket': 'Bracket',
@@ -241,14 +439,14 @@ class _TeamsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (teams.isEmpty) {
-      return const Center(
-        child: Text('No teams registered yet.', style: TextStyle(color: AppThemeTokens.darkTextSecondary)),
+      return const UiEmptyState(
+        icon: Icons.group_outlined,
+        title: 'No teams yet',
+        message: 'No teams have registered for this tournament yet.',
       );
     }
 
-    // Group by pool if pool format
-    final hasPools = format == 'pool' &&
-        teams.any((t) => t.poolId != null);
+    final hasPools = format == 'pool' && teams.any((t) => t.poolId != null);
 
     if (hasPools) {
       final pools = <String, List<TournamentTeamModel>>{};
@@ -257,46 +455,99 @@ class _TeamsTab extends StatelessWidget {
         pools.putIfAbsent(poolKey, () => []).add(team);
       }
       return ListView(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         children: pools.entries.map((entry) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: Text('Pool ${entry.key}',
-                    style: Theme.of(context).textTheme.titleSmall),
+                padding: const EdgeInsets.only(bottom: 8, top: 4),
+                child: UiSectionTitle('Pool ${entry.key}'),
               ),
-              ...entry.value.asMap().entries.map((e) => ListTile(
-                    leading: CircleAvatar(child: Text('${e.key + 1}')),
-                    title: Text(e.value.name),
-                    trailing: e.value.wins + e.value.losses > 0
-                        ? Text('${e.value.wins}W / ${e.value.losses}L',
-                            style: const TextStyle(fontSize: 12))
-                        : null,
+              ...entry.value.asMap().entries.map((e) => _TeamRow(
+                    rank: e.key + 1,
+                    team: e.value,
+                    isLast: e.key == entry.value.length - 1,
                   )),
-              const Divider(),
+              const SizedBox(height: 12),
             ],
           );
         }).toList(),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       itemCount: teams.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
-      itemBuilder: (ctx, i) {
-        final team = teams[i];
-        return ListTile(
-          leading: CircleAvatar(child: Text('${i + 1}')),
-          title: Text(team.name),
-          trailing: team.wins + team.losses > 0
-              ? Text('${team.wins}W / ${team.losses}L',
-                  style: const TextStyle(fontSize: 12))
-              : null,
-        );
-      },
+      itemBuilder: (ctx, i) => _TeamRow(
+        rank: i + 1,
+        team: teams[i],
+        isLast: i == teams.length - 1,
+      ),
+    );
+  }
+}
+
+class _TeamRow extends StatelessWidget {
+  const _TeamRow({required this.rank, required this.team, this.isLast = false});
+  final int rank;
+  final TournamentTeamModel team;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasRecord = team.wins + team.losses > 0;
+    return Container(
+      margin: EdgeInsets.only(bottom: isLast ? 0 : 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppThemeTokens.darkCardElevated,
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        border: Border.all(color: AppThemeTokens.darkBorder),
+      ),
+      child: Row(
+        children: [
+          // Rank
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: AppThemeTokens.darkCard,
+              borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+              border: Border.all(color: AppThemeTokens.darkBorder),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '$rank',
+              style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppThemeTokens.darkTextSecondary),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              team.name,
+              style: const TextStyle(
+                  color: AppThemeTokens.darkText,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500),
+            ),
+          ),
+          if (hasRecord) ...[
+            UiStatusBadge(
+              label: '${team.wins}W',
+              status: UiStatusType.success,
+            ),
+            const SizedBox(width: 6),
+            UiStatusBadge(
+              label: '${team.losses}L',
+              status: UiStatusType.error,
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -306,30 +557,30 @@ class _StandingsTab extends StatelessWidget {
   final List<TournamentTeamModel> teams;
   final String format;
 
+  static const _goldColor = Color(0xFFFFD700);
+  static const _silverColor = Color(0xFFC0C0C0);
+  static const _bronzeColor = Color(0xFFCD7F32);
+
   @override
   Widget build(BuildContext context) {
     if (teams.isEmpty) {
-      return const Center(
-        child: Text('No standings yet.', style: TextStyle(color: AppThemeTokens.darkTextSecondary)),
+      return const UiEmptyState(
+        icon: Icons.leaderboard_outlined,
+        title: 'No standings yet',
+        message: 'Standings will appear once matches are played.',
       );
     }
 
     final hasStats = teams.any((t) => t.wins + t.losses > 0);
 
     if (!hasStats) {
-      return Center(
-        child: Text(
-          'Standings will be available once matches are played.',
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(color: AppThemeTokens.darkTextSecondary),
-          textAlign: TextAlign.center,
-        ),
+      return const UiEmptyState(
+        icon: Icons.leaderboard_outlined,
+        title: 'No stats yet',
+        message: 'Standings will be available once matches are played.',
       );
     }
 
-    // Sort by points desc, then wins desc
     final sorted = [...teams]
       ..sort((a, b) {
         final ptsDiff = b.points.compareTo(a.points);
@@ -337,103 +588,175 @@ class _StandingsTab extends StatelessWidget {
         return b.wins.compareTo(a.wins);
       });
 
-    final theme = Theme.of(context);
-
     return Column(
       children: [
         // Header row
         Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: theme.colorScheme.surfaceContainerHighest,
-          child: Row(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: const BoxDecoration(
+            color: AppThemeTokens.darkCardElevated,
+            border: Border(
+              bottom: BorderSide(color: AppThemeTokens.darkBorder),
+            ),
+          ),
+          child: const Row(
             children: [
-              const SizedBox(width: 36),
-              const Expanded(
-                child: Text('Team',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 12)),
+              SizedBox(width: 42),
+              Expanded(
+                child: Text(
+                  'TEAM',
+                  style: TextStyle(
+                    color: AppThemeTokens.darkTextMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                  ),
+                ),
               ),
-              const SizedBox(
-                  width: 40,
-                  child: Text('W',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 12))),
-              const SizedBox(
-                  width: 40,
-                  child: Text('L',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 12))),
-              const SizedBox(
-                  width: 40,
-                  child: Text('Pts',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 12))),
+              SizedBox(
+                width: 40,
+                child: Text(
+                  'W',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppThemeTokens.success,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 40,
+                child: Text(
+                  'L',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppThemeTokens.error,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 44,
+                child: Text(
+                  'PTS',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppThemeTokens.primary400,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
         Expanded(
-          child: ListView.separated(
+          child: ListView.builder(
             padding: EdgeInsets.zero,
             itemCount: sorted.length,
-            separatorBuilder: (_, __) =>
-                const Divider(height: 1, indent: 16),
             itemBuilder: (ctx, i) {
               final team = sorted[i];
-              final isTop3 = i < 3;
+              final Color rowBg;
+              final Color rankColor;
+              Widget rankWidget;
+
+              if (i == 0) {
+                rowBg = _goldColor.withValues(alpha: 0.07);
+                rankColor = _goldColor;
+                rankWidget = const Text('🥇', style: TextStyle(fontSize: 18));
+              } else if (i == 1) {
+                rowBg = _silverColor.withValues(alpha: 0.06);
+                rankColor = _silverColor;
+                rankWidget = const Text('🥈', style: TextStyle(fontSize: 18));
+              } else if (i == 2) {
+                rowBg = _bronzeColor.withValues(alpha: 0.06);
+                rankColor = _bronzeColor;
+                rankWidget = const Text('🥉', style: TextStyle(fontSize: 18));
+              } else {
+                rowBg = i.isEven
+                    ? AppThemeTokens.darkCard
+                    : AppThemeTokens.darkCardElevated;
+                rankColor = AppThemeTokens.darkTextMuted;
+                rankWidget = Text(
+                  '${i + 1}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: rankColor,
+                  ),
+                );
+              }
+
               return Container(
-                color: isTop3
-                    ? [
-                        Colors.amber.withValues(alpha: 0.15),
-                        AppThemeTokens.darkBorder.withOpacity(0.3),
-                        Colors.brown.shade200.withValues(alpha: 0.2),
-                      ][i]
-                    : null,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 36,
-                        child: Text(
-                          '${i + 1}',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: isTop3 ? theme.colorScheme.primary : null),
+                decoration: BoxDecoration(
+                  color: rowBg,
+                  border: const Border(
+                    bottom: BorderSide(color: AppThemeTokens.darkBorder, width: 0.5),
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 32,
+                      child: Center(child: rankWidget),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        team.name,
+                        style: TextStyle(
+                          fontWeight: i < 3
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          fontSize: 13,
+                          color: AppThemeTokens.darkText,
                         ),
                       ),
-                      Expanded(
-                          child: Text(team.name,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w500))),
-                      SizedBox(
-                          width: 40,
-                          child: Text('${team.wins}',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  color: AppThemeTokens.success,
-                                  fontWeight: FontWeight.bold))),
-                      SizedBox(
-                          width: 40,
-                          child: Text('${team.losses}',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  color: AppThemeTokens.error,
-                                  fontWeight: FontWeight.bold))),
-                      SizedBox(
-                          width: 40,
-                          child: Text('${team.points}',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  color: theme.colorScheme.primary,
-                                  fontWeight: FontWeight.bold))),
-                    ],
-                  ),
+                    ),
+                    SizedBox(
+                      width: 40,
+                      child: Text(
+                        '${team.wins}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppThemeTokens.success,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 40,
+                      child: Text(
+                        '${team.losses}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppThemeTokens.error,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 44,
+                      child: Text(
+                        '${team.points}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppThemeTokens.primary400,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               );
             },
@@ -451,8 +774,10 @@ class _MatchesTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (matches.isEmpty) {
-      return const Center(
-        child: Text('No matches scheduled yet.', style: TextStyle(color: AppThemeTokens.darkTextSecondary)),
+      return const UiEmptyState(
+        icon: Icons.sports_score_outlined,
+        title: 'No matches yet',
+        message: 'No matches have been scheduled yet.',
       );
     }
 
@@ -463,19 +788,17 @@ class _MatchesTab extends StatelessWidget {
     }
 
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       children: rounds.entries.map((entry) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Text(
-                entry.key,
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
+              padding: const EdgeInsets.only(bottom: 8, top: 4),
+              child: UiSectionTitle(entry.key),
             ),
             ...entry.value.map((m) => _MatchTile(match: m)),
+            const SizedBox(height: 8),
           ],
         );
       }).toList(),
@@ -492,37 +815,74 @@ class _MatchTile extends StatelessWidget {
     final teamA = match.teamAName ?? 'TBD';
     final teamB = match.teamBName ?? 'TBD';
     final hasScore = match.scoreA != null && match.scoreB != null;
+    final aWins = hasScore && match.scoreA! > match.scoreB!;
+    final bWins = hasScore && match.scoreB! > match.scoreA!;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                teamA,
-                textAlign: TextAlign.end,
-                style: const TextStyle(fontWeight: FontWeight.w500),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppThemeTokens.darkCardElevated,
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        border: Border.all(color: AppThemeTokens.darkBorder),
+      ),
+      child: Row(
+        children: [
+          // Team A
+          Expanded(
+            child: Text(
+              teamA,
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                fontWeight: aWins ? FontWeight.w700 : FontWeight.w500,
+                color: aWins
+                    ? AppThemeTokens.success
+                    : AppThemeTokens.darkText,
+                fontSize: 13,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text(
-                hasScore
-                    ? '${match.scoreA} – ${match.scoreB}'
-                    : 'vs',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          // Score / vs
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: hasScore
+                  ? AppThemeTokens.darkCard
+                  : AppThemeTokens.darkCard,
+              borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+              border: Border.all(
+                color: hasScore
+                    ? AppThemeTokens.darkBorder
+                    : AppThemeTokens.darkBorder,
               ),
             ),
-            Expanded(
-              child: Text(
-                teamB,
-                style: const TextStyle(fontWeight: FontWeight.w500),
+            child: Text(
+              hasScore ? '${match.scoreA}  –  ${match.scoreB}' : 'vs',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                color: hasScore
+                    ? AppThemeTokens.darkText
+                    : AppThemeTokens.darkTextMuted,
+                letterSpacing: 1,
               ),
             ),
-          ],
-        ),
+          ),
+          // Team B
+          Expanded(
+            child: Text(
+              teamB,
+              style: TextStyle(
+                fontWeight: bWins ? FontWeight.w700 : FontWeight.w500,
+                color: bWins
+                    ? AppThemeTokens.success
+                    : AppThemeTokens.darkText,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -619,7 +979,7 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
               controller: _nameCtrl,
               decoration: const InputDecoration(
                 labelText: 'Tournament name *',
-                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.emoji_events_outlined),
               ),
               textCapitalization: TextCapitalization.words,
               validator: (v) =>
@@ -631,8 +991,9 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
               value: _sportType,
               decoration: const InputDecoration(
                 labelText: 'Sport type',
-                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.sports_outlined),
               ),
+              dropdownColor: AppThemeTokens.darkCardElevated,
               items: kSportTypes
                   .map(
                     (s) => DropdownMenuItem(
@@ -649,8 +1010,9 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
               value: _format,
               decoration: const InputDecoration(
                 labelText: 'Format',
-                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.account_tree_outlined),
               ),
+              dropdownColor: AppThemeTokens.darkCardElevated,
               items: kTournamentFormats
                   .map(
                     (f) => DropdownMenuItem(
@@ -667,7 +1029,8 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
               controller: _descCtrl,
               decoration: const InputDecoration(
                 labelText: 'Description (optional)',
-                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.notes_outlined),
+                alignLabelWithHint: true,
               ),
               maxLines: 3,
             ),
@@ -677,7 +1040,7 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
               controller: _maxTeamsCtrl,
               decoration: const InputDecoration(
                 labelText: 'Max teams (optional)',
-                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.group_outlined),
               ),
               keyboardType: TextInputType.number,
             ),
@@ -685,39 +1048,32 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
 
             InkWell(
               onTap: _pickStartDate,
+              borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
               child: InputDecorator(
                 decoration: const InputDecoration(
                   labelText: 'Start date (optional)',
                   prefixIcon: Icon(Icons.calendar_today_outlined),
-                  border: OutlineInputBorder(),
                 ),
                 child: Text(
                   _startDate != null
                       ? DateFormat.yMMMd().format(_startDate!)
                       : 'Tap to select',
                   style: TextStyle(
-                    color: _startDate == null ? AppThemeTokens.darkTextSecondary : null,
+                    color: _startDate == null
+                        ? AppThemeTokens.darkTextSecondary
+                        : AppThemeTokens.darkText,
+                    fontSize: 14,
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
 
-            SizedBox(
-              height: 48,
-              child: FilledButton(
-                onPressed: _saving ? null : _submit,
-                child: _saving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('Create Tournament'),
-              ),
+            UiPrimaryButton(
+              text: 'Create Tournament',
+              icon: Icons.add_circle_outline,
+              onPressed: _saving ? null : _submit,
+              loading: _saving,
             ),
           ],
         ),
@@ -743,7 +1099,10 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
+      decoration: const BoxDecoration(
+        color: AppThemeTokens.darkBg,
+        border: Border(bottom: BorderSide(color: AppThemeTokens.darkBorder)),
+      ),
       child: tabBar,
     );
   }
