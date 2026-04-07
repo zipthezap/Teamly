@@ -7,7 +7,6 @@ import '../../../core/models/reminder_model.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../data/reminder_repository_impl.dart';
-import '../domain/reminder_repository.dart';
 
 final _remindersProvider = FutureProvider<List<ReminderModel>>((ref) {
   return ref.watch(reminderRepositoryProvider).getReminders();

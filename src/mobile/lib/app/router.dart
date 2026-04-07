@@ -13,6 +13,7 @@ import '../features/events/presentation/event_form_page.dart';
 import '../features/events/presentation/event_statistics_page.dart';
 import '../features/events/presentation/events_page.dart';
 import '../features/events/data/event_repository_impl.dart';
+import '../features/events/presentation/nearby_events_page.dart';
 import '../features/groups/data/group_repository_impl.dart';
 import '../features/groups/presentation/group_detail_page.dart';
 import '../features/groups/presentation/group_form_page.dart';
@@ -155,6 +156,10 @@ final _routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'event-statistics',
             builder: (context, state) => const EventStatisticsPage(),
+          ),
+          GoRoute(
+            path: 'nearby-events',
+            builder: (context, state) => const NearbyEventsPage(),
           ),
         ],
       ),

@@ -17,7 +17,7 @@ class DiscoverPage extends StatelessWidget {
         children: [
           // Header banner
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: AppThemeTokens.heroGradient,
               borderRadius: BorderRadius.circular(AppThemeTokens.radiusLg),
@@ -175,20 +175,20 @@ class _DiscoverCard extends StatelessWidget {
             border: Border.all(color: AppThemeTokens.darkBorder),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             child: Row(
               children: [
                 Container(
-                  width: 52,
-                  height: 52,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: iconColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
                     border: Border.all(color: iconColor.withValues(alpha: 0.2)),
                   ),
-                  child: Icon(icon, color: iconColor, size: 26),
+                  child: Icon(icon, color: iconColor, size: 22),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -196,12 +196,12 @@ class _DiscoverCard extends StatelessWidget {
                       Text(
                         title,
                         style: const TextStyle(
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: AppThemeTokens.darkText,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       Text(
                         subtitle,
                         style: const TextStyle(

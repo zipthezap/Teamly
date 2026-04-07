@@ -239,6 +239,40 @@ class EventRepositoryImpl implements EventRepository {
         .get<Map<String, dynamic>>('/events/$eventId/invitations/analytics');
     return InviteAnalyticsModel.fromJson(response.data!);
   }
+
+  // ---------------------------------------------------------------------------
+  // Nearby
+  // ---------------------------------------------------------------------------
+
+  @override
+  Future<List<NearbyEventModel>> getNearbyEvents({
+    required double latitude,
+    required double longitude,
+    double radius = 25.0,
+  }) async {
+    final response = await _dio.get<dynamic>(
+      '/events/nearby',
+      queryParameters: {
+        'latitude': latitude,
+        'longitude': longitude,
+        'radius': radius,
+      },
+    );
+    final data = response.data;
+    final List<dynamic> items;
+    if (data is List) {
+      items = data;
+    } else if (data is Map<String, dynamic>) {
+      items = data['events'] as List<dynamic>? ??
+          data['data'] as List<dynamic>? ??
+          [];
+    } else {
+      items = [];
+    }
+    return items
+        .map((e) => NearbyEventModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
 }
 
 final eventRepositoryProvider = Provider<EventRepository>((ref) {

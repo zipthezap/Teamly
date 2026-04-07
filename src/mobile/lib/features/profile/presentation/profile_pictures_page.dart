@@ -9,7 +9,6 @@ import '../../../core/models/user_model.dart';
 import '../../../core/network/api_client.dart';
 import '../../../features/auth/state/auth_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
-import '../../../shared/widgets/user_avatar.dart';
 
 final _profilePicturesProvider =
     FutureProvider<List<ProfilePictureModel>>((ref) async {

@@ -54,7 +54,7 @@ class UiPrimaryButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
         splashColor: Colors.white.withValues(alpha: 0.1),
         child: Container(
-          height: 50,
+          height: 44,
           decoration: BoxDecoration(
             gradient: onPressed == null || loading
                 ? LinearGradient(

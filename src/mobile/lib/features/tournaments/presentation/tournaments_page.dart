@@ -65,20 +65,6 @@ class _TournamentsPageState extends ConsumerState<TournamentsPage> {
     );
   }
 
-  String _formatStatus(String status) {
-    switch (status) {
-      case 'draft':
-        return 'Draft';
-      case 'registration':
-        return 'Registration';
-      case 'active':
-        return 'Active';
-      case 'completed':
-        return 'Completed';
-      default:
-        return status;
-    }
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -131,9 +117,9 @@ class _TournamentCard extends StatelessWidget {
             ),
             // Trophy icon
             Container(
-              margin: const EdgeInsets.all(14),
-              width: 46,
-              height: 46,
+              margin: const EdgeInsets.all(12),
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
@@ -143,12 +129,12 @@ class _TournamentCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
               ),
               child: const Icon(Icons.emoji_events_outlined,
-                  color: Colors.white, size: 24),
+                  color: Colors.white, size: 22),
             ),
             // Content
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -283,7 +269,7 @@ class TournamentDetailPage extends ConsumerWidget {
               headerSliverBuilder: (context, _) => [
                 SliverToBoxAdapter(
                   child: Container(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(16),
                     decoration: const BoxDecoration(
                       gradient: AppThemeTokens.heroGradient,
                       border: Border(
@@ -298,8 +284,8 @@ class TournamentDetailPage extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Container(
-                              width: 50,
-                              height: 50,
+                              width: 44,
+                              height: 44,
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
                                   begin: Alignment.topLeft,
@@ -313,9 +299,9 @@ class TournamentDetailPage extends ConsumerWidget {
                                     AppThemeTokens.radiusMd),
                               ),
                               child: const Icon(Icons.emoji_events_outlined,
-                                  color: Colors.white, size: 26),
+                                  color: Colors.white, size: 22),
                             ),
-                            const SizedBox(width: 14),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -973,7 +959,7 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           children: [
             TextFormField(
               controller: _nameCtrl,
@@ -988,7 +974,8 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
             const SizedBox(height: 16),
 
             DropdownButtonFormField<String>(
-              value: _sportType,
+              key: ValueKey(_sportType),
+              initialValue: _sportType,
               decoration: const InputDecoration(
                 labelText: 'Sport type',
                 prefixIcon: Icon(Icons.sports_outlined),
@@ -1007,7 +994,8 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
             const SizedBox(height: 16),
 
             DropdownButtonFormField<String>(
-              value: _format,
+              key: ValueKey(_format),
+              initialValue: _format,
               decoration: const InputDecoration(
                 labelText: 'Format',
                 prefixIcon: Icon(Icons.account_tree_outlined),
