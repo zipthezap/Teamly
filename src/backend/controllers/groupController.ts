@@ -301,21 +301,21 @@ export const getGroup = async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = req.user!.id;
 
-  // Try cache first
-  const cacheKey = `group:${id}:user:${userId}`;
-  const cached = await CacheService.get(cacheKey);
-  
-  if (cached) {
-    return res.json(cached);
-  }
-
-  // Check membership first so we can decide what data to return
+  // Check membership first so we can build the right cache key and decide what data to return
   const membership = await prisma.groupMember.findUnique({
     where: { userId_groupId: { userId, groupId: id } },
     select: { role: true }
   });
 
   const isMember = !!membership;
+
+  // Use separate cache keys for member vs public (non-member) views to avoid data leaks
+  const cacheKey = isMember ? `group:${id}:member:${userId}` : `group:${id}:public`;
+  const cached = await CacheService.get(cacheKey);
+  
+  if (cached) {
+    return res.json(cached);
+  }
 
   if (isMember) {
     // Full member view: include emails and events
@@ -438,7 +438,7 @@ export const getGroup = async (req: Request, res: Response) => {
     members: group.members.map((member: PublicGroupMemberWithUser) => ({
       id: member.userId,
       name: member.user.name,
-      email: '',
+      email: undefined,
       profilePicture: member.user.profilePicture,
       role: member.role,
     })),

@@ -725,7 +725,7 @@ const PublicGroups = () => {
                       onClick={() => navigate(`/groups/${group.id}`)}
                       sx={{ minHeight: '44px', fontSize: { xs: '0.875rem', sm: '1rem' } }}
                     >
-                      {t('groups.publicGroups.viewGroup') || 'View'}
+                      {t('groups.publicGroups.viewGroup') || 'View Group'}
                     </Button>
                     <Button 
                       variant="contained"
