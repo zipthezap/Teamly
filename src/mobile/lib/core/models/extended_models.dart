@@ -17,7 +17,7 @@ class EventParticipantDetailModel extends Equatable {
   final String id;
   final String userId;
   final String eventId;
-  final String status; // confirmed | pending | declined | invited
+  final String status;
   final DateTime joinedAt;
   final String? userName;
   final String? userEmail;
@@ -104,7 +104,8 @@ class ParticipantSummaryModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [total, filtered, confirmed, pending, declined, invited];
+  List<Object?> get props =>
+      [total, filtered, confirmed, pending, declined, invited];
 }
 
 class EventStatisticsModel extends Equatable {
@@ -140,9 +141,13 @@ class EventStatisticsModel extends Equatable {
       eventTypeBreakdown: breakdown,
       createdEventsStats: json['createdEventsStats'] != null
           ? CreatedEventsStatsModel.fromJson(
-              json['createdEventsStats'] as Map<String, dynamic>)
+              json['createdEventsStats'] as Map<String, dynamic>,
+            )
           : const CreatedEventsStatsModel(
-              total: 0, totalParticipants: 0, avgParticipantsPerEvent: 0),
+              total: 0,
+              totalParticipants: 0,
+              avgParticipantsPerEvent: 0,
+            ),
     );
   }
 
@@ -177,7 +182,8 @@ class CreatedEventsStatsModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [total, totalParticipants, avgParticipantsPerEvent];
+  List<Object?> get props =>
+      [total, totalParticipants, avgParticipantsPerEvent];
 }
 
 class InviteAnalyticsModel extends Equatable {
@@ -206,8 +212,9 @@ class InviteAnalyticsModel extends Equatable {
   factory InviteAnalyticsModel.fromJson(Map<String, dynamic> json) {
     final a = json['analytics'] as Map<String, dynamic>? ?? json;
     final perDay = (a['invitesSentPerDay'] as List<dynamic>?)
-            ?.map((e) =>
-                InvitesPerDayModel.fromJson(e as Map<String, dynamic>))
+            ?.map(
+              (e) => InvitesPerDayModel.fromJson(e as Map<String, dynamic>),
+            )
             .toList() ??
         [];
     final domains =
@@ -227,7 +234,8 @@ class InviteAnalyticsModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [totalInvites, accepted, rejected, pending, acceptanceRate];
+  List<Object?> get props =>
+      [totalInvites, accepted, rejected, pending, acceptanceRate];
 }
 
 class InvitesPerDayModel extends Equatable {
@@ -343,7 +351,7 @@ class NearbyEventModel extends Equatable {
   List<Object?> get props => [id, title, distance];
 }
 
-
+class ProfilePictureModel extends Equatable {
   const ProfilePictureModel({
     required this.id,
     required this.url,

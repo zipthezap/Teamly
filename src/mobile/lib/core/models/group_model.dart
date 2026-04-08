@@ -16,12 +16,14 @@ class GroupMemberModel extends Equatable {
   final String? profilePicture;
 
   factory GroupMemberModel.fromJson(Map<String, dynamic> json) {
+    final user = json['user'] as Map<String, dynamic>?;
     return GroupMemberModel(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      email: json['email'] as String,
-      role: json['role'] as String,
-      profilePicture: json['profilePicture'] as String?,
+      id: (json['id'] ?? json['userId'] ?? user?['id'] ?? '').toString(),
+      name: (json['name'] ?? user?['name'] ?? 'Unknown').toString(),
+      email: (json['email'] ?? user?['email'] ?? '').toString(),
+      role: (json['role'] ?? 'member').toString(),
+      profilePicture:
+          (json['profilePicture'] ?? user?['profilePicture'])?.toString(),
     );
   }
 
@@ -126,10 +128,13 @@ class GroupModel extends Equatable {
   final double? distance;
 
   factory GroupModel.fromJson(Map<String, dynamic> json) {
-    final membersList = (json['members'] as List<dynamic>?)
-            ?.map((m) => GroupMemberModel.fromJson(m as Map<String, dynamic>))
-            .toList() ??
-        [];
+    final rawMembers = json['members'];
+    final membersList = rawMembers is List
+        ? rawMembers
+            .whereType<Map<String, dynamic>>()
+            .map(GroupMemberModel.fromJson)
+            .toList()
+        : <GroupMemberModel>[];
 
     return GroupModel(
       id: json['id'] as String,
@@ -144,7 +149,8 @@ class GroupModel extends Equatable {
       locationName: json['locationName'] as String?,
       maxMembers: (json['maxMembers'] as num?)?.toInt(),
       tags: json['tags'] as String?,
-      autoApproveJoinRequests: (json['autoApproveJoinRequests'] as bool?) ?? false,
+      autoApproveJoinRequests:
+          (json['autoApproveJoinRequests'] as bool?) ?? false,
       allowMemberInvites: (json['allowMemberInvites'] as bool?) ?? true,
       allowMemberCopyLink: (json['allowMemberCopyLink'] as bool?) ?? true,
       members: membersList,
@@ -159,6 +165,17 @@ class GroupModel extends Equatable {
   int get memberCount => count?.members ?? members.length;
 
   @override
-  List<Object?> get props =>
-      [id, name, isPublic, createdAt, description, sportType, profilePicture, city, country, locationName, maxMembers];
+  List<Object?> get props => [
+        id,
+        name,
+        isPublic,
+        createdAt,
+        description,
+        sportType,
+        profilePicture,
+        city,
+        country,
+        locationName,
+        maxMembers
+      ];
 }

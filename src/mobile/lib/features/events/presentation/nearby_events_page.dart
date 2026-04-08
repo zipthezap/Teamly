@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import '../../../core/constants/app_constants.dart';
-import '../../../core/error/app_exception.dart';
-import '../../../core/models/extended_models.dart';
-import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/constants/app_constants.dart';
+import '../../../core/error/app_exception.dart';
+import '../../../core/models/extended_models.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../data/event_repository_impl.dart';
 
@@ -72,7 +72,6 @@ class _NearbyEventsPageState extends ConsumerState<NearbyEventsPage> {
       appBar: AppBar(title: const Text('Nearby Events')),
       body: Column(
         children: [
-          // Search bar
           Container(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
             decoration: const BoxDecoration(
@@ -90,13 +89,15 @@ class _NearbyEventsPageState extends ConsumerState<NearbyEventsPage> {
                       child: TextFormField(
                         controller: _latCtrl,
                         keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true, signed: true),
+                          decimal: true,
+                          signed: true,
+                        ),
                         decoration: const InputDecoration(
                           labelText: 'Latitude',
                           prefixIcon: Icon(Icons.my_location, size: 18),
                           isDense: true,
-                          contentPadding:
-                              EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                          contentPadding: EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 12),
                         ),
                       ),
                     ),
@@ -105,13 +106,15 @@ class _NearbyEventsPageState extends ConsumerState<NearbyEventsPage> {
                       child: TextFormField(
                         controller: _lngCtrl,
                         keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true, signed: true),
+                          decimal: true,
+                          signed: true,
+                        ),
                         decoration: const InputDecoration(
                           labelText: 'Longitude',
                           prefixIcon: Icon(Icons.explore, size: 18),
                           isDense: true,
-                          contentPadding:
-                              EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                          contentPadding: EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 12),
                         ),
                       ),
                     ),
@@ -144,9 +147,10 @@ class _NearbyEventsPageState extends ConsumerState<NearbyEventsPage> {
                     ),
                     const SizedBox(width: 12),
                     UiPrimaryButton(
-                      label: 'Search',
+                      text: 'Search',
                       onPressed: _loading ? null : _search,
                       icon: Icons.search,
+                      fullWidth: false,
                     ),
                   ],
                 ),
@@ -156,14 +160,14 @@ class _NearbyEventsPageState extends ConsumerState<NearbyEventsPage> {
                     child: Text(
                       _error!,
                       style: const TextStyle(
-                          color: AppThemeTokens.error, fontSize: 12),
+                        color: AppThemeTokens.error,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
               ],
             ),
           ),
-
-          // Results
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
@@ -179,23 +183,25 @@ class _NearbyEventsPageState extends ConsumerState<NearbyEventsPage> {
                       )
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                         itemCount: _results.length,
                         itemBuilder: (ctx, i) {
-                          final e = _results[i];
+                          final event = _results[i];
                           return Container(
                             margin: const EdgeInsets.only(bottom: 10),
                             decoration: BoxDecoration(
                               color: AppThemeTokens.darkCard,
                               borderRadius: BorderRadius.circular(
                                   AppThemeTokens.radiusMd),
-                              border: Border.all(
-                                  color: AppThemeTokens.darkBorder),
+                              border:
+                                  Border.all(color: AppThemeTokens.darkBorder),
                             ),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(
                                   AppThemeTokens.radiusMd),
-                              onTap: () => context.push('/events/${e.id}'),
+                              onTap: () => context.push('/events/${event.id}'),
                               child: Padding(
                                 padding: const EdgeInsets.all(12),
                                 child: Row(
@@ -207,12 +213,14 @@ class _NearbyEventsPageState extends ConsumerState<NearbyEventsPage> {
                                         color: AppThemeTokens.primary500
                                             .withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(
-                                            AppThemeTokens.radiusSm),
+                                          AppThemeTokens.radiusSm,
+                                        ),
                                       ),
                                       child: const Icon(
-                                          Icons.event_outlined,
-                                          color: AppThemeTokens.primary400,
-                                          size: 20),
+                                        Icons.event_outlined,
+                                        color: AppThemeTokens.primary400,
+                                        size: 20,
+                                      ),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
@@ -221,7 +229,7 @@ class _NearbyEventsPageState extends ConsumerState<NearbyEventsPage> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            e.title,
+                                            event.title,
                                             style: const TextStyle(
                                               color: AppThemeTokens.darkText,
                                               fontWeight: FontWeight.w600,
@@ -233,16 +241,17 @@ class _NearbyEventsPageState extends ConsumerState<NearbyEventsPage> {
                                           const SizedBox(height: 3),
                                           Row(
                                             children: [
-                                              if (e.startTime != null) ...[
+                                              if (event.startTime != null) ...[
                                                 const Icon(
-                                                    Icons.schedule,
-                                                    size: 11,
-                                                    color: AppThemeTokens
-                                                        .darkTextMuted),
+                                                  Icons.schedule,
+                                                  size: 11,
+                                                  color: AppThemeTokens
+                                                      .darkTextMuted,
+                                                ),
                                                 const SizedBox(width: 3),
                                                 Text(
-                                                  df.format(
-                                                      e.startTime!.toLocal()),
+                                                  df.format(event.startTime!
+                                                      .toLocal()),
                                                   style: const TextStyle(
                                                     color: AppThemeTokens
                                                         .darkTextSecondary,
@@ -251,15 +260,16 @@ class _NearbyEventsPageState extends ConsumerState<NearbyEventsPage> {
                                                 ),
                                                 const SizedBox(width: 8),
                                               ],
-                                              if (e.city != null) ...[
+                                              if (event.city != null) ...[
                                                 const Icon(
-                                                    Icons.place,
-                                                    size: 11,
-                                                    color: AppThemeTokens
-                                                        .darkTextMuted),
+                                                  Icons.place,
+                                                  size: 11,
+                                                  color: AppThemeTokens
+                                                      .darkTextMuted,
+                                                ),
                                                 const SizedBox(width: 3),
                                                 Text(
-                                                  e.city!,
+                                                  event.city!,
                                                   style: const TextStyle(
                                                     color: AppThemeTokens
                                                         .darkTextSecondary,
@@ -269,11 +279,11 @@ class _NearbyEventsPageState extends ConsumerState<NearbyEventsPage> {
                                               ],
                                             ],
                                           ),
-                                          if (e.sportType != null &&
-                                              e.sportType!.isNotEmpty) ...[
+                                          if (event.sportType != null &&
+                                              event.sportType!.isNotEmpty) ...[
                                             const SizedBox(height: 4),
                                             Text(
-                                              sportTypeLabel(e.sportType),
+                                              sportTypeLabel(event.sportType),
                                               style: const TextStyle(
                                                 color:
                                                     AppThemeTokens.primary400,
@@ -290,18 +300,18 @@ class _NearbyEventsPageState extends ConsumerState<NearbyEventsPage> {
                                           CrossAxisAlignment.end,
                                       children: [
                                         Text(
-                                          '${e.distance.toStringAsFixed(1)} km',
+                                          '${event.distance.toStringAsFixed(1)} km',
                                           style: const TextStyle(
-                                            color:
-                                                AppThemeTokens.primary400,
+                                            color: AppThemeTokens.primary400,
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
-                                        const Icon(Icons.chevron_right,
-                                            color:
-                                                AppThemeTokens.darkTextMuted,
-                                            size: 18),
+                                        const Icon(
+                                          Icons.chevron_right,
+                                          color: AppThemeTokens.darkTextMuted,
+                                          size: 18,
+                                        ),
                                       ],
                                     ),
                                   ],
