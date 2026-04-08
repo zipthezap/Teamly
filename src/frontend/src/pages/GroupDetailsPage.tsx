@@ -91,14 +91,15 @@ export default function GroupDetailsPage() {
     refetchOnWindowFocus: true,
   });
 
-  // Fetch chat messages for this group
+  // Only fetch chat for group members (non-members don't have access to group chat)
+  const chatEnabled = !!groupId && !!currentMember;
   const { data: chatMessages, isLoading: chatLoading } = useQuery({
     queryKey: ["groupChat", groupId],
     queryFn: async () => {
       const res = await groupChatAPI.getMessages(groupId!);
       return res.data;
     },
-    enabled: !!groupId,
+    enabled: chatEnabled,
     staleTime: 0,
     refetchOnWindowFocus: true,
   });
@@ -140,7 +141,7 @@ export default function GroupDetailsPage() {
       await groupsAPI.update(groupId!, data);
       return data;
     },
-    invalidateKeys: [["groupDetails", groupId]],
+    invalidateKeys: [["groupDetails", groupId], ["groupsList"]],
     onSuccess: () => {
       showSuccess(t('groupDetails.groupUpdated'));
       setSettingsOpen(false);
@@ -431,6 +432,19 @@ export default function GroupDetailsPage() {
     setShowInviteModal(true);
   };
 
+  // Request to join a public group (for non-members)
+  const requestJoinMutation = useApiMutation({
+    mutationFn: async () => {
+      await groupsAPI.requestJoin(groupId!);
+    },
+    onSuccess: () => {
+      showSuccess(t('groupDetails.joinRequestSent') || 'Join request sent! An admin will review your request.');
+    },
+    onError: (error) => {
+      showError(error || t('groupDetails.failedToRequestJoin') || 'Failed to send join request');
+    },
+  });
+
   const handleInviteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inviteEmail.trim()) {
@@ -506,7 +520,7 @@ export default function GroupDetailsPage() {
     }
   }, [groupId, navigate]);
 
-  if (groupLoading || eventsLoading || chatLoading) {
+  if (groupLoading || eventsLoading || (chatEnabled && chatLoading)) {
     return (
       <Box sx={{ textAlign: 'center', color: 'grey.300', mt: { xs: 5, sm: 8, md: 10 } }}>
         {t('groupDetails.loadingGroupDetails')}
@@ -549,6 +563,43 @@ export default function GroupDetailsPage() {
         />
         {/* Group Statistics */}
         <GroupStats memberCount={group.members?.length || 0} events={eventsArray} />
+        {/* Non-member banner for public groups */}
+        {!isMember && group.isPublic && (
+          <Box
+            sx={{
+              my: { xs: 2, sm: 3 },
+              p: { xs: 2, sm: 3 },
+              bgcolor: 'rgba(33, 150, 243, 0.1)',
+              border: 1,
+              borderColor: 'primary.main',
+              borderRadius: 2,
+              display: 'flex',
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: { xs: 1.5, sm: 2 },
+            }}
+          >
+            <Box sx={{ flexGrow: 1 }}>
+              <Box sx={{ fontWeight: 600, fontSize: { xs: '0.938rem', sm: '1rem' } }}>
+                {t('groupDetails.notAMember') || "You're not a member of this group"}
+              </Box>
+              <Box sx={{ color: 'text.secondary', fontSize: { xs: '0.813rem', sm: '0.875rem' }, mt: 0.5 }}>
+                {t('groupDetails.requestToJoinDescription') || 'Send a join request to the group admins to become a member.'}
+              </Box>
+            </Box>
+            <Button
+              variant="contained"
+              color="primary"
+              disabled={requestJoinMutation.isPending}
+              onClick={() => requestJoinMutation.mutate()}
+              sx={{ minHeight: '44px', px: 3, flexShrink: 0, fontSize: { xs: '0.875rem', sm: '1rem' } }}
+            >
+              {requestJoinMutation.isPending
+                ? (t('groupDetails.requesting') || 'Requesting…')
+                : (t('groupDetails.requestToJoin') || 'Request to Join')}
+            </Button>
+          </Box>
+        )}
         {/* Group Settings Modal (shared component) */}
         <GroupSettingsModal
           open={settingsOpen}
@@ -569,7 +620,7 @@ export default function GroupDetailsPage() {
             gap: { xs: 2, sm: 3, md: 4 },
           }}
         >
-          {groupId && (
+          {groupId && isMember && (
             <MemberList groupId={groupId} isAdmin={isAdmin} onRemove={isAdmin ? handleRemoveMember : undefined} />
           )}
           <EventList
@@ -580,7 +631,9 @@ export default function GroupDetailsPage() {
             groupId={groupId}
             isMember={isMember}
           />
-          <ChatBox chat={chatMessages || []} message={message} setMessage={setMessage} onSend={handleSend} isTyping={isTyping} />
+          {isMember && (
+            <ChatBox chat={chatMessages || []} message={message} setMessage={setMessage} onSend={handleSend} isTyping={isTyping} />
+          )}
         </Box>
       </Container>
       {/* Event create/edit modal */}

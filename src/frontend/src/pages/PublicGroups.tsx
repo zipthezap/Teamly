@@ -719,7 +719,14 @@ const PublicGroups = () => {
                       ) : null}
                     </Box>
                   </CardContent>
-                  <CardActions sx={{ px: { xs: 2, sm: 2.5, md: 3 }, pb: { xs: 2, sm: 2.5, md: 3 }, pt: 0 }}>
+                  <CardActions sx={{ px: { xs: 2, sm: 2.5, md: 3 }, pb: { xs: 2, sm: 2.5, md: 3 }, pt: 0, gap: 1 }}>
+                    <Button 
+                      variant="outlined"
+                      onClick={() => navigate(`/groups/${group.id}`)}
+                      sx={{ minHeight: '44px', fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                    >
+                      {t('groups.publicGroups.viewGroup') || 'View'}
+                    </Button>
                     <Button 
                       variant="contained"
                       fullWidth

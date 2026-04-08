@@ -309,48 +309,106 @@ export const getGroup = async (req: Request, res: Response) => {
     return res.json(cached);
   }
 
-  // Optimize query - use separate queries to avoid loading all participants
-  const group = await prisma.group.findFirst({
-    where: {
-      id,
-      members: {
-        some: {
-          userId
+  // Check membership first so we can decide what data to return
+  const membership = await prisma.groupMember.findUnique({
+    where: { userId_groupId: { userId, groupId: id } },
+    select: { role: true }
+  });
+
+  const isMember = !!membership;
+
+  if (isMember) {
+    // Full member view: include emails and events
+    const group = await prisma.group.findFirst({
+      where: { id },
+      include: {
+        creator: {
+          select: { id: true, name: true, email: true, profilePicture: true }
+        },
+        members: {
+          include: {
+            user: {
+              select: { id: true, name: true, email: true, profilePicture: true }
+            }
+          }
+        },
+        // Only load upcoming events with minimal participant data
+        events: {
+          where: {
+            archived: false,
+            startTime: {
+              gte: new Date(Date.now() - SEVEN_DAYS_MS)
+            }
+          },
+          include: {
+            creator: {
+              select: { id: true, name: true, email: true }
+            },
+            _count: {
+              select: {
+                participants: true,
+                guestParticipants: true
+              }
+            }
+          },
+          orderBy: { startTime: 'asc' },
+          take: 50
+        },
+        _count: {
+          select: {
+            events: true,
+            members: true
+          }
         }
       }
-    },
+    });
+
+    if (!group) {
+      throw new NotFoundError('Group not found');
+    }
+
+    interface GroupMemberWithUser {
+      userId: string;
+      user: {
+        name: string;
+        email: string;
+        profilePicture: string | null;
+      };
+      role: string;
+    }
+
+    const mappedGroup = {
+      ...group,
+      members: group.members.map((member: GroupMemberWithUser) => ({
+        id: member.userId,
+        name: member.user.name,
+        email: member.user.email,
+        profilePicture: member.user.profilePicture,
+        role: member.role,
+      }))
+    };
+
+    const enrichedGroup = locationService.enrichWithLocationInfo(mappedGroup);
+
+    // Cache for 1 minute
+    await CacheService.set(cacheKey, enrichedGroup, 60);
+
+    return res.json(enrichedGroup);
+  }
+
+  // Non-member: only allow viewing public groups (without sensitive member data)
+  const group = await prisma.group.findFirst({
+    where: { id, isPublic: true },
     include: {
       creator: {
-        select: { id: true, name: true, email: true, profilePicture: true }
+        select: { id: true, name: true, profilePicture: true }
       },
       members: {
         include: {
           user: {
-            select: { id: true, name: true, email: true, profilePicture: true }
+            select: { id: true, name: true, profilePicture: true }
           }
         }
-      },
-      // Only load upcoming events with minimal participant data
-      events: {
-        where: {
-          archived: false,
-          startTime: {
-            gte: new Date(Date.now() - SEVEN_DAYS_MS)
-          }
-        },
-        include: {
-          creator: {
-            select: { id: true, name: true, email: true }
-          },
-          _count: {
-            select: {
-              participants: true,
-              guestParticipants: true
-            }
-          }
-        },
-        orderBy: { startTime: 'asc' },
-        take: 50 // Limit events to improve performance
       },
       _count: {
         select: {
@@ -365,12 +423,10 @@ export const getGroup = async (req: Request, res: Response) => {
     throw new NotFoundError('Group not found');
   }
 
-  // Map members to flatten user fields
-  interface GroupMemberWithUser {
+  interface PublicGroupMemberWithUser {
     userId: string;
     user: {
       name: string;
-      email: string;
       profilePicture: string | null;
     };
     role: string;
@@ -378,19 +434,22 @@ export const getGroup = async (req: Request, res: Response) => {
 
   const mappedGroup = {
     ...group,
-    members: group.members.map((member: GroupMemberWithUser) => ({
+    // Omit email for non-member public views
+    members: group.members.map((member: PublicGroupMemberWithUser) => ({
       id: member.userId,
       name: member.user.name,
-      email: member.user.email,
+      email: '',
       profilePicture: member.user.profilePicture,
       role: member.role,
-    }))
+    })),
+    // No events for non-members (they use the public groups page to discover)
+    events: [],
   };
 
   const enrichedGroup = locationService.enrichWithLocationInfo(mappedGroup);
 
-  // Cache for 1 minute
-  await CacheService.set(cacheKey, enrichedGroup, 60);
+  // Short cache for public view (30 seconds)
+  await CacheService.set(cacheKey, enrichedGroup, 30);
 
   res.json(enrichedGroup);
 };
