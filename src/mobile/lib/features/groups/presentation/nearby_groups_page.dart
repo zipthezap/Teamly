@@ -224,7 +224,7 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: AppThemeTokens.darkBorder),
+          child: Container(height: 1, color: Theme.of(context).dividerColor),
         ),
       ),
       body: Column(
@@ -320,19 +320,20 @@ class _LocationSearchForm extends StatelessWidget {
   final VoidCallback? onSearch;
   final VoidCallback onUseCurrentLocation;
 
-  InputDecoration _fieldDecor(String label) => InputDecoration(
+  InputDecoration _fieldDecor(String label, bool isDark) => InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(
-            color: AppThemeTokens.darkTextSecondary, fontSize: 13),
+        labelStyle: TextStyle(
+            color: isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary,
+            fontSize: 13),
         filled: true,
-        fillColor: AppThemeTokens.darkBg,
+        fillColor: isDark ? AppThemeTokens.darkBg : AppThemeTokens.lightBg,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
-          borderSide: const BorderSide(color: AppThemeTokens.darkBorder),
+          borderSide: BorderSide(color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
-          borderSide: const BorderSide(color: AppThemeTokens.darkBorder),
+          borderSide: BorderSide(color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
@@ -345,12 +346,20 @@ class _LocationSearchForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mainText = isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
+    final secondaryText = isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary;
+    final bannerGradient = isDark ? AppThemeTokens.heroGradient : AppThemeTokens.lightHeroGradient;
+    final bannerBorderColor = isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
+    final suggestionBg = isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
+    final sliderInactiveTrack = isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
+
     return Container(
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: AppThemeTokens.heroGradient,
+        gradient: bannerGradient,
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusLg),
-        border: Border.all(color: AppThemeTokens.darkBorder),
+        border: Border.all(color: bannerBorderColor),
       ),
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -370,10 +379,10 @@ class _LocationSearchForm extends StatelessWidget {
                     size: 16, color: AppThemeTokens.primary400),
               ),
               const SizedBox(width: 10),
-              const Text(
+              Text(
                 'Search by location',
                 style: TextStyle(
-                  color: AppThemeTokens.darkText,
+                  color: mainText,
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.2,
@@ -385,9 +394,8 @@ class _LocationSearchForm extends StatelessWidget {
           // Address search field
           TextField(
             controller: locationCtrl,
-            style: const TextStyle(
-                color: AppThemeTokens.darkText, fontSize: 14),
-            decoration: _fieldDecor('Search address or city…').copyWith(
+            style: TextStyle(color: mainText, fontSize: 14),
+            decoration: _fieldDecor('Search address or city…', isDark).copyWith(
               suffixIcon: searchingAddress
                   ? const Padding(
                       padding: EdgeInsets.all(12),
@@ -399,9 +407,9 @@ class _LocationSearchForm extends StatelessWidget {
                     )
                   : locationCtrl.text.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear_rounded,
+                          icon: Icon(Icons.clear_rounded,
                               size: 16,
-                              color: AppThemeTokens.darkTextSecondary),
+                              color: secondaryText),
                           onPressed: () => locationCtrl.clear(),
                         )
                       : null,
@@ -413,9 +421,9 @@ class _LocationSearchForm extends StatelessWidget {
             Container(
               margin: const EdgeInsets.only(top: 4),
               decoration: BoxDecoration(
-                color: AppThemeTokens.darkCard,
+                color: suggestionBg,
                 borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
-                border: Border.all(color: AppThemeTokens.darkBorder),
+                border: Border.all(color: bannerBorderColor),
               ),
               child: Column(
                 children: suggestions.map((s) {
@@ -426,18 +434,18 @@ class _LocationSearchForm extends StatelessWidget {
                           horizontal: 12, vertical: 10),
                       child: Row(
                         children: [
-                          const Icon(Icons.place_outlined,
+                          Icon(Icons.place_outlined,
                               size: 14,
-                              color: AppThemeTokens.darkTextSecondary),
+                              color: secondaryText),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               s.displayName,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
-                                color: AppThemeTokens.darkText,
+                                color: mainText,
                               ),
                             ),
                           ),
@@ -501,14 +509,14 @@ class _LocationSearchForm extends StatelessWidget {
           const SizedBox(height: 14),
           Row(
             children: [
-              const Icon(Icons.radar_rounded,
-                  size: 14, color: AppThemeTokens.darkTextSecondary),
+              Icon(Icons.radar_rounded,
+                  size: 14, color: secondaryText),
               const SizedBox(width: 6),
               Text(
                 'Radius: ${radius.toStringAsFixed(0)} km',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: AppThemeTokens.darkTextSecondary,
+                  color: secondaryText,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -516,7 +524,7 @@ class _LocationSearchForm extends StatelessWidget {
                 child: SliderTheme(
                   data: SliderThemeData(
                     activeTrackColor: AppThemeTokens.primary500,
-                    inactiveTrackColor: AppThemeTokens.darkBorder,
+                    inactiveTrackColor: sliderInactiveTrack,
                     thumbColor: AppThemeTokens.primary400,
                     overlayColor:
                         AppThemeTokens.primary500.withValues(alpha: 0.15),
@@ -603,6 +611,11 @@ class _NearbyGroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
+    final borderColor = isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
+    final titleColor = isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
+    final secondaryColor = isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary;
     final sportColor = _sportColor();
 
     return Material(
@@ -613,9 +626,9 @@ class _NearbyGroupCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
         child: Container(
           decoration: BoxDecoration(
-            color: AppThemeTokens.darkCard,
+            color: cardColor,
             borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-            border: Border.all(color: AppThemeTokens.darkBorder),
+            border: Border.all(color: borderColor),
           ),
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -645,10 +658,10 @@ class _NearbyGroupCard extends StatelessWidget {
                             group.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
-                              color: AppThemeTokens.darkText,
+                              color: titleColor,
                             ),
                           ),
                         ),
@@ -704,15 +717,15 @@ class _NearbyGroupCard extends StatelessWidget {
                         ),
                         if (group.memberCount != null) ...[
                           const SizedBox(width: 8),
-                          const Icon(Icons.people_outline_rounded,
+                          Icon(Icons.people_outline_rounded,
                               size: 12,
-                              color: AppThemeTokens.darkTextSecondary),
+                              color: secondaryColor),
                           const SizedBox(width: 3),
                           Text(
                             '${group.memberCount}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: AppThemeTokens.darkTextSecondary,
+                              color: secondaryColor,
                             ),
                           ),
                         ],

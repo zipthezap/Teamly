@@ -105,7 +105,7 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: AppThemeTokens.darkBorder),
+          child: Container(height: 1, color: Theme.of(context).dividerColor),
         ),
       ),
       body: publicGroupsAsync.when(
@@ -201,25 +201,31 @@ class _SearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
+    final borderColor = isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
+    final mainText = isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
+    final mutedText = isDark ? AppThemeTokens.darkTextMuted : AppThemeTokens.lightTextMuted;
     return Container(
       decoration: BoxDecoration(
-        color: AppThemeTokens.darkCard,
+        color: cardColor,
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusLg),
-        border: Border.all(color: AppThemeTokens.darkBorder),
+        border: Border.all(color: borderColor),
       ),
       child: TextField(
         controller: controller,
-        style: const TextStyle(color: AppThemeTokens.darkText, fontSize: 14),
+        style: TextStyle(color: mainText, fontSize: 14),
         decoration: InputDecoration(
           hintText: 'Search groups…',
-          hintStyle: const TextStyle(
-              color: AppThemeTokens.darkTextMuted, fontSize: 14),
-          prefixIcon: const Icon(Icons.search_rounded,
-              color: AppThemeTokens.darkTextSecondary, size: 20),
+          hintStyle: TextStyle(color: mutedText, fontSize: 14),
+          prefixIcon: Icon(Icons.search_rounded,
+              color: isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary,
+              size: 20),
           suffixIcon: query.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.close_rounded,
-                      color: AppThemeTokens.darkTextSecondary, size: 18),
+                  icon: Icon(Icons.close_rounded,
+                      color: isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary,
+                      size: 18),
                   onPressed: onClear,
                 )
               : null,
@@ -274,6 +280,11 @@ class _PublicGroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
+    final borderColor = isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
+    final titleColor = isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
+    final secondaryColor = isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary;
     final sportColor = _sportColor();
     final memberCount = group.memberCount;
 
@@ -285,9 +296,9 @@ class _PublicGroupCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
         child: Container(
           decoration: BoxDecoration(
-            color: AppThemeTokens.darkCard,
+            color: cardColor,
             borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-            border: Border.all(color: AppThemeTokens.darkBorder),
+            border: Border.all(color: borderColor),
           ),
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -318,10 +329,10 @@ class _PublicGroupCard extends StatelessWidget {
                             group.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
-                              color: AppThemeTokens.darkText,
+                              color: titleColor,
                             ),
                           ),
                         ),
@@ -349,31 +360,31 @@ class _PublicGroupCard extends StatelessWidget {
                     // Meta row
                     Row(
                       children: [
-                        const Icon(Icons.people_outline_rounded,
+                        Icon(Icons.people_outline_rounded,
                             size: 12,
-                            color: AppThemeTokens.darkTextSecondary),
+                            color: secondaryColor),
                         const SizedBox(width: 3),
                         Text(
                           '$memberCount member${memberCount == 1 ? '' : 's'}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: AppThemeTokens.darkTextSecondary,
+                            color: secondaryColor,
                           ),
                         ),
                         if (group.city != null) ...[
                           const SizedBox(width: 8),
-                          const Icon(Icons.place_outlined,
+                          Icon(Icons.place_outlined,
                               size: 12,
-                              color: AppThemeTokens.darkTextSecondary),
+                              color: secondaryColor),
                           const SizedBox(width: 3),
                           Expanded(
                             child: Text(
                               group.city!,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: AppThemeTokens.darkTextSecondary,
+                                color: secondaryColor,
                               ),
                             ),
                           ),

@@ -9,6 +9,14 @@ class DiscoverPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
+    final secondaryColor = isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary;
+    final heroBannerGradient = isDark ? AppThemeTokens.heroGradient : AppThemeTokens.lightHeroGradient;
+    final heroBorderColor = isDark
+        ? AppThemeTokens.primary500.withValues(alpha: 0.2)
+        : AppThemeTokens.primary500.withValues(alpha: 0.3);
+
     return MobileShell(
       title: 'Discover',
       currentIndex: 3,
@@ -19,9 +27,9 @@ class DiscoverPage extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: AppThemeTokens.heroGradient,
+              gradient: heroBannerGradient,
               borderRadius: BorderRadius.circular(AppThemeTokens.radiusLg),
-              border: Border.all(color: AppThemeTokens.primary500.withValues(alpha: 0.2)),
+              border: Border.all(color: heroBorderColor),
             ),
             child: Row(
               children: [
@@ -38,7 +46,7 @@ class DiscoverPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 14),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -47,15 +55,15 @@ class DiscoverPage extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: AppThemeTokens.darkText,
+                          color: textColor,
                         ),
                       ),
-                      SizedBox(height: 3),
+                      const SizedBox(height: 3),
                       Text(
                         'Explore groups, events & players',
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppThemeTokens.darkTextSecondary,
+                          color: secondaryColor,
                         ),
                       ),
                     ],
@@ -65,7 +73,7 @@ class DiscoverPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          const _SectionHeading('Browse'),
+          _SectionHeading('Browse'),
           const SizedBox(height: 10),
           _DiscoverCard(
             icon: Icons.explore_rounded,
@@ -99,7 +107,7 @@ class DiscoverPage extends StatelessWidget {
             onTap: () => context.push('/discover/nearby-events'),
           ),
           const SizedBox(height: 20),
-          const _SectionHeading('Compete'),
+          _SectionHeading('Compete'),
           const SizedBox(height: 10),
           _DiscoverCard(
             icon: Icons.emoji_events_rounded,
@@ -117,7 +125,7 @@ class DiscoverPage extends StatelessWidget {
             onTap: () => context.push('/teamup'),
           ),
           const SizedBox(height: 20),
-          const _SectionHeading('Insights'),
+          _SectionHeading('Insights'),
           const SizedBox(height: 10),
           _DiscoverCard(
             icon: Icons.bar_chart_rounded,
@@ -138,14 +146,15 @@ class _SectionHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(left: 2),
       child: Text(
         text.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w700,
-          color: AppThemeTokens.darkTextSecondary,
+          color: isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary,
           letterSpacing: 1.2,
         ),
       ),
@@ -170,6 +179,13 @@ class _DiscoverCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
+    final borderColor = isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
+    final titleColor = isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
+    final subtitleColor = isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary;
+    final arrowColor = isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary;
+
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
@@ -178,9 +194,9 @@ class _DiscoverCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
         child: Container(
           decoration: BoxDecoration(
-            color: AppThemeTokens.darkCard,
+            color: cardColor,
             borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-            border: Border.all(color: AppThemeTokens.darkBorder),
+            border: Border.all(color: borderColor),
           ),
           child: Padding(
             padding: const EdgeInsets.all(14),
@@ -203,26 +219,26 @@ class _DiscoverCard extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: AppThemeTokens.darkText,
+                          color: titleColor,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppThemeTokens.darkTextSecondary,
+                          color: subtitleColor,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Icon(
+                Icon(
                   Icons.arrow_forward_ios_rounded,
-                  color: AppThemeTokens.darkTextSecondary,
+                  color: arrowColor,
                   size: 14,
                 ),
               ],

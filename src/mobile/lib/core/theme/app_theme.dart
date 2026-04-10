@@ -61,6 +61,19 @@ class AppThemeTokens {
     end: Alignment.bottomRight,
     colors: [Color(0xFF141B27), Color(0xFF0F1520)],
   );
+
+  // Light-mode equivalents for hero / subtle banners
+  static const LinearGradient lightHeroGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFFE8F0FE), Color(0xFFD9E2EE)],
+  );
+
+  static const LinearGradient lightSubtleGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFFF8FBFF), Color(0xFFEFF3F9)],
+  );
 }
 
 ThemeData buildDarkTheme() {
