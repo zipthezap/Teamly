@@ -30,7 +30,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 
   return (
     <div
-      className="rounded-xl border-2 border-dashed p-10 text-center mx-auto"
+      className="rounded-lg border-2 border-dashed p-10 text-center mx-auto"
       style={{
         background: gradient,
         borderColor: alpha(theme.palette.text.primary, isDark ? 0.25 : 0.16),

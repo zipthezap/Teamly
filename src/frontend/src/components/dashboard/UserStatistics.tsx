@@ -67,7 +67,7 @@ const UserStatistics: React.FC = () => {
 
   const StatCard = ({ title, value, icon, color }: { title: string; value: number | string; icon: React.ReactNode; color: string }) => (
     <div
-      className="rounded-xl p-3 sm:p-5 flex flex-col h-full justify-between"
+      className="rounded-lg p-3 sm:p-5 flex flex-col h-full justify-between"
       style={{
         background: alpha(theme.palette.background.paper, isDark ? 0.9 : 0.96),
         border: `1px solid ${theme.palette.divider}`,

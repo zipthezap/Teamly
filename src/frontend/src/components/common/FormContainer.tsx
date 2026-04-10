@@ -20,7 +20,7 @@ export const FormContainer: React.FC<FormContainerProps> = ({
   return (
     <div className={`mx-auto mt-16 w-full`} style={{ maxWidth }}>
       <div
-        className={`rounded-xl p-8 ${className}`}
+        className={`rounded-lg p-8 ${className}`}
         style={{
           background: theme.palette.background.paper,
           border: `1px solid ${theme.palette.divider}`,

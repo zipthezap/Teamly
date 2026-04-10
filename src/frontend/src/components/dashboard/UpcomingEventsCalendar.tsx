@@ -77,7 +77,7 @@ const UpcomingEventsCalendar: React.FC<UpcomingEventsCalendarProps> = ({ events,
   const [open, setOpen] = React.useState(true);
   return (
     <div
-      className="rounded-xl p-3 sm:p-5 h-full"
+      className="rounded-lg p-3 sm:p-5 h-full"
       style={{
         background: alpha(theme.palette.background.paper, isDark ? 0.9 : 0.96),
         border: `1px solid ${theme.palette.divider}`,

@@ -62,7 +62,7 @@ const TeamUp = () => {
         <Paper 
           elevation={0}
           sx={{ 
-            borderRadius: { xs: 2, sm: 3 },
+            borderRadius: { xs: 1.5, sm: 2 },
             overflow: 'hidden',
             backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.94 : 0.98),
             border: `1px solid ${theme.palette.divider}`
@@ -80,20 +80,19 @@ const TeamUp = () => {
               '& .MuiTab-root': {
                 minHeight: { xs: 64, sm: 72 },
                 fontSize: { xs: '0.875rem', sm: '1rem' },
-                fontWeight: 600,
+                fontWeight: 650,
                 textTransform: 'none',
                 transition: 'all 0.3s ease',
                 px: { xs: 1, sm: 2 },
                 '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                  transform: 'translateY(-2px)'
+                  backgroundColor: alpha(theme.palette.primary.main, 0.08)
                 },
                 '&.Mui-selected': {
                   color: theme.palette.primary.main
                 }
               },
               '& .MuiTabs-indicator': {
-                height: 3,
+                height: 2,
                 borderRadius: '3px 3px 0 0',
                 backgroundColor: theme.palette.primary.main
               },

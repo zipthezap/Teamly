@@ -200,7 +200,7 @@ const Dashboard = () => {
           {/* Upcoming Events */}
           <Box sx={{ mb: { xs: 3, md: 4 } }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
-              <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: 0.5, color: 'primary.light', textTransform: 'uppercase', fontSize: { xs: '1.125rem', sm: '1.25rem', md: '1.5rem' } }}>{t('dashboard.upcomingEvents')}</Typography>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', fontSize: { xs: '1.125rem', sm: '1.25rem', md: '1.5rem' } }}>{t('dashboard.upcomingEvents')}</Typography>
               <Button
                 variant="text"
                 size="small"
@@ -237,7 +237,7 @@ const Dashboard = () => {
                       flexDirection: 'column',
                       transition: 'all 0.25s',
                       background: theme.palette.background.paper,
-                      borderRadius: 2,
+                      borderRadius: 1.5,
                       boxShadow: 'none',
                       border: `1px solid ${theme.palette.divider}`,
                       '&:hover': { transform: 'translateY(-2px)', borderColor: 'primary.main' },
@@ -252,8 +252,8 @@ const Dashboard = () => {
                               const day = dateObj.getDate();
                               return (
                                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-                                  <span style={{ fontSize: 13, fontWeight: 700, color: '#60a5fa', lineHeight: 1 }}>{month}</span>
-                                  <span style={{ fontSize: 22, fontWeight: 800, color: 'white', lineHeight: 1 }}>{day}</span>
+                                   <span style={{ fontSize: 12, fontWeight: 700, color: theme.palette.primary.main, lineHeight: 1 }}>{month}</span>
+                                   <span style={{ fontSize: 21, fontWeight: 800, color: theme.palette.text.primary, lineHeight: 1 }}>{day}</span>
                                 </Box>
                               );
                             })()}
@@ -342,7 +342,7 @@ const Dashboard = () => {
           {/* Your Groups */}
           <Box>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
-              <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: 0.5, color: 'primary.light', textTransform: 'uppercase', fontSize: { xs: '1.125rem', sm: '1.25rem', md: '1.5rem' } }}>{t('dashboard.yourGroups')}</Typography>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', fontSize: { xs: '1.125rem', sm: '1.25rem', md: '1.5rem' } }}>{t('dashboard.yourGroups')}</Typography>
               <Button
                 variant="text"
                 size="small"
@@ -377,7 +377,7 @@ const Dashboard = () => {
                       flexDirection: 'column',
                       transition: 'all 0.25s',
                       background: theme.palette.background.paper,
-                      borderRadius: 2,
+                      borderRadius: 1.5,
                       boxShadow: 'none',
                       border: `1px solid ${theme.palette.divider}`,
                       '&:hover': { transform: 'translateY(-2px)', borderColor: 'primary.main' },

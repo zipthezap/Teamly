@@ -207,7 +207,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
 
   return (
     <div
-      className="rounded-xl p-5"
+      className="rounded-lg p-5"
       style={{
         background: alpha(theme.palette.background.paper, isDark ? 0.9 : 0.96),
         border: `1px solid ${theme.palette.divider}`,

@@ -27,7 +27,7 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ links, onNavigate }) => {
   const isDark = theme.palette.mode === 'dark';
   return (
     <div
-      className="rounded-xl p-5"
+      className="rounded-lg p-5"
       style={{
         background: alpha(theme.palette.background.paper, isDark ? 0.9 : 0.96),
         border: `1px solid ${theme.palette.divider}`,
@@ -66,7 +66,7 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ links, onNavigate }) => {
                   e.currentTarget.style.background = 'transparent';
                 }}
               >
-                <span className={`flex items-center justify-center rounded-full w-7 h-7 mr-3 ${link.color}`}>{link.icon}</span>
+                <span className={`flex items-center justify-center rounded-lg w-7 h-7 mr-3 ${link.color}`}>{link.icon}</span>
                 <span className="font-medium text-sm">{link.label}</span>
               </button>
             </li>

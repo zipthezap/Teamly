@@ -11,7 +11,7 @@ const commonTheme = {
     button: { textTransform: 'none', fontWeight: 600 },
   },
   shape: {
-    borderRadius: 14,
+    borderRadius: 10,
   },
   breakpoints: {
     values: {
@@ -93,7 +93,7 @@ export const getAppTheme = (mode: PaletteMode) =>
           root: {
             backgroundImage: 'none',
             border: mode === 'dark' ? '1px solid rgba(148,163,184,0.14)' : '1px solid rgba(15,23,42,0.07)',
-            boxShadow: mode === 'dark' ? '0 6px 18px rgba(2, 6, 23, 0.22)' : '0 6px 18px rgba(15, 23, 42, 0.06)',
+            boxShadow: mode === 'dark' ? '0 4px 14px rgba(2, 6, 23, 0.2)' : '0 4px 14px rgba(15, 23, 42, 0.05)',
           },
         },
       },
@@ -102,6 +102,26 @@ export const getAppTheme = (mode: PaletteMode) =>
           root: {
             cursor: 'pointer',
             minHeight: 44,
+            borderRadius: 10,
+            fontWeight: 600,
+            letterSpacing: '0.01em',
+          },
+          contained: {
+            boxShadow: 'none',
+            '&:hover': {
+              boxShadow: 'none',
+            },
+          },
+          outlined: {
+            borderWidth: '1.5px',
+          },
+        },
+      },
+      MuiChip: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8,
+            fontWeight: 600,
           },
         },
       },
