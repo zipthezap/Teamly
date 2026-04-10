@@ -216,6 +216,38 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
             },
             orElse: () => const SizedBox.shrink(),
           ),
+          // Join-requests icon (admin/moderator) — badge shows pending count
+          groupAsync.maybeWhen(
+            data: (group) {
+              if (!_isModerator(group, currentUserId)) {
+                return const SizedBox.shrink();
+              }
+              final joinAsync = ref.watch(joinRequestsProvider(group.id));
+              final pendingCount = joinAsync.maybeWhen(
+                data: (reqs) =>
+                    reqs.where((r) => r.status == 'pending').length,
+                orElse: () => 0,
+              );
+              return Badge(
+                isLabelVisible: pendingCount > 0,
+                label: Text(
+                  pendingCount > 99 ? '99+' : '$pendingCount',
+                  style: const TextStyle(fontSize: 10, color: Colors.white),
+                ),
+                backgroundColor: AppThemeTokens.error,
+                child: IconButton(
+                  icon: const Icon(Icons.how_to_reg_outlined),
+                  tooltip: 'Join Requests',
+                  onPressed: () {
+                    // Switch to the Members tab (index 1) where join requests
+                    // are displayed at the top for admins/moderators.
+                    _tabCtrl.animateTo(1);
+                  },
+                ),
+              );
+            },
+            orElse: () => const SizedBox.shrink(),
+          ),
           // Admin popup (full actions)
           groupAsync.maybeWhen(
             data: (group) {
