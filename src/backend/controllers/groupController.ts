@@ -1677,7 +1677,7 @@ export const getMyJoinRequests = async (req: Request, res: Response) => {
     where: {
       userId,
       status: 'pending',
-      createdBy: 'REQUEST',
+      createdBy: 'USER',
     },
     include: {
       group: {
