@@ -75,7 +75,9 @@ class TournamentMatchModel extends Equatable {
       roundLabel = 'Round ${json['roundNumber']}';
     } else if (json['stage'] != null) {
       final stage = (json['stage'] as String).replaceAll('_', ' ');
-      roundLabel = stage[0].toUpperCase() + stage.substring(1);
+      roundLabel = stage.isNotEmpty
+          ? stage[0].toUpperCase() + stage.substring(1)
+          : 'Round 1';
     } else {
       roundLabel = json['round'] as String? ?? 'Round 1';
     }
