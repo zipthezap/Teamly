@@ -7,7 +7,7 @@ final themeModeProvider =
 );
 
 class ThemeModeController extends StateNotifier<ThemeMode> {
-  ThemeModeController() : super(ThemeMode.system);
+  ThemeModeController() : super(ThemeMode.light);
 
   void setThemeMode(ThemeMode mode) {
     state = mode;

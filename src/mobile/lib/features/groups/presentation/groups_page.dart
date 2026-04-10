@@ -288,7 +288,7 @@ class _GroupStatPill extends StatelessWidget {
           border: Border.all(
             color: selected
                 ? color.withValues(alpha: 0.4)
-                : AppThemeTokens.darkBorder,
+                : AppThemeTokens.border(context),
           ),
         ),
         child: Row(
@@ -307,9 +307,9 @@ class _GroupStatPill extends StatelessWidget {
             const SizedBox(width: 5),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: AppThemeTokens.darkTextSecondary,
+                color: AppThemeTokens.textSecondary(context),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -369,7 +369,7 @@ class _GroupCard extends StatelessWidget {
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: AppThemeTokens.darkBorder.withValues(alpha: 0.8),
+                color: AppThemeTokens.border(context).withValues(alpha: 0.8),
               ),
             ),
           ),
@@ -404,10 +404,10 @@ class _GroupCard extends StatelessWidget {
                               group.name as String,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 15,
-                                color: AppThemeTokens.darkText,
+                                color: AppThemeTokens.text(context),
                               ),
                             ),
                           ),
@@ -437,9 +437,9 @@ class _GroupCard extends StatelessWidget {
                           meta,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: AppThemeTokens.darkTextSecondary,
+                            color: AppThemeTokens.textSecondary(context),
                           ),
                         ),
                       ],
@@ -450,9 +450,9 @@ class _GroupCard extends StatelessWidget {
                           group.description as String,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: AppThemeTokens.darkTextSecondary,
+                            color: AppThemeTokens.textSecondary(context),
                           ),
                         ),
                       ],
@@ -492,15 +492,15 @@ class _GroupCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.chevron_right_rounded,
-                        color: AppThemeTokens.darkTextSecondary, size: 20),
+                    Icon(Icons.chevron_right_rounded,
+                        color: AppThemeTokens.textSecondary(context), size: 20),
                     if (!(group.isPublic as bool? ?? true))
-                      const Padding(
-                        padding: EdgeInsets.only(top: 4),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
                         child: Icon(
                           Icons.lock_rounded,
                           size: 13,
-                          color: AppThemeTokens.darkTextSecondary,
+                          color: AppThemeTokens.textSecondary(context),
                         ),
                       ),
                   ],
@@ -525,7 +525,7 @@ class _GroupTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = color ?? AppThemeTokens.darkTextSecondary;
+    final fg = color ?? AppThemeTokens.textSecondary(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
