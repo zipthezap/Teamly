@@ -249,9 +249,6 @@ class _HeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final secondaryColor = isDark
-        ? AppThemeTokens.darkTextSecondary
-        : AppThemeTokens.lightTextSecondary;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       decoration: BoxDecoration(
@@ -537,14 +534,6 @@ class _EventCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Icon(
-                            Icons.calendar_today_rounded,
-                            size: 12,
-                            color: isDark
-                                ? AppThemeTokens.darkTextSecondary
-                                : AppThemeTokens.lightTextSecondary,
-                          ),
-                          const SizedBox(width: 3),
                           Text(
                             weekday,
                             style: TextStyle(
@@ -666,7 +655,9 @@ class _NoEventsCard extends StatelessWidget {
                   'Create one to get started!',
                   style: TextStyle(
                     fontSize: 12,
-                    color: secondaryColor,
+                    color: isDark
+                        ? AppThemeTokens.darkTextSecondary
+                        : AppThemeTokens.lightTextSecondary,
                   ),
                 ),
               ],
