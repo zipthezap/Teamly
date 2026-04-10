@@ -33,14 +33,35 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
     final groupsAsync = ref.watch(groupsNotifierProvider);
     final query = _searchCtrl.text.trim().toLowerCase();
 
+    // Count pending invitations + pending join requests for badge display
+    final invitationsAsync = ref.watch(userInvitationsProvider);
+    final myRequestsAsync = ref.watch(myJoinRequestsProvider);
+    final pendingInvites = invitationsAsync.maybeWhen(
+      data: (list) => list.length,
+      orElse: () => 0,
+    );
+    final pendingRequests = myRequestsAsync.maybeWhen(
+      data: (list) => list.length,
+      orElse: () => 0,
+    );
+    final totalPending = pendingInvites + pendingRequests;
+
     return MobileShell(
       title: 'My Groups',
       currentIndex: 1,
       actions: [
-        IconButton(
-          icon: const Icon(Icons.mail_outline_rounded),
-          tooltip: 'Requests & Invites',
-          onPressed: () => context.push('/groups/my-requests'),
+        Badge(
+          isLabelVisible: totalPending > 0,
+          label: Text(
+            totalPending > 99 ? '99+' : '$totalPending',
+            style: const TextStyle(fontSize: 10, color: Colors.white),
+          ),
+          backgroundColor: AppThemeTokens.error,
+          child: IconButton(
+            icon: const Icon(Icons.mail_outline_rounded),
+            tooltip: 'Requests & Invites',
+            onPressed: () => context.push('/groups/my-requests'),
+          ),
         ),
         IconButton(
           icon: const Icon(Icons.explore_outlined),

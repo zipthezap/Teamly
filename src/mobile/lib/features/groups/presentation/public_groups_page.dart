@@ -66,14 +66,41 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
     final publicGroupsAsync = ref.watch(publicGroupsProvider);
     final currentUserId = ref.watch(authNotifierProvider).user?.id;
 
+    // Badge counts for the mail icon
+    final invitationsAsync = ref.watch(userInvitationsProvider);
+    final myRequestsAsync = ref.watch(myJoinRequestsProvider);
+    final pendingInvites = invitationsAsync.maybeWhen(
+      data: (list) => list.length,
+      orElse: () => 0,
+    );
+    final pendingRequests = myRequestsAsync.maybeWhen(
+      data: (list) => list.length,
+      orElse: () => 0,
+    );
+    final totalPending = pendingInvites + pendingRequests;
+
+    // Set of group IDs the user has already requested to join
+    final pendingGroupIds = myRequestsAsync.maybeWhen(
+      data: (list) => list.map((r) => r.groupId).toSet(),
+      orElse: () => <String>{},
+    );
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Discover Groups'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.mail_outline_rounded),
-            tooltip: 'My Requests & Invites',
-            onPressed: () => context.push('/groups/my-requests'),
+          Badge(
+            isLabelVisible: totalPending > 0,
+            label: Text(
+              totalPending > 99 ? '99+' : '$totalPending',
+              style: const TextStyle(fontSize: 10, color: Colors.white),
+            ),
+            backgroundColor: AppThemeTokens.error,
+            child: IconButton(
+              icon: const Icon(Icons.mail_outline_rounded),
+              tooltip: 'My Requests & Invites',
+              onPressed: () => context.push('/groups/my-requests'),
+            ),
           ),
         ],
         bottom: PreferredSize(
@@ -101,7 +128,10 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
                   .toList();
 
           return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(publicGroupsProvider),
+            onRefresh: () async {
+              ref.invalidate(publicGroupsProvider);
+              ref.invalidate(myJoinRequestsProvider);
+            },
             child: ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               itemCount: filtered.isEmpty ? 2 : filtered.length + 1,
@@ -133,12 +163,14 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
                 final group = filtered[index - 1];
                 final isMember = currentUserId != null &&
                     group.members.any((m) => m.id == currentUserId);
+                final hasPendingRequest = pendingGroupIds.contains(group.id);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: _PublicGroupCard(
                     group: group,
                     requesting: _requesting[group.id] == true,
                     isMember: isMember,
+                    hasPendingRequest: hasPendingRequest,
                     onApply: () => _apply(group),
                     onTap: () => context.push('/groups/${group.id}'),
                   ),
@@ -208,6 +240,7 @@ class _PublicGroupCard extends StatelessWidget {
     required this.group,
     required this.requesting,
     required this.isMember,
+    required this.hasPendingRequest,
     required this.onApply,
     required this.onTap,
   });
@@ -215,6 +248,7 @@ class _PublicGroupCard extends StatelessWidget {
   final GroupModel group;
   final bool requesting;
   final bool isMember;
+  final bool hasPendingRequest;
   final VoidCallback onApply;
   final VoidCallback onTap;
 
@@ -382,11 +416,13 @@ class _PublicGroupCard extends StatelessWidget {
                           label: 'View',
                           onPressed: onTap,
                         )
-                      : _SmallFilledButton(
-                          label: 'Apply',
-                          color: AppThemeTokens.primary500,
-                          onPressed: onApply,
-                        ),
+                      : hasPendingRequest
+                          ? _SmallPendingButton()
+                          : _SmallFilledButton(
+                              label: 'Apply',
+                              color: AppThemeTokens.primary500,
+                              onPressed: onApply,
+                            ),
             ],
           ),
         ),
@@ -396,6 +432,39 @@ class _PublicGroupCard extends StatelessWidget {
 }
 
 // ── Reusable small buttons ────────────────────────────────────────────────────
+
+class _SmallPendingButton extends StatelessWidget {
+  const _SmallPendingButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppThemeTokens.warning.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+        border: Border.all(
+            color: AppThemeTokens.warning.withValues(alpha: 0.4)),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.hourglass_top_rounded,
+              size: 11, color: AppThemeTokens.warning),
+          SizedBox(width: 4),
+          Text(
+            'Pending',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppThemeTokens.warning,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _SmallFilledButton extends StatelessWidget {
   const _SmallFilledButton({

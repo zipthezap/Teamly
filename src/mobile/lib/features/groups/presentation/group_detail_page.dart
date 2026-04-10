@@ -216,6 +216,38 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
             },
             orElse: () => const SizedBox.shrink(),
           ),
+          // Join-requests icon (admin/moderator) — badge shows pending count
+          groupAsync.maybeWhen(
+            data: (group) {
+              if (!_isModerator(group, currentUserId)) {
+                return const SizedBox.shrink();
+              }
+              final joinAsync = ref.watch(joinRequestsProvider(group.id));
+              final pendingCount = joinAsync.maybeWhen(
+                data: (reqs) =>
+                    reqs.where((r) => r.status == 'pending').length,
+                orElse: () => 0,
+              );
+              return Badge(
+                isLabelVisible: pendingCount > 0,
+                label: Text(
+                  pendingCount > 99 ? '99+' : '$pendingCount',
+                  style: const TextStyle(fontSize: 10, color: Colors.white),
+                ),
+                backgroundColor: AppThemeTokens.error,
+                child: IconButton(
+                  icon: const Icon(Icons.how_to_reg_outlined),
+                  tooltip: 'Join Requests',
+                  onPressed: () {
+                    // Switch to the Members tab (index 1) where join requests
+                    // are displayed at the top for admins/moderators.
+                    _tabCtrl.animateTo(1);
+                  },
+                ),
+              );
+            },
+            orElse: () => const SizedBox.shrink(),
+          ),
           // Admin popup (full actions)
           groupAsync.maybeWhen(
             data: (group) {
@@ -766,6 +798,10 @@ class _OverviewTab extends ConsumerWidget {
             ],
           ),
 
+        // ── Join CTA for non-members (public groups only) ─────────────────
+        if (!isMember && group.isPublic)
+          _JoinCta(groupId: groupId, group: group),
+
         // ── About ─────────────────────────────────────────────────────────
         if (group.description != null && group.description!.isNotEmpty) ...[
           const SizedBox(height: 20),
@@ -807,6 +843,115 @@ class _OverviewTab extends ConsumerWidget {
         ],
         const SizedBox(height: 24),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Join CTA for non-members on public groups
+// ---------------------------------------------------------------------------
+
+class _JoinCta extends ConsumerStatefulWidget {
+  const _JoinCta({required this.groupId, required this.group});
+
+  final String groupId;
+  final GroupModel group;
+
+  @override
+  ConsumerState<_JoinCta> createState() => _JoinCtaState();
+}
+
+class _JoinCtaState extends ConsumerState<_JoinCta> {
+  bool _requesting = false;
+
+  Future<void> _sendRequest() async {
+    setState(() => _requesting = true);
+    try {
+      await ref.read(groupRepositoryProvider).requestJoinGroup(widget.groupId);
+      ref.invalidate(myJoinRequestsProvider);
+      ref.invalidate(groupDetailProvider(widget.groupId));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Join request sent to "${widget.group.name}"')),
+        );
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_groupExtractMsg(e)),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _requesting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final myRequestsAsync = ref.watch(myJoinRequestsProvider);
+    final hasPending = myRequestsAsync.maybeWhen(
+      data: (list) => list.any((r) => r.groupId == widget.groupId),
+      orElse: () => false,
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(top: 4),
+      width: double.infinity,
+      child: _requesting
+          ? const Center(
+              child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2)))
+          : hasPending
+              ? Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppThemeTokens.warning.withValues(alpha: 0.08),
+                    borderRadius:
+                        BorderRadius.circular(AppThemeTokens.radiusMd),
+                    border: Border.all(
+                        color: AppThemeTokens.warning.withValues(alpha: 0.35)),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.hourglass_top_rounded,
+                          size: 14, color: AppThemeTokens.warning),
+                      SizedBox(width: 8),
+                      Text(
+                        'Join request pending',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppThemeTokens.warning,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : ElevatedButton.icon(
+                  onPressed: _sendRequest,
+                  icon: const Icon(Icons.how_to_reg_outlined, size: 18),
+                  label: Text(
+                    widget.group.autoApproveJoinRequests
+                        ? 'Join Group'
+                        : 'Request to Join',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppThemeTokens.primary500,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 44),
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(AppThemeTokens.radiusMd),
+                    ),
+                  ),
+                ),
     );
   }
 }
