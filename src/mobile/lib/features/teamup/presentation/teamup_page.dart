@@ -57,22 +57,46 @@ class _TeamUpPageState extends ConsumerState<TeamUpPage>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final divider = isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('TeamUp'),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: AppThemeTokens.primary500,
-          indicatorWeight: 2,
-          labelColor: AppThemeTokens.primary400,
-          unselectedLabelColor: AppThemeTokens.darkTextSecondary,
-          labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-          tabs: const [
-            Tab(text: 'Browse'),
-            Tab(text: 'My Requests'),
-            Tab(text: 'Submit'),
-          ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(52),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppThemeTokens.darkCard.withValues(alpha: 0.92)
+                    : AppThemeTokens.lightCard.withValues(alpha: 0.98),
+                borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+                border: Border.all(color: divider),
+              ),
+              child: TabBar(
+                controller: _tabController,
+                indicator: BoxDecoration(
+                  color: AppThemeTokens.primary500.withValues(alpha: isDark ? 0.2 : 0.12),
+                  borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+                ),
+                indicatorPadding: const EdgeInsets.all(5),
+                dividerColor: Colors.transparent,
+                labelColor: AppThemeTokens.primary400,
+                unselectedLabelColor: isDark
+                    ? AppThemeTokens.darkTextSecondary
+                    : AppThemeTokens.lightTextSecondary,
+                labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                tabs: const [
+                  Tab(text: 'Browse'),
+                  Tab(text: 'My Requests'),
+                  Tab(text: 'Submit'),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
       body: TabBarView(
@@ -105,13 +129,18 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
   @override
   Widget build(BuildContext context) {
     final requestsAsync = ref.watch(teamUpNotifierProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       children: [
         // Filters
         Container(
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: AppThemeTokens.darkBorder)),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+              ),
+            ),
           ),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -433,15 +462,20 @@ class _RequestTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final df = DateFormat('MMM d');
     final accent = _sportAccentColor(request.sportType);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
       onTap: () => _showDetail(context, request),
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: AppThemeTokens.darkCard,
+          color: isDark
+              ? AppThemeTokens.darkCard.withValues(alpha: 0.92)
+              : AppThemeTokens.lightCard.withValues(alpha: 0.98),
           borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-          border: Border.all(color: AppThemeTokens.darkBorder),
+          border: Border.all(
+            color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+          ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -476,8 +510,10 @@ class _RequestTile extends StatelessWidget {
                         Expanded(
                           child: Text(
                             request.creatorName,
-                            style: const TextStyle(
-                              color: AppThemeTokens.darkTextSecondary,
+                            style: TextStyle(
+                              color: isDark
+                                  ? AppThemeTokens.darkTextSecondary
+                                  : AppThemeTokens.lightTextSecondary,
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                             ),
@@ -500,8 +536,8 @@ class _RequestTile extends StatelessWidget {
                       request.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppThemeTokens.darkText,
+                      style: TextStyle(
+                        color: isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -655,6 +691,7 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
     final responsesAsync =
         ref.watch(teamUpRequestResponsesProvider(r.id));
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final accent = _sportAccentColor(r.sportType);
 
     return DraggableScrollableSheet(
@@ -688,9 +725,13 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        gradient: AppThemeTokens.heroGradient,
+                        color: isDark
+                            ? AppThemeTokens.darkCard.withValues(alpha: 0.94)
+                            : AppThemeTokens.lightCard.withValues(alpha: 0.98),
                         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-                        border: Border.all(color: AppThemeTokens.darkBorder),
+                        border: Border.all(
+                          color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

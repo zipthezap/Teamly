@@ -16,11 +16,19 @@ class UiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        gradient: gradient ?? AppThemeTokens.subtleGradient,
+        color: gradient == null
+            ? (isDark
+                  ? AppThemeTokens.darkCard.withValues(alpha: 0.92)
+                  : AppThemeTokens.lightCard.withValues(alpha: 0.98))
+            : null,
+        gradient: gradient,
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-        border: Border.all(color: AppThemeTokens.darkBorder),
+        border: Border.all(
+          color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+        ),
       ),
       child: Padding(padding: padding, child: child),
     );

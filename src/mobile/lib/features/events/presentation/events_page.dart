@@ -280,31 +280,35 @@ class _EventStatPill extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
         decoration: BoxDecoration(
-          color: selected ? color.withValues(alpha: 0.12) : AppThemeTokens.darkCard,
-          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+          color:
+              selected ? color.withValues(alpha: 0.12) : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
           border: Border.all(
-            color: selected ? color.withValues(alpha: 0.4) : AppThemeTokens.darkBorder,
+            color: selected
+                ? color.withValues(alpha: 0.35)
+                : AppThemeTokens.darkBorder,
           ),
         ),
-        child: Column(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, size: 20, color: color),
-            const SizedBox(height: 5),
+            const SizedBox(width: 6),
             Text(
               value,
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
                 color: color,
-                letterSpacing: -0.5,
               ),
             ),
+            const SizedBox(width: 5),
             Text(
               label,
               style: const TextStyle(
-                fontSize: 10,
+                fontSize: 11,
                 color: AppThemeTokens.darkTextSecondary,
                 fontWeight: FontWeight.w600,
               ),
@@ -360,7 +364,6 @@ class _EventListCard extends StatelessWidget {
     final local = (event.startTime as DateTime).toLocal();
     final dayNum = DateFormat('d').format(local);
     final monthAbbr = DateFormat('MMM').format(local).toUpperCase();
-    final weekday = DateFormat('EEE').format(local);
     final timeStr = DateFormat.jm().format(local);
     final accent = isPast ? AppThemeTokens.darkTextSecondary : _accentColor();
 
@@ -381,78 +384,54 @@ class _EventListCard extends StatelessWidget {
           opacity: isPast ? 0.65 : 1.0,
           child: Container(
             decoration: BoxDecoration(
-              color: AppThemeTokens.darkCard,
-              borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-              border: Border.all(color: AppThemeTokens.darkBorder),
+              border: Border(
+                bottom: BorderSide(
+                  color: AppThemeTokens.darkBorder.withValues(alpha: 0.8),
+                ),
+              ),
             ),
-            child: IntrinsicHeight(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
               child: Row(
                 children: [
-                  // Colored left accent bar
+                  const SizedBox(width: 8),
                   Container(
-                    width: 4,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
-                      color: accent,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(AppThemeTokens.radiusMd),
-                        bottomLeft: Radius.circular(AppThemeTokens.radiusMd),
-                      ),
+                      color: accent.withValues(alpha: 0.12),
+                      borderRadius:
+                          BorderRadius.circular(AppThemeTokens.radiusSm),
                     ),
-                  ),
-                  // Date column
-                  Container(
-                    width: 52,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          weekday,
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                            color: isPast
-                                ? AppThemeTokens.darkTextMuted
-                                : accent,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        Text(
-                          dayNum,
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: isPast
-                                ? AppThemeTokens.darkTextSecondary
-                                : accent,
-                            height: 1.1,
-                          ),
-                        ),
                         Text(
                           monthAbbr,
                           style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w700,
-                            color: isPast
-                                ? AppThemeTokens.darkTextMuted
-                                : accent,
-                            letterSpacing: 0.5,
+                            color: accent,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                        Text(
+                          dayNum,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: accent,
+                            height: 1,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  // Divider
-                  Container(
-                    width: 1,
-                    color: AppThemeTokens.darkBorder,
-                    margin: const EdgeInsets.symmetric(vertical: 12),
-                  ),
                   const SizedBox(width: 12),
                   // Content
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -471,9 +450,11 @@ class _EventListCard extends StatelessWidget {
                             subtitle,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: AppThemeTokens.darkTextSecondary,
+                              color: isPast
+                                  ? AppThemeTokens.darkTextMuted
+                                  : AppThemeTokens.darkTextSecondary,
                             ),
                           ),
                           const SizedBox(height: 6),
@@ -514,7 +495,7 @@ class _EventListCard extends StatelessWidget {
                     ),
                   ),
                   const Padding(
-                    padding: EdgeInsets.only(right: 12),
+                    padding: EdgeInsets.only(right: 8),
                     child: Icon(
                       Icons.chevron_right_rounded,
                       color: AppThemeTokens.darkTextSecondary,
