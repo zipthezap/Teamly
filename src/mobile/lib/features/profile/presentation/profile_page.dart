@@ -10,6 +10,7 @@ import '../../../core/error/app_exception.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/theme_mode_controller.dart';
 import '../../../features/auth/state/auth_notifier.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../../../shared/widgets/user_avatar.dart';
@@ -242,12 +243,68 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     }
   }
 
+  String _themeModeLabel(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return 'Light mode';
+      case ThemeMode.dark:
+        return 'Dark mode';
+      case ThemeMode.system:
+        return 'System theme';
+    }
+  }
+
+  Future<void> _openThemePicker(ThemeMode selectedMode) async {
+    final picked = await showModalBottomSheet<ThemeMode>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const ListTile(
+                title: Text(
+                  'Appearance',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+              RadioListTile<ThemeMode>(
+                value: ThemeMode.system,
+                groupValue: selectedMode,
+                onChanged: (value) => Navigator.of(context).pop(value),
+                title: const Text('System'),
+              ),
+              RadioListTile<ThemeMode>(
+                value: ThemeMode.light,
+                groupValue: selectedMode,
+                onChanged: (value) => Navigator.of(context).pop(value),
+                title: const Text('Light'),
+              ),
+              RadioListTile<ThemeMode>(
+                value: ThemeMode.dark,
+                groupValue: selectedMode,
+                onChanged: (value) => Navigator.of(context).pop(value),
+                title: const Text('Dark'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (picked != null) {
+      ref.read(themeModeProvider.notifier).setThemeMode(picked);
+    }
+  }
+
   // ─── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authNotifierProvider);
     final user = authState.user;
+    final themeMode = ref.watch(themeModeProvider);
 
     if (user == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -297,6 +354,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 _SectionHeader('Preferences'),
                 const SizedBox(height: 8),
                 _SettingsCard(tiles: [
+                  _TileData(
+                    icon: Icons.palette_outlined,
+                    color: const Color(0xFF2196F3),
+                    label: 'Appearance · ${_themeModeLabel(themeMode)}',
+                    onTap: () => _openThemePicker(themeMode),
+                  ),
                   _TileData(
                     icon: Icons.notifications_outlined,
                     color: const Color(0xFFFF9800),

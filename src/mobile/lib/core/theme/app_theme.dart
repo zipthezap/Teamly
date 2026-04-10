@@ -11,6 +11,15 @@ class AppThemeTokens {
   static const Color darkText = Color(0xFFECEFF4);
   static const Color darkTextSecondary = Color(0xFF8A99B3);
   static const Color darkTextMuted = Color(0xFF566070);
+  static const Color lightBg = Color(0xFFF7F9FC);
+  static const Color lightCard = Color(0xFFFFFFFF);
+  static const Color lightCardElevated = Color(0xFFF3F6FB);
+  static const Color lightCardHover = Color(0xFFEAF0F8);
+  static const Color lightBorder = Color(0xFFD9E2EE);
+  static const Color lightBorderSubtle = Color(0xFFE7EDF6);
+  static const Color lightText = Color(0xFF121A26);
+  static const Color lightTextSecondary = Color(0xFF5D6B82);
+  static const Color lightTextMuted = Color(0xFF7C8AA0);
 
   static const Color primary500 = Color(0xFF2196F3);
   static const Color primary400 = Color(0xFF42A5F5);
@@ -54,7 +63,7 @@ class AppThemeTokens {
   );
 }
 
-ThemeData buildAppTheme() {
+ThemeData buildDarkTheme() {
   const colorScheme = ColorScheme.dark(
     primary: AppThemeTokens.primary500,
     onPrimary: Colors.white,
@@ -322,3 +331,255 @@ ThemeData buildAppTheme() {
     ),
   );
 }
+
+ThemeData buildLightTheme() {
+  const colorScheme = ColorScheme.light(
+    primary: AppThemeTokens.primary500,
+    onPrimary: Colors.white,
+    secondary: Color(0xFF7C4DFF),
+    onSecondary: Colors.white,
+    tertiary: Color(0xFF00BCD4),
+    surface: AppThemeTokens.lightCard,
+    onSurface: AppThemeTokens.lightText,
+    error: Color(0xFFDC2626),
+    onError: Colors.white,
+    outline: AppThemeTokens.lightBorder,
+    surfaceContainerHighest: AppThemeTokens.lightCardHover,
+  );
+
+  final base = ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.light,
+    colorScheme: colorScheme,
+    scaffoldBackgroundColor: AppThemeTokens.lightBg,
+    fontFamily: 'Inter',
+  );
+
+  return base.copyWith(
+    textTheme: base.textTheme
+        .apply(
+          bodyColor: AppThemeTokens.lightText,
+          displayColor: AppThemeTokens.lightText,
+        )
+        .copyWith(
+          bodySmall: base.textTheme.bodySmall?.copyWith(
+            color: AppThemeTokens.lightTextSecondary,
+            fontSize: 12,
+            letterSpacing: 0.1,
+          ),
+          bodyMedium: base.textTheme.bodyMedium?.copyWith(
+            color: AppThemeTokens.lightText,
+            fontSize: 14,
+          ),
+          bodyLarge: base.textTheme.bodyLarge?.copyWith(
+            color: AppThemeTokens.lightText,
+            fontSize: 16,
+          ),
+          labelSmall: base.textTheme.labelSmall?.copyWith(
+            color: AppThemeTokens.lightTextSecondary,
+            letterSpacing: 0.8,
+            fontWeight: FontWeight.w600,
+          ),
+          titleSmall: base.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: AppThemeTokens.lightText,
+            fontSize: 14,
+          ),
+          titleMedium: base.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: AppThemeTokens.lightText,
+            fontSize: 16,
+          ),
+          titleLarge: base.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppThemeTokens.lightText,
+            fontSize: 20,
+            letterSpacing: -0.3,
+          ),
+          headlineMedium: base.textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: AppThemeTokens.lightText,
+            letterSpacing: -0.5,
+          ),
+          headlineLarge: base.textTheme.headlineLarge?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: AppThemeTokens.lightText,
+            letterSpacing: -0.8,
+          ),
+        ),
+    appBarTheme: AppBarTheme(
+      backgroundColor: AppThemeTokens.lightBg,
+      foregroundColor: AppThemeTokens.lightText,
+      elevation: 0,
+      centerTitle: false,
+      scrolledUnderElevation: 0,
+      systemOverlayStyle: SystemUiOverlayStyle.dark.copyWith(
+        statusBarColor: Colors.transparent,
+      ),
+      titleTextStyle: const TextStyle(
+        fontFamily: 'Inter',
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+        color: AppThemeTokens.lightText,
+        letterSpacing: -0.3,
+      ),
+    ),
+    cardTheme: CardThemeData(
+      color: AppThemeTokens.lightCard,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        side: const BorderSide(color: AppThemeTokens.lightBorder, width: 1),
+      ),
+      margin: EdgeInsets.zero,
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: AppThemeTokens.lightCardElevated,
+      labelStyle:
+          const TextStyle(color: AppThemeTokens.lightTextSecondary, fontSize: 14),
+      hintStyle: const TextStyle(color: AppThemeTokens.lightTextMuted, fontSize: 14),
+      prefixIconColor: AppThemeTokens.lightTextSecondary,
+      suffixIconColor: AppThemeTokens.lightTextSecondary,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        borderSide: const BorderSide(color: AppThemeTokens.lightBorder),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        borderSide: const BorderSide(color: AppThemeTokens.lightBorder),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        borderSide: const BorderSide(color: AppThemeTokens.primary500, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        borderSide: const BorderSide(color: Color(0xFFEF4444)),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        borderSide: const BorderSide(color: Color(0xFFEF4444), width: 2),
+      ),
+    ),
+    chipTheme: base.chipTheme.copyWith(
+      backgroundColor: AppThemeTokens.lightCardHover,
+      side: const BorderSide(color: AppThemeTokens.lightBorder),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+      ),
+      labelStyle: const TextStyle(
+        color: AppThemeTokens.lightText,
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    ),
+    dividerColor: AppThemeTokens.lightBorder,
+    dividerTheme: const DividerThemeData(
+      color: AppThemeTokens.lightBorder,
+      thickness: 1,
+      space: 1,
+    ),
+    listTileTheme: const ListTileThemeData(
+      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      minLeadingWidth: 0,
+    ),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return AppThemeTokens.primary400;
+        return AppThemeTokens.lightTextSecondary;
+      }),
+      trackColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return AppThemeTokens.primaryGlow;
+        return AppThemeTokens.lightCardHover;
+      }),
+    ),
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: AppThemeTokens.primary500,
+      foregroundColor: Colors.white,
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: AppThemeTokens.primary500,
+        foregroundColor: Colors.white,
+        minimumSize: const Size(0, 48),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        ),
+        textStyle: const TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.2,
+        ),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppThemeTokens.primary600,
+        side: const BorderSide(color: AppThemeTokens.lightBorder),
+        minimumSize: const Size(0, 44),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        ),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: AppThemeTokens.primary600,
+        textStyle: const TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: AppThemeTokens.lightCard,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusLg),
+        side: const BorderSide(color: AppThemeTokens.lightBorder),
+      ),
+      titleTextStyle: const TextStyle(
+        fontFamily: 'Inter',
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+        color: AppThemeTokens.lightText,
+      ),
+    ),
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: AppThemeTokens.lightCard,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppThemeTokens.radiusXl),
+        ),
+      ),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: AppThemeTokens.lightCardHover,
+      contentTextStyle: const TextStyle(
+        fontFamily: 'Inter',
+        color: AppThemeTokens.lightText,
+        fontSize: 14,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+      ),
+      behavior: SnackBarBehavior.floating,
+    ),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(
+      color: AppThemeTokens.primary500,
+    ),
+  );
+}
+
+ThemeData buildAppTheme() => buildDarkTheme();
