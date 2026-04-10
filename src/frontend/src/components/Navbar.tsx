@@ -1,27 +1,38 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import NotificationsPopover from './NotificationsPopover';
 import LanguageSwitcher from './LanguageSwitcher';
 import { getImageUrl, getInitials } from '../utils/imageUtils';
-import { useTheme } from '@mui/material/styles';
+import { useTheme, alpha } from '@mui/material/styles';
 import { useThemeMode } from '../contexts/ThemeModeContext';
 import type { PaletteMode } from '@mui/material';
 
 
-// NavLink helper for nav items
-const NavLink = ({ to, label, svg, onClick }: { to: string; label: string; svg: React.ReactNode; onClick?: () => void }) => (
-  <Link
-    to={to}
-    onClick={onClick}
-    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium hover:bg-black/5 dark:hover:bg-white/10 transition no-underline"
-    style={{ textDecoration: 'none' }}
-  >
-    {svg}
-    <span>{label}</span>
-  </Link>
-);
+const AppNavItem = ({ to, label, svg, onClick }: { to: string; label: string; svg: React.ReactNode; onClick?: () => void }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+
+  return (
+    <NavLink
+      to={to}
+      onClick={onClick}
+      className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition no-underline border"
+      style={({ isActive }) => ({
+        textDecoration: 'none',
+        color: theme.palette.text.primary,
+        borderColor: isActive ? alpha(theme.palette.primary.main, 0.35) : 'transparent',
+        background: isActive
+          ? alpha(theme.palette.primary.main, isDark ? 0.22 : 0.1)
+          : 'transparent',
+      })}
+    >
+      {svg}
+      <span>{label}</span>
+    </NavLink>
+  );
+};
 
 const ThemeToggleButton = ({
   mode,
@@ -59,6 +70,7 @@ const Navbar = () => {
   const { t } = useTranslation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { mode, toggleMode } = useThemeMode();
+  const theme = useTheme();
 
   const handleLogout = () => {
     logout();
@@ -88,10 +100,10 @@ const Navbar = () => {
 
           {user && (
             <div className="hidden lg:flex gap-1 flex-1 justify-center">
-              <NavLink to="/dashboard" label={t('common.dashboard')} svg={<svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8v-10h-8v10zm0-18v6h8V3h-8z" /></svg>} />
-              <NavLink to="/groups" label={t('common.groups')} svg={<svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4" /><path d="M17 11c0-2.21-1.79-4-4-4s-4 1.79-4 4c0 2.21 1.79 4 4 4s4-1.79 4-4z" /><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" /></svg>} />
-              <NavLink to="/events" label={t('common.events')} svg={<svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>} />
-              <NavLink to="/public-groups" label={t('common.discover')} svg={<svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2c2.5 2.5 4 6.5 4 10s-1.5 7.5-4 10c-2.5-2.5-4-6.5-4-10s1.5-7.5 4-10z" /></svg>} />
+              <AppNavItem to="/dashboard" label={t('common.dashboard')} svg={<svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8v-10h-8v10zm0-18v6h8V3h-8z" /></svg>} />
+              <AppNavItem to="/groups" label={t('common.groups')} svg={<svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4" /><path d="M17 11c0-2.21-1.79-4-4-4s-4 1.79-4 4c0 2.21 1.79 4 4 4s4-1.79 4-4z" /><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" /></svg>} />
+              <AppNavItem to="/events" label={t('common.events')} svg={<svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>} />
+              <AppNavItem to="/public-groups" label={t('common.discover')} svg={<svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2c2.5 2.5 4 6.5 4 10s-1.5 7.5-4 10c-2.5-2.5-4-6.5-4-10s1.5-7.5 4-10z" /></svg>} />
             </div>
           )}
 
@@ -108,7 +120,10 @@ const Navbar = () => {
               <Link
                 to="/profile"
                 className="flex items-center gap-2 px-3 py-2 rounded-xl transition no-underline"
-                style={{ background: mode === 'dark' ? 'rgba(148,163,184,0.14)' : 'rgba(15,23,42,0.06)' }}
+                style={{
+                  color: theme.palette.text.primary,
+                  background: mode === 'dark' ? 'rgba(148,163,184,0.14)' : 'rgba(15,23,42,0.06)',
+                }}
               >
                 {(() => {
                   const profilePictureUrl = getImageUrl(user.profilePicture);
@@ -189,10 +204,10 @@ const Navbar = () => {
             className="lg:hidden border-t py-4 space-y-2"
             style={{ borderColor: mode === 'dark' ? 'rgba(148, 163, 184, 0.16)' : 'rgba(15, 23, 42, 0.08)' }}
           >
-            <NavLink to="/dashboard" label={t('common.dashboard')} onClick={closeMobileMenu} svg={<svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8v-10h-8v10zm0-18v6h8V3h-8z" /></svg>} />
-            <NavLink to="/groups" label={t('common.groups')} onClick={closeMobileMenu} svg={<svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4" /><path d="M17 11c0-2.21-1.79-4-4-4s-4 1.79-4 4c0 2.21 1.79 4 4 4s4-1.79 4-4z" /><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" /></svg>} />
-            <NavLink to="/events" label={t('common.events')} onClick={closeMobileMenu} svg={<svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>} />
-            <NavLink to="/public-groups" label={t('common.discover')} onClick={closeMobileMenu} svg={<svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2c2.5 2.5 4 6.5 4 10s-1.5 7.5-4 10c-2.5-2.5-4-6.5-4-10s1.5-7.5 4-10z" /></svg>} />
+            <AppNavItem to="/dashboard" label={t('common.dashboard')} onClick={closeMobileMenu} svg={<svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8v-10h-8v10zm0-18v6h8V3h-8z" /></svg>} />
+            <AppNavItem to="/groups" label={t('common.groups')} onClick={closeMobileMenu} svg={<svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4" /><path d="M17 11c0-2.21-1.79-4-4-4s-4 1.79-4 4c0 2.21 1.79 4 4 4s4-1.79 4-4z" /><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" /></svg>} />
+            <AppNavItem to="/events" label={t('common.events')} onClick={closeMobileMenu} svg={<svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>} />
+            <AppNavItem to="/public-groups" label={t('common.discover')} onClick={closeMobileMenu} svg={<svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2c2.5 2.5 4 6.5 4 10s-1.5 7.5-4 10c-2.5-2.5-4-6.5-4-10s1.5-7.5 4-10z" /></svg>} />
             
             <div
               className="border-t my-3"

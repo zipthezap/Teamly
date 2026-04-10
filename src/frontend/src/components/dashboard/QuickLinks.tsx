@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useTheme, alpha } from '@mui/material/styles';
 // Removed all MUI imports; using Tailwind and SVGs
 import { 
   GridIcon, 
@@ -22,8 +23,16 @@ interface QuickLinksProps {
 const QuickLinks: React.FC<QuickLinksProps> = ({ links, onNavigate }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(true);
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   return (
-    <div className="bg-[#1a2233] rounded-xl shadow-md p-5">
+    <div
+      className="rounded-lg p-5"
+      style={{
+        background: alpha(theme.palette.background.paper, isDark ? 0.9 : 0.96),
+        border: `1px solid ${theme.palette.divider}`,
+      }}
+    >
       <div className="flex items-center gap-3 mb-4">
         <div className="bg-blue-500 rounded-full w-9 h-9 flex items-center justify-center">
           {/* Grid icon for Quick Links */}
@@ -48,9 +57,16 @@ const QuickLinks: React.FC<QuickLinksProps> = ({ links, onNavigate }) => {
             <li key={link.path} className="mb-1">
               <button
                 onClick={() => onNavigate(link.path)}
-                className="flex items-center w-full rounded-lg py-2 px-3 transition hover:bg-[#232946] focus:outline-none"
+                className="flex items-center w-full rounded-lg py-2 px-3 transition focus:outline-none"
+                style={{ color: theme.palette.text.primary }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = alpha(theme.palette.primary.main, isDark ? 0.18 : 0.1);
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
               >
-                <span className={`flex items-center justify-center rounded-full w-7 h-7 mr-3 ${link.color}`}>{link.icon}</span>
+                <span className={`flex items-center justify-center rounded-lg w-7 h-7 mr-3 ${link.color}`}>{link.icon}</span>
                 <span className="font-medium text-sm">{link.label}</span>
               </button>
             </li>

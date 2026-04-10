@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme, alpha } from '@mui/material/styles';
 
 interface EmptyStateAction {
   label: string;
@@ -24,16 +25,28 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   actions = [],
   gradient = 'linear-gradient(135deg, rgba(33, 150, 243, 0.05) 0%, rgba(33, 150, 243, 0.02) 100%)'
 }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
+
   return (
     <div
-      className="rounded-xl border-2 border-dashed border-gray-600 p-10 text-center mx-auto"
-      style={{ background: gradient }}
+      className="rounded-lg border-2 border-dashed p-10 text-center mx-auto"
+      style={{
+        background: gradient,
+        borderColor: alpha(theme.palette.text.primary, isDark ? 0.25 : 0.16),
+      }}
     >
-      <div className="inline-flex p-6 rounded-full bg-blue-900/50 mb-6 text-blue-400">
+      <div
+        className="inline-flex p-6 rounded-full mb-6"
+        style={{
+          background: alpha(theme.palette.primary.main, isDark ? 0.2 : 0.12),
+          color: theme.palette.primary.main,
+        }}
+      >
         {icon}
       </div>
-      <div className="text-2xl font-bold mb-2 text-gray-100">{title}</div>
-      <div className="text-base text-gray-400 mb-6 max-w-xl mx-auto">{description}</div>
+      <div className="text-2xl font-bold mb-2" style={{ color: theme.palette.text.primary }}>{title}</div>
+      <div className="text-base mb-6 max-w-xl mx-auto" style={{ color: theme.palette.text.secondary }}>{description}</div>
       {actions.length > 0 && (
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           {actions.map((action) => (

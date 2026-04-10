@@ -18,20 +18,20 @@ body {
 
 :root[data-theme='dark'] #root {
   background:
-    radial-gradient(1200px 500px at 20% -10%, rgba(37, 99, 235, 0.16), transparent 60%),
-    radial-gradient(900px 400px at 90% 0%, rgba(124, 58, 237, 0.1), transparent 60%);
+    radial-gradient(900px 360px at 16% -12%, rgba(37, 99, 235, 0.12), transparent 62%),
+    radial-gradient(760px 320px at 92% -4%, rgba(124, 58, 237, 0.08), transparent 64%);
 }
 
 :root[data-theme='light'] #root {
   background:
-    radial-gradient(1000px 420px at 10% -20%, rgba(37, 99, 235, 0.08), transparent 60%),
-    radial-gradient(900px 420px at 100% 0%, rgba(99, 102, 241, 0.08), transparent 60%);
+    radial-gradient(840px 320px at 12% -18%, rgba(37, 99, 235, 0.06), transparent 62%),
+    radial-gradient(760px 320px at 100% -6%, rgba(99, 102, 241, 0.06), transparent 64%);
 }
 
 .MuiPaper-root,
 .MuiCard-root,
 .MuiAlert-root {
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(6px);
 }
 
 /* Cursor pointer for interactive elements */

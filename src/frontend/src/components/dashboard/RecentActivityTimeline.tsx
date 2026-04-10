@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { useTheme, alpha } from '@mui/material/styles';
 import { EventWithDetails, GroupWithDetails, EventParticipant, GroupMember } from '../../../../shared/types';
 // Removed all MUI imports; using Tailwind and SVGs
 
@@ -31,6 +32,8 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
   userId,
   onActivityClick,
 }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const [expanded, setExpanded] = React.useState(true);
   const [timeFilter, setTimeFilter] = React.useState<TimeFilter>('all');
   const [activityFilter, setActivityFilter] = React.useState<ActivityFilter>('all');
@@ -203,7 +206,13 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
   };
 
   return (
-    <div className="bg-[#1a2233] rounded-xl shadow-md p-5">
+    <div
+      className="rounded-lg p-5"
+      style={{
+        background: alpha(theme.palette.background.paper, isDark ? 0.9 : 0.96),
+        border: `1px solid ${theme.palette.divider}`,
+      }}
+    >
       <div className="flex items-center justify-between cursor-pointer" onClick={() => setExpanded(!expanded)}>
         <div className="flex items-center gap-3">
           <div className="bg-yellow-500 rounded-full w-9 h-9 flex items-center justify-center">
@@ -211,7 +220,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
           </div>
           <div>
             <div className="text-lg font-semibold">{t('dashboard.recentActivity', 'Recent Activity')}</div>
-            <div className="text-xs text-gray-400">{filteredActivities.length} {filteredActivities.length === 1 ? t('dashboard.activity.activity', 'activity') : t('dashboard.activity.activities', 'activities')}</div>
+            <div className="text-xs" style={{ color: theme.palette.text.secondary }}>{filteredActivities.length} {filteredActivities.length === 1 ? t('dashboard.activity.activity', 'activity') : t('dashboard.activity.activities', 'activities')}</div>
           </div>
         </div>
         <button className="focus:outline-none">
@@ -228,7 +237,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
         <div className="mt-4 space-y-3">
           {/* Time Filter */}
           <div>
-            <label className="text-xs font-medium text-gray-400 mb-1.5 block">{t('dashboard.timeRange', 'Time Range')}</label>
+            <label className="text-xs font-medium mb-1.5 block" style={{ color: theme.palette.text.secondary }}>{t('dashboard.timeRange', 'Time Range')}</label>
             <div className="flex gap-2 flex-wrap">
               {(['all', 'today', 'week', 'month'] as TimeFilter[]).map((filter) => (
                 <button
@@ -241,8 +250,16 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
                   className={`px-3 py-1.5 text-xs font-medium rounded-lg transition ${
                     timeFilter === filter
                       ? 'bg-blue-600 text-white'
-                      : 'bg-[#232946] text-gray-300 hover:bg-[#2a3350]'
+                      : ''
                   }`}
+                  style={
+                    timeFilter === filter
+                      ? undefined
+                      : {
+                          background: alpha(theme.palette.primary.main, isDark ? 0.14 : 0.08),
+                          color: theme.palette.text.primary,
+                        }
+                  }
                 >
                   {filter === 'all' ? t('dashboard.allTime', 'All Time') : filter === 'today' ? t('dashboard.today', 'Today') : filter === 'week' ? t('dashboard.thisWeek', 'This Week') : t('dashboard.thisMonth', 'This Month')}
                 </button>
@@ -252,7 +269,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
 
           {/* Activity Type Filter */}
           <div>
-            <label className="text-xs font-medium text-gray-400 mb-1.5 block">{t('dashboard.activityType', 'Activity Type')}</label>
+            <label className="text-xs font-medium mb-1.5 block" style={{ color: theme.palette.text.secondary }}>{t('dashboard.activityType', 'Activity Type')}</label>
             <div className="flex gap-2 flex-wrap">
               {(['all', 'events', 'groups'] as ActivityFilter[]).map((filter) => (
                 <button
@@ -265,8 +282,16 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
                   className={`px-3 py-1.5 text-xs font-medium rounded-lg transition flex items-center gap-1.5 ${
                     activityFilter === filter
                       ? 'bg-green-600 text-white'
-                      : 'bg-[#232946] text-gray-300 hover:bg-[#2a3350]'
+                      : ''
                   }`}
+                  style={
+                    activityFilter === filter
+                      ? undefined
+                      : {
+                          background: alpha(theme.palette.primary.main, isDark ? 0.14 : 0.08),
+                          color: theme.palette.text.primary,
+                        }
+                  }
                 >
                   {filter === 'events' && (
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -296,17 +321,23 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
             <svg className="w-12 h-12 text-gray-500 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
               <path d="M3 12h18M12 3v18" strokeLinecap="round" />
             </svg>
-            <div className="text-sm text-gray-400">{t('dashboard.activity.noActivity', 'No activity found')}</div>
-            <div className="text-xs text-gray-500 mt-1">{t('dashboard.activity.tryAdjustingFilters', 'Try adjusting your filters')}</div>
+            <div className="text-sm" style={{ color: theme.palette.text.secondary }}>{t('dashboard.activity.noActivity', 'No activity found')}</div>
+            <div className="text-xs mt-1" style={{ color: alpha(theme.palette.text.secondary, 0.8) }}>{t('dashboard.activity.tryAdjustingFilters', 'Try adjusting your filters')}</div>
           </div>
         ) : (
           <>
             <ul>
             {visibleActivities.map((activity, index) => (
               <React.Fragment key={`${activity.id}-${activity.type}-${activity.timestamp}`}>
-                {index > 0 && <div className="my-2 border-t border-[#232946]" />}
+                {index > 0 && <div className="my-2 border-t" style={{ borderColor: alpha(theme.palette.text.primary, 0.08) }} />}
                 <li
-                  className="flex items-center gap-3 p-2 rounded-lg transition hover:bg-[#232946] cursor-pointer"
+                  className="flex items-center gap-3 p-2 rounded-lg transition cursor-pointer"
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = alpha(theme.palette.primary.main, isDark ? 0.12 : 0.08);
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}
                   onClick={() => {
                     if (onActivityClick) {
                       const type = activity.type.includes('event') ? 'event' : 'group';
@@ -319,12 +350,17 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
                   </div>
                   <div className="flex-1">
                     <div className="font-medium text-sm mb-0.5">{activity.title}</div>
-                    <div className="flex items-center gap-2 flex-wrap text-xs text-gray-400">
+                    <div className="flex items-center gap-2 flex-wrap text-xs" style={{ color: theme.palette.text.secondary }}>
                       <span>{getRelativeTime(activity.timestamp)}</span>
                       {activity.relatedEntityName && (
                         <>
                           <span>•</span>
-                          <span className="px-2 py-0.5 rounded bg-[#232946] text-gray-200 text-xs font-semibold">{activity.relatedEntityName}</span>
+                          <span
+                            className="px-2 py-0.5 rounded text-xs font-semibold"
+                            style={{ background: alpha(theme.palette.primary.main, isDark ? 0.16 : 0.1), color: theme.palette.text.primary }}
+                          >
+                            {activity.relatedEntityName}
+                          </span>
                         </>
                       )}
                       {activity.relatedEntityType && (
@@ -346,7 +382,11 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
                     e.stopPropagation();
                     handleLoadMore();
                   }}
-                  className="px-4 py-2 text-xs font-medium text-blue-400 bg-[#232946] rounded-lg hover:bg-[#2a3350] transition flex items-center gap-2"
+                  className="px-4 py-2 text-xs font-medium rounded-lg transition flex items-center gap-2"
+                  style={{
+                    color: theme.palette.primary.main,
+                    background: alpha(theme.palette.primary.main, isDark ? 0.16 : 0.1),
+                  }}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path d="M19 9l-7 7-7-7" />
@@ -360,7 +400,11 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
                     e.stopPropagation();
                     handleShowLess();
                   }}
-                  className="px-4 py-2 text-xs font-medium text-gray-400 bg-[#232946] rounded-lg hover:bg-[#2a3350] transition flex items-center gap-2"
+                  className="px-4 py-2 text-xs font-medium rounded-lg transition flex items-center gap-2"
+                  style={{
+                    color: theme.palette.text.secondary,
+                    background: alpha(theme.palette.primary.main, isDark ? 0.16 : 0.1),
+                  }}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path d="M5 15l7-7 7 7" />
