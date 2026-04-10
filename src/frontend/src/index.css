@@ -8,14 +8,21 @@ body {
     'Ubuntu', 'Cantarell', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #0f1419;
   overflow-x: hidden;
 }
 
 #root {
   min-height: 100vh;
-  background: linear-gradient(to bottom, #0f1419, #1a202c);
+  background:
+    radial-gradient(1200px 500px at 20% -10%, rgba(37, 99, 235, 0.16), transparent 60%),
+    radial-gradient(900px 400px at 90% 0%, rgba(124, 58, 237, 0.1), transparent 60%);
   overflow-x: hidden;
+}
+
+.MuiPaper-root,
+.MuiCard-root,
+.MuiAlert-root {
+  backdrop-filter: blur(10px);
 }
 
 /* Cursor pointer for interactive elements */
@@ -43,15 +50,15 @@ a:disabled,
 }
 
 *::-webkit-scrollbar-track {
-  background: #1a2233;
+  background: rgba(15, 23, 42, 0.12);
   border-radius: 4px;
 }
 
 *::-webkit-scrollbar-thumb {
-  background: #4a5568;
+  background: rgba(71, 85, 105, 0.6);
   border-radius: 4px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: #5a6578;
+  background: rgba(71, 85, 105, 0.85);
 }

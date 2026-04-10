@@ -21,6 +21,7 @@ import { useEnhancedNotifications, Notification as EnhancedNotification } from '
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '@mui/material/styles';
 
 const NotificationsPopover: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
@@ -31,6 +32,7 @@ const NotificationsPopover: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const theme = useTheme();
   const open = Boolean(anchorEl);
   const id = open ? 'notifications-popover' : undefined;
 
@@ -110,7 +112,7 @@ const NotificationsPopover: React.FC = () => {
         onClose={handleClose}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        slotProps={{ paper: { sx: { mt: 1.5, width: 420, maxWidth: '90vw', maxHeight: 600, borderRadius: 3, boxShadow: 8, background: 'rgba(30,34,54,0.98)', backdropFilter: 'blur(6px)' } } }}
+        slotProps={{ paper: { sx: { mt: 1.5, width: 420, maxWidth: '90vw', maxHeight: 600, borderRadius: 3, boxShadow: 8, background: theme.palette.mode === 'dark' ? 'rgba(17,24,39,0.95)' : 'rgba(255,255,255,0.95)', backdropFilter: 'blur(6px)' } } }}
       >
         <Paper sx={{ p: 2, background: 'transparent', boxShadow: 'none' }}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -173,7 +175,7 @@ const NotificationsPopover: React.FC = () => {
 
                 return (
                   <React.Fragment key={notif.id || idx}>
-                    {idx > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />}
+                    {idx > 0 && <Divider sx={{ borderColor: theme.palette.divider }} />}
                     <ListItemButton
                       onClick={() => handleNotificationClick(notif)}
                       disabled={!isClickable}
@@ -185,7 +187,7 @@ const NotificationsPopover: React.FC = () => {
                         py: 1.2,
                         transition: 'background 0.18s',
                         '&:hover': isClickable ? { bgcolor: 'primary.light', color: 'white' } : {},
-                        bgcolor: !notif.read ? 'rgba(58,134,255,0.08)' : 'transparent',
+                         bgcolor: !notif.read ? (theme.palette.mode === 'dark' ? 'rgba(37,99,235,0.16)' : 'rgba(37,99,235,0.1)') : 'transparent',
                         boxShadow: !notif.read ? 2 : 'none',
                       }}
                     >

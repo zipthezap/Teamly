@@ -31,6 +31,7 @@ function App() {
   return (
       <Router>
         <Navbar />
+        <main style={{ minHeight: 'calc(100vh - 64px)' }}>
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" />} />
             <Route path="/login" element={<Login />} />
@@ -184,6 +185,7 @@ function App() {
               }
             />
           </Routes>
+        </main>
         </Router>
     );
   }
