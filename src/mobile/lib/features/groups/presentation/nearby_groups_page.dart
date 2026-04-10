@@ -33,10 +33,18 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
   List<_PlaceSuggestion> _suggestions = [];
   bool _searchingAddress = false;
   bool _gettingLocation = false;
+  String? _geocodeError;
+
+  // Reusable Dio instance for geocoding
+  final _geocodeDio = Dio();
+
+  // Debounce timer for address search
+  DateTime _lastAddressSearch = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
   void dispose() {
     _locationCtrl.dispose();
+    _geocodeDio.close();
     super.dispose();
   }
 
@@ -87,10 +95,18 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
       setState(() => _suggestions = []);
       return;
     }
-    setState(() => _searchingAddress = true);
+    // Debounce: ignore calls within 400ms of each other
+    final now = DateTime.now();
+    _lastAddressSearch = now;
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (_lastAddressSearch != now || !mounted) return;
+
+    setState(() {
+      _searchingAddress = true;
+      _geocodeError = null;
+    });
     try {
-      final dio = Dio();
-      final response = await dio.get<List<dynamic>>(
+      final response = await _geocodeDio.get<List<dynamic>>(
         'https://nominatim.openstreetmap.org/search',
         queryParameters: {
           'q': query,
@@ -115,8 +131,13 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
           );
         }).toList();
       });
-    } catch (_) {
-      setState(() => _suggestions = []);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _suggestions = [];
+          _geocodeError = 'Could not search addresses. Check your connection.';
+        });
+      }
     } finally {
       if (mounted) setState(() => _searchingAddress = false);
     }
@@ -216,6 +237,7 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
             searchingAddress: _searchingAddress,
             suggestions: _suggestions,
             error: _error,
+            geocodeError: _geocodeError,
             onAddressChanged: _searchAddress,
             onSuggestionSelected: _selectSuggestion,
             onRadiusChanged: (v) => setState(() => _radius = v),
@@ -276,6 +298,7 @@ class _LocationSearchForm extends StatelessWidget {
     required this.searchingAddress,
     required this.suggestions,
     required this.error,
+    required this.geocodeError,
     required this.onAddressChanged,
     required this.onSuggestionSelected,
     required this.onRadiusChanged,
@@ -290,6 +313,7 @@ class _LocationSearchForm extends StatelessWidget {
   final bool searchingAddress;
   final List<_PlaceSuggestion> suggestions;
   final String? error;
+  final String? geocodeError;
   final ValueChanged<String> onAddressChanged;
   final ValueChanged<_PlaceSuggestion> onSuggestionSelected;
   final ValueChanged<double> onRadiusChanged;
@@ -424,6 +448,25 @@ class _LocationSearchForm extends StatelessWidget {
                 }).toList(),
               ),
             ),
+          if (geocodeError != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded,
+                    size: 13, color: AppThemeTokens.warning),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    geocodeError!,
+                    style: const TextStyle(
+                      color: AppThemeTokens.warning,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 10),
           // "Use my location" button
           SizedBox(

@@ -524,7 +524,7 @@ class _JoinRequestCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(
                               AppThemeTokens.radiusSm),
                         ),
-                        child: Text(
+                        child: const Text(
                           'Cancel',
                           style: TextStyle(
                             fontSize: 12,
