@@ -248,96 +248,76 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       decoration: BoxDecoration(
-        gradient: AppThemeTokens.heroGradient,
-        borderRadius: BorderRadius.circular(AppThemeTokens.radiusLg),
-        border: Border.all(color: AppThemeTokens.primary500.withValues(alpha: 0.25)),
+        color: isDark
+            ? AppThemeTokens.darkCard.withValues(alpha: 0.94)
+            : AppThemeTokens.lightCard.withValues(alpha: 0.98),
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        border: Border.all(
+          color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+        ),
       ),
-      child: Stack(
-        children: [
-          // Decorative circles
-          Positioned(
-            right: -20,
-            top: -20,
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppThemeTokens.primary500.withValues(alpha: 0.07),
-              ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            UserAvatar(
+              name: user.name as String,
+              imageUrl: user.profilePicture as String?,
+              radius: 30,
+              borderColor: AppThemeTokens.primary500.withValues(alpha: 0.4),
             ),
-          ),
-          Positioned(
-            right: 30,
-            bottom: -15,
-            child: Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppThemeTokens.primary500.withValues(alpha: 0.05),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                UserAvatar(
-                  name: user.name as String,
-                  imageUrl: user.profilePicture as String?,
-                  radius: 30,
-                  borderColor: AppThemeTokens.primary500.withValues(alpha: 0.4),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$greeting 👋',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppThemeTokens.darkTextSecondary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        user.name as String,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: AppThemeTokens.darkText,
-                          letterSpacing: -0.5,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if ((user.city as String?) != null)
-                        Row(
-                          children: [
-                            const Icon(Icons.place_rounded, size: 12, color: AppThemeTokens.primary400),
-                            const SizedBox(width: 3),
-                            Text(
-                              user.city as String,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppThemeTokens.darkTextSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$greeting 👋',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark
+                          ? AppThemeTokens.darkTextSecondary
+                          : AppThemeTokens.lightTextSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    user.name as String,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText,
+                      letterSpacing: -0.5,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if ((user.city as String?) != null)
+                    Row(
+                      children: [
+                        const Icon(Icons.place_rounded, size: 12, color: AppThemeTokens.primary400),
+                        const SizedBox(width: 3),
+                        Text(
+                          user.city as String,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark
+                                ? AppThemeTokens.darkTextSecondary
+                                : AppThemeTokens.lightTextSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -362,14 +342,19 @@ class _StatPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
         decoration: BoxDecoration(
-          color: AppThemeTokens.darkCard,
+          color: isDark
+              ? AppThemeTokens.darkCard.withValues(alpha: 0.92)
+              : AppThemeTokens.lightCard.withValues(alpha: 0.98),
           borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-          border: Border.all(color: AppThemeTokens.darkBorder),
+          border: Border.all(
+            color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+          ),
         ),
         child: Column(
           children: [
@@ -386,9 +371,11 @@ class _StatPill extends StatelessWidget {
             ),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
-                color: AppThemeTokens.darkTextSecondary,
+                color: isDark
+                    ? AppThemeTokens.darkTextSecondary
+                    : AppThemeTokens.lightTextSecondary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -416,24 +403,37 @@ class _ActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
+          color: isDark
+              ? AppThemeTokens.darkCard.withValues(alpha: 0.92)
+              : AppThemeTokens.lightCard.withValues(alpha: 0.98),
           borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
+          border: Border.all(
+            color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+          ),
         ),
         child: Column(
           children: [
-            Icon(icon, size: 24, color: color),
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+              ),
+              child: Icon(icon, size: 18, color: color),
+            ),
             const SizedBox(height: 5),
             Text(
               label,
               style: TextStyle(
                 fontSize: 10,
-                color: color,
+                color: isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText,
                 fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
@@ -460,6 +460,7 @@ class _EventCard extends StatelessWidget {
     final monthAbbr = DateFormat('MMM').format(local).toUpperCase();
     final timeStr = DateFormat.jm().format(local);
     final weekday = DateFormat('EEE').format(local);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Material(
       color: Colors.transparent,
@@ -469,54 +470,49 @@ class _EventCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
         child: Container(
           decoration: BoxDecoration(
-            color: AppThemeTokens.darkCard,
+            color: isDark
+                ? AppThemeTokens.darkCard.withValues(alpha: 0.92)
+                : AppThemeTokens.lightCard.withValues(alpha: 0.98),
             borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-            border: Border.all(color: AppThemeTokens.darkBorder),
+            border: Border.all(
+              color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+            ),
           ),
           child: Row(
             children: [
-              // Date strip
-              Container(
-                width: 56,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(
-                  gradient: AppThemeTokens.primaryGradient,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(AppThemeTokens.radiusMd),
-                    bottomLeft: Radius.circular(AppThemeTokens.radiusMd),
+              Padding(
+                padding: const EdgeInsets.only(left: 12),
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: AppThemeTokens.primary500.withValues(alpha: isDark ? 0.2 : 0.12),
+                    borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
                   ),
-                ),
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      weekday,
+                      monthAbbr,
                       style: const TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white70,
-                        letterSpacing: 0.5,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: AppThemeTokens.primary400,
+                        height: 1,
                       ),
                     ),
                     Text(
                       dayNum,
-                      style: const TextStyle(
-                        fontSize: 22,
+                      style: TextStyle(
+                        fontSize: 20,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        height: 1.1,
-                      ),
-                    ),
-                    Text(
-                      monthAbbr,
-                      style: const TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white70,
-                        letterSpacing: 0.5,
+                        color: isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText,
+                        height: 1,
                       ),
                     ),
                   ],
                 ),
+              ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -529,35 +525,69 @@ class _EventCard extends StatelessWidget {
                         event.title as String,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
-                          color: AppThemeTokens.darkText,
+                          color: isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(Icons.access_time_rounded, size: 12, color: AppThemeTokens.darkTextSecondary),
+                          Icon(
+                            Icons.calendar_today_rounded,
+                            size: 12,
+                            color: isDark
+                                ? AppThemeTokens.darkTextSecondary
+                                : AppThemeTokens.lightTextSecondary,
+                          ),
                           const SizedBox(width: 3),
                           Text(
-                            timeStr,
-                            style: const TextStyle(
+                            weekday,
+                            style: TextStyle(
                               fontSize: 12,
-                              color: AppThemeTokens.darkTextSecondary,
+                              color: isDark
+                                  ? AppThemeTokens.darkTextSecondary
+                                  : AppThemeTokens.lightTextSecondary,
                             ),
                           ),
                           const SizedBox(width: 10),
-                          const Icon(Icons.groups_2_outlined, size: 12, color: AppThemeTokens.darkTextSecondary),
+                          Icon(
+                            Icons.access_time_rounded,
+                            size: 12,
+                            color: isDark
+                                ? AppThemeTokens.darkTextSecondary
+                                : AppThemeTokens.lightTextSecondary,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            timeStr,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark
+                                  ? AppThemeTokens.darkTextSecondary
+                                  : AppThemeTokens.lightTextSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Icon(
+                            Icons.groups_2_outlined,
+                            size: 12,
+                            color: isDark
+                                ? AppThemeTokens.darkTextSecondary
+                                : AppThemeTokens.lightTextSecondary,
+                          ),
                           const SizedBox(width: 3),
                           Expanded(
                             child: Text(
                               event.group.name as String,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: AppThemeTokens.darkTextSecondary,
+                                color: isDark
+                                    ? AppThemeTokens.darkTextSecondary
+                                    : AppThemeTokens.lightTextSecondary,
                               ),
                             ),
                           ),
@@ -567,9 +597,15 @@ class _EventCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.only(right: 12),
-                child: Icon(Icons.chevron_right_rounded, color: AppThemeTokens.darkTextSecondary, size: 20),
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  color: isDark
+                      ? AppThemeTokens.darkTextSecondary
+                      : AppThemeTokens.lightTextSecondary,
+                  size: 20,
+                ),
               ),
             ],
           ),
@@ -587,12 +623,17 @@ class _NoEventsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppThemeTokens.darkCard,
+        color: isDark
+            ? AppThemeTokens.darkCard.withValues(alpha: 0.92)
+            : AppThemeTokens.lightCard.withValues(alpha: 0.98),
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-        border: Border.all(color: AppThemeTokens.darkBorder),
+        border: Border.all(
+          color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+        ),
       ),
       child: Row(
         children: [
@@ -605,11 +646,11 @@ class _NoEventsCard extends StatelessWidget {
             child: const Icon(Icons.event_outlined, size: 22, color: AppThemeTokens.primary400),
           ),
           const SizedBox(width: 14),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'No upcoming events',
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                 ),
@@ -618,7 +659,9 @@ class _NoEventsCard extends StatelessWidget {
                   'Create one to get started!',
                   style: TextStyle(
                     fontSize: 12,
-                    color: AppThemeTokens.darkTextSecondary,
+                    color: isDark
+                        ? AppThemeTokens.darkTextSecondary
+                        : AppThemeTokens.lightTextSecondary,
                   ),
                 ),
               ],

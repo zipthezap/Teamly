@@ -38,10 +38,10 @@ class AppThemeTokens {
   static const Color infoBg = Color(0xFF0A1929);
 
   static const double radiusXs = 6;
-  static const double radiusSm = 10;
-  static const double radiusMd = 14;
-  static const double radiusLg = 20;
-  static const double radiusXl = 28;
+  static const double radiusSm = 8;
+  static const double radiusMd = 10;
+  static const double radiusLg = 16;
+  static const double radiusXl = 24;
 
   // Gradient definitions
   static const LinearGradient primaryGradient = LinearGradient(
@@ -223,7 +223,7 @@ ThemeData buildDarkTheme() {
       labelStyle: const TextStyle(
         color: AppThemeTokens.darkText,
         fontSize: 12,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     ),
@@ -250,7 +250,7 @@ ThemeData buildDarkTheme() {
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: AppThemeTokens.primary500,
       foregroundColor: Colors.white,
-      elevation: 4,
+      elevation: 1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
       ),
@@ -473,7 +473,7 @@ ThemeData buildLightTheme() {
       labelStyle: const TextStyle(
         color: AppThemeTokens.lightText,
         fontSize: 12,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     ),
@@ -500,7 +500,7 @@ ThemeData buildLightTheme() {
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: AppThemeTokens.primary500,
       foregroundColor: Colors.white,
-      elevation: 4,
+      elevation: 1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
       ),
