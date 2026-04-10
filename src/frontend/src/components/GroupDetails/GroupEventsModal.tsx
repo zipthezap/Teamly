@@ -23,16 +23,16 @@ const GroupEventsModal: React.FC<GroupEventsModalProps> = ({ open, onClose, even
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-      <div className="bg-slate-900 p-0 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col">
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50 p-3 sm:p-0">
+      <div className="bg-slate-900 p-0 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-6 border-b border-slate-800">
-          <h2 className="text-3xl font-bold tracking-tight text-white">{t('groupDetails.allUpcomingEvents', 'All Upcoming Events')}</h2>
-          <button className="text-slate-400 hover:text-white text-3xl font-bold px-2" onClick={onClose}>&times;</button>
+        <div className="flex items-center justify-between px-4 sm:px-8 py-3 sm:py-6 border-b border-slate-800">
+          <h2 className="text-xl sm:text-3xl font-bold tracking-tight text-white">{t('groupDetails.allUpcomingEvents', 'All Upcoming Events')}</h2>
+          <button className="text-slate-400 hover:text-white text-2xl sm:text-3xl font-bold px-2" onClick={onClose}>&times;</button>
         </div>
         {/* Event List (scrollable) */}
-        <div className="flex-1 px-8 py-6 bg-slate-900">
-          <div className="max-h-[60vh] overflow-y-auto">
+        <div className="flex-1 px-4 sm:px-8 py-3 sm:py-6 bg-slate-900">
+          <div className="max-h-[70vh] overflow-y-auto">
             {events.length === 0 ? (
               <div className="text-slate-400 text-center py-8 text-lg">{t('groupDetails.noEvents', 'No events found.')}</div>
             ) : (

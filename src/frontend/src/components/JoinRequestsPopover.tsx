@@ -125,7 +125,8 @@ const JoinRequestsPopover: React.FC<JoinRequestsPopoverProps> = ({ groupId = nul
           paper: {
             sx: {
               mt: 1.5,
-              width: 420,
+              width: { xs: '90vw', sm: 420 },
+              maxWidth: 420,
               maxHeight: 550,
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
               borderRadius: 2,

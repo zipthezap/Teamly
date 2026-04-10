@@ -63,13 +63,13 @@ const UserStatistics: React.FC = () => {
   }
 
   const StatCard = ({ title, value, icon, color }: { title: string; value: number | string; icon: React.ReactNode; color: string }) => (
-    <div className={`bg-[#1a2233] rounded-xl shadow-md p-5 flex flex-col h-full justify-between`}>
-      <div className="flex items-center justify-between mb-2">
+    <div className={`bg-[#1a2233] rounded-xl shadow-md p-3 sm:p-5 flex flex-col h-full justify-between`}>
+      <div className="flex items-center justify-between mb-1 sm:mb-2">
         <div>
-          <div className="text-xs text-[#a1a6b4] mb-1">{title}</div>
-          <div className={`text-2xl font-bold ${color}`}>{value}</div>
+          <div className="text-xs text-[#a1a6b4] mb-0.5 sm:mb-1">{title}</div>
+          <div className={`text-xl sm:text-2xl font-bold ${color}`}>{value}</div>
         </div>
-        <div className="w-10 h-10 flex items-center justify-center rounded-full bg-[#232946]">{icon}</div>
+        <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-[#232946]">{icon}</div>
       </div>
     </div>
   );
@@ -77,7 +77,7 @@ const UserStatistics: React.FC = () => {
   return (
     <div>
       <div className="text-lg font-bold mb-4">{t('dashboard.yourActivity', 'Your Activity')}</div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title={t('dashboard.eventsJoined', 'Events Joined')}
           value={statistics.totalEventsJoined}
