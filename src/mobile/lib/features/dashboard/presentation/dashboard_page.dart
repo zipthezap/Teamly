@@ -249,6 +249,9 @@ class _HeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final secondaryColor = isDark
+        ? AppThemeTokens.darkTextSecondary
+        : AppThemeTokens.lightTextSecondary;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       decoration: BoxDecoration(
@@ -650,18 +653,20 @@ class _NoEventsCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'No upcoming events',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText,
+                  ),
                 ),
                 SizedBox(height: 2),
                 Text(
                   'Create one to get started!',
                   style: TextStyle(
                     fontSize: 12,
-                    color: isDark
-                        ? AppThemeTokens.darkTextSecondary
-                        : AppThemeTokens.lightTextSecondary,
+                    color: secondaryColor,
                   ),
                 ),
               ],
