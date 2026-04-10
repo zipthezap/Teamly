@@ -459,7 +459,6 @@ class _EventCard extends StatelessWidget {
     final dayNum = DateFormat('d').format(local);
     final monthAbbr = DateFormat('MMM').format(local).toUpperCase();
     final timeStr = DateFormat.jm().format(local);
-    final weekday = DateFormat('EEE').format(local);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Material(
@@ -534,16 +533,6 @@ class _EventCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Text(
-                            weekday,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDark
-                                  ? AppThemeTokens.darkTextSecondary
-                                  : AppThemeTokens.lightTextSecondary,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
                           Icon(
                             Icons.access_time_rounded,
                             size: 12,
