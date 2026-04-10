@@ -53,6 +53,18 @@ class AppThemeTokens {
   static Color border(BuildContext context) =>
       _isDark(context) ? darkBorder : lightBorder;
 
+  static Color card(BuildContext context) =>
+      _isDark(context) ? darkCard : lightCard;
+
+  static Color cardElevated(BuildContext context) =>
+      _isDark(context) ? darkCardElevated : lightCardElevated;
+
+  static Color bg(BuildContext context) =>
+      _isDark(context) ? darkBg : lightBg;
+
+  static LinearGradient heroGrad(BuildContext context) =>
+      _isDark(context) ? heroGradient : lightHeroGradient;
+
   static const double radiusXs = 6;
   static const double radiusSm = 8;
   static const double radiusMd = 10;
