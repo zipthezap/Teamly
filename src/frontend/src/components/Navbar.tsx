@@ -7,6 +7,7 @@ import LanguageSwitcher from './LanguageSwitcher';
 import { getImageUrl, getInitials } from '../utils/imageUtils';
 import { useTheme } from '@mui/material/styles';
 import { useThemeMode } from '../contexts/ThemeModeContext';
+import type { PaletteMode } from '@mui/material';
 
 
 // NavLink helper for nav items
@@ -22,12 +23,41 @@ const NavLink = ({ to, label, svg, onClick }: { to: string; label: string; svg: 
   </Link>
 );
 
+const ThemeToggleButton = ({
+  mode,
+  onClick,
+  iconSizeClass,
+  buttonClassName,
+}: {
+  mode: PaletteMode;
+  onClick: () => void;
+  iconSizeClass: string;
+  buttonClassName: string;
+}) => {
+  const theme = useTheme();
+  const background = mode === 'dark' ? 'rgba(148,163,184,0.15)' : 'rgba(15,23,42,0.06)';
+
+  return (
+    <button
+      onClick={onClick}
+      className={`${buttonClassName} transition`}
+      style={{ background }}
+      aria-label="Toggle dark and light theme"
+    >
+      {mode === 'dark' ? (
+        <svg className={iconSizeClass} fill="none" stroke={theme.palette.text.primary} strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v2m0 14v2m9-9h-2M5 12H3m14.95 6.95-1.41-1.41M7.46 7.46 6.05 6.05m11.9 0-1.41 1.41M7.46 16.54l-1.41 1.41M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" /></svg>
+      ) : (
+        <svg className={iconSizeClass} fill="none" stroke={theme.palette.text.primary} strokeWidth="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3c0 .33-.01.66-.01 1a7 7 0 0 0 9.8 6.43Z" /></svg>
+      )}
+    </button>
+  );
+};
+
 const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const theme = useTheme();
   const { mode, toggleMode } = useThemeMode();
 
   const handleLogout = () => {
@@ -67,18 +97,12 @@ const Navbar = () => {
 
           {user ? (
             <div className="hidden lg:flex items-center gap-3">
-              <button
+              <ThemeToggleButton
+                mode={mode}
                 onClick={toggleMode}
-                className="h-10 w-10 flex items-center justify-center rounded-xl transition"
-                style={{ background: mode === 'dark' ? 'rgba(148,163,184,0.15)' : 'rgba(15,23,42,0.06)' }}
-                aria-label="Toggle dark and light theme"
-              >
-                {mode === 'dark' ? (
-                  <svg className="w-5 h-5" fill="none" stroke={theme.palette.text.primary} strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v2m0 14v2m9-9h-2M5 12H3m14.95 6.95-1.41-1.41M7.46 7.46 6.05 6.05m11.9 0-1.41 1.41M7.46 16.54l-1.41 1.41M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" /></svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="none" stroke={theme.palette.text.primary} strokeWidth="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3c0 .33-.01.66-.01 1a7 7 0 0 0 9.8 6.43Z" /></svg>
-                )}
-              </button>
+                iconSizeClass="w-5 h-5"
+                buttonClassName="h-10 w-10 flex items-center justify-center rounded-xl"
+              />
               <LanguageSwitcher />
               <NotificationsPopover />
               <Link
@@ -110,36 +134,24 @@ const Navbar = () => {
             </div>
           ) : (
             <div className="hidden lg:flex items-center gap-4">
-              <button
+              <ThemeToggleButton
+                mode={mode}
                 onClick={toggleMode}
-                className="h-10 w-10 flex items-center justify-center rounded-xl transition"
-                style={{ background: mode === 'dark' ? 'rgba(148,163,184,0.15)' : 'rgba(15,23,42,0.06)' }}
-                aria-label="Toggle dark and light theme"
-              >
-                {mode === 'dark' ? (
-                  <svg className="w-5 h-5" fill="none" stroke={theme.palette.text.primary} strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v2m0 14v2m9-9h-2M5 12H3m14.95 6.95-1.41-1.41M7.46 7.46 6.05 6.05m11.9 0-1.41 1.41M7.46 16.54l-1.41 1.41M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" /></svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="none" stroke={theme.palette.text.primary} strokeWidth="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3c0 .33-.01.66-.01 1a7 7 0 0 0 9.8 6.43Z" /></svg>
-                )}
-              </button>
+                iconSizeClass="w-5 h-5"
+                buttonClassName="h-10 w-10 flex items-center justify-center rounded-xl"
+              />
               <LanguageSwitcher />
             </div>
           )}
 
           {user && (
             <div className="lg:hidden flex items-center gap-2">
-              <button
+              <ThemeToggleButton
+                mode={mode}
                 onClick={toggleMode}
-                className="h-9 w-9 flex items-center justify-center rounded-lg transition"
-                style={{ background: mode === 'dark' ? 'rgba(148,163,184,0.14)' : 'rgba(15,23,42,0.06)' }}
-                aria-label="Toggle dark and light theme"
-              >
-                {mode === 'dark' ? (
-                  <svg className="w-4 h-4" fill="none" stroke={theme.palette.text.primary} strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v2m0 14v2m9-9h-2M5 12H3m14.95 6.95-1.41-1.41M7.46 7.46 6.05 6.05m11.9 0-1.41 1.41M7.46 16.54l-1.41 1.41M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" /></svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke={theme.palette.text.primary} strokeWidth="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3c0 .33-.01.66-.01 1a7 7 0 0 0 9.8 6.43Z" /></svg>
-                )}
-              </button>
+                iconSizeClass="w-4 h-4"
+                buttonClassName="h-9 w-9 flex items-center justify-center rounded-lg"
+              />
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition"
@@ -161,18 +173,12 @@ const Navbar = () => {
 
           {!user && (
             <div className="lg:hidden flex items-center gap-2">
-              <button
+              <ThemeToggleButton
+                mode={mode}
                 onClick={toggleMode}
-                className="h-9 w-9 flex items-center justify-center rounded-lg transition"
-                style={{ background: mode === 'dark' ? 'rgba(148,163,184,0.14)' : 'rgba(15,23,42,0.06)' }}
-                aria-label="Toggle dark and light theme"
-              >
-                {mode === 'dark' ? (
-                  <svg className="w-4 h-4" fill="none" stroke={theme.palette.text.primary} strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v2m0 14v2m9-9h-2M5 12H3m14.95 6.95-1.41-1.41M7.46 7.46 6.05 6.05m11.9 0-1.41 1.41M7.46 16.54l-1.41 1.41M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" /></svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke={theme.palette.text.primary} strokeWidth="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3c0 .33-.01.66-.01 1a7 7 0 0 0 9.8 6.43Z" /></svg>
-                )}
-              </button>
+                iconSizeClass="w-4 h-4"
+                buttonClassName="h-9 w-9 flex items-center justify-center rounded-lg"
+              />
               <LanguageSwitcher />
             </div>
           )}
@@ -201,7 +207,8 @@ const Navbar = () => {
             <Link
               to="/profile"
               onClick={closeMobileMenu}
-              className="flex items-center gap-3 px-3 py-2 rounded text-white hover:bg-white/10 transition no-underline"
+              className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition no-underline"
+              style={{ background: mode === 'dark' ? 'rgba(148,163,184,0.12)' : 'rgba(15,23,42,0.05)' }}
             >
               {(() => {
                 const profilePictureUrl = getImageUrl(user.profilePicture);

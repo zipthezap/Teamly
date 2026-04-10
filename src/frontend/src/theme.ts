@@ -101,7 +101,7 @@ export const getAppTheme = (mode: PaletteMode) =>
         styleOverrides: {
           root: {
             cursor: 'pointer',
-            minHeight: 42,
+            minHeight: 44,
           },
         },
       },
