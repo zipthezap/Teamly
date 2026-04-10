@@ -36,9 +36,6 @@ class MobileShell extends ConsumerWidget {
       case 3:
         context.go('/discover');
         return;
-      case 4:
-        context.go('/notifications');
-        return;
       default:
         return;
     }
@@ -48,17 +45,22 @@ class MobileShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final unreadAsync = ref.watch(unreadCountProvider);
     final unreadCount = unreadAsync.maybeWhen(data: (c) => c, orElse: () => 0);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final navBarColor = isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
 
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light.copyWith(
-      statusBarColor: Colors.transparent,
-      systemNavigationBarColor: AppThemeTokens.darkCard,
-    ));
+    SystemChrome.setSystemUIOverlayStyle(
+      (isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark).copyWith(
+        statusBarColor: Colors.transparent,
+        systemNavigationBarColor: navBarColor,
+      ),
+    );
 
     return Scaffold(
-      backgroundColor: AppThemeTokens.darkBg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: titleWidget ?? Text(title),
         actions: [
+          _NotificationIconButton(unreadCount: unreadCount, onTap: () => context.go('/notifications')),
           if (actions != null) ...actions!,
           const SizedBox(width: 4),
         ],
@@ -66,14 +68,13 @@ class MobileShell extends ConsumerWidget {
           preferredSize: const Size.fromHeight(1),
           child: Container(
             height: 1,
-            color: AppThemeTokens.darkBorder.withValues(alpha: 0.6),
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.6),
           ),
         ),
       ),
       body: child,
       bottomNavigationBar: _BottomNav(
         currentIndex: currentIndex,
-        unreadCount: unreadCount,
         onTap: (i) => navigateByTab(context, i),
       ),
     );
@@ -83,21 +84,19 @@ class MobileShell extends ConsumerWidget {
 class _BottomNav extends StatelessWidget {
   const _BottomNav({
     required this.currentIndex,
-    required this.unreadCount,
     required this.onTap,
   });
 
   final int currentIndex;
-  final int unreadCount;
   final ValueChanged<int> onTap;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppThemeTokens.darkCard,
-        border: const Border(
-          top: BorderSide(color: AppThemeTokens.darkBorder, width: 1),
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+          top: BorderSide(color: Theme.of(context).dividerColor, width: 1),
         ),
       ),
       child: SafeArea(
@@ -134,14 +133,6 @@ class _BottomNav extends StatelessWidget {
                 selected: currentIndex == 3,
                 onTap: () => onTap(3),
               ),
-              _NavItem(
-                icon: Icons.notifications_outlined,
-                selectedIcon: Icons.notifications_rounded,
-                label: 'Alerts',
-                selected: currentIndex == 4,
-                badge: unreadCount > 0 ? '$unreadCount' : null,
-                onTap: () => onTap(4),
-              ),
             ],
           ),
         ),
@@ -157,7 +148,6 @@ class _NavItem extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
-    this.badge,
   });
 
   final IconData icon;
@@ -165,7 +155,6 @@ class _NavItem extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  final String? badge;
 
   @override
   Widget build(BuildContext context) {
@@ -176,53 +165,25 @@ class _NavItem extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeInOut,
-                  width: selected ? 44 : 36,
-                  height: 30,
-                  decoration: selected
-                      ? BoxDecoration(
-                          color: AppThemeTokens.primaryGlow,
-                          borderRadius: BorderRadius.circular(100),
-                        )
-                      : null,
-                  child: Icon(
-                    selected ? selectedIcon : icon,
-                    size: 22,
-                    color: selected
-                        ? AppThemeTokens.primary400
-                        : AppThemeTokens.darkTextSecondary,
-                  ),
-                ),
-                if (badge != null)
-                  Positioned(
-                    top: -4,
-                    right: -4,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: AppThemeTokens.error,
-                        borderRadius: BorderRadius.circular(100),
-                        border: Border.all(
-                          color: AppThemeTokens.darkCard,
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Text(
-                        badge!,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              width: selected ? 44 : 36,
+              height: 30,
+              decoration: selected
+                  ? BoxDecoration(
+                      color: AppThemeTokens.primaryGlow,
+                      borderRadius: BorderRadius.circular(100),
+                    )
+                  : null,
+              child: Icon(
+                selected ? selectedIcon : icon,
+                size: 22,
+                color: selected
+                    ? AppThemeTokens.primary400
+                    : Theme.of(context).textTheme.bodySmall?.color ??
+                        AppThemeTokens.darkTextSecondary,
+              ),
             ),
             const SizedBox(height: 2),
             AnimatedDefaultTextStyle(
@@ -233,12 +194,61 @@ class _NavItem extends StatelessWidget {
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 color: selected
                     ? AppThemeTokens.primary400
-                    : AppThemeTokens.darkTextSecondary,
+                    : Theme.of(context).textTheme.bodySmall?.color ??
+                        AppThemeTokens.darkTextSecondary,
               ),
               child: Text(label),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _NotificationIconButton extends StatelessWidget {
+  const _NotificationIconButton({
+    required this.unreadCount,
+    required this.onTap,
+  });
+
+  final int unreadCount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: 'Notifications',
+      onPressed: onTap,
+      icon: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          const Icon(Icons.notifications_outlined),
+          if (unreadCount > 0)
+            Positioned(
+              right: -6,
+              top: -6,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: AppThemeTokens.error,
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.surface,
+                    width: 1.5,
+                  ),
+                ),
+                child: Text(
+                  unreadCount > 99 ? '99+' : '$unreadCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
