@@ -38,6 +38,11 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
       currentIndex: 1,
       actions: [
         IconButton(
+          icon: const Icon(Icons.mail_outline_rounded),
+          tooltip: 'Requests & Invites',
+          onPressed: () => context.push('/groups/my-requests'),
+        ),
+        IconButton(
           icon: const Icon(Icons.explore_outlined),
           tooltip: 'Discover groups',
           onPressed: () => context.push('/discover/public-groups'),

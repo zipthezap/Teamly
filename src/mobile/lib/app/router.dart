@@ -18,6 +18,7 @@ import '../features/groups/data/group_repository_impl.dart';
 import '../features/groups/presentation/group_detail_page.dart';
 import '../features/groups/presentation/group_form_page.dart';
 import '../features/groups/presentation/groups_page.dart';
+import '../features/groups/presentation/group_requests_page.dart';
 import '../features/groups/presentation/nearby_groups_page.dart';
 import '../features/groups/presentation/public_groups_page.dart';
 import '../features/groups/state/groups_notifier.dart';
@@ -74,6 +75,10 @@ final _routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'new',
             builder: (context, state) => const GroupFormPage(),
+          ),
+          GoRoute(
+            path: 'my-requests',
+            builder: (context, state) => const GroupRequestsPage(),
           ),
           GoRoute(
             path: ':id',

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/group_model.dart';
+import '../../../features/auth/state/auth_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../../../shared/widgets/user_avatar.dart';
@@ -21,7 +22,8 @@ class PublicGroupsPage extends ConsumerStatefulWidget {
 class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
   final _searchCtrl = TextEditingController();
   String _searchQuery = '';
-  bool _joining = false;
+  // Track per-group requesting state
+  final Map<String, bool> _requesting = {};
 
   @override
   void dispose() {
@@ -34,15 +36,15 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
     return e.toString().replaceFirst('Exception: ', '');
   }
 
-  Future<void> _join(GroupModel group) async {
-    setState(() => _joining = true);
+  Future<void> _apply(GroupModel group) async {
+    setState(() => _requesting[group.id] = true);
     try {
-      await ref.read(groupRepositoryProvider).joinGroupByInvite(group.id);
-      ref.read(groupsNotifierProvider.notifier).load();
+      await ref.read(groupRepositoryProvider).requestJoinGroup(group.id);
       ref.invalidate(publicGroupsProvider);
+      ref.invalidate(myJoinRequestsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Joined "${group.name}"!')),
+          SnackBar(content: Text('Join request sent to "${group.name}"')),
         );
       }
     } on Exception catch (e) {
@@ -55,17 +57,25 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
         );
       }
     } finally {
-      if (mounted) setState(() => _joining = false);
+      if (mounted) setState(() => _requesting[group.id] = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final publicGroupsAsync = ref.watch(publicGroupsProvider);
+    final currentUserId = ref.watch(authNotifierProvider).user?.id;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Discover Groups'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.mail_outline_rounded),
+            tooltip: 'My Requests & Invites',
+            onPressed: () => context.push('/groups/my-requests'),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(height: 1, color: AppThemeTokens.darkBorder),
@@ -121,12 +131,15 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
                   );
                 }
                 final group = filtered[index - 1];
+                final isMember = currentUserId != null &&
+                    group.members.any((m) => m.id == currentUserId);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: _PublicGroupCard(
                     group: group,
-                    joining: _joining,
-                    onJoin: () => _join(group),
+                    requesting: _requesting[group.id] == true,
+                    isMember: isMember,
+                    onApply: () => _apply(group),
                     onTap: () => context.push('/groups/${group.id}'),
                   ),
                 );
@@ -193,14 +206,16 @@ class _SearchBar extends StatelessWidget {
 class _PublicGroupCard extends StatelessWidget {
   const _PublicGroupCard({
     required this.group,
-    required this.joining,
-    required this.onJoin,
+    required this.requesting,
+    required this.isMember,
+    required this.onApply,
     required this.onTap,
   });
 
   final GroupModel group;
-  final bool joining;
-  final VoidCallback onJoin;
+  final bool requesting;
+  final bool isMember;
+  final VoidCallback onApply;
   final VoidCallback onTap;
 
   Color _sportColor() {
@@ -356,22 +371,21 @@ class _PublicGroupCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               // Action button
-              joining
+              requesting
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child:
-                          CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : group.distance != null
-                      ? _SmallFilledButton(
-                          label: 'Join',
-                          color: AppThemeTokens.primary500,
-                          onPressed: onJoin,
-                        )
-                      : _SmallOutlinedButton(
+                  : isMember
+                      ? _SmallOutlinedButton(
                           label: 'View',
                           onPressed: onTap,
+                        )
+                      : _SmallFilledButton(
+                          label: 'Apply',
+                          color: AppThemeTokens.primary500,
+                          onPressed: onApply,
                         ),
             ],
           ),

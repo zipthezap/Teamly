@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:dio/dio.dart';
 
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/extended_models.dart';
@@ -18,28 +20,143 @@ class NearbyGroupsPage extends ConsumerStatefulWidget {
 }
 
 class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
-  final _latCtrl = TextEditingController();
-  final _lngCtrl = TextEditingController();
+  final _locationCtrl = TextEditingController();
+  double? _lat;
+  double? _lng;
   double _radius = 25.0;
   List<NearbyGroupModel> _results = [];
   bool _loading = false;
   String? _error;
   bool _joining = false;
 
+  // Address autocomplete state
+  List<_PlaceSuggestion> _suggestions = [];
+  bool _searchingAddress = false;
+  bool _gettingLocation = false;
+  String? _geocodeError;
+
+  // Reusable Dio instance for geocoding
+  final _geocodeDio = Dio();
+
+  // Debounce timer for address search
+  DateTime _lastAddressSearch = DateTime.fromMillisecondsSinceEpoch(0);
+
   @override
   void dispose() {
-    _latCtrl.dispose();
-    _lngCtrl.dispose();
+    _locationCtrl.dispose();
+    _geocodeDio.close();
     super.dispose();
   }
 
-  Future<void> _search() async {
-    final lat = double.tryParse(_latCtrl.text.trim());
-    final lng = double.tryParse(_lngCtrl.text.trim());
+  Future<void> _useCurrentLocation() async {
+    setState(() {
+      _gettingLocation = true;
+      _error = null;
+    });
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        setState(() => _error = 'Location services are disabled. Please enable them in settings.');
+        return;
+      }
 
-    if (lat == null || lng == null) {
-      setState(
-          () => _error = 'Please enter valid latitude and longitude values');
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() => _error = 'Location permission denied.');
+          return;
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        setState(() => _error = 'Location permission permanently denied. Please enable in settings.');
+        return;
+      }
+
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
+      );
+      setState(() {
+        _lat = pos.latitude;
+        _lng = pos.longitude;
+        _locationCtrl.text = '${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)}';
+        _suggestions = [];
+      });
+      await _search();
+    } catch (e) {
+      setState(() => _error = 'Failed to get location: ${e.toString()}');
+    } finally {
+      if (mounted) setState(() => _gettingLocation = false);
+    }
+  }
+
+  Future<void> _searchAddress(String query) async {
+    if (query.length < 3) {
+      setState(() => _suggestions = []);
+      return;
+    }
+    // Debounce: ignore calls within 400ms of each other
+    final now = DateTime.now();
+    _lastAddressSearch = now;
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (_lastAddressSearch != now || !mounted) return;
+
+    setState(() {
+      _searchingAddress = true;
+      _geocodeError = null;
+    });
+    try {
+      final response = await _geocodeDio.get<List<dynamic>>(
+        'https://nominatim.openstreetmap.org/search',
+        queryParameters: {
+          'q': query,
+          'format': 'json',
+          'limit': '5',
+          'addressdetails': '1',
+        },
+        options: Options(
+          headers: {'User-Agent': 'TeamlyMobileApp/1.0'},
+          sendTimeout: const Duration(seconds: 5),
+          receiveTimeout: const Duration(seconds: 5),
+        ),
+      );
+      final items = response.data ?? [];
+      setState(() {
+        _suggestions = items.map((e) {
+          final m = e as Map<String, dynamic>;
+          return _PlaceSuggestion(
+            displayName: m['display_name'] as String? ?? '',
+            lat: double.tryParse(m['lat'] as String? ?? '') ?? 0,
+            lng: double.tryParse(m['lon'] as String? ?? '') ?? 0,
+          );
+        }).toList();
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _suggestions = [];
+          _geocodeError = 'Could not search addresses. Check your connection.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _searchingAddress = false);
+    }
+  }
+
+  void _selectSuggestion(_PlaceSuggestion suggestion) {
+    setState(() {
+      _lat = suggestion.lat;
+      _lng = suggestion.lng;
+      _locationCtrl.text = suggestion.displayName;
+      _suggestions = [];
+    });
+    FocusScope.of(context).unfocus();
+    _search();
+  }
+
+  Future<void> _search() async {
+    if (_lat == null || _lng == null) {
+      setState(() => _error = 'Please select a location first');
       return;
     }
 
@@ -49,12 +166,11 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
     });
 
     try {
-      final results =
-          await ref.read(groupRepositoryProvider).getNearbyGroups(
-                latitude: lat,
-                longitude: lng,
-                radius: _radius,
-              );
+      final results = await ref.read(groupRepositoryProvider).getNearbyGroups(
+            latitude: _lat!,
+            longitude: _lng!,
+            radius: _radius,
+          );
       setState(() => _results = results);
     } on Exception catch (e) {
       final msg = e is AppException
@@ -71,6 +187,7 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
     try {
       await ref.read(groupRepositoryProvider).requestJoinGroup(group.id);
       ref.read(groupsNotifierProvider.notifier).load();
+      ref.invalidate(myJoinRequestsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Join request sent to "${group.name}"')),
@@ -98,6 +215,13 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nearby Groups'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.mail_outline_rounded),
+            tooltip: 'My Requests & Invites',
+            onPressed: () => context.push('/groups/my-requests'),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(height: 1, color: AppThemeTokens.darkBorder),
@@ -105,21 +229,27 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
       ),
       body: Column(
         children: [
-          _SearchForm(
-            latCtrl: _latCtrl,
-            lngCtrl: _lngCtrl,
+          _LocationSearchForm(
+            locationCtrl: _locationCtrl,
             radius: _radius,
             loading: _loading,
+            gettingLocation: _gettingLocation,
+            searchingAddress: _searchingAddress,
+            suggestions: _suggestions,
             error: _error,
+            geocodeError: _geocodeError,
+            onAddressChanged: _searchAddress,
+            onSuggestionSelected: _selectSuggestion,
             onRadiusChanged: (v) => setState(() => _radius = v),
-            onSearch: _search,
+            onSearch: (_lat != null && _lng != null) ? _search : null,
+            onUseCurrentLocation: _useCurrentLocation,
           ),
           Expanded(
             child: _results.isEmpty
                 ? UiEmptyState(
                     icon: Icons.location_on_outlined,
                     title: 'Find groups near you',
-                    message: 'Enter your coordinates above\nto discover nearby groups.',
+                    message: 'Use your current location or search an address\nto discover nearby groups.',
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -144,26 +274,51 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
   }
 }
 
-// ── Search form ───────────────────────────────────────────────────────────────
+// ── Place suggestion model ────────────────────────────────────────────────────
 
-class _SearchForm extends StatelessWidget {
-  const _SearchForm({
-    required this.latCtrl,
-    required this.lngCtrl,
+class _PlaceSuggestion {
+  const _PlaceSuggestion({
+    required this.displayName,
+    required this.lat,
+    required this.lng,
+  });
+  final String displayName;
+  final double lat;
+  final double lng;
+}
+
+// ── Location search form ──────────────────────────────────────────────────────
+
+class _LocationSearchForm extends StatelessWidget {
+  const _LocationSearchForm({
+    required this.locationCtrl,
     required this.radius,
     required this.loading,
+    required this.gettingLocation,
+    required this.searchingAddress,
+    required this.suggestions,
     required this.error,
+    required this.geocodeError,
+    required this.onAddressChanged,
+    required this.onSuggestionSelected,
     required this.onRadiusChanged,
     required this.onSearch,
+    required this.onUseCurrentLocation,
   });
 
-  final TextEditingController latCtrl;
-  final TextEditingController lngCtrl;
+  final TextEditingController locationCtrl;
   final double radius;
   final bool loading;
+  final bool gettingLocation;
+  final bool searchingAddress;
+  final List<_PlaceSuggestion> suggestions;
   final String? error;
+  final String? geocodeError;
+  final ValueChanged<String> onAddressChanged;
+  final ValueChanged<_PlaceSuggestion> onSuggestionSelected;
   final ValueChanged<double> onRadiusChanged;
-  final VoidCallback onSearch;
+  final VoidCallback? onSearch;
+  final VoidCallback onUseCurrentLocation;
 
   InputDecoration _fieldDecor(String label) => InputDecoration(
         labelText: label,
@@ -227,30 +382,121 @@ class _SearchForm extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: latCtrl,
-                  style: const TextStyle(
-                      color: AppThemeTokens.darkText, fontSize: 14),
-                  decoration: _fieldDecor('Latitude'),
-                  keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true, signed: true),
+          // Address search field
+          TextField(
+            controller: locationCtrl,
+            style: const TextStyle(
+                color: AppThemeTokens.darkText, fontSize: 14),
+            decoration: _fieldDecor('Search address or city…').copyWith(
+              suffixIcon: searchingAddress
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : locationCtrl.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded,
+                              size: 16,
+                              color: AppThemeTokens.darkTextSecondary),
+                          onPressed: () => locationCtrl.clear(),
+                        )
+                      : null,
+            ),
+            onChanged: onAddressChanged,
+          ),
+          // Suggestions dropdown
+          if (suggestions.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(top: 4),
+              decoration: BoxDecoration(
+                color: AppThemeTokens.darkCard,
+                borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+                border: Border.all(color: AppThemeTokens.darkBorder),
+              ),
+              child: Column(
+                children: suggestions.map((s) {
+                  return InkWell(
+                    onTap: () => onSuggestionSelected(s),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.place_outlined,
+                              size: 14,
+                              color: AppThemeTokens.darkTextSecondary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              s.displayName,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppThemeTokens.darkText,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          if (geocodeError != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded,
+                    size: 13, color: AppThemeTokens.warning),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    geocodeError!,
+                    style: const TextStyle(
+                      color: AppThemeTokens.warning,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 10),
+          // "Use my location" button
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: gettingLocation ? null : onUseCurrentLocation,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppThemeTokens.primary400,
+                side: const BorderSide(color: AppThemeTokens.primary500),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(AppThemeTokens.radiusSm),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: lngCtrl,
-                  style: const TextStyle(
-                      color: AppThemeTokens.darkText, fontSize: 14),
-                  decoration: _fieldDecor('Longitude'),
-                  keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true, signed: true),
+              icon: gettingLocation
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.gps_fixed_rounded, size: 16),
+              label: Text(
+                gettingLocation ? 'Getting location…' : 'Use my current location',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-            ],
+            ),
           ),
           const SizedBox(height: 14),
           Row(
@@ -270,8 +516,7 @@ class _SearchForm extends StatelessWidget {
                 child: SliderTheme(
                   data: SliderThemeData(
                     activeTrackColor: AppThemeTokens.primary500,
-                    inactiveTrackColor:
-                        AppThemeTokens.darkBorder,
+                    inactiveTrackColor: AppThemeTokens.darkBorder,
                     thumbColor: AppThemeTokens.primary400,
                     overlayColor:
                         AppThemeTokens.primary500.withValues(alpha: 0.15),
@@ -293,7 +538,7 @@ class _SearchForm extends StatelessWidget {
           UiPrimaryButton(
             text: 'Search',
             icon: Icons.search_rounded,
-            onPressed: loading ? null : onSearch,
+            onPressed: (loading || onSearch == null) ? null : onSearch,
             loading: loading,
           ),
           if (error != null) ...[
@@ -477,26 +722,59 @@ class _NearbyGroupCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              // View button
-              GestureDetector(
-                onTap: onView,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: AppThemeTokens.primary500),
-                    borderRadius:
-                        BorderRadius.circular(AppThemeTokens.radiusSm),
-                  ),
-                  child: const Text(
-                    'View',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppThemeTokens.primary400,
+              // Action buttons
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  joining
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : GestureDetector(
+                          onTap: onJoin,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 7),
+                            decoration: BoxDecoration(
+                              gradient: AppThemeTokens.primaryGradient,
+                              borderRadius: BorderRadius.circular(
+                                  AppThemeTokens.radiusSm),
+                            ),
+                            child: const Text(
+                              'Apply',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                  const SizedBox(height: 6),
+                  GestureDetector(
+                    onTap: onView,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 5),
+                      decoration: BoxDecoration(
+                        border:
+                            Border.all(color: AppThemeTokens.primary500),
+                        borderRadius:
+                            BorderRadius.circular(AppThemeTokens.radiusSm),
+                      ),
+                      child: const Text(
+                        'View',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppThemeTokens.primary400,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             ],
           ),

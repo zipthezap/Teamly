@@ -85,3 +85,21 @@ final publicGroupsProvider =
     FutureProvider<List<GroupModel>>((ref) async {
   return ref.watch(groupRepositoryProvider).getPublicGroups();
 });
+
+// ---------------------------------------------------------------------------
+// User's pending invitations (admin invited this user)
+// ---------------------------------------------------------------------------
+
+final userInvitationsProvider =
+    FutureProvider<List<GroupInvitationModel>>((ref) async {
+  return ref.watch(groupRepositoryProvider).getUserInvitations();
+});
+
+// ---------------------------------------------------------------------------
+// User's own pending join requests
+// ---------------------------------------------------------------------------
+
+final myJoinRequestsProvider =
+    FutureProvider<List<UserJoinRequestModel>>((ref) async {
+  return ref.watch(groupRepositoryProvider).getMyJoinRequests();
+});

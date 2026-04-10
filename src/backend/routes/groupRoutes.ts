@@ -28,6 +28,7 @@ router.use(distributedAuthenticatedLimiter);
 
 // Get user's pending invitations (must come before /:id routes)
 router.get('/invitations/pending', asyncHandler(groupController.getUserInvitations));
+router.get('/my-join-requests', asyncHandler(groupController.getMyJoinRequests));
 
 router.post('/', asyncHandler(groupController.createGroup));
 // ETag enables 304 Not Modified responses for bandwidth optimization without HTTP caching
@@ -75,6 +76,7 @@ router.delete('/:id/picture', asyncHandler(groupController.deleteGroupPicture));
 router.post('/:id/join-request', asyncHandler(groupController.requestJoinGroup));
 router.get('/:id/join-requests', asyncHandler(groupController.getJoinRequests));
 router.post('/:id/join-requests/:requestId', asyncHandler(groupController.handleJoinRequest));
+router.delete('/:id/join-requests/:requestId', asyncHandler(groupController.cancelMyJoinRequest));
 // Allow invited users to respond to their invitations
 router.post('/:id/invitations/:requestId/respond', asyncHandler(groupController.respondToInvitation));
 
