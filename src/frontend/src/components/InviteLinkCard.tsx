@@ -323,7 +323,6 @@ const InviteLinkCard: React.FC<InviteLinkCardProps> = ({
         open={copySuccess} 
         autoHideDuration={3000} 
         onClose={() => setCopySuccess(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert severity="success" variant="filled">
           Invite link copied to clipboard!
