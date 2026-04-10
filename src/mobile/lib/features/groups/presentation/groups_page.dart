@@ -279,35 +279,36 @@ class _GroupStatPill extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
         decoration: BoxDecoration(
           color: selected
               ? color.withValues(alpha: 0.12)
-              : AppThemeTokens.darkCard,
-          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
           border: Border.all(
             color: selected
                 ? color.withValues(alpha: 0.4)
                 : AppThemeTokens.darkBorder,
           ),
         ),
-        child: Column(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, size: 20, color: color),
-            const SizedBox(height: 5),
+            const SizedBox(width: 6),
             Text(
               value,
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
                 color: color,
-                letterSpacing: -0.5,
               ),
             ),
+            const SizedBox(width: 5),
             Text(
               label,
               style: const TextStyle(
-                fontSize: 10,
+                fontSize: 11,
                 color: AppThemeTokens.darkTextSecondary,
                 fontWeight: FontWeight.w600,
               ),
@@ -366,12 +367,14 @@ class _GroupCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
         child: Container(
           decoration: BoxDecoration(
-            color: AppThemeTokens.darkCard,
-            borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-            border: Border.all(color: AppThemeTokens.darkBorder),
+            border: Border(
+              bottom: BorderSide(
+                color: AppThemeTokens.darkBorder.withValues(alpha: 0.8),
+              ),
+            ),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
             child: Row(
               children: [
                 // Avatar with sport color ring
@@ -389,7 +392,7 @@ class _GroupCard extends StatelessWidget {
                     radius: 24,
                   ),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -453,7 +456,7 @@ class _GroupCard extends StatelessWidget {
                           ),
                         ),
                       ],
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 5),
                       Wrap(
                         spacing: 6,
                         runSpacing: 4,
@@ -489,11 +492,8 @@ class _GroupCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: AppThemeTokens.darkTextSecondary,
-                      size: 20,
-                    ),
+                    const Icon(Icons.chevron_right_rounded,
+                        color: AppThemeTokens.darkTextSecondary, size: 20),
                     if (!(group.isPublic as bool? ?? true))
                       const Padding(
                         padding: EdgeInsets.only(top: 4),
