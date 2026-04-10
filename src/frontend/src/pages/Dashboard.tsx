@@ -34,6 +34,7 @@ const Dashboard = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
   const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
 
   useEffect(() => {
     fetchData();
@@ -114,7 +115,7 @@ const Dashboard = () => {
             alignSelf: { md: 'flex-start' },
             maxHeight: { md: 'calc(100vh - 100px)' },
             overflowY: { md: 'auto' },
-             background: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.9 : 0.96),
+             background: alpha(theme.palette.background.paper, isDark ? 0.9 : 0.96),
              borderRadius: { xs: 2, md: 3 },
              border: `1px solid ${theme.palette.divider}`,
              p: { xs: 2, sm: 2.5, md: 3 },
@@ -186,7 +187,7 @@ const Dashboard = () => {
           sx={{
             flex: 1,
             minWidth: 0,
-            background: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.9 : 0.96),
+            background: alpha(theme.palette.background.paper, isDark ? 0.9 : 0.96),
             borderRadius: { xs: 2, md: 3 },
             border: `1px solid ${theme.palette.divider}`,
             p: { xs: 2, sm: 2.5, md: 3 },
@@ -245,7 +246,7 @@ const Dashboard = () => {
                   >
                     <CardContent sx={{ flexGrow: 1, p: { xs: 2, sm: 2.5, md: 3 } }}>
                       <Box display="flex" gap={2} mb={1.5}>
-                          <Box sx={{ width: { xs: 50, sm: 60 }, height: { xs: 50, sm: 60 }, bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.2 : 0.12), borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Box sx={{ width: { xs: 50, sm: 60 }, height: { xs: 50, sm: 60 }, bgcolor: alpha(theme.palette.primary.main, isDark ? 0.2 : 0.12), borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             {(() => {
                               const dateObj = new Date(event.startTime);
                               const month = dateObj.toLocaleString('en-US', { month: 'short' });

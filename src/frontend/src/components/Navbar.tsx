@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, NavLink as RouterNavLink } from 'react-router-dom';
+import { Link, useNavigate, NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import NotificationsPopover from './NotificationsPopover';
@@ -15,7 +15,7 @@ const NavItem = ({ to, label, svg, onClick }: { to: string; label: string; svg: 
   const isDark = theme.palette.mode === 'dark';
 
   return (
-    <RouterNavLink
+    <NavLink
       to={to}
       onClick={onClick}
       className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition no-underline border"
@@ -30,7 +30,7 @@ const NavItem = ({ to, label, svg, onClick }: { to: string; label: string; svg: 
     >
       {svg}
       <span>{label}</span>
-    </RouterNavLink>
+    </NavLink>
   );
 };
 
