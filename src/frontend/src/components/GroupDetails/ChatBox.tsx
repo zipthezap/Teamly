@@ -132,6 +132,7 @@ const ChatBox: React.FC<ChatBoxProps> = React.memo(({ chat, message, setMessage,
           <button 
             onClick={onSend}
             disabled={!message.trim()}
+            aria-label={t('groupDetails.send')}
             className="px-3 sm:px-5 py-2 sm:py-2.5 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed text-white font-medium rounded-lg shadow-lg transition-all duration-200 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm flex-shrink-0"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
