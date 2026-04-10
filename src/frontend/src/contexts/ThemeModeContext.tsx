@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { PaletteMode } from '@mui/material';
 
 interface ThemeModeContextValue {
@@ -30,6 +30,10 @@ export const ThemeModeProvider: React.FC<React.PropsWithChildren> = ({ children 
   }, []);
 
   const value = useMemo(() => ({ mode, toggleMode }), [mode, toggleMode]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', mode);
+  }, [mode]);
 
   return <ThemeModeContext.Provider value={value}>{children}</ThemeModeContext.Provider>;
 };

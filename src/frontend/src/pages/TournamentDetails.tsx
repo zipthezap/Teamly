@@ -1165,7 +1165,6 @@ const TournamentDetails: React.FC = () => {
         open={notification.open}
         autoHideDuration={6000}
         onClose={hideNotification}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <Alert 
           onClose={hideNotification} 
