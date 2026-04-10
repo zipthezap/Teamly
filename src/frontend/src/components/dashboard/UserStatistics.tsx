@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useTheme, alpha } from '@mui/material/styles';
 import { eventsAPI } from '../../services/api';
 
 interface Statistics {
@@ -29,6 +30,8 @@ const UserStatistics: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { t } = useTranslation();
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
 
   const fetchStatistics = useCallback(async () => {
     try {
@@ -63,13 +66,24 @@ const UserStatistics: React.FC = () => {
   }
 
   const StatCard = ({ title, value, icon, color }: { title: string; value: number | string; icon: React.ReactNode; color: string }) => (
-    <div className={`bg-[#1a2233] rounded-xl shadow-md p-3 sm:p-5 flex flex-col h-full justify-between`}>
+    <div
+      className="rounded-xl p-3 sm:p-5 flex flex-col h-full justify-between"
+      style={{
+        background: alpha(theme.palette.background.paper, isDark ? 0.9 : 0.96),
+        border: `1px solid ${theme.palette.divider}`,
+      }}
+    >
       <div className="flex items-center justify-between mb-1 sm:mb-2">
         <div>
-          <div className="text-xs text-[#a1a6b4] mb-0.5 sm:mb-1">{title}</div>
+          <div className="text-xs mb-0.5 sm:mb-1" style={{ color: theme.palette.text.secondary }}>{title}</div>
           <div className={`text-xl sm:text-2xl font-bold ${color}`}>{value}</div>
         </div>
-        <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-[#232946]">{icon}</div>
+        <div
+          className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full"
+          style={{ background: alpha(theme.palette.primary.main, isDark ? 0.2 : 0.1) }}
+        >
+          {icon}
+        </div>
       </div>
     </div>
   );

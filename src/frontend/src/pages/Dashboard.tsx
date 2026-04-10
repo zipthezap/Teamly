@@ -12,6 +12,7 @@ import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
 import AvatarGroup from '@mui/material/AvatarGroup';
+import { useTheme, alpha } from '@mui/material/styles';
 import { groupsAPI, eventsAPI } from '../services/api';
 import { LoadingSpinner, EmptyState } from '../components/common';
 import UserStatistics from '../components/dashboard/UserStatistics';
@@ -32,6 +33,7 @@ const Dashboard = () => {
   const location = useLocation();
   const { user } = useAuth();
   const { t } = useTranslation();
+  const theme = useTheme();
 
   useEffect(() => {
     fetchData();
@@ -112,13 +114,12 @@ const Dashboard = () => {
             alignSelf: { md: 'flex-start' },
             maxHeight: { md: 'calc(100vh - 100px)' },
             overflowY: { md: 'auto' },
-            background: '#1a202c',
-            borderRadius: { xs: 2, md: 3 },
-            boxShadow: 3,
-            border: '1px solid #374151',
-            p: { xs: 2, sm: 2.5, md: 3 },
-          }}
-        >
+             background: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.9 : 0.96),
+             borderRadius: { xs: 2, md: 3 },
+             border: `1px solid ${theme.palette.divider}`,
+             p: { xs: 2, sm: 2.5, md: 3 },
+           }}
+         >
           <Stack spacing={3}>
             {/* Recent Activity */}
             <RecentActivityTimeline
@@ -181,7 +182,16 @@ const Dashboard = () => {
         </Box>
 
         {/* Main Content */}
-        <Box sx={{ flex: 1, minWidth: 0, background: '#1a202c', borderRadius: { xs: 2, md: 3 }, boxShadow: 3, border: '1px solid #374151', p: { xs: 2, sm: 2.5, md: 3 } }}>
+        <Box
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            background: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.9 : 0.96),
+            borderRadius: { xs: 2, md: 3 },
+            border: `1px solid ${theme.palette.divider}`,
+            p: { xs: 2, sm: 2.5, md: 3 },
+          }}
+        >
           {/* Statistics Section */}
           <Box sx={{ mb: { xs: 3, md: 4 } }}>
             <UserStatistics />
@@ -218,10 +228,24 @@ const Dashboard = () => {
                 const _isParticipating = event.participants?.some(p => p.userId === user?.id);
                 const isFull = event.maxPlayers && event.participants && event.participants.length >= event.maxPlayers;
                 return (
-                  <Card key={event.id} sx={{ height: { xs: 'auto', md: 340 }, minHeight: { xs: 'auto', md: 340 }, display: 'flex', flexDirection: 'column', transition: 'all 0.3s', background: 'rgba(51,65,85,0.98)', borderRadius: 2, boxShadow: 2, border: '1.5px solid #2d3a53', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6, borderColor: 'primary.main' } }}>
+                  <Card
+                    key={event.id}
+                    sx={{
+                      height: { xs: 'auto', md: 340 },
+                      minHeight: { xs: 'auto', md: 340 },
+                      display: 'flex',
+                      flexDirection: 'column',
+                      transition: 'all 0.25s',
+                      background: theme.palette.background.paper,
+                      borderRadius: 2,
+                      boxShadow: 'none',
+                      border: `1px solid ${theme.palette.divider}`,
+                      '&:hover': { transform: 'translateY(-2px)', borderColor: 'primary.main' },
+                    }}
+                  >
                     <CardContent sx={{ flexGrow: 1, p: { xs: 2, sm: 2.5, md: 3 } }}>
                       <Box display="flex" gap={2} mb={1.5}>
-                          <Box sx={{ width: { xs: 50, sm: 60 }, height: { xs: 50, sm: 60 }, bgcolor: 'slate.600', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Box sx={{ width: { xs: 50, sm: 60 }, height: { xs: 50, sm: 60 }, bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.2 : 0.12), borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             {(() => {
                               const dateObj = new Date(event.startTime);
                               const month = dateObj.toLocaleString('en-US', { month: 'short' });
@@ -345,7 +369,20 @@ const Dashboard = () => {
                 const hasJoined = group.members?.some(m => m.id === user?.id);
                 const recentMembers = hasJoined ? (group.members?.slice(0, 4) || []) : [];
                 return (
-                  <Card key={group.id} sx={{ height: '100%', display: 'flex', flexDirection: 'column', transition: 'all 0.3s', background: 'rgba(51,65,85,0.98)', borderRadius: 2, boxShadow: 2, border: '1.5px solid #2d3a53', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6, borderColor: 'primary.main' } }}>
+                  <Card
+                    key={group.id}
+                    sx={{
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      transition: 'all 0.25s',
+                      background: theme.palette.background.paper,
+                      borderRadius: 2,
+                      boxShadow: 'none',
+                      border: `1px solid ${theme.palette.divider}`,
+                      '&:hover': { transform: 'translateY(-2px)', borderColor: 'primary.main' },
+                    }}
+                  >
                     <CardContent sx={{ flexGrow: 1, p: { xs: 2, sm: 2.5, md: 3 } }}>
                       <Box display="flex" gap={2} mb={1.5}>
                         <Avatar

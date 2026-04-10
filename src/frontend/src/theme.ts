@@ -93,7 +93,7 @@ export const getAppTheme = (mode: PaletteMode) =>
           root: {
             backgroundImage: 'none',
             border: mode === 'dark' ? '1px solid rgba(148,163,184,0.14)' : '1px solid rgba(15,23,42,0.07)',
-            boxShadow: mode === 'dark' ? '0 12px 30px rgba(2, 6, 23, 0.3)' : '0 12px 30px rgba(15, 23, 42, 0.08)',
+            boxShadow: mode === 'dark' ? '0 6px 18px rgba(2, 6, 23, 0.22)' : '0 6px 18px rgba(15, 23, 42, 0.06)',
           },
         },
       },
