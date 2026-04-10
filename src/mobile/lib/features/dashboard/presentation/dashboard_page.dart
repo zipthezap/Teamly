@@ -639,7 +639,7 @@ class _NoEventsCard extends StatelessWidget {
                     color: isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
                   'Create one to get started!',
                   style: TextStyle(
