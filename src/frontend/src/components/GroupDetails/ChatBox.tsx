@@ -43,26 +43,26 @@ const ChatBox: React.FC<ChatBoxProps> = React.memo(({ chat, message, setMessage,
   return (
     <section className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl shadow-lg border border-slate-700/50 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-700/50 bg-slate-800/50 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="px-3 sm:px-5 py-2.5 sm:py-4 border-b border-slate-700/50 bg-slate-800/50 backdrop-blur-sm">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+            <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-gray-100">{t('groupDetails.groupChat')}</h2>
+            <h2 className="text-sm sm:text-lg font-semibold text-gray-100">{t('groupDetails.groupChat')}</h2>
             <p className="text-xs text-slate-400">{chat.length} {chat.length === 1 ? t('groupDetails.message') : t('groupDetails.messages')}</p>
           </div>
         </div>
       </div>
       
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[200px] max-h-[300px] bg-slate-900/30">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2 sm:space-y-3 min-h-[160px] max-h-[250px] sm:max-h-[300px] bg-slate-900/30">
         {chat.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center py-8">
-            <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-3">
-              <svg className="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex flex-col items-center justify-center h-full text-center py-6">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-slate-800 flex items-center justify-center mb-2 sm:mb-3">
+              <svg className="w-6 h-6 sm:w-8 sm:h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </div>
@@ -77,8 +77,8 @@ const ChatBox: React.FC<ChatBoxProps> = React.memo(({ chat, message, setMessage,
             const profilePictureUrl = getImageUrl(msg.user?.profilePicture);
             
             return (
-              <div key={msg.id} className="flex items-start gap-3 animate-fadein">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white shadow-lg flex-shrink-0 ring-2 ring-slate-700 overflow-hidden">
+              <div key={msg.id} className="flex items-start gap-2 sm:gap-3 animate-fadein">
+                <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xs sm:text-sm font-bold text-white shadow-lg flex-shrink-0 ring-2 ring-slate-700 overflow-hidden">
                   {profilePictureUrl ? (
                     <img src={profilePictureUrl} alt={senderName} className="w-full h-full object-cover" />
                   ) : (
@@ -86,11 +86,11 @@ const ChatBox: React.FC<ChatBoxProps> = React.memo(({ chat, message, setMessage,
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2 mb-1">
-                    <span className="font-semibold text-sm text-gray-200">{senderName}</span>
-                    <span className="text-xs text-slate-500">{formatTime(String(messageTime))}</span>
+                  <div className="flex items-baseline gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+                    <span className="font-semibold text-xs sm:text-sm text-gray-200 truncate">{senderName}</span>
+                    <span className="text-xs text-slate-500 flex-shrink-0">{formatTime(String(messageTime))}</span>
                   </div>
-                  <div className="bg-slate-800/60 rounded-lg rounded-tl-none px-3 py-2 text-sm text-gray-300 shadow-sm border border-slate-700/30">
+                  <div className="bg-slate-800/60 rounded-lg rounded-tl-none px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-300 shadow-sm border border-slate-700/30 break-words">
                     {messageContent}
                   </div>
                 </div>
@@ -103,7 +103,7 @@ const ChatBox: React.FC<ChatBoxProps> = React.memo(({ chat, message, setMessage,
       
       {/* Typing Indicator */}
       {isTyping && (
-        <div className="px-5 py-2 bg-slate-800/30 border-t border-slate-700/30">
+        <div className="px-3 sm:px-5 py-1.5 sm:py-2 bg-slate-800/30 border-t border-slate-700/30">
           <div className="flex items-center gap-2 text-xs text-slate-400">
             <div className="flex gap-1">
               <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
@@ -116,12 +116,12 @@ const ChatBox: React.FC<ChatBoxProps> = React.memo(({ chat, message, setMessage,
       )}
       
       {/* Input Area */}
-      <div className="px-4 py-4 bg-slate-800/50 border-t border-slate-700/50 backdrop-blur-sm">
-        <div className="flex gap-3 items-end">
+      <div className="px-3 sm:px-4 py-2.5 sm:py-4 bg-slate-800/50 border-t border-slate-700/50 backdrop-blur-sm">
+        <div className="flex gap-2 sm:gap-3 items-end">
           <div className="flex-1">
             <input
               type="text"
-              className="w-full px-4 py-2.5 bg-slate-900/50 border border-slate-700/50 rounded-lg text-gray-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500/50 transition text-sm"
+              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-900/50 border border-slate-700/50 rounded-lg text-gray-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500/50 transition text-xs sm:text-sm"
               placeholder={t('groupDetails.typeMessage')}
               value={message}
               onChange={e => setMessage(e.target.value)}
@@ -132,12 +132,12 @@ const ChatBox: React.FC<ChatBoxProps> = React.memo(({ chat, message, setMessage,
           <button 
             onClick={onSend}
             disabled={!message.trim()}
-            className="px-5 py-2.5 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed text-white font-medium rounded-lg shadow-lg transition-all duration-200 flex items-center gap-2 text-sm"
+            className="px-3 sm:px-5 py-2 sm:py-2.5 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed text-white font-medium rounded-lg shadow-lg transition-all duration-200 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm flex-shrink-0"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
             </svg>
-            {t('groupDetails.send')}
+            <span className="hidden sm:inline">{t('groupDetails.send')}</span>
           </button>
         </div>
       </div>

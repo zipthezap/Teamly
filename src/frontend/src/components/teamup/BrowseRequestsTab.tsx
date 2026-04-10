@@ -119,7 +119,7 @@ const BrowseRequestsTab = () => {
 
       <Box sx={{ mb: 3 }}>
         <Grid container spacing={2}>
-          <Grid size={{ xs: 12, sm: 4 }}>
+          <Grid size={{ xs: 6, sm: 4 }}>
             <TextField
               fullWidth
               select
@@ -135,7 +135,7 @@ const BrowseRequestsTab = () => {
               ))}
             </TextField>
           </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
+          <Grid size={{ xs: 6, sm: 4 }}>
             <TextField
               fullWidth
               label={t('teamup.filterByLocation')}

@@ -47,8 +47,8 @@ const MemberList: React.FC<MemberListProps> = ({ groupId, isAdmin, onRemove }) =
   if (isError) return <div className="text-red-400 py-4">{t('groupDetails.failedToLoadMembers')}</div>;
 
   return (
-    <section className="bg-slate-800 rounded-lg p-4 shadow">
-      <h2 className="text-xl font-semibold mb-2">{t('groupDetails.members', { count: members.length })}</h2>
+    <section className="bg-slate-800 rounded-lg p-3 sm:p-4 shadow">
+      <h2 className="text-base sm:text-xl font-semibold mb-1.5 sm:mb-2">{t('groupDetails.members', { count: members.length })}</h2>
       {members.length === 0 ? (
         <div className="text-slate-400 text-center py-4">{t('groupDetails.noMembers', 'No members found.')}</div>
       ) : (
@@ -64,36 +64,38 @@ const MemberList: React.FC<MemberListProps> = ({ groupId, isAdmin, onRemove }) =
               memberId && currentUserId && String(memberId) === String(currentUserId)
             );
             return (
-              <li key={memberId} className="flex items-center gap-3 mb-2">
+              <li key={memberId} className="flex items-center gap-2 mb-1 py-0.5">
                 <ProfileAvatar
                   picture={memberProfilePicture}
                   name={memberName}
-                  size={32}
+                  size={24}
                 />
                 <div className="flex-1 min-w-0">
-                  <span className="font-medium">{memberName}</span>
-                  {(memberRole?.toLowerCase() === "admin") && (
-                    <span
-                      className="ml-2 text-xs border border-blue-400 text-blue-400 bg-blue-900/10 px-2 py-0.5 rounded-full font-semibold tracking-wide shadow-sm"
-                      style={{ letterSpacing: '0.04em' }}
-                    >
-                      {t('groupDetails.admin')}
-                    </span>
-                  )}
-                  <div className="text-xs text-slate-400">{memberEmail}</div>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className="font-medium text-sm leading-tight truncate">{memberName}</span>
+                    {(memberRole?.toLowerCase() === "admin") && (
+                      <span
+                        className="text-xs border border-blue-400 text-blue-400 bg-blue-900/10 px-1.5 py-0 rounded-full font-semibold tracking-wide shadow-sm flex-shrink-0"
+                        style={{ letterSpacing: '0.04em' }}
+                      >
+                        {t('groupDetails.admin')}
+                      </span>
+                    )}
+                  </div>
+                  <div className="hidden sm:block text-xs text-slate-400 truncate">{memberEmail}</div>
                 </div>
                 <span
-                  className={`w-2 h-2 rounded-full flex-shrink-0 ${isOnline ? "bg-green-400" : "bg-slate-500"}`}
+                  className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isOnline ? "bg-green-400" : "bg-slate-500"}`}
                   title={isOnline ? t('groupDetails.online') : t('groupDetails.offline')}
                 ></span>
                 {isAdmin && onRemove && !isSelfAdmin && memberId && (
                   <button
-                    className="ml-2 flex-shrink-0 text-red-500 hover:text-red-700 p-1 rounded focus:outline-none disabled:opacity-50"
+                    className="flex-shrink-0 text-red-500 hover:text-red-700 p-0.5 rounded focus:outline-none disabled:opacity-50"
                     title={t('groupDetails.remove')}
                     onClick={() => handleRemove(memberId)}
                     disabled={removingId === memberId}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                       <path fillRule="evenodd" d="M6.293 6.293a1 1 0 011.414 0L10 8.586l2.293-2.293a1 1 0 111.414 1.414L11.414 10l2.293 2.293a1 1 0 01-1.414 1.414L10 11.414l-2.293 2.293a1 1 0 01-1.414-1.414L8.586 10 6.293 7.707a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
                   </button>
