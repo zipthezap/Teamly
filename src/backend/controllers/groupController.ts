@@ -432,13 +432,24 @@ export const getGroup = async (req: Request, res: Response) => {
     role: string;
   }
 
-  const mappedGroup = {
+  interface PublicGroupMemberView {
+    id: string;
+    name: string;
+    email: string | undefined;
+    profilePicture: string | null;
+    role: string;
+  }
+
+  const mappedGroup: Omit<typeof group, 'members'> & {
+    members: PublicGroupMemberView[];
+    events: [];
+  } = {
     ...group,
     // Omit email for non-member public views
     members: group.members.map((member: PublicGroupMemberWithUser) => ({
       id: member.userId,
       name: member.user.name,
-      email: undefined,
+      email: undefined as string | undefined,
       profilePicture: member.user.profilePicture,
       role: member.role,
     })),
