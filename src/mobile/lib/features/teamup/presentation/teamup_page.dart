@@ -337,6 +337,7 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Form(
       key: _formKey,
       child: ListView(
@@ -362,7 +363,8 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
               labelText: 'Request type',
               prefixIcon: Icon(Icons.category_outlined),
             ),
-            dropdownColor: AppThemeTokens.darkCardElevated,
+            dropdownColor:
+                isDark ? AppThemeTokens.darkCardElevated : AppThemeTokens.lightCardElevated,
             items: const [
               DropdownMenuItem(
                   value: 'looking_for_play', child: Text('Looking to play')),
@@ -381,7 +383,8 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
               labelText: 'Sport type',
               prefixIcon: Icon(Icons.sports_outlined),
             ),
-            dropdownColor: AppThemeTokens.darkCardElevated,
+            dropdownColor:
+                isDark ? AppThemeTokens.darkCardElevated : AppThemeTokens.lightCardElevated,
             items: kSportTypes
                 .map(
                   (s) => DropdownMenuItem(
@@ -567,13 +570,17 @@ class _RequestTile extends StatelessWidget {
                           _MetaChip(
                             icon: Icons.place_outlined,
                             label: request.city!,
-                            color: AppThemeTokens.darkTextSecondary,
+                            color: isDark
+                                ? AppThemeTokens.darkTextSecondary
+                                : AppThemeTokens.lightTextSecondary,
                           ),
                         if (request.availableFrom != null)
                           _MetaChip(
                             icon: Icons.calendar_today_outlined,
                             label: df.format(request.availableFrom!.toLocal()),
-                            color: AppThemeTokens.darkTextSecondary,
+                            color: isDark
+                                ? AppThemeTokens.darkTextSecondary
+                                : AppThemeTokens.lightTextSecondary,
                           ),
                         if (request.responseCount > 0)
                           _MetaChip(
@@ -711,7 +718,7 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppThemeTokens.darkBorder,
+                  color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -791,8 +798,10 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                         padding: const EdgeInsets.all(14),
                         child: Text(
                           r.description!,
-                          style: const TextStyle(
-                            color: AppThemeTokens.darkTextSecondary,
+                          style: TextStyle(
+                            color: isDark
+                                ? AppThemeTokens.darkTextSecondary
+                                : AppThemeTokens.lightTextSecondary,
                             fontSize: 14,
                             height: 1.5,
                           ),
@@ -845,13 +854,15 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                                 radius: 12,
                               ),
                               const SizedBox(width: 6),
-                              Text(
-                                r.creatorName,
-                                style: const TextStyle(
-                                  color: AppThemeTokens.darkTextSecondary,
-                                  fontSize: 13,
+                                Text(
+                                  r.creatorName,
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? AppThemeTokens.darkTextSecondary
+                                        : AppThemeTokens.lightTextSecondary,
+                                    fontSize: 13,
+                                  ),
                                 ),
-                              ),
                             ],
                           ),
                         ],
@@ -874,22 +885,32 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                           return Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: AppThemeTokens.darkCardElevated,
+                              color: isDark
+                                  ? AppThemeTokens.darkCardElevated
+                                  : AppThemeTokens.lightCardElevated,
                               borderRadius:
                                   BorderRadius.circular(AppThemeTokens.radiusMd),
-                              border: Border.all(color: AppThemeTokens.darkBorder),
+                              border: Border.all(
+                                color: isDark
+                                    ? AppThemeTokens.darkBorder
+                                    : AppThemeTokens.lightBorder,
+                              ),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.chat_bubble_outline,
                                     size: 16,
-                                    color: AppThemeTokens.darkTextMuted),
-                                SizedBox(width: 8),
+                                    color: isDark
+                                        ? AppThemeTokens.darkTextMuted
+                                        : AppThemeTokens.lightTextMuted),
+                                const SizedBox(width: 8),
                                 Text(
                                   'No responses yet.',
                                   style: TextStyle(
-                                      color: AppThemeTokens.darkTextSecondary,
+                                      color: isDark
+                                          ? AppThemeTokens.darkTextSecondary
+                                          : AppThemeTokens.lightTextSecondary,
                                       fontSize: 13),
                                 ),
                               ],
@@ -903,11 +924,15 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                                   margin: const EdgeInsets.only(bottom: 8),
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: AppThemeTokens.darkCardElevated,
+                                    color: isDark
+                                        ? AppThemeTokens.darkCardElevated
+                                        : AppThemeTokens.lightCardElevated,
                                     borderRadius: BorderRadius.circular(
                                         AppThemeTokens.radiusMd),
                                     border: Border.all(
-                                        color: AppThemeTokens.darkBorder),
+                                        color: isDark
+                                            ? AppThemeTokens.darkBorder
+                                            : AppThemeTokens.lightBorder),
                                   ),
                                   child: Row(
                                     crossAxisAlignment:
@@ -927,15 +952,17 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                                             Row(
                                               children: [
                                                 Expanded(
-                                                  child: Text(
-                                                    resp.responderName,
-                                                    style: const TextStyle(
-                                                      fontWeight: FontWeight.w600,
-                                                      fontSize: 13,
-                                                      color: AppThemeTokens.darkText,
-                                                    ),
-                                                  ),
-                                                ),
+                                                   child: Text(
+                                                     resp.responderName,
+                                                     style: TextStyle(
+                                                       fontWeight: FontWeight.w600,
+                                                       fontSize: 13,
+                                                       color: isDark
+                                                           ? AppThemeTokens.darkText
+                                                           : AppThemeTokens.lightText,
+                                                     ),
+                                                   ),
+                                                 ),
                                                 UiStatusBadge(
                                                   label: resp.status,
                                                   status: UiStatusBadge.fromString(
@@ -944,13 +971,15 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                                               ],
                                             ),
                                             const SizedBox(height: 4),
-                                            Text(
-                                              resp.message,
-                                              style: const TextStyle(
-                                                color: AppThemeTokens.darkTextSecondary,
-                                                fontSize: 13,
-                                                height: 1.4,
-                                              ),
+                                             Text(
+                                               resp.message,
+                                               style: TextStyle(
+                                                 color: isDark
+                                                     ? AppThemeTokens.darkTextSecondary
+                                                     : AppThemeTokens.lightTextSecondary,
+                                                 fontSize: 13,
+                                                 height: 1.4,
+                                               ),
                                             ),
                                           ],
                                         ),
@@ -1037,6 +1066,7 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final selected = value.isNotEmpty;
     final displayLabel =
         selected ? options.firstWhere((e) => e.key == value).value : label;
@@ -1069,10 +1099,14 @@ class _FilterChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected
               ? AppThemeTokens.primary500.withValues(alpha: 0.15)
-              : AppThemeTokens.darkCardElevated,
+              : (isDark
+                    ? AppThemeTokens.darkCardElevated
+                    : AppThemeTokens.lightCardElevated),
           borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
           border: Border.all(
-            color: selected ? AppThemeTokens.primary500 : AppThemeTokens.darkBorder,
+            color: selected
+                ? AppThemeTokens.primary500
+                : (isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder),
             width: selected ? 1.5 : 1,
           ),
         ),
@@ -1090,7 +1124,9 @@ class _FilterChip extends StatelessWidget {
               style: TextStyle(
                 color: selected
                     ? AppThemeTokens.primary400
-                    : AppThemeTokens.darkTextSecondary,
+                    : (isDark
+                          ? AppThemeTokens.darkTextSecondary
+                          : AppThemeTokens.lightTextSecondary),
                 fontSize: 13,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
               ),
@@ -1101,7 +1137,9 @@ class _FilterChip extends StatelessWidget {
               size: 16,
               color: selected
                   ? AppThemeTokens.primary400
-                  : AppThemeTokens.darkTextMuted,
+                  : (isDark
+                        ? AppThemeTokens.darkTextMuted
+                        : AppThemeTokens.lightTextMuted),
             ),
           ],
         ),
