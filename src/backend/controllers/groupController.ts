@@ -1339,6 +1339,35 @@ export const requestJoinGroup = async (req: Request, res: Response) => {
   res.status(201).json(joinRequest);
 };
 
+// Cancel own join request (user cancels their own pending request)
+export const cancelMyJoinRequest = async (req: Request, res: Response) => {
+  const { id, requestId } = req.params;
+  const userId = req.user!.id;
+
+  const request = await prisma.groupJoinRequest.findUnique({
+    where: { id: requestId },
+  });
+
+  if (!request) {
+    throw new NotFoundError('Join request not found');
+  }
+
+  if (request.groupId !== id) {
+    throw new BadRequestError('Join request does not belong to this group');
+  }
+
+  if (request.userId !== userId) {
+    throw new ForbiddenError('You can only cancel your own join requests');
+  }
+
+  if (request.status !== 'pending') {
+    throw new BadRequestError('This request has already been processed');
+  }
+
+  await prisma.groupJoinRequest.delete({ where: { id: requestId } });
+  res.status(204).send();
+};
+
 // Get join requests for a group (admin only)
 export const getJoinRequests = async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -1638,6 +1667,33 @@ export const getUserInvitations = async (req: Request, res: Response) => {
   });
 
   res.json(invitations);
+};
+
+// Get the current user's own pending join requests (requests they submitted)
+export const getMyJoinRequests = async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+
+  const requests = await prisma.groupJoinRequest.findMany({
+    where: {
+      userId,
+      status: 'pending',
+      createdBy: 'REQUEST',
+    },
+    include: {
+      group: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          picture: true,
+          isPublic: true,
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  res.json(requests);
 };
 
 // Get group info for invite preview (public groups only)

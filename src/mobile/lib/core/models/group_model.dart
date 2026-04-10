@@ -179,3 +179,83 @@ class GroupModel extends Equatable {
         maxMembers
       ];
 }
+
+// ── Invitation received by the user (admin sent invite to user) ──────────────
+
+class GroupInvitationModel extends Equatable {
+  const GroupInvitationModel({
+    required this.id,
+    required this.groupId,
+    required this.groupName,
+    required this.status,
+    required this.createdAt,
+    this.groupDescription,
+    this.groupPicture,
+    this.invitedByName,
+  });
+
+  final String id;
+  final String groupId;
+  final String groupName;
+  final String status;
+  final DateTime createdAt;
+  final String? groupDescription;
+  final String? groupPicture;
+  final String? invitedByName;
+
+  factory GroupInvitationModel.fromJson(Map<String, dynamic> json) {
+    final group = json['group'] as Map<String, dynamic>?;
+    final invitedBy = json['invitedBy'] as Map<String, dynamic>?;
+    return GroupInvitationModel(
+      id: json['id'] as String,
+      groupId: (group?['id'] ?? json['groupId']) as String,
+      groupName: group?['name'] as String? ?? 'Unknown Group',
+      status: json['status'] as String? ?? 'pending',
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      groupDescription: group?['description'] as String?,
+      groupPicture: group?['picture'] as String?,
+      invitedByName: invitedBy?['name'] as String?,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, groupId, status, createdAt];
+}
+
+// ── Join request submitted by the user ───────────────────────────────────────
+
+class UserJoinRequestModel extends Equatable {
+  const UserJoinRequestModel({
+    required this.id,
+    required this.groupId,
+    required this.groupName,
+    required this.status,
+    required this.createdAt,
+    this.groupDescription,
+    this.groupPicture,
+  });
+
+  final String id;
+  final String groupId;
+  final String groupName;
+  final String status;
+  final DateTime createdAt;
+  final String? groupDescription;
+  final String? groupPicture;
+
+  factory UserJoinRequestModel.fromJson(Map<String, dynamic> json) {
+    final group = json['group'] as Map<String, dynamic>?;
+    return UserJoinRequestModel(
+      id: json['id'] as String,
+      groupId: (group?['id'] ?? json['groupId']) as String,
+      groupName: group?['name'] as String? ?? 'Unknown Group',
+      status: json['status'] as String? ?? 'pending',
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      groupDescription: group?['description'] as String?,
+      groupPicture: group?['picture'] as String?,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, groupId, status, createdAt];
+}

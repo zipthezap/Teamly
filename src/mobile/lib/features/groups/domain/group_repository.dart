@@ -30,4 +30,8 @@ abstract class GroupRepository {
   Future<void> inviteMember(String groupId, String email);
   Future<String> uploadGroupPicture(String groupId, String filePath);
   Future<void> deleteGroupPicture(String groupId);
+  Future<List<GroupInvitationModel>> getUserInvitations();
+  Future<List<UserJoinRequestModel>> getMyJoinRequests();
+  Future<void> respondToInvitation(String groupId, String requestId, String action);
+  Future<void> cancelJoinRequest(String groupId, String requestId);
 }

@@ -229,6 +229,40 @@ class GroupRepositoryImpl implements GroupRepository {
   Future<void> deleteGroupPicture(String groupId) async {
     await _dio.delete<void>('/groups/$groupId/picture');
   }
+
+  @override
+  Future<List<GroupInvitationModel>> getUserInvitations() async {
+    final response = await _dio.get<dynamic>('/groups/invitations/pending');
+    final data = response.data;
+    final List<dynamic> items = data is List ? data : [];
+    return items
+        .map((e) => GroupInvitationModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
+  Future<List<UserJoinRequestModel>> getMyJoinRequests() async {
+    final response = await _dio.get<dynamic>('/groups/my-join-requests');
+    final data = response.data;
+    final List<dynamic> items = data is List ? data : [];
+    return items
+        .map((e) => UserJoinRequestModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
+  Future<void> respondToInvitation(
+      String groupId, String requestId, String action) async {
+    await _dio.post<void>(
+      '/groups/$groupId/invitations/$requestId/respond',
+      data: {'action': action},
+    );
+  }
+
+  @override
+  Future<void> cancelJoinRequest(String groupId, String requestId) async {
+    await _dio.delete<void>('/groups/$groupId/join-requests/$requestId');
+  }
 }
 
 final groupRepositoryProvider = Provider<GroupRepository>((ref) {

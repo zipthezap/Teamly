@@ -84,6 +84,14 @@ class DiscoverPage extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _DiscoverCard(
+            icon: Icons.mail_outline_rounded,
+            title: 'Requests & Invites',
+            subtitle: 'Manage your pending requests and group invitations',
+            iconColor: const Color(0xFF7E57C2),
+            onTap: () => context.push('/groups/my-requests'),
+          ),
+          const SizedBox(height: 10),
+          _DiscoverCard(
             icon: Icons.event_note_rounded,
             title: 'Nearby Events',
             subtitle: 'Discover events close to your location',
