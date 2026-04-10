@@ -634,6 +634,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   Widget _buildEditForm() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sectionTitleColor = isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
+    final cancelBorderColor = isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
+    final cancelFgColor = isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
       child: UiCard(
@@ -643,10 +648,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Personal info',
                 style: TextStyle(
-                  color: AppThemeTokens.darkText,
+                  color: sectionTitleColor,
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                 ),
@@ -702,9 +707,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       onPressed: () => setState(() => _editing = false),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 13),
-                        side: const BorderSide(
-                            color: AppThemeTokens.darkBorder),
-                        foregroundColor: AppThemeTokens.darkTextSecondary,
+                        side: BorderSide(color: cancelBorderColor),
+                        foregroundColor: cancelFgColor,
                         shape: RoundedRectangleBorder(
                           borderRadius:
                               BorderRadius.circular(AppThemeTokens.radiusMd),
@@ -740,15 +744,20 @@ class _AppBarIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // The profile AppBar is transparent and always floats over the dark hero,
+    // so the icon container uses dark-mode colors to remain visible.
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: AppThemeTokens.darkCard.withValues(alpha: 0.7),
+          color: (isDark ? AppThemeTokens.darkCard : const Color(0xFF1C2535))
+              .withValues(alpha: 0.7),
           borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
-          border: Border.all(color: AppThemeTokens.darkBorder),
+          border: Border.all(
+              color: isDark ? AppThemeTokens.darkBorder : const Color(0xFF2A3548)),
         ),
         child: Icon(icon, size: 18, color: AppThemeTokens.darkText),
       ),
@@ -763,19 +772,25 @@ class _StatPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
+    final borderColor = isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
+    final valueColor = isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
+    final labelColor = isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       decoration: BoxDecoration(
-        color: AppThemeTokens.darkCard.withValues(alpha: 0.65),
+        color: cardColor.withValues(alpha: 0.65),
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-        border: Border.all(color: AppThemeTokens.darkBorder),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         children: [
           Text(
             value,
-            style: const TextStyle(
-              color: AppThemeTokens.darkText,
+            style: TextStyle(
+              color: valueColor,
               fontSize: 22,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.5,
@@ -784,8 +799,8 @@ class _StatPill extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             label,
-            style: const TextStyle(
-              color: AppThemeTokens.darkTextSecondary,
+            style: TextStyle(
+              color: labelColor,
               fontSize: 12,
             ),
           ),
@@ -801,12 +816,13 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(left: 2, bottom: 2),
       child: Text(
         text.toUpperCase(),
-        style: const TextStyle(
-          color: AppThemeTokens.darkTextMuted,
+        style: TextStyle(
+          color: isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary,
           fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.1,
@@ -835,11 +851,18 @@ class _SettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
+    final borderColor = isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
+    final dividerColor = isDark
+        ? AppThemeTokens.darkBorder.withValues(alpha: 0.6)
+        : AppThemeTokens.lightBorder;
+
     return Container(
       decoration: BoxDecoration(
-        color: AppThemeTokens.darkCard,
+        color: cardColor,
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-        border: Border.all(color: AppThemeTokens.darkBorder),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         children: [
@@ -850,7 +873,7 @@ class _SettingsCard extends StatelessWidget {
                 height: 1,
                 indent: 60,
                 endIndent: 0,
-                color: AppThemeTokens.darkBorder.withValues(alpha: 0.6),
+                color: dividerColor,
               ),
           ],
         ],
@@ -865,6 +888,10 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor = isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
+    final arrowColor = isDark ? AppThemeTokens.darkTextMuted : AppThemeTokens.lightTextMuted;
+
     return ListTile(
       onTap: data.onTap,
       contentPadding:
@@ -880,16 +907,16 @@ class _SettingsTile extends StatelessWidget {
       ),
       title: Text(
         data.label,
-        style: const TextStyle(
-          color: AppThemeTokens.darkText,
+        style: TextStyle(
+          color: titleColor,
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
       ),
-      trailing: const Icon(
+      trailing: Icon(
         Icons.arrow_forward_ios_rounded,
         size: 14,
-        color: AppThemeTokens.darkTextMuted,
+        color: arrowColor,
       ),
     );
   }

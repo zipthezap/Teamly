@@ -365,6 +365,8 @@ class UiStatusBadge extends StatelessWidget {
       case 'on-time':
       case 'accepted':
       case 'active':
+      case 'in_progress':
+      case 'completed':
         return UiStatusType.success;
       case 'pending':
       case 'warning':

@@ -67,6 +67,14 @@ class _NearbyEventsPageState extends ConsumerState<NearbyEventsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final panelBg = isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
+    final panelBorder = isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
+    final secondaryText = isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary;
+    final cardColor = isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
+    final mainText = isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
+    final mutedText = isDark ? AppThemeTokens.darkTextMuted : AppThemeTokens.lightTextMuted;
+
     final df = DateFormat('MMM d, HH:mm');
     return Scaffold(
       appBar: AppBar(title: const Text('Nearby Events')),
@@ -74,10 +82,10 @@ class _NearbyEventsPageState extends ConsumerState<NearbyEventsPage> {
         children: [
           Container(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-            decoration: const BoxDecoration(
-              color: AppThemeTokens.darkCard,
+            decoration: BoxDecoration(
+              color: panelBg,
               border: Border(
-                bottom: BorderSide(color: AppThemeTokens.darkBorder),
+                bottom: BorderSide(color: panelBorder),
               ),
             ),
             child: Column(
@@ -129,8 +137,8 @@ class _NearbyEventsPageState extends ConsumerState<NearbyEventsPage> {
                         children: [
                           Text(
                             'Radius: ${_radius.toStringAsFixed(0)} km',
-                            style: const TextStyle(
-                              color: AppThemeTokens.darkTextSecondary,
+                            style: TextStyle(
+                              color: secondaryText,
                               fontSize: 12,
                             ),
                           ),
@@ -192,11 +200,10 @@ class _NearbyEventsPageState extends ConsumerState<NearbyEventsPage> {
                           return Container(
                             margin: const EdgeInsets.only(bottom: 10),
                             decoration: BoxDecoration(
-                              color: AppThemeTokens.darkCard,
+                              color: cardColor,
                               borderRadius: BorderRadius.circular(
                                   AppThemeTokens.radiusMd),
-                              border:
-                                  Border.all(color: AppThemeTokens.darkBorder),
+                              border: Border.all(color: panelBorder),
                             ),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(
@@ -230,8 +237,8 @@ class _NearbyEventsPageState extends ConsumerState<NearbyEventsPage> {
                                         children: [
                                           Text(
                                             event.title,
-                                            style: const TextStyle(
-                                              color: AppThemeTokens.darkText,
+                                            style: TextStyle(
+                                              color: mainText,
                                               fontWeight: FontWeight.w600,
                                               fontSize: 14,
                                             ),
@@ -242,37 +249,33 @@ class _NearbyEventsPageState extends ConsumerState<NearbyEventsPage> {
                                           Row(
                                             children: [
                                               if (event.startTime != null) ...[
-                                                const Icon(
+                                                Icon(
                                                   Icons.schedule,
                                                   size: 11,
-                                                  color: AppThemeTokens
-                                                      .darkTextMuted,
+                                                  color: mutedText,
                                                 ),
                                                 const SizedBox(width: 3),
                                                 Text(
                                                   df.format(event.startTime!
                                                       .toLocal()),
-                                                  style: const TextStyle(
-                                                    color: AppThemeTokens
-                                                        .darkTextSecondary,
+                                                  style: TextStyle(
+                                                    color: secondaryText,
                                                     fontSize: 11,
                                                   ),
                                                 ),
                                                 const SizedBox(width: 8),
                                               ],
                                               if (event.city != null) ...[
-                                                const Icon(
+                                                Icon(
                                                   Icons.place,
                                                   size: 11,
-                                                  color: AppThemeTokens
-                                                      .darkTextMuted,
+                                                  color: mutedText,
                                                 ),
                                                 const SizedBox(width: 3),
                                                 Text(
                                                   event.city!,
-                                                  style: const TextStyle(
-                                                    color: AppThemeTokens
-                                                        .darkTextSecondary,
+                                                  style: TextStyle(
+                                                    color: secondaryText,
                                                     fontSize: 11,
                                                   ),
                                                 ),
@@ -307,9 +310,9 @@ class _NearbyEventsPageState extends ConsumerState<NearbyEventsPage> {
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
-                                        const Icon(
+                                        Icon(
                                           Icons.chevron_right,
-                                          color: AppThemeTokens.darkTextMuted,
+                                          color: mutedText,
                                           size: 18,
                                         ),
                                       ],
