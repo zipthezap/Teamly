@@ -63,19 +63,40 @@ class TournamentMatchModel extends Equatable {
   final DateTime? scheduledAt;
 
   factory TournamentMatchModel.fromJson(Map<String, dynamic> json) {
-    final teamA = json['teamA'] as Map<String, dynamic>?;
-    final teamB = json['teamB'] as Map<String, dynamic>?;
+    // Support both frontend naming (teamA/teamB) and backend naming (homeTeam/awayTeam)
+    final teamA = (json['homeTeam'] ?? json['teamA']) as Map<String, dynamic>?;
+    final teamB = (json['awayTeam'] ?? json['teamB']) as Map<String, dynamic>?;
+
+    // Build a human-readable round label from available fields
+    String roundLabel;
+    if (json['groupName'] != null) {
+      roundLabel = json['groupName'] as String;
+    } else if (json['roundNumber'] != null) {
+      roundLabel = 'Round ${json['roundNumber']}';
+    } else if (json['stage'] != null) {
+      final stage = (json['stage'] as String).replaceAll('_', ' ');
+      roundLabel = stage[0].toUpperCase() + stage.substring(1);
+    } else {
+      roundLabel = json['round'] as String? ?? 'Round 1';
+    }
+
     return TournamentMatchModel(
       id: json['id'] as String,
       tournamentId: json['tournamentId'] as String? ?? '',
-      round: json['round'] as String? ?? 'Round 1',
+      round: roundLabel,
       status: json['status'] as String? ?? 'scheduled',
-      teamAId: teamA?['id'] as String? ?? json['teamAId'] as String?,
-      teamBId: teamB?['id'] as String? ?? json['teamBId'] as String?,
+      teamAId: teamA?['id'] as String? ??
+          json['homeTeamId'] as String? ??
+          json['teamAId'] as String?,
+      teamBId: teamB?['id'] as String? ??
+          json['awayTeamId'] as String? ??
+          json['teamBId'] as String?,
       teamAName: teamA?['name'] as String?,
       teamBName: teamB?['name'] as String?,
-      scoreA: (json['scoreA'] as num?)?.toInt(),
-      scoreB: (json['scoreB'] as num?)?.toInt(),
+      scoreA: (json['homeScore'] as num?)?.toInt() ??
+          (json['scoreA'] as num?)?.toInt(),
+      scoreB: (json['awayScore'] as num?)?.toInt() ??
+          (json['scoreB'] as num?)?.toInt(),
       scheduledAt: json['scheduledAt'] != null
           ? DateTime.tryParse(json['scheduledAt'] as String)
           : null,
