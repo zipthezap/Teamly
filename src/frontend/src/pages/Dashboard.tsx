@@ -35,6 +35,8 @@ const Dashboard = () => {
   const { t } = useTranslation();
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
+  const dateBadgeMonthStyle = { fontSize: 12, fontWeight: 700, lineHeight: 1 };
+  const dateBadgeDayStyle = { fontSize: 21, fontWeight: 800, lineHeight: 1 };
 
   useEffect(() => {
     fetchData();
@@ -253,8 +255,8 @@ const Dashboard = () => {
                               const day = dateObj.getDate();
                               return (
                                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-                                   <span style={{ fontSize: 12, fontWeight: 700, color: theme.palette.primary.main, lineHeight: 1 }}>{month}</span>
-                                   <span style={{ fontSize: 21, fontWeight: 800, color: theme.palette.text.primary, lineHeight: 1 }}>{day}</span>
+                                   <span style={{ ...dateBadgeMonthStyle, color: theme.palette.primary.main }}>{month}</span>
+                                   <span style={{ ...dateBadgeDayStyle, color: theme.palette.text.primary }}>{day}</span>
                                 </Box>
                               );
                             })()}
