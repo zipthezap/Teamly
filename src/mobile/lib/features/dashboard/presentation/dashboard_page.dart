@@ -671,6 +671,7 @@ class _GroupChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
@@ -689,10 +690,10 @@ class _GroupChip extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: AppThemeTokens.darkText,
+                color: isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText,
                 height: 1.3,
               ),
             ),

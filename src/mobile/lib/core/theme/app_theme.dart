@@ -11,10 +11,10 @@ class AppThemeTokens {
   static const Color darkText = Color(0xFFECEFF4);
   static const Color darkTextSecondary = Color(0xFF8A99B3);
   static const Color darkTextMuted = Color(0xFF566070);
-  static const Color lightBg = Color(0xFFF7F9FC);
-  static const Color lightCard = Color(0xFFFFFFFF);
-  static const Color lightCardElevated = Color(0xFFF3F6FB);
-  static const Color lightCardHover = Color(0xFFEAF0F8);
+  static const Color lightBg = Color(0xFFF1F4F8);
+  static const Color lightCard = Color(0xFFF8FBFF);
+  static const Color lightCardElevated = Color(0xFFEFF3F9);
+  static const Color lightCardHover = Color(0xFFE3EAF4);
   static const Color lightBorder = Color(0xFFD9E2EE);
   static const Color lightBorderSubtle = Color(0xFFE7EDF6);
   static const Color lightText = Color(0xFF121A26);

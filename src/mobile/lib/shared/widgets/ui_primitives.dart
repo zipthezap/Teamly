@@ -174,6 +174,9 @@ class UiEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final secondaryText =
+        isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -214,8 +217,8 @@ class UiEmptyState extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppThemeTokens.darkTextSecondary,
+              style: TextStyle(
+                color: secondaryText,
                 fontSize: 14,
                 height: 1.5,
               ),
@@ -255,6 +258,10 @@ class UiInfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final secondaryText =
+        isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary;
+    final primaryText = isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
     final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
@@ -278,19 +285,19 @@ class UiInfoRow extends StatelessWidget {
                 ? Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        label,
-                        style: const TextStyle(
-                          color: AppThemeTokens.darkTextSecondary,
-                          fontSize: 13,
+                        Text(
+                          label,
+                          style: TextStyle(
+                            color: secondaryText,
+                            fontSize: 13,
+                          ),
                         ),
-                      ),
                       Text(
                         value!,
                         style: TextStyle(
                           color: onTap != null
                               ? AppThemeTokens.primary400
-                              : AppThemeTokens.darkText,
+                              : primaryText,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           decoration: onTap != null
@@ -306,7 +313,7 @@ class UiInfoRow extends StatelessWidget {
                     style: TextStyle(
                       color: onTap != null
                           ? AppThemeTokens.primary400
-                          : AppThemeTokens.darkTextSecondary,
+                          : secondaryText,
                       fontSize: 13,
                       decoration:
                           onTap != null ? TextDecoration.underline : null,
@@ -380,6 +387,7 @@ class UiStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final Color fg;
     final Color bg;
     if (customColor != null) {
@@ -404,8 +412,8 @@ class UiStatusBadge extends StatelessWidget {
           bg = AppThemeTokens.info.withValues(alpha: 0.12);
           break;
         case UiStatusType.defaultStatus:
-          fg = AppThemeTokens.darkTextSecondary;
-          bg = AppThemeTokens.darkCardHover;
+          fg = isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary;
+          bg = isDark ? AppThemeTokens.darkCardHover : AppThemeTokens.lightCardHover;
           break;
       }
     }
@@ -451,11 +459,12 @@ class UiSkeletonBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: height,
       width: width,
       decoration: BoxDecoration(
-        color: AppThemeTokens.darkCardHover,
+        color: isDark ? AppThemeTokens.darkCardHover : AppThemeTokens.lightCardHover,
         borderRadius: BorderRadius.circular(radius ?? AppThemeTokens.radiusSm),
       ),
     );
@@ -469,6 +478,7 @@ class UiLabeledDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
         const Expanded(child: Divider()),
@@ -476,8 +486,8 @@ class UiLabeledDivider extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
             label,
-            style: const TextStyle(
-              color: AppThemeTokens.darkTextMuted,
+            style: TextStyle(
+              color: isDark ? AppThemeTokens.darkTextMuted : AppThemeTokens.lightTextMuted,
               fontSize: 12,
               fontWeight: FontWeight.w500,
             ),

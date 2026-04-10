@@ -41,6 +41,7 @@ class UserAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final accent = _accentColor();
     final hasBorder = borderColor != null;
 
@@ -51,7 +52,7 @@ class UserAvatar extends StatelessWidget {
         radius: radius,
         backgroundImage: NetworkImage(imageUrl!),
         onBackgroundImageError: (_, __) {},
-        backgroundColor: AppThemeTokens.darkCardHover,
+        backgroundColor: isDark ? AppThemeTokens.darkCardHover : AppThemeTokens.lightCardHover,
       );
     } else {
       avatar = Container(
