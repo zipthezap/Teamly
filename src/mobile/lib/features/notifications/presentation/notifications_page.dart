@@ -26,6 +26,17 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     return MobileShell(
       title: 'Notifications',
       currentIndex: -1,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new_rounded),
+        tooltip: 'Back',
+        onPressed: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/dashboard');
+          }
+        },
+      ),
       actions: [
         IconButton(
           icon: Icon(
