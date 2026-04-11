@@ -2,32 +2,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/tournament_model.dart';
 import '../data/tournament_repository_impl.dart';
-import '../domain/tournament_repository.dart';
 
 // ---------------------------------------------------------------------------
 // Tournaments list
 // ---------------------------------------------------------------------------
 
-class TournamentsNotifier
-    extends StateNotifier<AsyncValue<List<TournamentModel>>> {
-  TournamentsNotifier(this._repo) : super(const AsyncValue.loading()) {
-    load();
+class TournamentsNotifier extends AsyncNotifier<List<TournamentModel>> {
+  @override
+  Future<List<TournamentModel>> build() {
+    return ref.watch(tournamentRepositoryProvider).getTournaments();
   }
 
-  final TournamentRepository _repo;
-
-  Future<void> load() async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => _repo.getTournaments());
+  Future<void> reload() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(
+      () => ref.read(tournamentRepositoryProvider).getTournaments(),
+    );
   }
-
-  Future<void> reload() => load();
 }
 
-final tournamentsNotifierProvider = StateNotifierProvider<TournamentsNotifier,
-    AsyncValue<List<TournamentModel>>>(
-  (ref) => TournamentsNotifier(ref.watch(tournamentRepositoryProvider)),
-);
+final tournamentsNotifierProvider =
+    AsyncNotifierProvider<TournamentsNotifier, List<TournamentModel>>(
+        TournamentsNotifier.new);
 
 // ---------------------------------------------------------------------------
 // Single tournament detail

@@ -2,51 +2,46 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/session_request_model.dart';
 import '../data/session_request_repository_impl.dart';
-import '../domain/session_request_repository.dart';
 
 class SessionRequestsNotifier
-    extends StateNotifier<AsyncValue<List<SessionRequestModel>>> {
-  SessionRequestsNotifier(this._repo) : super(const AsyncValue.loading());
+    extends FamilyAsyncNotifier<List<SessionRequestModel>, String> {
+  @override
+  Future<List<SessionRequestModel>> build(String groupId) {
+    return ref.watch(sessionRequestRepositoryProvider).getGroupRequests(groupId);
+  }
 
-  final SessionRequestRepository _repo;
-
-  Future<void> load(String groupId) async {
-    state = const AsyncValue.loading();
+  Future<void> reload() async {
+    state = const AsyncLoading();
     state = await AsyncValue.guard(
-      () => _repo.getGroupRequests(groupId),
+      () => ref.read(sessionRequestRepositoryProvider).getGroupRequests(arg),
     );
   }
 
-  Future<void> create(Map<String, dynamic> data, String groupId) async {
-    await _repo.createRequest(data);
-    await load(groupId);
+  Future<void> create(Map<String, dynamic> data) async {
+    await ref.read(sessionRequestRepositoryProvider).createRequest(data);
+    await reload();
   }
 
-  Future<void> vote(String id, bool upvote, String groupId) async {
-    await _repo.vote(id, upvote);
-    await load(groupId);
+  Future<void> vote(String id, bool upvote) async {
+    await ref.read(sessionRequestRepositoryProvider).vote(id, upvote);
+    await reload();
   }
 
-  Future<void> finalize(String id, String groupId) async {
-    await _repo.finalize(id);
-    await load(groupId);
+  Future<void> finalize(String id) async {
+    await ref.read(sessionRequestRepositoryProvider).finalize(id);
+    await reload();
   }
 
-  Future<void> cancel(String id, String groupId) async {
-    await _repo.cancel(id);
-    await load(groupId);
+  Future<void> cancel(String id) async {
+    await ref.read(sessionRequestRepositoryProvider).cancel(id);
+    await reload();
   }
 }
 
-final eventRequestsNotifierProvider = StateNotifierProvider.family<
+final eventRequestsNotifierProvider = AsyncNotifierProvider.family<
     SessionRequestsNotifier,
-    AsyncValue<List<SessionRequestModel>>,
-    String>((ref, groupId) {
-  final notifier =
-      SessionRequestsNotifier(ref.watch(sessionRequestRepositoryProvider));
-  notifier.load(groupId);
-  return notifier;
-});
+    List<SessionRequestModel>,
+    String>(SessionRequestsNotifier.new);
 
 final eventRequestDetailProvider =
     FutureProvider.family<SessionRequestModel, String>((ref, id) {

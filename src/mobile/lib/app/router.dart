@@ -39,8 +39,6 @@ import '../features/session_requests/presentation/session_requests_page.dart';
 import '../core/error/app_exception.dart';
 
 final _routerProvider = Provider<GoRouter>((ref) {
-  final authNotifier = ref.watch(authNotifierProvider.notifier);
-
   return GoRouter(
     initialLocation: '/dashboard',
     redirect: (context, state) {
@@ -59,7 +57,7 @@ final _routerProvider = Provider<GoRouter>((ref) {
       if (authState.isAuthenticated && isAuthRoute) return '/dashboard';
       return null;
     },
-    refreshListenable: RouterNotifier(ref, authNotifier),
+    refreshListenable: RouterNotifier(ref),
     routes: [
       GoRoute(
         path: '/auth',
@@ -538,7 +536,7 @@ class _SessionInviteLandingPageState extends State<_SessionInviteLandingPage> {
 // ---------------------------------------------------------------------------
 
 class RouterNotifier extends ChangeNotifier {
-  RouterNotifier(Ref ref, AuthNotifier authNotifier) {
+  RouterNotifier(Ref ref) {
     ref.listen<AuthState>(authNotifierProvider, (_, __) {
       notifyListeners();
     });

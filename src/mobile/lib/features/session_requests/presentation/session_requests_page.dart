@@ -144,7 +144,7 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
                     if (_requestedDate != null)
                       'requestedDate':
                           _requestedDate!.toIso8601String(),
-                  }, widget.groupId);
+                  });
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -245,12 +245,12 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
           message: e.toString(),
           onRetry: () => ref
               .read(eventRequestsNotifierProvider(widget.groupId).notifier)
-              .load(widget.groupId),
+              .reload(),
         ),
         data: (requests) => RefreshIndicator(
           onRefresh: () => ref
               .read(eventRequestsNotifierProvider(widget.groupId).notifier)
-              .load(widget.groupId),
+              .reload(),
           child: requests.isEmpty
               ? const UiEmptyState(
                   icon: Icons.event_note_outlined,
@@ -278,7 +278,7 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
                                       .read(eventRequestsNotifierProvider(
                                               widget.groupId)
                                           .notifier)
-                                      .vote(req.id, true, widget.groupId);
+                                      .vote(req.id, true);
                                 } on Exception catch (e) {
                                   if (mounted) {
                                     ScaffoldMessenger.of(context)
@@ -299,7 +299,7 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
                                       .read(eventRequestsNotifierProvider(
                                               widget.groupId)
                                           .notifier)
-                                      .finalize(req.id, widget.groupId);
+                                      .finalize(req.id);
                                 } on Exception catch (e) {
                                   if (mounted) {
                                     ScaffoldMessenger.of(context)
@@ -320,7 +320,7 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
                                       .read(eventRequestsNotifierProvider(
                                               widget.groupId)
                                           .notifier)
-                                      .cancel(req.id, widget.groupId);
+                                      .cancel(req.id);
                                 } on Exception catch (e) {
                                   if (mounted) {
                                     ScaffoldMessenger.of(context)
