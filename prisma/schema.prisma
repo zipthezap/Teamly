@@ -625,7 +625,7 @@ model EmailPreference {
   muteGroupInvites    Boolean  @default(false)
   muteGroupRequests   Boolean  @default(false)
   muteNearbyGroups    Boolean  @default(false)
-  muteEventCreated    Boolean  @default(false)
+  muteSessionCreated  Boolean  @default(false)
   muteNearbyTeamUps   Boolean  @default(false)
   pushEnabled         Boolean  @default(true)
   pushSessions        Boolean  @default(true)
