@@ -16,6 +16,7 @@ class MobileShell extends ConsumerWidget {
     this.actions,
     this.titleWidget,
     this.floatingActionButton,
+    this.leading,
   });
 
   final String title;
@@ -24,6 +25,7 @@ class MobileShell extends ConsumerWidget {
   final List<Widget>? actions;
   final Widget? titleWidget;
   final Widget? floatingActionButton;
+  final Widget? leading;
 
   static void navigateByTab(BuildContext context, int index) {
     switch (index) {
@@ -61,6 +63,8 @@ class MobileShell extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
+        leading: leading,
+        automaticallyImplyLeading: true,
         title: titleWidget ??
             (title == 'Teamly'
                 ? Row(
@@ -82,7 +86,7 @@ class MobileShell extends ConsumerWidget {
                   )
                 : Text(title)),
         actions: [
-          _NotificationIconButton(unreadCount: unreadCount, onTap: () => context.go('/notifications')),
+          _NotificationIconButton(unreadCount: unreadCount, onTap: () => context.push('/notifications')),
           if (actions != null) ...actions!,
           const SizedBox(width: 4),
         ],

@@ -251,22 +251,40 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
                     title: 'Find groups near you',
                     message: 'Use your current location or search an address\nto discover nearby groups.',
                   )
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                    itemCount: _results.length,
-                    itemBuilder: (ctx, i) {
-                      final g = _results[i];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _NearbyGroupCard(
-                          group: g,
-                          joining: _joining,
-                          onView: () => ctx.push('/groups/${g.id}'),
-                          onJoin: () => _requestJoin(g),
-                        ),
+                : Builder(builder: (ctx) {
+                    final myGroupIds = ref
+                        .watch(groupsNotifierProvider)
+                        .maybeWhen(
+                          data: (list) => list.map((g) => g.id).toSet(),
+                          orElse: () => <String>{},
+                        );
+                    final visible = _results
+                        .where((g) => !myGroupIds.contains(g.id))
+                        .toList();
+                    if (visible.isEmpty) {
+                      return const UiEmptyState(
+                        icon: Icons.location_on_outlined,
+                        title: 'No groups found',
+                        message: 'No new groups to join in this area.',
                       );
-                    },
-                  ),
+                    }
+                    return ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                      itemCount: visible.length,
+                      itemBuilder: (ctx, i) {
+                        final g = visible[i];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _NearbyGroupCard(
+                            group: g,
+                            joining: _joining,
+                            onView: () => ctx.push('/groups/${g.id}'),
+                            onJoin: () => _requestJoin(g),
+                          ),
+                        );
+                      },
+                    );
+                  }),
           ),
         ],
       ),

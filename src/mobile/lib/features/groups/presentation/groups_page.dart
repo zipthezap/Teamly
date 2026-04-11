@@ -89,11 +89,10 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
           onPressed: () => context.push('/discover/public-groups'),
         ),
       ],
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/groups/new'),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('New Group',
-            style: TextStyle(fontWeight: FontWeight.w600)),
+        tooltip: 'New Group',
+        child: const Icon(Icons.add_rounded),
       ),
       child: groupsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

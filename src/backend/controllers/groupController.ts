@@ -2218,7 +2218,8 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
         { latitude: { gte: lat - latDelta, lte: lat + latDelta } },
         { longitude: { gte: lon - lonDelta, lte: lon + lonDelta } },
       ],
-      isPublic: true
+      isPublic: true,
+      members: { none: { userId: req.user!.id } },
     },
     include: {
       creator: {
