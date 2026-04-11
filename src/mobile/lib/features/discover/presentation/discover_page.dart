@@ -19,7 +19,7 @@ class DiscoverPage extends StatelessWidget {
 
     return MobileShell(
       title: 'Discover',
-      currentIndex: 4,
+      currentIndex: 3,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
@@ -115,6 +115,14 @@ class DiscoverPage extends StatelessWidget {
             subtitle: 'Browse and compete in tournaments',
             iconColor: const Color(0xFFFF9800),
             onTap: () => context.push('/tournaments'),
+          ),
+          const SizedBox(height: 10),
+          _DiscoverCard(
+            icon: Icons.military_tech_rounded,
+            title: 'Leagues',
+            subtitle: 'Join and manage recurring league competitions',
+            iconColor: const Color(0xFF8B5CF6),
+            onTap: () => context.push('/leagues'),
           ),
           const SizedBox(height: 10),
           _DiscoverCard(

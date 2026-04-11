@@ -37,9 +37,6 @@ class MobileShell extends ConsumerWidget {
         context.go('/sessions');
         return;
       case 3:
-        context.go('/leagues');
-        return;
-      case 4:
         context.go('/discover');
         return;
       default:
@@ -153,18 +150,11 @@ class _BottomNav extends StatelessWidget {
                 onTap: () => onTap(2),
               ),
               _NavItem(
-                icon: Icons.military_tech_outlined,
-                selectedIcon: Icons.military_tech_rounded,
-                label: 'Leagues',
-                selected: currentIndex == 3,
-                onTap: () => onTap(3),
-              ),
-              _NavItem(
                 icon: Icons.explore_outlined,
                 selectedIcon: Icons.explore_rounded,
                 label: 'Discover',
-                selected: currentIndex == 4,
-                onTap: () => onTap(4),
+                selected: currentIndex == 3,
+                onTap: () => onTap(3),
               ),
             ],
           ),

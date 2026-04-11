@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import '../../../core/models/league_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/error_display.dart';
-import '../../../shared/widgets/mobile_shell.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../state/leagues_notifier.dart';
 
@@ -17,15 +16,20 @@ class LeaguesPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final leaguesAsync = ref.watch(leaguesNotifierProvider);
 
-    return MobileShell(
-      title: 'Leagues',
-      currentIndex: 3,
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Leagues'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: AppThemeTokens.darkBorder.withValues(alpha: 0.4)),
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/leagues/create'),
         tooltip: 'Create league',
         child: const Icon(Icons.add),
       ),
-      child: leaguesAsync.when(
+      body: leaguesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, _) => ErrorDisplay(
           message: err.toString(),
