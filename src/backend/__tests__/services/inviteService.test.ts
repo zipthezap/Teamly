@@ -17,7 +17,7 @@ vi.mock('../../config/database', () => ({
       findUnique: vi.fn(),
       update: vi.fn()
     },
-    event: {
+    session: {
       findUnique: vi.fn(),
       update: vi.fn()
     },
@@ -128,40 +128,40 @@ describe('InviteService', () => {
   });
 
   describe('canUserInvite', () => {
-    it('should allow event creator to invite', async () => {
-      vi.mocked(prisma.event.findUnique).mockResolvedValue({
-        id: 'event-1',
+    it('should allow session creator to invite', async () => {
+      vi.mocked(prisma.session.findUnique).mockResolvedValue({
+        id: 'session-1',
         creatorId: 'user-1',
         group: null
       } as any);
 
-      const result = await InviteService.canUserInvite('user-1', 'event-1', 'event');
+      const result = await InviteService.canUserInvite('user-1', 'session-1', 'session');
 
       expect(result.allowed).toBe(true);
     });
 
-    it('should allow group admin to invite to event', async () => {
-      vi.mocked(prisma.event.findUnique).mockResolvedValue({
-        id: 'event-1',
+    it('should allow group admin to invite to session', async () => {
+      vi.mocked(prisma.session.findUnique).mockResolvedValue({
+        id: 'session-1',
         creatorId: 'other-user',
         group: {
           members: [{ role: 'admin' }]
         }
       } as any);
 
-      const result = await InviteService.canUserInvite('user-1', 'event-1', 'event');
+      const result = await InviteService.canUserInvite('user-1', 'session-1', 'session');
 
       expect(result.allowed).toBe(true);
     });
 
     it('should deny non-creator for events', async () => {
-      vi.mocked(prisma.event.findUnique).mockResolvedValue({
-        id: 'event-1',
+      vi.mocked(prisma.session.findUnique).mockResolvedValue({
+        id: 'session-1',
         creatorId: 'other-user',
         group: null
       } as any);
 
-      const result = await InviteService.canUserInvite('user-1', 'event-1', 'event');
+      const result = await InviteService.canUserInvite('user-1', 'session-1', 'session');
 
       expect(result.allowed).toBe(false);
       expect(result.reason).toBe('Insufficient permissions');
@@ -206,7 +206,7 @@ describe('InviteService', () => {
   });
 
   describe('getUserPendingInvitations', () => {
-    it('should return pending group and event invitations', async () => {
+    it('should return pending group and session invitations', async () => {
       const mockGroupInvitations = [
         {
           id: 'req-1',
@@ -224,18 +224,18 @@ describe('InviteService', () => {
       const mockEventInvitations = [
         {
           id: 'part-1',
-          eventId: 'event-1',
+          sessionId: 'session-1',
           userId: 'user-1',
           status: 'pending',
-          event: {
-            id: 'event-1',
+          session: {
+            id: 'session-1',
             title: 'Test Event'
           }
         }
       ];
 
       vi.mocked(prisma.groupJoinRequest.findMany).mockResolvedValue(mockGroupInvitations as any);
-      vi.mocked(prisma.eventParticipant.findMany).mockResolvedValue(mockEventInvitations as any);
+      vi.mocked(prisma.sessionParticipant.findMany).mockResolvedValue(mockEventInvitations as any);
 
       const result = await InviteService.getUserPendingInvitations('user-1');
 
@@ -266,11 +266,11 @@ describe('InviteService', () => {
       );
     });
 
-    it('should generate invite token for an event', async () => {
-      const mockEvent = { id: 'event-1', title: 'Test Event' };
-      vi.mocked(prisma.event.update).mockResolvedValue(mockEvent as any);
+    it('should generate invite token for an session', async () => {
+      const mockEvent = { id: 'session-1', title: 'Test Event' };
+      vi.mocked(prisma.session.update).mockResolvedValue(mockEvent as any);
 
-      const result = await InviteService.generateInviteToken('event', 'event-1', 7);
+      const result = await InviteService.generateInviteToken('session', 'session-1', 7);
 
       expect(result.success).toBe(true);
       expect(result.token).toBeDefined();

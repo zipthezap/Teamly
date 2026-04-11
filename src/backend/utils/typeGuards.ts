@@ -107,7 +107,7 @@ export function hasGroupId(obj: unknown): obj is { groupId: string } {
 }
 
 /**
- * Type guard for Prisma query event logging
+ * Type guard for Prisma query session logging
  */
 export function isPrismaQueryEvent(obj: unknown): obj is { duration: number; query: string; params: string } {
   const record = obj as Record<string, unknown>;

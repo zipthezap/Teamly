@@ -1,4 +1,4 @@
-export enum EventNotificationType {
+export enum SessionNotificationType {
   join = 'join',
   leave = 'leave',
   late = 'late',
@@ -6,8 +6,8 @@ export enum EventNotificationType {
   declined = 'declined',
   status_change = 'status_change',
   comment = 'comment',
-  event_updated = 'event_updated',
-  event_cancelled = 'event_cancelled',
+  session_updated = 'session_updated',
+  session_cancelled = 'session_cancelled',
 }
 
 export enum GroupNotificationType {
@@ -26,7 +26,7 @@ export enum TeamUpNotificationType {
   teamup_nearby = 'teamup_nearby',
   teamup_comment = 'teamup_comment',
 }
-export enum EventParticipantStatus {
+export enum SessionParticipantStatus {
   pending = 'pending',
   confirmed = 'confirmed',
   declined = 'declined',
@@ -39,14 +39,14 @@ export enum GuestParticipantStatus {
   declined = 'declined',
 }
 
-export enum EventRequestStatus {
+export enum SessionRequestStatus {
   voting = 'voting',
   finalized = 'finalized',
   cancelled = 'cancelled',
   expired = 'expired',
 }
 
-export enum EventAttendanceStatus {
+export enum SessionAttendanceStatus {
   on_time = 'on_time',
   late = 'late',
 }
@@ -58,7 +58,7 @@ export enum EventAttendanceStatus {
 import { PublicUser } from './user.types';
 import { Group } from './group.types';
 
-export enum EventStatus {
+export enum SessionStatus {
   upcoming = 'upcoming',
   ongoing = 'ongoing',
   completed = 'completed',
@@ -83,11 +83,11 @@ export enum SportType {
   other = 'other',
 }
 
-export interface Event {
+export interface Session {
   id: string;
   title: string;
   description?: string | null;
-  eventType: SportType;
+  sessionType: SportType;
   location?: string | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -100,7 +100,7 @@ export interface Event {
   createdAt: Date | string;
   updatedAt: Date | string;
   archived: boolean;
-  status: EventStatus;
+  status: SessionStatus;
   isPublic: boolean;
   inviteToken?: string | null;
 
@@ -108,7 +108,7 @@ export interface Event {
   isRecurring: boolean;
   recurrenceRule?: string | null;
   recurrenceEnd?: Date | string | null;
-  parentEventId?: string | null;
+  parentSessionId?: string | null;
   exceptionDates?: string[] | null;
 
   creatorId: string;
@@ -118,13 +118,13 @@ export interface Event {
   date?: Date | string;
 }
 
-export interface EventWithDetails extends Event {
+export interface SessionWithDetails extends Session {
   creator?: PublicUser;
   group?: Group;
-  participants?: EventParticipant[];
+  participants?: SessionParticipant[];
   guestParticipants?: GuestParticipant[];
-  eventAttendances?: EventAttendance[];
-  eventNotifications?: Array<{
+  sessionAttendances?: SessionAttendance[];
+  sessionNotifications?: Array<{
     id: string;
     type: string;
     userId: string;
@@ -141,14 +141,14 @@ export interface EventWithDetails extends Event {
 }
 
 // Event Participant
-export interface EventParticipant {
+export interface SessionParticipant {
   id: string;
-  status: EventParticipantStatus;
+  status: SessionParticipantStatus;
   joinedAt: Date | string;
-  eventId: string;
+  sessionId: string;
   userId: string;
   user?: PublicUser;
-  event?: Event;
+  session?: Session;
 }
 
 // Guest Participant
@@ -157,38 +157,38 @@ export interface GuestParticipant {
   name: string;
   status: GuestParticipantStatus;
   joinedAt: Date | string;
-  eventId: string;
+  sessionId: string;
 }
 
 // Event Attendance
-export interface EventAttendance {
+export interface SessionAttendance {
   id: string;
-  eventId: string;
+  sessionId: string;
   userId: string;
   status: 'on-time' | 'late';
   updatedAt: Date | string;
-  event?: Event;
+  session?: Session;
   user?: PublicUser;
 }
 
 // Event Reminder
-export interface EventReminder {
+export interface SessionReminder {
   id: string;
-  eventId: string;
+  sessionId: string;
   userId: string;
   remindAt: Date | string;
   sent: boolean;
-  event?: Event;
+  session?: Session;
   user?: PublicUser;
-  // Composite key: [eventId, userId, remindAt]
+  // Composite key: [sessionId, userId, remindAt]
 }
 
 // Event Request (voting system)
-export interface EventRequest {
+export interface SessionRequest {
   id: string;
   title: string;
   description?: string | null;
-  eventType: string;
+  sessionType: string;
   location?: string | null;
   startTime: Date | string;
   endTime?: Date | string | null;
@@ -199,14 +199,14 @@ export interface EventRequest {
   voteThreshold?: number | null;
   creatorId: string;
   groupId: string;
-  finalizedEventId?: string | null;
+  finalizedSessionId?: string | null;
 }
 
 // Event Request with relations
-export interface EventRequestWithDetails extends EventRequest {
+export interface SessionRequestWithDetails extends SessionRequest {
   creator?: PublicUser;
   group?: Group;
-  votes?: EventVote[];
+  votes?: SessionVote[];
   yesVotes?: number;  // Computed field from backend
   noVotes?: number;   // Computed field from backend
   _count?: {
@@ -215,21 +215,21 @@ export interface EventRequestWithDetails extends EventRequest {
 }
 
 // Event Vote
-export interface EventVote {
+export interface SessionVote {
   id: string;
   vote: 'yes' | 'no';
   createdAt: Date | string;
-  eventRequestId: string;
+  sessionRequestId: string;
   userId: string;
   user?: PublicUser;
 }
 
 // Create Event data
-export interface CreateEventData {
+export interface CreateSessionData {
   groupId: string;
   title: string;
   description?: string;
-  eventType: string;
+  sessionType: string;
   location?: string;
   latitude?: number;
   longitude?: number;
@@ -246,10 +246,10 @@ export interface CreateEventData {
 }
 
 // Update Event data
-export interface UpdateEventData {
+export interface UpdateSessionData {
   title?: string;
   description?: string;
-  eventType?: string;
+  sessionType?: string;
   location?: string;
   latitude?: number;
   longitude?: number;
@@ -264,10 +264,10 @@ export interface UpdateEventData {
 }
 
 // Event search/filter params
-export interface EventSearchParams {
+export interface SessionSearchParams {
   groupId?: string;
   search?: string;
-  eventType?: string;
+  sessionType?: string;
   startDate?: string;
   endDate?: string;
   location?: string;
@@ -279,11 +279,11 @@ export interface EventSearchParams {
 }
 
 // Create Event Request data
-export interface CreateEventRequestData {
+export interface CreateSessionRequestData {
   groupId: string;
   title: string;
   description?: string;
-  eventType: string;
+  sessionType: string;
   location?: string;
   startTime: Date | string;
   endTime?: Date | string;

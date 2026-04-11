@@ -19,8 +19,8 @@ import { logger } from '../utils/logger';
 import { Prisma } from '@prisma/client';
 
 // Import types from Prisma client
-type EventNotificationType = 'join' | 'leave' | 'late' | 'confirmed' | 'declined' | 'status_change' | 'comment' | 'event_updated' | 'event_cancelled';
-type GroupNotificationType = 'accepted' | 'invited' | 'join_request' | 'event_created' | 'nearby_created';
+type SessionNotificationType = 'join' | 'leave' | 'late' | 'confirmed' | 'declined' | 'status_change' | 'comment' | 'session_updated' | 'session_cancelled';
+type GroupNotificationType = 'accepted' | 'invited' | 'join_request' | 'session_created' | 'nearby_created';
 type TeamUpNotificationType = 'teamup_response' | 'teamup_accepted' | 'teamup_declined' | 'teamup_nearby';
 
 /**
@@ -30,18 +30,18 @@ type TeamUpNotificationType = 'teamup_response' | 'teamup_accepted' | 'teamup_de
 const BATCH_SIZE = parseInt(process.env.NOTIFICATION_BATCH_SIZE || '500', 10);
 
 /**
- * Create event notifications in bulk for multiple users
+ * Create session notifications in bulk for multiple users
  * 
- * @param eventId - ID of the event
+ * @param sessionId - ID of the session
  * @param userIds - Array of user IDs to notify
- * @param type - Type of event notification
- * @param params - Parameters for the notification (e.g., user name, event title)
+ * @param type - Type of session notification
+ * @param params - Parameters for the notification (e.g., user name, session title)
  * @param metadata - Additional metadata for the notification
  */
 export async function createBulkEventNotifications(
-  eventId: string,
+  sessionId: string,
   userIds: string[],
-  type: EventNotificationType,
+  type: SessionNotificationType,
   params?: Prisma.JsonObject,
   metadata?: Prisma.JsonObject
 ): Promise<void> {
@@ -60,7 +60,7 @@ export async function createBulkEventNotifications(
       const batch = uniqueUserIds.slice(i, i + BATCH_SIZE);
       
       const notifications = batch.map(userId => ({
-        eventId,
+        sessionId,
         userId,
         type,
         params: params || {},
@@ -69,7 +69,7 @@ export async function createBulkEventNotifications(
         createdAt: new Date(),
       }));
 
-      await prisma.eventNotification.createMany({
+      await prisma.sessionNotification.createMany({
         data: notifications,
         skipDuplicates: true, // Skip if notification already exists
       });
@@ -77,12 +77,12 @@ export async function createBulkEventNotifications(
 
     const duration = Date.now() - startTime;
     logger.info(
-      `Created ${uniqueUserIds.length} event notifications in ${duration}ms`,
+      `Created ${uniqueUserIds.length} session notifications in ${duration}ms`,
       'BulkNotificationService',
-      { eventId, type, userCount: uniqueUserIds.length, duration }
+      { sessionId, type, userCount: uniqueUserIds.length, duration }
     );
   } catch (error) {
-    logger.error('Failed to create bulk event notifications', 'BulkNotificationService', { error, eventId, type });
+    logger.error('Failed to create bulk session notifications', 'BulkNotificationService', { error, sessionId, type });
     throw error;
   }
 }
@@ -200,11 +200,11 @@ export async function createBulkTeamUpNotifications(
  * Mark notifications as read in bulk
  * 
  * @param notificationIds - Array of notification IDs to mark as read
- * @param type - Type of notification ('event' | 'group' | 'teamup')
+ * @param type - Type of notification ('session' | 'group' | 'teamup')
  */
 export async function markNotificationsAsReadBulk(
   notificationIds: string[],
-  type: 'event' | 'group' | 'teamup'
+  type: 'session' | 'group' | 'teamup'
 ): Promise<number> {
   if (notificationIds.length === 0) {
     return 0;
@@ -216,8 +216,8 @@ export async function markNotificationsAsReadBulk(
     let count = 0;
 
     // Use the appropriate model based on type
-    if (type === 'event') {
-      const result = await prisma.eventNotification.updateMany({
+    if (type === 'session') {
+      const result = await prisma.sessionNotification.updateMany({
         where: { id: { in: notificationIds } },
         data: { read: true },
       });
@@ -254,11 +254,11 @@ export async function markNotificationsAsReadBulk(
  * Delete notifications in bulk
  * 
  * @param notificationIds - Array of notification IDs to delete
- * @param type - Type of notification ('event' | 'group' | 'teamup')
+ * @param type - Type of notification ('session' | 'group' | 'teamup')
  */
 export async function deleteNotificationsBulk(
   notificationIds: string[],
-  type: 'event' | 'group' | 'teamup'
+  type: 'session' | 'group' | 'teamup'
 ): Promise<number> {
   if (notificationIds.length === 0) {
     return 0;
@@ -269,8 +269,8 @@ export async function deleteNotificationsBulk(
   try {
     let count = 0;
 
-    if (type === 'event') {
-      const result = await prisma.eventNotification.deleteMany({
+    if (type === 'session') {
+      const result = await prisma.sessionNotification.deleteMany({
         where: { id: { in: notificationIds } },
       });
       count = result.count;

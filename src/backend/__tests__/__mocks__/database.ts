@@ -12,7 +12,7 @@ export default {
     delete: vi.fn(),
     deleteMany: vi.fn(),
   },
-  event: {
+  session: {
     findUnique: vi.fn(),
     findMany: vi.fn(),
     create: vi.fn(),

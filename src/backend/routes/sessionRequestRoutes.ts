@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import * as eventRequestController from '../controllers/eventRequestController';
+import * as eventRequestController from '../controllers/sessionRequestController';
 import authMiddleware from '../middleware/auth';
 import { authenticatedLimiter } from '../middleware/rateLimiter';
 import { asyncHandler } from '../middleware/asyncHandler';
@@ -12,27 +12,27 @@ const router = Router();
 router.use(authMiddleware);
 router.use(authenticatedLimiter);
 
-// Create event request (members can create, admins approve)
+// Create session request (members can create, admins approve)
 router.post('/', noCache, asyncHandler(eventRequestController.createEventRequest));
 
-// Get event requests for a group
+// Get session requests for a group
 // ETag enables 304 Not Modified responses for bandwidth optimization without HTTP caching
 // No Cache-Control max-age to avoid stale data
 router.get('/group/:groupId', etagMiddleware({ weak: true }), asyncHandler(eventRequestController.getEventRequests));
 
-// Get a specific event request
+// Get a specific session request
 router.get('/:id', etagMiddleware({ weak: true }), asyncHandler(eventRequestController.getEventRequest));
 
-// Get voting statistics for an event request
+// Get voting statistics for an session request
 router.get('/:id/statistics', etagMiddleware({ weak: true }), asyncHandler(eventRequestController.getEventRequestStatistics));
 
-// Vote on an event request
+// Vote on an session request
 router.post('/:id/vote', noCache, asyncHandler(eventRequestController.voteOnEventRequest));
 
-// Finalize event request (admin only)
+// Finalize session request (admin only)
 router.post('/:id/finalize', noCache, asyncHandler(eventRequestController.finalizeEventRequest));
 
-// Cancel event request (admin only)
+// Cancel session request (admin only)
 router.post('/:id/cancel', noCache, asyncHandler(eventRequestController.cancelEventRequest));
 
 export default router;

@@ -1,7 +1,7 @@
 /**
  * Event Controller
  * 
- * This controller manages all event-related operations including:
+ * This controller manages all session-related operations including:
  * - Event CRUD operations (create, read, update, delete, archive, status)
  * - Event participation (join, leave, update status)
  * - Guest participant management
@@ -12,14 +12,14 @@
 
 import prisma from '../config/database';
 import { generateRecurrenceInstances, calculateDuration, applyDuration } from '../utils/recurrenceService';
-import { getEventActivity } from '../services/eventNotification';
-import { validateEventStatus } from '../services/eventValidation';
+import { getSessionActivity } from '../services/sessionNotification';
+import { validateSessionStatus } from '../services/sessionValidation';
 import { logger } from '../utils/logger';
 import { Request, Response } from 'express';
 import { createInviteToken } from '../utils/inviteToken';
 import { TRANSACTION } from '../config/security';
-import * as eventService from '../services/eventService';
-import { EventParticipantStatus, GuestParticipantStatus, SportType } from '../../shared/types/event.types';
+import * as sessionService from '../services/sessionService';
+import { SessionParticipantStatus, GuestParticipantStatus, SportType, SessionNotificationType } from '../../shared/types/event.types';
 import * as locationService from '../services/locationService';
 import { exportToCSV, exportToICalendar, exportToJSON } from '../services/exportService';
 import { BadRequestError, ForbiddenError, NotFoundError } from '../utils/errors';
@@ -38,7 +38,7 @@ import { recordSearchQuery } from '../services/metricsService';
 export const createEvent = async (req: Request, res: Response) => {
     res.setHeader('Cache-Control', 'no-store');
   const { 
-    groupId, title, description, eventType, location, startTime, endTime, maxPlayers,
+    groupId, title, description, sessionType, location, startTime, endTime, maxPlayers,
     isRecurring, recurrenceRule, recurrenceEnd, isPublic,
     latitude, longitude, locationName, city, country
   } = req.body;
@@ -46,20 +46,20 @@ export const createEvent = async (req: Request, res: Response) => {
   // Validate required fields
   isRequired(groupId, 'Group ID');
   isRequired(title, 'Title');
-  isRequired(eventType, 'Event type');
+  isRequired(sessionType, 'Event type');
   isRequired(startTime, 'Start time');
 
   // Sanitize text inputs
-  const sanitized = eventService.sanitizeEventData({
+  const sanitized = sessionService.sanitizeSessionData({
     title,
     description,
-    eventType,
+    sessionType,
     location
   });
 
   // Validate sanitized required fields are not empty
-  if (!sanitized.title || !sanitized.eventType) {
-    throw new BadRequestError('Title and event type cannot be empty or whitespace-only');
+  if (!sanitized.title || !sanitized.sessionType) {
+    throw new BadRequestError('Title and session type cannot be empty or whitespace-only');
   }
 
   // Validate coordinates if provided
@@ -76,20 +76,20 @@ export const createEvent = async (req: Request, res: Response) => {
     }
   }
 
-  // Validate event times
-  const timeValidation = eventService.validateEventTimes(startTime, endTime);
+  // Validate session times
+  const timeValidation = sessionService.validateSessionTimes(startTime, endTime);
   if (!timeValidation.valid) {
     throw new BadRequestError(timeValidation.error!);
   }
 
   // Validate recurrence rule if provided
-  const recurrenceValidation = eventService.validateRecurrence(isRecurring, recurrenceRule);
+  const recurrenceValidation = sessionService.validateRecurrence(isRecurring, recurrenceRule);
   if (!recurrenceValidation.valid) {
     throw new BadRequestError(recurrenceValidation.error!);
   }
 
   // Ensure group exists before permission check to avoid misleading permission errors
-  const group = await eventService.getGroupWithMembers(groupId);
+  const group = await sessionService.getGroupWithMembers(groupId);
 
   if (!group) {
     throw new NotFoundError('Group not found');
@@ -101,22 +101,22 @@ export const createEvent = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only group admins and moderators can create events for this group');
   }
 
-  // Determine event status
-  const eventStatus = eventService.determineEventStatus(startTime, endTime);
+  // Determine session status
+  const eventStatus = sessionService.determineSessionStatus(startTime, endTime);
 
-  // Generate invite token if event is public
+  // Generate invite token if session is public
   const inviteToken = isPublic ? createInviteToken() : null;
 
   // Parse coordinates once if provided
   const coordinates = latitude && longitude ? parseCoordinates(latitude, longitude) : null;
 
-  const event = await prisma.event.create({
+  const session = await prisma.session.create({
     data: {
       groupId,
       creatorId: req.user!.id,
       title: sanitized.title!,
       description: sanitized.description,
-      eventType: sanitized.eventType! as SportType,
+      sessionType: sanitized.sessionType! as SportType,
       location: sanitized.location,
       latitude: coordinates?.lat ?? null,
       longitude: coordinates?.lon ?? null,
@@ -135,7 +135,7 @@ export const createEvent = async (req: Request, res: Response) => {
       participants: {
         create: {
           userId: req.user!.id,
-          status: EventParticipantStatus.confirmed
+          status: SessionParticipantStatus.confirmed
         }
       }
     },
@@ -160,24 +160,24 @@ export const createEvent = async (req: Request, res: Response) => {
     }
   });
 
-  // Enrich event with location info if coordinates are available
-  const enrichedEvent = locationService.enrichWithLocationInfo(event);
+  // Enrich session with location info if coordinates are available
+  const enrichedSession = locationService.enrichWithLocationInfo(session);
 
   // Send global notification to group members (except creator)
   const memberIds = group.members.map(m => m.userId).filter(uid => uid !== req.user!.id);
-  await eventService.createEventNotifications(group.id, event.title, req.user!.name, group.name, memberIds);
+  await sessionService.createSessionNotifications(group.id, session.title, req.user!.name, group.name, memberIds);
 
   // Invalidate events cache for all group members
-  await CacheService.deletePattern(`events:user:*:group:${groupId}:*`);
-  await CacheService.deletePattern(`events:user:*:group:all:*`);
+  await CacheService.deletePattern(`sessions:user:*:group:${groupId}:*`);
+  await CacheService.deletePattern(`sessions:user:*:group:all:*`);
 
-  res.status(201).json(enrichedEvent);
+  res.status(201).json(enrichedSession);
 };
 
 export const getEvents = async (req: Request, res: Response) => {
     res.setHeader('Cache-Control', 'no-store');
   const { 
-    groupId, search, eventType, startDate, endDate, location, status, archived,
+    groupId, search, sessionType, startDate, endDate, location, status, archived,
     limit = '50', offset = '0', cursor
   } = req.query;
 
@@ -192,9 +192,9 @@ export const getEvents = async (req: Request, res: Response) => {
   const validatedOffset = isNaN(parsedOffset) ? 0 : Math.max(parsedOffset, 0);
 
   // Generate cache key for simple queries without search/filters
-  const hasFilters = search || eventType || startDate || endDate || location || status || archived;
+  const hasFilters = search || sessionType || startDate || endDate || location || status || archived;
   const cacheKey = !hasFilters && !cursor 
-    ? `events:user:${userId}:group:${groupId || 'all'}:limit:${validatedLimit}:offset:${validatedOffset}`
+    ? `sessions:user:${userId}:group:${groupId || 'all'}:limit:${validatedLimit}:offset:${validatedOffset}`
     : null;
 
   // Try cache for simple queries
@@ -206,10 +206,10 @@ export const getEvents = async (req: Request, res: Response) => {
   }
 
   // Build where filter using service
-  const where = eventService.buildEventFilters(userId, {
+  const where = sessionService.buildSessionFilters(userId, {
     groupId: groupId as string,
     search: search as string,
-    eventType: eventType as string,
+    sessionType: sessionType as string,
     startDate: startDate as string,
     endDate: endDate as string,
     location: location as string,
@@ -243,8 +243,8 @@ export const getEvents = async (req: Request, res: Response) => {
   }
 
   // Optimize query - get participant info separately for large result sets
-  const [events, totalCount] = await Promise.all([
-    prisma.event.findMany({
+  const [sessions, totalCount] = await Promise.all([
+    prisma.session.findMany({
       where,
       include: {
         creator: {
@@ -268,21 +268,21 @@ export const getEvents = async (req: Request, res: Response) => {
       take: validatedLimit,
       skip: cursor ? 0 : validatedOffset // Skip only for offset pagination
     }),
-    prisma.event.count({ where })
+    prisma.session.count({ where })
   ]);
 
     // Get participant data only for returned events (batch query)
-    const eventIds = events.map(e => e.id);
-    const participants = await prisma.eventParticipant.findMany({
+    const sessionIds = sessions.map(e => e.id);
+    const participants = await prisma.sessionParticipant.findMany({
       where: { 
-        eventId: { in: eventIds }
+        sessionId: { in: sessionIds }
       },
       select: {
         id: true,
         userId: true,
         status: true,
         joinedAt: true,
-        eventId: true,
+        sessionId: true,
         user: {
           select: { id: true, name: true, profilePicture: true }
         }
@@ -290,16 +290,16 @@ export const getEvents = async (req: Request, res: Response) => {
     });
 
     // Get attendance data for returned events (batch query)
-    const attendances = await prisma.eventAttendance.findMany({
+    const attendances = await prisma.sessionAttendance.findMany({
       where: {
-        eventId: { in: eventIds }
+        sessionId: { in: sessionIds }
       },
       select: {
         id: true,
         userId: true,
         status: true,
         updatedAt: true,
-        eventId: true
+        sessionId: true
       }
     });
 
@@ -308,21 +308,21 @@ export const getEvents = async (req: Request, res: Response) => {
     const attendancesByEvent = new Map<string, typeof attendances[number][]>();
     
     participants.forEach(p => {
-      if (!participantsByEvent.has(p.eventId)) {
-        participantsByEvent.set(p.eventId, []);
+      if (!participantsByEvent.has(p.sessionId)) {
+        participantsByEvent.set(p.sessionId, []);
       }
-      participantsByEvent.get(p.eventId)!.push(p);
+      participantsByEvent.get(p.sessionId)!.push(p);
     });
 
     attendances.forEach(a => {
-      if (!attendancesByEvent.has(a.eventId)) {
-        attendancesByEvent.set(a.eventId, []);
+      if (!attendancesByEvent.has(a.sessionId)) {
+        attendancesByEvent.set(a.sessionId, []);
       }
-      attendancesByEvent.get(a.eventId)!.push(a);
+      attendancesByEvent.get(a.sessionId)!.push(a);
     });
 
     // Batch query user's membership role in all unique groups for this result set
-    const uniqueGroupIds = [...new Set(events.map(e => e.groupId).filter(Boolean))];
+    const uniqueGroupIds = [...new Set(sessions.map(e => e.groupId).filter(Boolean))];
     const userMemberships = await prisma.groupMember.findMany({
       where: {
         userId,
@@ -333,21 +333,21 @@ export const getEvents = async (req: Request, res: Response) => {
     const membershipByGroupId = new Map(userMemberships.map(m => [m.groupId, m.role]));
 
     // Attach participants, attendances, and user's group role to events
-    const eventsWithParticipants = events.map(event => ({
-      ...event,
-      participants: participantsByEvent.get(event.id) || [],
-      eventAttendances: attendancesByEvent.get(event.id) || [],
-      userGroupRole: membershipByGroupId.get(event.groupId) ?? null
+    const sessionsWithParticipants = sessions.map(session => ({
+      ...session,
+      participants: participantsByEvent.get(session.id) || [],
+      eventAttendances: attendancesByEvent.get(session.id) || [],
+      userGroupRole: membershipByGroupId.get(session.groupId) ?? null
     }));
 
     // Sort events by priority (in-memory for this page of results only)
     // 1. Events user joined + private (from groups user is in)
     // 2. Events user joined + public
     // 3. Other events (not joined)
-    const eventsWithJoinStatus = eventsWithParticipants.map(event => {
-      const participantIds = new Set(event.participants.map(p => p.userId));
+    const eventsWithJoinStatus = sessionsWithParticipants.map(session => {
+      const participantIds = new Set(session.participants.map(p => p.userId));
       return {
-        event,
+        session,
         isJoined: participantIds.has(userId)
       };
     });
@@ -360,8 +360,8 @@ export const getEvents = async (req: Request, res: Response) => {
         return 3; // Other events (not joined)
       };
       
-      const aPriority = getPriority(a.isJoined, a.event.isPublic);
-      const bPriority = getPriority(b.isJoined, b.event.isPublic);
+      const aPriority = getPriority(a.isJoined, a.session.isPublic);
+      const bPriority = getPriority(b.isJoined, b.session.isPublic);
       
       // First sort by priority
       if (aPriority !== bPriority) {
@@ -369,20 +369,20 @@ export const getEvents = async (req: Request, res: Response) => {
       }
       
       // Within same priority, sort by start time
-      return new Date(a.event.startTime).getTime() - new Date(b.event.startTime).getTime();
-    }).map(item => item.event);
+      return new Date(a.session.startTime).getTime() - new Date(b.session.startTime).getTime();
+    }).map(item => item.session);
 
     // Enrich with location info
-    const enrichedEvents = sortedEvents.map(event => 
-      locationService.enrichWithLocationInfo(event)
+    const enrichedEvents = sortedEvents.map(session => 
+      locationService.enrichWithLocationInfo(session)
     );
 
     // Calculate next cursor for cursor-based pagination aligned with DB sort (startTime, id)
-    const nextCursor = events.length === validatedLimit
+    const nextCursor = sessions.length === validatedLimit
       ? Buffer.from(
           JSON.stringify({
-            startTime: events[events.length - 1].startTime,
-            id: events[events.length - 1].id
+            startTime: sessions[sessions.length - 1].startTime,
+            id: sessions[sessions.length - 1].id
           }),
           'utf8'
         ).toString('base64url')
@@ -394,7 +394,7 @@ export const getEvents = async (req: Request, res: Response) => {
         limit: validatedLimit,
         offset: validatedOffset,
         total: totalCount,
-        hasMore: events.length === validatedLimit,
+        hasMore: sessions.length === validatedLimit,
         nextCursor
       }
     };
@@ -412,7 +412,7 @@ export const getEvent = async (req: Request, res: Response) => {
     res.setHeader('Cache-Control', 'no-store');
   const { id } = req.params;
 
-  const event = await prisma.event.findFirst({
+  const session = await prisma.session.findFirst({
     where: {
       id,
       group: {
@@ -480,23 +480,23 @@ export const getEvent = async (req: Request, res: Response) => {
     }
   });
 
-  ensureResourceExists(event, 'Event');
+  ensureResourceExists(session, 'Event');
 
-  const enrichedEvent = locationService.enrichWithLocationInfo(event!);
+  const enrichedSession = locationService.enrichWithLocationInfo(session!);
 
-  res.json(enrichedEvent);
+  res.json(enrichedSession);
 };
 
 export const updateEvent = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { title, description, eventType, location, startTime, endTime, maxPlayers, isPublic,
+  const { title, description, sessionType, location, startTime, endTime, maxPlayers, isPublic,
           latitude, longitude, locationName, city, country } = req.body;
 
   // Sanitize text inputs
-  const sanitized = eventService.sanitizeEventData({
+  const sanitized = sessionService.sanitizeSessionData({
     title,
     description,
-    eventType,
+    sessionType,
     location
   });
 
@@ -516,14 +516,14 @@ export const updateEvent = async (req: Request, res: Response) => {
 
   // Validate that events are single-day only if both times are provided
   if (startTime && endTime) {
-    const timeValidation = eventService.validateEventTimes(startTime, endTime);
+    const timeValidation = sessionService.validateSessionTimes(startTime, endTime);
     if (!timeValidation.valid) {
       throw new BadRequestError(timeValidation.error!);
     }
   }
 
-  // Check if user is the creator of the event or a group admin
-  const event = await prisma.event.findUnique({
+  // Check if user is the creator of the session or a group admin
+  const session = await prisma.session.findUnique({
     where: { id },
     include: {
       group: {
@@ -539,27 +539,27 @@ export const updateEvent = async (req: Request, res: Response) => {
     }
   });
 
-  ensureResourceExists(event, 'Event');
+  ensureResourceExists(session, 'Event');
 
-  // Check if user has permission to update this event (creator, moderator, or admin)
+  // Check if user has permission to update this session (creator, moderator, or admin)
   const canUpdate = await permissionService.hasEventPermission(req.user!.id, id, Permission.EVENT_UPDATE);
   if (!canUpdate) {
-    throw new ForbiddenError('Only the event creator, moderators, or group admins can update it');
+    throw new ForbiddenError('Only the session creator, moderators, or group admins can update it');
   }
 
   if (maxPlayers !== undefined && maxPlayers !== null) {
     const parsedMaxPlayers = parseInt(maxPlayers);
 
-    const confirmedParticipants = await prisma.eventParticipant.count({
+    const confirmedParticipants = await prisma.sessionParticipant.count({
       where: {
-        eventId: id,
-        status: EventParticipantStatus.confirmed,
+        sessionId: id,
+        status: SessionParticipantStatus.confirmed,
       },
     });
 
     const confirmedGuests = await prisma.guestParticipant.count({
       where: {
-        eventId: id,
+        sessionId: id,
         status: GuestParticipantStatus.confirmed,
       },
     });
@@ -575,12 +575,12 @@ export const updateEvent = async (req: Request, res: Response) => {
     ? parseCoordinates(latitude, longitude) 
     : null;
 
-  const updatedEvent = await prisma.event.update({
+  const updatedSession = await prisma.session.update({
     where: { id },
     data: {
       ...(sanitized.title && { title: sanitized.title }),
       ...(sanitized.description !== undefined && { description: sanitized.description }),
-      ...(sanitized.eventType && { eventType: sanitized.eventType as SportType }),
+      ...(sanitized.sessionType && { sessionType: sanitized.sessionType as SportType }),
       ...(sanitized.location !== undefined && { location: sanitized.location }),
       ...(updateCoordinates ? {
         latitude: updateCoordinates.lat,
@@ -621,37 +621,37 @@ export const updateEvent = async (req: Request, res: Response) => {
     }
   });
 
-  // Enrich event with location info if coordinates are available
-  const enrichedEvent = locationService.enrichWithLocationInfo(updatedEvent);
+  // Enrich session with location info if coordinates are available
+  const enrichedSession = locationService.enrichWithLocationInfo(updatedSession);
 
   // Send email notifications to participants
-  await eventService.sendEventEmailNotifications(
-    updatedEvent.participants,
+  await sessionService.sendSessionEmailNotifications(
+    updatedSession.participants,
     req.user!.id,
     'eventUpdates',
     'eventUpdate',
-    updatedEvent.title,
-    event!.group.name
+    updatedSession.title,
+    session!.group.name
   );
 
   // Send in-app notifications to participants (except updater)
-  const participantIds = updatedEvent.participants
+  const participantIds = updatedSession.participants
     .map((p) => p.userId)
     .filter((uid) => uid !== req.user!.id);
-  await eventService.createEventUpdateNotifications(id, updatedEvent.title, req.user!.name, participantIds);
+  await sessionService.createSessionUpdateNotifications(id, updatedSession.title, req.user!.name, participantIds);
 
   // Invalidate events cache
-  await CacheService.deletePattern(`events:user:*:group:${event!.groupId}:*`);
-  await CacheService.deletePattern(`events:user:*:group:all:*`);
+  await CacheService.deletePattern(`sessions:user:*:group:${session!.groupId}:*`);
+  await CacheService.deletePattern(`sessions:user:*:group:all:*`);
 
-  res.json(enrichedEvent);
+  res.json(enrichedSession);
 };
 
 export const deleteEvent = async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  // Check if user is the creator of the event or a group admin
-  const event = await prisma.event.findUnique({
+  // Check if user is the creator of the session or a group admin
+  const session = await prisma.session.findUnique({
     where: { id },
     include: {
       group: {
@@ -672,39 +672,39 @@ export const deleteEvent = async (req: Request, res: Response) => {
     }
   });
 
-  ensureResourceExists(event, 'Event');
+  ensureResourceExists(session, 'Event');
 
-  // Check if user has permission to delete this event (creator or group admin)
+  // Check if user has permission to delete this session (creator or group admin)
   const canDelete = await permissionService.hasEventPermission(req.user!.id, id, Permission.EVENT_DELETE);
   if (!canDelete) {
-    throw new ForbiddenError('Only the event creator or group admins can delete it');
+    throw new ForbiddenError('Only the session creator or group admins can delete it');
   }
 
   // Collect participant IDs before deletion for in-app notifications
-  const participantIds = event!.participants
+  const participantIds = session!.participants
     .map((p) => p.userId)
     .filter((uid) => uid !== req.user!.id);
 
   // Send email notifications to participants
-  await eventService.sendEventEmailNotifications(
-    event!.participants,
+  await sessionService.sendSessionEmailNotifications(
+    session!.participants,
     req.user!.id,
     'eventCancellations',
     'eventCancellation',
-    event!.title,
-    event!.group.name
+    session!.title,
+    session!.group.name
   );
 
-  // Send in-app notifications to participants before deleting the event
-  await eventService.createEventDeletionNotifications(id, event!.title, req.user!.name, participantIds);
+  // Send in-app notifications to participants before deleting the session
+  await sessionService.createSessionDeletionNotifications(id, session!.title, req.user!.name, participantIds);
 
-  await prisma.event.delete({
+  await prisma.session.delete({
     where: { id }
   });
 
   // Invalidate events cache
-  await CacheService.deletePattern(`events:user:*:group:${event!.groupId}:*`);
-  await CacheService.deletePattern(`events:user:*:group:all:*`);
+  await CacheService.deletePattern(`sessions:user:*:group:${session!.groupId}:*`);
+  await CacheService.deletePattern(`sessions:user:*:group:all:*`);
 
   res.json({ message: 'Event deleted successfully' });
 };
@@ -717,8 +717,8 @@ export const joinEvent = async (req: Request, res: Response) => {
 
     // Use a transaction with serializable isolation to prevent race conditions
     const result = await prisma.$transaction(async (tx) => {
-      // Lock the event row for update to prevent concurrent modifications
-      const event = await tx.event.findFirst({
+      // Lock the session row for update to prevent concurrent modifications
+      const session = await tx.session.findFirst({
         where: {
           id,
           group: {
@@ -736,7 +736,7 @@ export const joinEvent = async (req: Request, res: Response) => {
         }
       });
 
-      if (!event) {
+      if (!session) {
         throw new Error('EVENT_NOT_FOUND');
       }
 
@@ -744,7 +744,7 @@ export const joinEvent = async (req: Request, res: Response) => {
       const existingParticipant = await tx.eventParticipant.findUnique({
         where: {
           eventId_userId: {
-            eventId: id,
+            sessionId: id,
             userId: req.user!.id
           }
         }
@@ -755,66 +755,66 @@ export const joinEvent = async (req: Request, res: Response) => {
       }
 
       // Check max players with accurate count
-      if (event.maxPlayers) {
-        const confirmedCount = event.participants.length;
+      if (session.maxPlayers) {
+        const confirmedCount = session.participants.length;
         
         // Also count confirmed guest participants
         const guestCount = await tx.guestParticipant.count({
           where: {
-            eventId: id,
+            sessionId: id,
             status: GuestParticipantStatus.confirmed
           }
         });
 
         const totalConfirmed = confirmedCount + guestCount;
         
-        if (totalConfirmed >= event.maxPlayers) {
+        if (totalConfirmed >= session.maxPlayers) {
           // Add to waitlist instead of rejecting
           const waitlistParticipant = await tx.eventParticipant.create({
             data: {
-              eventId: id,
+              sessionId: id,
               userId: req.user!.id,
               status: 'waitlisted'
             }
           });
-          return { participant: waitlistParticipant, eventTitle: event.title, groupId: event.groupId, waitlisted: true };
+          return { participant: waitlistParticipant, eventTitle: session.title, groupId: session.groupId, waitlisted: true };
         }
       }
 
       // Create participant
       const participant = await tx.eventParticipant.create({
         data: {
-          eventId: id,
+          sessionId: id,
           userId: req.user!.id,
           status: 'confirmed'
         }
       });
 
       // Log activity for the user who joined using NotificationFactory
-      await NotificationFactory.createEventNotifications(
+      await NotificationFactory.createSessionNotifications(
         {
-          eventId: id,
-          type: 'join',
+          sessionId: id,
+          type: SessionNotificationType.join,
           userIds: [req.user!.id],
           params: {
             name: req.user!.name,
-            eventTitle: event.title
+            eventTitle: session.title
           },
           metadata: {
-            eventType: event.eventType,
-            eventStartTime: event.startTime,
-            groupId: event.groupId,
+            sessionType: session.sessionType,
+            eventStartTime: session.startTime,
+            groupId: session.groupId,
             participantCount: await tx.eventParticipant.count({
-              where: { eventId: id, status: 'confirmed' }
+              where: { sessionId: id, status: 'confirmed' }
             }),
-            maxPlayers: event.maxPlayers
+            maxPlayers: session.maxPlayers
           },
-          checkMutePreference: false // User joining their own event
+          checkMutePreference: false // User joining their own session
         },
         tx
       );
 
-      return { participant, eventTitle: event.title, groupId: event.groupId, waitlisted: false };
+      return { participant, eventTitle: session.title, groupId: session.groupId, waitlisted: false };
     }, {
       isolationLevel: 'Serializable', // Highest isolation level to prevent race conditions
       maxWait: TRANSACTION.MAX_WAIT_MS,
@@ -822,8 +822,8 @@ export const joinEvent = async (req: Request, res: Response) => {
     });
 
     // Invalidate events cache for all group members
-    await CacheService.deletePattern(`events:user:*:group:${result.groupId}:*`);
-    await CacheService.deletePattern(`events:user:*:group:all:*`);
+    await CacheService.deletePattern(`sessions:user:*:group:${result.groupId}:*`);
+    await CacheService.deletePattern(`sessions:user:*:group:all:*`);
 
     const status = result.waitlisted ? 202 : 201;
     res.status(status).json({
@@ -831,10 +831,10 @@ export const joinEvent = async (req: Request, res: Response) => {
       waitlisted: result.waitlisted,
       message: result.waitlisted
         ? 'Event is full. You have been added to the waitlist.'
-        : 'Successfully joined the event.',
+        : 'Successfully joined the session.',
     });
   } catch (error: unknown) {
-    logger.error('Join event error', 'EventController', { error });
+    logger.error('Join session error', 'EventController', { error });
     
     // Handle specific error cases
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -842,15 +842,15 @@ export const joinEvent = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Event not found' });
     }
     if (errorMessage === 'ALREADY_JOINED') {
-      return res.status(400).json({ error: 'Already joined this event' });
+      return res.status(400).json({ error: 'Already joined this session' });
     }
     
     // Handle unique constraint violations
     if (isPrismaUniqueError(error)) {
-      return res.status(400).json({ error: 'Already joined this event' });
+      return res.status(400).json({ error: 'Already joined this session' });
     }
     
-    return res.status(500).json({ error: 'Failed to join event' });
+    return res.status(500).json({ error: 'Failed to join session' });
   }
 };
 
@@ -860,25 +860,25 @@ export const leaveEvent = async (req: Request, res: Response) => {
 
     // Use a transaction to ensure atomicity
     const result = await prisma.$transaction(async (tx) => {
-      // Get event details
-      const event = await tx.event.findUnique({
+      // Get session details
+      const session = await tx.session.findUnique({
         where: { id },
         select: { 
           creatorId: true,
           title: true, 
-          eventType: true, 
+          sessionType: true, 
           startTime: true,
           groupId: true 
         }
       });
 
-      if (!event) {
+      if (!session) {
         throw new Error('EVENT_NOT_FOUND');
       }
 
       const participant = await tx.eventParticipant.findFirst({
         where: {
-          eventId: id,
+          sessionId: id,
           userId: req.user!.id
         }
       });
@@ -895,20 +895,20 @@ export const leaveEvent = async (req: Request, res: Response) => {
       // Also delete the attendance record (late status) when leaving
       await tx.eventAttendance.deleteMany({
         where: {
-          eventId: id,
+          sessionId: id,
           userId: req.user!.id
         }
       });
 
       // Promote first waitlisted participant if a spot opened up
       let promotedUserId: string | undefined;
-      const eventWithMax = await tx.event.findUnique({
+      const eventWithMax = await tx.session.findUnique({
         where: { id },
         select: { maxPlayers: true, title: true }
       });
       if (eventWithMax?.maxPlayers && participant.status === 'confirmed') {
         const firstWaitlisted = await tx.eventParticipant.findFirst({
-          where: { eventId: id, status: 'waitlisted' },
+          where: { sessionId: id, status: 'waitlisted' },
           orderBy: { joinedAt: 'asc' },
         });
         if (firstWaitlisted) {
@@ -921,37 +921,37 @@ export const leaveEvent = async (req: Request, res: Response) => {
       }
 
       // Log activity for the user who left using NotificationFactory
-      await NotificationFactory.createEventNotifications(
+      await NotificationFactory.createSessionNotifications(
         {
-          eventId: id,
-          type: 'leave',
+          sessionId: id,
+          type: SessionNotificationType.leave,
           userIds: [req.user!.id],
           params: {
             name: req.user!.name,
-            eventTitle: event.title
+            eventTitle: session.title
           },
           metadata: {
-            eventType: event.eventType,
-            eventStartTime: event.startTime,
-            groupId: event.groupId
+            sessionType: session.sessionType,
+            eventStartTime: session.startTime,
+            groupId: session.groupId
           },
-          checkMutePreference: false // User leaving their own event
+          checkMutePreference: false // User leaving their own session
         },
         tx
       );
 
-      return { groupId: event.groupId, promotedUserId, eventTitle: event.title };
+      return { groupId: session.groupId, promotedUserId, eventTitle: session.title };
     });
 
     // Invalidate events cache for all group members
-    await CacheService.deletePattern(`events:user:*:group:${result.groupId}:*`);
-    await CacheService.deletePattern(`events:user:*:group:all:*`);
+    await CacheService.deletePattern(`sessions:user:*:group:${result.groupId}:*`);
+    await CacheService.deletePattern(`sessions:user:*:group:all:*`);
 
     // Notify the promoted waitlisted user (non-blocking)
     if (result.promotedUserId) {
-      NotificationFactory.createEventNotifications({
-        eventId: id,
-        type: 'confirmed',
+      NotificationFactory.createSessionNotifications({
+        sessionId: id,
+        type: SessionNotificationType.confirmed,
         userIds: [result.promotedUserId],
         params: { eventTitle: result.eventTitle },
         metadata: { promotedFromWaitlist: true },
@@ -959,9 +959,9 @@ export const leaveEvent = async (req: Request, res: Response) => {
       }).catch(err => logger.error('Failed to notify promoted waitlist user', 'EventController', { error: err }));
     }
 
-    res.json({ message: 'Left event successfully' });
+    res.json({ message: 'Left session successfully' });
   } catch (error: unknown) {
-    logger.error('Failed to leave event', 'EventController', { error });
+    logger.error('Failed to leave session', 'EventController', { error });
     
     // Handle specific error cases
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -969,10 +969,10 @@ export const leaveEvent = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Event not found' });
     }
     if (errorMessage === 'NOT_PARTICIPATING') {
-      return res.status(404).json({ error: 'Not participating in this event' });
+      return res.status(404).json({ error: 'Not participating in this session' });
     }
     
-    return res.status(500).json({ error: 'Failed to leave event' });
+    return res.status(500).json({ error: 'Failed to leave session' });
   }
 };
 
@@ -982,8 +982,8 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
     const { status } = req.body;
 
     // Validate status using enum
-    const validStatuses = Object.values(EventParticipantStatus);
-    if (!status || !validStatuses.includes(status as EventParticipantStatus)) {
+    const validStatuses = Object.values(SessionParticipantStatus);
+    if (!status || !validStatuses.includes(status as SessionParticipantStatus)) {
       return res.status(400).json({ 
         error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` 
       });
@@ -992,7 +992,7 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
     const result = await prisma.$transaction(async (tx) => {
       const participant = await tx.eventParticipant.findFirst({
         where: {
-          eventId: id,
+          sessionId: id,
           userId: req.user!.id
         }
       });
@@ -1010,27 +1010,27 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
     });
 
     if (!result) {
-      return res.status(404).json({ error: 'Not participating in this event' });
+      return res.status(404).json({ error: 'Not participating in this session' });
     }
 
     const { updated: updatedParticipant, previousStatus } = result;
 
     // Log activity for the user who updated their status (only for confirmed/declined)
     if (status === 'confirmed' || status === 'declined') {
-      // Get the event details
-      const statusEvent = await prisma.event.findUnique({
+      // Get the session details
+      const statusEvent = await prisma.session.findUnique({
         where: { id },
         select: { 
           title: true,
-          eventType: true,
+          sessionType: true,
           startTime: true,
           groupId: true
         }
       });
 
       if (statusEvent) {
-        await NotificationFactory.createEventNotifications({
-          eventId: id,
+        await NotificationFactory.createSessionNotifications({
+          sessionId: id,
           type: status,
           userIds: [req.user!.id],
           params: {
@@ -1038,7 +1038,7 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
             eventTitle: statusEvent.title
           },
           metadata: {
-            eventType: statusEvent.eventType,
+            sessionType: statusEvent.sessionType,
             eventStartTime: statusEvent.startTime,
             groupId: statusEvent.groupId,
             previousStatus: previousStatus
@@ -1047,8 +1047,8 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
         });
 
         // Invalidate events cache when status changes
-        await CacheService.deletePattern(`events:user:*:group:${statusEvent.groupId}:*`);
-        await CacheService.deletePattern(`events:user:*:group:all:*`);
+        await CacheService.deletePattern(`sessions:user:*:group:${statusEvent.groupId}:*`);
+        await CacheService.deletePattern(`sessions:user:*:group:all:*`);
       }
     }
 
@@ -1061,14 +1061,14 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
 
 // ==================== RECURRING EVENTS MANAGEMENT ====================
 
-// Get recurring event instances
+// Get recurring session instances
 export const getRecurringEventInstances = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { startDate, endDate, limit } = req.query;
 
-    // Get the parent event
-    const event = await prisma.event.findFirst({
+    // Get the parent session
+    const session = await prisma.session.findFirst({
       where: {
         id,
         group: {
@@ -1081,11 +1081,11 @@ export const getRecurringEventInstances = async (req: Request, res: Response) =>
       }
     });
 
-    if (!event) {
+    if (!session) {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    if (!event.isRecurring || !event.recurrenceRule) {
+    if (!session.isRecurring || !session.recurrenceRule) {
       return res.status(400).json({ error: 'Event is not recurring' });
     }
 
@@ -1096,14 +1096,14 @@ export const getRecurringEventInstances = async (req: Request, res: Response) =>
     } else if (typeof startDate === 'string') {
       start = new Date(startDate);
     } else {
-      start = event.startTime;
+      start = session.startTime;
     }
     // Ensure exceptionDates is defined and parsed
     let exceptionDates: string[] = [];
-    if (event.exceptionDates) {
-      exceptionDates = Array.isArray(event.exceptionDates)
-        ? event.exceptionDates
-        : JSON.parse(JSON.stringify(event.exceptionDates));
+    if (session.exceptionDates) {
+      exceptionDates = Array.isArray(session.exceptionDates)
+        ? session.exceptionDates
+        : JSON.parse(JSON.stringify(session.exceptionDates));
     }
     // Ensure endDate is a Date
     let end: Date;
@@ -1112,37 +1112,37 @@ export const getRecurringEventInstances = async (req: Request, res: Response) =>
     } else if (typeof endDate === 'string') {
       end = new Date(endDate);
     } else {
-      end = event.recurrenceEnd;
+      end = session.recurrenceEnd;
     }
     const instances = generateRecurrenceInstances(
       start,
-      event.recurrenceRule,
+      session.recurrenceRule,
       end,
       exceptionDates,
       limit ? parseInt(limit as string) : 100
     );
 
     // Calculate duration if endTime exists
-    const duration = calculateDuration(event.startTime, event.endTime);
+    const duration = calculateDuration(session.startTime, session.endTime);
 
-    // Map instances to event objects
+    // Map instances to session objects
     const eventInstances = instances.map(instanceDate => ({
-      ...event,
-      id: `${event.id}-${instanceDate.toISOString()}`,
+      ...session,
+      id: `${session.id}-${instanceDate.toISOString()}`,
       startTime: instanceDate,
       endTime: duration ? applyDuration(instanceDate, duration) : null,
-      parentEventId: event.id,
+      parentSessionId: session.id,
       isInstance: true
     }));
 
     res.json(eventInstances);
   } catch (error) {
-    logger.error('Failed to get recurring event instances', 'EventController', { error });
-    return res.status(500).json({ error: 'Failed to get recurring event instances' });
+    logger.error('Failed to get recurring session instances', 'EventController', { error });
+    return res.status(500).json({ error: 'Failed to get recurring session instances' });
   }
 };
 
-// Add exception date to recurring event
+// Add exception date to recurring session
 export const addRecurringEventException = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -1152,28 +1152,28 @@ export const addRecurringEventException = async (req: Request, res: Response) =>
       return res.status(400).json({ error: 'Exception date is required' });
     }
 
-    // Check if user is the creator of the event or a group admin
-    const event = await prisma.event.findUnique({
+    // Check if user is the creator of the session or a group admin
+    const session = await prisma.session.findUnique({
       where: { id }
     });
 
-    if (!event) {
+    if (!session) {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    // Check if user has permission to manage this event
-    const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
+    // Check if user has permission to manage this session
+    const { isAuthorized } = await sessionService.checkSessionManagementPermission(session, req.user!.id);
     if (!isAuthorized) {
-      return res.status(403).json({ error: 'Only the event creator or group admins can add exceptions' });
+      return res.status(403).json({ error: 'Only the session creator or group admins can add exceptions' });
     }
 
-    if (!event.isRecurring) {
+    if (!session.isRecurring) {
       return res.status(400).json({ error: 'Event is not recurring' });
     }
 
     // Get existing exceptions
-    const existingExceptions = Array.isArray(event.exceptionDates) 
-      ? [...event.exceptionDates] 
+    const existingExceptions = Array.isArray(session.exceptionDates) 
+      ? [...session.exceptionDates] 
       : [];
 
     // Add new exception if not already present
@@ -1182,22 +1182,22 @@ export const addRecurringEventException = async (req: Request, res: Response) =>
       existingExceptions.push(exceptionDateISO);
     }
 
-    // Update event with new exceptions
-    const updatedEvent = await prisma.event.update({
+    // Update session with new exceptions
+    const updatedSession = await prisma.session.update({
       where: { id },
       data: {
         exceptionDates: existingExceptions
       }
     });
 
-    res.json(updatedEvent);
+    res.json(updatedSession);
   } catch (error) {
-    logger.error('Add recurring event exception error', 'EventController', { error });
+    logger.error('Add recurring session exception error', 'EventController', { error });
     return res.status(500).json({ error: 'Failed to add exception' });
   }
 };
 
-// Remove exception date from recurring event
+// Remove exception date from recurring session
 export const removeRecurringEventException = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -1207,24 +1207,24 @@ export const removeRecurringEventException = async (req: Request, res: Response)
       return res.status(400).json({ error: 'Exception date is required' });
     }
 
-    // Check if user is the creator of the event or a group admin
-    const event = await prisma.event.findUnique({
+    // Check if user is the creator of the session or a group admin
+    const session = await prisma.session.findUnique({
       where: { id }
     });
 
-    if (!event) {
+    if (!session) {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    // Check if user has permission to manage this event
-    const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
+    // Check if user has permission to manage this session
+    const { isAuthorized } = await sessionService.checkSessionManagementPermission(session, req.user!.id);
     if (!isAuthorized) {
-      return res.status(403).json({ error: 'Only the event creator or group admins can remove exceptions' });
+      return res.status(403).json({ error: 'Only the session creator or group admins can remove exceptions' });
     }
 
     // Get existing exceptions
-    const existingExceptions = event.exceptionDates 
-      ? JSON.parse(JSON.stringify(event.exceptionDates))
+    const existingExceptions = session.exceptionDates 
+      ? JSON.parse(JSON.stringify(session.exceptionDates))
       : [];
 
     // Remove exception
@@ -1232,33 +1232,33 @@ export const removeRecurringEventException = async (req: Request, res: Response)
       (d: string | Date) => new Date(d).toISOString() !== new Date(exceptionDate).toISOString()
     );
 
-    const updatedEvent = await prisma.event.update({
+    const updatedSession = await prisma.session.update({
       where: { id },
       data: {
         exceptionDates: updatedExceptions
       }
     });
 
-    res.json(updatedEvent);
+    res.json(updatedSession);
   } catch (error) {
-    logger.error('Failed to remove recurring event exception', 'EventController', { error });
+    logger.error('Failed to remove recurring session exception', 'EventController', { error });
     return res.status(500).json({ error: 'Failed to remove exception' });
   }
 };
 
 // ==================== EVENT QUERIES & ANALYTICS ====================
 
-// Get user event statistics
+// Get user session statistics
 export const getUserStatistics = async (req: Request, res: Response) => {
   try {
     const userId = req.user!.id;
     const now = new Date();
 
     // Get all events where user is a participant
-    const userParticipations = await prisma.eventParticipant.findMany({
+    const userParticipations = await prisma.sessionParticipant.findMany({
       where: { userId },
       include: {
-        event: {
+        session: {
           include: {
             group: {
               select: { id: true, name: true }
@@ -1269,7 +1269,7 @@ export const getUserStatistics = async (req: Request, res: Response) => {
     });
 
     // Get events created by user
-    const createdEvents = await prisma.event.findMany({
+    const createdEvents = await prisma.session.findMany({
       where: { creatorId: userId },
       include: {
         participants: true,
@@ -1284,35 +1284,35 @@ export const getUserStatistics = async (req: Request, res: Response) => {
     const totalEventsCreated = createdEvents.length;
     
     const upcomingEvents = userParticipations.filter(
-      p => new Date(p.event.startTime) > now
+      p => new Date(p.session.startTime) > now
     ).length;
     
     const pastEvents = userParticipations.filter(
-      p => new Date(p.event.startTime) <= now
+      p => new Date(p.session.startTime) <= now
     ).length;
 
     const confirmedEvents = userParticipations.filter(
       p => p.status === 'confirmed'
     ).length;
 
-    // Get event type breakdown
+    // Get session type breakdown
     const eventTypeBreakdown: Record<string, number> = {};
     userParticipations.forEach(p => {
-      const type = p.event.eventType;
+      const type = p.session.sessionType;
       eventTypeBreakdown[type] = (eventTypeBreakdown[type] || 0) + 1;
     });
 
     // Get upcoming events details (next 5)
     const upcomingEventsDetails = userParticipations
-      .filter(p => new Date(p.event.startTime) > now)
-      .sort((a, b) => new Date(a.event.startTime).getTime() - new Date(b.event.startTime).getTime())
+      .filter(p => new Date(p.session.startTime) > now)
+      .sort((a, b) => new Date(a.session.startTime).getTime() - new Date(b.session.startTime).getTime())
       .slice(0, 5)
       .map(p => ({
-        id: p.event.id,
-        title: p.event.title,
-        eventType: p.event.eventType,
-        startTime: p.event.startTime,
-        group: p.event.group,
+        id: p.session.id,
+        title: p.session.title,
+        sessionType: p.session.sessionType,
+        startTime: p.session.startTime,
+        group: p.session.group,
         status: p.status
       }));
 
@@ -1340,68 +1340,68 @@ export const getUserStatistics = async (req: Request, res: Response) => {
   }
 };
 
-// Archive an event
+// Archive an session
 export const archiveEvent = async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  // Check if user is the creator of the event or a group admin
-  const event = ensureResourceExists(
-    await prisma.event.findUnique({ where: { id } }),
+  // Check if user is the creator of the session or a group admin
+  const session = ensureResourceExists(
+    await prisma.session.findUnique({ where: { id } }),
     'Event'
   );
 
-  // Check if user has permission to manage this event
-  const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
+  // Check if user has permission to manage this session
+  const { isAuthorized } = await sessionService.checkSessionManagementPermission(session, req.user!.id);
   if (!isAuthorized) {
-    throw new ForbiddenError('Only the event creator or group admins can archive it');
+    throw new ForbiddenError('Only the session creator or group admins can archive it');
   }
 
-  const updatedEvent = await prisma.event.update({
+  const updatedSession = await prisma.session.update({
     where: { id },
     data: { archived: true }
   });
 
-  res.json({ message: 'Event archived successfully', event: updatedEvent });
+  res.json({ message: 'Event archived successfully', session: updatedSession });
 };
 
-// Unarchive an event
+// Unarchive an session
 export const unarchiveEvent = async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  // Check if user is the creator of the event or a group admin
-  const event = ensureResourceExists(
-    await prisma.event.findUnique({ where: { id } }),
+  // Check if user is the creator of the session or a group admin
+  const session = ensureResourceExists(
+    await prisma.session.findUnique({ where: { id } }),
     'Event'
   );
 
-  // Check if user has permission to manage this event
-  const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
+  // Check if user has permission to manage this session
+  const { isAuthorized } = await sessionService.checkSessionManagementPermission(session, req.user!.id);
   if (!isAuthorized) {
-    throw new ForbiddenError('Only the event creator or group admins can unarchive it');
+    throw new ForbiddenError('Only the session creator or group admins can unarchive it');
   }
 
-  const updatedEvent = await prisma.event.update({
+  const updatedSession = await prisma.session.update({
     where: { id },
     data: { archived: false }
   });
 
-  res.json({ message: 'Event unarchived successfully', event: updatedEvent });
+  res.json({ message: 'Event unarchived successfully', session: updatedSession });
 };
 
-// Update event status
-export const updateEventStatus = async (req: Request, res: Response) => {
+// Update session status
+export const updateSessionStatus = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { status } = req.body;
 
   // Validate status using the centralized validation function
-  const statusValidation = validateEventStatus(status);
+  const statusValidation = validateSessionStatus(status);
   if (!statusValidation.isValid) {
     throw new BadRequestError(statusValidation.error!);
   }
 
-  // Check if user is the creator of the event or a group admin
-  const event = ensureResourceExists(
-    await prisma.event.findUnique({
+  // Check if user is the creator of the session or a group admin
+  const session = ensureResourceExists(
+    await prisma.session.findUnique({
       where: { id },
       include: {
         participants: {
@@ -1416,52 +1416,52 @@ export const updateEventStatus = async (req: Request, res: Response) => {
     'Event'
   );
 
-  // Check if user has permission to manage this event
-  const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
+  // Check if user has permission to manage this session
+  const { isAuthorized } = await sessionService.checkSessionManagementPermission(session, req.user!.id);
   if (!isAuthorized) {
-    throw new ForbiddenError('Only the event creator or group admins can update event status');
+    throw new ForbiddenError('Only the session creator or group admins can update session status');
   }
 
-  const updatedEvent = await prisma.event.update({
+  const updatedSession = await prisma.session.update({
     where: { id },
     data: { status }
   });
 
   // Create notifications for participants about status change using NotificationFactory
-  const participantIds = event.participants
+  const participantIds = session.participants
     .filter(p => p.userId !== req.user!.id)
     .map(p => p.userId);
   
   if (participantIds.length > 0) {
-    await NotificationFactory.createEventNotifications({
-      eventId: id,
-      type: 'status_change',
+    await NotificationFactory.createSessionNotifications({
+      sessionId: id,
+      type: SessionNotificationType.status_change,
       userIds: participantIds,
       params: {
         name: req.user!.name,
-        eventTitle: event.title,
+        eventTitle: session.title,
         newStatus: status,
-        oldStatus: event.status
+        oldStatus: session.status
       },
       metadata: { 
         newStatus: status, 
-        oldStatus: event.status 
+        oldStatus: session.status 
       },
       checkMutePreference: true,
       deduplicateWindow: 60000 // 1 minute deduplication window
     });
   }
 
-  res.json({ message: 'Event status updated successfully', event: updatedEvent });
+  res.json({ message: 'Event status updated successfully', session: updatedSession });
 };
 
-// Get event activity with optional filtering
+// Get session activity with optional filtering
 export const getEventActivityFeed = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { type, limit, startDate, endDate } = req.query;
 
-  // Check if user has access to the event
-  const event = await prisma.event.findFirst({
+  // Check if user has access to the session
+  const session = await prisma.session.findFirst({
     where: {
       id,
       group: {
@@ -1474,7 +1474,7 @@ export const getEventActivityFeed = async (req: Request, res: Response) => {
     }
   });
 
-  if (!event) {
+  if (!session) {
     throw new NotFoundError('Event not found or access denied');
   }
 
@@ -1494,10 +1494,10 @@ export const getEventActivityFeed = async (req: Request, res: Response) => {
     options.endDate = new Date(endDate);
   }
 
-  const activity = await getEventActivity(id, prisma, options);
+  const activity = await getSessionActivity(id, prisma, options);
 
   res.json({
-    eventId: id,
+    sessionId: id,
     total: activity.length,
     activity
   });
@@ -1505,14 +1505,14 @@ export const getEventActivityFeed = async (req: Request, res: Response) => {
 
 // ==================== GUEST PARTICIPANT MANAGEMENT ====================
 
-// Get event by invite token (no authentication required)
+// Get session by invite token (no authentication required)
 // Note: This endpoint allows access to both public AND private events via invite token.
 // This is intentional - private events with invite tokens are shared privately via the link,
-// which provides controlled access without making the event publicly discoverable.
+// which provides controlled access without making the session publicly discoverable.
 export const getEventByInviteToken = async (req: Request, res: Response) => {
   const { token } = req.params;
 
-  const event = await prisma.event.findFirst({
+  const session = await prisma.session.findFirst({
     where: {
       inviteToken: token
       // Both public and private events can be accessed via valid invite token
@@ -1545,27 +1545,27 @@ export const getEventByInviteToken = async (req: Request, res: Response) => {
     }
   });
 
-  if (!event) {
+  if (!session) {
     throw new NotFoundError('Event not found or invite link is invalid');
   }
 
-  res.json(event);
+  res.json(session);
 };
 
-// Generate or regenerate invite token for an event
+// Generate or regenerate invite token for an session
 export const generateInviteToken = async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  // Check if user is the creator of the event or a group admin
-  const event = ensureResourceExists(
-    await prisma.event.findUnique({ where: { id } }),
+  // Check if user is the creator of the session or a group admin
+  const session = ensureResourceExists(
+    await prisma.session.findUnique({ where: { id } }),
     'Event'
   );
 
-  // Check if user has permission to manage this event
-  const { isAuthorized } = await eventService.checkEventManagementPermission(event, req.user!.id);
+  // Check if user has permission to manage this session
+  const { isAuthorized } = await sessionService.checkSessionManagementPermission(session, req.user!.id);
   if (!isAuthorized) {
-    throw new ForbiddenError('Only the event creator or group admins can generate invite links');
+    throw new ForbiddenError('Only the session creator or group admins can generate invite links');
   }
 
   // Generate new token
@@ -1573,7 +1573,7 @@ export const generateInviteToken = async (req: Request, res: Response) => {
 
   // For private events, keep them private but allow invite link access
   // For public events, ensure they stay public
-  const updatedEvent = await prisma.event.update({
+  const updatedSession = await prisma.session.update({
     where: { id },
     data: { 
       inviteToken
@@ -1581,13 +1581,13 @@ export const generateInviteToken = async (req: Request, res: Response) => {
   });
 
   res.json({ 
-    inviteToken: updatedEvent.inviteToken,
-    inviteUrl: `/events/join/${updatedEvent.inviteToken}`,
-    isPublic: updatedEvent.isPublic
+    inviteToken: updatedSession.inviteToken,
+    inviteUrl: `/sessions/join/${updatedSession.inviteToken}`,
+    isPublic: updatedSession.isPublic
   });
 };
 
-// Join event as guest (no authentication required)
+// Join session as guest (no authentication required)
 export const joinEventAsGuest = async (req: Request, res: Response) => {
   const { token } = req.params;
   const { name } = req.body;
@@ -1597,66 +1597,66 @@ export const joinEventAsGuest = async (req: Request, res: Response) => {
   }
 
   // Sanitize guest name
-  const sanitizedName = eventService.sanitizeGuestName(name);
+  const sanitizedName = sessionService.sanitizeGuestName(name);
 
   // Use a transaction with serializable isolation to prevent race conditions
   const result = await prisma.$transaction(async (tx) => {
-    // Find event by invite token
-    const event = await tx.event.findFirst({
+    // Find session by invite token
+    const session = await tx.session.findFirst({
       where: {
         inviteToken: token
       }
     });
 
-    if (!event) {
+    if (!session) {
       throw new NotFoundError('Event not found or invite link is invalid');
     }
 
     // Check max players with accurate count within transaction
-    if (event.maxPlayers) {
+    if (session.maxPlayers) {
       const confirmedParticipants = await tx.eventParticipant.count({
         where: {
-          eventId: event.id,
-          status: EventParticipantStatus.confirmed
+          sessionId: session.id,
+          status: SessionParticipantStatus.confirmed
         }
       });
 
       const confirmedGuests = await tx.guestParticipant.count({
         where: {
-          eventId: event.id,
+          sessionId: session.id,
           status: GuestParticipantStatus.confirmed
         }
       });
 
       const totalConfirmed = confirmedParticipants + confirmedGuests;
       
-      if (totalConfirmed >= event.maxPlayers) {
+      if (totalConfirmed >= session.maxPlayers) {
         throw new BadRequestError('Event is full');
       }
     }
 
-    // Check for duplicate guest name within this event
+    // Check for duplicate guest name within this session
     const existingGuest = await tx.guestParticipant.findFirst({
       where: {
-        eventId: event.id,
+        sessionId: session.id,
         name: sanitizedName
       }
     });
 
     if (existingGuest) {
-      throw new BadRequestError('A guest with this name has already joined the event');
+      throw new BadRequestError('A guest with this name has already joined the session');
     }
 
     // Create guest participant
     const guestParticipant = await tx.guestParticipant.create({
       data: {
-        eventId: event.id,
+        sessionId: session.id,
         name: sanitizedName,
         status: GuestParticipantStatus.confirmed
       }
     });
 
-    return { guestParticipant, groupId: event.groupId };
+    return { guestParticipant, groupId: session.groupId };
   }, {
     isolationLevel: 'Serializable', // Highest isolation level to prevent race conditions
     maxWait: TRANSACTION.MAX_WAIT_MS,
@@ -1664,11 +1664,11 @@ export const joinEventAsGuest = async (req: Request, res: Response) => {
   });
 
   // Invalidate events cache for all group members
-  await CacheService.deletePattern(`events:user:*:group:${result.groupId}:*`);
-  await CacheService.deletePattern(`events:user:*:group:all:*`);
+  await CacheService.deletePattern(`sessions:user:*:group:${result.groupId}:*`);
+  await CacheService.deletePattern(`sessions:user:*:group:all:*`);
 
   res.status(201).json({ 
-    message: 'Successfully joined event',
+    message: 'Successfully joined session',
     participant: result.guestParticipant
   });
 };
@@ -1695,12 +1695,12 @@ export const getNearbyEvents = async (req: Request, res: Response) => {
   }
 
   // Record search metric for observability of discovery traffic
-  recordSearchQuery('events');
+  recordSearchQuery('sessions');
 
   const { latDelta, lonDelta } = locationService.calculateBoundingBox(lat, radiusKm);
 
   // Get all events with location data
-    const events = await prisma.event.findMany({
+    const sessions = await prisma.session.findMany({
       where: {
         AND: [
           { latitude: { not: null } },
@@ -1735,15 +1735,15 @@ export const getNearbyEvents = async (req: Request, res: Response) => {
 
     // Filter by location and add distance
     const nearbyEvents = locationService.filterByLocation(
-      events,
+      sessions,
       lat,
       lon,
       radiusKm
     ).slice(0, safeLimit); // Limit after filtering
 
   // Enrich with location info
-  const enrichedEvents = nearbyEvents.map(event => 
-    locationService.enrichWithLocationInfo(event)
+  const enrichedEvents = nearbyEvents.map(session => 
+    locationService.enrichWithLocationInfo(session)
   );
 
   res.json({
@@ -1769,7 +1769,7 @@ export const exportEvents = async (req: Request, res: Response) => {
   logger.debug('Exporting events', 'EventController', { userId, format });
 
   // Optimize query - only fetch fields needed for export
-  const events = await prisma.event.findMany({
+  const sessions = await prisma.session.findMany({
     where: {
       participants: {
         some: {
@@ -1781,7 +1781,7 @@ export const exportEvents = async (req: Request, res: Response) => {
       id: true,
       title: true,
       description: true,
-      eventType: true,
+      sessionType: true,
       location: true,
       startTime: true,
       endTime: true,
@@ -1819,23 +1819,23 @@ export const exportEvents = async (req: Request, res: Response) => {
   });
 
   // Transform events to export format
-  const exportData = events.map(event => {
-    const userParticipant = event.participants.find(p => p.userId === userId);
+  const exportData = sessions.map(session => {
+    const userParticipant = session.participants.find(p => p.userId === userId);
     
     return {
-      id: event.id,
-      title: event.title,
-      description: event.description,
-      eventType: event.eventType,
-      location: event.location,
-      startTime: event.startTime,
-      endTime: event.endTime,
-      status: event.status,
+      id: session.id,
+      title: session.title,
+      description: session.description,
+      sessionType: session.sessionType,
+      location: session.location,
+      startTime: session.startTime,
+      endTime: session.endTime,
+      status: session.status,
       participantStatus: userParticipant?.status || 'unknown',
-      groupName: event.group.name,
-      creatorName: event.creator.name,
-      participantCount: event._count.participants,
-      maxPlayers: event.maxPlayers
+      groupName: session.group.name,
+      creatorName: session.creator.name,
+      participantCount: session._count.participants,
+      maxPlayers: session.maxPlayers
     };
   });
 
@@ -1875,22 +1875,22 @@ export const exportEvents = async (req: Request, res: Response) => {
   logger.debug('Events exported successfully', 'EventController', { 
     userId, 
     format, 
-    eventCount: events.length 
+    eventCount: sessions.length 
   });
 
   res.send(content);
 };
 
 /**
- * Get event participants filtered by status
- * Leverages the composite index [eventId, status] for optimal performance
+ * Get session participants filtered by status
+ * Leverages the composite index [sessionId, status] for optimal performance
  */
 export const getEventParticipantsByStatus = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { status } = req.query;
 
-  // Verify user is a member of the group that owns this event
-  const event = await prisma.event.findFirst({
+  // Verify user is a member of the group that owns this session
+  const session = await prisma.session.findFirst({
     where: {
       id,
       group: {
@@ -1903,19 +1903,19 @@ export const getEventParticipantsByStatus = async (req: Request, res: Response) 
     }
   });
 
-  if (!event) {
+  if (!session) {
     throw new NotFoundError('Event not found');
   }
 
-  // Build where clause to leverage composite index [eventId, status]
-  const where: Record<string, unknown> = { eventId: id };
-  const validStatuses = Object.values(EventParticipantStatus);
-  if (status && validStatuses.includes(status as EventParticipantStatus)) {
-    where.status = status; // Uses composite index [eventId, status]
+  // Build where clause to leverage composite index [sessionId, status]
+  const where: Record<string, unknown> = { sessionId: id };
+  const validStatuses = Object.values(SessionParticipantStatus);
+  if (status && validStatuses.includes(status as SessionParticipantStatus)) {
+    where.status = status; // Uses composite index [sessionId, status]
   }
 
   // Get participants with optimal query using composite index
-  const participants = await prisma.eventParticipant.findMany({
+  const participants = await prisma.sessionParticipant.findMany({
     where,
     include: {
       user: {
@@ -1935,9 +1935,9 @@ export const getEventParticipantsByStatus = async (req: Request, res: Response) 
   });
 
   // Get counts by status for summary
-  const statusCounts = await prisma.eventParticipant.groupBy({
+  const statusCounts = await prisma.sessionParticipant.groupBy({
     by: ['status'],
-    where: { eventId: id },
+    where: { sessionId: id },
     _count: true
   });
 
@@ -1960,32 +1960,32 @@ export const getEventParticipantsByStatus = async (req: Request, res: Response) 
 };
 
 /**
- * Helper function to verify event creator authorization for guest management
- * Returns the event and guest participant if authorization succeeds
+ * Helper function to verify session creator authorization for guest management
+ * Returns the session and guest participant if authorization succeeds
  */
 const verifyGuestManagementAuth = async (
-  eventId: string,
+  sessionId: string,
   guestId: string,
   userId: string
-): Promise<{ event: unknown; guest: unknown } | { error: string; status: number }> => {
-  // Check if user is the creator of the event
-  const event = await prisma.event.findUnique({
-    where: { id: eventId }
+): Promise<{ session: unknown; guest: unknown } | { error: string; status: number }> => {
+  // Check if user is the creator of the session
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId }
   });
 
-  if (!event) {
+  if (!session) {
     return { error: 'Event not found', status: 404 };
   }
 
-  if (event.creatorId !== userId) {
-    return { error: 'Only the event creator can manage guest participants', status: 403 };
+  if (session.creatorId !== userId) {
+    return { error: 'Only the session creator can manage guest participants', status: 403 };
   }
 
-  // Verify guest participant belongs to this event
+  // Verify guest participant belongs to this session
   const guest = await prisma.guestParticipant.findFirst({
     where: {
       id: guestId,
-      eventId: eventId
+      sessionId: sessionId
     }
   });
 
@@ -1993,12 +1993,12 @@ const verifyGuestManagementAuth = async (
     return { error: 'Guest participant not found', status: 404 };
   }
 
-  return { event, guest };
+  return { session, guest };
 };
 
 /**
  * Update guest participant name
- * Allows the event creator to update a guest's name
+ * Allows the session creator to update a guest's name
  */
 export const updateGuestParticipant = async (req: Request, res: Response) => {
   const { id, guestId } = req.params;
@@ -2009,7 +2009,7 @@ export const updateGuestParticipant = async (req: Request, res: Response) => {
   }
 
   // Sanitize guest name
-  const sanitizedName = eventService.sanitizeGuestName(name);
+  const sanitizedName = sessionService.sanitizeGuestName(name);
 
   // Verify authorization and get guest
   const authResult = await verifyGuestManagementAuth(id, guestId, req.user!.id);
@@ -2027,9 +2027,9 @@ export const updateGuestParticipant = async (req: Request, res: Response) => {
   });
 
   // Invalidate events cache for all group members
-  if (hasGroupId(authResult.event)) {
-    await CacheService.deletePattern(`events:user:*:group:${authResult.event.groupId}:*`);
-    await CacheService.deletePattern(`events:user:*:group:all:*`);
+  if (hasGroupId(authResult.session)) {
+    await CacheService.deletePattern(`sessions:user:*:group:${authResult.session.groupId}:*`);
+    await CacheService.deletePattern(`sessions:user:*:group:all:*`);
   }
 
   res.json(updatedGuest);
@@ -2037,7 +2037,7 @@ export const updateGuestParticipant = async (req: Request, res: Response) => {
 
 /**
  * Update guest participant status
- * Allows the event creator to update a guest's status (confirmed/declined)
+ * Allows the session creator to update a guest's status (confirmed/declined)
  */
 export const updateGuestParticipantStatus = async (req: Request, res: Response) => {
   const { id, guestId } = req.params;
@@ -2065,17 +2065,17 @@ export const updateGuestParticipantStatus = async (req: Request, res: Response) 
   });
 
   // Invalidate events cache for all group members
-  if (hasGroupId(authResult.event)) {
-    await CacheService.deletePattern(`events:user:*:group:${authResult.event.groupId}:*`);
-    await CacheService.deletePattern(`events:user:*:group:all:*`);
+  if (hasGroupId(authResult.session)) {
+    await CacheService.deletePattern(`sessions:user:*:group:${authResult.session.groupId}:*`);
+    await CacheService.deletePattern(`sessions:user:*:group:all:*`);
   }
 
   res.json(updatedGuest);
 };
 
 /**
- * Remove guest participant from event
- * Allows the event creator to remove a guest participant
+ * Remove guest participant from session
+ * Allows the session creator to remove a guest participant
  */
 export const removeGuestParticipant = async (req: Request, res: Response) => {
   const { id, guestId } = req.params;
@@ -2095,26 +2095,26 @@ export const removeGuestParticipant = async (req: Request, res: Response) => {
   });
 
   // Invalidate events cache for all group members
-  if (hasGroupId(authResult.event)) {
-    await CacheService.deletePattern(`events:user:*:group:${authResult.event.groupId}:*`);
-    await CacheService.deletePattern(`events:user:*:group:all:*`);
+  if (hasGroupId(authResult.session)) {
+    await CacheService.deletePattern(`sessions:user:*:group:${authResult.session.groupId}:*`);
+    await CacheService.deletePattern(`sessions:user:*:group:all:*`);
   }
 
   res.json({ message: 'Guest participant removed successfully' });
 };
 
 /**
- * Get all guest participants for an event
+ * Get all guest participants for an session
  * Allows any group member to view guest participants with optional status filtering
- * Note: Uses group membership check (not event creator) to allow all group members to see guests
+ * Note: Uses group membership check (not session creator) to allow all group members to see guests
  */
 export const getGuestParticipants = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { status } = req.query;
 
-  // Verify user is a member of the group that owns this event
+  // Verify user is a member of the group that owns this session
   // This allows any group member to view guests, not just the creator
-  const event = await prisma.event.findFirst({
+  const session = await prisma.session.findFirst({
     where: {
       id,
       group: {
@@ -2127,12 +2127,12 @@ export const getGuestParticipants = async (req: Request, res: Response) => {
     }
   });
 
-  if (!event) {
+  if (!session) {
     throw new NotFoundError('Event not found');
   }
 
   // Build where clause
-  const where: Record<string, unknown> = { eventId: id };
+  const where: Record<string, unknown> = { sessionId: id };
   const validStatuses = Object.values(GuestParticipantStatus);
   if (status && validStatuses.includes(status as GuestParticipantStatus)) {
     where.status = status;
@@ -2149,7 +2149,7 @@ export const getGuestParticipants = async (req: Request, res: Response) => {
   // Get counts by status for summary
   const statusCounts = await prisma.guestParticipant.groupBy({
     by: ['status'],
-    where: { eventId: id },
+    where: { sessionId: id },
     _count: true
   });
 
@@ -2169,7 +2169,7 @@ export const getGuestParticipants = async (req: Request, res: Response) => {
 };
 
 /**
- * Invite a user to an event
+ * Invite a user to an session
  */
 export const inviteToEvent = async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -2187,7 +2187,7 @@ export const inviteToEvent = async (req: Request, res: Response) => {
   );
   
   if (!hasPermission) {
-    throw new ForbiddenError('You do not have permission to invite members to this event');
+    throw new ForbiddenError('You do not have permission to invite members to this session');
   }
 
   // Find user to invite
@@ -2204,13 +2204,13 @@ export const inviteToEvent = async (req: Request, res: Response) => {
     throw new BadRequestError('You cannot invite yourself');
   }
 
-  // Get event and inviter details first
-  const [event, inviter] = await Promise.all([
-    prisma.event.findUnique({ where: { id } }),
+  // Get session and inviter details first
+  const [session, inviter] = await Promise.all([
+    prisma.session.findUnique({ where: { id } }),
     prisma.user.findUnique({ where: { id: req.user!.id } })
   ]);
 
-  if (!event || !inviter) {
+  if (!session || !inviter) {
     throw new NotFoundError('Event or inviter not found');
   }
 
@@ -2225,7 +2225,7 @@ export const inviteToEvent = async (req: Request, res: Response) => {
     const existingParticipant = await tx.eventParticipant.findUnique({
       where: {
         eventId_userId: {
-          eventId: id,
+          sessionId: id,
           userId: userToInvite.id
         }
       }
@@ -2235,10 +2235,10 @@ export const inviteToEvent = async (req: Request, res: Response) => {
       throw new BadRequestError('User is already a participant or has a pending invitation');
     }
 
-    // Create event participant with pending status
+    // Create session participant with pending status
     await tx.eventParticipant.create({
       data: {
-        eventId: id,
+        sessionId: id,
         userId: userToInvite.id,
         status: 'pending'
       }
@@ -2246,7 +2246,7 @@ export const inviteToEvent = async (req: Request, res: Response) => {
 
     // Create invite log
     await InviteService.createInviteLog({
-      inviterType: 'event',
+      inviterType: 'session',
       entityId: id,
       inviterId: req.user!.id,
       inviteeEmail: userToInvite.email,
@@ -2263,9 +2263,9 @@ export const inviteToEvent = async (req: Request, res: Response) => {
     recipientEmail: userToInvite.email,
     inviterName: inviter.name,
     resourceId: id,
-    resourceName: event.title,
-    resourceDescription: event.description || undefined,
-    resourceType: 'event',
+    resourceName: session.title,
+    resourceDescription: session.description || undefined,
+    resourceType: 'session',
     actionUrl: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/events/${id}`,
     customMessage,
     expiresAt
@@ -2277,7 +2277,7 @@ export const inviteToEvent = async (req: Request, res: Response) => {
 };
 
 /**
- * Revoke an event invitation
+ * Revoke an session invitation
  */
 export const revokeEventInvitation = async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -2295,10 +2295,10 @@ export const revokeEventInvitation = async (req: Request, res: Response) => {
   );
 
   if (!hasPermission) {
-    throw new ForbiddenError('You do not have permission to revoke event invitations');
+    throw new ForbiddenError('You do not have permission to revoke session invitations');
   }
 
-  const result = await InviteService.revokeInvitation('event', id, email, req.user!.id);
+  const result = await InviteService.revokeInvitation('session', id, email, req.user!.id);
 
   if (!result.success) {
     throw new BadRequestError(result.error || 'Failed to revoke invitation');
@@ -2310,7 +2310,7 @@ export const revokeEventInvitation = async (req: Request, res: Response) => {
 };
 
 /**
- * Get invite analytics for an event
+ * Get invite analytics for an session
  */
 export const getEventInviteAnalytics = async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -2323,10 +2323,10 @@ export const getEventInviteAnalytics = async (req: Request, res: Response) => {
   );
 
   if (!hasPermission) {
-    throw new ForbiddenError('You do not have permission to view event invite analytics');
+    throw new ForbiddenError('You do not have permission to view session invite analytics');
   }
 
-  const analytics = await InviteService.getInviteAnalytics('event', id);
+  const analytics = await InviteService.getInviteAnalytics('session', id);
 
   res.json({
     analytics
@@ -2334,7 +2334,7 @@ export const getEventInviteAnalytics = async (req: Request, res: Response) => {
 };
 
 /**
- * Generate a new invite token for the event
+ * Generate a new invite token for the session
  */
 export const generateEventInviteToken = async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -2351,7 +2351,7 @@ export const generateEventInviteToken = async (req: Request, res: Response) => {
     throw new ForbiddenError('You do not have permission to generate invite tokens');
   }
 
-  const result = await InviteService.generateInviteToken('event', id, expiresInDays);
+  const result = await InviteService.generateInviteToken('session', id, expiresInDays);
 
   if (!result.success) {
     throw new BadRequestError(result.error || 'Failed to generate invite token');

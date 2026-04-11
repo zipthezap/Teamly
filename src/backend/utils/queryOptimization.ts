@@ -28,13 +28,13 @@ export const GROUP_SELECT_MINIMAL = {
 } as const;
 
 /**
- * Standard select fields for event data
+ * Standard select fields for session data
  */
 export const EVENT_SELECT_MINIMAL = {
   id: true,
   title: true,
   description: true,
-  eventType: true,
+  sessionType: true,
   startTime: true,
   endTime: true,
   location: true,

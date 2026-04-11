@@ -1,9 +1,10 @@
 /**
  * Event Notification Service
- * Handles all event-related email notifications and activity tracking
+ * Handles all session-related email notifications and activity tracking
  */
 
-import { PrismaClient, Prisma, EventNotification, EventNotificationType } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
+import { SessionNotificationType } from '../../shared/types/event.types';
 import { sendEmailWithQueue } from './emailQueueService';
 import { batchShouldSendEmailNotification } from '../utils/notificationHelper';
 import { escapeHtml } from '../utils/validation';
@@ -20,7 +21,7 @@ interface EventParticipantWithUser {
 }
 
 /**
- * Send event invitation notifications to group members
+ * Send session invitation notifications to group members
  */
 export const sendEventInvitations = async (
   recipients: User[],
@@ -70,7 +71,7 @@ export const sendEventInvitations = async (
 };
 
 /**
- * Send event update notifications to participants
+ * Send session update notifications to participants
  */
 export const sendEventUpdateNotifications = async (
   participants: EventParticipantWithUser[],
@@ -93,8 +94,8 @@ export const sendEventUpdateNotifications = async (
       const htmlContent = `
         <h2>Event Updated</h2>
         <p>Hi ${escapeHtml(recipient.name)},</p>
-        <p>The event "${escapeHtml(eventTitle)}" in group "${escapeHtml(groupName)}" has been updated.</p>
-        <p>Please check the event details for any changes.</p>
+        <p>The session "${escapeHtml(eventTitle)}" in group "${escapeHtml(groupName)}" has been updated.</p>
+        <p>Please check the session details for any changes.</p>
         <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/events">View Event</a></p>
       `;
       
@@ -117,7 +118,7 @@ export const sendEventUpdateNotifications = async (
 };
 
 /**
- * Send event cancellation notifications to participants
+ * Send session cancellation notifications to participants
  */
 export const sendEventCancellationNotifications = async (
   participants: EventParticipantWithUser[],
@@ -140,7 +141,7 @@ export const sendEventCancellationNotifications = async (
       const htmlContent = `
         <h2>Event Cancelled</h2>
         <p>Hi ${escapeHtml(recipient.name)},</p>
-        <p>Unfortunately, the event "${escapeHtml(eventTitle)}" in group "${escapeHtml(groupName)}" has been cancelled.</p>
+        <p>Unfortunately, the session "${escapeHtml(eventTitle)}" in group "${escapeHtml(groupName)}" has been cancelled.</p>
         <p>We apologize for any inconvenience this may cause.</p>
         <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/events">Browse Other Events</a></p>
       `;
@@ -164,21 +165,21 @@ export const sendEventCancellationNotifications = async (
 };
 
 /**
- * Create event notification records in database
+ * Create session notification records in database
  */
-export const createEventNotifications = async (
-  eventId: string,
+export const createSessionNotifications = async (
+  sessionId: string,
   userIds: string[],
-  type: EventNotificationType,
+  type: SessionNotificationType,
   prisma: PrismaClient,
   metadata?: Prisma.InputJsonValue,
   params?: Prisma.InputJsonValue
 ): Promise<void> => {
   await Promise.all(
     userIds.map(userId =>
-      prisma.eventNotification.create({
+      prisma.sessionNotification.create({
         data: {
-          eventId,
+          sessionId,
           userId,
           type,
           metadata: metadata || undefined,
@@ -193,16 +194,16 @@ export const createEventNotifications = async (
  * Create a batch of activity notifications with metadata
  */
 export const createActivityNotification = async (
-  eventId: string,
+  sessionId: string,
   userId: string,
-  type: EventNotificationType,
+  type: SessionNotificationType,
   metadata: Prisma.InputJsonValue,
   prisma: PrismaClient,
   params?: Prisma.InputJsonValue
 ): Promise<void> => {
-  await prisma.eventNotification.create({
+  await prisma.sessionNotification.create({
     data: {
-      eventId,
+      sessionId,
       userId,
       type,
       metadata,
@@ -212,19 +213,19 @@ export const createActivityNotification = async (
 };
 
 /**
- * Get recent activity for an event with optional filtering
+ * Get recent activity for an session with optional filtering
  */
-export const getEventActivity = async (
-  eventId: string,
+export const getSessionActivity = async (
+  sessionId: string,
   prisma: PrismaClient,
   options?: {
     limit?: number;
-    type?: EventNotificationType;
+    type?: SessionNotificationType;
     startDate?: Date;
     endDate?: Date;
   }
-): Promise<(EventNotification & { user: { id: string; name: string; email: string } })[]> => {
-  const where: Prisma.EventNotificationWhereInput = { eventId };
+): Promise<Array<{ id: string; type: string; userId: string; sessionId: string; createdAt: Date; user: { id: string; name: string; email: string } }>> => {
+  const where: Prisma.SessionNotificationWhereInput = { sessionId };
   
   if (options?.type) {
     where.type = options.type;
@@ -240,7 +241,7 @@ export const getEventActivity = async (
     }
   }
   
-  const notifications = await prisma.eventNotification.findMany({
+  const notifications = await prisma.sessionNotification.findMany({
     where,
     include: {
       user: {

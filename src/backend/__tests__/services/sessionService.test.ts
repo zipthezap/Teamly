@@ -1,6 +1,6 @@
 /**
  * Event Service Tests
- * Tests for event management business logic
+ * Tests for session management business logic
  */
 
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -9,7 +9,7 @@ import {
   sanitizeGuestName,
   validateEventTimes,
   validateRecurrence,
-  determineEventStatus,
+  determineSessionStatus,
   buildEventFilters,
   canModifyEvent,
   checkEventManagementPermission,
@@ -23,12 +23,12 @@ import {
   sendEventEmailNotifications
 } from '../../services/eventService';
 import prisma from '../../config/database';
-import { EventNotificationType, EventParticipantStatus } from '../../../shared/types/event.types';
+import { SessionNotificationType, SessionParticipantStatus } from '../../../shared/types/event.types';
 
 // Mock dependencies
 vi.mock('../../config/database', () => ({
   default: {
-    event: {
+    session: {
       findUnique: vi.fn(),
     },
     group: {
@@ -95,13 +95,13 @@ describe('Event Service', () => {
       const result = sanitizeEventData({
         title: '  Test Event  ',
         description: '  Test description  ',
-        eventType: '  soccer  ',
+        sessionType: '  soccer  ',
         location: '  Test Location  ',
       });
 
       expect(result.title).toBe('Test Event');
       expect(result.description).toBe('Test description');
-      expect(result.eventType).toBe('soccer');
+      expect(result.sessionType).toBe('soccer');
       expect(result.location).toBe('Test Location');
     });
 
@@ -110,18 +110,18 @@ describe('Event Service', () => {
 
       expect(result.title).toBeUndefined();
       expect(result.description).toBeUndefined();
-      expect(result.eventType).toBeUndefined();
+      expect(result.sessionType).toBeUndefined();
       expect(result.location).toBeUndefined();
     });
 
     it('should handle partial data', () => {
       const result = sanitizeEventData({
         title: '  Test Event  ',
-        eventType: '  soccer  ',
+        sessionType: '  soccer  ',
       });
 
       expect(result.title).toBe('Test Event');
-      expect(result.eventType).toBe('soccer');
+      expect(result.sessionType).toBe('soccer');
       expect(result.description).toBeUndefined();
       expect(result.location).toBeUndefined();
     });
@@ -216,10 +216,10 @@ describe('Event Service', () => {
     });
   });
 
-  describe('determineEventStatus', () => {
+  describe('determineSessionStatus', () => {
     it('should return "upcoming" for future events', () => {
       const futureDate = new Date(Date.now() + 86400000).toISOString();
-      const status = determineEventStatus(futureDate);
+      const status = determineSessionStatus(futureDate);
 
       expect(status).toBe('upcoming');
     });
@@ -229,7 +229,7 @@ describe('Event Service', () => {
       const startDate = new Date(now.getTime() - 3600000).toISOString(); // 1 hour ago
       const endDate = new Date(now.getTime() + 3600000).toISOString(); // 1 hour from now
       
-      const status = determineEventStatus(startDate, endDate);
+      const status = determineSessionStatus(startDate, endDate);
 
       expect(status).toBe('ongoing');
     });
@@ -238,14 +238,14 @@ describe('Event Service', () => {
       const endDate = new Date(Date.now() - 86400000).toISOString();
       const startDate = new Date(Date.now() - 90000000).toISOString();
       
-      const status = determineEventStatus(startDate, endDate);
+      const status = determineSessionStatus(startDate, endDate);
 
       expect(status).toBe('completed');
     });
 
     it('should return "upcoming" for events without end time', () => {
       const futureDate = new Date(Date.now() + 86400000).toISOString();
-      const status = determineEventStatus(futureDate);
+      const status = determineSessionStatus(futureDate);
 
       expect(status).toBe('upcoming');
     });
@@ -266,10 +266,10 @@ describe('Event Service', () => {
       expect(filters.AND).toBeDefined();
     });
 
-    it('should build filters with event type', () => {
-      const filters = buildEventFilters(userId, { eventType: 'soccer' });
+    it('should build filters with session type', () => {
+      const filters = buildEventFilters(userId, { sessionType: 'soccer' });
 
-      expect(filters.eventType).toEqual({ contains: 'soccer', mode: 'insensitive' });
+      expect(filters.sessionType).toEqual({ contains: 'soccer', mode: 'insensitive' });
     });
 
     it('should build filters with date range', () => {
@@ -308,8 +308,8 @@ describe('Event Service', () => {
   });
 
   describe('canModifyEvent', () => {
-    it('should return true for event creator', () => {
-      const event = {
+    it('should return true for session creator', () => {
+      const session = {
         creatorId: 'user-1',
         group: {
           members: [
@@ -318,12 +318,12 @@ describe('Event Service', () => {
         }
       };
 
-      const result = canModifyEvent(event, 'user-1');
+      const result = canModifyEvent(session, 'user-1');
       expect(result).toBe(true);
     });
 
     it('should return true for group admin', () => {
-      const event = {
+      const session = {
         creatorId: 'user-1',
         group: {
           members: [
@@ -332,12 +332,12 @@ describe('Event Service', () => {
         }
       };
 
-      const result = canModifyEvent(event, 'user-2');
+      const result = canModifyEvent(session, 'user-2');
       expect(result).toBe(true);
     });
 
     it('should return true for group moderator', () => {
-      const event = {
+      const session = {
         creatorId: 'user-1',
         group: {
           members: [
@@ -346,12 +346,12 @@ describe('Event Service', () => {
         }
       };
 
-      const result = canModifyEvent(event, 'user-2');
+      const result = canModifyEvent(session, 'user-2');
       expect(result).toBe(true);
     });
 
     it('should return false for regular member', () => {
-      const event = {
+      const session = {
         creatorId: 'user-1',
         group: {
           members: [
@@ -360,12 +360,12 @@ describe('Event Service', () => {
         }
       };
 
-      const result = canModifyEvent(event, 'user-2');
+      const result = canModifyEvent(session, 'user-2');
       expect(result).toBe(false);
     });
 
     it('should return false for non-member', () => {
-      const event = {
+      const session = {
         creatorId: 'user-1',
         group: {
           members: [
@@ -374,20 +374,20 @@ describe('Event Service', () => {
         }
       };
 
-      const result = canModifyEvent(event, 'user-3');
+      const result = canModifyEvent(session, 'user-3');
       expect(result).toBe(false);
     });
   });
 
   describe('checkEventManagementPermission', () => {
-    it('should return authorized true for event creator', async () => {
-      const event = {
-        id: 'event-1',
+    it('should return authorized true for session creator', async () => {
+      const session = {
+        id: 'session-1',
         creatorId: 'user-1',
         groupId: 'group-1'
       };
 
-      const result = await checkEventManagementPermission(event, 'user-1');
+      const result = await checkEventManagementPermission(session, 'user-1');
 
       expect(result.isAuthorized).toBe(true);
       expect(result.isEventCreator).toBe(true);
@@ -397,19 +397,19 @@ describe('Event Service', () => {
       const { permissionService: mockPermissionService } = await import('../../services/permissionService');
       vi.mocked(mockPermissionService.hasGroupPermission).mockResolvedValueOnce(true);
 
-      const event = {
-        id: 'event-1',
+      const session = {
+        id: 'session-1',
         creatorId: 'user-1',
         groupId: 'group-1'
       };
 
-      const result = await checkEventManagementPermission(event, 'user-2');
+      const result = await checkEventManagementPermission(session, 'user-2');
 
       expect(result.isAuthorized).toBe(true);
       expect(result.isGroupAdmin).toBe(true);
     });
 
-    it('should return authorized false for null event', async () => {
+    it('should return authorized false for null session', async () => {
       const result = await checkEventManagementPermission(null, 'user-1');
 
       expect(result.isAuthorized).toBe(false);
@@ -419,22 +419,22 @@ describe('Event Service', () => {
   });
 
   describe('getParticipant', () => {
-    it('should find participant by event and user ID', async () => {
-      const mockParticipant = { id: 'participant-1', eventId: 'event-1', userId: 'user-1' };
-      vi.mocked(prisma.eventParticipant.findFirst).mockResolvedValueOnce(mockParticipant as unknown);
+    it('should find participant by session and user ID', async () => {
+      const mockParticipant = { id: 'participant-1', sessionId: 'session-1', userId: 'user-1' };
+      vi.mocked(prisma.sessionParticipant.findFirst).mockResolvedValueOnce(mockParticipant as unknown);
 
-      const result = await getParticipant('event-1', 'user-1');
+      const result = await getParticipant('session-1', 'user-1');
 
       expect(result).toEqual(mockParticipant);
-      expect(prisma.eventParticipant.findFirst).toHaveBeenCalledWith({
-        where: { eventId: 'event-1', userId: 'user-1' }
+      expect(prisma.sessionParticipant.findFirst).toHaveBeenCalledWith({
+        where: { sessionId: 'session-1', userId: 'user-1' }
       });
     });
 
     it('should return null if participant not found', async () => {
-      vi.mocked(prisma.eventParticipant.findFirst).mockResolvedValueOnce(null);
+      vi.mocked(prisma.sessionParticipant.findFirst).mockResolvedValueOnce(null);
 
-      const result = await getParticipant('event-1', 'user-1');
+      const result = await getParticipant('session-1', 'user-1');
 
       expect(result).toBeNull();
     });
@@ -442,52 +442,52 @@ describe('Event Service', () => {
 
   describe('isEventFull', () => {
     it('should return false if no max participants limit', async () => {
-      const result = await isEventFull('event-1', null);
+      const result = await isEventFull('session-1', null);
 
       expect(result).toBe(false);
     });
 
-    it('should return true if event is at capacity', async () => {
-      vi.mocked(prisma.eventParticipant.count).mockResolvedValueOnce(20);
+    it('should return true if session is at capacity', async () => {
+      vi.mocked(prisma.sessionParticipant.count).mockResolvedValueOnce(20);
 
-      const result = await isEventFull('event-1', 20);
+      const result = await isEventFull('session-1', 20);
 
       expect(result).toBe(true);
-      expect(prisma.eventParticipant.count).toHaveBeenCalledWith({
+      expect(prisma.sessionParticipant.count).toHaveBeenCalledWith({
         where: {
-          eventId: 'event-1',
-          status: EventParticipantStatus.confirmed
+          sessionId: 'session-1',
+          status: SessionParticipantStatus.confirmed
         }
       });
     });
 
-    it('should return false if event is not full', async () => {
-      vi.mocked(prisma.eventParticipant.count).mockResolvedValueOnce(15);
+    it('should return false if session is not full', async () => {
+      vi.mocked(prisma.sessionParticipant.count).mockResolvedValueOnce(15);
 
-      const result = await isEventFull('event-1', 20);
+      const result = await isEventFull('session-1', 20);
 
       expect(result).toBe(false);
     });
   });
 
   describe('getEventById', () => {
-    it('should retrieve event with full details', async () => {
+    it('should retrieve session with full details', async () => {
       const mockEvent = {
-        id: 'event-1',
+        id: 'session-1',
         title: 'Test Event',
         creator: { id: 'user-1', name: 'Creator' },
         group: { id: 'group-1', name: 'Test Group', members: [] },
         participants: [],
         comments: []
       };
-      vi.mocked(prisma.event.findUnique).mockResolvedValueOnce(mockEvent as unknown);
+      vi.mocked(prisma.session.findUnique).mockResolvedValueOnce(mockEvent as unknown);
 
-      const result = await getEventById('event-1');
+      const result = await getSessionById('session-1');
 
       expect(result).toEqual(mockEvent);
-      expect(prisma.event.findUnique).toHaveBeenCalledWith(
+      expect(prisma.session.findUnique).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: 'event-1' },
+          where: { id: 'session-1' },
           include: expect.any(Object)
         })
       );
@@ -572,13 +572,13 @@ describe('Event Service', () => {
       vi.mocked(mockFilterUnmuted).mockResolvedValueOnce(['user-1', 'user-2']);
 
       await createEventUpdateNotifications(
-        'event-1',
+        'session-1',
         'Test Event',
         'Updater Name',
         ['user-1', 'user-2']
       );
 
-      expect(prisma.eventNotification.createMany).toHaveBeenCalledWith(
+      expect(prisma.sessionNotification.createMany).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.any(Array),
           skipDuplicates: true
@@ -588,13 +588,13 @@ describe('Event Service', () => {
 
     it('should not create notifications if no participants', async () => {
       await createEventUpdateNotifications(
-        'event-1',
+        'session-1',
         'Test Event',
         'Updater Name',
         []
       );
 
-      expect(prisma.eventNotification.createMany).not.toHaveBeenCalled();
+      expect(prisma.sessionNotification.createMany).not.toHaveBeenCalled();
     });
   });
 
@@ -602,27 +602,27 @@ describe('Event Service', () => {
     it('should create deletion notifications for participants', async () => {
       const { filterUnmutedUsers: mockFilterUnmuted } = await import('../../utils/notificationHelper');
       vi.mocked(mockFilterUnmuted).mockResolvedValueOnce(['user-1', 'user-2']);
-      vi.mocked(prisma.eventNotification.createMany).mockResolvedValue({ count: 2 });
+      vi.mocked(prisma.sessionNotification.createMany).mockResolvedValue({ count: 2 });
 
       await createEventDeletionNotifications(
-        'event-1',
+        'session-1',
         'Test Event',
         'Deleter Name',
         ['user-1', 'user-2']
       );
 
-      expect(prisma.eventNotification.createMany).toHaveBeenCalledWith(
+      expect(prisma.sessionNotification.createMany).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.arrayContaining([
             expect.objectContaining({
-              eventId: 'event-1',
+              sessionId: 'session-1',
               userId: 'user-1',
-              type: EventNotificationType.event_cancelled
+              type: SessionNotificationType.event_cancelled
             }),
             expect.objectContaining({
-              eventId: 'event-1',
+              sessionId: 'session-1',
               userId: 'user-2',
-              type: EventNotificationType.event_cancelled
+              type: SessionNotificationType.event_cancelled
             })
           ]),
           skipDuplicates: true
@@ -632,13 +632,13 @@ describe('Event Service', () => {
 
     it('should not create notifications if no participants', async () => {
       await createEventDeletionNotifications(
-        'event-1',
+        'session-1',
         'Test Event',
         'Deleter Name',
         []
       );
 
-      expect(prisma.eventNotification.createMany).not.toHaveBeenCalled();
+      expect(prisma.sessionNotification.createMany).not.toHaveBeenCalled();
     });
   });
 
@@ -738,13 +738,13 @@ describe('Event Service', () => {
     it('should handle multiple filters combined', () => {
       const filters = buildEventFilters(userId, {
         groupId: 'group-1',
-        eventType: 'soccer',
+        sessionType: 'soccer',
         location: 'New York',
         archived: 'false'
       });
 
       expect(filters.groupId).toBe('group-1');
-      expect(filters.eventType).toEqual({ contains: 'soccer', mode: 'insensitive' });
+      expect(filters.sessionType).toEqual({ contains: 'soccer', mode: 'insensitive' });
       expect(filters.location).toEqual({ contains: 'New York', mode: 'insensitive' });
       expect(filters.archived).toBe(false);
     });

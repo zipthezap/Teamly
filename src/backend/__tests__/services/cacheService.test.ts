@@ -161,14 +161,14 @@ describe('CacheService', () => {
     });
 
     it('should invalidate cache for resource type', async () => {
-      await CacheService.set('event:1:details', 'event1', 60);
-      await CacheService.set('event:2:details', 'event2', 60);
+      await CacheService.set('session:1:details', 'event1', 60);
+      await CacheService.set('session:2:details', 'event2', 60);
       await CacheService.set('group:1:details', 'group1', 60);
 
-      await CacheService.invalidate('event');
+      await CacheService.invalidate('session');
 
-      const event1 = await CacheService.get('event:1:details');
-      const event2 = await CacheService.get('event:2:details');
+      const event1 = await CacheService.get('session:1:details');
+      const event2 = await CacheService.get('session:2:details');
       const group1 = await CacheService.get('group:1:details');
 
       expect(event1).toBeNull();
@@ -177,15 +177,15 @@ describe('CacheService', () => {
     });
 
     it('should invalidate cache for specific resource', async () => {
-      await CacheService.set('event:1:details', 'event1', 60);
-      await CacheService.set('event:1:participants', 'participants', 60);
-      await CacheService.set('event:2:details', 'event2', 60);
+      await CacheService.set('session:1:details', 'event1', 60);
+      await CacheService.set('session:1:participants', 'participants', 60);
+      await CacheService.set('session:2:details', 'event2', 60);
 
-      await CacheService.invalidate('event', '1');
+      await CacheService.invalidate('session', '1');
 
-      const event1Details = await CacheService.get('event:1:details');
-      const event1Participants = await CacheService.get('event:1:participants');
-      const event2 = await CacheService.get('event:2:details');
+      const event1Details = await CacheService.get('session:1:details');
+      const event1Participants = await CacheService.get('session:1:participants');
+      const event2 = await CacheService.get('session:2:details');
 
       expect(event1Details).toBeNull();
       expect(event1Participants).toBeNull();

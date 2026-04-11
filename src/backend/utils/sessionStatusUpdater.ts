@@ -1,16 +1,16 @@
 /**
  * Event Status Updater Utility
- * Automatically updates event statuses based on current time
+ * Automatically updates session statuses based on current time
  */
 
 import prisma from '../config/database';
 import { logger } from './logger';
 
 /**
- * Configuration constants for event status management
+ * Configuration constants for session status management
  */
 const EVENT_CONFIG = {
-  // Hours after start time to keep an event 'ongoing' when no end time is specified
+  // Hours after start time to keep an session 'ongoing' when no end time is specified
   DEFAULT_ONGOING_HOURS: 24,
   // Days before archiving completed events
   DEFAULT_ARCHIVE_DAYS: 30,
@@ -19,12 +19,12 @@ const EVENT_CONFIG = {
 };
 
 /**
- * Update event statuses based on current time
+ * Update session statuses based on current time
  * - Events that have passed their end time -> 'completed'
  * - Events currently happening -> 'ongoing'
  * - Events in the future -> 'upcoming'
  */
-export const updateEventStatuses = async (): Promise<{
+export const updateSessionStatuses = async (): Promise<{
   updated: number;
   errors: number;
 }> => {
@@ -34,7 +34,7 @@ export const updateEventStatuses = async (): Promise<{
 
   try {
     // Get all non-archived events that are not cancelled
-    const events = await prisma.event.findMany({
+    const sessions = await prisma.session.findMany({
       where: {
         archived: false,
         status: {
@@ -49,40 +49,40 @@ export const updateEventStatuses = async (): Promise<{
       }
     });
 
-    // Update each event based on time
-    for (const event of events) {
-      let newStatus = event.status;
+    // Update each session based on time
+    for (const session of sessions) {
+      let newStatus = session.status;
 
-      if (event.endTime && event.endTime < now) {
+      if (session.endTime && session.endTime < now) {
         // Event has ended
         newStatus = 'completed';
-      } else if (event.startTime <= now) {
+      } else if (session.startTime <= now) {
         // Event has started
-        if (event.endTime && event.endTime >= now) {
+        if (session.endTime && session.endTime >= now) {
           // Event is currently happening (has end time and hasn't ended)
           newStatus = 'ongoing';
-        } else if (!event.endTime) {
+        } else if (!session.endTime) {
           // Event has no end time - mark as ongoing if within configured hours
           // Otherwise mark as completed
-          const hoursSinceStart = (now.getTime() - event.startTime.getTime()) / EVENT_CONFIG.MS_PER_HOUR;
+          const hoursSinceStart = (now.getTime() - session.startTime.getTime()) / EVENT_CONFIG.MS_PER_HOUR;
           newStatus = hoursSinceStart <= EVENT_CONFIG.DEFAULT_ONGOING_HOURS ? 'ongoing' : 'completed';
         }
-      } else if (event.startTime > now) {
+      } else if (session.startTime > now) {
         // Event hasn't started yet
         newStatus = 'upcoming';
       }
 
       // Only update if status has changed
-      if (newStatus !== event.status) {
+      if (newStatus !== session.status) {
         try {
-          await prisma.event.update({
-            where: { id: event.id },
+          await prisma.session.update({
+            where: { id: session.id },
             data: { status: newStatus }
           });
           updated++;
         } catch (error) {
-          logger.error('Failed to update event status', 'EventStatusUpdater', { 
-            eventId: event.id, 
+          logger.error('Failed to update session status', 'SessionStatusUpdater', { 
+            sessionId: session.id, 
             error 
           });
           errors++;
@@ -92,7 +92,7 @@ export const updateEventStatuses = async (): Promise<{
 
     return { updated, errors };
   } catch (error) {
-    logger.error('Error in updateEventStatuses', 'EventStatusUpdater', { error });
+    logger.error('Error in updateSessionStatuses', 'SessionStatusUpdater', { error });
     throw error;
   }
 };
@@ -111,7 +111,7 @@ export const archiveOldEvents = async (daysOld: number = EVENT_CONFIG.DEFAULT_AR
   let errors = 0;
 
   try {
-    const result = await prisma.event.updateMany({
+    const result = await prisma.session.updateMany({
       where: {
         archived: false,
         status: 'completed',
@@ -127,14 +127,14 @@ export const archiveOldEvents = async (daysOld: number = EVENT_CONFIG.DEFAULT_AR
     archived = result.count;
     return { archived, errors };
   } catch (error) {
-    logger.error('Error in archiveOldEvents', 'EventStatusUpdater', { error });
+    logger.error('Error in archiveOldEvents', 'SessionStatusUpdater', { error });
     errors++;
     return { archived, errors };
   }
 };
 
 /**
- * Expire old event requests that have passed their deadline
+ * Expire old session requests that have passed their deadline
  */
 export const expireOldEventRequests = async (): Promise<{
   expired: number;
@@ -145,7 +145,7 @@ export const expireOldEventRequests = async (): Promise<{
   let errors = 0;
 
   try {
-    const result = await prisma.eventRequest.updateMany({
+    const result = await prisma.sessionRequest.updateMany({
       where: {
         status: 'voting',
         voteDeadline: {
@@ -160,7 +160,7 @@ export const expireOldEventRequests = async (): Promise<{
     expired = result.count;
     return { expired, errors };
   } catch (error) {
-    logger.error('Error in expireOldEventRequests', 'EventStatusUpdater', { error });
+    logger.error('Error in expireOldEventRequests', 'SessionStatusUpdater', { error });
     errors++;
     return { expired, errors };
   }
@@ -175,9 +175,9 @@ export const runEventMaintenance = async (): Promise<{
   requestsExpired: number;
   errors: number;
 }> => {
-  logger.info('Starting event maintenance', 'EventStatusUpdater');
+  logger.info('Starting session maintenance', 'SessionStatusUpdater');
   
-  const statusResult = await updateEventStatuses();
+  const statusResult = await updateSessionStatuses();
   const archiveResult = await archiveOldEvents(EVENT_CONFIG.DEFAULT_ARCHIVE_DAYS);
   const expireResult = await expireOldEventRequests();
 
@@ -188,6 +188,6 @@ export const runEventMaintenance = async (): Promise<{
     errors: statusResult.errors + archiveResult.errors + expireResult.errors
   };
 
-  logger.info('Event maintenance complete', 'EventStatusUpdater', summary);
+  logger.info('Event maintenance complete', 'SessionStatusUpdater', summary);
   return summary;
 };

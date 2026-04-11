@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import * as eventController from '../controllers/eventController';
+import * as eventController from '../controllers/sessionController';
 import * as reminderController from '../controllers/reminderController';
 import * as attendanceController from '../controllers/attendanceController';
 import authMiddleware from '../middleware/auth';
@@ -26,7 +26,7 @@ router.get('/export', noCache, asyncHandler(eventController.exportEvents));
 router.get('/nearby', etagMiddleware({ weak: true }), cacheControl(300, { private: true, staleWhileRevalidate: 60 }), asyncHandler(eventController.getNearbyEvents));
 // Cache statistics for 5 minutes
 router.get('/statistics', etagMiddleware({ weak: true }), cacheControl(300, { private: true, staleWhileRevalidate: 60 }), asyncHandler(eventController.getUserStatistics));
-// Cache individual event details for 2 minutes
+// Cache individual session details for 2 minutes
 router.get('/:id', etagMiddleware({ weak: true }), cacheControl(120, { private: true, staleWhileRevalidate: 30 }), asyncHandler(eventController.getEvent));
 router.get('/:id/participants', etagMiddleware({ weak: true }), cacheControl(60, { private: true }), asyncHandler(eventController.getEventParticipantsByStatus));
 router.get('/:id/guests', etagMiddleware({ weak: true }), cacheControl(60, { private: true }), asyncHandler(eventController.getGuestParticipants));
@@ -41,26 +41,26 @@ router.post('/:id/invitations/revoke', noCache, asyncHandler(eventController.rev
 router.get('/:id/invitations/analytics', etagMiddleware({ weak: true }), cacheControl(120, { private: true }), asyncHandler(eventController.getEventInviteAnalytics));
 router.post('/:id/invitations/generate-token', noCache, asyncHandler(eventController.generateEventInviteToken));
 router.put('/:id/status', noCache, asyncHandler(eventController.updateParticipationStatus));
-router.put('/:id/event-status', noCache, asyncHandler(eventController.updateEventStatus));
+router.put('/:id/session-status', noCache, asyncHandler(eventController.updateSessionStatus));
 router.put('/:id/guests/:guestId', noCache, asyncHandler(eventController.updateGuestParticipant));
 router.put('/:id/guests/:guestId/status', noCache, asyncHandler(eventController.updateGuestParticipantStatus));
 router.delete('/:id/guests/:guestId', noCache, asyncHandler(eventController.removeGuestParticipant));
 router.post('/:id/archive', noCache, asyncHandler(eventController.archiveEvent));
 router.post('/:id/unarchive', noCache, asyncHandler(eventController.unarchiveEvent));
 
-// Recurring event routes
+// Recurring session routes
 router.get('/:id/instances', cacheControl(120, { private: true }), asyncHandler(eventController.getRecurringEventInstances));
 router.post('/:id/exceptions', noCache, asyncHandler(eventController.addRecurringEventException));
 router.delete('/:id/exceptions', noCache, asyncHandler(eventController.removeRecurringEventException));
 
 // Event reminder routes
-router.post('/:eventId/reminders', noCache, reminderController.createReminder);
-router.get('/:eventId/reminders', cacheControl(120, { private: true }), reminderController.getEventReminders);
+router.post('/:sessionId/reminders', noCache, reminderController.createReminder);
+router.get('/:sessionId/reminders', cacheControl(120, { private: true }), reminderController.getEventReminders);
 
 // Event attendance routes
-router.post('/:eventId/attendance', noCache, attendanceController.markAttendance);
-router.get('/:eventId/attendance', cacheControl(60, { private: true }), attendanceController.getEventAttendance);
-router.get('/:eventId/attendance/stats', cacheControl(180, { private: true }), attendanceController.getAttendanceStats);
-router.delete('/:eventId/attendance/:userId', noCache, attendanceController.deleteAttendance);
+router.post('/:sessionId/attendance', noCache, attendanceController.markAttendance);
+router.get('/:sessionId/attendance', cacheControl(60, { private: true }), attendanceController.getEventAttendance);
+router.get('/:sessionId/attendance/stats', cacheControl(180, { private: true }), attendanceController.getAttendanceStats);
+router.delete('/:sessionId/attendance/:userId', noCache, attendanceController.deleteAttendance);
 
 export default router;

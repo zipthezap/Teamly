@@ -10,7 +10,7 @@ const router = Router();
 router.use(authMiddleware);
 
 // Undo mark late (ensure auth middleware is applied)
-router.post('/event/unmark-late', noCache, chat.unmarkLate);
+router.post('/session/unmark-late', noCache, chat.unmarkLate);
 
 // Group chat
 router.post('/message', noCache, chat.createMessage);
@@ -19,7 +19,7 @@ router.post('/message', noCache, chat.createMessage);
 router.get('/:groupId/messages', etagMiddleware({ weak: true }), chat.getMessages);
 
 // Mark late
-router.post('/event/late', noCache, chat.markLate);
+router.post('/session/late', noCache, chat.markLate);
 
 // Notifications
 router.get('/notifications', etagMiddleware({ weak: true }), chat.getNotifications);

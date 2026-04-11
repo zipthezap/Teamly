@@ -16,9 +16,9 @@ import { logger } from '../utils/logger';
  * 
  * @example
  * await streamJsonArray(res, async function* () {
- *   const events = await prisma.event.findMany();
- *   for (const event of events) {
- *     yield event;
+ *   const sessions = await prisma.session.findMany();
+ *   for (const session of events) {
+ *     yield session;
  *   }
  * });
  */
@@ -73,8 +73,8 @@ export async function streamJsonArray<T>(
  * 
  * @example
  * await streamNdjson(res, async function* () {
- *   for (const event of events) {
- *     yield event;
+ *   for (const session of events) {
+ *     yield session;
  *   }
  * });
  */
@@ -237,7 +237,7 @@ export async function streamPaginatedJson<T>(
  * @example
  * const batchStream = createBatchStream(
  *   async (offset, limit) => {
- *     return prisma.event.findMany({
+ *     return prisma.session.findMany({
  *       skip: offset,
  *       take: limit
  *     });

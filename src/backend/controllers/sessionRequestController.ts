@@ -1,35 +1,35 @@
 import prisma from '../config/database';
-import { validateVoteThreshold, validateVoteDeadline } from '../services/eventValidation';
+import { validateVoteThreshold, validateVoteDeadline } from '../services/sessionValidation';
 import { Request, Response } from 'express';
-import * as eventService from '../services/eventService';
+import * as sessionService from '../services/sessionService';
 import { SportType } from '../../shared/types/event.types';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors';
 import { logger } from '../utils/logger';
 
-// Create event request (any group member can create, admins approve)
+// Create session request (any group member can create, admins approve)
 export const createEventRequest = async (req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store');
   try {
     const { 
-      groupId, title, description, eventType, location, startTime, endTime, maxPlayers,
+      groupId, title, description, sessionType, location, startTime, endTime, maxPlayers,
       voteDeadline, voteThreshold 
     } = req.body;
 
-    if (!groupId || !title || !eventType || !startTime) {
-      throw new BadRequestError('groupId, title, eventType, and startTime are required');
+    if (!groupId || !title || !sessionType || !startTime) {
+      throw new BadRequestError('groupId, title, sessionType, and startTime are required');
     }
 
     // Sanitize text inputs
-    const sanitized = eventService.sanitizeEventData({
+    const sanitized = sessionService.sanitizeSessionData({
       title,
       description,
-      eventType,
+      sessionType,
       location
     });
 
     // Validate sanitized required fields are not empty
-    if (!sanitized.title || !sanitized.eventType) {
-      throw new BadRequestError('Title and event type cannot be empty or whitespace-only');
+    if (!sanitized.title || !sanitized.sessionType) {
+      throw new BadRequestError('Title and session type cannot be empty or whitespace-only');
     }
 
     // Validate dates
@@ -78,16 +78,16 @@ export const createEventRequest = async (req: Request, res: Response) => {
     });
 
     if (!membership) {
-      throw new ForbiddenError('Only group members can create event requests');
+      throw new ForbiddenError('Only group members can create session requests');
     }
 
-    const eventRequest = await prisma.eventRequest.create({
+    const eventRequest = await prisma.sessionRequest.create({
       data: {
         groupId,
         creatorId: req.user!.id,
         title: sanitized.title!,
         description: sanitized.description,
-        eventType: sanitized.eventType!,
+        sessionType: sanitized.sessionType!,
         location: sanitized.location,
         startTime: startDate,
         endTime: endDate,
@@ -112,12 +112,12 @@ export const createEventRequest = async (req: Request, res: Response) => {
 
     res.status(201).json(eventRequest);
   } catch (error) {
-    logger.error('Failed to create event request', 'eventRequestController', { error });
-    return res.status(500).json({ error: 'Failed to create event request' });
+    logger.error('Failed to create session request', 'eventRequestController', { error });
+    return res.status(500).json({ error: 'Failed to create session request' });
   }
 };
 
-// Get event requests for a group
+// Get session requests for a group
 export const getEventRequests = async (req: Request, res: Response) => {
   const { groupId } = req.params;
 
@@ -130,10 +130,10 @@ export const getEventRequests = async (req: Request, res: Response) => {
   });
 
   if (!membership) {
-    throw new ForbiddenError('Only group members can view event requests');
+    throw new ForbiddenError('Only group members can view session requests');
   }
 
-  const eventRequests = await prisma.eventRequest.findMany({
+  const eventRequests = await prisma.sessionRequest.findMany({
     where: {
       groupId: groupId,
       status: 'voting'
@@ -159,11 +159,11 @@ export const getEventRequests = async (req: Request, res: Response) => {
   res.json(eventRequests);
 };
 
-// Get a specific event request
+// Get a specific session request
 export const getEventRequest = async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const eventRequest = await prisma.eventRequest.findUnique({
+  const eventRequest = await prisma.sessionRequest.findUnique({
     where: { id },
     include: {
       creator: {
@@ -198,13 +198,13 @@ export const getEventRequest = async (req: Request, res: Response) => {
   });
 
   if (!membership) {
-    throw new ForbiddenError('Only group members can view this event request');
+    throw new ForbiddenError('Only group members can view this session request');
   }
 
   res.json(eventRequest);
 };
 
-// Vote on an event request
+// Vote on an session request
 export const voteOnEventRequest = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { vote } = req.body;
@@ -213,7 +213,7 @@ export const voteOnEventRequest = async (req: Request, res: Response) => {
     throw new BadRequestError('Vote must be "yes" or "no"');
   }
 
-  const eventRequest = await prisma.eventRequest.findUnique({
+  const eventRequest = await prisma.sessionRequest.findUnique({
     where: { id },
     select: { 
       groupId: true, 
@@ -227,7 +227,7 @@ export const voteOnEventRequest = async (req: Request, res: Response) => {
   }
 
   if (eventRequest.status !== 'voting') {
-    throw new BadRequestError('This event request is no longer accepting votes');
+    throw new BadRequestError('This session request is no longer accepting votes');
   }
 
   // Check if vote deadline has passed
@@ -248,7 +248,7 @@ export const voteOnEventRequest = async (req: Request, res: Response) => {
   }
 
   // Check if user has already voted
-  const existingVote = await prisma.eventVote.findFirst({
+  const existingVote = await prisma.sessionVote.findFirst({
     where: {
       eventRequestId: id,
       userId: req.user!.id
@@ -257,7 +257,7 @@ export const voteOnEventRequest = async (req: Request, res: Response) => {
 
   if (existingVote) {
     // Update existing vote
-    const updatedVote = await prisma.eventVote.update({
+    const updatedVote = await prisma.sessionVote.update({
       where: { id: existingVote.id },
       data: { vote },
       include: {
@@ -270,7 +270,7 @@ export const voteOnEventRequest = async (req: Request, res: Response) => {
   }
 
   // Create new vote
-  const newVote = await prisma.eventVote.create({
+  const newVote = await prisma.sessionVote.create({
     data: {
       eventRequestId: id,
       userId: req.user!.id,
@@ -286,11 +286,11 @@ export const voteOnEventRequest = async (req: Request, res: Response) => {
   res.status(201).json({ message: 'Vote recorded', vote: newVote });
 };
 
-// Finalize event request (admin only) - create actual event
+// Finalize session request (admin only) - create actual session
 export const finalizeEventRequest = async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const eventRequest = await prisma.eventRequest.findUnique({
+  const eventRequest = await prisma.sessionRequest.findUnique({
     where: { id },
     include: {
       votes: true,
@@ -316,11 +316,11 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
   });
 
   if (!membership) {
-    throw new ForbiddenError('Only admins can finalize event requests');
+    throw new ForbiddenError('Only admins can finalize session requests');
   }
 
   if (eventRequest.status !== 'voting') {
-    throw new BadRequestError('This event request has already been processed');
+    throw new BadRequestError('This session request has already been processed');
   }
 
   // Count votes
@@ -339,7 +339,7 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
   // Check if there are enough votes and if they meet the threshold
   if (totalVotes === 0) {
     throw new BadRequestError(
-      `Cannot finalize event request with no votes. Yes: ${yesVotes}, No: ${noVotes}, Total: ${totalVotes}, Members: ${totalMembers}, Threshold: ${threshold * 100}%, Required: ${requiredYesVotes}`
+      `Cannot finalize session request with no votes. Yes: ${yesVotes}, No: ${noVotes}, Total: ${totalVotes}, Members: ${totalMembers}, Threshold: ${threshold * 100}%, Required: ${requiredYesVotes}`
     );
   }
 
@@ -347,7 +347,7 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
   // Threshold is based on total group members to ensure meaningful participation
   if (yesVotes < requiredYesVotes) {
     // Not enough support, cancel the request
-    await prisma.eventRequest.update({
+    await prisma.sessionRequest.update({
       where: { id },
       data: { status: 'cancelled' }
     });
@@ -364,14 +364,14 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
     });
   }
 
-  // Create the actual event
-  const event = await prisma.event.create({
+  // Create the actual session
+  const session = await prisma.session.create({
     data: {
       groupId: eventRequest.groupId,
       creatorId: eventRequest.creatorId,
       title: eventRequest.title,
       description: eventRequest.description,
-      eventType: eventRequest.eventType as SportType,
+      sessionType: eventRequest.sessionType as SportType,
       location: eventRequest.location,
       startTime: eventRequest.startTime,
       endTime: eventRequest.endTime,
@@ -386,18 +386,18 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
     }
   });
 
-  // Update event request status and link to created event
-  await prisma.eventRequest.update({
+  // Update session request status and link to created session
+  await prisma.sessionRequest.update({
     where: { id },
     data: { 
       status: 'finalized',
-      finalizedEventId: event.id
+      finalizedSessionId: session.id
     }
   });
 
   res.json({ 
-    message: 'Event request finalized and event created',
-    event,
+    message: 'Event request finalized and session created',
+    session,
     yesVotes,
     noVotes,
     totalVotes,
@@ -407,11 +407,11 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
   });
 };
 
-// Cancel event request (admin only)
+// Cancel session request (admin only)
 export const cancelEventRequest = async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const eventRequest = await prisma.eventRequest.findUnique({
+  const eventRequest = await prisma.sessionRequest.findUnique({
     where: { id },
     select: { groupId: true, status: true }
   });
@@ -430,14 +430,14 @@ export const cancelEventRequest = async (req: Request, res: Response) => {
   });
 
   if (!membership) {
-    throw new ForbiddenError('Only admins can cancel event requests');
+    throw new ForbiddenError('Only admins can cancel session requests');
   }
 
   if (eventRequest.status !== 'voting') {
-    throw new BadRequestError('This event request has already been processed');
+    throw new BadRequestError('This session request has already been processed');
   }
 
-  await prisma.eventRequest.update({
+  await prisma.sessionRequest.update({
     where: { id },
     data: { status: 'cancelled' }
   });
@@ -445,11 +445,11 @@ export const cancelEventRequest = async (req: Request, res: Response) => {
   res.json({ message: 'Event request cancelled' });
 };
 
-// Get voting statistics for an event request
+// Get voting statistics for an session request
 export const getEventRequestStatistics = async (req: Request, res: Response) => {
   const { id } = req.params;
 
-  const eventRequest = await prisma.eventRequest.findUnique({
+  const eventRequest = await prisma.sessionRequest.findUnique({
     where: { id },
     include: {
       votes: {

@@ -8,13 +8,11 @@ import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import { filterUnmutedUsers } from '../utils/notificationHelper';
 import { 
-  EventNotificationType, 
-  GroupNotificationType, 
-  TeamUpNotificationType,
-  TournamentNotificationType,
   Prisma, 
   EmailPreference 
 } from '@prisma/client';
+import { SessionNotificationType, GroupNotificationType, TeamUpNotificationType } from '../../shared/types/event.types';
+import { TournamentNotificationType } from '../../shared/types/tournament.types';
 import { pushNotificationToUser } from '../controllers/notificationController';
 import { dispatchPushNotifications } from './pushNotificationService';
 
@@ -25,7 +23,7 @@ export interface NotificationParams {
 export interface NotificationMetadata {
   actionUrl?: string;
   actionText?: string;
-  category?: 'event' | 'group' | 'teamup' | 'tournament' | 'system' | 'social';
+  category?: 'session' | 'group' | 'teamup' | 'tournament' | 'system' | 'social';
   priority?: 'low' | 'medium' | 'high';
   imageUrl?: string;
   relatedUserId?: string;
@@ -42,8 +40,8 @@ interface BaseNotificationInput {
 }
 
 interface EventNotificationInput extends BaseNotificationInput {
-  eventId: string;
-  type: EventNotificationType;
+  sessionId: string;
+  type: SessionNotificationType;
 }
 
 interface GroupNotificationInput extends BaseNotificationInput {
@@ -63,15 +61,15 @@ interface TournamentNotificationInput extends BaseNotificationInput {
 
 export class NotificationFactory {
   /**
-   * Create event notifications for multiple users
+   * Create session notifications for multiple users
    */
-  static async createEventNotifications(
+  static async createSessionNotifications(
     input: EventNotificationInput,
     tx?: Prisma.TransactionClient
   ): Promise<{ created: number; skipped: number }> {
     const client = tx || prisma;
     const {
-      eventId,
+      sessionId,
       type,
       userIds,
       params,
@@ -98,7 +96,7 @@ export class NotificationFactory {
       const windowStart = new Date(Date.now() - deduplicateWindow);
       const existingNotifications = await client.eventNotification.findMany({
         where: {
-          eventId,
+          sessionId,
           type,
           userId: { in: targetUserIds },
           createdAt: { gte: windowStart }
@@ -117,7 +115,7 @@ export class NotificationFactory {
     // Create notifications
     try {
       const notifications = targetUserIds.map(userId => ({
-        eventId,
+        sessionId,
         userId,
         type,
         params: params || {},
@@ -130,23 +128,23 @@ export class NotificationFactory {
       });
 
       // Push real-time SSE events to connected clients (non-blocking)
-      const ssePayload = { type: 'event', notificationType: type, eventId, params, metadata };
+      const ssePayload = { type: 'session', notificationType: type, sessionId, params, metadata };
       targetUserIds.forEach(userId => {
         try { pushNotificationToUser(userId, ssePayload); } catch { /* ignore SSE errors */ }
       });
 
       void dispatchPushNotifications({
         userIds: targetUserIds,
-        notificationKind: 'event',
+        notificationKind: 'session',
         notificationType: type,
-        entityId: eventId,
+        entityId: sessionId,
         params,
         metadata,
       });
 
-      logger.debug(`Created ${targetUserIds.length} event notifications`, 'NotificationFactory', {
+      logger.debug(`Created ${targetUserIds.length} session notifications`, 'NotificationFactory', {
         type,
-        eventId,
+        sessionId,
         count: targetUserIds.length
       });
 
@@ -155,10 +153,10 @@ export class NotificationFactory {
         skipped: userIds.length - targetUserIds.length 
       };
     } catch (error) {
-      logger.error('Failed to create event notifications', 'NotificationFactory', { 
+      logger.error('Failed to create session notifications', 'NotificationFactory', { 
         error,
         type,
-        eventId,
+        sessionId,
         userCount: targetUserIds.length
       });
       throw error;
@@ -455,9 +453,9 @@ export class NotificationFactory {
   }
 
   /**
-   * Get mute preference key for event notification type
+   * Get mute preference key for session notification type
    */
-  private static getMuteKeyForEventType(type: EventNotificationType): keyof EmailPreference | null {
+  private static getMuteKeyForEventType(type: SessionNotificationType): keyof EmailPreference | null {
     switch (type) {
       case 'join':
       case 'leave':
@@ -466,11 +464,11 @@ export class NotificationFactory {
         return 'muteEventInvites';
       case 'comment':
         return 'commentMentions';
-      case 'event_updated':
+      case 'session_updated':
       case 'late':
       case 'status_change':
         return 'muteEventUpdates';
-      case 'event_cancelled':
+      case 'session_cancelled':
         return 'muteEventCancellations';
       default:
         return null;

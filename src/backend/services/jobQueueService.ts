@@ -34,15 +34,15 @@ export type JobType =
 /**
  * Notification types
  */
-type EventNotificationType = 'join' | 'leave' | 'late' | 'confirmed' | 'declined' | 'status_change' | 'comment' | 'event_updated' | 'event_cancelled';
-type GroupNotificationType = 'accepted' | 'invited' | 'join_request' | 'event_created' | 'nearby_created';
+type SessionNotificationType = 'join' | 'leave' | 'late' | 'confirmed' | 'declined' | 'status_change' | 'comment' | 'session_updated' | 'session_cancelled';
+type GroupNotificationType = 'accepted' | 'invited' | 'join_request' | 'session_created' | 'nearby_created';
 
 /**
  * Job data structures for each job type
  */
 export interface BulkNotificationJobData {
-  type: 'event' | 'group';
-  eventId?: string;
+  type: 'session' | 'group';
+  sessionId?: string;
   groupId?: string;
   userIds: string[];
   notificationType: string;
@@ -55,7 +55,7 @@ export interface CacheInvalidationJobData {
 }
 
 export interface EventUpdateJobData {
-  eventId: string;
+  sessionId: string;
   groupId: string;
 }
 
@@ -275,10 +275,10 @@ async function processJobInternal(job: Job): Promise<void> {
  */
 
 async function handleBulkNotifications(data: BulkNotificationJobData): Promise<void> {
-  const { type, eventId, groupId, userIds, notificationType, params, metadata } = data;
+  const { type, sessionId, groupId, userIds, notificationType, params, metadata } = data;
 
-  if (type === 'event' && eventId) {
-    await createBulkEventNotifications(eventId, userIds, notificationType as EventNotificationType, params, metadata);
+  if (type === 'session' && sessionId) {
+    await createBulkEventNotifications(sessionId, userIds, notificationType as SessionNotificationType, params, metadata);
   } else if (type === 'group' && groupId) {
     await createBulkGroupNotifications(groupId, userIds, notificationType as GroupNotificationType, params);
   }
@@ -293,12 +293,12 @@ async function handleCacheInvalidation(data: CacheInvalidationJobData): Promise<
 }
 
 async function handleEventUpdate(data: EventUpdateJobData): Promise<void> {
-  // Handle event updates that require cache invalidation
-  const { eventId, groupId } = data;
+  // Handle session updates that require cache invalidation
+  const { sessionId, groupId } = data;
 
   await Promise.all([
     CacheService.deletePattern(`events:*:group:${groupId}:*`),
-    CacheService.deletePattern(`event:${eventId}:*`),
+    CacheService.deletePattern(`session:${sessionId}:*`),
   ]);
 }
 
@@ -380,8 +380,8 @@ export async function getQueueSize(): Promise<number> {
  * Queue bulk notification job
  */
 export async function queueBulkNotifications(
-  type: 'event' | 'group',
-  eventId: string | undefined,
+  type: 'session' | 'group',
+  sessionId: string | undefined,
   groupId: string | undefined,
   userIds: string[],
   notificationType: string,
@@ -390,7 +390,7 @@ export async function queueBulkNotifications(
 ): Promise<string> {
   return await enqueueJob('send_bulk_notifications', {
     type,
-    eventId,
+    sessionId,
     groupId,
     userIds,
     notificationType,
@@ -407,8 +407,8 @@ export async function queueCacheInvalidation(patterns: string[]): Promise<string
 }
 
 /**
- * Queue event update processing
+ * Queue session update processing
  */
-export async function queueEventUpdate(eventId: string, groupId: string): Promise<string> {
-  return await enqueueJob('process_event_update', { eventId, groupId });
+export async function queueEventUpdate(sessionId: string, groupId: string): Promise<string> {
+  return await enqueueJob('process_event_update', { sessionId, groupId });
 }

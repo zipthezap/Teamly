@@ -94,37 +94,37 @@ async function checkGroupAdminDirect(userId: string, groupId: string): Promise<b
 }
 
 /**
- * Check if user has permission for an event action
+ * Check if user has permission for an session action
  */
 export async function hasEventPermission(
   userId: string,
-  eventId: string,
+  sessionId: string,
   permission: Permission
 ): Promise<boolean> {
-  const cacheKey = getCacheKey(userId, permission, 'event', eventId);
+  const cacheKey = getCacheKey(userId, permission, 'session', sessionId);
   
   return await CacheService.wrap(cacheKey, PERMISSION_CACHE_TTL, async () => {
     try {
-      const event = await prisma.event.findUnique({
-        where: { id: eventId },
+      const session = await prisma.session.findUnique({
+        where: { id: sessionId },
         select: {
           creatorId: true,
           groupId: true
         }
       });
 
-      if (!event) {
+      if (!session) {
         return false;
       }
 
       // Event creator has all permissions
-      if (event.creatorId === userId) {
+      if (session.creatorId === userId) {
         return true;
       }
 
-      // If event is associated with a group, check group permissions
-      if (!event.groupId) {
-        logger.error('Event without groupId found', 'PermissionService', { eventId });
+      // If session is associated with a group, check group permissions
+      if (!session.groupId) {
+        logger.error('Event without groupId found', 'PermissionService', { sessionId });
         return false;
       }
 
@@ -132,7 +132,7 @@ export async function hasEventPermission(
         where: {
           userId_groupId: {
             userId,
-            groupId: event.groupId
+            groupId: session.groupId
           }
         },
         select: { role: true }
@@ -145,7 +145,7 @@ export async function hasEventPermission(
 
       return false;
     } catch (error) {
-      logger.error('Error checking event permission', 'PermissionService', { error, userId, eventId, permission });
+      logger.error('Error checking session permission', 'PermissionService', { error, userId, sessionId, permission });
       return false;
     }
   });

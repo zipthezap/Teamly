@@ -1,5 +1,5 @@
 import prisma from '../config/database';
-import { EventParticipantStatus, GroupNotificationType, EventNotificationType } from '../../shared/types/event.types';
+import { SessionParticipantStatus, GroupNotificationType, SessionNotificationType } from '../../shared/types/event.types';
 import { validateRecurrenceRule } from '../utils/recurrenceService';
 import { logger } from '../utils/logger';
 import { sendEmail } from '../utils/emailService';
@@ -10,18 +10,18 @@ import { permissionService } from './permissionService';
 import { Permission } from '../../shared/types/permissions.types';
 
 /**
- * Sanitizes event data inputs
+ * Sanitizes session data inputs
  */
-export const sanitizeEventData = (data: {
+export const sanitizeSessionData = (data: {
   title?: string;
   description?: string;
-  eventType?: string;
+  sessionType?: string;
   location?: string;
 }) => {
   return {
     title: data.title ? sanitizeString(data.title) : undefined,
     description: data.description ? sanitizeString(data.description) : undefined,
-    eventType: data.eventType ? sanitizeString(data.eventType) : undefined,
+    sessionType: data.sessionType ? sanitizeString(data.sessionType) : undefined,
     location: data.location ? sanitizeString(data.location) : undefined
   };
 };
@@ -36,9 +36,9 @@ export const sanitizeGuestName = (name: string): string => {
 };
 
 /**
- * Validates event time constraints
+ * Validates session time constraints
  */
-export const validateEventTimes = (startTime: string, endTime?: string): ValidationResult => {
+export const validateSessionTimes = (startTime: string, endTime?: string): ValidationResult => {
   const startDate = new Date(startTime);
   const now = new Date();
   
@@ -76,9 +76,9 @@ export const validateRecurrence = (isRecurring: boolean, recurrenceRule?: string
 };
 
 /**
- * Determines event status based on start and end times
+ * Determines session status based on start and end times
  */
-export const determineEventStatus = (startTime: string, endTime?: string) => {
+export const determineSessionStatus = (startTime: string, endTime?: string) => {
   const now = new Date();
   const eventStartTime = new Date(startTime);
   const eventEndTime = endTime ? new Date(endTime) : null;
@@ -117,10 +117,10 @@ export const getGroupWithMembers = async (groupId: string) => {
 };
 
 /**
- * Creates event creation notifications for group members
+ * Creates session creation notifications for group members
  * Uses batch insert for better performance
  */
-export const createEventNotifications = async (
+export const createSessionNotifications = async (
   groupId: string,
   eventTitle: string,
   creatorName: string,
@@ -130,7 +130,7 @@ export const createEventNotifications = async (
   if (memberIds.length === 0) return;
 
   try {
-    // Filter out users who have muted event created notifications
+    // Filter out users who have muted session created notifications
     const unmutedMemberIds = await filterUnmutedUsers(memberIds, 'muteEventCreated');
     
     if (unmutedMemberIds.length === 0) return;
@@ -158,11 +158,11 @@ export const createEventNotifications = async (
 };
 
 /**
- * Creates event update notifications for participants
+ * Creates session update notifications for participants
  * Uses batch insert for better performance
  */
-export const createEventUpdateNotifications = async (
-  eventId: string,
+export const createSessionUpdateNotifications = async (
+  sessionId: string,
   eventTitle: string,
   updaterName: string,
   participantIds: string[]
@@ -170,17 +170,17 @@ export const createEventUpdateNotifications = async (
   if (participantIds.length === 0) return;
 
   try {
-    // Filter out users who have muted event update notifications
+    // Filter out users who have muted session update notifications
     const unmutedParticipantIds = await filterUnmutedUsers(participantIds, 'muteEventUpdates');
     
     if (unmutedParticipantIds.length === 0) return;
     
     // Use createMany for batch insert - much faster than individual creates
-    await prisma.eventNotification.createMany({
+    await prisma.sessionNotification.createMany({
       data: unmutedParticipantIds.map(userId => ({
-        eventId,
+        sessionId,
         userId,
-        type: EventNotificationType.event_updated,
+        type: SessionNotificationType.session_updated,
         params: {
           eventTitle,
           name: updaterName
@@ -197,10 +197,10 @@ export const createEventUpdateNotifications = async (
 };
 
 /**
- * Creates event deletion notifications for participants
+ * Creates session deletion notifications for participants
  */
-export const createEventDeletionNotifications = async (
-  eventId: string,
+export const createSessionDeletionNotifications = async (
+  sessionId: string,
   eventTitle: string,
   deleterName: string,
   participantIds: string[]
@@ -210,18 +210,18 @@ export const createEventDeletionNotifications = async (
   let unmutedParticipantCount = 0;
 
   try {
-    // Filter out users who have muted event cancellation notifications
+    // Filter out users who have muted session cancellation notifications
     const unmutedParticipantIds = await filterUnmutedUsers(participantIds, 'muteEventCancellations');
     unmutedParticipantCount = unmutedParticipantIds.length;
 
     if (unmutedParticipantIds.length === 0) return;
 
     // Use createMany for batch insert - much faster than individual creates
-    await prisma.eventNotification.createMany({
+    await prisma.sessionNotification.createMany({
       data: unmutedParticipantIds.map(userId => ({
-        eventId,
+        sessionId,
         userId,
-        type: EventNotificationType.event_cancelled,
+        type: SessionNotificationType.session_cancelled,
         params: {
           eventTitle,
           name: deleterName
@@ -239,14 +239,14 @@ export const createEventDeletionNotifications = async (
 };
 
 /**
- * Builds event query filters
+ * Builds session query filters
  */
-export const buildEventFilters = (
+export const buildSessionFilters = (
   userId: string,
   filters: {
     groupId?: string;
     search?: string;
-    eventType?: string;
+    sessionType?: string;
     startDate?: string;
     endDate?: string;
     location?: string;
@@ -263,7 +263,7 @@ export const buildEventFilters = (
 
 
   // Show events where:
-  // - The event is in a group the user is a member of
+  // - The session is in a group the user is a member of
   // - OR the user is a participant
   // - OR the user is the creator
   const accessControlOR = [
@@ -308,8 +308,8 @@ export const buildEventFilters = (
   }
 
   // Event type filter
-  if (filters.eventType) {
-    where.eventType = { contains: filters.eventType, mode: 'insensitive' };
+  if (filters.sessionType) {
+    where.sessionType = { contains: filters.sessionType, mode: 'insensitive' };
   }
 
   // Date range filter
@@ -346,11 +346,11 @@ export const buildEventFilters = (
 };
 
 /**
- * Gets event by ID with full details
+ * Gets session by ID with full details
  */
-export const getEventById = async (eventId: string) => {
-  return await prisma.event.findUnique({
-    where: { id: eventId },
+export const getEventById = async (sessionId: string) => {
+  return await prisma.session.findUnique({
+    where: { id: sessionId },
     include: {
       creator: {
         select: {
@@ -410,10 +410,10 @@ export const getEventById = async (eventId: string) => {
 };
 
 /**
- * Checks if user can modify event
+ * Checks if user can modify session
  */
-export const canModifyEvent = (
-  event: {
+export const canModifySession = (
+  session: {
     creatorId: string;
     group: {
       members: Array<{ userId: string; role: string }>;
@@ -422,11 +422,11 @@ export const canModifyEvent = (
   userId: string
 ) => {
   // User must be the creator or a group admin or moderator
-  if (event.creatorId === userId) {
+  if (session.creatorId === userId) {
     return true;
   }
   
-  const canManage = event.group.members.some(
+  const canManage = session.group.members.some(
     (m) => m.userId === userId && (m.role === 'admin' || m.role === 'moderator')
   );
   
@@ -434,23 +434,23 @@ export const canModifyEvent = (
 };
 
 /**
- * Checks if user has permission to manage an event (creator or group admin/moderator)
+ * Checks if user has permission to manage an session (creator or group admin/moderator)
  * Returns an object with isAuthorized flag and individual checks
  */
-export const checkEventManagementPermission = async (
-  event: { id: string; creatorId: string; groupId: string } | null,
+export const checkSessionManagementPermission = async (
+  session: { id: string; creatorId: string; groupId: string } | null,
   userId: string
 ): Promise<{
   isAuthorized: boolean;
   isEventCreator: boolean;
   isGroupAdmin: boolean;
 }> => {
-  if (!event) {
+  if (!session) {
     return { isAuthorized: false, isEventCreator: false, isGroupAdmin: false };
   }
 
-  const isEventCreator = event.creatorId === userId;
-  const isGroupAdmin = await permissionService.hasGroupPermission(userId, event.groupId, Permission.GROUP_MANAGE_EVENTS);
+  const isEventCreator = session.creatorId === userId;
+  const isGroupAdmin = await permissionService.hasGroupPermission(userId, session.groupId, Permission.GROUP_MANAGE_EVENTS);
   
   return {
     isAuthorized: isEventCreator || isGroupAdmin,
@@ -460,29 +460,29 @@ export const checkEventManagementPermission = async (
 };
 
 /**
- * Gets participant by user and event ID
+ * Gets participant by user and session ID
  */
-export const getParticipant = async (eventId: string, userId: string) => {
-  return await prisma.eventParticipant.findFirst({
+export const getParticipant = async (sessionId: string, userId: string) => {
+  return await prisma.sessionParticipant.findFirst({
     where: {
-      eventId,
+      sessionId,
       userId
     }
   });
 };
 
 /**
- * Checks if event is full
+ * Checks if session is full
  */
-export const isEventFull = async (eventId: string, maxPlayers: number | null) => {
+export const isSessionFull = async (sessionId: string, maxPlayers: number | null) => {
   if (!maxPlayers) {
     return false;
   }
 
-  const confirmedCount = await prisma.eventParticipant.count({
+  const confirmedCount = await prisma.sessionParticipant.count({
     where: {
-      eventId,
-      status: EventParticipantStatus.confirmed
+      sessionId,
+      status: SessionParticipantStatus.confirmed
     }
   });
 
@@ -490,9 +490,9 @@ export const isEventFull = async (eventId: string, maxPlayers: number | null) =>
 };
 
 /**
- * Sends email notifications to event participants (excluding sender)
+ * Sends email notifications to session participants (excluding sender)
  */
-export const sendEventEmailNotifications = async (
+export const sendSessionEmailNotifications = async (
   participants: Array<{
     user: {
       id: string;

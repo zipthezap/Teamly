@@ -75,7 +75,7 @@ describe('NotificationService', () => {
 
       expect(result.notifications).toHaveLength(1);
       expect(result.total).toBe(1);
-      expect(result.notifications[0].notificationType).toBe('event');
+      expect(result.notifications[0].notificationType).toBe('session');
     });
 
     it('should include read notifications when specified', async () => {
@@ -109,7 +109,7 @@ describe('NotificationService', () => {
       mockPrisma.tournamentNotification.findMany.mockResolvedValue([]);
       mockPrisma.tournamentNotification.count.mockResolvedValue(0);
 
-      await getUserNotifications('user-1', { notificationType: 'event' });
+      await getUserNotifications('user-1', { notificationType: 'session' });
 
       expect(mockPrisma.eventNotification.findMany).toHaveBeenCalled();
       expect(mockPrisma.groupNotification.findMany).not.toHaveBeenCalled();
@@ -181,7 +181,7 @@ describe('NotificationService', () => {
       expect(result.total).toBe(2);
       // Should be sorted by date descending
       expect(result.notifications[0].id).toBe('notif-4'); // group notification
-      expect(result.notifications[1].id).toBe('notif-1'); // event notification
+      expect(result.notifications[1].id).toBe('notif-1'); // session notification
     });
 
     it('should return cursor metadata for next page when more results exist', async () => {
@@ -197,7 +197,7 @@ describe('NotificationService', () => {
           params: {},
           read: false,
           createdAt: now,
-          event: { id: 'event-1', title: 'Event 1', startTime: now },
+          session: { id: 'session-1', title: 'Event 1', startTime: now },
           user: { id: 'user-2', name: 'Alice' },
         },
         {
@@ -207,7 +207,7 @@ describe('NotificationService', () => {
           params: {},
           read: false,
           createdAt: older,
-          event: { id: 'event-2', title: 'Event 2', startTime: older },
+          session: { id: 'session-2', title: 'Event 2', startTime: older },
           user: { id: 'user-3', name: 'Bob' },
         },
         {
@@ -217,7 +217,7 @@ describe('NotificationService', () => {
           params: {},
           read: false,
           createdAt: oldest,
-          event: { id: 'event-3', title: 'Event 3', startTime: oldest },
+          session: { id: 'session-3', title: 'Event 3', startTime: oldest },
           user: { id: 'user-4', name: 'Carol' },
         },
       ] as unknown);
@@ -309,8 +309,8 @@ describe('NotificationService', () => {
         .mockResolvedValueOnce(2); // total
       // groupBy returns aggregated type counts from the DB
       vi.mocked(mockPrisma.eventNotification.groupBy).mockResolvedValue([
-        { type: 'event_created', _count: { _all: 2 } },
-        { type: 'event_updated', _count: { _all: 1 } }
+        { type: 'session_created', _count: { _all: 2 } },
+        { type: 'session_updated', _count: { _all: 1 } }
       ] as unknown);
 
       const stats = await getNotificationStats('user-1');
@@ -442,7 +442,7 @@ describe('NotificationService', () => {
   });
 
   describe('getUserNotifications - metadata enrichment', () => {
-    it('should enrich event notifications with high priority for cancelled type', async () => {
+    it('should enrich session notifications with high priority for cancelled type', async () => {
       const mockEventNotifications = [
         {
           id: 'notif-1',
@@ -451,7 +451,7 @@ describe('NotificationService', () => {
           params: { eventTitle: 'Soccer Match' },
           read: false,
           createdAt: new Date(),
-          event: { id: 'event-1', title: 'Soccer Match', startTime: new Date() },
+          session: { id: 'session-1', title: 'Soccer Match', startTime: new Date() },
           user: { id: 'user-2', name: 'John' }
         }
       ];
@@ -468,7 +468,7 @@ describe('NotificationService', () => {
       const result = await getUserNotifications('user-1');
 
       expect(result.notifications[0].metadata?.priority).toBe('high');
-      expect(result.notifications[0].metadata?.actionUrl).toBe('/events/event-1');
+      expect(result.notifications[0].metadata?.actionUrl).toBe('/events/session-1');
       expect(result.notifications[0].metadata?.actionText).toBe('View Event');
     });
 
@@ -648,7 +648,7 @@ describe('NotificationService', () => {
           params: { eventTitle: 'Soccer Match' },
           read: false,
           createdAt: new Date(),
-          event: { id: 'event-1', title: 'Soccer Match', startTime: new Date() },
+          session: { id: 'session-1', title: 'Soccer Match', startTime: new Date() },
           user: { id: 'user-2', name: 'John' }
         }
       ];
@@ -672,21 +672,21 @@ describe('NotificationService', () => {
         {
           id: 'notif-1',
           userId: 'user-1',
-          type: 'event_created',
+          type: 'session_created',
           params: { eventTitle: 'Soccer Match' },
           read: false,
           createdAt: new Date('2024-01-01'),
-          event: { id: 'event-1', title: 'Soccer Match', startTime: new Date() },
+          session: { id: 'session-1', title: 'Soccer Match', startTime: new Date() },
           user: { id: 'user-2', name: 'John' }
         },
         {
           id: 'notif-2',
           userId: 'user-1',
-          type: 'event_updated',
+          type: 'session_updated',
           params: { eventTitle: 'Basketball Game' },
           read: false,
           createdAt: new Date('2024-01-02'),
-          event: { id: 'event-2', title: 'Basketball Game', startTime: new Date() },
+          session: { id: 'session-2', title: 'Basketball Game', startTime: new Date() },
           user: { id: 'user-3', name: 'Jane' }
         }
       ];

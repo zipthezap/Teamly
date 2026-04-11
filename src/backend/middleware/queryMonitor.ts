@@ -37,7 +37,7 @@ const queryMetricsStore = new Map<string, QueryMetrics>();
  */
 export function initializeQueryMonitoring(): void {
   // Note: This requires Prisma logging to be enabled in database.ts
-  // The actual monitoring happens via Prisma's event emitters
+  // The actual monitoring happens via Prisma's session emitters
   logger.info('Query monitoring initialized', 'QueryMonitor');
 }
 

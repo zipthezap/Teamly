@@ -9,10 +9,10 @@ import {
   PasswordUpdateData,
   CreateGroupData,
   UpdateGroupData,
-  CreateEventData,
-  UpdateEventData,
-  EventSearchParams,
-  CreateEventRequestData,
+  CreateSessionData,
+  UpdateSessionData,
+  SessionSearchParams,
+  CreateSessionRequestData,
   UpdateEmailPreferenceData,
   NotificationQueryParams
 } from '../../../shared/types';
@@ -130,16 +130,16 @@ export const groupsAPI = {
 
 // Events API
 export const eventsAPI = {
-  create: (data: CreateEventData) => api.post('/events', data),
-  getAll: (params?: EventSearchParams) => api.get('/events', { params }),
+  create: (data: CreateSessionData) => api.post('/sessions', data),
+  getAll: (params?: SessionSearchParams) => api.get('/sessions', { params }),
   getStatistics: () => api.get('/events/statistics'),
-  getById: (id: string | number) => api.get(`/events/${id}`),
-  update: (id: string | number, data: UpdateEventData) => api.put(`/events/${id}`, data),
-  delete: (id: string | number) => api.delete(`/events/${id}`),
-  join: (id: string | number) => api.post(`/events/${id}/join`),
-  leave: (id: string | number) => api.delete(`/events/${id}/leave`),
-  updateStatus: (id: string | number, status: string) => api.put(`/events/${id}/status`, { status }),
-  generateInviteToken: (id: string | number) => api.post(`/events/${id}/generate-invite`),
+  getById: (id: string | number) => api.get(`/sessions/${id}`),
+  update: (id: string | number, data: UpdateSessionData) => api.put(`/sessions/${id}`, data),
+  delete: (id: string | number) => api.delete(`/sessions/${id}`),
+  join: (id: string | number) => api.post(`/sessions/${id}/join`),
+  leave: (id: string | number) => api.delete(`/sessions/${id}/leave`),
+  updateStatus: (id: string | number, status: string) => api.put(`/sessions/${id}/status`, { status }),
+  generateInviteToken: (id: string | number) => api.post(`/sessions/${id}/generate-invite`),
   getByInviteToken: (token: string) => axios.get(`${API_BASE_URL}/events/invite/${token}`),
   joinAsGuest: (token: string, name: string) => axios.post(`${API_BASE_URL}/events/invite/${token}/join`, { name }),
   export: (format: 'csv' | 'ical' | 'json') => api.get('/events/export', { 
@@ -158,12 +158,12 @@ export const twoFactorAPI = {
 
 // Event Requests API
 export const eventRequestsAPI = {
-  create: (data: CreateEventRequestData) => api.post('/event-requests', data),
-  getByGroup: (groupId: string | number) => api.get(`/event-requests/group/${groupId}`),
-  getById: (id: string | number) => api.get(`/event-requests/${id}`),
-  vote: (id: string | number, vote: 'yes' | 'no') => api.post(`/event-requests/${id}/vote`, { vote }),
-  finalize: (id: string | number) => api.post(`/event-requests/${id}/finalize`),
-  cancel: (id: string | number) => api.post(`/event-requests/${id}/cancel`),
+  create: (data: CreateSessionRequestData) => api.post('/session-requests', data),
+  getByGroup: (groupId: string | number) => api.get(`/session-requests/group/${groupId}`),
+  getById: (id: string | number) => api.get(`/session-requests/${id}`),
+  vote: (id: string | number, vote: 'yes' | 'no') => api.post(`/session-requests/${id}/vote`, { vote }),
+  finalize: (id: string | number) => api.post(`/session-requests/${id}/finalize`),
+  cancel: (id: string | number) => api.post(`/session-requests/${id}/cancel`),
 };
 
 // Email Preferences API

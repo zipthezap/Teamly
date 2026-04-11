@@ -77,13 +77,13 @@ describe('Sanitize Input Middleware', () => {
     it('should trim whitespace from route parameters', () => {
       mockRequest.params = {
         id: '  123  ',
-        slug: ' event-name ',
+        slug: ' session-name ',
       };
 
       sanitizeInput(mockRequest as Request, mockResponse as Response, mockNext);
 
       expect(mockRequest.params.id).toBe('123');
-      expect(mockRequest.params.slug).toBe('event-name');
+      expect(mockRequest.params.slug).toBe('session-name');
       expect(mockNext).toHaveBeenCalled();
     });
 

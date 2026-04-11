@@ -145,7 +145,7 @@ export const filterUnmutedUsers = async (userIds: string[], muteField: keyof Ema
  */
 export const shouldSendPushNotification = async (
   userId: string,
-  channel: 'event' | 'group' | 'teamup' | 'tournament'
+  channel: 'session' | 'group' | 'teamup' | 'tournament'
 ): Promise<boolean> => {
   try {
     const [user, preferences] = await Promise.all([
@@ -167,7 +167,7 @@ export const shouldSendPushNotification = async (
     if (!pushEnabled) return false;
 
     switch (channel) {
-      case 'event':
+      case 'session':
         return preferences ? getBooleanValue(preferences.pushEvents, true) : true;
       case 'group':
         return preferences ? getBooleanValue(preferences.pushGroups, true) : true;

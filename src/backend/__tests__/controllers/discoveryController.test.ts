@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../config/database', () => ({
   default: {
-    event: {
+    session: {
       findMany: vi.fn(),
       count: vi.fn(),
     },
@@ -59,8 +59,8 @@ describe('Discovery controllers', () => {
   });
 
   it('applies composite cursor filtering in getEvents', async () => {
-    mockPrisma.event.findMany.mockResolvedValue([]);
-    mockPrisma.event.count.mockResolvedValue(0);
+    mockPrisma.session.findMany.mockResolvedValue([]);
+    mockPrisma.session.count.mockResolvedValue(0);
     mockPrisma.eventParticipant.findMany.mockResolvedValue([]);
     mockPrisma.eventAttendance.findMany.mockResolvedValue([]);
     mockPrisma.groupMember.findMany.mockResolvedValue([]);
@@ -77,9 +77,9 @@ describe('Discovery controllers', () => {
     const json = vi.fn();
     const res = { setHeader: vi.fn(), json };
 
-    await getEvents(req as never, res as never);
+    await getSessions(req as never, res as never);
 
-    expect(mockPrisma.event.findMany).toHaveBeenCalledWith(
+    expect(mockPrisma.session.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
           AND: expect.arrayContaining([
@@ -101,7 +101,7 @@ describe('Discovery controllers', () => {
     expect(json).toHaveBeenCalled();
   });
 
-  it('rejects invalid nearby event limit and validly bounds nearby event queries', async () => {
+  it('rejects invalid nearby session limit and validly bounds nearby session queries', async () => {
     const invalidReq = {
       query: { latitude: '1', longitude: '1', radius: '5', limit: '101' },
     };
@@ -110,7 +110,7 @@ describe('Discovery controllers', () => {
       'Limit must be an integer between 1 and 100'
     );
 
-    mockPrisma.event.findMany.mockResolvedValue([]);
+    mockPrisma.session.findMany.mockResolvedValue([]);
     const req = {
       query: { latitude: '1', longitude: '1', radius: '5', limit: '10' },
     };
@@ -119,7 +119,7 @@ describe('Discovery controllers', () => {
     await getNearbyEvents(req as never, res as never);
 
     expect(recordSearchQuery).toHaveBeenCalledWith('events');
-    expect(mockPrisma.event.findMany).toHaveBeenCalledWith(
+    expect(mockPrisma.session.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
           AND: expect.any(Array),

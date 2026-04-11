@@ -1,6 +1,6 @@
 /**
  * Event Validation Service
- * Handles all event-related validation logic
+ * Handles all session-related validation logic
  */
 
 interface ValidationResult {
@@ -43,20 +43,20 @@ export const validateSingleDay = (startTime: string, endTime?: string): Validati
 };
 
 /**
- * Validates required event fields
+ * Validates required session fields
  */
 export const validateRequiredFields = (data: {
   groupId?: string;
   title?: string;
-  eventType?: string;
+  sessionType?: string;
   startTime?: string;
 }): ValidationResult => {
-  const { groupId, title, eventType, startTime } = data;
+  const { groupId, title, sessionType, startTime } = data;
   
-  if (!groupId || !title || !eventType || !startTime) {
+  if (!groupId || !title || !sessionType || !startTime) {
     return { 
       isValid: false, 
-      error: 'Group ID, title, event type, and start time are required' 
+      error: 'Group ID, title, session type, and start time are required' 
     };
   }
 
@@ -95,25 +95,25 @@ export const validateGroupMembership = async (
 };
 
 /**
- * Validates that a user is the creator of an event
+ * Validates that a user is the creator of an session
  */
 export const validateEventCreator = async (
-  eventId: string,
+  sessionId: string,
   userId: string,
   prisma: {
-    event: {
+    session: {
       findUnique: (args: { where: { id: string } }) => Promise<{ creatorId: string } | null>;
     };
   }
 ): Promise<ValidationResult> => {
-  const event = await prisma.event.findUnique({
-    where: { id: eventId }
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId }
   });
 
-  if (!event || event.creatorId !== userId) {
+  if (!session || session.creatorId !== userId) {
     return { 
       isValid: false, 
-      error: 'Only the event creator can update or delete it' 
+      error: 'Only the session creator can update or delete it' 
     };
   }
 
@@ -121,9 +121,9 @@ export const validateEventCreator = async (
 };
 
 /**
- * Validates event status
+ * Validates session status
  */
-export const validateEventStatus = (status: string): ValidationResult => {
+export const validateSessionStatus = (status: string): ValidationResult => {
   const validStatuses = ['upcoming', 'ongoing', 'completed', 'cancelled'];
   
   if (!validStatuses.includes(status)) {
@@ -137,7 +137,7 @@ export const validateEventStatus = (status: string): ValidationResult => {
 };
 
 /**
- * Validates event capacity
+ * Validates session capacity
  */
 export const validateEventCapacity = (
   currentParticipants: number,
@@ -201,7 +201,7 @@ export const validateVoteDeadline = (
   if (deadlineDate >= startDate) {
     return {
       isValid: false,
-      error: 'Vote deadline must be before event start time'
+      error: 'Vote deadline must be before session start time'
     };
   }
 

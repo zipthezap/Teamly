@@ -47,7 +47,7 @@ function removeSseClient(userId: string, res: Response): void {
 }
 
 /**
- * Push a new-notification event to all SSE connections for a user.
+ * Push a new-notification session to all SSE connections for a user.
  * Called internally after creating notifications.
  */
 export function pushNotificationToUser(userId: string, payload: unknown): void {
@@ -56,7 +56,7 @@ export function pushNotificationToUser(userId: string, payload: unknown): void {
   const data = JSON.stringify(payload);
   clients.forEach(res => {
     try {
-      res.write(`event: notification\ndata: ${data}\n\n`);
+      res.write(`session: notification\ndata: ${data}\n\n`);
     } catch {
       // Client may have already disconnected
     }
@@ -68,21 +68,21 @@ export function pushNotificationToUser(userId: string, payload: unknown): void {
  * GET /api/notifications/stream
  *
  * The client opens this endpoint and receives:
- *   - A `connected` event immediately
- *   - A `notification` event whenever a new notification is created for this user
- *   - A `heartbeat` event every 30 s to keep the connection alive
+ *   - A `connected` session immediately
+ *   - A `notification` session whenever a new notification is created for this user
+ *   - A `heartbeat` session every 30 s to keep the connection alive
  */
 export const streamNotifications = (req: Request, res: Response): void => {
   const userId = req.user!.id;
 
-  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Content-Type', 'text/session-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
   res.flushHeaders();
 
-  // Send initial connected event
-  res.write(`event: connected\ndata: ${JSON.stringify({ userId })}\n\n`);
+  // Send initial connected session
+  res.write(`session: connected\ndata: ${JSON.stringify({ userId })}\n\n`);
 
   registerSseClient(userId, res);
   logger.info('SSE client connected', 'NotificationController', { userId });
@@ -90,7 +90,7 @@ export const streamNotifications = (req: Request, res: Response): void => {
   // Heartbeat every 30 seconds to prevent proxy timeouts
   const heartbeat = setInterval(() => {
     try {
-      res.write(`event: heartbeat\ndata: ${JSON.stringify({ ts: Date.now() })}\n\n`);
+      res.write(`session: heartbeat\ndata: ${JSON.stringify({ ts: Date.now() })}\n\n`);
     } catch {
       clearInterval(heartbeat);
     }
@@ -112,7 +112,7 @@ export const streamNotifications = (req: Request, res: Response): void => {
  *  - limit: number (default: 50, max: 100)
  *  - offset: number (default: 0)
  *  - type: string (e.g., 'join', 'leave', 'created')
- *  - notificationType: 'event' | 'group'
+ *  - notificationType: 'session' | 'group'
  *  - startDate: ISO date string
  *  - endDate: ISO date string
  *  - searchQuery: string (searches in title and message)
@@ -155,7 +155,7 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
     options.type = type as string;
   }
 
-  const validNotificationTypes = ['event', 'group', 'teamup', 'tournament'];
+  const validNotificationTypes = ['session', 'group', 'teamup', 'tournament'];
   if (notificationType) {
     if (!validNotificationTypes.includes(notificationType as string)) {
       throw new BadRequestError(`Invalid notificationType. Must be one of: ${validNotificationTypes.join(', ')}`);

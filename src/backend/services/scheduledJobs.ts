@@ -85,7 +85,7 @@ const expireInvitesAndJoinRequests = async (): Promise<void> => {
 };
 
 /**
- * Send due event reminders
+ * Send due session reminders
  */
 export const sendDueEventReminders = async (): Promise<void> => {
   const now = new Date();
@@ -93,13 +93,13 @@ export const sendDueEventReminders = async (): Promise<void> => {
   const lookahead = new Date(now.getTime() + 5 * 60 * 1000);
 
   try {
-    const dueReminders = await prisma.eventReminder.findMany({
+    const dueReminders = await prisma.sessionReminder.findMany({
       where: {
         sent: false,
         remindAt: { lte: lookahead },
       },
       include: {
-        event: {
+        session: {
           select: {
             id: true,
             title: true,
@@ -121,35 +121,35 @@ export const sendDueEventReminders = async (): Promise<void> => {
 
     if (dueReminders.length === 0) return;
 
-    logger.info(`Processing ${dueReminders.length} due event reminders`, 'ScheduledJobs');
+    logger.info(`Processing ${dueReminders.length} due session reminders`, 'ScheduledJobs');
 
     const results = await Promise.allSettled(
       dueReminders.map(async reminder => {
         // Send email notification if user has email notifications enabled
         if (reminder.user.emailNotifications) {
-          const eventDate = reminder.event.startTime.toLocaleString();
+          const eventDate = reminder.session.startTime.toLocaleString();
           const htmlContent = `
             <h2>Event Reminder</h2>
             <p>Hi ${reminder.user.name},</p>
-            <p>This is a reminder for your upcoming event:</p>
-            <h3>${reminder.event.title}</h3>
+            <p>This is a reminder for your upcoming session:</p>
+            <h3>${reminder.session.title}</h3>
             <p><strong>When:</strong> ${eventDate}</p>
-            ${reminder.event.location ? `<p><strong>Where:</strong> ${reminder.event.location}</p>` : ''}
-            <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/events/${reminder.event.id}" 
+            ${reminder.session.location ? `<p><strong>Where:</strong> ${reminder.session.location}</p>` : ''}
+            <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}/events/${reminder.session.id}" 
                style="display:inline-block;padding:12px 24px;background-color:#4CAF50;color:white;text-decoration:none;border-radius:4px;">
               View Event
             </a></p>
           `;
           await sendEmailWithQueue(
             reminder.user.email,
-            `Reminder: ${reminder.event.title}`,
+            `Reminder: ${reminder.session.title}`,
             htmlContent,
             { templateType: 'eventReminder' }
           );
         }
 
         // Mark reminder as sent
-        await prisma.eventReminder.update({
+        await prisma.sessionReminder.update({
           where: { id: reminder.id },
           data: { sent: true },
         });
@@ -161,9 +161,9 @@ export const sendDueEventReminders = async (): Promise<void> => {
       logger.warn(`${failed.length} reminders failed to send`, 'ScheduledJobs');
     }
 
-    logger.info(`Sent ${dueReminders.length - failed.length} event reminders`, 'ScheduledJobs');
+    logger.info(`Sent ${dueReminders.length - failed.length} session reminders`, 'ScheduledJobs');
   } catch (error) {
-    logger.error('Error sending event reminders', 'ScheduledJobs', { error });
+    logger.error('Error sending session reminders', 'ScheduledJobs', { error });
   }
 };
 

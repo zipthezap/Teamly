@@ -6,7 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { eventsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import InviteLinkCard from '../components/InviteLinkCard';
-import { EventParticipant, GuestParticipant, EventParticipantStatus, GuestParticipantStatus } from '../../../shared/types/event.types';
+import { SessionParticipant, GuestParticipant, SessionParticipantStatus, GuestParticipantStatus } from '../../../shared/types/event.types';
 import { PublicUser, UserProfilePicture } from '../../../shared/types/user.types';
 import { useNotification } from '../hooks/useNotification';
 import { useApiMutation } from '../hooks/useApiMutation';
@@ -150,13 +150,13 @@ const EventDetails = () => {
 
   // Memoize computed values to prevent unnecessary recalculations
   const eventStats = useMemo(() => {
-    const isParticipant = event?.participants?.some((p: EventParticipant) => p.id === user?.id || p.userId === user?.id);
+    const isParticipant = event?.participants?.some((p: SessionParticipant) => p.id === user?.id || p.userId === user?.id);
     const totalParticipants = 
-      ((event?.participants?.filter((p: EventParticipant) => p.status === EventParticipantStatus.confirmed).length) || 0) +
+      ((event?.participants?.filter((p: SessionParticipant) => p.status === SessionParticipantStatus.confirmed).length) || 0) +
       ((event?.guestParticipants?.filter((g: GuestParticipant) => g.status === GuestParticipantStatus.confirmed).length) || 0);
     const isFull = event?.maxPlayers && totalParticipants >= event?.maxPlayers;
-    const confirmedCount = event?.participants?.filter((p: EventParticipant) => p.status === EventParticipantStatus.confirmed).length || 0;
-    const declinedCount = event?.participants?.filter((p: EventParticipant) => p.status === EventParticipantStatus.declined).length || 0;
+    const confirmedCount = event?.participants?.filter((p: SessionParticipant) => p.status === SessionParticipantStatus.confirmed).length || 0;
+    const declinedCount = event?.participants?.filter((p: SessionParticipant) => p.status === SessionParticipantStatus.declined).length || 0;
     const pendingCount = (event?.participants?.length || 0) - confirmedCount - declinedCount;
     const fillPercentage = event?.maxPlayers ? (totalParticipants / event.maxPlayers) * 100 : 0;
 
@@ -173,7 +173,7 @@ const EventDetails = () => {
 
   const isEventParticipant = useMemo(() => {
     if (!event || !user?.id) return false;
-    return (event.participants?.some((p: EventParticipant) => p.userId === user.id) ?? false);
+    return (event.participants?.some((p: SessionParticipant) => p.userId === user.id) ?? false);
   }, [event, user?.id]);
 
   const { isCreator } = usePermissions({
@@ -613,7 +613,7 @@ const EventDetails = () => {
               gap: { xs: 2, sm: 3 }
             }}
           >
-            {event?.participants?.map((p: EventParticipant) => (
+            {event?.participants?.map((p: SessionParticipant) => (
               <Box 
                 key={p.id} 
                 sx={{ 

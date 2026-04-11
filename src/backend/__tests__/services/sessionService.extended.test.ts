@@ -1,6 +1,6 @@
 /**
  * Additional Event Service Tests
- * Extended test coverage for event management
+ * Extended test coverage for session management
  */
 
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -16,7 +16,7 @@ import {
 // Mock dependencies
 vi.mock('../../config/database', () => ({
   default: {
-    event: {
+    session: {
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
@@ -55,14 +55,14 @@ describe('Event Service - Extended Tests', () => {
   });
 
   describe('Event Creation', () => {
-    it('should create event with all required fields', async () => {
-      vi.mocked(prisma.event.create).mockResolvedValueOnce(mockEvent as unknown);
+    it('should create session with all required fields', async () => {
+      vi.mocked(prisma.session.create).mockResolvedValueOnce(mockEvent as unknown);
 
-      const result = await prisma.event.create({
+      const result = await prisma.session.create({
         data: {
           title: mockEvent.title,
           description: mockEvent.description,
-          eventType: mockEvent.eventType,
+          sessionType: mockEvent.sessionType,
           location: mockEvent.location,
           startTime: mockEvent.startTime,
           creatorId: mockEvent.creatorId,
@@ -71,25 +71,25 @@ describe('Event Service - Extended Tests', () => {
       });
 
       expect(result).toEqual(mockEvent);
-      expect(prisma.event.create).toHaveBeenCalledWith(
+      expect(prisma.session.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             title: mockEvent.title,
-            eventType: mockEvent.eventType,
+            sessionType: mockEvent.sessionType,
           }),
         })
       );
     });
 
-    it('should create recurring event with recurrence rule', async () => {
-      vi.mocked(prisma.event.create).mockResolvedValueOnce(mockRecurringEvent as unknown);
+    it('should create recurring session with recurrence rule', async () => {
+      vi.mocked(prisma.session.create).mockResolvedValueOnce(mockRecurringEvent as unknown);
 
-      const result = await prisma.event.create({
+      const result = await prisma.session.create({
         data: {
           title: mockRecurringEvent.title,
           isRecurring: true,
           recurrenceRule: mockRecurringEvent.recurrenceRule,
-          eventType: mockRecurringEvent.eventType,
+          sessionType: mockRecurringEvent.sessionType,
           startTime: mockRecurringEvent.startTime,
           creatorId: mockRecurringEvent.creatorId,
           groupId: mockRecurringEvent.groupId,
@@ -100,11 +100,11 @@ describe('Event Service - Extended Tests', () => {
       expect(result.recurrenceRule).toBe('FREQ=WEEKLY;BYDAY=MO');
     });
 
-    it('should create event with max participants limit', async () => {
+    it('should create session with max participants limit', async () => {
       const eventWithLimit = { ...mockEvent, maxParticipants: 20 };
-      vi.mocked(prisma.event.create).mockResolvedValueOnce(eventWithLimit as unknown);
+      vi.mocked(prisma.session.create).mockResolvedValueOnce(eventWithLimit as unknown);
 
-      const result = await prisma.event.create({
+      const result = await prisma.session.create({
         data: {
           ...mockEvent,
           maxParticipants: 20,
@@ -114,11 +114,11 @@ describe('Event Service - Extended Tests', () => {
       expect(result.maxParticipants).toBe(20);
     });
 
-    it('should create public event', async () => {
+    it('should create public session', async () => {
       const publicEvent = { ...mockEvent, visibility: 'public' };
-      vi.mocked(prisma.event.create).mockResolvedValueOnce(publicEvent as unknown);
+      vi.mocked(prisma.session.create).mockResolvedValueOnce(publicEvent as unknown);
 
-      const result = await prisma.event.create({
+      const result = await prisma.session.create({
         data: {
           ...mockEvent,
           visibility: 'public',
@@ -128,11 +128,11 @@ describe('Event Service - Extended Tests', () => {
       expect(result.visibility).toBe('public');
     });
 
-    it('should create private event', async () => {
+    it('should create private session', async () => {
       const privateEvent = { ...mockEvent, visibility: 'private' };
-      vi.mocked(prisma.event.create).mockResolvedValueOnce(privateEvent as unknown);
+      vi.mocked(prisma.session.create).mockResolvedValueOnce(privateEvent as unknown);
 
-      const result = await prisma.event.create({
+      const result = await prisma.session.create({
         data: {
           ...mockEvent,
           visibility: 'private',
@@ -144,11 +144,11 @@ describe('Event Service - Extended Tests', () => {
   });
 
   describe('Event Updates', () => {
-    it('should update event title', async () => {
+    it('should update session title', async () => {
       const updatedEvent = { ...mockEvent, title: 'Updated Soccer Match' };
-      vi.mocked(prisma.event.update).mockResolvedValueOnce(updatedEvent as unknown);
+      vi.mocked(prisma.session.update).mockResolvedValueOnce(updatedEvent as unknown);
 
-      const result = await prisma.event.update({
+      const result = await prisma.session.update({
         where: { id: mockEvent.id },
         data: { title: 'Updated Soccer Match' },
       });
@@ -156,12 +156,12 @@ describe('Event Service - Extended Tests', () => {
       expect(result.title).toBe('Updated Soccer Match');
     });
 
-    it('should update event time', async () => {
+    it('should update session time', async () => {
       const newStartTime = new Date('2024-02-02T10:00:00Z');
       const updatedEvent = { ...mockEvent, startTime: newStartTime };
-      vi.mocked(prisma.event.update).mockResolvedValueOnce(updatedEvent as unknown);
+      vi.mocked(prisma.session.update).mockResolvedValueOnce(updatedEvent as unknown);
 
-      const result = await prisma.event.update({
+      const result = await prisma.session.update({
         where: { id: mockEvent.id },
         data: { startTime: newStartTime },
       });
@@ -169,11 +169,11 @@ describe('Event Service - Extended Tests', () => {
       expect(result.startTime).toEqual(newStartTime);
     });
 
-    it('should update event location', async () => {
+    it('should update session location', async () => {
       const updatedEvent = { ...mockEvent, location: 'Riverside Park' };
-      vi.mocked(prisma.event.update).mockResolvedValueOnce(updatedEvent as unknown);
+      vi.mocked(prisma.session.update).mockResolvedValueOnce(updatedEvent as unknown);
 
-      const result = await prisma.event.update({
+      const result = await prisma.session.update({
         where: { id: mockEvent.id },
         data: { location: 'Riverside Park' },
       });
@@ -183,9 +183,9 @@ describe('Event Service - Extended Tests', () => {
 
     it('should update max participants', async () => {
       const updatedEvent = { ...mockEvent, maxParticipants: 30 };
-      vi.mocked(prisma.event.update).mockResolvedValueOnce(updatedEvent as unknown);
+      vi.mocked(prisma.session.update).mockResolvedValueOnce(updatedEvent as unknown);
 
-      const result = await prisma.event.update({
+      const result = await prisma.session.update({
         where: { id: mockEvent.id },
         data: { maxParticipants: 30 },
       });
@@ -193,11 +193,11 @@ describe('Event Service - Extended Tests', () => {
       expect(result.maxParticipants).toBe(30);
     });
 
-    it('should archive event', async () => {
+    it('should archive session', async () => {
       const archivedEvent = { ...mockEvent, archived: true };
-      vi.mocked(prisma.event.update).mockResolvedValueOnce(archivedEvent as unknown);
+      vi.mocked(prisma.session.update).mockResolvedValueOnce(archivedEvent as unknown);
 
-      const result = await prisma.event.update({
+      const result = await prisma.session.update({
         where: { id: mockEvent.id },
         data: { archived: true },
       });
@@ -207,13 +207,13 @@ describe('Event Service - Extended Tests', () => {
   });
 
   describe('Event Participant Management', () => {
-    it('should add participant to event', async () => {
+    it('should add participant to session', async () => {
       const participant = mockEventParticipants[0];
-      vi.mocked(prisma.eventParticipant.create).mockResolvedValueOnce(participant as unknown);
+      vi.mocked(prisma.sessionParticipant.create).mockResolvedValueOnce(participant as unknown);
 
-      const result = await prisma.eventParticipant.create({
+      const result = await prisma.sessionParticipant.create({
         data: {
-          eventId: participant.eventId,
+          sessionId: participant.sessionId,
           userId: participant.userId,
           status: participant.status,
         },
@@ -222,11 +222,11 @@ describe('Event Service - Extended Tests', () => {
       expect(result).toEqual(participant);
     });
 
-    it('should list all event participants', async () => {
-      vi.mocked(prisma.eventParticipant.findMany).mockResolvedValueOnce(mockEventParticipants as unknown);
+    it('should list all session participants', async () => {
+      vi.mocked(prisma.sessionParticipant.findMany).mockResolvedValueOnce(mockEventParticipants as unknown);
 
-      const result = await prisma.eventParticipant.findMany({
-        where: { eventId: 'event-1' },
+      const result = await prisma.sessionParticipant.findMany({
+        where: { sessionId: 'session-1' },
       });
 
       expect(result).toHaveLength(3);
@@ -234,10 +234,10 @@ describe('Event Service - Extended Tests', () => {
     });
 
     it('should count confirmed participants', async () => {
-      vi.mocked(prisma.eventParticipant.count).mockResolvedValueOnce(2);
+      vi.mocked(prisma.sessionParticipant.count).mockResolvedValueOnce(2);
 
-      const count = await prisma.eventParticipant.count({
-        where: { eventId: 'event-1', status: 'confirmed' },
+      const count = await prisma.sessionParticipant.count({
+        where: { sessionId: 'session-1', status: 'confirmed' },
       });
 
       expect(count).toBe(2);
@@ -245,9 +245,9 @@ describe('Event Service - Extended Tests', () => {
 
     it('should update participant status', async () => {
       const updatedParticipant = { ...mockEventParticipants[2], status: 'confirmed' };
-      vi.mocked(prisma.eventParticipant.update).mockResolvedValueOnce(updatedParticipant as unknown);
+      vi.mocked(prisma.sessionParticipant.update).mockResolvedValueOnce(updatedParticipant as unknown);
 
-      const result = await prisma.eventParticipant.update({
+      const result = await prisma.sessionParticipant.update({
         where: { id: 'participant-3' },
         data: { status: 'confirmed' },
       });
@@ -255,10 +255,10 @@ describe('Event Service - Extended Tests', () => {
       expect(result.status).toBe('confirmed');
     });
 
-    it('should remove participant from event', async () => {
-      vi.mocked(prisma.eventParticipant.delete).mockResolvedValueOnce(mockEventParticipants[0] as unknown);
+    it('should remove participant from session', async () => {
+      vi.mocked(prisma.sessionParticipant.delete).mockResolvedValueOnce(mockEventParticipants[0] as unknown);
 
-      const result = await prisma.eventParticipant.delete({
+      const result = await prisma.sessionParticipant.delete({
         where: { id: 'participant-1' },
       });
 
@@ -273,7 +273,7 @@ describe('Event Service - Extended Tests', () => {
 
       const result = await prisma.eventActivity.create({
         data: {
-          eventId: activity.eventId,
+          sessionId: activity.sessionId,
           userId: activity.userId,
           type: activity.type,
           params: activity.params,
@@ -283,11 +283,11 @@ describe('Event Service - Extended Tests', () => {
       expect(result).toEqual(activity);
     });
 
-    it('should fetch event activity with user details', async () => {
+    it('should fetch session activity with user details', async () => {
       vi.mocked(prisma.eventActivity.findMany).mockResolvedValueOnce(mockEventActivity as unknown);
 
       const result = await prisma.eventActivity.findMany({
-        where: { eventId: 'event-1' },
+        where: { sessionId: 'session-1' },
         include: { user: true },
         orderBy: { createdAt: 'desc' },
       });
@@ -297,23 +297,23 @@ describe('Event Service - Extended Tests', () => {
     });
 
     it('should filter activity by type', async () => {
-      const filteredActivity = mockEventActivity.filter(a => a.type === 'event_created');
+      const filteredActivity = mockEventActivity.filter(a => a.type === 'session_created');
       vi.mocked(prisma.eventActivity.findMany).mockResolvedValueOnce(filteredActivity as unknown);
 
       const result = await prisma.eventActivity.findMany({
-        where: { eventId: 'event-1', type: 'event_created' },
+        where: { sessionId: 'session-1', type: 'session_created' },
       });
 
       expect(result).toHaveLength(1);
-      expect(result[0].type).toBe('event_created');
+      expect(result[0].type).toBe('session_created');
     });
   });
 
   describe('Event Queries', () => {
-    it('should find event by ID', async () => {
-      vi.mocked(prisma.event.findUnique).mockResolvedValueOnce(mockEvent as unknown);
+    it('should find session by ID', async () => {
+      vi.mocked(prisma.session.findUnique).mockResolvedValueOnce(mockEvent as unknown);
 
-      const result = await prisma.event.findUnique({
+      const result = await prisma.session.findUnique({
         where: { id: mockEvent.id },
       });
 
@@ -322,9 +322,9 @@ describe('Event Service - Extended Tests', () => {
 
     it('should find events by group ID', async () => {
       const groupEvents = [mockEvent, mockRecurringEvent];
-      vi.mocked(prisma.event.findMany).mockResolvedValueOnce(groupEvents as unknown);
+      vi.mocked(prisma.session.findMany).mockResolvedValueOnce(groupEvents as unknown);
 
-      const result = await prisma.event.findMany({
+      const result = await prisma.session.findMany({
         where: { groupId: 'group-1' },
       });
 
@@ -332,9 +332,9 @@ describe('Event Service - Extended Tests', () => {
     });
 
     it('should find events by creator', async () => {
-      vi.mocked(prisma.event.findMany).mockResolvedValueOnce([mockEvent] as unknown);
+      vi.mocked(prisma.session.findMany).mockResolvedValueOnce([mockEvent] as unknown);
 
-      const result = await prisma.event.findMany({
+      const result = await prisma.session.findMany({
         where: { creatorId: 'user-1' },
       });
 
@@ -344,10 +344,10 @@ describe('Event Service - Extended Tests', () => {
 
     it('should find upcoming events', async () => {
       const upcomingEvents = [mockEvent, mockRecurringEvent];
-      vi.mocked(prisma.event.findMany).mockResolvedValueOnce(upcomingEvents as unknown);
+      vi.mocked(prisma.session.findMany).mockResolvedValueOnce(upcomingEvents as unknown);
 
       const now = new Date();
-      const result = await prisma.event.findMany({
+      const result = await prisma.session.findMany({
         where: {
           startTime: { gte: now },
           archived: false,
@@ -359,9 +359,9 @@ describe('Event Service - Extended Tests', () => {
     });
 
     it('should exclude archived events', async () => {
-      vi.mocked(prisma.event.findMany).mockResolvedValueOnce([mockEvent] as unknown);
+      vi.mocked(prisma.session.findMany).mockResolvedValueOnce([mockEvent] as unknown);
 
-      const result = await prisma.event.findMany({
+      const result = await prisma.session.findMany({
         where: { archived: false },
       });
 
@@ -369,32 +369,32 @@ describe('Event Service - Extended Tests', () => {
     });
 
     it('should find events by type', async () => {
-      vi.mocked(prisma.event.findMany).mockResolvedValueOnce([mockEvent] as unknown);
+      vi.mocked(prisma.session.findMany).mockResolvedValueOnce([mockEvent] as unknown);
 
-      const result = await prisma.event.findMany({
-        where: { eventType: 'soccer' },
+      const result = await prisma.session.findMany({
+        where: { sessionType: 'soccer' },
       });
 
-      expect(result.every(e => e.eventType === 'soccer')).toBe(true);
+      expect(result.every(e => e.sessionType === 'soccer')).toBe(true);
     });
   });
 
   describe('Event Deletion', () => {
-    it('should delete event', async () => {
-      vi.mocked(prisma.event.delete).mockResolvedValueOnce(mockEvent as unknown);
+    it('should delete session', async () => {
+      vi.mocked(prisma.session.delete).mockResolvedValueOnce(mockEvent as unknown);
 
-      const result = await prisma.event.delete({
+      const result = await prisma.session.delete({
         where: { id: mockEvent.id },
       });
 
       expect(result).toEqual(mockEvent);
     });
 
-    it('should soft delete event by archiving', async () => {
+    it('should soft delete session by archiving', async () => {
       const archivedEvent = { ...mockEvent, archived: true };
-      vi.mocked(prisma.event.update).mockResolvedValueOnce(archivedEvent as unknown);
+      vi.mocked(prisma.session.update).mockResolvedValueOnce(archivedEvent as unknown);
 
-      const result = await prisma.event.update({
+      const result = await prisma.session.update({
         where: { id: mockEvent.id },
         data: { archived: true },
       });

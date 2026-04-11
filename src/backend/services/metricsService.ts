@@ -143,7 +143,7 @@ export const userRegistrations = new Counter({
 
 export const eventParticipations = new Counter({
   name: 'event_participations_total',
-  help: 'Total number of event participations',
+  help: 'Total number of session participations',
   labelNames: ['status'], // confirmed, declined, pending
   registers: [register],
 });
@@ -157,7 +157,7 @@ export const commentsCreated = new Counter({
 export const invitationsSent = new Counter({
   name: 'invitations_sent_total',
   help: 'Total number of invitations sent',
-  labelNames: ['type'], // group, event
+  labelNames: ['type'], // group, session
   registers: [register],
 });
 
@@ -251,8 +251,8 @@ export const recordRateLimitExceeded = (endpoint: string): void => {
 /**
  * Record business metrics
  */
-export const recordEventCreated = (eventType?: string): void => {
-  eventsCreated.labels(eventType || 'unknown').inc();
+export const recordEventCreated = (sessionType?: string): void => {
+  eventsCreated.labels(sessionType || 'unknown').inc();
 };
 
 export const recordGroupCreated = (isPublic: boolean = false): void => {
@@ -275,7 +275,7 @@ export const recordCommentCreated = (): void => {
   commentsCreated.inc();
 };
 
-export const recordInvitationSent = (type: 'group' | 'event'): void => {
+export const recordInvitationSent = (type: 'group' | 'session'): void => {
   invitationsSent.labels(type).inc();
 };
 
@@ -283,7 +283,7 @@ export const recordEmailSent = (status: 'success' | 'failed'): void => {
   emailsSent.labels(status).inc();
 };
 
-export const recordSearchQuery = (type: 'events' | 'groups' | 'users'): void => {
+export const recordSearchQuery = (type: 'sessions' | 'groups' | 'users'): void => {
   searchQueries.labels(type).inc();
 };
 

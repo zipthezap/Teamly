@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogTitle, DialogContent } from '@mui/material';
 import { eventsAPI } from '../../services/api';
 import EventForm, { EventFormData } from '../common/EventForm';
-import { SportType, EventWithDetails } from '../../../../shared/types/event.types';
+import { SportType, SessionWithDetails } from '../../../../shared/types/event.types';
 
 interface EventFormModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess?: () => void;
-  initialData?: Partial<EventWithDetails>;
+  initialData?: Partial<SessionWithDetails>;
   groups?: Array<{ id: string; name: string }>;
   groupId?: string | number;
   submitLabel?: string;

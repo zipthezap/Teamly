@@ -62,7 +62,7 @@ describe('pushNotificationService', () => {
     await expect(
       dispatchPushNotifications({
         userIds: ['u1'],
-        notificationKind: 'event',
+        notificationKind: 'session',
         notificationType: 'join',
         entityId: 'e1',
         params: { eventTitle: 'Friday Match', name: 'Alex' },

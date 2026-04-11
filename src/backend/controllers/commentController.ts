@@ -50,9 +50,9 @@ const findMentionedUsers = (
 // Create a comment
 export const createComment = asyncHandler(async (req: Request, res: Response) => {
     res.setHeader('Cache-Control', 'no-store');
-  const { eventId, content, parentId } = req.body;
+  const { sessionId, content, parentId } = req.body;
 
-  if (!eventId || !content) {
+  if (!sessionId || !content) {
     throw new BadRequestError('Event ID and content are required');
   }
 
@@ -63,10 +63,10 @@ export const createComment = asyncHandler(async (req: Request, res: Response) =>
     throw new BadRequestError('Comment content cannot be empty');
   }
 
-  // Check if event exists and user has access
-  const event = await prisma.event.findFirst({
+  // Check if session exists and user has access
+  const session = await prisma.session.findFirst({
     where: {
-      id: eventId,
+      id: sessionId,
       group: {
         members: {
           some: {
@@ -90,7 +90,7 @@ export const createComment = asyncHandler(async (req: Request, res: Response) =>
     }
   });
 
-  if (!event) {
+  if (!session) {
     throw new NotFoundError('Event not found or access denied');
   }
 
@@ -100,13 +100,13 @@ export const createComment = asyncHandler(async (req: Request, res: Response) =>
       where: { id: parentId }
     });
 
-    if (!parentComment || parentComment.eventId !== eventId) {
+    if (!parentComment || parentComment.sessionId !== sessionId) {
       throw new BadRequestError('Invalid parent comment');
     }
   }
 
   // Extract mentions from sanitized content
-  const { mentionedUsers } = findMentionedUsers(sanitizedContent, event.group.members, req.user!.id);
+  const { mentionedUsers } = findMentionedUsers(sanitizedContent, session.group.members, req.user!.id);
 
   // Use transaction to create comment and mentions atomically
   const comment = await prisma.$transaction(async (tx) => {
@@ -114,7 +114,7 @@ export const createComment = asyncHandler(async (req: Request, res: Response) =>
     const newComment = await tx.comment.create({
       data: {
         content: sanitizedContent,
-        eventId,
+        sessionId,
         userId: req.user!.id,
         parentId: parentId || null
       },
@@ -171,7 +171,7 @@ export const createComment = asyncHandler(async (req: Request, res: Response) =>
           'commentMention',
           mentionedUser.name,
           req.user!.name,
-          event.title,
+          session.title,
           content
         );
       }
@@ -181,14 +181,14 @@ export const createComment = asyncHandler(async (req: Request, res: Response) =>
   res.status(201).json(comment);
 });
 
-// Get comments for an event
+// Get comments for an session
 export const getEventComments = asyncHandler(async (req: Request, res: Response) => {
-  const { eventId } = req.params;
+  const { sessionId } = req.params;
 
-  // Check if event exists and user has access
-  const event = await prisma.event.findFirst({
+  // Check if session exists and user has access
+  const session = await prisma.session.findFirst({
     where: {
-      id: eventId,
+      id: sessionId,
       group: {
         members: {
           some: {
@@ -199,14 +199,14 @@ export const getEventComments = asyncHandler(async (req: Request, res: Response)
     }
   });
 
-  if (!event) {
+  if (!session) {
     throw new NotFoundError('Event not found or access denied');
   }
 
   // Get top-level comments with their replies
   const comments = await prisma.comment.findMany({
     where: {
-      eventId,
+      sessionId,
       parentId: null
     },
     include: {

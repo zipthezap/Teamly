@@ -51,13 +51,13 @@ export const mockGroupWithEvents = {
   ...mockGroupWithMembers,
   events: [
     {
-      id: 'event-1',
+      id: 'session-1',
       title: 'Soccer Match',
       startTime: new Date('2024-02-01T10:00:00Z'),
       archived: false,
     },
     {
-      id: 'event-2',
+      id: 'session-2',
       title: 'Practice Session',
       startTime: new Date('2024-02-08T10:00:00Z'),
       archived: false,
