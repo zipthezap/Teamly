@@ -9,7 +9,7 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
     res.setHeader('Cache-Control', 'no-store');
   const userId = req.user!.id;
   // Fetch both session and group notifications, ordered by createdAt desc
-  const [eventNotifications, groupNotifications] = await Promise.all([
+  const [sessionNotifications, groupNotifications] = await Promise.all([
     prisma.sessionNotification.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' }
@@ -19,7 +19,7 @@ export const getNotifications = asyncHandler(async (req: Request, res: Response)
       orderBy: { createdAt: 'desc' }
     })
   ]);
-  res.json({ eventNotifications, groupNotifications });
+  res.json({ sessionNotifications, groupNotifications });
 });
 
 // Undo Event Attendance (late)
@@ -29,7 +29,7 @@ export const unmarkLate = asyncHandler(async (req: Request, res: Response) => {
 
   // Find the attendance record
   const attendance = await prisma.sessionAttendance.findUnique({
-    where: { eventId_userId: { sessionId, userId } },
+    where: { sessionId_userId: { sessionId, userId } },
   });
 
   if (!attendance || attendance.status !== 'late') {
@@ -38,7 +38,7 @@ export const unmarkLate = asyncHandler(async (req: Request, res: Response) => {
 
   // Set status back to 'on_time' (or remove, depending on business logic)
   const updated = await prisma.sessionAttendance.update({
-    where: { eventId_userId: { sessionId, userId } },
+    where: { sessionId_userId: { sessionId, userId } },
     data: { status: 'on_time' },
   });
 
@@ -101,7 +101,7 @@ export const markLate = asyncHandler(async (req: Request, res: Response) => {
 
   // Check if user is already marked as late
   const existingAttendance = await prisma.sessionAttendance.findUnique({
-    where: { eventId_userId: { sessionId, userId } }
+    where: { sessionId_userId: { sessionId, userId } }
   });
 
   if (existingAttendance && existingAttendance.status === 'late') {
@@ -109,7 +109,7 @@ export const markLate = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const attendance = await prisma.sessionAttendance.upsert({
-    where: { eventId_userId: { sessionId, userId } },
+    where: { sessionId_userId: { sessionId, userId } },
     update: { status: 'late' },
     create: { sessionId, userId, status: 'late' }
   });

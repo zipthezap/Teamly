@@ -60,7 +60,7 @@ export const createReminder = asyncHandler(async (req: Request, res: Response) =
   // Check if reminder already exists
   const existingReminder = await prisma.sessionReminder.findUnique({
     where: {
-      eventId_userId_remindAt: {
+      sessionId_userId_remindAt: {
         sessionId,
         userId,
         remindAt: reminderDate
@@ -285,7 +285,7 @@ export const updateReminder = asyncHandler(async (req: Request, res: Response) =
   // Check if a reminder already exists for this new time
   const existingReminder = await prisma.sessionReminder.findUnique({
     where: {
-      eventId_userId_remindAt: {
+      sessionId_userId_remindAt: {
         sessionId: reminder.sessionId,
         userId,
         remindAt: reminderDate

@@ -39,7 +39,7 @@ interface BaseNotificationInput {
   deduplicateWindow?: number; // milliseconds
 }
 
-interface EventNotificationInput extends BaseNotificationInput {
+interface SessionNotificationInput extends BaseNotificationInput {
   sessionId: string;
   type: SessionNotificationType;
 }
@@ -64,7 +64,7 @@ export class NotificationFactory {
    * Create session notifications for multiple users
    */
   static async createSessionNotifications(
-    input: EventNotificationInput,
+    input: SessionNotificationInput,
     tx?: Prisma.TransactionClient
   ): Promise<{ created: number; skipped: number }> {
     const client = tx || prisma;
@@ -94,7 +94,7 @@ export class NotificationFactory {
     // Deduplicate if window is specified
     if (deduplicateWindow > 0) {
       const windowStart = new Date(Date.now() - deduplicateWindow);
-      const existingNotifications = await client.eventNotification.findMany({
+      const existingNotifications = await client.sessionNotification.findMany({
         where: {
           sessionId,
           type,
@@ -104,7 +104,7 @@ export class NotificationFactory {
         select: { userId: true }
       });
       
-      const existingUserIds = new Set(existingNotifications.map(n => n.userId));
+      const existingUserIds = new Set(existingNotifications.map((notification) => notification.userId));
       targetUserIds = targetUserIds.filter(id => !existingUserIds.has(id));
     }
 
@@ -122,7 +122,7 @@ export class NotificationFactory {
         metadata: metadata || {}
       }));
 
-      await client.eventNotification.createMany({
+      await client.sessionNotification.createMany({
         data: notifications,
         skipDuplicates: true
       });
@@ -461,15 +461,15 @@ export class NotificationFactory {
       case 'leave':
       case 'confirmed':
       case 'declined':
-        return 'muteEventInvites';
+        return 'muteSessionInvites';
       case 'comment':
         return 'commentMentions';
       case 'session_updated':
       case 'late':
       case 'status_change':
-        return 'muteEventUpdates';
+        return 'muteSessionUpdates';
       case 'session_cancelled':
-        return 'muteEventCancellations';
+        return 'muteSessionCancellations';
       default:
         return null;
     }
@@ -486,7 +486,7 @@ export class NotificationFactory {
       case 'join_request':
         return 'muteGroupRequests';
       case GroupNotificationType.session_created:
-        return 'muteEventCreated';
+        return 'muteSessionCreated';
       case 'nearby_created':
         return 'muteNearbyGroups';
       case 'removed':

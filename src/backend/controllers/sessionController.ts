@@ -336,7 +336,7 @@ export const getEvents = async (req: Request, res: Response) => {
     const sessionsWithParticipants = sessions.map(session => ({
       ...session,
       participants: participantsByEvent.get(session.id) || [],
-      eventAttendances: attendancesByEvent.get(session.id) || [],
+      sessionAttendances: attendancesByEvent.get(session.id) || [],
       userGroupRole: membershipByGroupId.get(session.groupId) ?? null
     }));
 
@@ -455,7 +455,7 @@ export const getEvent = async (req: Request, res: Response) => {
           joinedAt: 'asc'  // Sort by when they joined
         }
       },
-      eventAttendances: {
+      sessionAttendances: {
         select: {
           id: true,
           userId: true,
@@ -463,7 +463,7 @@ export const getEvent = async (req: Request, res: Response) => {
           updatedAt: true
         }
       },
-      eventNotifications: {
+      sessionNotifications: {
         select: {
           id: true,
           userId: true,
@@ -628,7 +628,7 @@ export const updateEvent = async (req: Request, res: Response) => {
   await sessionService.sendSessionEmailNotifications(
     updatedSession.participants,
     req.user!.id,
-    'eventUpdates',
+    'sessionUpdates',
     'eventUpdate',
     updatedSession.title,
     session!.group.name
@@ -689,7 +689,7 @@ export const deleteEvent = async (req: Request, res: Response) => {
   await sessionService.sendSessionEmailNotifications(
     session!.participants,
     req.user!.id,
-    'eventCancellations',
+    'sessionCancellations',
     'eventCancellation',
     session!.title,
     session!.group.name
@@ -741,9 +741,9 @@ export const joinEvent = async (req: Request, res: Response) => {
       }
 
       // Check if already joined (database constraint will also catch this)
-      const existingParticipant = await tx.eventParticipant.findUnique({
+      const existingParticipant = await tx.sessionParticipant.findUnique({
         where: {
-          eventId_userId: {
+          sessionId_userId: {
             sessionId: id,
             userId: req.user!.id
           }
@@ -770,7 +770,7 @@ export const joinEvent = async (req: Request, res: Response) => {
         
         if (totalConfirmed >= session.maxPlayers) {
           // Add to waitlist instead of rejecting
-          const waitlistParticipant = await tx.eventParticipant.create({
+          const waitlistParticipant = await tx.sessionParticipant.create({
             data: {
               sessionId: id,
               userId: req.user!.id,
@@ -782,7 +782,7 @@ export const joinEvent = async (req: Request, res: Response) => {
       }
 
       // Create participant
-      const participant = await tx.eventParticipant.create({
+      const participant = await tx.sessionParticipant.create({
         data: {
           sessionId: id,
           userId: req.user!.id,
@@ -804,7 +804,7 @@ export const joinEvent = async (req: Request, res: Response) => {
             sessionType: session.sessionType,
             eventStartTime: session.startTime,
             groupId: session.groupId,
-            participantCount: await tx.eventParticipant.count({
+            participantCount: await tx.sessionParticipant.count({
               where: { sessionId: id, status: 'confirmed' }
             }),
             maxPlayers: session.maxPlayers
@@ -876,7 +876,7 @@ export const leaveEvent = async (req: Request, res: Response) => {
         throw new Error('EVENT_NOT_FOUND');
       }
 
-      const participant = await tx.eventParticipant.findFirst({
+      const participant = await tx.sessionParticipant.findFirst({
         where: {
           sessionId: id,
           userId: req.user!.id
@@ -888,12 +888,12 @@ export const leaveEvent = async (req: Request, res: Response) => {
       }
 
       // Delete participant and attendance records sequentially for proper transaction handling
-      await tx.eventParticipant.delete({
+      await tx.sessionParticipant.delete({
         where: { id: participant.id }
       });
       
       // Also delete the attendance record (late status) when leaving
-      await tx.eventAttendance.deleteMany({
+      await tx.sessionAttendance.deleteMany({
         where: {
           sessionId: id,
           userId: req.user!.id
@@ -907,12 +907,12 @@ export const leaveEvent = async (req: Request, res: Response) => {
         select: { maxPlayers: true, title: true }
       });
       if (eventWithMax?.maxPlayers && participant.status === 'confirmed') {
-        const firstWaitlisted = await tx.eventParticipant.findFirst({
+        const firstWaitlisted = await tx.sessionParticipant.findFirst({
           where: { sessionId: id, status: 'waitlisted' },
           orderBy: { joinedAt: 'asc' },
         });
         if (firstWaitlisted) {
-          await tx.eventParticipant.update({
+          await tx.sessionParticipant.update({
             where: { id: firstWaitlisted.id },
             data: { status: 'confirmed' },
           });
@@ -990,7 +990,7 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      const participant = await tx.eventParticipant.findFirst({
+      const participant = await tx.sessionParticipant.findFirst({
         where: {
           sessionId: id,
           userId: req.user!.id
@@ -1001,7 +1001,7 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
         return null;
       }
 
-      const updated = await tx.eventParticipant.update({
+      const updated = await tx.sessionParticipant.update({
         where: { id: participant.id },
         data: { status }
       });
@@ -1614,7 +1614,7 @@ export const joinEventAsGuest = async (req: Request, res: Response) => {
 
     // Check max players with accurate count within transaction
     if (session.maxPlayers) {
-      const confirmedParticipants = await tx.eventParticipant.count({
+      const confirmedParticipants = await tx.sessionParticipant.count({
         where: {
           sessionId: session.id,
           status: SessionParticipantStatus.confirmed
@@ -2222,9 +2222,9 @@ export const inviteToEvent = async (req: Request, res: Response) => {
   // Use transaction to prevent race conditions
   await prisma.$transaction(async (tx) => {
     // Check if user is already a participant
-    const existingParticipant = await tx.eventParticipant.findUnique({
+    const existingParticipant = await tx.sessionParticipant.findUnique({
       where: {
-        eventId_userId: {
+        sessionId_userId: {
           sessionId: id,
           userId: userToInvite.id
         }
@@ -2236,7 +2236,7 @@ export const inviteToEvent = async (req: Request, res: Response) => {
     }
 
     // Create session participant with pending status
-    await tx.eventParticipant.create({
+    await tx.sessionParticipant.create({
       data: {
         sessionId: id,
         userId: userToInvite.id,

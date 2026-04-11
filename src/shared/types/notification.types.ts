@@ -16,18 +16,18 @@ export interface BaseNotification {
 }
 
 // Combined notification type for unified notification fetching
-export type Notification = EventNotification | GroupNotification | TeamUpNotification;
+export type Notification = SessionNotification | GroupNotification | TeamUpNotification;
 
 // Re-export from their respective files for convenience
-export interface EventNotification extends BaseNotification {
-  eventId: string;
-  type: 'join' | 'leave' | 'late' | 'confirmed' | 'declined' | 'status_change' | 'comment' | 'event_updated' | 'event_cancelled';
+export interface SessionNotification extends BaseNotification {
+  sessionId: string;
+  type: 'join' | 'leave' | 'late' | 'confirmed' | 'declined' | 'status_change' | 'comment' | 'session_updated' | 'session_cancelled';
   metadata?: Record<string, unknown> | null;
 }
 
 export interface GroupNotification extends BaseNotification {
   groupId: string;
-  type: 'accepted' | 'invited' | 'join_request' | 'event_created' | 'nearby_created';
+  type: 'accepted' | 'invited' | 'join_request' | 'session_created' | 'nearby_created' | 'removed';
 }
 
 export interface TeamUpNotification extends BaseNotification {
@@ -42,7 +42,7 @@ export interface NotificationQueryParams {
   limit?: number;
   offset?: number;
   type?: string;
-  notificationType?: 'event' | 'group' | 'teamup' | 'tournament';
+  notificationType?: 'session' | 'group' | 'teamup' | 'tournament';
   startDate?: string;
   endDate?: string;
 }
@@ -52,7 +52,7 @@ export interface NotificationStats {
   unreadCount: number;
   totalCount: number;
   byType: {
-    event: number;
+    session: number;
     group: number;
     teamup: number;
   };

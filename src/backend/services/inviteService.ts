@@ -13,6 +13,7 @@ import { escapeHtml, isValidEmail } from '../utils/validation';
 import { Prisma } from '@prisma/client';
 import { getRedisClient, isRedisEnabled } from '../config/redis';
 import { RateLimiterMemory, RateLimiterRedis } from 'rate-limiter-flexible';
+import { GroupNotificationType } from '../../shared/types/event.types';
 
 /**
  * Calculate expiration date from days
@@ -252,7 +253,7 @@ export class InviteService {
       await NotificationFactory.createGroupNotifications(
         {
           groupId,
-          type: 'invited',
+          type: GroupNotificationType.invited,
           userIds: [userToInviteId],
           params: {
             groupName: group.name,

@@ -10,7 +10,7 @@ export interface Comment {
   content: string;
   createdAt: Date | string;
   updatedAt: Date | string;
-  eventId: string;
+  sessionId: string;
   userId: string;
   parentId?: string | null;
 }
@@ -38,7 +38,7 @@ export interface CommentMention {
 // Create Comment data
 export interface CreateCommentData {
   content: string;
-  eventId: string;
+  sessionId: string;
   parentId?: string;
   mentionedUserIds?: string[];
 }

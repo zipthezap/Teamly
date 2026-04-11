@@ -76,7 +76,7 @@ export const markAttendance = asyncHandler(async (req: Request, res: Response) =
   // Create or update attendance record
   const attendance = await prisma.sessionAttendance.upsert({
     where: {
-      eventId_userId: {
+      sessionId_userId: {
         sessionId,
         userId: targetUserId
       }
@@ -267,7 +267,7 @@ export const deleteAttendance = asyncHandler(async (req: Request, res: Response)
   // Find and delete the attendance record
   const attendance = await prisma.sessionAttendance.findUnique({
     where: {
-      eventId_userId: {
+      sessionId_userId: {
         sessionId,
         userId: targetUserId
       }
@@ -280,7 +280,7 @@ export const deleteAttendance = asyncHandler(async (req: Request, res: Response)
 
   await prisma.sessionAttendance.delete({
     where: {
-      eventId_userId: {
+      sessionId_userId: {
         sessionId,
         userId: targetUserId
       }

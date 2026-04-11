@@ -35,7 +35,7 @@ export const sendEventInvitations = async (
   
   // Check which users should receive notifications
   const userIds = filteredRecipients.map(r => r.id);
-  const notificationMap = await batchShouldSendEmailNotification(userIds, 'eventInvites');
+  const notificationMap = await batchShouldSendEmailNotification(userIds, 'sessionInvites');
   
   // Send emails to users who have notifications enabled using template system
   const emailPromises = filteredRecipients
@@ -85,7 +85,7 @@ export const sendEventUpdateNotifications = async (
   
   // Check which users should receive notifications
   const userIds = recipients.map(r => r.id);
-  const notificationMap = await batchShouldSendEmailNotification(userIds, 'eventUpdates');
+  const notificationMap = await batchShouldSendEmailNotification(userIds, 'sessionUpdates');
   
   // Send emails using template system
   const emailPromises = recipients
@@ -132,7 +132,7 @@ export const sendEventCancellationNotifications = async (
   
   // Check which users should receive notifications
   const userIds = recipients.map(r => r.id);
-  const notificationMap = await batchShouldSendEmailNotification(userIds, 'eventCancellations');
+  const notificationMap = await batchShouldSendEmailNotification(userIds, 'sessionCancellations');
   
   // Send emails using template system
   const emailPromises = recipients

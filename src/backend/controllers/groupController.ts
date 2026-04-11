@@ -207,7 +207,7 @@ export const getGroups = async (req: Request, res: Response) => {
     return res.json(cached);
   }
 
-  // Optimize query - only include events if requested
+  // Optimize query - only include sessions if requested
   const groups = await prisma.group.findMany({
     where: {
       members: {
@@ -227,9 +227,9 @@ export const getGroups = async (req: Request, res: Response) => {
           }
         }
       },
-      // Only load events if explicitly requested to reduce payload
+      // Only load sessions if explicitly requested to reduce payload
       ...(includeEvents && {
-        events: {
+        sessions: {
           where: {
             archived: false,
             startTime: {
@@ -237,12 +237,12 @@ export const getGroups = async (req: Request, res: Response) => {
             }
           },
           orderBy: { startTime: 'asc' },
-          take: 20 // Limit events per group
+          take: 20 // Limit sessions per group
         }
       }),
       _count: {
         select: {
-          events: true,
+          sessions: true,
           members: true
         }
       }
@@ -261,17 +261,7 @@ export const getGroups = async (req: Request, res: Response) => {
     role: string;
   }
 
-  interface GroupWithMembers {
-    members: GroupMember[];
-    latitude?: number | null;
-    longitude?: number | null;
-    locationName?: string | null;
-    city?: string | null;
-    country?: string | null;
-    [key: string]: unknown;
-  }
-
-  const mappedGroups = groups.map((group: GroupWithMembers) => ({
+  const mappedGroups = groups.map(group => ({
     ...group,
     members: group.members.map((member: GroupMember) => ({
       id: member.userId,
@@ -318,7 +308,7 @@ export const getGroup = async (req: Request, res: Response) => {
   }
 
   if (isMember) {
-    // Full member view: include emails and events
+    // Full member view: include emails and sessions
     const group = await prisma.group.findFirst({
       where: { id },
       include: {
@@ -332,8 +322,8 @@ export const getGroup = async (req: Request, res: Response) => {
             }
           }
         },
-        // Only load upcoming events with minimal participant data
-        events: {
+        // Only load upcoming sessions with minimal participant data
+        sessions: {
           where: {
             archived: false,
             startTime: {
@@ -356,7 +346,7 @@ export const getGroup = async (req: Request, res: Response) => {
         },
         _count: {
           select: {
-            events: true,
+            sessions: true,
             members: true
           }
         }
@@ -412,7 +402,7 @@ export const getGroup = async (req: Request, res: Response) => {
       },
       _count: {
         select: {
-          events: true,
+          sessions: true,
           members: true
         }
       }
@@ -442,7 +432,7 @@ export const getGroup = async (req: Request, res: Response) => {
 
   const mappedGroup: Omit<typeof group, 'members'> & {
     members: PublicGroupMemberView[];
-    events: [];
+    sessions: [];
   } = {
     ...group,
     // Omit email for non-member public views
@@ -453,8 +443,8 @@ export const getGroup = async (req: Request, res: Response) => {
       profilePicture: member.user.profilePicture,
       role: member.role,
     })),
-    // No events for non-members (they use the public groups page to discover)
-    events: [],
+    // No sessions for non-members (they use the public groups page to discover)
+    sessions: [],
   };
 
   const enrichedGroup = locationService.enrichWithLocationInfo(mappedGroup);
@@ -1139,7 +1129,7 @@ export const getPublicGroups = async (req: Request, res: Response) => {
   if (sortField === 'most_members') {
     orderBy = { members: { _count: 'desc' } };
   } else if (sortField === 'most_events') {
-    orderBy = { events: { _count: 'desc' } };
+    orderBy = { sessions: { _count: 'desc' } };
   } else if (sortField === 'most_active') {
     // Most active = most recently updated (proxies for recent session/member activity)
     orderBy = [{ updatedAt: 'desc' }, { id: 'desc' }];
@@ -1151,7 +1141,7 @@ export const getPublicGroups = async (req: Request, res: Response) => {
     where: whereClause,
     include: {
       creator: { select: { id: true, name: true, profilePicture: true } },
-      _count: { select: { members: true, events: true } },
+      _count: { select: { members: true, sessions: true } },
     },
     orderBy,
     take: parsedLimit + 1, // Fetch one extra to determine hasMore
@@ -1730,7 +1720,7 @@ export const getGroupForInvite = async (req: Request, res: Response) => {
       _count: {
         select: {
           members: true,
-          events: true
+          sessions: true
         }
       }
     }
@@ -2237,7 +2227,7 @@ export const getNearbyGroups = async (req: Request, res: Response) => {
       _count: {
         select: { 
           members: true,
-          events: true
+          sessions: true
         }
       }
     },
@@ -2451,7 +2441,7 @@ export const getGroupByInviteToken = async (req: Request, res: Response) => {
         select: { id: true, name: true, profilePicture: true }
       },
       _count: {
-        select: { members: true, events: true }
+        select: { members: true, sessions: true }
       }
     }
   });
@@ -2469,7 +2459,7 @@ export const getGroupByInviteToken = async (req: Request, res: Response) => {
     isPublic: group.isPublic,
     maxMembers: group.maxMembers,
     memberCount: group._count.members,
-    eventCount: group._count.events,
+    eventCount: group._count.sessions,
     picture: group.picture,
     creator: group.creator,
     tags: group.tags

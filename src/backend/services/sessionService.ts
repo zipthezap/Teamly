@@ -131,7 +131,7 @@ export const createSessionNotifications = async (
 
   try {
     // Filter out users who have muted session created notifications
-    const unmutedMemberIds = await filterUnmutedUsers(memberIds, 'muteEventCreated');
+    const unmutedMemberIds = await filterUnmutedUsers(memberIds, 'muteSessionCreated');
     
     if (unmutedMemberIds.length === 0) return;
     
@@ -140,7 +140,7 @@ export const createSessionNotifications = async (
       data: unmutedMemberIds.map(userId => ({
         groupId,
         userId,
-        type: GroupNotificationType.event_created,
+        type: GroupNotificationType.session_created,
         params: {
           eventTitle,
           name: creatorName,
@@ -171,7 +171,7 @@ export const createSessionUpdateNotifications = async (
 
   try {
     // Filter out users who have muted session update notifications
-    const unmutedParticipantIds = await filterUnmutedUsers(participantIds, 'muteEventUpdates');
+    const unmutedParticipantIds = await filterUnmutedUsers(participantIds, 'muteSessionUpdates');
     
     if (unmutedParticipantIds.length === 0) return;
     
@@ -211,7 +211,7 @@ export const createSessionDeletionNotifications = async (
 
   try {
     // Filter out users who have muted session cancellation notifications
-    const unmutedParticipantIds = await filterUnmutedUsers(participantIds, 'muteEventCancellations');
+    const unmutedParticipantIds = await filterUnmutedUsers(participantIds, 'muteSessionCancellations');
     unmutedParticipantCount = unmutedParticipantIds.length;
 
     if (unmutedParticipantIds.length === 0) return;
@@ -501,7 +501,7 @@ export const sendSessionEmailNotifications = async (
     };
   }>,
   senderId: string,
-  notificationType: 'eventUpdates' | 'eventCancellations',
+  notificationType: 'sessionUpdates' | 'sessionCancellations',
   emailType: 'eventUpdate' | 'eventCancellation',
   eventTitle: string,
   groupName: string

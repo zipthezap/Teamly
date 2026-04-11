@@ -54,7 +54,7 @@ function toNotificationParams(params: Prisma.JsonValue | null | undefined): Noti
 }
 
 // Types for notification query results with includes
-type EventNotificationWithRelations = Prisma.EventNotificationGetPayload<{
+type SessionNotificationWithRelations = Prisma.SessionNotificationGetPayload<{
   include: {
     session: { select: { id: true, title: true, startTime: true } };
     user: { select: { id: true, name: true } };
@@ -221,7 +221,7 @@ export const getUserNotifications = async (
   };
 
   // Build where clause for session notifications
-  let eventWhere: Prisma.EventNotificationWhereInput = { userId };
+  let eventWhere: Prisma.SessionNotificationWhereInput = { userId };
   if (!includeRead) {
     eventWhere.read = false;
   }
@@ -283,7 +283,7 @@ export const getUserNotifications = async (
   }
 
   // Fetch notifications based on filter
-  let eventNotifications: EventNotificationWithRelations[] = [];
+  let eventNotifications: SessionNotificationWithRelations[] = [];
   let groupNotifications: GroupNotificationWithRelations[] = [];
   let teamUpNotifications: TeamUpNotificationWithRelations[] = [];
   let tournamentNotifications: TournamentNotificationWithRelations[] = [];

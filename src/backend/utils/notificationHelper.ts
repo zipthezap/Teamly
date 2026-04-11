@@ -168,7 +168,7 @@ export const shouldSendPushNotification = async (
 
     switch (channel) {
       case 'session':
-        return preferences ? getBooleanValue(preferences.pushEvents, true) : true;
+        return preferences ? getBooleanValue(preferences.pushSessions, true) : true;
       case 'group':
         return preferences ? getBooleanValue(preferences.pushGroups, true) : true;
       case 'teamup':

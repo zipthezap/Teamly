@@ -118,7 +118,7 @@ export const getGroupById = async (groupId: string) => {
               }
             }
           },
-          events: {
+          sessions: {
             where: { archived: false },
             select: {
               id: true,

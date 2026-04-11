@@ -87,7 +87,7 @@ export const createEventRequest = async (req: Request, res: Response) => {
         creatorId: req.user!.id,
         title: sanitized.title!,
         description: sanitized.description,
-        sessionType: sanitized.sessionType!,
+        eventType: sanitized.sessionType!,
         location: sanitized.location,
         startTime: startDate,
         endTime: endDate,
@@ -250,7 +250,7 @@ export const voteOnEventRequest = async (req: Request, res: Response) => {
   // Check if user has already voted
   const existingVote = await prisma.sessionVote.findFirst({
     where: {
-      eventRequestId: id,
+      sessionRequestId: id,
       userId: req.user!.id
     }
   });
@@ -272,7 +272,7 @@ export const voteOnEventRequest = async (req: Request, res: Response) => {
   // Create new vote
   const newVote = await prisma.sessionVote.create({
     data: {
-      eventRequestId: id,
+      sessionRequestId: id,
       userId: req.user!.id,
       vote
     },
@@ -371,7 +371,7 @@ export const finalizeEventRequest = async (req: Request, res: Response) => {
       creatorId: eventRequest.creatorId,
       title: eventRequest.title,
       description: eventRequest.description,
-      sessionType: eventRequest.sessionType as SportType,
+      sessionType: eventRequest.eventType as SportType,
       location: eventRequest.location,
       startTime: eventRequest.startTime,
       endTime: eventRequest.endTime,
@@ -502,7 +502,7 @@ export const getEventRequestStatistics = async (req: Request, res: Response) => 
   const isExpired = eventRequest.voteDeadline && new Date() > eventRequest.voteDeadline;
   
   const statistics = {
-    eventRequestId: id,
+    sessionRequestId: id,
     status: eventRequest.status,
     votes: {
       yes: yesVotes,

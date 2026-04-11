@@ -65,12 +65,12 @@ const prisma = new PrismaClient({
   adapter,
   log: process.env.NODE_ENV === 'development' 
     ? [
-        { level: 'query', emit: 'session' },
-        { level: 'error', emit: 'session' },
-        { level: 'warn', emit: 'session' },
+        { level: 'query', emit: 'event' },
+        { level: 'error', emit: 'event' },
+        { level: 'warn', emit: 'event' },
       ]
     : [
-        { level: 'error', emit: 'session' },
+        { level: 'error', emit: 'event' },
       ],
 });
 
