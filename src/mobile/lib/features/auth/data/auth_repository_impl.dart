@@ -62,6 +62,39 @@ class AuthRepositoryImpl implements AuthRepository {
     return UserModel.fromJson(data['user'] as Map<String, dynamic>);
   }
 
+  /// Exchange a native OAuth credential for a server-issued JWT.
+  ///
+  /// [provider] must be one of: 'google', 'facebook', 'apple'.
+  /// [credentials] must contain the provider-specific fields the backend expects:
+  ///   - google   → { idToken }
+  ///   - facebook → { accessToken }
+  ///   - apple    → { identityToken, givenName?, familyName?, email? }
+  @override
+  Future<UserModel> socialLogin({
+    required String provider,
+    required Map<String, String> credentials,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/auth/$provider/mobile',
+      data: credentials,
+    );
+
+    final data = response.data!;
+    final accessToken = data['accessToken']?.toString();
+    final refreshToken = data['refreshToken']?.toString();
+
+    if (accessToken == null || accessToken.isEmpty) {
+      throw const FormatException('Missing accessToken in social login response');
+    }
+
+    await _tokenStore.saveTokens(
+      accessToken: accessToken,
+      refreshToken: refreshToken ?? '',
+    );
+
+    return UserModel.fromJson(data['user'] as Map<String, dynamic>);
+  }
+
   @override
   Future<UserModel> getProfile() async {
     final response = await _dio.get<Map<String, dynamic>>('/auth/profile');

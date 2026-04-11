@@ -7,6 +7,7 @@ abstract class AuthRepository {
     required String password,
     required String name,
   });
+  Future<UserModel> socialLogin({required String provider, required Map<String, String> credentials});
   Future<UserModel> getProfile();
   Future<void> logout();
   Future<String?> getToken();

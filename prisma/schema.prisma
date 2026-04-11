@@ -261,7 +261,8 @@ model User {
   // OAuth fields
   googleId    String?  @unique
   facebookId  String?  @unique
-  authProvider String? // 'local', 'google', 'facebook'
+  appleId     String?  @unique
+  authProvider String? // 'local', 'google', 'facebook', 'apple'
   oauthProfilePicture String? // Profile picture URL from OAuth provider
   lastOAuthSync DateTime? // Last time OAuth data was synced
   
@@ -344,6 +345,7 @@ model User {
   @@index([createdAt, deletedAt]) // Example composite index for queries
   @@index([googleId]) // For OAuth lookups
   @@index([facebookId]) // For OAuth lookups
+  @@index([appleId]) // For Apple OAuth lookups
 }
 
 model Group {

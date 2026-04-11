@@ -2,13 +2,12 @@ import { Router } from 'express';
 import * as authController from '../controllers/authController';
 import authMiddleware from '../middleware/auth';
 import { distributedAuthLimiter, distributedUploadLimiter, distributedPasswordResetLimiter, distributedEmailVerificationLimiter } from '../middleware/distributedRateLimiter';
-import { authenticatedLimiter } from '../middleware/rateLimiter';
+import { authenticatedLimiter, authLimiter } from '../middleware/rateLimiter';
 import { uploadProfilePicture } from '../middleware/upload';
 import { asyncHandler } from '../middleware/asyncHandler';
 import passport from '../config/passport';
 import { noCache } from '../middleware/cacheControl';
 import { etagMiddleware } from '../middleware/etag';
-
 // Extend session type to include inviteGroupId
 declare module 'express-session' {
   interface SessionData {
@@ -67,6 +66,11 @@ router.get(
 // Email verification
 router.post('/verify-email', distributedEmailVerificationLimiter, noCache, asyncHandler(authController.verifyEmail));
 router.post('/resend-verification', distributedEmailVerificationLimiter, noCache, asyncHandler(authController.resendVerificationEmail));
+
+// Mobile OAuth token exchange (native SDK tokens → server JWT)
+router.post('/google/mobile', authLimiter, distributedAuthLimiter, noCache, asyncHandler(authController.mobileGoogleLogin));
+router.post('/facebook/mobile', authLimiter, distributedAuthLimiter, noCache, asyncHandler(authController.mobileFacebookLogin));
+router.post('/apple/mobile', authLimiter, distributedAuthLimiter, noCache, asyncHandler(authController.mobileAppleLogin));
 
 // Dashboard aggregate endpoint – single round-trip for mobile home screen
 router.get('/me/dashboard', authMiddleware, authenticatedLimiter, etagMiddleware({ weak: true }), asyncHandler(authController.getDashboard));
