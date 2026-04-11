@@ -19,12 +19,30 @@ class GroupsPage extends ConsumerStatefulWidget {
   ConsumerState<GroupsPage> createState() => _GroupsPageState();
 }
 
-class _GroupsPageState extends ConsumerState<GroupsPage> {
+class _GroupsPageState extends ConsumerState<GroupsPage>
+    with WidgetsBindingObserver {
   final _searchCtrl = TextEditingController();
   _GroupFilter _filter = _GroupFilter.all;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(groupsNotifierProvider.notifier).load();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.read(groupsNotifierProvider.notifier).load();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -71,15 +89,19 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
           onPressed: () => context.push('/discover/public-groups'),
         ),
       ],
-      child: Stack(
-        children: [
-          groupsAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => ErrorDisplay(
-              message: e.toString(),
-              onRetry: () => ref.read(groupsNotifierProvider.notifier).load(),
-            ),
-            data: (groups) {
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/groups/new'),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('New Group',
+            style: TextStyle(fontWeight: FontWeight.w600)),
+      ),
+      child: groupsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => ErrorDisplay(
+          message: e.toString(),
+          onRetry: () => ref.read(groupsNotifierProvider.notifier).load(),
+        ),
+        data: (groups) {
               final filteredGroups = groups.where((group) {
                 final matchesFilter = switch (_filter) {
                   _GroupFilter.all => true,
@@ -244,21 +266,9 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
               );
             },
           ),
-          Positioned(
-            bottom: 20,
-            right: 20,
-            child: FloatingActionButton.extended(
-              onPressed: () => context.push('/groups/new'),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('New Group',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
-            ),
-          ),
-        ],
-      ),
-    );
+      );
+    }
   }
-}
 
 // ── Group stat pill ───────────────────────────────────────────────────────────
 
