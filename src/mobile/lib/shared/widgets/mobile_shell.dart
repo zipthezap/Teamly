@@ -14,6 +14,7 @@ class MobileShell extends ConsumerWidget {
     required this.child,
     this.actions,
     this.titleWidget,
+    this.floatingActionButton,
   });
 
   final String title;
@@ -21,6 +22,7 @@ class MobileShell extends ConsumerWidget {
   final Widget child;
   final List<Widget>? actions;
   final Widget? titleWidget;
+  final Widget? floatingActionButton;
 
   static void navigateByTab(BuildContext context, int index) {
     switch (index) {
@@ -73,6 +75,7 @@ class MobileShell extends ConsumerWidget {
         ),
       ),
       body: child,
+      floatingActionButton: floatingActionButton,
       bottomNavigationBar: _BottomNav(
         currentIndex: currentIndex,
         onTap: (i) => navigateByTab(context, i),

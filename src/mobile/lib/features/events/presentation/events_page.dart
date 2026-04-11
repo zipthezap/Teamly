@@ -20,12 +20,30 @@ class EventsPage extends ConsumerStatefulWidget {
   ConsumerState<EventsPage> createState() => _EventsPageState();
 }
 
-class _EventsPageState extends ConsumerState<EventsPage> {
+class _EventsPageState extends ConsumerState<EventsPage>
+    with WidgetsBindingObserver {
   final _searchCtrl = TextEditingController();
   _EventFilter _filter = _EventFilter.upcoming;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(eventsNotifierProvider.notifier).load();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.read(eventsNotifierProvider.notifier).load();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -62,194 +80,186 @@ class _EventsPageState extends ConsumerState<EventsPage> {
           },
         ),
       ],
-      child: Stack(
-        children: [
-          eventsAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => ErrorDisplay(
-              message: e.toString(),
-              onRetry: () => ref.read(eventsNotifierProvider.notifier).load(),
-            ),
-            data: (events) {
-              final now = DateTime.now();
-              final filteredEvents = events.where((event) {
-                final matchesFilter = switch (_filter) {
-                  _EventFilter.all => true,
-                  _EventFilter.upcoming => event.startTime.isAfter(now),
-                  _EventFilter.hosting =>
-                    event.creator.id == authState.user?.id,
-                  _EventFilter.past => !event.startTime.isAfter(now),
-                };
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/events/new'),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('New Event',
+            style: TextStyle(fontWeight: FontWeight.w600)),
+      ),
+      child: eventsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => ErrorDisplay(
+          message: e.toString(),
+          onRetry: () => ref.read(eventsNotifierProvider.notifier).load(),
+        ),
+        data: (events) {
+          final now = DateTime.now();
+          final filteredEvents = events.where((event) {
+            final matchesFilter = switch (_filter) {
+              _EventFilter.all => event.endTime.isAfter(now),
+              _EventFilter.upcoming => event.startTime.isAfter(now),
+              _EventFilter.hosting =>
+                event.creator.id == authState.user?.id,
+              _EventFilter.past => event.endTime.isBefore(now),
+            };
 
-                if (!matchesFilter) return false;
-                if (query.isEmpty) return true;
+            if (!matchesFilter) return false;
+            if (query.isEmpty) return true;
 
-                final haystack = [
-                  event.title,
-                  event.group.name,
-                  event.eventType,
-                  event.locationName,
-                  event.location,
-                  event.city,
-                  event.country,
-                ].whereType<String>().join(' ').toLowerCase();
+            final haystack = [
+              event.title,
+              event.group.name,
+              event.eventType,
+              event.locationName,
+              event.location,
+              event.city,
+              event.country,
+            ].whereType<String>().join(' ').toLowerCase();
 
-                return haystack.contains(query);
-              }).toList();
+            return haystack.contains(query);
+          }).toList();
 
-              final upcomingCount =
-                  events.where((e) => e.startTime.isAfter(now)).length;
-              final hostingCount = events
-                  .where((e) => e.creator.id == authState.user?.id)
-                  .length;
+          final upcomingCount =
+              events.where((e) => e.startTime.isAfter(now)).length;
+          final hostingCount = events
+              .where((e) => e.creator.id == authState.user?.id)
+              .length;
 
-              if (events.isEmpty) {
-                return const UiEmptyState(
-                  icon: Icons.event_outlined,
-                  title: 'No events yet',
-                  message: 'Create your first event\nto get started!',
-                );
-              }
+          if (events.isEmpty) {
+            return const UiEmptyState(
+              icon: Icons.event_outlined,
+              title: 'No events yet',
+              message: 'Create your first event\nto get started!',
+            );
+          }
 
-              return RefreshIndicator(
-                onRefresh: () =>
-                    ref.read(eventsNotifierProvider.notifier).load(),
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
-                  itemCount: filteredEvents.length + 1,
-                  itemBuilder: (context, index) {
-                    if (index == 0) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Column(
+          return RefreshIndicator(
+            onRefresh: () =>
+                ref.read(eventsNotifierProvider.notifier).load(),
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
+              itemCount: filteredEvents.length + 1,
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Column(
+                      children: [
+                        // Stats row
+                        Row(
                           children: [
-                            // Stats row
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _EventStatPill(
-                                    label: 'Total',
-                                    value: '${events.length}',
-                                    icon: Icons.event_rounded,
-                                    color: AppThemeTokens.primary500,
-                                    onTap: () => setState(
-                                        () => _filter = _EventFilter.all),
-                                    selected: _filter == _EventFilter.all,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: _EventStatPill(
-                                    label: 'Upcoming',
-                                    value: '$upcomingCount',
-                                    icon: Icons.upcoming_rounded,
-                                    color: const Color(0xFF00BCD4),
-                                    onTap: () => setState(
-                                        () => _filter = _EventFilter.upcoming),
-                                    selected: _filter == _EventFilter.upcoming,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: _EventStatPill(
-                                    label: 'Hosting',
-                                    value: '$hostingCount',
-                                    icon: Icons.verified_user_rounded,
-                                    color: const Color(0xFF7C4DFF),
-                                    onTap: () => setState(
-                                        () => _filter = _EventFilter.hosting),
-                                    selected: _filter == _EventFilter.hosting,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            // Search field
-                            TextField(
-                              controller: _searchCtrl,
-                              onChanged: (_) => setState(() {}),
-                              decoration: InputDecoration(
-                                hintText: 'Search events, groups, places…',
-                                prefixIcon: const Icon(Icons.search_rounded),
-                                suffixIcon: query.isEmpty
-                                    ? null
-                                    : IconButton(
-                                        icon: const Icon(Icons.close_rounded),
-                                        onPressed: () {
-                                          _searchCtrl.clear();
-                                          setState(() {});
-                                        },
-                                      ),
+                            Expanded(
+                              child: _EventStatPill(
+                                label: 'Total',
+                                value: '${events.length}',
+                                icon: Icons.event_rounded,
+                                color: AppThemeTokens.primary500,
+                                onTap: () => setState(
+                                    () => _filter = _EventFilter.all),
+                                selected: _filter == _EventFilter.all,
                               ),
                             ),
-                            const SizedBox(height: 10),
-                            // Filter chips
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                children: _EventFilter.values.map((filter) {
-                                  final label = switch (filter) {
-                                    _EventFilter.all => 'All',
-                                    _EventFilter.upcoming => 'Upcoming',
-                                    _EventFilter.hosting => 'Hosting',
-                                    _EventFilter.past => 'Past',
-                                  };
-                                  return Padding(
-                                    padding: const EdgeInsets.only(right: 8),
-                                    child: ChoiceChip(
-                                      label: Text(label),
-                                      selected: _filter == filter,
-                                      onSelected: (_) =>
-                                          setState(() => _filter = filter),
-                                    ),
-                                  );
-                                }).toList(),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _EventStatPill(
+                                label: 'Upcoming',
+                                value: '$upcomingCount',
+                                icon: Icons.upcoming_rounded,
+                                color: const Color(0xFF00BCD4),
+                                onTap: () => setState(
+                                    () => _filter = _EventFilter.upcoming),
+                                selected: _filter == _EventFilter.upcoming,
                               ),
                             ),
-                            if (filteredEvents.isEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 24),
-                                child: UiEmptyState(
-                                  icon: Icons.search_off_rounded,
-                                  message:
-                                      'No events match the current filters.',
-                                  action: () {
-                                    _searchCtrl.clear();
-                                    setState(() => _filter = _EventFilter.all);
-                                  },
-                                  actionLabel: 'Reset filters',
-                                ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _EventStatPill(
+                                label: 'Hosting',
+                                value: '$hostingCount',
+                                icon: Icons.verified_user_rounded,
+                                color: const Color(0xFF7C4DFF),
+                                onTap: () => setState(
+                                    () => _filter = _EventFilter.hosting),
+                                selected: _filter == _EventFilter.hosting,
                               ),
+                            ),
                           ],
                         ),
-                      );
-                    }
+                        const SizedBox(height: 12),
+                        // Search field
+                        TextField(
+                          controller: _searchCtrl,
+                          onChanged: (_) => setState(() {}),
+                          decoration: InputDecoration(
+                            hintText: 'Search events, groups, places…',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: query.isEmpty
+                                ? null
+                                : IconButton(
+                                    icon: const Icon(Icons.close_rounded),
+                                    onPressed: () {
+                                      _searchCtrl.clear();
+                                      setState(() {});
+                                    },
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        // Filter chips
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: _EventFilter.values.map((filter) {
+                              final label = switch (filter) {
+                                _EventFilter.all => 'All',
+                                _EventFilter.upcoming => 'Upcoming',
+                                _EventFilter.hosting => 'Hosting',
+                                _EventFilter.past => 'Past',
+                              };
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: ChoiceChip(
+                                  label: Text(label),
+                                  selected: _filter == filter,
+                                  onSelected: (_) =>
+                                      setState(() => _filter = filter),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        if (filteredEvents.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 24),
+                            child: UiEmptyState(
+                              icon: Icons.search_off_rounded,
+                              message:
+                                  'No events match the current filters.',
+                              action: () {
+                                _searchCtrl.clear();
+                                setState(() => _filter = _EventFilter.all);
+                              },
+                              actionLabel: 'Reset filters',
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }
 
-                    final event = filteredEvents[index - 1];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _EventListCard(
-                        event: event,
-                        isPast: !event.startTime.isAfter(now),
-                        isHosting: event.creator.id == authState.user?.id,
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
-          ),
-          Positioned(
-            bottom: 20,
-            right: 20,
-            child: FloatingActionButton.extended(
-              onPressed: () => context.push('/events/new'),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('New Event',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
+                final event = filteredEvents[index - 1];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _EventListCard(
+                    event: event,
+                    isPast: event.endTime.isBefore(now),
+                    isHosting: event.creator.id == authState.user?.id,
+                  ),
+                );
+              },
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
