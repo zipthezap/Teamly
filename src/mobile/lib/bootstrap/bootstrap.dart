@@ -1,5 +1,3 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -12,7 +10,10 @@ import '../core/config/firebase_runtime.dart';
 bool _shouldInitializeFirebase() {
   if (kIsWeb) return true;
 
-  return Platform.isAndroid || Platform.isIOS;
+  // dart:io Platform is not available on web; guard with kIsWeb above.
+  // ignore: do_not_use_environment
+  return defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS;
 }
 
 Future<void> bootstrap() async {

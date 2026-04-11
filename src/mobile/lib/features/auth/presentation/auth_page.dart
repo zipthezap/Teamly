@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -338,15 +339,17 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                               ? null
                               : () => ref.read(authNotifierProvider.notifier).loginWithFacebook(),
                         ),
-                        const SizedBox(height: 10),
-                        _SocialButton(
-                          label: 'Continue with Apple',
-                          icon: const Icon(Icons.apple, color: AppThemeTokens.darkText, size: 22),
-                          loading: authState.isLoading,
-                          onPressed: authState.isLoading
-                              ? null
-                              : () => ref.read(authNotifierProvider.notifier).loginWithApple(),
-                        ),
+                        if (!kIsWeb) ...[
+                          const SizedBox(height: 10),
+                          _SocialButton(
+                            label: 'Continue with Apple',
+                            icon: const Icon(Icons.apple, color: AppThemeTokens.darkText, size: 22),
+                            loading: authState.isLoading,
+                            onPressed: authState.isLoading
+                                ? null
+                                : () => ref.read(authNotifierProvider.notifier).loginWithApple(),
+                          ),
+                        ],
                       ],
                     ),
 

@@ -1,5 +1,4 @@
-import 'dart:io';
-
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AppConfig {
@@ -45,7 +44,8 @@ class AppConfig {
   }
 
   static String _resolveApiBaseUrl(String rawUrl) {
-    if (!Platform.isWindows) return rawUrl;
+    if (kIsWeb) return rawUrl;
+    if (defaultTargetPlatform != TargetPlatform.windows) return rawUrl;
 
     final uri = Uri.tryParse(rawUrl);
     if (uri == null || uri.host.toLowerCase() != 'localhost') {
