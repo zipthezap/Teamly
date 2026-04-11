@@ -46,8 +46,8 @@ class DashboardPage extends ConsumerWidget {
       child: RefreshIndicator(
         onRefresh: () async {
           await Future.wait([
-            ref.read(groupsNotifierProvider.notifier).load(),
-            ref.read(eventsNotifierProvider.notifier).load(),
+            ref.read(groupsNotifierProvider.notifier).reload(),
+            ref.read(eventsNotifierProvider.notifier).reload(),
           ]);
         },
         child: ListView(

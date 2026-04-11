@@ -20,7 +20,8 @@ String _extractErrorMessage(DioException error) {
   final data = error.response?.data;
 
   if (data is Map<String, dynamic>) {
-    final message = data['message']?.toString();
+    // Backend error handler returns { "error": "..." }; some older paths use "message".
+    final message = (data['error'] ?? data['message'])?.toString();
     if (message != null && message.isNotEmpty) {
       return message;
     }

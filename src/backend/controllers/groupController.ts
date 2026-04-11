@@ -2596,7 +2596,7 @@ export const joinGroupByInviteToken = async (req: Request, res: Response) => {
     if (admins.length > 0 && user) {
       await NotificationFactory.createGroupNotifications({
         groupId: group.id,
-        type: 'accepted',
+        type: GroupNotificationType.accepted,
         userIds: admins.map(a => a.userId),
         params: {
           groupName: group.name,
@@ -2634,7 +2634,7 @@ export const joinGroupByInviteToken = async (req: Request, res: Response) => {
     if (admins.length > 0 && user) {
       await NotificationFactory.createGroupNotifications({
         groupId: group.id,
-        type: 'join_request',
+        type: GroupNotificationType.join_request,
         userIds: admins.map(a => a.userId),
         params: {
           groupName: group.name,

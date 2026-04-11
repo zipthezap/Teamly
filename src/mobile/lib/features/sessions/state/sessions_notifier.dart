@@ -10,23 +10,32 @@ import '../domain/session_repository.dart';
 // Events list
 // ---------------------------------------------------------------------------
 
-class SessionsNotifier extends StateNotifier<AsyncValue<List<SessionModel>>> {
-  SessionsNotifier(this._repo) : super(const AsyncValue.loading()) {
-    load();
+/// Riverpod 2.x [AsyncNotifier] for the session list.
+///
+/// Replaces the deprecated `StateNotifier<AsyncValue<T>>` pattern.
+/// Loads all sessions on first build; call [reload] to refresh with an
+/// optional [groupId] filter.
+class SessionsNotifier extends AsyncNotifier<List<SessionModel>> {
+  String? _groupId;
+
+  @override
+  Future<List<SessionModel>> build() {
+    return ref.watch(sessionRepositoryProvider).getEvents(groupId: _groupId);
   }
 
-  final SessionRepository _repo;
-
-  Future<void> load({String? groupId}) async {
+  /// Reload sessions, optionally filtered by [groupId].
+  Future<void> reload({String? groupId}) async {
+    _groupId = groupId;
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => _repo.getEvents(groupId: groupId));
+    state = await AsyncValue.guard(
+      () => ref.read(sessionRepositoryProvider).getEvents(groupId: groupId),
+    );
   }
 }
 
 final sessionsNotifierProvider =
-    StateNotifierProvider<SessionsNotifier, AsyncValue<List<SessionModel>>>((ref) {
-  return SessionsNotifier(ref.watch(sessionRepositoryProvider));
-});
+    AsyncNotifierProvider<SessionsNotifier, List<SessionModel>>(
+        SessionsNotifier.new);
 
 // ---------------------------------------------------------------------------
 // Event detail (also used to refresh after join/leave)

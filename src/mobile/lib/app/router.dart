@@ -292,7 +292,7 @@ class _GroupInviteLandingPageState
     });
     try {
       await ref.read(groupRepositoryProvider).joinGroupByInvite(widget.groupId);
-      ref.read(groupsNotifierProvider.notifier).load();
+      ref.read(groupsNotifierProvider.notifier).reload();
       setState(() => _done = true);
     } catch (e) {
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));

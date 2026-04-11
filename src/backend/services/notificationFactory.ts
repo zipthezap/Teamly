@@ -13,7 +13,7 @@ import {
 } from '@prisma/client';
 import { SessionNotificationType, GroupNotificationType, TeamUpNotificationType } from '../../shared/types/event.types';
 import { TournamentNotificationType } from '../../shared/types/tournament.types';
-import { pushNotificationToUser } from '../controllers/notificationController';
+import { pushNotificationToUser } from './sseService';
 import { dispatchPushNotifications } from './pushNotificationService';
 
 export interface NotificationParams {
@@ -485,7 +485,7 @@ export class NotificationFactory {
         return 'muteGroupInvites';
       case 'join_request':
         return 'muteGroupRequests';
-      case 'event_created':
+      case GroupNotificationType.session_created:
         return 'muteEventCreated';
       case 'nearby_created':
         return 'muteNearbyGroups';

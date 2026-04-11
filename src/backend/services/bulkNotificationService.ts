@@ -17,12 +17,11 @@
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import { Prisma } from '@prisma/client';
-
-// Import types from Prisma client
-type SessionNotificationType = 'join' | 'leave' | 'late' | 'confirmed' | 'declined' | 'status_change' | 'comment' | 'session_updated' | 'session_cancelled';
-type GroupNotificationType = 'accepted' | 'invited' | 'join_request' | 'session_created' | 'nearby_created';
-type TeamUpNotificationType = 'teamup_response' | 'teamup_accepted' | 'teamup_declined' | 'teamup_nearby';
-
+import {
+  SessionNotificationType,
+  GroupNotificationType,
+  TeamUpNotificationType,
+} from '../../shared/types/session.types';
 /**
  * Batch size for notification inserts
  * Larger batches are more efficient but use more memory

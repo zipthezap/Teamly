@@ -170,7 +170,7 @@ class _SessionFormPageState extends ConsumerState<SessionFormPage> {
         await repo.createEvent(data);
         ref.invalidate(groupEventsProvider(_selectedGroupId));
       }
-      ref.read(sessionsNotifierProvider.notifier).load();
+      ref.read(sessionsNotifierProvider.notifier).reload();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

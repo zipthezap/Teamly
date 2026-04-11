@@ -35,7 +35,7 @@ class _TournamentsPageState extends ConsumerState<TournamentsPage> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(
           message: e.toString(),
-          onRetry: () => ref.read(tournamentsNotifierProvider.notifier).load(),
+          onRetry: () => ref.read(tournamentsNotifierProvider.notifier).reload(),
         ),
         data: (tournaments) {
           if (tournaments.isEmpty) {
@@ -47,7 +47,7 @@ class _TournamentsPageState extends ConsumerState<TournamentsPage> {
 
           return RefreshIndicator(
             onRefresh: () =>
-                ref.read(tournamentsNotifierProvider.notifier).load(),
+                ref.read(tournamentsNotifierProvider.notifier).reload(),
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               itemCount: tournaments.length,
@@ -935,7 +935,7 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
         if (_startDate != null) 'startDate': _startDate!.toIso8601String(),
       });
 
-      ref.read(tournamentsNotifierProvider.notifier).load();
+      ref.read(tournamentsNotifierProvider.notifier).reload();
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

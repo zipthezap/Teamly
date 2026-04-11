@@ -20,6 +20,10 @@ import { createBulkEventNotifications, createBulkGroupNotifications } from './bu
 import { CacheService } from './cacheService';
 import { Prisma } from '@prisma/client';
 import crypto from 'crypto';
+import {
+  SessionNotificationType,
+  GroupNotificationType,
+} from '../../shared/types/session.types';
 
 /**
  * Job types
@@ -30,12 +34,6 @@ export type JobType =
   | 'process_event_update'
   | 'cleanup_old_data'
   | 'send_email_batch';
-
-/**
- * Notification types
- */
-type SessionNotificationType = 'join' | 'leave' | 'late' | 'confirmed' | 'declined' | 'status_change' | 'comment' | 'session_updated' | 'session_cancelled';
-type GroupNotificationType = 'accepted' | 'invited' | 'join_request' | 'session_created' | 'nearby_created';
 
 /**
  * Job data structures for each job type

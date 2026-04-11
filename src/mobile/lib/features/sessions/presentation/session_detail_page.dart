@@ -69,7 +69,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
         await repo.archiveEvent(widget.eventId);
       }
       ref.invalidate(eventDetailProvider(widget.eventId));
-      ref.read(sessionsNotifierProvider.notifier).load();
+      ref.read(sessionsNotifierProvider.notifier).reload();
       if (groupId != null) ref.invalidate(groupEventsProvider(groupId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -143,7 +143,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
     try {
       await ref.read(sessionRepositoryProvider).joinEvent(widget.eventId);
       ref.invalidate(eventDetailProvider(widget.eventId));
-      ref.read(sessionsNotifierProvider.notifier).load();
+      ref.read(sessionsNotifierProvider.notifier).reload();
       if (groupId != null) ref.invalidate(groupEventsProvider(groupId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -171,7 +171,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
     try {
       await ref.read(sessionRepositoryProvider).leaveEvent(widget.eventId);
       ref.invalidate(eventDetailProvider(widget.eventId));
-      ref.read(sessionsNotifierProvider.notifier).load();
+      ref.read(sessionsNotifierProvider.notifier).reload();
       if (groupId != null) ref.invalidate(groupEventsProvider(groupId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -221,7 +221,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
 
     try {
       await ref.read(sessionRepositoryProvider).deleteEvent(widget.eventId);
-      ref.read(sessionsNotifierProvider.notifier).load();
+      ref.read(sessionsNotifierProvider.notifier).reload();
       if (groupId != null) ref.invalidate(groupEventsProvider(groupId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

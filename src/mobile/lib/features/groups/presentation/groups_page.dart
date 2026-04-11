@@ -29,14 +29,14 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(groupsNotifierProvider.notifier).load();
+      ref.read(groupsNotifierProvider.notifier).reload();
     });
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      ref.read(groupsNotifierProvider.notifier).load();
+      ref.read(groupsNotifierProvider.notifier).reload();
     }
   }
 
@@ -99,7 +99,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(
           message: e.toString(),
-          onRetry: () => ref.read(groupsNotifierProvider.notifier).load(),
+          onRetry: () => ref.read(groupsNotifierProvider.notifier).reload(),
         ),
         data: (groups) {
               final filteredGroups = groups.where((group) {
@@ -139,7 +139,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
 
               return RefreshIndicator(
                 onRefresh: () =>
-                    ref.read(groupsNotifierProvider.notifier).load(),
+                    ref.read(groupsNotifierProvider.notifier).reload(),
                 child: ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
                   itemCount: filteredGroups.length + 1,

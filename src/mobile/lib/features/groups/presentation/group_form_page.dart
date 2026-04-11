@@ -103,7 +103,7 @@ class _GroupFormPageState extends ConsumerState<GroupFormPage> {
       } else {
         await repo.createGroup(data);
       }
-      ref.read(groupsNotifierProvider.notifier).load();
+      ref.read(groupsNotifierProvider.notifier).reload();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
