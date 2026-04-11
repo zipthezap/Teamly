@@ -85,6 +85,31 @@ services:
       retries: 3
       start_period: 60s
 
+  flutter-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.flutter-web
+      args:
+        # Set FLUTTER_API_BASE_URL to the public URL of the API, e.g.:
+        #   FLUTTER_API_BASE_URL=https://app.example.com/api
+        API_BASE_URL: ${FLUTTER_API_BASE_URL:-http://localhost:8080/api}
+        GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+        APP_ENV: production
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - teamly-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/index.html"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
 networks:
   teamly-network:
     driver: bridge

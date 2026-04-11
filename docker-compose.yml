@@ -66,6 +66,27 @@ services:
         condition: service_healthy
     command: sh -c "npx prisma migrate deploy && npx prisma generate && node prisma/seed.js && npm start"
 
+  # Flutter web application served by nginx.
+  # The nginx config (nginx/flutter-web.conf) proxies /api/* requests to the
+  # backend container so that both the app UI and the API share the same origin
+  # – no CORS configuration is needed for the browser.
+  #
+  # The Flutter app is compiled at image-build time with dart-define constants.
+  # Set FLUTTER_API_BASE_URL in a .env file if you expose the stack on a
+  # non-default address; defaults to http://localhost:8080/api.
+  flutter-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.flutter-web
+      args:
+        API_BASE_URL: ${FLUTTER_API_BASE_URL:-http://localhost:8080/api}
+        GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+        APP_ENV: development
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
 volumes:
   postgres_data:
   redis_data:

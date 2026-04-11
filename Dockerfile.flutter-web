@@ -1,0 +1,44 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 1: Build the Flutter web application.
+# ─────────────────────────────────────────────────────────────────────────────
+FROM ghcr.io/cirruslabs/flutter:stable AS builder
+
+WORKDIR /app
+
+# Copy dependency manifests first so Flutter's pub-get layer is cached
+# independently of source changes.
+COPY src/mobile/pubspec.yaml src/mobile/pubspec.lock ./
+RUN flutter pub get
+
+# Copy remaining Flutter sources (lib/, assets/, web/, analysis_options.yaml …).
+COPY src/mobile/ .
+
+# Build-time configuration.
+# API_BASE_URL: the full URL the browser will use to reach the backend.
+#   In Docker Compose this is http://localhost:8080/api (nginx proxies /api →
+#   backend:3000/api so both the app and the API share the same origin).
+# GOOGLE_CLIENT_ID: optional – enables Google sign-in on web.
+ARG API_BASE_URL=http://localhost:8080/api
+ARG GOOGLE_CLIENT_ID=""
+ARG APP_ENV=production
+
+RUN flutter build web \
+      --release \
+      --dart-define=APP_ENV=${APP_ENV} \
+      --dart-define=API_BASE_URL=${API_BASE_URL} \
+      --dart-define=GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 2: Serve with nginx.
+# ─────────────────────────────────────────────────────────────────────────────
+FROM nginx:1.27-alpine
+
+# Copy compiled Flutter web output.
+COPY --from=builder /app/build/web /usr/share/nginx/html
+
+# Replace default nginx config with our site config (API proxy + SPA routing).
+COPY nginx/flutter-web.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
