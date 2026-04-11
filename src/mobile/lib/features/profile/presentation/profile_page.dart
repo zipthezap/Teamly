@@ -458,7 +458,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             onPressed: () => setState(() => _editing = false),
             child: Text(
               'Cancel',
-              style: TextStyle(color: isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary),
+              style: TextStyle(color: AppThemeTokens.textSecondary(context)),
             ),
           ),
           Padding(
@@ -595,8 +595,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.place_rounded,
-                    size: 14, color: AppThemeTokens.primary400),
+                Icon(Icons.place_rounded,
+                    size: 14, color: AppThemeTokens.textMuted(context)),
                 const SizedBox(width: 4),
                 Text(
                   [user.city, user.country]
