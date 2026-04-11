@@ -7,6 +7,9 @@ import {
   Stack,
   Grid,
   CircularProgress,
+  Paper,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import { authAPI, emailAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,9 +22,11 @@ import {
 } from '../components/profile';
 import ProfilePictureHistory from '../components/profile/ProfilePictureHistory';
 import { AxiosError } from 'axios';
+import { useThemeMode } from '../contexts/ThemeModeContext';
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
+  const { mode, toggleMode } = useThemeMode();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -339,6 +344,31 @@ const Profile = () => {
                 />
               </Grid>
             </Grid>
+
+            <Paper sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+              <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: { xs: 2, sm: 3 }, fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
+                Appearance
+              </Typography>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={mode === 'dark'}
+                    onChange={toggleMode}
+                    color="primary"
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      Dark mode
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {mode === 'dark' ? 'Dark theme is active' : 'Light theme is active'}
+                    </Typography>
+                  </Box>
+                }
+              />
+            </Paper>
 
             <NotificationPreferences
               allNotificationsMuted={allNotificationsMuted}

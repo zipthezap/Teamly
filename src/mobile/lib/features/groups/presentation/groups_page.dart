@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../features/auth/state/auth_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/mobile_shell.dart';
 import '../../../shared/widgets/ui_primitives.dart';
@@ -32,6 +33,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
   Widget build(BuildContext context) {
     final groupsAsync = ref.watch(groupsNotifierProvider);
     final query = _searchCtrl.text.trim().toLowerCase();
+    final currentUserId = ref.watch(authNotifierProvider).user?.id;
 
     // Count pending invitations + pending join requests for badge display
     final invitationsAsync = ref.watch(userInvitationsProvider);
@@ -231,7 +233,11 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
                     final group = filteredGroups[index - 1];
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: _GroupCard(group: group),
+                      child: _GroupCard(
+                        group: group,
+                        isOwner: currentUserId != null &&
+                            group.creatorId == currentUserId,
+                      ),
                     );
                   },
                 ),
@@ -323,8 +329,9 @@ class _GroupStatPill extends StatelessWidget {
 // ── Group card ────────────────────────────────────────────────────────────────
 
 class _GroupCard extends StatelessWidget {
-  const _GroupCard({required this.group});
+  const _GroupCard({required this.group, required this.isOwner});
   final dynamic group;
+  final bool isOwner;
 
   Color _sportColor() {
     switch ((group.sportType as String?)?.toLowerCase()) {
@@ -461,6 +468,12 @@ class _GroupCard extends StatelessWidget {
                         spacing: 6,
                         runSpacing: 4,
                         children: [
+                          if (isOwner)
+                            const _GroupTag(
+                              label: 'Owner',
+                              icon: Icons.star_rounded,
+                              color: Color(0xFFFF9800),
+                            ),
                           _GroupTag(
                             label: (group.isPublic as bool? ?? true)
                                 ? 'Public'
