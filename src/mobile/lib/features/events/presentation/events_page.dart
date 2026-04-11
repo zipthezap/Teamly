@@ -288,7 +288,7 @@ class _EventStatPill extends StatelessWidget {
           border: Border.all(
             color: selected
                 ? color.withValues(alpha: 0.35)
-                : AppThemeTokens.darkBorder,
+                : AppThemeTokens.border(context),
           ),
         ),
         child: Row(
@@ -307,9 +307,9 @@ class _EventStatPill extends StatelessWidget {
             const SizedBox(width: 5),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: AppThemeTokens.darkTextSecondary,
+                color: AppThemeTokens.textSecondary(context),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -365,7 +365,7 @@ class _EventListCard extends StatelessWidget {
     final dayNum = DateFormat('d').format(local);
     final monthAbbr = DateFormat('MMM').format(local).toUpperCase();
     final timeStr = DateFormat.jm().format(local);
-    final accent = isPast ? AppThemeTokens.darkTextSecondary : _accentColor();
+    final accent = isPast ? AppThemeTokens.textSecondary(context) : _accentColor();
 
     final subtitle = [
       event.group.name as String,
@@ -386,7 +386,7 @@ class _EventListCard extends StatelessWidget {
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(
-                  color: AppThemeTokens.darkBorder.withValues(alpha: 0.8),
+                  color: AppThemeTokens.border(context).withValues(alpha: 0.8),
                 ),
               ),
             ),
@@ -439,10 +439,10 @@ class _EventListCard extends StatelessWidget {
                             event.title as String,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
-                              color: AppThemeTokens.darkText,
+                              color: AppThemeTokens.text(context),
                             ),
                           ),
                           const SizedBox(height: 3),
@@ -453,8 +453,8 @@ class _EventListCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 12,
                               color: isPast
-                                  ? AppThemeTokens.darkTextMuted
-                                  : AppThemeTokens.darkTextSecondary,
+                                  ? AppThemeTokens.textMuted(context)
+                                  : AppThemeTokens.textSecondary(context),
                             ),
                           ),
                           const SizedBox(height: 6),
@@ -494,11 +494,11 @@ class _EventListCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.only(right: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
                     child: Icon(
                       Icons.chevron_right_rounded,
-                      color: AppThemeTokens.darkTextSecondary,
+                      color: AppThemeTokens.textSecondary(context),
                       size: 20,
                     ),
                   ),
@@ -523,7 +523,7 @@ class _MiniTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = color ?? AppThemeTokens.darkTextSecondary;
+    final fg = color ?? AppThemeTokens.textSecondary(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(

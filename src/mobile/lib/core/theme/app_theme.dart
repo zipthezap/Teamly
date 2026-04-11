@@ -37,6 +37,34 @@ class AppThemeTokens {
   static const Color info = Color(0xFF60A5FA);
   static const Color infoBg = Color(0xFF0A1929);
 
+  // Theme-aware color helpers – pick dark or light token based on current brightness
+  static bool _isDark(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark;
+
+  static Color text(BuildContext context) =>
+      _isDark(context) ? darkText : lightText;
+
+  static Color textSecondary(BuildContext context) =>
+      _isDark(context) ? darkTextSecondary : lightTextSecondary;
+
+  static Color textMuted(BuildContext context) =>
+      _isDark(context) ? darkTextMuted : lightTextMuted;
+
+  static Color border(BuildContext context) =>
+      _isDark(context) ? darkBorder : lightBorder;
+
+  static Color card(BuildContext context) =>
+      _isDark(context) ? darkCard : lightCard;
+
+  static Color cardElevated(BuildContext context) =>
+      _isDark(context) ? darkCardElevated : lightCardElevated;
+
+  static Color bg(BuildContext context) =>
+      _isDark(context) ? darkBg : lightBg;
+
+  static LinearGradient heroGrad(BuildContext context) =>
+      _isDark(context) ? heroGradient : lightHeroGradient;
+
   static const double radiusXs = 6;
   static const double radiusSm = 8;
   static const double radiusMd = 10;
