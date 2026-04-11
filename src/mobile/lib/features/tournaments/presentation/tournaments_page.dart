@@ -64,7 +64,6 @@ class _TournamentsPageState extends ConsumerState<TournamentsPage> {
       ),
     );
   }
-
 }
 
 // ---------------------------------------------------------------------------
@@ -103,105 +102,107 @@ class _TournamentCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
           border: Border.all(color: AppThemeTokens.darkBorder),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Left accent bar
-            Container(
-              width: 4,
-              decoration: const BoxDecoration(
-                color: _accentColor,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(AppThemeTokens.radiusMd),
-                  bottomLeft: Radius.circular(AppThemeTokens.radiusMd),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Left accent bar
+              Container(
+                width: 4,
+                decoration: const BoxDecoration(
+                  color: _accentColor,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(AppThemeTokens.radiusMd),
+                    bottomLeft: Radius.circular(AppThemeTokens.radiusMd),
+                  ),
                 ),
               ),
-            ),
-            // Trophy icon
-            Container(
-              margin: const EdgeInsets.all(12),
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFFFF9800), Color(0xFFE65100)],
+              // Trophy icon
+              Container(
+                margin: const EdgeInsets.all(12),
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFFFF9800), Color(0xFFE65100)],
+                  ),
+                  borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
                 ),
-                borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+                child: const Icon(Icons.emoji_events_outlined,
+                    color: Colors.white, size: 22),
               ),
-              child: const Icon(Icons.emoji_events_outlined,
-                  color: Colors.white, size: 22),
-            ),
-            // Content
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Name + status badge
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            t.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppThemeTokens.darkText,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
+              // Content
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Name + status badge
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              t.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppThemeTokens.darkText,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        UiStatusBadge(
-                          label: _formatStatus(t.status),
-                          status: UiStatusBadge.fromString(t.status),
-                          dot: true,
-                        ),
-                        const SizedBox(width: 10),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    // Sport + teams + date
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 3,
-                      children: [
-                        if (t.sportType.isNotEmpty)
-                          _TournamentMeta(
-                            icon: Icons.sports_outlined,
-                            label: sportTypeLabel(t.sportType),
-                            color: _accentColor,
+                          const SizedBox(width: 8),
+                          UiStatusBadge(
+                            label: _formatStatus(t.status),
+                            status: UiStatusBadge.fromString(t.status),
+                            dot: true,
                           ),
-                        _TournamentMeta(
-                          icon: Icons.group_outlined,
-                          label:
-                              '${t.teamCount} team${t.teamCount == 1 ? '' : 's'}',
-                          color: AppThemeTokens.primary400,
-                        ),
-                        if (t.startDate != null)
+                          const SizedBox(width: 10),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      // Sport + teams + date
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 3,
+                        children: [
+                          if (t.sportType.isNotEmpty)
+                            _TournamentMeta(
+                              icon: Icons.sports_outlined,
+                              label: sportTypeLabel(t.sportType),
+                              color: _accentColor,
+                            ),
                           _TournamentMeta(
-                            icon: Icons.calendar_today_outlined,
-                            label: DateFormat('MMM d, y')
-                                .format(t.startDate!.toLocal()),
-                            color: AppThemeTokens.darkTextSecondary,
+                            icon: Icons.group_outlined,
+                            label:
+                                '${t.teamCount} team${t.teamCount == 1 ? '' : 's'}',
+                            color: AppThemeTokens.primary400,
                           ),
-                      ],
-                    ),
-                  ],
+                          if (t.startDate != null)
+                            _TournamentMeta(
+                              icon: Icons.calendar_today_outlined,
+                              label: DateFormat('MMM d, y')
+                                  .format(t.startDate!.toLocal()),
+                              color: AppThemeTokens.darkTextSecondary,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            // Chevron
-            const Padding(
-              padding: EdgeInsets.only(right: 12),
-              child: Icon(Icons.chevron_right_rounded,
-                  color: AppThemeTokens.darkTextMuted, size: 20),
-            ),
-          ],
+              // Chevron
+              const Padding(
+                padding: EdgeInsets.only(right: 12),
+                child: Icon(Icons.chevron_right_rounded,
+                    color: AppThemeTokens.darkTextMuted, size: 20),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -259,8 +260,7 @@ class TournamentDetailPage extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(
           message: e.toString(),
-          onRetry: () =>
-              ref.invalidate(tournamentDetailProvider(tournamentId)),
+          onRetry: () => ref.invalidate(tournamentDetailProvider(tournamentId)),
         ),
         data: (t) => DefaultTabController(
           length: 3,
@@ -295,8 +295,8 @@ class TournamentDetailPage extends ConsumerWidget {
                                 Color(0xFFE65100),
                               ],
                             ),
-                            borderRadius: BorderRadius.circular(
-                                AppThemeTokens.radiusMd),
+                            borderRadius:
+                                BorderRadius.circular(AppThemeTokens.radiusMd),
                           ),
                           child: const Icon(Icons.emoji_events_outlined,
                               color: Colors.white, size: 22),
@@ -361,8 +361,8 @@ class TournamentDetailPage extends ConsumerWidget {
                       UiInfoRow(
                         icon: Icons.calendar_today_outlined,
                         label: 'Starts',
-                        value: DateFormat.yMMMd()
-                            .format(t.startDate!.toLocal()),
+                        value:
+                            DateFormat.yMMMd().format(t.startDate!.toLocal()),
                         iconColor: AppThemeTokens.info,
                       ),
                     ],
@@ -582,8 +582,7 @@ class _StandingsTab extends StatelessWidget {
       );
     }
 
-    final sorted = [...teams]
-      ..sort((a, b) {
+    final sorted = [...teams]..sort((a, b) {
         final ptsDiff = b.points.compareTo(a.points);
         if (ptsDiff != 0) return ptsDiff;
         return b.wins.compareTo(a.wins);
@@ -595,8 +594,7 @@ class _StandingsTab extends StatelessWidget {
         // Item 0 is the column header row
         if (i == 0) {
           return Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: const BoxDecoration(
               color: AppThemeTokens.darkCardElevated,
               border: Border(
@@ -697,12 +695,10 @@ class _StandingsTab extends StatelessWidget {
           decoration: BoxDecoration(
             color: rowBg,
             border: const Border(
-              bottom: BorderSide(
-                  color: AppThemeTokens.darkBorder, width: 0.5),
+              bottom: BorderSide(color: AppThemeTokens.darkBorder, width: 0.5),
             ),
           ),
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
               SizedBox(
@@ -714,8 +710,7 @@ class _StandingsTab extends StatelessWidget {
                 child: Text(
                   team.name,
                   style: TextStyle(
-                    fontWeight:
-                        i <= 3 ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight: i <= 3 ? FontWeight.w700 : FontWeight.w500,
                     fontSize: 13,
                     color: AppThemeTokens.darkText,
                   ),
@@ -833,9 +828,7 @@ class _MatchTile extends StatelessWidget {
               textAlign: TextAlign.end,
               style: TextStyle(
                 fontWeight: aWins ? FontWeight.w700 : FontWeight.w500,
-                color: aWins
-                    ? AppThemeTokens.success
-                    : AppThemeTokens.darkText,
+                color: aWins ? AppThemeTokens.success : AppThemeTokens.darkText,
                 fontSize: 13,
               ),
             ),
@@ -845,9 +838,8 @@ class _MatchTile extends StatelessWidget {
             margin: const EdgeInsets.symmetric(horizontal: 14),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: hasScore
-                  ? AppThemeTokens.darkCard
-                  : AppThemeTokens.darkCard,
+              color:
+                  hasScore ? AppThemeTokens.darkCard : AppThemeTokens.darkCard,
               borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
               border: Border.all(
                 color: hasScore
@@ -873,9 +865,7 @@ class _MatchTile extends StatelessWidget {
               teamB,
               style: TextStyle(
                 fontWeight: bWins ? FontWeight.w700 : FontWeight.w500,
-                color: bWins
-                    ? AppThemeTokens.success
-                    : AppThemeTokens.darkText,
+                color: bWins ? AppThemeTokens.success : AppThemeTokens.darkText,
                 fontSize: 13,
               ),
             ),
@@ -935,7 +925,8 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
         'name': _nameCtrl.text.trim(),
         if (_sportType.isNotEmpty) 'sportType': _sportType,
         'format': _format,
-        if (_descCtrl.text.trim().isNotEmpty) 'description': _descCtrl.text.trim(),
+        if (_descCtrl.text.trim().isNotEmpty)
+          'description': _descCtrl.text.trim(),
         if (_maxTeamsCtrl.text.trim().isNotEmpty)
           'maxTeams': int.tryParse(_maxTeamsCtrl.text.trim()),
         if (_startDate != null) 'startDate': _startDate!.toIso8601String(),
@@ -984,9 +975,7 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
                   (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 16),
-
             DropdownButtonFormField<String>(
-              key: ValueKey(_sportType),
               initialValue: _sportType,
               decoration: const InputDecoration(
                 labelText: 'Sport type',
@@ -1004,9 +993,7 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
               onChanged: (v) => setState(() => _sportType = v ?? ''),
             ),
             const SizedBox(height: 16),
-
             DropdownButtonFormField<String>(
-              key: ValueKey(_format),
               initialValue: _format,
               decoration: const InputDecoration(
                 labelText: 'Format',
@@ -1024,7 +1011,6 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
               onChanged: (v) => setState(() => _format = v ?? 'bracket'),
             ),
             const SizedBox(height: 16),
-
             TextFormField(
               controller: _descCtrl,
               decoration: const InputDecoration(
@@ -1035,7 +1021,6 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
               maxLines: 3,
             ),
             const SizedBox(height: 16),
-
             TextFormField(
               controller: _maxTeamsCtrl,
               decoration: const InputDecoration(
@@ -1045,7 +1030,6 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 16),
-
             InkWell(
               onTap: _pickStartDate,
               borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
@@ -1068,7 +1052,6 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
               ),
             ),
             const SizedBox(height: 28),
-
             UiPrimaryButton(
               text: 'Create Tournament',
               icon: Icons.add_circle_outline,
@@ -1081,4 +1064,3 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
     );
   }
 }
-
