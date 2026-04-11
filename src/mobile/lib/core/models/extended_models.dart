@@ -1,10 +1,10 @@
 import 'package:equatable/equatable.dart';
 
-class EventParticipantDetailModel extends Equatable {
-  const EventParticipantDetailModel({
+class SessionParticipantDetailModel extends Equatable {
+  const SessionParticipantDetailModel({
     required this.id,
     required this.userId,
-    required this.eventId,
+    required this.sessionId,
     required this.status,
     required this.joinedAt,
     this.userName,
@@ -16,7 +16,7 @@ class EventParticipantDetailModel extends Equatable {
 
   final String id;
   final String userId;
-  final String eventId;
+  final String sessionId;
   final String status;
   final DateTime joinedAt;
   final String? userName;
@@ -25,12 +25,12 @@ class EventParticipantDetailModel extends Equatable {
   final String? userCity;
   final String? userCountry;
 
-  factory EventParticipantDetailModel.fromJson(Map<String, dynamic> json) {
+  factory SessionParticipantDetailModel.fromJson(Map<String, dynamic> json) {
     final user = json['user'] as Map<String, dynamic>?;
-    return EventParticipantDetailModel(
+    return SessionParticipantDetailModel(
       id: json['id'] as String,
       userId: json['userId'] as String,
-      eventId: json['eventId'] as String,
+      sessionId: json['sessionId'] as String,
       status: json['status'] as String,
       joinedAt: DateTime.parse(json['joinedAt'] as String),
       userName: user?['name'] as String?,
@@ -45,25 +45,25 @@ class EventParticipantDetailModel extends Equatable {
   List<Object?> get props => [id, userId, eventId, status, joinedAt];
 }
 
-class EventGuestModel extends Equatable {
-  const EventGuestModel({
+class SessionGuestModel extends Equatable {
+  const SessionGuestModel({
     required this.id,
-    required this.eventId,
+    required this.sessionId,
     required this.name,
     required this.status,
     required this.joinedAt,
   });
 
   final String id;
-  final String eventId;
+  final String sessionId;
   final String name;
   final String status;
   final DateTime joinedAt;
 
-  factory EventGuestModel.fromJson(Map<String, dynamic> json) {
-    return EventGuestModel(
+  factory SessionGuestModel.fromJson(Map<String, dynamic> json) {
+    return SessionGuestModel(
       id: json['id'] as String,
-      eventId: json['eventId'] as String,
+      sessionId: json['sessionId'] as String,
       name: json['name'] as String,
       status: json['status'] as String,
       joinedAt: DateTime.parse(json['joinedAt'] as String),
@@ -108,82 +108,82 @@ class ParticipantSummaryModel extends Equatable {
       [total, filtered, confirmed, pending, declined, invited];
 }
 
-class EventStatisticsModel extends Equatable {
-  const EventStatisticsModel({
-    required this.totalEventsJoined,
-    required this.totalEventsCreated,
-    required this.upcomingEvents,
-    required this.pastEvents,
-    required this.confirmedEvents,
-    required this.eventTypeBreakdown,
-    required this.createdEventsStats,
+class SessionStatisticsModel extends Equatable {
+  const SessionStatisticsModel({
+    required this.totalSessionsJoined,
+    required this.totalSessionsCreated,
+    required this.upcomingSessions,
+    required this.pastSessions,
+    required this.confirmedSessions,
+    required this.sessionTypeBreakdown,
+    required this.createdSessionsStats,
   });
 
-  final int totalEventsJoined;
-  final int totalEventsCreated;
-  final int upcomingEvents;
-  final int pastEvents;
-  final int confirmedEvents;
-  final Map<String, int> eventTypeBreakdown;
-  final CreatedEventsStatsModel createdEventsStats;
+  final int totalSessionsJoined;
+  final int totalSessionsCreated;
+  final int upcomingSessions;
+  final int pastSessions;
+  final int confirmedSessions;
+  final Map<String, int> sessionTypeBreakdown;
+  final CreatedSessionsStatsModel createdSessionsStats;
 
-  factory EventStatisticsModel.fromJson(Map<String, dynamic> json) {
+  factory SessionStatisticsModel.fromJson(Map<String, dynamic> json) {
     final breakdown = <String, int>{};
-    final raw = json['eventTypeBreakdown'] as Map<String, dynamic>?;
+    final raw = json['sessionTypeBreakdown'] as Map<String, dynamic>?;
     raw?.forEach((k, v) => breakdown[k] = (v as num).toInt());
 
-    return EventStatisticsModel(
-      totalEventsJoined: (json['totalEventsJoined'] as num?)?.toInt() ?? 0,
-      totalEventsCreated: (json['totalEventsCreated'] as num?)?.toInt() ?? 0,
-      upcomingEvents: (json['upcomingEvents'] as num?)?.toInt() ?? 0,
-      pastEvents: (json['pastEvents'] as num?)?.toInt() ?? 0,
-      confirmedEvents: (json['confirmedEvents'] as num?)?.toInt() ?? 0,
-      eventTypeBreakdown: breakdown,
-      createdEventsStats: json['createdEventsStats'] != null
-          ? CreatedEventsStatsModel.fromJson(
-              json['createdEventsStats'] as Map<String, dynamic>,
+    return SessionStatisticsModel(
+      totalSessionsJoined: (json['totalSessionsJoined'] as num?)?.toInt() ?? 0,
+      totalSessionsCreated: (json['totalSessionsCreated'] as num?)?.toInt() ?? 0,
+      upcomingSessions: (json['upcomingSessions'] as num?)?.toInt() ?? 0,
+      pastSessions: (json['pastSessions'] as num?)?.toInt() ?? 0,
+      confirmedSessions: (json['confirmedSessions'] as num?)?.toInt() ?? 0,
+      sessionTypeBreakdown: breakdown,
+      createdSessionsStats: json['createdSessionsStats'] != null
+          ? CreatedSessionsStatsModel.fromJson(
+              json['createdSessionsStats'] as Map<String, dynamic>,
             )
-          : const CreatedEventsStatsModel(
+          : const CreatedSessionsStatsModel(
               total: 0,
               totalParticipants: 0,
-              avgParticipantsPerEvent: 0,
+              avgParticipantsPerSession: 0,
             ),
     );
   }
 
   @override
   List<Object?> get props => [
-        totalEventsJoined,
-        totalEventsCreated,
-        upcomingEvents,
-        pastEvents,
-        confirmedEvents,
+        totalSessionsJoined,
+        totalSessionsCreated,
+        upcomingSessions,
+        pastSessions,
+        confirmedSessions,
       ];
 }
 
-class CreatedEventsStatsModel extends Equatable {
-  const CreatedEventsStatsModel({
+class CreatedSessionsStatsModel extends Equatable {
+  const CreatedSessionsStatsModel({
     required this.total,
     required this.totalParticipants,
-    required this.avgParticipantsPerEvent,
+    required this.avgParticipantsPerSession,
   });
 
   final int total;
   final int totalParticipants;
-  final double avgParticipantsPerEvent;
+  final double avgParticipantsPerSession;
 
-  factory CreatedEventsStatsModel.fromJson(Map<String, dynamic> json) {
-    return CreatedEventsStatsModel(
+  factory CreatedSessionsStatsModel.fromJson(Map<String, dynamic> json) {
+    return CreatedSessionsStatsModel(
       total: (json['total'] as num?)?.toInt() ?? 0,
       totalParticipants: (json['totalParticipants'] as num?)?.toInt() ?? 0,
-      avgParticipantsPerEvent:
-          (json['avgParticipantsPerEvent'] as num?)?.toDouble() ?? 0.0,
+      avgParticipantsPerSession:
+          (json['avgParticipantsPerSession'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
   @override
   List<Object?> get props =>
-      [total, totalParticipants, avgParticipantsPerEvent];
+      [total, totalParticipants, avgParticipantsPerSession];
 }
 
 class InviteAnalyticsModel extends Equatable {
@@ -269,7 +269,7 @@ class NearbyGroupModel extends Equatable {
     this.creatorName,
     this.creatorPicture,
     this.memberCount,
-    this.eventCount,
+    this.sessionCount,
   });
 
   final String id;
@@ -284,7 +284,7 @@ class NearbyGroupModel extends Equatable {
   final String? creatorName;
   final String? creatorPicture;
   final int? memberCount;
-  final int? eventCount;
+  final int? sessionCount;
 
   factory NearbyGroupModel.fromJson(Map<String, dynamic> json) {
     final creator = json['creator'] as Map<String, dynamic>?;
@@ -302,7 +302,7 @@ class NearbyGroupModel extends Equatable {
       creatorName: creator?['name'] as String?,
       creatorPicture: creator?['profilePicture'] as String?,
       memberCount: (count?['members'] as num?)?.toInt(),
-      eventCount: (count?['events'] as num?)?.toInt(),
+      sessionCount: (count?['events'] as num?)?.toInt(),
     );
   }
 
@@ -310,8 +310,8 @@ class NearbyGroupModel extends Equatable {
   List<Object?> get props => [id, name, distance];
 }
 
-class NearbyEventModel extends Equatable {
-  const NearbyEventModel({
+class NearbySessionModel extends Equatable {
+  const NearbySessionModel({
     required this.id,
     required this.title,
     required this.distance,
@@ -331,9 +331,9 @@ class NearbyEventModel extends Equatable {
   final String? sportType;
   final String? groupName;
 
-  factory NearbyEventModel.fromJson(Map<String, dynamic> json) {
+  factory NearbySessionModel.fromJson(Map<String, dynamic> json) {
     final group = json['group'] as Map<String, dynamic>?;
-    return NearbyEventModel(
+    return NearbySessionModel(
       id: json['id'] as String,
       title: json['title'] as String,
       distance: (json['distance'] as num?)?.toDouble() ?? 0.0,

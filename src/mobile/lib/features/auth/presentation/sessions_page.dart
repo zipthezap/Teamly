@@ -4,16 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/error/app_exception.dart';
-import '../../../core/models/session_model.dart';
+import '../../../core/models/auth_session_model.dart';
 import '../../../core/network/api_client.dart';
 import '../../../shared/widgets/error_display.dart';
 
-final _sessionsProvider = FutureProvider<List<SessionModel>>((ref) async {
+final _sessionsProvider = FutureProvider<List<AuthSessionModel>>((ref) async {
   final dio = ref.watch(dioProvider);
   final response = await dio.get<Map<String, dynamic>>('/auth/sessions');
   final items = response.data?['sessions'] as List<dynamic>? ?? [];
   return items
-      .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
+      .map((e) => AuthSessionModel.fromJson(e as Map<String, dynamic>))
       .toList();
 });
 

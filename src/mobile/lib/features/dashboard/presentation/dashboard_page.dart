@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../features/auth/state/auth_notifier.dart';
-import '../../../features/events/state/events_notifier.dart';
+import '../../../features/sessions/state/sessions_notifier.dart';
 import '../../../features/groups/state/groups_notifier.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/error_display.dart';
@@ -83,7 +83,7 @@ class DashboardPage extends ConsumerWidget {
                       ),
                       icon: Icons.event_rounded,
                       color: const Color(0xFF7C4DFF),
-                      onTap: () => context.go('/events'),
+                      onTap: () => context.go('/sessions'),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -96,7 +96,7 @@ class DashboardPage extends ConsumerWidget {
                       ),
                       icon: Icons.upcoming_rounded,
                       color: const Color(0xFF00BCD4),
-                      onTap: () => context.go('/events'),
+                      onTap: () => context.go('/sessions'),
                     ),
                   ),
                 ],
@@ -109,7 +109,7 @@ class DashboardPage extends ConsumerWidget {
               child: UiSectionTitle(
                 'Upcoming Events',
                 trailingLabel: 'See all',
-                onTrailingTap: () => context.go('/events'),
+                onTrailingTap: () => context.go('/sessions'),
               ),
             ),
             const SizedBox(height: 12),

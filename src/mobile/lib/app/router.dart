@@ -8,12 +8,12 @@ import '../features/auth/presentation/sessions_page.dart';
 import '../features/auth/state/auth_notifier.dart';
 import '../features/dashboard/presentation/dashboard_page.dart';
 import '../features/discover/presentation/discover_page.dart';
-import '../features/events/presentation/event_detail_page.dart';
-import '../features/events/presentation/event_form_page.dart';
-import '../features/events/presentation/event_statistics_page.dart';
-import '../features/events/presentation/events_page.dart';
-import '../features/events/data/event_repository_impl.dart';
-import '../features/events/presentation/nearby_events_page.dart';
+import '../features/sessions/presentation/session_detail_page.dart';
+import '../features/sessions/presentation/session_form_page.dart';
+import '../features/sessions/presentation/session_statistics_page.dart';
+import '../features/sessions/presentation/sessions_page.dart';
+import '../features/sessions/data/session_repository_impl.dart';
+import '../features/sessions/presentation/nearby_sessions_page.dart';
 import '../features/groups/data/group_repository_impl.dart';
 import '../features/groups/presentation/group_detail_page.dart';
 import '../features/groups/presentation/group_form_page.dart';
@@ -31,8 +31,11 @@ import '../features/profile/presentation/profile_pictures_page.dart';
 import '../features/reminders/presentation/reminders_page.dart';
 import '../features/teamup/presentation/teamup_page.dart';
 import '../features/tournaments/presentation/tournaments_page.dart';
+import '../features/leagues/presentation/leagues_page.dart';
+import '../features/leagues/presentation/league_detail_page.dart';
+import '../features/leagues/presentation/create_league_page.dart';
 import '../features/two_factor/presentation/two_factor_page.dart';
-import '../features/event_requests/presentation/event_requests_page.dart';
+import '../features/session_requests/presentation/session_requests_page.dart';
 import '../core/error/app_exception.dart';
 
 final _routerProvider = Provider<GoRouter>((ref) {
@@ -44,13 +47,13 @@ final _routerProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authNotifierProvider);
       final path = state.uri.path;
       final isAuthRoute = state.matchedLocation == '/auth';
-      final isPublicEventInviteRoute =
+      final isPublicSessionInviteRoute =
           path.startsWith('/events/invite/') || path.startsWith('/events/join/');
 
       if (authState.status == AuthStatus.unknown) return null;
       if (!authState.isAuthenticated &&
           !isAuthRoute &&
-          !isPublicEventInviteRoute) {
+          !isPublicSessionInviteRoute) {
         return '/auth';
       }
       if (authState.isAuthenticated && isAuthRoute) return '/dashboard';
@@ -86,14 +89,14 @@ final _routerProvider = Provider<GoRouter>((ref) {
                 GroupDetailPage(groupId: state.pathParameters['id']!),
             routes: [
               GoRoute(
-                path: 'events/new',
-                builder: (context, state) => EventFormPage(
+                path: 'sessions/new',
+                builder: (context, state) => SessionFormPage(
                   groupId: state.pathParameters['id']!,
                 ),
               ),
               GoRoute(
-                path: 'event-requests',
-                builder: (context, state) => EventRequestsPage(
+                path: 'session-requests',
+                builder: (context, state) => SessionRequestsPage(
                     groupId: state.pathParameters['id']!),
               ),
             ],
@@ -116,30 +119,30 @@ final _routerProvider = Provider<GoRouter>((ref) {
 
       // Events
       GoRoute(
-        path: '/events',
-        builder: (context, state) => const EventsPage(),
+        path: '/sessions',
+        builder: (context, state) => const SessionsPage(),
         routes: [
           GoRoute(
             path: 'new',
-            builder: (context, state) => EventFormPage(
+            builder: (context, state) => SessionFormPage(
               groupId: state.uri.queryParameters['groupId'] ?? '',
             ),
           ),
           GoRoute(
             path: ':id',
             builder: (context, state) =>
-                EventDetailPage(eventId: state.pathParameters['id']!),
+                SessionDetailPage(eventId: state.pathParameters['id']!),
           ),
           // Event invite deep link
           GoRoute(
             path: 'invite/:token',
-            builder: (context, state) => _EventInviteLandingPage(
+            builder: (context, state) => _SessionInviteLandingPage(
                 token: state.pathParameters['token']!),
           ),
           // Web-compatible event invite route alias
           GoRoute(
             path: 'join/:token',
-            builder: (context, state) => _EventInviteLandingPage(
+            builder: (context, state) => _SessionInviteLandingPage(
                 token: state.pathParameters['token']!),
           ),
         ],
@@ -159,12 +162,12 @@ final _routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const NearbyGroupsPage(),
           ),
           GoRoute(
-            path: 'event-statistics',
-            builder: (context, state) => const EventStatisticsPage(),
+            path: 'session-statistics',
+            builder: (context, state) => const SessionStatisticsPage(),
           ),
           GoRoute(
-            path: 'nearby-events',
-            builder: (context, state) => const NearbyEventsPage(),
+            path: 'nearby-sessions',
+            builder: (context, state) => const NearbySessionsPage(),
           ),
         ],
       ),
@@ -188,6 +191,23 @@ final _routerProvider = Provider<GoRouter>((ref) {
             path: ':id',
             builder: (context, state) => TournamentDetailPage(
                 tournamentId: state.pathParameters['id']!),
+          ),
+        ],
+      ),
+
+      // Leagues
+      GoRoute(
+        path: '/leagues',
+        builder: (context, state) => const LeaguesPage(),
+        routes: [
+          GoRoute(
+            path: 'create',
+            builder: (context, state) => const CreateLeaguePage(),
+          ),
+          GoRoute(
+            path: ':id',
+            builder: (context, state) =>
+                LeagueDetailPage(leagueId: state.pathParameters['id']!),
           ),
         ],
       ),
@@ -327,16 +347,16 @@ class _GroupInviteLandingPageState
 // Event invite landing page
 // ---------------------------------------------------------------------------
 
-class _EventInviteLandingPage extends StatefulWidget {
-  const _EventInviteLandingPage({required this.token});
+class _SessionInviteLandingPage extends StatefulWidget {
+  const _SessionInviteLandingPage({required this.token});
   final String token;
 
   @override
-  State<_EventInviteLandingPage> createState() =>
-      _EventInviteLandingPageState();
+  State<_SessionInviteLandingPage> createState() =>
+      _SessionInviteLandingPageState();
 }
 
-class _EventInviteLandingPageState extends State<_EventInviteLandingPage> {
+class _SessionInviteLandingPageState extends State<_SessionInviteLandingPage> {
   bool _loading = true;
   bool _done = false;
   String? _error;
@@ -369,12 +389,12 @@ class _EventInviteLandingPageState extends State<_EventInviteLandingPage> {
     });
     try {
       final event = await container
-          .read(eventRepositoryProvider)
+          .read(sessionRepositoryProvider)
           .getEventByInviteToken(widget.token);
-      _eventId = event.id;
+      _sessionId = event.id;
       final authState = container.read(authNotifierProvider);
       if (authState.isAuthenticated) {
-        await container.read(eventRepositoryProvider).joinEvent(event.id);
+        await container.read(sessionRepositoryProvider).joinEvent(event.id);
         setState(() => _done = true);
       } else {
         setState(() => _needsGuestName = true);
@@ -398,7 +418,7 @@ class _EventInviteLandingPageState extends State<_EventInviteLandingPage> {
       _error = null;
     });
     try {
-      await container.read(eventRepositoryProvider).joinEventAsGuest(
+      await container.read(sessionRepositoryProvider).joinEventAsGuest(
             widget.token,
             name,
           );
@@ -444,12 +464,12 @@ class _EventInviteLandingPageState extends State<_EventInviteLandingPage> {
                             context.go('/auth');
                             return;
                           }
-                          final eventId = _eventId;
-                          if (eventId?.isNotEmpty ?? false) {
-                            context.go('/events/$eventId');
+                          final sessionId = _sessionId;
+                          if (sessionId?.isNotEmpty ?? false) {
+                            context.go('/sessions/$sessionId');
                             return;
                           }
-                          context.go('/events');
+                          context.go('/sessions');
                         },
                         child: Text(_joinedAsGuest ? 'Sign In' : 'View Event'),
                       ),
