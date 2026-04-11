@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as authController from '../controllers/authController';
 import authMiddleware from '../middleware/auth';
 import { distributedAuthLimiter, distributedUploadLimiter, distributedPasswordResetLimiter, distributedEmailVerificationLimiter } from '../middleware/distributedRateLimiter';
+import { authenticatedLimiter } from '../middleware/rateLimiter';
 import { uploadProfilePicture } from '../middleware/upload';
 import { asyncHandler } from '../middleware/asyncHandler';
 import passport from '../config/passport';
@@ -68,7 +69,7 @@ router.post('/verify-email', distributedEmailVerificationLimiter, noCache, async
 router.post('/resend-verification', distributedEmailVerificationLimiter, noCache, asyncHandler(authController.resendVerificationEmail));
 
 // Dashboard aggregate endpoint – single round-trip for mobile home screen
-router.get('/me/dashboard', authMiddleware, etagMiddleware({ weak: true }), asyncHandler(authController.getDashboard));
+router.get('/me/dashboard', authMiddleware, authenticatedLimiter, etagMiddleware({ weak: true }), asyncHandler(authController.getDashboard));
 
 // Profile management
 // ETag enables 304 Not Modified responses for bandwidth optimization without HTTP caching

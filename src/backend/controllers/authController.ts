@@ -1114,7 +1114,8 @@ export const getDashboard = async (req: Request, res: Response): Promise<void> =
   // Total sessions the user has ever joined
   const totalSessions = await prisma.sessionParticipant.count({ where: { userId } });
 
-  // Normalize group `picture` → `profilePicture` to match the shared mobile contract
+  // Normalize group `picture` → `profilePicture` to match the shared mobile contract.
+  // Prisma does not support field aliasing in select, so the rename is done here.
   const recentGroups = groups.map(g => ({
     ...g,
     profilePicture: g.picture,
