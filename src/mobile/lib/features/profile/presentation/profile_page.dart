@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -65,12 +64,20 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     setState(() => _uploadingPicture = true);
     try {
       final dio = ref.read(dioProvider);
-      final formData = FormData.fromMap({
-        'profilePicture': await MultipartFile.fromFile(
+      final MultipartFile multipartFile;
+      if (kIsWeb) {
+        final bytes = await file.readAsBytes();
+        multipartFile = MultipartFile.fromBytes(
+          bytes,
+          filename: 'profile.jpg',
+        );
+      } else {
+        multipartFile = await MultipartFile.fromFile(
           file.path,
           filename: 'profile.jpg',
-        ),
-      });
+        );
+      }
+      final formData = FormData.fromMap({'profilePicture': multipartFile});
       final response = await dio.put<Map<String, dynamic>>(
         '/auth/profile',
         data: formData,

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
@@ -217,6 +218,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// Authenticate with Apple ID (iOS/macOS only), then exchange the Apple
   /// identity token for a Teamly server JWT.
   Future<void> loginWithApple() async {
+    if (kIsWeb) {
+      state = state.copyWith(
+        isLoading: false,
+        error: 'Apple sign-in is not available on web.',
+      );
+      return;
+    }
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final credential = await SignInWithApple.getAppleIDCredential(

@@ -13,8 +13,8 @@ A sports event organization app that allows individuals to set and organize smal
 - **Event Management**: Create sports events with types (football, basketball, tennis, etc.)
 - **Event Participation**: Join/leave events, track participants, set max players
 - **Role-Based Access**: Admin and member roles for group management
-- **Modern UI**: React-based frontend with Material-UI components
-- **Containerized**: Separate Docker containers for backend and frontend
+- **Modern UI**: Flutter/Dart app for both mobile and web
+- **Containerized**: Docker container for backend
 
 ### 🆕 New Features
 
@@ -69,10 +69,10 @@ For detailed documentation on these features, see:
 
 ## Architecture
 
-The application is split into two main components:
+The application has two main components:
 
 - **Backend** (`src/backend/`): Node.js/Express REST API
-- **Frontend** (`src/frontend/`): React application with Material-UI
+- **Mobile/Web** (`src/mobile/`): Flutter/Dart application for both mobile and web
 
 ## Tech Stack
 
@@ -83,12 +83,9 @@ The application is split into two main components:
 - **Authentication**: JWT with bcryptjs
 - **API**: RESTful API
 
-### Frontend
-- **Framework**: React 19
-- **UI Library**: Material-UI (MUI)
-- **Routing**: React Router v7
-- **HTTP Client**: Axios
-- **State Management**: React Context API
+### Mobile/Web App
+- **Framework**: Flutter/Dart
+- **State Management**: Riverpod
 
 ## Prerequisites
 
@@ -131,7 +128,7 @@ The easiest way to run Teamly locally is using Docker Compose:
 git clone <repository-url>
 cd Teamly
 
-# Start all services (database, backend, frontend)
+# Start all services (database, backend)
 docker-compose up -d
 
 # View logs
@@ -139,7 +136,6 @@ docker-compose logs -f
 ```
 
 The application will be available at:
-- **Frontend**: http://localhost (port 80)
 - **Backend API**: http://localhost:3000
 - **Database**: localhost:5432
 
@@ -186,66 +182,30 @@ The backend will start on `http://localhost:3000`.
 
 > **📱 Network Access**: The backend server is configured to listen on all network interfaces (`0.0.0.0`), allowing access from other devices on your local network. To access from another device, use your machine's IP address instead of localhost (e.g., `http://192.168.1.100:3000`).
 
-### Frontend Setup
+### Mobile/Web App Setup
 
-1. Navigate to the frontend directory:
+1. Navigate to the mobile directory:
 ```bash
-cd src/frontend
+cd src/mobile
 ```
 
-2. Install frontend dependencies:
+2. Install Flutter dependencies:
 ```bash
-npm install
+flutter pub get
 ```
 
-3. Configure the API URL (create a .env file in src/frontend):
+3. Run the app:
 ```bash
-cd src/frontend
-echo "VITE_API_URL=http://localhost:3000/api" > .env
-echo "VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key-here" >> .env
-cd ../..
+# Mobile
+flutter run
+
+# Web
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:3000/api
 ```
-
-4. Start the frontend development server:
-```bash
-cd src/frontend
-npm run dev
-```
-
-The frontend will start on `http://localhost:3001`.
-
-> **📱 Network Access**: The frontend development server is configured to listen on all network interfaces (`0.0.0.0`), allowing access from other devices on your local network. To access from another device (e.g., mobile phone or tablet), use your machine's IP address instead of localhost (e.g., `http://192.168.1.100:3001`). Make sure to also update the `VITE_API_URL` in your `.env` file to use your machine's IP address for the backend API.
-
-5. Build for production:
-```bash
-# Vite build (default)
-cd src/frontend
-npm run build
-
-# OR Webpack build (alternative)
-cd src/frontend
-npm run build:webpack
-```
-
-### Serving Frontend with Backend (Optional)
-
-You can serve the webpack-bundled frontend directly from the backend server:
-
-```bash
-# Build frontend with webpack
-npm run build:frontend
-
-# Start backend with frontend serving
-npm run start:with-frontend
-```
-
-The application will be available at `http://localhost:3000` (both frontend and API).
-
-> **Note**: For local development, it's recommended to run frontend and backend separately using `npm run dev` in each directory. See [docs/WEBPACK_BUNDLING.md](docs/WEBPACK_BUNDLING.md) for more details on webpack bundling.
 
 ## Docker Architecture
 
-The application uses three separate containers:
+The application uses separate containers:
 
 ### 1. PostgreSQL Container (`postgres`)
 - Image: `postgres:16-alpine`
@@ -257,12 +217,6 @@ The application uses three separate containers:
 - Port: 3000
 - Runs Express.js API server
 - Includes Prisma for database access
-
-### 3. Frontend Container (`frontend`)
-- Built from `Dockerfile.frontend`
-- Port: 80
-- Uses nginx to serve React build
-- Production-optimized with gzip compression
 
 ## Important Notes
 
@@ -356,10 +310,9 @@ This project follows best practices for code quality and maintainability:
 
 - **Structured Logging**: Uses a custom logger utility (`src/backend/utils/logger.ts`) for consistent, timestamped logging with different levels (ERROR, WARN, INFO, DEBUG)
 - **Type Safety**: TypeScript with enabled compiler checks for unused locals/parameters and consistent casing
-- **ESLint**: Comprehensive linting setup for both backend and frontend code
+- **ESLint**: Linting setup for backend code
   - Backend: TypeScript ESLint rules for Node.js
-  - Frontend: TypeScript + React ESLint rules with hooks validation
-  - Run `npm run lint` in root for backend, or in `src/frontend` for frontend
+  - Run `npm run lint` in root for backend
   - Run `npm run lint:fix` to automatically fix fixable issues
 - **Input Validation**: Validation utilities in `src/backend/utils/validation.ts` for consistent data validation
 - **Environment Validation**: Automatic validation of required environment variables on startup
@@ -405,28 +358,21 @@ For backend improvements details, see [docs/BACKEND_IMPROVEMENTS.md](docs/BACKEN
 
 ### Testing
 
-This project uses Vitest for testing both backend and frontend code:
+This project uses Vitest for testing the backend:
 
 ```bash
 # Run backend tests
 npm test
 
-# Run frontend tests
-cd src/frontend && npm test
-
 # Run tests with coverage
 npm run test:coverage
-cd src/frontend && npm run test:coverage
 
 # Run tests in watch mode (during development)
 npm run test:watch
-cd src/frontend && npm run test:watch
 ```
 
 **Test Coverage:**
 - Backend: 69 tests covering validation utilities and core logic
-- Frontend: 9 tests covering UI components
-- Total: 78 tests
 
 For detailed testing guidelines, patterns, and best practices, see [TESTING.md](TESTING.md).
 
@@ -459,30 +405,19 @@ JWT_SECRET=your-secret-key-change-this-in-production
 ```
 Teamly/
 ├── src/
-│   ├── app/                  # Frontend application
-│   │   ├── pages/            # Application pages/routes
-│   │   │   └── index.js      # Home page
-│   │   └── ui/               # Reusable UI components
-│   │       └── Button.js     # Button component
-│   └── backend/              # Backend API
-│       ├── config/
-│       │   └── database.js       # Prisma client configuration
-│       ├── controllers/
-│       │   ├── authController.js # Authentication logic
-│       │   ├── groupController.js # Group management
-│       │   └── eventController.js # Event management
-│       ├── middleware/
-│       │   ├── auth.js           # JWT authentication middleware
-│       │   └── rateLimiter.js    # Rate limiting
-│       ├── routes/
-│       │   ├── authRoutes.js     # Auth endpoints
-│       │   ├── groupRoutes.js    # Group endpoints
-│       │   └── eventRoutes.js    # Event endpoints
-│       ├── utils/
-│       │   └── jwt.js            # JWT utilities
-│       └── server.js             # Express app setup
+│   ├── backend/              # Backend API
+│   │   ├── config/           # Configuration
+│   │   ├── controllers/      # Route controllers
+│   │   ├── middleware/       # Express middleware
+│   │   ├── routes/           # API routes
+│   │   ├── services/         # Business logic
+│   │   └── server.ts         # Express app setup
+│   ├── mobile/               # Flutter/Dart app (mobile + web)
+│   └── shared/               # Shared types/utilities
 ├── prisma/
 │   └── schema.prisma         # Database schema
+├── archive/
+│   └── frontend/             # Archived React webapp
 ├── .env                      # Environment variables
 ├── .gitignore
 ├── package.json

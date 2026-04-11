@@ -1,9 +1,8 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
-import 'package:flutter_app_badger/flutter_app_badger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -11,6 +10,7 @@ import '../../../core/config/firebase_runtime.dart';
 import '../../auth/state/auth_notifier.dart';
 import '../../notifications/data/notification_repository_impl.dart';
 import '../data/push_device_api.dart';
+import 'badge_service.dart' as badge;
 
 final _lastPushTokenProvider = StateProvider<String?>((ref) => null);
 final _pendingPushPathProvider = StateProvider<String?>((ref) => null);
@@ -102,17 +102,11 @@ class PushNotificationsController {
   Future<void> syncBadgeCount() async {
     if (!_ref.read(firebaseEnabledProvider)) return;
     if (!_ref.read(authNotifierProvider).isAuthenticated) return;
+    if (kIsWeb) return;
     try {
       final unread =
           await _ref.read(notificationRepositoryProvider).getUnreadCount();
-      if (unread <= 0) {
-        await FlutterAppBadger.removeBadge();
-      } else {
-        final supported = await FlutterAppBadger.isAppBadgeSupported();
-        if (supported) {
-          await FlutterAppBadger.updateBadgeCount(unread);
-        }
-      }
+      await badge.updateBadge(unread);
     } catch (_) {
       // ignore badge sync errors
     }
@@ -154,8 +148,9 @@ class PushNotificationsController {
   }
 
   String _platformString() {
-    if (Platform.isIOS) return 'ios';
-    if (Platform.isAndroid) return 'android';
+    if (kIsWeb) return 'web';
+    if (defaultTargetPlatform == TargetPlatform.iOS) return 'ios';
+    if (defaultTargetPlatform == TargetPlatform.android) return 'android';
     return 'web';
   }
 

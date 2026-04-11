@@ -66,57 +66,26 @@ services:
         condition: service_healthy
     command: sh -c "npx prisma migrate deploy && npx prisma generate && node prisma/seed.js && npm start"
 
-  frontend:
+  # Flutter web application served by nginx.
+  # The nginx config (nginx/flutter-web.conf) proxies /api/* requests to the
+  # backend container so that both the app UI and the API share the same origin
+  # – no CORS configuration is needed for the browser.
+  #
+  # The Flutter app is compiled at image-build time with dart-define constants.
+  # Set FLUTTER_API_BASE_URL in a .env file if you expose the stack on a
+  # non-default address; defaults to http://localhost:8080/api.
+  flutter-web:
     build:
       context: .
-      dockerfile: Dockerfile.frontend
+      dockerfile: Dockerfile.flutter-web
       args:
-        VITE_API_URL: http://localhost:3000/api
+        API_BASE_URL: ${FLUTTER_API_BASE_URL:-http://localhost:8080/api}
+        GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+        APP_ENV: development
     ports:
-      - "80:80"
-      - "443:443"  # HTTPS port
+      - "8080:80"
     depends_on:
       - backend
-    environment:
-      VITE_API_URL: http://localhost:3000/api
-      NODE_ENV: development
-    # Uncomment to mount SSL certificates for HTTPS
-    # volumes:
-    #   - ./ssl:/etc/nginx/ssl:ro
-      
-
-  frontend-dev:
-    profiles:
-      - dev
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend.dev
-      args:
-        VITE_API_URL: http://localhost:3000/api
-    ports:
-      - "5173:3001"
-    depends_on:
-      - backend
-    environment:
-      VITE_API_URL: http://localhost:3000/api
-      NODE_ENV: development
-
-  frontend-prod:
-    profiles:
-      - prod
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-      args:
-        VITE_API_URL: /api
-    ports:
-      - "80:80"
-      - "443:443"
-    depends_on:
-      - backend
-    environment:
-      VITE_API_URL: /api
-      NODE_ENV: production
 
 volumes:
   postgres_data:

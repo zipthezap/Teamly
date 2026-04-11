@@ -2,7 +2,6 @@
 # Dependencies
 # ===========================
 node_modules/
-src/frontend/node_modules/
 
 # ===========================
 # Environment Variables
@@ -17,8 +16,6 @@ src/frontend/node_modules/
 # ===========================
 dist/
 build/
-src/frontend/build/
-src/frontend/dist/
 bin-debug/
 bin-release/
 [Oo]bj/

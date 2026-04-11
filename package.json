@@ -5,11 +5,9 @@
   "main": "dist/backend/server.js",
   "scripts": {
     "build": "tsc",
-    "build:frontend": "cd src/frontend && npm run build:webpack",
     "mobile:desktop:init": "cd src/mobile && flutter config --enable-windows-desktop && flutter create --platforms=windows .",
     "mobile:desktop": "cd src/mobile && flutter run -d windows --dart-define=APP_ENV=dev --dart-define=API_BASE_URL=http://localhost:3000/api",
     "start": "node dist/backend/server.js",
-    "start:with-frontend": "SERVE_FRONTEND=true node dist/backend/server.js",
     "dev": "nodemon --exec ts-node src/backend/server.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
