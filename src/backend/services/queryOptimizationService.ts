@@ -80,12 +80,12 @@ export class UserBatchLoader {
   }
 }
 
-// Type for event participant with user details
+// Type for session participant with user details
 type EventParticipantWithUser = {
   id: string;
   status: string;
   joinedAt: Date;
-  eventId: string;
+  sessionId: string;
   userId: string;
   user: {
     id: string;
@@ -96,7 +96,7 @@ type EventParticipantWithUser = {
 };
 
 /**
- * Batch loader for event participants
+ * Batch loader for session participants
  * Loads participants for multiple events in a single query
  */
 export class EventParticipantBatchLoader {
@@ -104,9 +104,9 @@ export class EventParticipantBatchLoader {
   private batchTimer: NodeJS.Timeout | null = null;
   private readonly batchWindow = 10;
 
-  async load(eventId: string): Promise<EventParticipantWithUser[]> {
+  async load(sessionId: string): Promise<EventParticipantWithUser[]> {
     return new Promise((resolve) => {
-      this.batchQueue.set(eventId, resolve);
+      this.batchQueue.set(sessionId, resolve);
 
       if (!this.batchTimer) {
         this.batchTimer = setTimeout(() => this.executeBatch(), this.batchWindow);
@@ -123,8 +123,8 @@ export class EventParticipantBatchLoader {
 
     try {
       // Single query for all events' participants
-      const participants = await prisma.eventParticipant.findMany({
-        where: { eventId: { in: eventIds } },
+      const participants = await prisma.sessionParticipant.findMany({
+        where: { sessionId: { in: eventIds } },
         include: {
           user: {
             select: {
@@ -137,12 +137,12 @@ export class EventParticipantBatchLoader {
         },
       });
 
-      // Group participants by event
+      // Group participants by session
       const participantsByEvent = new Map<string, EventParticipantWithUser[]>();
       for (const participant of participants) {
-        const eventParticipants = participantsByEvent.get(participant.eventId) || [];
+        const eventParticipants = participantsByEvent.get(participant.sessionId) || [];
         eventParticipants.push(participant);
-        participantsByEvent.set(participant.eventId, eventParticipants);
+        participantsByEvent.set(participant.sessionId, eventParticipants);
       }
 
       // Resolve all promises
@@ -151,13 +151,13 @@ export class EventParticipantBatchLoader {
         callbacks[i](participants);
       }
     } catch (error) {
-      logger.error('Failed to batch load event participants', 'QueryOptimizationService', { error });
+      logger.error('Failed to batch load session participants', 'QueryOptimizationService', { error });
       callbacks.forEach(cb => cb([]));
     }
   }
 }
 
-// Type for user event statistics
+// Type for user session statistics
 type UserEventStats = {
   totalEvents: number;
   upcomingEvents: number;
@@ -186,7 +186,7 @@ type TournamentStats = {
  */
 export class CachedAggregations {
   /**
-   * Get user event statistics with caching
+   * Get user session statistics with caching
    */
   static async getUserEventStats(userId: string): Promise<UserEventStats> {
     const cacheKey = `stats:user:${userId}:events`;
@@ -200,22 +200,22 @@ export class CachedAggregations {
 
     // Run queries in parallel for better performance
     const [totalEvents, upcomingEvents, completedEvents, createdEvents] = await Promise.all([
-      prisma.eventParticipant.count({
+      prisma.sessionParticipant.count({
         where: { userId },
       }),
-      prisma.eventParticipant.count({
+      prisma.sessionParticipant.count({
         where: {
           userId,
-          event: { status: 'upcoming' },
+          session: { status: 'upcoming' },
         },
       }),
-      prisma.eventParticipant.count({
+      prisma.sessionParticipant.count({
         where: {
           userId,
-          event: { status: 'completed' },
+          session: { status: 'completed' },
         },
       }),
-      prisma.event.count({
+      prisma.session.count({
         where: { creatorId: userId },
       }),
     ]);
@@ -228,7 +228,7 @@ export class CachedAggregations {
     };
 
     const duration = Date.now() - startTime;
-    logger.debug(`Calculated user event stats in ${duration}ms`, 'QueryOptimizationService', { userId, duration });
+    logger.debug(`Calculated user session stats in ${duration}ms`, 'QueryOptimizationService', { userId, duration });
 
     // Cache for 2 minutes
     await CacheService.set(cacheKey, stats, CACHE_TTL.USER_PROFILE);
@@ -253,10 +253,10 @@ export class CachedAggregations {
       prisma.groupMember.count({
         where: { groupId },
       }),
-      prisma.event.count({
+      prisma.session.count({
         where: { groupId },
       }),
-      prisma.event.count({
+      prisma.session.count({
         where: {
           groupId,
           status: 'upcoming',
@@ -351,12 +351,12 @@ export class CachedAggregations {
   }
 }
 
-// Type for event with participants and creator
+// Type for session with participants and creator
 type EventWithParticipants = {
   id: string;
   title: string;
   description: string | null;
-  eventType: string;
+  sessionType: string;
   location: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -375,7 +375,7 @@ type EventWithParticipants = {
   isRecurring: boolean;
   recurrenceRule: string | null;
   recurrenceEnd: Date | null;
-  parentEventId: string | null;
+  parentSessionId: string | null;
   exceptionDates: unknown;
   creatorId: string;
   groupId: string;
@@ -388,7 +388,7 @@ type EventWithParticipants = {
   };
 };
 
-// Type for user groups with member and event counts from raw SQL query
+// Type for user groups with member and session counts from raw SQL query
 type UserGroupWithCounts = {
   id: string;
   name: string;
@@ -400,12 +400,12 @@ type UserGroupWithCounts = {
   eventCount: number;
 };
 
-// Type for nearby event from raw SQL query
+// Type for nearby session from raw SQL query
 type NearbyEvent = {
   id: string;
   title: string;
   description: string | null;
-  eventType: string;
+  sessionType: string;
   location: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -424,7 +424,7 @@ type NearbyEvent = {
   isRecurring: boolean;
   recurrenceRule: string | null;
   recurrenceEnd: Date | null;
-  parentEventId: string | null;
+  parentSessionId: string | null;
   exceptionDates: unknown;
   creatorId: string;
   groupId: string;
@@ -446,7 +446,7 @@ export class OptimizedQueries {
   ): Promise<EventWithParticipants[]> {
     const startTime = Date.now();
 
-    const events = await prisma.event.findMany({
+    const sessions = await prisma.session.findMany({
       where: { groupId },
       include: {
         participants: {
@@ -477,12 +477,12 @@ export class OptimizedQueries {
 
     const duration = Date.now() - startTime;
     logger.debug(
-      `Loaded ${events.length} events with participants in ${duration}ms`,
+      `Loaded ${sessions.length} events with participants in ${duration}ms`,
       'QueryOptimizationService',
       { groupId, duration }
     );
 
-    return events;
+    return sessions;
   }
 
   /**
@@ -563,7 +563,7 @@ export class OptimizedQueries {
     const latDelta = radiusKm / KM_PER_DEGREE_LAT;
     const lonDelta = radiusKm / (KM_PER_DEGREE_LAT * Math.cos((latitude * Math.PI) / 180));
 
-    const events = await prisma.$queryRaw<NearbyEvent[]>`
+    const sessions = await prisma.$queryRaw<NearbyEvent[]>`
       SELECT 
         e.*,
         (
@@ -598,12 +598,12 @@ export class OptimizedQueries {
 
     const duration = Date.now() - startTime;
     logger.debug(
-      `Found ${events.length} nearby events in ${duration}ms`,
+      `Found ${sessions.length} nearby events in ${duration}ms`,
       'QueryOptimizationService',
       { latitude, longitude, radiusKm, duration }
     );
 
-    return events;
+    return sessions;
   }
 }
 

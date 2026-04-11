@@ -46,7 +46,7 @@ export const emailTemplates = {
     subject: `You're invited to ${eventTitle}`,
     html: `
       <h2>Hi ${escapeHtml(userName)},</h2>
-      <p>You've been invited to join an event in ${escapeHtml(groupName)}:</p>
+      <p>You've been invited to join an session in ${escapeHtml(groupName)}:</p>
       <h3>${escapeHtml(eventTitle)}</h3>
       <p><strong>Date:</strong> ${new Date(eventDate).toLocaleString()}</p>
       <p>Log in to Teamly to confirm your participation.</p>
@@ -57,7 +57,7 @@ export const emailTemplates = {
     subject: `Event Updated: ${eventTitle}`,
     html: `
       <h2>Hi ${escapeHtml(userName)},</h2>
-      <p>An event in ${escapeHtml(groupName)} has been updated:</p>
+      <p>An session in ${escapeHtml(groupName)} has been updated:</p>
       <h3>${escapeHtml(eventTitle)}</h3>
       <p>Log in to Teamly to view the latest details.</p>
     `
@@ -67,7 +67,7 @@ export const emailTemplates = {
     subject: `Event Cancelled: ${eventTitle}`,
     html: `
       <h2>Hi ${escapeHtml(userName)},</h2>
-      <p>Unfortunately, an event in ${escapeHtml(groupName)} has been cancelled:</p>
+      <p>Unfortunately, an session in ${escapeHtml(groupName)} has been cancelled:</p>
       <h3>${escapeHtml(eventTitle)}</h3>
       <p>Please check Teamly for more information.</p>
     `
@@ -77,7 +77,7 @@ export const emailTemplates = {
     subject: `Reminder: ${eventTitle} is coming up soon`,
     html: `
       <h2>Hi ${escapeHtml(userName)},</h2>
-      <p>This is a reminder that you have an event coming up:</p>
+      <p>This is a reminder that you have an session coming up:</p>
       <h3>${escapeHtml(eventTitle)}</h3>
       <p><strong>Date:</strong> ${new Date(eventDate).toLocaleString()}</p>
       ${location ? `<p><strong>Location:</strong> ${escapeHtml(location)}</p>` : ''}

@@ -12,7 +12,7 @@ model UserProfilePicture {
 
   @@index([userId, isCurrent])
 }
-enum EventNotificationType {
+enum SessionNotificationType {
   join
   leave
   late
@@ -20,15 +20,15 @@ enum EventNotificationType {
   declined
   status_change
   comment
-  event_updated
-  event_cancelled
+  session_updated
+  session_cancelled
 }
 
 enum GroupNotificationType {
   accepted
   invited
   join_request
-  event_created
+  session_created
   nearby_created
   removed
 }
@@ -54,7 +54,7 @@ enum PushDevicePlatform {
   ios
   web
 }
-enum EventParticipantStatus {
+enum SessionParticipantStatus {
   pending
   confirmed
   declined
@@ -95,51 +95,51 @@ model GroupMessage {
   group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
 }
 
-model EventReminder {
+model SessionReminder {
   id        String   @id @default(uuid())
-  eventId   String
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   remindAt  DateTime
   sent      Boolean  @default(false)
 
-  @@unique([eventId, userId, remindAt]) // Composite key for multiple reminders per event/user
+  @@unique([sessionId, userId, remindAt]) // Composite key for multiple reminders per session/user
   @@index([sent]) // For efficient querying of sent reminders
 }
 
-enum EventAttendanceStatus {
+enum SessionAttendanceStatus {
   on_time
   late
 }
 
-model EventAttendance {
+model SessionAttendance {
   id        String   @id @default(uuid())
-  eventId   String
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  status    EventAttendanceStatus   @default(on_time)
+  status    SessionAttendanceStatus   @default(on_time)
   updatedAt DateTime @updatedAt
   
-  @@unique([eventId, userId])
+  @@unique([sessionId, userId])
   @@index([status]) // For filtering by attendance status
 }
 
-model EventNotification {
+model SessionNotification {
   id        String   @id @default(uuid())
-  eventId   String
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  type      EventNotificationType
-  params    Json?    // Parameters for frontend translation (e.g., { name, eventTitle })
+  type      SessionNotificationType
+  params    Json?    // Parameters for frontend translation (e.g., { name, sessionTitle })
   metadata  Json?    // Additional data for the notification
   createdAt DateTime @default(now())
   read      Boolean  @default(false)
   
   @@index([userId]) // For user notifications queries
-  @@index([eventId]) // For event notifications
+  @@index([sessionId]) // For session notifications
   @@index([read]) // For unread filtering
   @@index([userId, read]) // Composite for unread user notifications
   @@index([createdAt]) // For chronological sorting
@@ -299,12 +299,12 @@ model User {
 
   groupMemberships  GroupMember[]
   createdGroups     Group[]             @relation("GroupCreator")
-  createdEvents     Event[]             @relation("EventCreator")
-  eventParticipants EventParticipant[]  @relation("EventParticipant")
+  createdSessions      Session[]            @relation("SessionCreator")
+  sessionParticipants  SessionParticipant[] @relation("SessionParticipant")
   groupMessages     GroupMessage[]
-  eventReminders    EventReminder[]
-  eventAttendances  EventAttendance[]
-  eventNotifications EventNotification[]
+  sessionReminders     SessionReminder[]
+  sessionAttendances   SessionAttendance[]
+  sessionNotifications SessionNotification[]
   groupNotifications GroupNotification[]
   teamUpNotifications TeamUpNotification[]
   tournamentNotifications TournamentNotification[]
@@ -313,8 +313,8 @@ model User {
   sentInvites       InviteLog[]      @relation("InviteLogInviter")
   receivedInvites   InviteLog[]      @relation("InviteLogInvitee")
   revokedInvites    InviteLog[]      @relation("InviteLogRevoker")
-  createdEventRequests EventRequest[]   @relation("EventRequestCreator")
-  eventVotes        EventVote[]
+  createdSessionRequests SessionRequest[]  @relation("SessionRequestCreator")
+  sessionVotes         SessionVote[]
   emailPreferences  EmailPreference?
   comments          Comment[]
   commentMentions   CommentMention[]
@@ -333,6 +333,9 @@ model User {
   issuedGroupBans   GroupBan[]       @relation("GroupBanner")
   auditLogs         AuditLog[]
   pushDeviceTokens  PushDeviceToken[]
+  organizedLeagues      League[]     @relation("LeagueOrganizer")
+  captainedLeagueTeams  LeagueTeam[] @relation("LeagueTeamCaptain")
+  leaguePlayers         LeaguePlayer[] @relation("LeaguePlayer")
   
   @@index([email]) // For faster email lookups
   @@index([emailVerificationToken]) // For email verification
@@ -375,12 +378,13 @@ model Group {
   creator   User   @relation("GroupCreator", fields: [creatorId], references: [id])
 
   members GroupMember[]
-  events  Event[]
+  sessions  Session[]
   joinRequests GroupJoinRequest[]
   groupMessages GroupMessage[]
   groupNotifications GroupNotification[]
-  eventRequests EventRequest[]
+  sessionRequests SessionRequest[]
   tournaments Tournament[]
+  leagues League[]
   groupBans   GroupBan[]
 }
 
@@ -452,7 +456,7 @@ model AuditLog {
   @@index([createdAt])
 }
 
-enum EventStatus {
+enum SessionStatus {
   upcoming
   ongoing
   completed
@@ -477,11 +481,11 @@ enum SportType {
   other
 }
 
-model Event {
+model Session {
   id          String   @id @default(uuid())
   title       String
   description String?
-  eventType   SportType
+  sessionType SportType
   location    String?
   latitude    Float?
   longitude   Float?
@@ -493,79 +497,80 @@ model Event {
   maxPlayers  Int?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  archived    Boolean  @default(false) // For archiving past events
-  status      EventStatus   @default(upcoming)
+  archived    Boolean  @default(false) // For archiving past sessions
+  status      SessionStatus   @default(upcoming)
 
-  // Public/Private event and invite features
-  isPublic    Boolean  @default(false) // Public events can be joined by anyone with the link
+  // Public/Private session and invite features
+  isPublic    Boolean  @default(false) // Public sessions can be joined by anyone with the link
   inviteToken String?  @unique // Unique token for shareable invite links
-  inviteTokenExpiresAt DateTime? // Optional expiration for event invite tokens
+  inviteTokenExpiresAt DateTime? // Optional expiration for session invite tokens
 
-  // Recurring event fields
+  // Recurring session fields
   isRecurring     Boolean   @default(false)
   recurrenceRule  String?   // RRULE format: "FREQ=WEEKLY;BYDAY=SU"
   recurrenceEnd   DateTime?
-  parentEventId   String?
-  parentEvent     Event?    @relation("RecurringEvents", fields: [parentEventId], references: [id], onDelete: Cascade)
-  instances       Event[]   @relation("RecurringEvents")
+  parentSessionId String?
+  parentSession   Session?  @relation("RecurringSessions", fields: [parentSessionId], references: [id], onDelete: Cascade)
+  instances       Session[] @relation("RecurringSessions")
   exceptionDates  Json?     // Array of dates to skip
-  // If exceptionDates grows large, consider a separate EventException table for better performance
+  // If exceptionDates grows large, consider a separate SessionException table for better performance
 
   creatorId String
-  creator   User   @relation("EventCreator", fields: [creatorId], references: [id])
+  creator   User   @relation("SessionCreator", fields: [creatorId], references: [id])
   groupId   String
   group     Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
-  participants EventParticipant[]
+  participants SessionParticipant[]
   guestParticipants GuestParticipant[]
-  eventReminders EventReminder[]
-  eventAttendances EventAttendance[]
-  eventNotifications EventNotification[]
+  sessionReminders SessionReminder[]
+  sessionAttendances SessionAttendance[]
+  sessionNotifications SessionNotification[]
   comments Comment[]
+  leagueEntries LeagueSessionEntry[] @relation("LeagueSessions")
 
-  @@index([groupId]) // For group events queries
-  @@index([creatorId]) // For user's created events
+  @@index([groupId]) // For group sessions queries
+  @@index([creatorId]) // For user's created sessions
   @@index([startTime]) // For date-based queries
   @@index([status]) // For status filtering
-  @@index([eventType]) // For type filtering
+  @@index([sessionType]) // For type filtering
   @@index([inviteToken]) // For invite link lookups
-  @@index([archived]) // For archived events filtering
-  @@index([groupId, startTime]) // Composite for group events by date
-  @@index([creatorId, startTime]) // Composite for user events by date
+  @@index([archived]) // For archived sessions filtering
+  @@index([groupId, startTime]) // Composite for group sessions by date
+  @@index([creatorId, startTime]) // Composite for user sessions by date
   @@index([city, country]) // For location-based queries
   @@index([status, startTime]) // Composite for filtering by status and date (scalability)
-  @@index([eventType, startTime]) // Composite for filtering by event type and date (scalability)
-  @@index([isPublic, startTime]) // Composite for public event discovery (scalability)
-  @@index([archived, status, startTime]) // Composite for active event queries (scalability)
-  // If archived events grow large, consider partitioning or archiving to a separate table for performance
+  @@index([sessionType, startTime]) // Composite for filtering by session type and date (scalability)
+  @@index([isPublic, startTime]) // Composite for public session discovery (scalability)
+  @@index([archived, status, startTime]) // Composite for active session queries (scalability)
+  // If archived sessions grow large, consider partitioning or archiving to a separate table for performance
 }
 
-model EventParticipant {
+model SessionParticipant {
   id         String   @id @default(uuid())
-  status     EventParticipantStatus @default(pending)
+  status     SessionParticipantStatus @default(pending)
   joinedAt   DateTime @default(now())
 
-  eventId String
-  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   userId  String
-  user    User   @relation("EventParticipant", fields: [userId], references: [id])
+  user    User   @relation("SessionParticipant", fields: [userId], references: [id])
 
-  @@unique([eventId, userId])
-  @@index([eventId]) // For event participants queries
-  @@index([userId]) // For user's events queries
+  @@unique([sessionId, userId])
+  @@index([sessionId]) // For session participants queries
+  @@index([userId]) // For user's sessions queries
   @@index([status]) // For filtering by status
-  @@index([eventId, status]) // Composite for event participants by status
+  @@index([sessionId, status]) // Composite for session participants by status
   @@index([joinedAt]) // For joined date queries
 }
 
-enum EventRequestStatus {
+enum SessionRequestStatus {
   voting
   finalized
   cancelled
   expired
 }
 
-model EventRequest {
+model SessionRequest {
   id          String   @id @default(uuid())
   title       String
   description String?
@@ -575,55 +580,55 @@ model EventRequest {
   endTime     DateTime?
   maxPlayers  Int?
   createdAt   DateTime @default(now())
-  status      EventRequestStatus   @default(voting)
+  status      SessionRequestStatus   @default(voting)
   voteDeadline DateTime? // When voting closes
   voteThreshold Float?   @default(0.5) // % of votes needed (0.5 = 50%)
   
   creatorId   String
-  creator     User     @relation("EventRequestCreator", fields: [creatorId], references: [id])
+  creator     User     @relation("SessionRequestCreator", fields: [creatorId], references: [id])
   groupId     String
   group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   
-  votes       EventVote[]
-  finalizedEventId String?  @unique
+  votes       SessionVote[]
+  finalizedSessionId String?  @unique
 }
 
-model EventVote {
+model SessionVote {
   id        String   @id @default(uuid())
   vote      String   // yes, no
   createdAt DateTime @default(now())
   
-  eventRequestId String
-  eventRequest   EventRequest @relation(fields: [eventRequestId], references: [id], onDelete: Cascade)
+  sessionRequestId String
+  sessionRequest   SessionRequest @relation(fields: [sessionRequestId], references: [id], onDelete: Cascade)
   userId         String
   user           User         @relation(fields: [userId], references: [id])
   
-  @@unique([eventRequestId, userId])
+  @@unique([sessionRequestId, userId])
 }
 
 model EmailPreference {
   id              String   @id @default(uuid())
   userId          String   @unique
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  eventInvites    Boolean  @default(true)
-  eventReminders  Boolean  @default(true)
-  eventUpdates    Boolean  @default(true)
-  eventCancellations Boolean @default(true)
+  sessionInvites    Boolean  @default(true)
+  sessionReminders  Boolean  @default(true)
+  sessionUpdates    Boolean  @default(true)
+  sessionCancellations Boolean @default(true)
   groupInvites    Boolean  @default(true)
   commentMentions Boolean  @default(true)
   nearbyTeamUps   Boolean  @default(true)
 
-  muteEventInvites    Boolean  @default(false)
-  muteEventReminders  Boolean  @default(false)
-  muteEventUpdates    Boolean  @default(false)
-  muteEventCancellations Boolean @default(false)
+  muteSessionInvites    Boolean  @default(false)
+  muteSessionReminders  Boolean  @default(false)
+  muteSessionUpdates    Boolean  @default(false)
+  muteSessionCancellations Boolean @default(false)
   muteGroupInvites    Boolean  @default(false)
   muteGroupRequests   Boolean  @default(false)
   muteNearbyGroups    Boolean  @default(false)
-  muteEventCreated    Boolean  @default(false)
+  muteSessionCreated  Boolean  @default(false)
   muteNearbyTeamUps   Boolean  @default(false)
   pushEnabled         Boolean  @default(true)
-  pushEvents          Boolean  @default(true)
+  pushSessions        Boolean  @default(true)
   pushGroups          Boolean  @default(true)
   pushTeamUp          Boolean  @default(true)
   pushTournaments     Boolean  @default(true)
@@ -657,8 +662,8 @@ model Comment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  eventId   String
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sessionId   String
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   
@@ -686,10 +691,10 @@ model GuestParticipant {
   status     GuestParticipantStatus @default(confirmed)
   joinedAt   DateTime @default(now())
   
-  eventId String
-  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   
-  @@index([eventId])
+  @@index([sessionId])
   @@index([joinedAt]) // For joined date queries
 }
 
@@ -1172,4 +1177,132 @@ model TournamentTeamInvitation {
   @@index([status])
   @@index([expiresAt])
   @@index([teamId, inviteeEmail, status])
+}
+
+enum LeagueStatus {
+  draft
+  registration
+  active
+  completed
+  cancelled
+}
+
+model League {
+  id          String       @id @default(uuid())
+  title       String
+  description String?
+  sport       SportType
+  location    String?
+  latitude    Float?
+  longitude   Float?
+  locationName String?
+  city        String?
+  country     String?
+  startDate   DateTime
+  endDate     DateTime?
+  sessionCount Int?
+  status      LeagueStatus @default(draft)
+  isPublic    Boolean      @default(false)
+  isPremium   Boolean      @default(true)
+  maxTeams    Int?
+  
+  creatorId   String
+  creator     User         @relation("LeagueOrganizer", fields: [creatorId], references: [id])
+  groupId     String
+  group       Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  teams       LeagueTeam[]
+  sessions    LeagueSessionEntry[]
+  standings   LeagueStanding[]
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  @@index([groupId])
+  @@index([creatorId])
+  @@index([status])
+  @@index([sport])
+}
+
+model LeagueTeam {
+  id            String   @id @default(uuid())
+  name          String
+  leagueId      String
+  league        League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  captainUserId String?
+  captain       User?    @relation("LeagueTeamCaptain", fields: [captainUserId], references: [id], onDelete: SetNull)
+  players       LeaguePlayer[]
+  homeMatches   LeagueMatch[] @relation("LeagueHomeTeam")
+  awayMatches   LeagueMatch[] @relation("LeagueAwayTeam")
+  standings     LeagueStanding[]
+  createdAt     DateTime @default(now())
+  
+  @@unique([leagueId, name])
+  @@index([leagueId])
+}
+
+model LeaguePlayer {
+  id           String     @id @default(uuid())
+  teamId       String
+  team         LeagueTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId       String?
+  user         User?      @relation("LeaguePlayer", fields: [userId], references: [id], onDelete: SetNull)
+  playerName   String?
+  jerseyNumber Int?
+  createdAt    DateTime   @default(now())
+  
+  @@unique([teamId, userId])
+  @@index([teamId])
+}
+
+model LeagueSessionEntry {
+  id          String   @id @default(uuid())
+  leagueId    String
+  league      League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  sessionId   String
+  session     Session  @relation("LeagueSessions", fields: [sessionId], references: [id], onDelete: Cascade)
+  roundNumber Int?
+  createdAt   DateTime @default(now())
+  
+  @@unique([leagueId, sessionId])
+  @@index([leagueId])
+}
+
+model LeagueMatch {
+  id          String     @id @default(uuid())
+  leagueId    String
+  roundNumber Int?
+  homeTeamId  String
+  homeTeam    LeagueTeam @relation("LeagueHomeTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  awayTeamId  String
+  awayTeam    LeagueTeam @relation("LeagueAwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  homeScore   Int?
+  awayScore   Int?
+  status      String     @default("scheduled")
+  scheduledAt DateTime?
+  playedAt    DateTime?
+  createdAt   DateTime   @default(now())
+  
+  @@index([leagueId])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+}
+
+model LeagueStanding {
+  id           String     @id @default(uuid())
+  leagueId     String
+  league       League     @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  teamId       String
+  team         LeagueTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  played       Int        @default(0)
+  won          Int        @default(0)
+  drawn        Int        @default(0)
+  lost         Int        @default(0)
+  goalsFor     Int        @default(0)
+  goalsAgainst Int        @default(0)
+  points       Int        @default(0)
+  updatedAt    DateTime   @updatedAt
+  
+  @@unique([leagueId, teamId])
+  @@index([leagueId])
 }

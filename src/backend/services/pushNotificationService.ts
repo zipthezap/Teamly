@@ -6,7 +6,7 @@ import { shouldSendPushNotification } from '../utils/notificationHelper';
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getMessaging, Messaging } from 'firebase-admin/messaging';
 
-type NotificationKind = 'event' | 'group' | 'teamup' | 'tournament';
+type NotificationKind = 'session' | 'group' | 'teamup' | 'tournament';
 
 interface PushDispatchInput {
   userIds: string[];
@@ -41,12 +41,12 @@ const buildTitleAndBody = (
   params?: NotificationParams
 ): { title: string; body: string } => {
   const actor = String(params?.name ?? params?.actorName ?? 'Someone');
-  const eventTitle = String(params?.eventTitle ?? 'an event');
+  const eventTitle = String(params?.eventTitle ?? 'an session');
   const groupName = String(params?.groupName ?? 'a group');
   const requestTitle = String(params?.title ?? 'a request');
   const tournamentName = String(params?.tournamentName ?? 'a tournament');
 
-  if (kind === 'event') {
+  if (kind === 'session') {
     return {
       title: 'Event update',
       body:
@@ -197,7 +197,7 @@ const withRetries = async (payloads: PushPayload[]): Promise<PushProviderResult>
 
 const getUnreadCount = async (userId: string): Promise<number> => {
   const [eventCount, groupCount, teamUpCount, tournamentCount] = await Promise.all([
-    prisma.eventNotification.count({ where: { userId, read: false } }),
+    prisma.sessionNotification.count({ where: { userId, read: false } }),
     prisma.groupNotification.count({ where: { userId, read: false } }),
     prisma.teamUpNotification.count({ where: { userId, read: false } }),
     prisma.tournamentNotification.count({ where: { userId, read: false } }),

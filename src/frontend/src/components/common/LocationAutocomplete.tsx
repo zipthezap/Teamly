@@ -62,7 +62,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
     // Fallback to regular text field if no API key
     return (
       <TextField
-        label={label || t('events.location')}
+        label={label || t('sessions.location')}
         name={name}
         fullWidth
         margin="normal"
@@ -79,7 +79,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
     <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries}>
       <Autocomplete onLoad={onAutocompleteLoad} onPlaceChanged={onPlaceChanged}>
         <TextField
-          label={label || t('events.location')}
+          label={label || t('sessions.location')}
           name={name}
           fullWidth
           margin="normal"
@@ -88,7 +88,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
           placeholder={placeholder}
           required={required}
           disabled={disabled}
-          helperText={GOOGLE_MAPS_API_KEY ? t('events.locationAutocompleteHelper') : undefined}
+          helperText={GOOGLE_MAPS_API_KEY ? t('sessions.locationAutocompleteHelper') : undefined}
         />
       </Autocomplete>
     </LoadScript>

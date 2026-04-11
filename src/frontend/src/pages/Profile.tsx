@@ -50,7 +50,7 @@ const Profile = () => {
     commentMentions: true,
     nearbyTeamUps: true,
     muteEventInvites: false,
-    muteEventReminders: false,
+    muteSessionReminders: false,
     muteEventUpdates: false,
     muteEventCancellations: false,
     muteGroupInvites: false,

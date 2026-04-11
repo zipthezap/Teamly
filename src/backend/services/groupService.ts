@@ -125,7 +125,7 @@ export const getGroupById = async (groupId: string) => {
               title: true,
               startTime: true,
               endTime: true,
-              eventType: true,
+              sessionType: true,
               status: true,
               maxPlayers: true,
               _count: {

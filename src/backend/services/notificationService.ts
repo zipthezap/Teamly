@@ -4,7 +4,7 @@
  */
 
 import prisma from '../config/database';
-import { EventNotificationType, GroupNotificationType, TeamUpNotificationType } from '../../shared/types/event.types';
+import { SessionNotificationType, GroupNotificationType, TeamUpNotificationType } from '../../shared/types/event.types';
 import { TournamentNotificationType } from '../../shared/types/tournament.types';
 import { Prisma } from '@prisma/client';
 import { BadRequestError, ForbiddenError } from '../utils/errors';
@@ -12,7 +12,7 @@ import { BadRequestError, ForbiddenError } from '../utils/errors';
 export interface NotificationMetadata {
   actionUrl?: string;
   actionText?: string;
-  category?: 'event' | 'group' | 'teamup' | 'tournament' | 'system' | 'social';
+  category?: 'session' | 'group' | 'teamup' | 'tournament' | 'system' | 'social';
   priority?: 'low' | 'medium' | 'high';
   imageUrl?: string;
   relatedUserId?: string;
@@ -56,7 +56,7 @@ function toNotificationParams(params: Prisma.JsonValue | null | undefined): Noti
 // Types for notification query results with includes
 type EventNotificationWithRelations = Prisma.EventNotificationGetPayload<{
   include: {
-    event: { select: { id: true, title: true, startTime: true } };
+    session: { select: { id: true, title: true, startTime: true } };
     user: { select: { id: true, name: true } };
   };
 }>;
@@ -83,12 +83,12 @@ export interface UnifiedNotification {
   id: string;
   userId: string;
   type: string;
-  notificationType: 'event' | 'group' | 'teamup' | 'tournament';
+  notificationType: 'session' | 'group' | 'teamup' | 'tournament';
   params?: NotificationParams;
   read: boolean;
   createdAt: Date;
   metadata?: NotificationMetadata;
-  event?: {
+  session?: {
     id: string;
     title: string;
   };
@@ -155,7 +155,7 @@ export const getUserNotifications = async (
     offset?: number;
     cursor?: string;
     type?: string;
-    notificationType?: 'event' | 'group' | 'teamup' | 'tournament';
+    notificationType?: 'session' | 'group' | 'teamup' | 'tournament';
     startDate?: Date;
     endDate?: Date;
     searchQuery?: string;
@@ -187,7 +187,7 @@ export const getUserNotifications = async (
   // is handled by the in-memory filter further below.
   const normalizedSearch = searchQuery ? searchQuery.toLowerCase().trim() : '';
   const matchingEventTypes = normalizedSearch
-    ? (Object.values(EventNotificationType) as string[]).filter((v) => v.toLowerCase().includes(normalizedSearch))
+    ? (Object.values(SessionNotificationType) as string[]).filter((v) => v.toLowerCase().includes(normalizedSearch))
     : [];
   const matchingGroupTypes = normalizedSearch
     ? (Object.values(GroupNotificationType) as string[]).filter((v) => v.toLowerCase().includes(normalizedSearch))
@@ -220,23 +220,23 @@ export const getUserNotifications = async (
     };
   };
 
-  // Build where clause for event notifications
+  // Build where clause for session notifications
   let eventWhere: Prisma.EventNotificationWhereInput = { userId };
   if (!includeRead) {
     eventWhere.read = false;
   }
   if (type) {
-    eventWhere.type = type as EventNotificationType;
+    eventWhere.type = type as SessionNotificationType;
   }
   if (startDate || endDate) {
     eventWhere.createdAt = {};
     if (startDate) eventWhere.createdAt.gte = startDate;
     if (endDate) eventWhere.createdAt.lte = endDate;
   }
-  // When a search query matches event type enum values, push the filter to the DB
+  // When a search query matches session type enum values, push the filter to the DB
   // to reduce result set size. Params-based search is handled in-memory below.
   if (matchingEventTypes.length > 0) {
-    eventWhere.type = { in: matchingEventTypes as EventNotificationType[] };
+    eventWhere.type = { in: matchingEventTypes as SessionNotificationType[] };
   }
   if (parsedCursor) {
     eventWhere = {
@@ -292,18 +292,18 @@ export const getUserNotifications = async (
   let teamUpCount = 0;
   let tournamentCount = 0;
 
-  if (!notificationType || notificationType === 'event') {
+  if (!notificationType || notificationType === 'session') {
     [eventNotifications, eventCount] = await Promise.all([
-      prisma.eventNotification.findMany({
+      prisma.sessionNotification.findMany({
         where: eventWhere,
         include: {
-          event: { select: { id: true, title: true, startTime: true } },
+          session: { select: { id: true, title: true, startTime: true } },
           user: { select: { id: true, name: true } },
         },
         orderBy: baseOrderBy,
         take: queryTake,
       }),
-      prisma.eventNotification.count({ where: eventWhere }),
+      prisma.sessionNotification.count({ where: eventWhere }),
     ]);
   }
 
@@ -385,21 +385,21 @@ export const getUserNotifications = async (
 
   // Transform and enrich notifications
   const enrichedEventNotifications: UnifiedNotification[] = eventNotifications.map((n) => {
-    const metadata = enrichNotificationMetadata('event', n.type, n.event, n.user);
+    const metadata = enrichNotificationMetadata('session', n.type, n.session, n.user);
     return {
       id: n.id,
       userId: n.userId,
-      type: n.type as EventNotificationType,
-      notificationType: 'event' as const,
+      type: n.type as SessionNotificationType,
+      notificationType: 'session' as const,
       params: toNotificationParams(n.params) || {
         name: n.user?.name,
-        eventTitle: n.event?.title,
+        eventTitle: n.session?.title,
         // add more as needed
       },
       read: n.read,
       createdAt: n.createdAt,
       metadata,
-      event: n.event,
+      session: n.session,
       user: n.user,
     };
   });
@@ -497,9 +497,9 @@ export const getUserNotifications = async (
  * Enrich notification with metadata for enhanced UI
  */
 function enrichNotificationMetadata(
-  notificationType: 'event' | 'group' | 'teamup' | 'tournament',
+  notificationType: 'session' | 'group' | 'teamup' | 'tournament',
   type: string,
-  event?: { id: string; title: string; startTime?: Date },
+  session?: { id: string; title: string; startTime?: Date },
   user?: { id: string; name: string },
   group?: { id: string; name: string },
   teamUpRequest?: { id: string; title: string; sportType?: string },
@@ -519,8 +519,8 @@ function enrichNotificationMetadata(
   }
 
   // Add action URLs
-  if (notificationType === 'event' && event?.id) {
-    metadata.actionUrl = `/events/${event.id}`;
+  if (notificationType === 'session' && session?.id) {
+    metadata.actionUrl = `/events/${session.id}`;
     metadata.actionText = 'View Event';
   } else if (notificationType === 'group' && group?.id) {
     metadata.actionUrl = `/groups/${group.id}`;
@@ -570,7 +570,7 @@ export const markNotificationsAsRead = async (
 
     // Mark specific notifications as read
     await Promise.all([
-      prisma.eventNotification.updateMany({
+      prisma.sessionNotification.updateMany({
         where: { id: { in: notificationIds }, userId },
         data: { read: true },
       }),
@@ -590,7 +590,7 @@ export const markNotificationsAsRead = async (
   } else {
     // Mark all as read
     await Promise.all([
-      prisma.eventNotification.updateMany({
+      prisma.sessionNotification.updateMany({
         where: { userId, read: false },
         data: { read: true },
       }),
@@ -617,16 +617,16 @@ export const getNotificationStats = async (userId: string) => {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const [unreadEvent, unreadGroup, unreadTeamUp, unreadTournament, totalEvent, totalGroup, totalTeamUp, totalTournament, recentActivityGroups] = await Promise.all([
-    prisma.eventNotification.count({ where: { userId, read: false } }),
+    prisma.sessionNotification.count({ where: { userId, read: false } }),
     prisma.groupNotification.count({ where: { userId, read: false } }),
     prisma.teamUpNotification.count({ where: { userId, read: false } }),
     prisma.tournamentNotification.count({ where: { userId, read: false } }),
-    prisma.eventNotification.count({ where: { userId } }),
+    prisma.sessionNotification.count({ where: { userId } }),
     prisma.groupNotification.count({ where: { userId } }),
     prisma.teamUpNotification.count({ where: { userId } }),
     prisma.tournamentNotification.count({ where: { userId } }),
     // Use groupBy to aggregate type counts in the DB instead of fetching all records
-    prisma.eventNotification.groupBy({
+    prisma.sessionNotification.groupBy({
       by: ['type'],
       where: { userId, createdAt: { gte: sevenDaysAgo } },
       _count: { _all: true },
@@ -671,7 +671,7 @@ export const deleteNotifications = async (
   await assertNotificationOwnership(userId, notificationIds);
 
   const [eventDeleted, groupDeleted, teamUpDeleted, tournamentDeleted] = await Promise.all([
-    prisma.eventNotification.deleteMany({
+    prisma.sessionNotification.deleteMany({
       where: { id: { in: notificationIds }, userId },
     }),
     prisma.groupNotification.deleteMany({
@@ -709,7 +709,7 @@ async function assertNotificationOwnership(userId: string, notificationIds: stri
   const dedupedIds = [...normalizedIds];
 
   const [eventRows, groupRows, teamUpRows, tournamentRows] = await Promise.all([
-    prisma.eventNotification.findMany({
+    prisma.sessionNotification.findMany({
       where: { userId, id: { in: dedupedIds } },
       select: { id: true },
     }),
@@ -743,7 +743,7 @@ export const deleteAllReadNotifications = async (
   userId: string
 ): Promise<{ deletedCount: number }> => {
   const [eventDeleted, groupDeleted, teamUpDeleted, tournamentDeleted] = await Promise.all([
-    prisma.eventNotification.deleteMany({
+    prisma.sessionNotification.deleteMany({
       where: { userId, read: true },
     }),
     prisma.groupNotification.deleteMany({

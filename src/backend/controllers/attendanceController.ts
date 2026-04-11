@@ -16,12 +16,12 @@ function isAttendanceStatusInput(status: unknown): status is AttendanceStatusInp
 }
 
 /**
- * Mark attendance for an event participant
- * POST /api/events/:eventId/attendance
+ * Mark attendance for an session participant
+ * POST /api/events/:sessionId/attendance
  */
 export const markAttendance = asyncHandler(async (req: Request, res: Response) => {
     res.setHeader('Cache-Control', 'no-store');
-  const { eventId } = req.params;
+  const { sessionId } = req.params;
   const { userId, status } = req.body;
   const currentUserId = req.user!.id;
 
@@ -34,9 +34,9 @@ export const markAttendance = asyncHandler(async (req: Request, res: Response) =
   // If userId is not provided, mark attendance for current user
   const targetUserId = userId || currentUserId;
 
-  // Check if event exists
-  const event = await prisma.event.findUnique({
-    where: { id: eventId },
+  // Check if session exists
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId },
     select: {
       id: true,
       title: true,
@@ -48,41 +48,41 @@ export const markAttendance = asyncHandler(async (req: Request, res: Response) =
     }
   });
 
-  if (!event) {
+  if (!session) {
     throw new NotFoundError('Event not found');
   }
 
   // Check if target user is a participant
-  if (event.participants.length === 0) {
-    throw new BadRequestError('User is not a participant of this event');
+  if (session.participants.length === 0) {
+    throw new BadRequestError('User is not a participant of this session');
   }
 
-  // Only event creator or the participant themselves can mark attendance
-  const isCreator = event.creatorId === currentUserId;
+  // Only session creator or the participant themselves can mark attendance
+  const isCreator = session.creatorId === currentUserId;
   const isSelf = targetUserId === currentUserId;
 
   if (!isCreator && !isSelf) {
-    throw new ForbiddenError('Only event creator or the participant can mark attendance');
+    throw new ForbiddenError('Only session creator or the participant can mark attendance');
   }
 
-  // Check if event has started (can only mark attendance for ongoing or completed events)
+  // Check if session has started (can only mark attendance for ongoing or completed events)
   const now = new Date();
-  const eventStartTime = new Date(event.startTime);
+  const eventStartTime = new Date(session.startTime);
 
   if (eventStartTime > now) {
     throw new BadRequestError('Cannot mark attendance for events that have not started yet');
   }
 
   // Create or update attendance record
-  const attendance = await prisma.eventAttendance.upsert({
+  const attendance = await prisma.sessionAttendance.upsert({
     where: {
       eventId_userId: {
-        eventId,
+        sessionId,
         userId: targetUserId
       }
     },
     create: {
-      eventId,
+      sessionId,
       userId: targetUserId,
       status: prismaStatus
     },
@@ -102,14 +102,14 @@ export const markAttendance = asyncHandler(async (req: Request, res: Response) =
 
   // Create notification if marked as late
   if (prismaStatus === 'late') {
-    await prisma.eventNotification.create({
+    await prisma.sessionNotification.create({
       data: {
-        eventId,
+        sessionId,
         userId: targetUserId,
         type: 'late',
         params: {
           name: attendance.user.name,
-          eventTitle: event.title
+          eventTitle: session.title
         }
       }
     });
@@ -117,7 +117,7 @@ export const markAttendance = asyncHandler(async (req: Request, res: Response) =
 
   logger.info('Event attendance marked', 'AttendanceController', {
     attendanceId: attendance.id,
-    eventId,
+    sessionId,
     userId: targetUserId,
     status: prismaStatus,
     markedBy: currentUserId
@@ -130,17 +130,17 @@ export const markAttendance = asyncHandler(async (req: Request, res: Response) =
 });
 
 /**
- * Get attendance records for an event
- * GET /api/events/:eventId/attendance
+ * Get attendance records for an session
+ * GET /api/events/:sessionId/attendance
  */
 export const getEventAttendance = asyncHandler(async (req: Request, res: Response) => {
-  const { eventId } = req.params;
+  const { sessionId } = req.params;
   const userId = req.user!.id;
 
-  // Check if user has access to the event
-  const event = await prisma.event.findFirst({
+  // Check if user has access to the session
+  const session = await prisma.session.findFirst({
     where: {
-      id: eventId,
+      id: sessionId,
       group: {
         members: {
           some: {
@@ -151,14 +151,14 @@ export const getEventAttendance = asyncHandler(async (req: Request, res: Respons
     }
   });
 
-  if (!event) {
+  if (!session) {
     throw new NotFoundError('Event not found or access denied');
   }
 
-  // Get all attendance records for the event
-  const attendanceRecords = await prisma.eventAttendance.findMany({
+  // Get all attendance records for the session
+  const attendanceRecords = await prisma.sessionAttendance.findMany({
     where: {
-      eventId
+      sessionId
     },
     include: {
       user: {
@@ -181,17 +181,17 @@ export const getEventAttendance = asyncHandler(async (req: Request, res: Respons
 });
 
 /**
- * Get attendance statistics for an event
- * GET /api/events/:eventId/attendance/stats
+ * Get attendance statistics for an session
+ * GET /api/events/:sessionId/attendance/stats
  */
 export const getAttendanceStats = asyncHandler(async (req: Request, res: Response) => {
-  const { eventId } = req.params;
+  const { sessionId } = req.params;
   const userId = req.user!.id;
 
-  // Check if user has access to the event
-  const event = await prisma.event.findFirst({
+  // Check if user has access to the session
+  const session = await prisma.session.findFirst({
     where: {
-      id: eventId,
+      id: sessionId,
       group: {
         members: {
           some: {
@@ -209,26 +209,26 @@ export const getAttendanceStats = asyncHandler(async (req: Request, res: Respons
     }
   });
 
-  if (!event) {
+  if (!session) {
     throw new NotFoundError('Event not found or access denied');
   }
 
   // Get attendance counts
-  const onTimeCount = await prisma.eventAttendance.count({
+  const onTimeCount = await prisma.sessionAttendance.count({
     where: {
-      eventId,
+      sessionId,
       status: 'on_time'
     }
   });
 
-  const lateCount = await prisma.eventAttendance.count({
+  const lateCount = await prisma.sessionAttendance.count({
     where: {
-      eventId,
+      sessionId,
       status: 'late'
     }
   });
 
-  const totalParticipants = event._count.participants;
+  const totalParticipants = session._count.participants;
   const noShowCount = totalParticipants - onTimeCount - lateCount;
 
   res.json({
@@ -244,31 +244,31 @@ export const getAttendanceStats = asyncHandler(async (req: Request, res: Respons
 
 /**
  * Delete attendance record
- * DELETE /api/events/:eventId/attendance/:userId
+ * DELETE /api/events/:sessionId/attendance/:userId
  */
 export const deleteAttendance = asyncHandler(async (req: Request, res: Response) => {
-  const { eventId, userId: targetUserId } = req.params;
+  const { sessionId, userId: targetUserId } = req.params;
   const currentUserId = req.user!.id;
 
-  // Find the event
-  const event = await prisma.event.findUnique({
-    where: { id: eventId }
+  // Find the session
+  const session = await prisma.session.findUnique({
+    where: { id: sessionId }
   });
 
-  if (!event) {
+  if (!session) {
     throw new NotFoundError('Event not found');
   }
 
-  // Only event creator can delete attendance records
-  if (event.creatorId !== currentUserId) {
-    throw new ForbiddenError('Only event creator can delete attendance records');
+  // Only session creator can delete attendance records
+  if (session.creatorId !== currentUserId) {
+    throw new ForbiddenError('Only session creator can delete attendance records');
   }
 
   // Find and delete the attendance record
-  const attendance = await prisma.eventAttendance.findUnique({
+  const attendance = await prisma.sessionAttendance.findUnique({
     where: {
       eventId_userId: {
-        eventId,
+        sessionId,
         userId: targetUserId
       }
     }
@@ -278,17 +278,17 @@ export const deleteAttendance = asyncHandler(async (req: Request, res: Response)
     throw new NotFoundError('Attendance record not found');
   }
 
-  await prisma.eventAttendance.delete({
+  await prisma.sessionAttendance.delete({
     where: {
       eventId_userId: {
-        eventId,
+        sessionId,
         userId: targetUserId
       }
     }
   });
 
   logger.info('Event attendance deleted', 'AttendanceController', {
-    eventId,
+    sessionId,
     userId: targetUserId,
     deletedBy: currentUserId
   });

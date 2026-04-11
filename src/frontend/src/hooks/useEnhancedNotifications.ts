@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { notificationsAPI } from '../services/api';
 import { useTranslation } from 'react-i18next';
-import { EventNotificationType, GroupNotificationType, TeamUpNotificationType } from '../../../shared/types/event.types';
+import { SessionNotificationType, GroupNotificationType, TeamUpNotificationType } from '../../../shared/types/session.types';
 import { getNotificationText } from '../utils/notificationText';
 
 export interface NotificationMetadata {
@@ -22,7 +22,7 @@ export interface NotificationMetadata {
 export interface Notification {
   id: string;
   userId: string;
-  type: EventNotificationType | GroupNotificationType | TeamUpNotificationType;
+  type: SessionNotificationType | GroupNotificationType | TeamUpNotificationType;
   notificationType: 'event' | 'group' | 'teamup' | 'tournament';
   title?: string;
   message?: string;

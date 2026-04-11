@@ -1,13 +1,13 @@
 /**
  * Export Service
- * Provides functionality to export event data in various formats
+ * Provides functionality to export session data in various formats
  */
 
 interface EventExportData {
   id: string;
   title: string;
   description: string | null;
-  eventType: string;
+  sessionType: string;
   location: string | null;
   startTime: Date;
   endTime: Date | null;
@@ -60,21 +60,21 @@ export function exportToCSV(events: EventExportData[]): string {
   // Build CSV content
   const csvRows = [headers.join(',')];
 
-  events.forEach(event => {
+  events.forEach(session => {
     const row = [
-      escapeCSV(event.id),
-      escapeCSV(event.title),
-      escapeCSV(event.description),
-      escapeCSV(event.eventType),
-      escapeCSV(event.location),
-      escapeCSV(new Date(event.startTime).toISOString()),
-      escapeCSV(event.endTime ? new Date(event.endTime).toISOString() : ''),
-      escapeCSV(event.status),
-      escapeCSV(event.participantStatus),
-      escapeCSV(event.groupName),
-      escapeCSV(event.creatorName),
-      escapeCSV(event.participantCount),
-      escapeCSV(event.maxPlayers)
+      escapeCSV(session.id),
+      escapeCSV(session.title),
+      escapeCSV(session.description),
+      escapeCSV(session.sessionType),
+      escapeCSV(session.location),
+      escapeCSV(new Date(session.startTime).toISOString()),
+      escapeCSV(session.endTime ? new Date(session.endTime).toISOString() : ''),
+      escapeCSV(session.status),
+      escapeCSV(session.participantStatus),
+      escapeCSV(session.groupName),
+      escapeCSV(session.creatorName),
+      escapeCSV(session.participantCount),
+      escapeCSV(session.maxPlayers)
     ];
     csvRows.push(row.join(','));
   });
@@ -115,40 +115,40 @@ export function exportToICalendar(events: EventExportData[]): string {
   ical += 'X-WR-CALNAME:Teamly Events\r\n';
   ical += 'X-WR-TIMEZONE:UTC\r\n';
 
-  // Add each event
-  events.forEach(event => {
+  // Add each session
+  events.forEach(session => {
     ical += 'BEGIN:VEVENT\r\n';
-    ical += `UID:${event.id}@teamly.app\r\n`;
+    ical += `UID:${session.id}@teamly.app\r\n`;
     ical += `DTSTAMP:${timestamp}\r\n`;
-    ical += `DTSTART:${formatICalDate(event.startTime)}\r\n`;
+    ical += `DTSTART:${formatICalDate(session.startTime)}\r\n`;
     
-    if (event.endTime) {
-      ical += `DTEND:${formatICalDate(event.endTime)}\r\n`;
+    if (session.endTime) {
+      ical += `DTEND:${formatICalDate(session.endTime)}\r\n`;
     }
     
-    ical += `SUMMARY:${escapeICalText(event.title)}\r\n`;
+    ical += `SUMMARY:${escapeICalText(session.title)}\r\n`;
     
-    // Build description with event details
+    // Build description with session details
     let description = '';
-    if (event.description) {
-      description += escapeICalText(event.description) + '\\n\\n';
+    if (session.description) {
+      description += escapeICalText(session.description) + '\\n\\n';
     }
-    description += `Event Type: ${escapeICalText(event.eventType)}\\n`;
-    description += `Group: ${escapeICalText(event.groupName)}\\n`;
-    description += `Status: ${escapeICalText(event.participantStatus)}\\n`;
-    description += `Participants: ${event.participantCount}`;
-    if (event.maxPlayers) {
-      description += `/${event.maxPlayers}`;
+    description += `Event Type: ${escapeICalText(session.sessionType)}\\n`;
+    description += `Group: ${escapeICalText(session.groupName)}\\n`;
+    description += `Status: ${escapeICalText(session.participantStatus)}\\n`;
+    description += `Participants: ${session.participantCount}`;
+    if (session.maxPlayers) {
+      description += `/${session.maxPlayers}`;
     }
     
     ical += `DESCRIPTION:${description}\r\n`;
     
-    if (event.location) {
-      ical += `LOCATION:${escapeICalText(event.location)}\r\n`;
+    if (session.location) {
+      ical += `LOCATION:${escapeICalText(session.location)}\r\n`;
     }
     
-    ical += `STATUS:${event.status === 'cancelled' ? 'CANCELLED' : 'CONFIRMED'}\r\n`;
-    ical += `ORGANIZER;CN=${escapeICalText(event.creatorName)}:noreply@teamly.app\r\n`;
+    ical += `STATUS:${session.status === 'cancelled' ? 'CANCELLED' : 'CONFIRMED'}\r\n`;
+    ical += `ORGANIZER;CN=${escapeICalText(session.creatorName)}:noreply@teamly.app\r\n`;
     ical += 'END:VEVENT\r\n';
   });
 
@@ -164,23 +164,23 @@ export function exportToJSON(events: EventExportData[]): string {
   const exportData = {
     exportDate: new Date().toISOString(),
     totalEvents: events.length,
-    events: events.map(event => ({
-      id: event.id,
-      title: event.title,
-      description: event.description,
-      eventType: event.eventType,
-      location: event.location,
-      startTime: new Date(event.startTime).toISOString(),
-      endTime: event.endTime ? new Date(event.endTime).toISOString() : null,
-      status: event.status,
-      yourStatus: event.participantStatus,
+    events: events.map(session => ({
+      id: session.id,
+      title: session.title,
+      description: session.description,
+      sessionType: session.sessionType,
+      location: session.location,
+      startTime: new Date(session.startTime).toISOString(),
+      endTime: session.endTime ? new Date(session.endTime).toISOString() : null,
+      status: session.status,
+      yourStatus: session.participantStatus,
       group: {
-        name: event.groupName
+        name: session.groupName
       },
-      creator: event.creatorName,
+      creator: session.creatorName,
       participants: {
-        count: event.participantCount,
-        max: event.maxPlayers
+        count: session.participantCount,
+        max: session.maxPlayers
       }
     }))
   };

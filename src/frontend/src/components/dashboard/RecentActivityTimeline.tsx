@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme, alpha } from '@mui/material/styles';
-import { EventWithDetails, GroupWithDetails, EventParticipant, GroupMember } from '../../../../shared/types';
+import { SessionWithDetails, GroupWithDetails, SessionParticipant, GroupMember } from '../../../../shared/types';
 // Removed all MUI imports; using Tailwind and SVGs
 
 interface Activity {
@@ -14,7 +14,7 @@ interface Activity {
 }
 
 interface RecentActivityTimelineProps {
-  events: EventWithDetails[];
+  events: SessionWithDetails[];
   groups: GroupWithDetails[];
   userId?: string;
   onActivityClick?: (id: string, type: string) => void;
@@ -61,7 +61,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
       }
 
       // Event joins
-      const userParticipation = event.participants?.find((p: EventParticipant) => p.userId === userId);
+      const userParticipation = event.participants?.find((p: SessionParticipant) => p.userId === userId);
       if (userParticipation && event.creatorId !== userId) {
         const timestamp = typeof userParticipation.joinedAt === 'string' ? userParticipation.joinedAt : 
                          new Date(userParticipation.joinedAt).toISOString();
@@ -303,7 +303,7 @@ const RecentActivityTimeline: React.FC<RecentActivityTimelineProps> = ({
                       <path d="M17 21v-2a4 4 0 0 0-8 0v2" /><circle cx="12" cy="7" r="4" />
                     </svg>
                   )}
-                  {filter === 'all' ? t('dashboard.allTypes', 'All Types') : filter === 'events' ? t('events.events', 'Events') : t('groups.groups', 'Groups')}
+                  {filter === 'all' ? t('dashboard.allTypes', 'All Types') : filter === 'events' ? t('sessions.events', 'Events') : t('groups.groups', 'Groups')}
                 </button>
               ))}
             </div>

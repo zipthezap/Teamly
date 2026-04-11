@@ -6,13 +6,13 @@
 export const mockEventNotification = {
   id: 'notif-1',
   userId: 'user-1',
-  type: 'event_created',
+  type: 'session_created',
   params: { eventTitle: 'Soccer Match' },
   read: false,
   createdAt: new Date('2024-01-01T00:00:00Z'),
-  eventId: 'event-1',
-  event: {
-    id: 'event-1',
+  sessionId: 'session-1',
+  session: {
+    id: 'session-1',
     title: 'Soccer Match',
     startTime: new Date('2024-02-01T10:00:00Z'),
   },
@@ -27,13 +27,13 @@ export const mockEventNotifications = [
   {
     id: 'notif-2',
     userId: 'user-1',
-    type: 'event_updated',
+    type: 'session_updated',
     params: { eventTitle: 'Soccer Match', changes: ['time'] },
     read: false,
     createdAt: new Date('2024-01-02T00:00:00Z'),
-    eventId: 'event-1',
-    event: {
-      id: 'event-1',
+    sessionId: 'session-1',
+    session: {
+      id: 'session-1',
       title: 'Soccer Match',
       startTime: new Date('2024-02-01T10:00:00Z'),
     },
@@ -45,13 +45,13 @@ export const mockEventNotifications = [
   {
     id: 'notif-3',
     userId: 'user-1',
-    type: 'event_cancelled',
+    type: 'session_cancelled',
     params: { eventTitle: 'Tennis Match' },
     read: true,
     createdAt: new Date('2024-01-03T00:00:00Z'),
-    eventId: 'event-2',
-    event: {
-      id: 'event-2',
+    sessionId: 'session-2',
+    session: {
+      id: 'session-2',
       title: 'Tennis Match',
       startTime: new Date('2024-02-02T10:00:00Z'),
     },
@@ -172,10 +172,10 @@ export const mockBulkNotifications = Array.from({ length: 100 }, (_, i) => {
   return {
     id: `notif-bulk-${i}`,
     userId: 'user-1',
-    type: 'event_created',
+    type: 'session_created',
     params: { eventTitle: `Event ${i}` },
     read: false,
     createdAt: new Date(2024, 0, day, hour, minute, 0, 0), // January 2024
-    eventId: `event-${i}`,
+    sessionId: `session-${i}`,
   };
 });

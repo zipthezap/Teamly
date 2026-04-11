@@ -18,7 +18,7 @@ interface GroupHeaderProps {
   onLeave?: () => void;
   onInvite?: () => void;
   onCopyLink?: () => void;
-  onViewEventRequests?: () => void;
+  onViewSessionRequests?: () => void;
   isAdmin?: boolean;
 }
 
@@ -30,7 +30,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = React.memo(({
   onLeave, 
   onInvite, 
   onCopyLink, 
-  onViewEventRequests,
+  onViewSessionRequests,
   isAdmin
 }) => {
   const { t } = useTranslation();
@@ -58,8 +58,8 @@ const GroupHeader: React.FC<GroupHeaderProps> = React.memo(({
         </div>
       </div>
       <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2 md:mt-0">
-        {isAdmin && onViewEventRequests && (
-          <Button color="info" onClick={onViewEventRequests} className="rounded-full p-1.5 sm:p-2 min-w-0 w-10 h-10 sm:w-14 sm:h-14 flex items-center justify-center" aria-label={t('groupDetails.viewEventRequests')}>
+        {isAdmin && onViewSessionRequests && (
+          <Button color="info" onClick={onViewSessionRequests} className="rounded-full p-1.5 sm:p-2 min-w-0 w-10 h-10 sm:w-14 sm:h-14 flex items-center justify-center" aria-label={t('groupDetails.viewSessionRequests')}>
             <ClipboardIcon className="w-5 h-5 sm:w-8 sm:h-8" />
           </Button>
         )}

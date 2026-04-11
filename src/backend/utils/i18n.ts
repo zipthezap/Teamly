@@ -8,8 +8,8 @@ const translations: Record<string, Record<string, string>> = {
   en: {
     newEvent: "New Event: {{eventTitle}}",
     reminder: "Reminder: {{eventTitle}}",
-    activityJoin: "{{name}} joined your event",
-    activityLeave: "{{name}} left your event",
+    activityJoin: "{{name}} joined your session",
+    activityLeave: "{{name}} left your session",
     activityLate: "{{name}} will be late",
     activityConfirmed: "{{name}} confirmed attendance",
     activityDeclined: "{{name}} declined",
@@ -18,7 +18,7 @@ const translations: Record<string, Record<string, string>> = {
     joinRequestAccepted: "Join Request Accepted",
     newGroupNearYou: "New Group Near You",
     groupUpdate: "Group Update: {{groupName}}",
-    eventCreated: "A new event has been created. Check it out!",
+    eventCreated: "A new session has been created. Check it out!",
     reminderMessage: "Don't forget to attend!",
     activityJoinMessage: "{{name}} has joined \"{{eventTitle}}\"",
     activityLeaveMessage: "{{name}} has left \"{{eventTitle}}\"",
@@ -37,7 +37,7 @@ const translations: Record<string, Record<string, string>> = {
     teamupAcceptedMessage: "Great news! Your response to \"{{title}}\" was accepted. Get ready for {{sportType}}!",
     teamupDeclinedMessage: "Your response to \"{{title}}\" was not accepted. Keep looking for other opportunities!",
     someone: "Someone",
-    event: "event",
+    session: "session",
     group: "group"
   },
   fr: {
@@ -72,7 +72,7 @@ const translations: Record<string, Record<string, string>> = {
     teamupAcceptedMessage: "Bonne nouvelle ! Votre réponse à \"{{title}}\" a été acceptée. Préparez-vous pour {{sportType}} !",
     teamupDeclinedMessage: "Votre réponse à \"{{title}}\" n'a pas été acceptée. Continuez à chercher d'autres opportunités !",
     someone: "Quelqu'un",
-    event: "événement",
+    session: "événement",
     group: "groupe"
   }
 };

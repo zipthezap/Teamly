@@ -3,7 +3,7 @@
  * Centralized export for all mock data
  */
 
-export * from './events';
+export * from './sessions';
 export * from './groups';
 export * from './notifications';
 export * from './users';

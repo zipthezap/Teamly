@@ -174,7 +174,7 @@ export const UserQueryCache = {
     await invalidateMultiple([
       { prefix: 'user:profile', params: { userId } },
       { prefix: 'user:groups', params: { userId } },
-      { prefix: 'user:events' }, // Invalidate all user event queries
+      { prefix: 'user:events' }, // Invalidate all user session queries
     ]);
   },
 };
@@ -213,34 +213,34 @@ export const GroupQueryCache = {
  */
 export const EventQueryCache = {
   /**
-   * Cache event details
+   * Cache session details
    */
-  async getDetails<T = unknown>(eventId: string, queryFn: () => Promise<T>) {
-    return cachedQuery('event:details', { eventId }, CACHE_TTL.EVENT_DETAILS, queryFn);
+  async getDetails<T = unknown>(sessionId: string, queryFn: () => Promise<T>) {
+    return cachedQuery('session:details', { sessionId }, CACHE_TTL.EVENT_DETAILS, queryFn);
   },
   
   /**
-   * Cache event participants
+   * Cache session participants
    */
-  async getParticipants<T = unknown>(eventId: string, queryFn: () => Promise<T>) {
-    return cachedQuery('event:participants', { eventId }, CACHE_TTL.EVENT_PARTICIPANTS, queryFn);
+  async getParticipants<T = unknown>(sessionId: string, queryFn: () => Promise<T>) {
+    return cachedQuery('session:participants', { sessionId }, CACHE_TTL.EVENT_PARTICIPANTS, queryFn);
   },
   
   /**
-   * Cache event list for a group
+   * Cache session list for a group
    */
   async getList<T = unknown>(groupId: string, filters: Record<string, string | number | boolean | null | undefined>, queryFn: () => Promise<T>) {
-    return cachedQuery('event:list', { groupId, ...filters }, CACHE_TTL.EVENT_LIST, queryFn);
+    return cachedQuery('session:list', { groupId, ...filters }, CACHE_TTL.EVENT_LIST, queryFn);
   },
   
   /**
-   * Invalidate all event caches
+   * Invalidate all session caches
    */
-  async invalidate(eventId: string) {
+  async invalidate(sessionId: string) {
     await invalidateMultiple([
-      { prefix: 'event:details', params: { eventId } },
-      { prefix: 'event:participants', params: { eventId } },
-      { prefix: 'event:list' }, // Invalidate all event lists
+      { prefix: 'session:details', params: { sessionId } },
+      { prefix: 'session:participants', params: { sessionId } },
+      { prefix: 'session:list' }, // Invalidate all session lists
     ]);
   },
 };

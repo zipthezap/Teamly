@@ -14,9 +14,9 @@ import * as fs from 'fs';
 
 import authRoutes from './routes/authRoutes';
 import groupRoutes from './routes/groupRoutes';
-import eventRoutes from './routes/eventRoutes';
+import sessionRoutes from './routes/sessionRoutes';
 import twoFactorRoutes from './routes/twoFactorRoutes';
-import eventRequestRoutes from './routes/eventRequestRoutes';
+import sessionRequestRoutes from './routes/sessionRequestRoutes';
 import emailRoutes from './routes/emailRoutes';
 import commentRoutes from './routes/commentRoutes';
 import groupChatRoutes from './routes/groupChatRoutes';
@@ -26,6 +26,7 @@ import pushTokenRoutes from './routes/pushTokenRoutes';
 import teamUpRoutes from './routes/teamUpRoutes';
 import reminderRoutes from './routes/reminderRoutes';
 import tournamentRoutes from './routes/tournamentRoutes';
+import leagueRoutes from './routes/leagueRoutes';
 import { distributedApiLimiter } from './middleware/distributedRateLimiter';
 import { requestTimeout } from './middleware/requestTimeout';
 import { logger } from './utils/logger';
@@ -263,9 +264,9 @@ app.use('/api/', distributedApiLimiter);
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/groups', groupRoutes);
-app.use('/api/events', eventRoutes);
+app.use('/api/sessions', sessionRoutes);
 app.use('/api/2fa', twoFactorRoutes);
-app.use('/api/event-requests', eventRequestRoutes);
+app.use('/api/session-requests', sessionRequestRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/chat', groupChatRoutes);
@@ -275,6 +276,7 @@ app.use('/api/push-devices', pushTokenRoutes);
 app.use('/api/teamup', teamUpRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/tournaments', tournamentRoutes);
+app.use('/api/leagues', leagueRoutes);
 
 // Metrics endpoint for Prometheus
 // In production, restrict access via network rules or add IP whitelist

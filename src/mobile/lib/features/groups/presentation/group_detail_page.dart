@@ -10,7 +10,7 @@ import '../../../core/error/app_exception.dart';
 import '../../../core/models/group_model.dart';
 import '../../../core/utils/maps_utils.dart';
 import '../../../features/auth/state/auth_notifier.dart';
-import '../../../features/events/state/events_notifier.dart';
+import '../../../features/sessions/state/sessions_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../../../shared/widgets/user_avatar.dart';

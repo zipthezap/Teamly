@@ -33,7 +33,7 @@ class MobileShell extends ConsumerWidget {
         context.go('/groups');
         return;
       case 2:
-        context.go('/events');
+        context.go('/sessions');
         return;
       case 3:
         context.go('/discover');
@@ -125,7 +125,7 @@ class _BottomNav extends StatelessWidget {
               _NavItem(
                 icon: Icons.event_outlined,
                 selectedIcon: Icons.event_rounded,
-                label: 'Events',
+                label: 'Sessions',
                 selected: currentIndex == 2,
                 onTap: () => onTap(2),
               ),

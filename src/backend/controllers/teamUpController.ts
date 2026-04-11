@@ -64,7 +64,7 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
       throw new BadRequestError('playersNeeded must be at least 1');
     }
 
-    // Set expiration to 1 hour after the event time
+    // Set expiration to 1 hour after the session time
     const expiresAt = new Date(eventDate.getTime() + 60 * 60 * 1000);
 
     // Parse coordinates once if provided

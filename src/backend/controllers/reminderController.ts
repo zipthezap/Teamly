@@ -5,12 +5,12 @@ import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors'
 import { logger } from '../utils/logger';
 
 /**
- * Create a reminder for an event
- * POST /api/events/:eventId/reminders
+ * Create a reminder for an session
+ * POST /api/events/:sessionId/reminders
  */
 export const createReminder = asyncHandler(async (req: Request, res: Response) => {
     res.setHeader('Cache-Control', 'no-store');
-  const { eventId } = req.params;
+  const { sessionId } = req.params;
   const { remindAt } = req.body;
   const userId = req.user!.id;
 
@@ -29,10 +29,10 @@ export const createReminder = asyncHandler(async (req: Request, res: Response) =
     throw new BadRequestError('Reminder time must be in the future');
   }
 
-  // Check if event exists and user is a participant
-  const event = await prisma.event.findFirst({
+  // Check if session exists and user is a participant
+  const session = await prisma.session.findFirst({
     where: {
-      id: eventId,
+      id: sessionId,
       OR: [
         {
           participants: {
@@ -48,20 +48,20 @@ export const createReminder = asyncHandler(async (req: Request, res: Response) =
     }
   });
 
-  if (!event) {
+  if (!session) {
     throw new NotFoundError('Event not found or you are not a participant');
   }
 
-  // Validate reminder is before event start time
-  if (reminderDate >= new Date(event.startTime)) {
-    throw new BadRequestError('Reminder time must be before event start time');
+  // Validate reminder is before session start time
+  if (reminderDate >= new Date(session.startTime)) {
+    throw new BadRequestError('Reminder time must be before session start time');
   }
 
   // Check if reminder already exists
-  const existingReminder = await prisma.eventReminder.findUnique({
+  const existingReminder = await prisma.sessionReminder.findUnique({
     where: {
       eventId_userId_remindAt: {
-        eventId,
+        sessionId,
         userId,
         remindAt: reminderDate
       }
@@ -73,15 +73,15 @@ export const createReminder = asyncHandler(async (req: Request, res: Response) =
   }
 
   // Create the reminder
-  const reminder = await prisma.eventReminder.create({
+  const reminder = await prisma.sessionReminder.create({
     data: {
-      eventId,
+      sessionId,
       userId,
       remindAt: reminderDate,
       sent: false
     },
     include: {
-      event: {
+      session: {
         select: {
           id: true,
           title: true,
@@ -93,7 +93,7 @@ export const createReminder = asyncHandler(async (req: Request, res: Response) =
 
   logger.info('Event reminder created', 'ReminderController', {
     reminderId: reminder.id,
-    eventId,
+    sessionId,
     userId,
     remindAt: reminderDate
   });
@@ -105,17 +105,17 @@ export const createReminder = asyncHandler(async (req: Request, res: Response) =
 });
 
 /**
- * Get all reminders for an event (for current user)
- * GET /api/events/:eventId/reminders
+ * Get all reminders for an session (for current user)
+ * GET /api/events/:sessionId/reminders
  */
 export const getEventReminders = asyncHandler(async (req: Request, res: Response) => {
-  const { eventId } = req.params;
+  const { sessionId } = req.params;
   const userId = req.user!.id;
 
-  // Check if user has access to the event
-  const event = await prisma.event.findFirst({
+  // Check if user has access to the session
+  const session = await prisma.session.findFirst({
     where: {
-      id: eventId,
+      id: sessionId,
       OR: [
         {
           participants: {
@@ -131,14 +131,14 @@ export const getEventReminders = asyncHandler(async (req: Request, res: Response
     }
   });
 
-  if (!event) {
+  if (!session) {
     throw new NotFoundError('Event not found or you are not a participant');
   }
 
-  // Get reminders for this user and event
-  const reminders = await prisma.eventReminder.findMany({
+  // Get reminders for this user and session
+  const reminders = await prisma.sessionReminder.findMany({
     where: {
-      eventId,
+      sessionId,
       userId
     },
     orderBy: {
@@ -161,7 +161,7 @@ export const getUserReminders = asyncHandler(async (req: Request, res: Response)
 
   const whereClause: Record<string, unknown> = {
     userId,
-    event: {
+    session: {
       status: {
         in: ['upcoming', 'ongoing']
       }
@@ -176,15 +176,15 @@ export const getUserReminders = asyncHandler(async (req: Request, res: Response)
     whereClause.sent = false;
   }
 
-  const reminders = await prisma.eventReminder.findMany({
+  const reminders = await prisma.sessionReminder.findMany({
     where: whereClause,
     include: {
-      event: {
+      session: {
         select: {
           id: true,
           title: true,
           startTime: true,
-          eventType: true,
+          sessionType: true,
           location: true
         }
       }
@@ -208,7 +208,7 @@ export const deleteReminder = asyncHandler(async (req: Request, res: Response) =
   const userId = req.user!.id;
 
   // Find the reminder and verify ownership
-  const reminder = await prisma.eventReminder.findUnique({
+  const reminder = await prisma.sessionReminder.findUnique({
     where: {
       id: reminderId
     }
@@ -223,7 +223,7 @@ export const deleteReminder = asyncHandler(async (req: Request, res: Response) =
   }
 
   // Delete the reminder
-  await prisma.eventReminder.delete({
+  await prisma.sessionReminder.delete({
     where: {
       id: reminderId
     }
@@ -260,12 +260,12 @@ export const updateReminder = asyncHandler(async (req: Request, res: Response) =
   }
 
   // Find the reminder and verify ownership
-  const reminder = await prisma.eventReminder.findUnique({
+  const reminder = await prisma.sessionReminder.findUnique({
     where: {
       id: reminderId
     },
     include: {
-      event: true
+      session: true
     }
   });
 
@@ -277,16 +277,16 @@ export const updateReminder = asyncHandler(async (req: Request, res: Response) =
     throw new ForbiddenError('You can only update your own reminders');
   }
 
-  // Validate reminder is before event start time
-  if (reminderDate >= new Date(reminder.event.startTime)) {
-    throw new BadRequestError('Reminder time must be before event start time');
+  // Validate reminder is before session start time
+  if (reminderDate >= new Date(reminder.session.startTime)) {
+    throw new BadRequestError('Reminder time must be before session start time');
   }
 
   // Check if a reminder already exists for this new time
-  const existingReminder = await prisma.eventReminder.findUnique({
+  const existingReminder = await prisma.sessionReminder.findUnique({
     where: {
       eventId_userId_remindAt: {
-        eventId: reminder.eventId,
+        sessionId: reminder.sessionId,
         userId,
         remindAt: reminderDate
       }
@@ -297,21 +297,21 @@ export const updateReminder = asyncHandler(async (req: Request, res: Response) =
     throw new BadRequestError('A reminder for this time already exists');
   }
 
-  // Delete old reminder and create new one (due to composite unique constraint on eventId, userId, remindAt)
+  // Delete old reminder and create new one (due to composite unique constraint on sessionId, userId, remindAt)
   // Direct update is not possible when changing remindAt because it's part of the unique constraint
   const [, updatedReminder] = await prisma.$transaction([
-    prisma.eventReminder.delete({
+    prisma.sessionReminder.delete({
       where: { id: reminderId }
     }),
-    prisma.eventReminder.create({
+    prisma.sessionReminder.create({
       data: {
-        eventId: reminder.eventId,
+        sessionId: reminder.sessionId,
         userId,
         remindAt: reminderDate,
         sent: false
       },
       include: {
-        event: {
+        session: {
           select: {
             id: true,
             title: true,

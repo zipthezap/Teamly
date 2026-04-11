@@ -27,7 +27,7 @@ import { recordSearchQuery } from '../services/metricsService';
 import { InviteService } from '../services/inviteService';
 import { groupBan, txGroupBan, txAuditLog } from '../utils/prismaExtended';
 
-// Time constants for event queries
+// Time constants for session queries
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_GROUP_NAME_LENGTH = 100;
@@ -1141,7 +1141,7 @@ export const getPublicGroups = async (req: Request, res: Response) => {
   } else if (sortField === 'most_events') {
     orderBy = { events: { _count: 'desc' } };
   } else if (sortField === 'most_active') {
-    // Most active = most recently updated (proxies for recent event/member activity)
+    // Most active = most recently updated (proxies for recent session/member activity)
     orderBy = [{ updatedAt: 'desc' }, { id: 'desc' }];
   } else {
     orderBy = [{ createdAt: 'desc' }, { id: 'desc' }];
@@ -2396,7 +2396,7 @@ export const deleteGroup = async (req: Request, res: Response) => {
 
 /**
  * Generate or regenerate invite token for a group
- * Similar to event invite token generation
+ * Similar to session invite token generation
  */
 export const generateGroupInviteToken = async (req: Request, res: Response) => {
   const { id } = req.params;

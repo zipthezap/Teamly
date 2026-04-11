@@ -57,12 +57,12 @@ describe('NotificationFactory', () => {
   });
 
   describe('createEventNotifications', () => {
-    it('should create event notifications for multiple users', async () => {
-      const mockCreateMany = vi.mocked(prisma.eventNotification.createMany);
+    it('should create session notifications for multiple users', async () => {
+      const mockCreateMany = vi.mocked(prisma.sessionNotification.createMany);
       mockCreateMany.mockResolvedValue({ count: 3 });
 
       const result = await NotificationFactory.createEventNotifications({
-        eventId: 'event-1',
+        sessionId: 'session-1',
         type: 'join',
         userIds: ['user-1', 'user-2', 'user-3'],
         params: {
@@ -77,17 +77,17 @@ describe('NotificationFactory', () => {
       expect(mockCreateMany).toHaveBeenCalledWith({
         data: expect.arrayContaining([
           expect.objectContaining({
-            eventId: 'event-1',
+            sessionId: 'session-1',
             userId: 'user-1',
             type: 'join'
           }),
           expect.objectContaining({
-            eventId: 'event-1',
+            sessionId: 'session-1',
             userId: 'user-2',
             type: 'join'
           }),
           expect.objectContaining({
-            eventId: 'event-1',
+            sessionId: 'session-1',
             userId: 'user-3',
             type: 'join'
           })
@@ -98,7 +98,7 @@ describe('NotificationFactory', () => {
 
     it('should handle empty user list', async () => {
       const result = await NotificationFactory.createEventNotifications({
-        eventId: 'event-1',
+        sessionId: 'session-1',
         type: 'join',
         userIds: [],
         params: {}
@@ -106,12 +106,12 @@ describe('NotificationFactory', () => {
 
       expect(result.created).toBe(0);
       expect(result.skipped).toBe(0);
-      expect(prisma.eventNotification.createMany).not.toHaveBeenCalled();
+      expect(prisma.sessionNotification.createMany).not.toHaveBeenCalled();
     });
 
     it('should deduplicate notifications within time window', async () => {
-      const mockFindMany = vi.mocked(prisma.eventNotification.findMany);
-      const mockCreateMany = vi.mocked(prisma.eventNotification.createMany);
+      const mockFindMany = vi.mocked(prisma.sessionNotification.findMany);
+      const mockCreateMany = vi.mocked(prisma.sessionNotification.createMany);
 
       // Simulate existing notifications for user-1
       mockFindMany.mockResolvedValue([
@@ -120,7 +120,7 @@ describe('NotificationFactory', () => {
       mockCreateMany.mockResolvedValue({ count: 2 });
 
       const result = await NotificationFactory.createEventNotifications({
-        eventId: 'event-1',
+        sessionId: 'session-1',
         type: 'join',
         userIds: ['user-1', 'user-2', 'user-3'],
         params: {},
@@ -133,7 +133,7 @@ describe('NotificationFactory', () => {
     });
 
     it('should include metadata when provided', async () => {
-      const mockCreateMany = vi.mocked(prisma.eventNotification.createMany);
+      const mockCreateMany = vi.mocked(prisma.sessionNotification.createMany);
       mockCreateMany.mockResolvedValue({ count: 1 });
 
       const metadata = {
@@ -142,7 +142,7 @@ describe('NotificationFactory', () => {
       };
 
       await NotificationFactory.createEventNotifications({
-        eventId: 'event-1',
+        sessionId: 'session-1',
         type: 'late',
         userIds: ['user-1'],
         params: {},
@@ -271,13 +271,13 @@ describe('NotificationFactory', () => {
 
   describe('error handling', () => {
     it('should handle creation errors gracefully', async () => {
-      const mockCreateMany = vi.mocked(prisma.eventNotification.createMany);
+      const mockCreateMany = vi.mocked(prisma.sessionNotification.createMany);
       const error = new Error('Database error');
       mockCreateMany.mockRejectedValue(error);
 
       await expect(
         NotificationFactory.createEventNotifications({
-          eventId: 'event-1',
+          sessionId: 'session-1',
           type: 'join',
           userIds: ['user-1'],
           params: {}
@@ -297,7 +297,7 @@ describe('NotificationFactory', () => {
 
       const result = await NotificationFactory.createEventNotifications(
         {
-          eventId: 'event-1',
+          sessionId: 'session-1',
           type: 'join',
           userIds: ['user-1'],
           params: {}
@@ -307,7 +307,7 @@ describe('NotificationFactory', () => {
 
       expect(result.created).toBe(1);
       expect(mockTx.eventNotification.createMany).toHaveBeenCalled();
-      expect(prisma.eventNotification.createMany).not.toHaveBeenCalled();
+      expect(prisma.sessionNotification.createMany).not.toHaveBeenCalled();
     });
   });
 });

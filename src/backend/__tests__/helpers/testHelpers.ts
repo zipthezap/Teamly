@@ -17,7 +17,7 @@ export const mockPrisma = {
     delete: vi.fn(),
     deleteMany: vi.fn(),
   },
-  event: {
+  session: {
     findUnique: vi.fn(),
     findMany: vi.fn(),
     create: vi.fn(),
@@ -69,12 +69,12 @@ export const mockUser = {
 };
 
 /**
- * Mock event data for testing
+ * Mock session data for testing
  */
 export const mockEvent = {
-  id: 'test-event-id-123',
+  id: 'test-session-id-123',
   name: 'Test Event',
-  description: 'Test event description',
+  description: 'Test session description',
   location: 'Test Location',
   date: new Date('2024-12-31'),
   creatorId: 'test-user-id-123',

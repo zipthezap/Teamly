@@ -11,8 +11,11 @@ export * from './user.types';
 // Group types
 export * from './group.types';
 
-// Event types
-export * from './event.types';
+// Session types
+export * from './session.types';
+
+// League types
+export * from './league.types';
 
 // Notification types
 export * from './notification.types';

@@ -48,7 +48,7 @@ const InviteLinkCard: React.FC<InviteLinkCardProps> = ({
   const [generating, setGenerating] = useState(false);
 
   const inviteUrl = inviteToken 
-    ? `${window.location.origin}/events/join/${inviteToken}` 
+    ? `${window.location.origin}/sessions/join/${inviteToken}` 
     : '';
 
   const handleCopyLink = async () => {

@@ -32,7 +32,7 @@ export interface InviteEmailData {
   resourceId: string;
   resourceName: string;
   resourceDescription?: string;
-  resourceType: 'event' | 'group';
+  resourceType: 'session' | 'group';
   actionUrl: string;
   customMessage?: string; // Optional custom message
   expiresAt?: Date; // Optional expiration date
@@ -46,7 +46,7 @@ export interface BatchInviteResult {
 }
 
 export interface InviteLogEntry {
-  inviterType: 'group' | 'event';
+  inviterType: 'group' | 'session';
   entityId: string;
   inviterId: string;
   inviteeEmail: string;
@@ -84,19 +84,19 @@ export class InviteService {
     const htmlContent = `
       <h2>You've Been Invited!</h2>
       <p>Hi ${escapeHtml(recipientName)},</p>
-      <p>${escapeHtml(inviterName)} has invited you to join ${resourceType === 'event' ? 'an event' : 'a group'}:</p>
+      <p>${escapeHtml(inviterName)} has invited you to join ${resourceType === 'session' ? 'an session' : 'a group'}:</p>
       <h3>${escapeHtml(resourceName)}</h3>
       ${resourceDescription ? `<p>${escapeHtml(resourceDescription)}</p>` : ''}
       ${customMessageHtml}
       ${expirationNotice}
-      <p><a href="${actionUrl}" style="display: inline-block; padding: 12px 24px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px; margin: 16px 0;">View ${resourceType === 'event' ? 'Event' : 'Group'}</a></p>
+      <p><a href="${actionUrl}" style="display: inline-block; padding: 12px 24px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px; margin: 16px 0;">View ${resourceType === 'session' ? 'Event' : 'Group'}</a></p>
       <p>You can accept or decline this invitation from the app.</p>
     `;
     
     try {
       await sendEmailWithQueue(
         recipientEmail,
-        `${resourceType === 'event' ? 'Event' : 'Group'} Invitation: ${resourceName}`,
+        `${resourceType === 'session' ? 'Event' : 'Group'} Invitation: ${resourceName}`,
         htmlContent,
         {
           templateType: `${resourceType}_invitation`,
@@ -366,10 +366,10 @@ export class InviteService {
   static async canUserInvite(
     userId: string,
     resourceId: string,
-    resourceType: 'event' | 'group'
+    resourceType: 'session' | 'group'
   ): Promise<{ allowed: boolean; reason?: string }> {
-    if (resourceType === 'event') {
-      const event = await prisma.event.findUnique({
+    if (resourceType === 'session') {
+      const session = await prisma.session.findUnique({
         where: { id: resourceId },
         include: {
           group: {
@@ -383,18 +383,18 @@ export class InviteService {
         }
       });
 
-      if (!event) {
+      if (!session) {
         return { allowed: false, reason: 'Event not found' };
       }
 
       // Event creator can always invite
-      if (event.creatorId === userId) {
+      if (session.creatorId === userId) {
         return { allowed: true };
       }
 
-      // Group admins and moderators can invite if event is linked to a group
-      if (event.group && event.group.members.length > 0) {
-        const membership = event.group.members[0];
+      // Group admins and moderators can invite if session is linked to a group
+      if (session.group && session.group.members.length > 0) {
+        const membership = session.group.members[0];
         if (membership.role === 'admin' || membership.role === 'moderator') {
           return { allowed: true };
         }
@@ -460,21 +460,21 @@ export class InviteService {
         },
         orderBy: { createdAt: 'desc' }
       }),
-      // Event invitations are tracked via EventParticipant with status 'pending'
-      prisma.eventParticipant.findMany({
+      // Event invitations are tracked via SessionParticipant with status 'pending'
+      prisma.sessionParticipant.findMany({
         where: {
           userId,
           status: 'pending'
         },
         include: {
-          event: {
+          session: {
             select: {
               id: true,
               title: true,
               description: true,
               startTime: true,
               endTime: true,
-              eventType: true,
+              sessionType: true,
               isPublic: true,
               creator: {
                 select: { id: true, name: true }
@@ -482,7 +482,7 @@ export class InviteService {
             }
           }
         },
-        orderBy: { event: { startTime: 'desc' } }
+        orderBy: { session: { startTime: 'desc' } }
       })
     ]);
 
@@ -519,7 +519,7 @@ export class InviteService {
    * Revoke a pending invitation
    */
   static async revokeInvitation(
-    resourceType: 'group' | 'event',
+    resourceType: 'group' | 'session',
     resourceId: string,
     inviteeEmail: string,
     revokerId: string
@@ -575,9 +575,9 @@ export class InviteService {
           return { success: false, error: 'User not found' };
         }
 
-        const deletedParticipant = await prisma.eventParticipant.deleteMany({
+        const deletedParticipant = await prisma.sessionParticipant.deleteMany({
           where: {
-            eventId: resourceId,
+            sessionId: resourceId,
             userId: user.id,
             status: 'pending'
           }
@@ -590,7 +590,7 @@ export class InviteService {
         // Update invite log
         await prisma.inviteLog.updateMany({
           where: {
-            inviterType: 'event',
+            inviterType: 'session',
             entityId: resourceId,
             inviteeEmail: inviteeEmail,
             status: 'sent'
@@ -663,7 +663,7 @@ export class InviteService {
    * Get invite analytics for a resource
    */
   static async getInviteAnalytics(
-    resourceType: 'group' | 'event',
+    resourceType: 'group' | 'session',
     resourceId: string,
     options: { from?: Date; to?: Date } = {}
   ): Promise<{
@@ -769,7 +769,7 @@ export class InviteService {
    * Generate time-limited invite token
    */
   static async generateInviteToken(
-    resourceType: 'group' | 'event',
+    resourceType: 'group' | 'session',
     resourceId: string,
     expiresInDays: number = 30
   ): Promise<{ success: boolean; token?: string; expiresAt?: Date; error?: string }> {
@@ -788,7 +788,7 @@ export class InviteService {
           }
         });
       } else {
-        await prisma.event.update({
+        await prisma.session.update({
           where: { id: resourceId },
           data: {
             inviteToken: token,
@@ -812,7 +812,7 @@ export class InviteService {
    * Validate invite token is not expired
    */
   static async validateInviteToken(
-    resourceType: 'group' | 'event',
+    resourceType: 'group' | 'session',
     token: string
   ): Promise<{ valid: boolean; resourceId?: string; error?: string }> {
     try {
@@ -844,7 +844,7 @@ export class InviteService {
 
         return { valid: true, resourceId: group.id };
       } else {
-        const event = await prisma.event.findUnique({
+        const session = await prisma.session.findUnique({
           where: { inviteToken: token },
           select: { 
             id: true,
@@ -853,21 +853,21 @@ export class InviteService {
           }
         });
 
-        if (!event) {
-          logger.warn('Invalid event invite token attempted', 'InviteService');
+        if (!session) {
+          logger.warn('Invalid session invite token attempted', 'InviteService');
           return { valid: false, error: 'Invalid invite link' };
         }
 
-        if (event.inviteTokenExpiresAt && event.inviteTokenExpiresAt < now) {
-          logger.info('Expired event invite token used', 'InviteService', { 
-            eventId: event.id,
-            eventTitle: event.title,
-            expiresAt: event.inviteTokenExpiresAt 
+        if (session.inviteTokenExpiresAt && session.inviteTokenExpiresAt < now) {
+          logger.info('Expired session invite token used', 'InviteService', { 
+            sessionId: session.id,
+            eventTitle: session.title,
+            expiresAt: session.inviteTokenExpiresAt 
           });
           return { valid: false, error: 'This invite link has expired' };
         }
 
-        return { valid: true, resourceId: event.id };
+        return { valid: true, resourceId: session.id };
       }
     } catch (error) {
       logger.error('Failed to validate invite token', 'InviteService', { error, resourceType });

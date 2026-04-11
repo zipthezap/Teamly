@@ -58,7 +58,7 @@ const NotificationsPopover: React.FC = () => {
 
     // Navigate based on notification type
     if (notif.notificationType === 'event' && notif.event?.id) {
-      navigate(`/events/${notif.event.id}`);
+      navigate(`/sessions/${notif.event.id}`);
     } else if (notif.notificationType === 'group' && notif.group?.id) {
       navigate(`/groups/${notif.group.id}`);
     } else if (notif.notificationType === 'teamup') {

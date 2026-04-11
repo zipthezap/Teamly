@@ -57,13 +57,13 @@ export const mockUser = {
 };
 
 /**
- * Mock event data for testing
+ * Mock session data for testing
  */
 export const mockEvent = {
-  id: 'test-event-id',
+  id: 'test-session-id',
   title: 'Test Event',
-  description: 'Test event description',
-  eventType: 'soccer',
+  description: 'Test session description',
+  sessionType: 'soccer',
   location: 'Test Location',
   latitude: 40.7128,
   longitude: -74.0060,
