@@ -329,7 +329,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
                   Tab(text: 'Chat'),
                 ],
               ),
-              const Divider(height: 1, color: AppThemeTokens.darkBorder),
+              Divider(height: 1, color: AppThemeTokens.border(context)),
             ],
           ),
         ),
@@ -574,7 +574,7 @@ class _OverviewTab extends ConsumerWidget {
         icon: Icons.calendar_today_outlined,
         label: 'Created',
         value: DateFormat.yMMMd().format(group.createdAt),
-        iconColor: AppThemeTokens.darkTextSecondary,
+        iconColor: AppThemeTokens.textSecondary(context),
       ),
     ];
 
@@ -585,9 +585,9 @@ class _OverviewTab extends ConsumerWidget {
         Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            gradient: AppThemeTokens.heroGradient,
+            gradient: AppThemeTokens.heroGrad(context),
             borderRadius: BorderRadius.circular(AppThemeTokens.radiusLg),
-            border: Border.all(color: AppThemeTokens.darkBorder),
+            border: Border.all(color: AppThemeTokens.border(context)),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(AppThemeTokens.radiusLg),
@@ -647,10 +647,10 @@ class _OverviewTab extends ConsumerWidget {
                               children: [
                                 Text(
                                   group.name,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.bold,
-                                    color: AppThemeTokens.darkText,
+                                    color: AppThemeTokens.text(context),
                                   ),
                                 ),
                                 if (group.description != null &&
@@ -658,9 +658,9 @@ class _OverviewTab extends ConsumerWidget {
                                   const SizedBox(height: 4),
                                   Text(
                                     group.description!,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 13,
-                                      color: AppThemeTokens.darkTextSecondary,
+                                      color: AppThemeTokens.textSecondary(context),
                                     ),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
@@ -712,9 +712,9 @@ class _OverviewTab extends ConsumerWidget {
         const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(
-            color: AppThemeTokens.darkCard,
+            color: AppThemeTokens.card(context),
             borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-            border: Border.all(color: AppThemeTokens.darkBorder),
+            border: Border.all(color: AppThemeTokens.border(context)),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -723,8 +723,8 @@ class _OverviewTab extends ConsumerWidget {
                 for (int i = 0; i < detailRows.length; i++) ...[
                   detailRows[i],
                   if (i < detailRows.length - 1)
-                    const Divider(
-                        height: 1, color: AppThemeTokens.darkBorderSubtle),
+                    Divider(
+                        height: 1, color: AppThemeTokens.borderSubtle(context)),
                 ],
               ],
             ),
@@ -811,15 +811,15 @@ class _OverviewTab extends ConsumerWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppThemeTokens.darkCard,
+              color: AppThemeTokens.card(context),
               borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-              border: Border.all(color: AppThemeTokens.darkBorder),
+              border: Border.all(color: AppThemeTokens.border(context)),
             ),
             child: Text(
               group.description!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: AppThemeTokens.darkTextSecondary,
+                color: AppThemeTokens.textSecondary(context),
                 height: 1.5,
               ),
             ),
@@ -986,12 +986,12 @@ class _ActionButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: primary
                 ? AppThemeTokens.primary500.withValues(alpha: 0.12)
-                : AppThemeTokens.darkCard,
+                : AppThemeTokens.card(context),
             borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
             border: Border.all(
               color: primary
                   ? AppThemeTokens.primary500.withValues(alpha: 0.4)
-                  : AppThemeTokens.darkBorder,
+                  : AppThemeTokens.border(context),
             ),
           ),
           child: Row(
@@ -1002,7 +1002,7 @@ class _ActionButton extends StatelessWidget {
                 size: 16,
                 color: primary
                     ? AppThemeTokens.primary400
-                    : AppThemeTokens.darkTextSecondary,
+                    : AppThemeTokens.textSecondary(context),
               ),
               const SizedBox(width: 6),
               Text(
@@ -1012,7 +1012,7 @@ class _ActionButton extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                   color: primary
                       ? AppThemeTokens.primary400
-                      : AppThemeTokens.darkTextSecondary,
+                      : AppThemeTokens.textSecondary(context),
                 ),
               ),
             ],
@@ -1065,11 +1065,11 @@ class _MembersTab extends ConsumerWidget {
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                         child: Container(
                           decoration: BoxDecoration(
-                            color: AppThemeTokens.darkCard,
+                            color: AppThemeTokens.card(context),
                             borderRadius:
                                 BorderRadius.circular(AppThemeTokens.radiusMd),
                             border:
-                                Border.all(color: AppThemeTokens.darkBorder),
+                                Border.all(color: AppThemeTokens.border(context)),
                           ),
                           child: Padding(
                             padding: const EdgeInsets.all(12),
@@ -1086,18 +1086,18 @@ class _MembersTab extends ConsumerWidget {
                                     children: [
                                       Text(
                                         req.userName,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.w600,
-                                          color: AppThemeTokens.darkText,
+                                          color: AppThemeTokens.text(context),
                                         ),
                                       ),
                                       if (req.userEmail != null)
                                         Text(
                                           req.userEmail!,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 12,
                                             color: AppThemeTokens
-                                                .darkTextSecondary,
+                                                .textSecondary(context),
                                           ),
                                         ),
                                     ],
@@ -1121,9 +1121,9 @@ class _MembersTab extends ConsumerWidget {
                           ),
                         ),
                       )),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
-                    child: Divider(color: AppThemeTokens.darkBorder),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    child: Divider(color: AppThemeTokens.border(context)),
                   ),
                 ],
               );
@@ -1145,9 +1145,9 @@ class _MembersTab extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Container(
               decoration: BoxDecoration(
-                color: AppThemeTokens.darkCard,
+                color: AppThemeTokens.card(context),
                 borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-                border: Border.all(color: AppThemeTokens.darkBorder),
+                border: Border.all(color: AppThemeTokens.border(context)),
               ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -1164,16 +1164,16 @@ class _MembersTab extends ConsumerWidget {
                         children: [
                           Text(
                             member.name,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              color: AppThemeTokens.darkText,
+                              color: AppThemeTokens.text(context),
                             ),
                           ),
                           Text(
                             member.email,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: AppThemeTokens.darkTextSecondary,
+                              color: AppThemeTokens.textSecondary(context),
                             ),
                           ),
                         ],
@@ -1444,11 +1444,11 @@ class _EventsTab extends ConsumerWidget {
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 10),
                         decoration: BoxDecoration(
-                          color: AppThemeTokens.darkCard,
+                          color: AppThemeTokens.card(ctx),
                           borderRadius:
                               BorderRadius.circular(AppThemeTokens.radiusMd),
                           border:
-                              Border.all(color: AppThemeTokens.darkBorder),
+                              Border.all(color: AppThemeTokens.border(ctx)),
                         ),
                         child: Row(
                           children: [
@@ -1459,7 +1459,7 @@ class _EventsTab extends ConsumerWidget {
                                   const EdgeInsets.symmetric(vertical: 18),
                               decoration: BoxDecoration(
                                 color: isPast
-                                    ? AppThemeTokens.darkCardElevated
+                                    ? AppThemeTokens.cardElevated(ctx)
                                     : AppThemeTokens.primaryGlow,
                                 borderRadius: const BorderRadius.only(
                                   topLeft: Radius.circular(
@@ -1467,9 +1467,9 @@ class _EventsTab extends ConsumerWidget {
                                   bottomLeft: Radius.circular(
                                       AppThemeTokens.radiusMd),
                                 ),
-                                border: const Border(
+                                border: Border(
                                   right: BorderSide(
-                                      color: AppThemeTokens.darkBorder),
+                                      color: AppThemeTokens.border(ctx)),
                                 ),
                               ),
                               child: Column(
@@ -1485,7 +1485,7 @@ class _EventsTab extends ConsumerWidget {
                                       fontWeight: FontWeight.w700,
                                       letterSpacing: 0.5,
                                       color: isPast
-                                          ? AppThemeTokens.darkTextMuted
+                                          ? AppThemeTokens.textMuted(ctx)
                                           : AppThemeTokens.primary400,
                                     ),
                                   ),
@@ -1495,7 +1495,7 @@ class _EventsTab extends ConsumerWidget {
                                       fontWeight: FontWeight.bold,
                                       fontSize: 20,
                                       color: isPast
-                                          ? AppThemeTokens.darkTextSecondary
+                                          ? AppThemeTokens.textSecondary(ctx)
                                           : AppThemeTokens.primary400,
                                     ),
                                   ),
@@ -1507,9 +1507,9 @@ class _EventsTab extends ConsumerWidget {
                                       fontSize: 8,
                                       letterSpacing: 0.3,
                                       color: isPast
-                                          ? AppThemeTokens.darkTextMuted
+                                          ? AppThemeTokens.textMuted(ctx)
                                           : AppThemeTokens
-                                              .darkTextSecondary,
+                                              .textSecondary(ctx),
                                     ),
                                   ),
                                 ],
@@ -1528,20 +1528,20 @@ class _EventsTab extends ConsumerWidget {
                                       e.title,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontWeight: FontWeight.w600,
                                         fontSize: 14,
-                                        color: AppThemeTokens.darkText,
+                                        color: AppThemeTokens.text(ctx),
                                       ),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
                                       DateFormat('EEE, MMM d · h:mm a')
                                           .format(local),
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 11,
                                         color: AppThemeTokens
-                                            .darkTextSecondary,
+                                            .textSecondary(ctx),
                                       ),
                                     ),
                                     const SizedBox(height: 6),
@@ -1572,11 +1572,11 @@ class _EventsTab extends ConsumerWidget {
                                 ),
                               ),
                             ),
-                            const Padding(
-                              padding: EdgeInsets.only(right: 12),
+                            Padding(
+                              padding: const EdgeInsets.only(right: 12),
                               child: Icon(
                                 Icons.chevron_right,
-                                color: AppThemeTokens.darkTextMuted,
+                                color: AppThemeTokens.textMuted(ctx),
                                 size: 18,
                               ),
                             ),
@@ -1627,22 +1627,22 @@ class _EventBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: AppThemeTokens.darkCardElevated,
+        color: AppThemeTokens.cardElevated(context),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppThemeTokens.darkBorder),
+        border: Border.all(color: AppThemeTokens.border(context)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 12, color: AppThemeTokens.darkTextSecondary),
+            Icon(icon, size: 12, color: AppThemeTokens.textSecondary(context)),
             const SizedBox(width: 4),
           ],
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
-              color: AppThemeTokens.darkTextSecondary,
+              color: AppThemeTokens.textSecondary(context),
             ),
           ),
         ],
@@ -1713,10 +1713,10 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
             ),
             data: (messages) {
               if (messages.isEmpty) {
-                return const Center(
+                return Center(
                   child: Text('No messages yet. Be the first!',
                       style:
-                          TextStyle(color: AppThemeTokens.darkTextSecondary)),
+                          TextStyle(color: AppThemeTokens.textSecondary(context))),
                 );
               }
               return RefreshIndicator(
@@ -1757,14 +1757,14 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
                                       style: theme.textTheme.labelSmall
                                           ?.copyWith(
                                               color: AppThemeTokens
-                                                  .darkTextSecondary)),
+                                                  .textSecondary(ctx))),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 12, vertical: 8),
                                   decoration: BoxDecoration(
                                     color: isMe
                                         ? theme.colorScheme.primary
-                                        : AppThemeTokens.darkCardElevated,
+                                        : AppThemeTokens.cardElevated(ctx),
                                     borderRadius: BorderRadius.only(
                                       topLeft: const Radius.circular(16),
                                       topRight: const Radius.circular(16),
@@ -1778,13 +1778,13 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
                                       style: TextStyle(
                                           color: isMe
                                               ? Colors.white
-                                              : AppThemeTokens.darkText)),
+                                              : AppThemeTokens.text(ctx))),
                                 ),
                                 Text(
                                   DateFormat('h:mm a')
                                       .format(msg.createdAt.toLocal()),
                                   style: theme.textTheme.labelSmall?.copyWith(
-                                      color: AppThemeTokens.darkTextSecondary),
+                                      color: AppThemeTokens.textSecondary(ctx)),
                                 ),
                               ],
                             ),
@@ -1801,10 +1801,10 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
         Container(
           padding: EdgeInsets.fromLTRB(
               12, 8, 12, MediaQuery.of(context).viewInsets.bottom + 8),
-          decoration: const BoxDecoration(
-            color: AppThemeTokens.darkCard,
+          decoration: BoxDecoration(
+            color: AppThemeTokens.card(context),
             border: Border(
-                top: BorderSide(color: AppThemeTokens.darkBorder)),
+                top: BorderSide(color: AppThemeTokens.border(context))),
           ),
           child: Row(
             children: [
@@ -1894,9 +1894,9 @@ class _InfoChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppThemeTokens.darkCardElevated,
+        color: AppThemeTokens.cardElevated(context),
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
-        border: Border.all(color: AppThemeTokens.darkBorder),
+        border: Border.all(color: AppThemeTokens.border(context)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1905,9 +1905,9 @@ class _InfoChip extends StatelessWidget {
           const SizedBox(width: 5),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
-              color: AppThemeTokens.darkTextSecondary,
+              color: AppThemeTokens.textSecondary(context),
             ),
           ),
         ],

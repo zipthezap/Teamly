@@ -53,6 +53,9 @@ class AppThemeTokens {
   static Color border(BuildContext context) =>
       _isDark(context) ? darkBorder : lightBorder;
 
+  static Color borderSubtle(BuildContext context) =>
+      _isDark(context) ? darkBorderSubtle : lightBorderSubtle;
+
   static Color card(BuildContext context) =>
       _isDark(context) ? darkCard : lightCard;
 
