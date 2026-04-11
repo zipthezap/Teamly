@@ -1549,9 +1549,9 @@ class _EventsTab extends ConsumerWidget {
                                       spacing: 6,
                                       runSpacing: 4,
                                       children: [
-                                        if (e.eventType != null)
+                                        if (e.sessionType != null)
                                           _EventBadge(
-                                              label: e.eventType!),
+                                              label: e.sessionType!),
                                         _EventBadge(
                                           label: e.isPublic
                                               ? 'Public'

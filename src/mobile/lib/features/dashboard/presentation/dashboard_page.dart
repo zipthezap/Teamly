@@ -4,13 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../features/auth/state/auth_notifier.dart';
-import '../../../features/sessions/state/sessions_notifier.dart';
-import '../../../features/groups/state/groups_notifier.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/models/dashboard_model.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/mobile_shell.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../../../shared/widgets/user_avatar.dart';
+import '../state/dashboard_notifier.dart';
 
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
@@ -25,9 +25,7 @@ class DashboardPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authNotifierProvider);
-    final groupsAsync = ref.watch(groupsNotifierProvider);
-    final eventsAsync = ref.watch(sessionsNotifierProvider);
-    final theme = Theme.of(context);
+    final dashboardAsync = ref.watch(dashboardNotifierProvider);
 
     final user = authState.user;
 
@@ -44,199 +42,197 @@ class DashboardPage extends ConsumerWidget {
         ),
       ],
       child: RefreshIndicator(
-        onRefresh: () async {
-          await Future.wait([
-            ref.read(groupsNotifierProvider.notifier).reload(),
-            ref.read(sessionsNotifierProvider.notifier).reload(),
-          ]);
-        },
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            // ── Hero welcome card ──────────────────────────────────────────
-            if (user != null) _HeroCard(user: user, greeting: _greeting()),
-
-            // ── Stat pills ─────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _StatPill(
-                      label: 'Groups',
-                      value: groupsAsync.maybeWhen(
-                        data: (g) => '${g.length}',
-                        orElse: () => '—',
-                      ),
-                      icon: Icons.groups_2_rounded,
-                      color: AppThemeTokens.primary500,
-                      onTap: () => context.go('/groups'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _StatPill(
-                      label: 'Events',
-                      value: eventsAsync.maybeWhen(
-                        data: (e) => '${e.length}',
-                        orElse: () => '—',
-                      ),
-                      icon: Icons.event_rounded,
-                      color: const Color(0xFF7C4DFF),
-                      onTap: () => context.go('/sessions'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _StatPill(
-                      label: 'Upcoming',
-                      value: eventsAsync.maybeWhen(
-                        data: (e) => '${e.where((ev) => ev.startTime.isAfter(DateTime.now())).length}',
-                        orElse: () => '—',
-                      ),
-                      icon: Icons.upcoming_rounded,
-                      color: const Color(0xFF00BCD4),
-                      onTap: () => context.go('/sessions'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // ── Upcoming events ────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
-              child: UiSectionTitle(
-                'Upcoming Events',
-                trailingLabel: 'See all',
-                onTrailingTap: () => context.go('/sessions'),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            eventsAsync.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (e, _) => ErrorDisplay(message: e.toString()),
-              data: (events) {
-                final upcoming = events
-                    .where((e) => e.startTime.isAfter(DateTime.now()))
-                    .take(5)
-                    .toList();
-
-                if (upcoming.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _NoEventsCard(
-                      onCreateTap: () => context.push('/events/new'),
-                    ),
-                  );
-                }
-
-                return Column(
-                  children: upcoming.map((event) {
-                    return Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                      child: _EventCard(event: event),
-                    );
-                  }).toList(),
-                );
-              },
-            ),
-
-            const SizedBox(height: 24),
-
-            // ── My groups ──────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-              child: UiSectionTitle(
-                'My Groups',
-                trailingLabel: 'See all',
-                onTrailingTap: () => context.go('/groups'),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            groupsAsync.when(
-              loading: () => const SizedBox(height: 40),
-              error: (_, __) => const SizedBox.shrink(),
-              data: (groups) {
-                if (groups.isEmpty) return const SizedBox.shrink();
-                return SizedBox(
-                  height: 88,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: groups.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemBuilder: (ctx, i) => _GroupChip(
-                      group: groups[i],
-                      onTap: () => context.push('/groups/${groups[i].id}'),
-                    ),
-                  ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 24),
-
-            // ── Quick actions ──────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  UiSectionTitle('Quick Actions'),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _ActionTile(
-                          icon: Icons.add_circle_rounded,
-                          label: 'New Event',
-                          color: AppThemeTokens.primary500,
-                          onTap: () => context.push('/events/new'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _ActionTile(
-                          icon: Icons.group_add_rounded,
-                          label: 'New Group',
-                          color: const Color(0xFF7C4DFF),
-                          onTap: () => context.push('/groups/new'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _ActionTile(
-                          icon: Icons.emoji_events_rounded,
-                          label: 'Tournaments',
-                          color: const Color(0xFFFF9800),
-                          onTap: () => context.push('/tournaments'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _ActionTile(
-                          icon: Icons.explore_rounded,
-                          label: 'Discover',
-                          color: const Color(0xFF00BCD4),
-                          onTap: () => context.go('/discover'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 32),
-          ],
+        onRefresh: () =>
+            ref.read(dashboardNotifierProvider.notifier).reload(),
+        child: dashboardAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => ErrorDisplay(
+            message: e.toString(),
+            onRetry: () =>
+                ref.read(dashboardNotifierProvider.notifier).reload(),
+          ),
+          data: (dashboard) => _DashboardContent(
+            user: user,
+            greeting: _greeting(),
+            dashboard: dashboard,
+          ),
         ),
       ),
+    );
+  }
+}
+
+// ── Main content (rendered when dashboard data is loaded) ─────────────────────
+
+class _DashboardContent extends StatelessWidget {
+  const _DashboardContent({
+    required this.user,
+    required this.greeting,
+    required this.dashboard,
+  });
+
+  final dynamic user;
+  final String greeting;
+  final DashboardModel dashboard;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        // ── Hero welcome card ────────────────────────────────────────────
+        if (user != null) _HeroCard(user: user, greeting: greeting),
+
+        // ── Stat pills ───────────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: _StatPill(
+                  label: 'Groups',
+                  value: '${dashboard.stats.groupCount}',
+                  icon: Icons.groups_2_rounded,
+                  color: AppThemeTokens.primary500,
+                  onTap: () => context.go('/groups'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _StatPill(
+                  label: 'Sessions',
+                  value: '${dashboard.stats.totalSessions}',
+                  icon: Icons.event_rounded,
+                  color: const Color(0xFF7C4DFF),
+                  onTap: () => context.go('/sessions'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _StatPill(
+                  label: 'Upcoming',
+                  value: '${dashboard.stats.upcomingCount}',
+                  icon: Icons.upcoming_rounded,
+                  color: const Color(0xFF00BCD4),
+                  onTap: () => context.go('/sessions'),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ── Upcoming events ──────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+          child: UiSectionTitle(
+            'Upcoming Events',
+            trailingLabel: 'See all',
+            onTrailingTap: () => context.go('/sessions'),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        if (dashboard.upcomingSessions.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _NoEventsCard(
+              onCreateTap: () => context.push('/sessions/new'),
+            ),
+          )
+        else
+          ...dashboard.upcomingSessions.map(
+            (event) => Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: _EventCard(event: event),
+            ),
+          ),
+
+        const SizedBox(height: 24),
+
+        // ── My groups ────────────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+          child: UiSectionTitle(
+            'My Groups',
+            trailingLabel: 'See all',
+            onTrailingTap: () => context.go('/groups'),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        if (dashboard.recentGroups.isNotEmpty)
+          SizedBox(
+            height: 88,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: dashboard.recentGroups.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (ctx, i) {
+                final g = dashboard.recentGroups[i];
+                return _DashboardGroupChip(
+                  group: g,
+                  onTap: () => context.push('/groups/${g.id}'),
+                );
+              },
+            ),
+          ),
+
+        const SizedBox(height: 24),
+
+        // ── Quick actions ────────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              UiSectionTitle('Quick Actions'),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _ActionTile(
+                      icon: Icons.add_circle_rounded,
+                      label: 'New Event',
+                      color: AppThemeTokens.primary500,
+                      onTap: () => context.push('/sessions/new'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _ActionTile(
+                      icon: Icons.group_add_rounded,
+                      label: 'New Group',
+                      color: const Color(0xFF7C4DFF),
+                      onTap: () => context.push('/groups/new'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _ActionTile(
+                      icon: Icons.emoji_events_rounded,
+                      label: 'Tournaments',
+                      color: const Color(0xFFFF9800),
+                      onTap: () => context.push('/tournaments'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _ActionTile(
+                      icon: Icons.explore_rounded,
+                      label: 'Discover',
+                      color: const Color(0xFF00BCD4),
+                      onTap: () => context.go('/discover'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 32),
+      ],
     );
   }
 }
@@ -467,7 +463,7 @@ class _EventCard extends StatelessWidget {
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
       child: InkWell(
-        onTap: () => context.push('/events/${event.id}'),
+        onTap: () => context.push('/sessions/${event.id}'),
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
         child: Container(
           decoration: BoxDecoration(
@@ -664,11 +660,11 @@ class _NoEventsCard extends StatelessWidget {
   }
 }
 
-// ── Group chip ────────────────────────────────────────────────────────────────
+// ── Group chip (typed for DashboardGroupModel) ────────────────────────────────
 
-class _GroupChip extends StatelessWidget {
-  const _GroupChip({required this.group, required this.onTap});
-  final dynamic group;
+class _DashboardGroupChip extends StatelessWidget {
+  const _DashboardGroupChip({required this.group, required this.onTap});
+  final DashboardGroupModel group;
   final VoidCallback onTap;
 
   @override
@@ -682,13 +678,13 @@ class _GroupChip extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             UserAvatar(
-              name: group.name as String,
-              imageUrl: group.profilePicture as String?,
+              name: group.name,
+              imageUrl: group.profilePicture,
               radius: 26,
             ),
             const SizedBox(height: 6),
             Text(
-              group.name as String,
+              group.name,
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,

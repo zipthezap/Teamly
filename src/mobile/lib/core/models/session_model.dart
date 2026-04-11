@@ -151,7 +151,7 @@ class SessionModel extends Equatable {
   final SessionCreatorModel creator;
   final SessionGroupRef group;
   final String? description;
-  final String? eventType;
+  final String? sessionType;
   final String? location;
   final String? locationName;
   final String? city;
@@ -219,7 +219,7 @@ class SessionModel extends Equatable {
 
   @override
   List<Object?> get props =>
-      [id, title, startTime, endTime, isPublic, creator, group, eventType, status, archived, maxPlayers];
+      [id, title, startTime, endTime, isPublic, creator, group, sessionType, status, archived, maxPlayers];
 }
 
 class ActivityEntryModel extends Equatable {

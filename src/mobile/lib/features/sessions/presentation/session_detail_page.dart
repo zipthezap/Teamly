@@ -467,9 +467,9 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
                                 spacing: 6,
                                 runSpacing: 6,
                                 children: [
-                                  if (event.eventType != null)
+                                  if (event.sessionType != null)
                                     UiStatusBadge(
-                                      label: sportTypeLabel(event.eventType),
+                                      label: sportTypeLabel(event.sessionType),
                                       status: UiStatusType.info,
                                       dot: true,
                                     ),

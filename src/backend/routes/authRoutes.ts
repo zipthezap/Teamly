@@ -67,6 +67,9 @@ router.get(
 router.post('/verify-email', distributedEmailVerificationLimiter, noCache, asyncHandler(authController.verifyEmail));
 router.post('/resend-verification', distributedEmailVerificationLimiter, noCache, asyncHandler(authController.resendVerificationEmail));
 
+// Dashboard aggregate endpoint – single round-trip for mobile home screen
+router.get('/me/dashboard', authMiddleware, etagMiddleware({ weak: true }), asyncHandler(authController.getDashboard));
+
 // Profile management
 // ETag enables 304 Not Modified responses for bandwidth optimization without HTTP caching
 // No Cache-Control max-age to avoid stale data
