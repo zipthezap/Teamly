@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
+import '../../../shared/widgets/teamly_logo.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../state/auth_notifier.dart';
 
@@ -184,22 +185,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // Logo
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        gradient: AppThemeTokens.primaryGradient,
-                        borderRadius: BorderRadius.circular(AppThemeTokens.radiusLg),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppThemeTokens.primary500.withValues(alpha: 0.4),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(Icons.groups_rounded, size: 44, color: Colors.white),
-                    ),
+                    const TeamlyLogo(size: 80, withShadow: true),
                     const SizedBox(height: 20),
                     const Text(
                       'Teamly',

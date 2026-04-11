@@ -186,7 +186,7 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
     setState(() => _joining = true);
     try {
       await ref.read(groupRepositoryProvider).requestJoinGroup(group.id);
-      ref.read(groupsNotifierProvider.notifier).load();
+      ref.read(groupsNotifierProvider.notifier).reload();
       ref.invalidate(myJoinRequestsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

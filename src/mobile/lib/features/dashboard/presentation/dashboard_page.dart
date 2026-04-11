@@ -26,7 +26,7 @@ class DashboardPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authNotifierProvider);
     final groupsAsync = ref.watch(groupsNotifierProvider);
-    final eventsAsync = ref.watch(eventsNotifierProvider);
+    final eventsAsync = ref.watch(sessionsNotifierProvider);
     final theme = Theme.of(context);
 
     final user = authState.user;
@@ -46,8 +46,8 @@ class DashboardPage extends ConsumerWidget {
       child: RefreshIndicator(
         onRefresh: () async {
           await Future.wait([
-            ref.read(groupsNotifierProvider.notifier).load(),
-            ref.read(eventsNotifierProvider.notifier).load(),
+            ref.read(groupsNotifierProvider.notifier).reload(),
+            ref.read(sessionsNotifierProvider.notifier).reload(),
           ]);
         },
         child: ListView(

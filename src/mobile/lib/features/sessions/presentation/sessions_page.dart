@@ -30,14 +30,14 @@ class _SessionsPageState extends ConsumerState<SessionsPage>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(sessionsNotifierProvider.notifier).load();
+      ref.read(sessionsNotifierProvider.notifier).reload();
     });
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      ref.read(sessionsNotifierProvider.notifier).load();
+      ref.read(sessionsNotifierProvider.notifier).reload();
     }
   }
 
@@ -90,7 +90,7 @@ class _SessionsPageState extends ConsumerState<SessionsPage>
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(
           message: e.toString(),
-          onRetry: () => ref.read(sessionsNotifierProvider.notifier).load(),
+          onRetry: () => ref.read(sessionsNotifierProvider.notifier).reload(),
         ),
         data: (events) {
           final now = DateTime.now();
@@ -135,7 +135,7 @@ class _SessionsPageState extends ConsumerState<SessionsPage>
 
           return RefreshIndicator(
             onRefresh: () =>
-                ref.read(sessionsNotifierProvider.notifier).load(),
+                ref.read(sessionsNotifierProvider.notifier).reload(),
             child: ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
               itemCount: filteredEvents.length + 1,

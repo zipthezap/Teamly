@@ -292,7 +292,7 @@ class _GroupInviteLandingPageState
     });
     try {
       await ref.read(groupRepositoryProvider).joinGroupByInvite(widget.groupId);
-      ref.read(groupsNotifierProvider.notifier).load();
+      ref.read(groupsNotifierProvider.notifier).reload();
       setState(() => _done = true);
     } catch (e) {
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
@@ -361,6 +361,9 @@ class _SessionInviteLandingPageState extends State<_SessionInviteLandingPage> {
   bool _done = false;
   String? _error;
   String? _eventId;
+  // alias used by the landing page body
+  String? get _sessionId => _eventId;
+  set _sessionId(String? v) => _eventId = v;
   bool _joinedAsGuest = false;
   // True only when the event was resolved and the user is unauthenticated,
   // meaning they should provide a guest name to join.

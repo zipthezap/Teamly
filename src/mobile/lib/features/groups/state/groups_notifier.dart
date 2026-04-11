@@ -9,23 +9,27 @@ import '../domain/group_repository.dart';
 // Groups list
 // ---------------------------------------------------------------------------
 
-class GroupsNotifier extends StateNotifier<AsyncValue<List<GroupModel>>> {
-  GroupsNotifier(this._repo) : super(const AsyncValue.loading()) {
-    load();
+/// Riverpod 2.x [AsyncNotifier] for the authenticated user's group list.
+///
+/// Replaces the deprecated `StateNotifier<AsyncValue<T>>` pattern.
+/// Consumers watch [groupsNotifierProvider] and receive [AsyncValue<List<GroupModel>>].
+class GroupsNotifier extends AsyncNotifier<List<GroupModel>> {
+  @override
+  Future<List<GroupModel>> build() {
+    return ref.watch(groupRepositoryProvider).getGroups();
   }
 
-  final GroupRepository _repo;
-
-  Future<void> load() async {
+  /// Imperatively reload the group list (e.g. after creating / leaving a group).
+  Future<void> reload() async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => _repo.getGroups());
+    state = await AsyncValue.guard(
+      () => ref.read(groupRepositoryProvider).getGroups(),
+    );
   }
 }
 
 final groupsNotifierProvider =
-    StateNotifierProvider<GroupsNotifier, AsyncValue<List<GroupModel>>>((ref) {
-  return GroupsNotifier(ref.watch(groupRepositoryProvider));
-});
+    AsyncNotifierProvider<GroupsNotifier, List<GroupModel>>(GroupsNotifier.new);
 
 // ---------------------------------------------------------------------------
 // Single group detail
@@ -48,34 +52,32 @@ final joinRequestsProvider =
 // Group chat messages
 // ---------------------------------------------------------------------------
 
-class ChatNotifier extends StateNotifier<AsyncValue<List<ChatMessageModel>>> {
-  ChatNotifier(this._repo, this._groupId) : super(const AsyncValue.loading()) {
-    load();
+/// Riverpod 2.x [FamilyAsyncNotifier] for chat messages in a group.
+///
+/// The family argument [arg] is the groupId.
+class ChatNotifier extends FamilyAsyncNotifier<List<ChatMessageModel>, String> {
+  @override
+  Future<List<ChatMessageModel>> build(String groupId) {
+    return ref.watch(groupRepositoryProvider).getChatMessages(groupId);
   }
 
-  final GroupRepository _repo;
-  final String _groupId;
-
-  Future<void> load() async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => _repo.getChatMessages(_groupId));
-  }
-
+  /// Reload messages from the server.
   Future<void> refresh() async {
-    state = await AsyncValue.guard(() => _repo.getChatMessages(_groupId));
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => ref.read(groupRepositoryProvider).getChatMessages(arg),
+    );
   }
 
+  /// Send a message then refresh the list.
   Future<void> send(String content) async {
-    await _repo.sendChatMessage(_groupId, content);
+    await ref.read(groupRepositoryProvider).sendChatMessage(arg, content);
     await refresh();
   }
 }
 
-final chatNotifierProvider = StateNotifierProvider.family<ChatNotifier,
-    AsyncValue<List<ChatMessageModel>>, String>(
-  (ref, groupId) =>
-      ChatNotifier(ref.watch(groupRepositoryProvider), groupId),
-);
+final chatNotifierProvider = AsyncNotifierProvider.family<ChatNotifier,
+    List<ChatMessageModel>, String>(ChatNotifier.new);
 
 // ---------------------------------------------------------------------------
 // Public groups discovery
@@ -103,3 +105,4 @@ final myJoinRequestsProvider =
     FutureProvider<List<UserJoinRequestModel>>((ref) async {
   return ref.watch(groupRepositoryProvider).getMyJoinRequests();
 });
+

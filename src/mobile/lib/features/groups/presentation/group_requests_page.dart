@@ -86,7 +86,7 @@ class _InvitationsTabState extends ConsumerState<_InvitationsTab> {
           .respondToInvitation(inv.groupId, inv.id, action);
       ref.invalidate(userInvitationsProvider);
       if (action == 'accept') {
-        ref.read(groupsNotifierProvider.notifier).load();
+        ref.read(groupsNotifierProvider.notifier).reload();
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -445,7 +445,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
         if (ok == true) {
           try {
             await ref.read(groupRepositoryProvider).deleteGroup(widget.groupId);
-            ref.read(groupsNotifierProvider.notifier).load();
+            ref.read(groupsNotifierProvider.notifier).reload();
             if (mounted) context.pop();
           } on Exception catch (e) {
             if (mounted) {
@@ -495,7 +495,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
     try {
       await ref.read(groupRepositoryProvider).leaveGroup(widget.groupId);
       ref.invalidate(groupDetailProvider(widget.groupId));
-      ref.read(groupsNotifierProvider.notifier).load();
+      ref.read(groupsNotifierProvider.notifier).reload();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -1,13 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/league_model.dart';
-import '../../../core/network/api_client.dart';
 import '../data/league_repository_impl.dart';
 import '../domain/league_repository.dart';
 
-final leagueRepositoryProvider = Provider<LeagueRepository>((ref) {
-  return LeagueRepositoryImpl(ref.watch(apiClientProvider));
-});
+export '../data/league_repository_impl.dart' show leagueRepositoryProvider;
 
 final leaguesNotifierProvider =
     AsyncNotifierProvider<LeaguesNotifier, List<LeagueModel>>(LeaguesNotifier.new);
@@ -39,4 +36,10 @@ class LeaguesNotifier extends AsyncNotifier<List<LeagueModel>> {
 final leagueDetailProvider =
     FutureProvider.family<LeagueModel, String>((ref, leagueId) async {
   return ref.watch(leagueRepositoryProvider).getLeagueById(leagueId);
+});
+
+final leagueStandingsProvider =
+    FutureProvider.family<List<LeagueStandingModel>, String>(
+        (ref, leagueId) async {
+  return ref.watch(leagueRepositoryProvider).getStandings(leagueId);
 });
