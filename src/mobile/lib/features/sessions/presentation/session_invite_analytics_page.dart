@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/error/error_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -34,7 +35,7 @@ class SessionInviteAnalyticsPage extends ConsumerWidget {
       body: analyticsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(
-          message: e.toString(),
+          message: extractErrorMessage(e),
           onRetry: () =>
               ref.invalidate(eventInviteAnalyticsProvider(eventId)),
         ),

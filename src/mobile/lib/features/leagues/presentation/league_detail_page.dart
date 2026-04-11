@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/error/error_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -49,7 +50,7 @@ class _LeagueDetailPageState extends ConsumerState<LeagueDetailPage>
         error: (err, _) => Scaffold(
           appBar: AppBar(title: const Text('League')),
           body: ErrorDisplay(
-            message: err.toString(),
+            message: extractErrorMessage(err),
             onRetry: () => ref.invalidate(leagueDetailProvider(widget.leagueId)),
           ),
         ),
@@ -366,7 +367,7 @@ class _StandingsTab extends ConsumerWidget {
     return standingsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => ErrorDisplay(
-        message: e.toString(),
+        message: extractErrorMessage(e),
         onRetry: () => ref.invalidate(leagueStandingsProvider(leagueId)),
       ),
       data: (standings) {

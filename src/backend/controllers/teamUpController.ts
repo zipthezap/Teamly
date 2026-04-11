@@ -10,124 +10,119 @@ import { parseCoordinates, parseFloatStrict } from '../utils/validation';
 // Create a TeamUp request
 export const createTeamUpRequest = async (req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store');
-  try {
-    const {
-      title,
-      description,
-      sportType,
-      location,
-      latitude,
-      longitude,
-      locationName,
-      city,
-      country,
-      dateTime,
-      playersNeeded,
-      skillLevel
-    } = req.body;
+  const {
+    title,
+    description,
+    sportType,
+    location,
+    latitude,
+    longitude,
+    locationName,
+    city,
+    country,
+    dateTime,
+    playersNeeded,
+    skillLevel
+  } = req.body;
 
-    if (!title || !sportType || !dateTime) {
-      throw new BadRequestError('title, sportType, and dateTime are required');
-    }
-
-    // Sanitize text inputs
-    const sanitized = teamUpService.sanitizeTeamUpData({
-      title,
-      description,
-      sportType,
-      location,
-      locationName,
-      city,
-      country,
-      skillLevel
-    });
-
-    // Validate sanitized required fields are not empty
-    if (!sanitized.title || !sanitized.sportType) {
-      throw new BadRequestError('Title and sport type cannot be empty or whitespace-only');
-    }
-
-    // Validate dateTime
-    const eventDate = new Date(dateTime);
-    if (isNaN(eventDate.getTime())) {
-      throw new BadRequestError('Invalid dateTime format');
-    }
-
-    // Check if dateTime is in the future
-    if (eventDate <= new Date()) {
-      throw new BadRequestError('dateTime must be in the future');
-    }
-
-    // Validate playersNeeded if provided
-    const players = playersNeeded ? parseInt(playersNeeded) : 1;
-    if (players < 1) {
-      throw new BadRequestError('playersNeeded must be at least 1');
-    }
-
-    // Set expiration to 1 hour after the session time
-    const expiresAt = new Date(eventDate.getTime() + 60 * 60 * 1000);
-
-    // Parse coordinates once if provided
-    const coordinates = latitude && longitude ? parseCoordinates(latitude, longitude) : null;
-
-    const teamUpRequest = await prisma.teamUpRequest.create({
-      data: {
-        creatorId: req.user!.id,
-        title: sanitized.title!,
-        description: sanitized.description,
-        sportType: sanitized.sportType!,
-        location: sanitized.location,
-        latitude: coordinates?.lat ?? null,
-        longitude: coordinates?.lon ?? null,
-        locationName: sanitized.locationName,
-        city: sanitized.city,
-        country: sanitized.country,
-        dateTime: eventDate,
-        playersNeeded: players,
-        skillLevel: sanitized.skillLevel,
-        status: 'open',
-        expiresAt
-      },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            city: true,
-            country: true,
-            profilePicture: true
-          }
-        },
-        _count: {
-          select: { responses: true }
-        }
-      }
-    });
-
-    const enrichedRequest = locationService.enrichWithLocationInfo(teamUpRequest);
-
-    // Notify users about the new TeamUp request in their area (async, don't wait)
-    teamUpNotificationService.notifyUsersAboutNewTeamUp({
-      id: teamUpRequest.id,
-      title: teamUpRequest.title,
-      sportType: teamUpRequest.sportType,
-      location: teamUpRequest.location,
-      latitude: teamUpRequest.latitude,
-      longitude: teamUpRequest.longitude,
-      city: teamUpRequest.city,
-      country: teamUpRequest.country,
-      dateTime: teamUpRequest.dateTime,
-      creatorId: teamUpRequest.creatorId,
-    }).catch(error => {
-      logger.error('Failed to send TeamUp notifications (non-blocking)', 'teamUpController', { error });
-    });
-
-    res.status(201).json(enrichedRequest);
-  } catch (error) {
-    logger.error('Create TeamUp request error:', 'teamUpController', { error });
-    return res.status(500).json({ error: 'Failed to create TeamUp request' });
+  if (!title || !sportType || !dateTime) {
+    throw new BadRequestError('title, sportType, and dateTime are required');
   }
+
+  // Sanitize text inputs
+  const sanitized = teamUpService.sanitizeTeamUpData({
+    title,
+    description,
+    sportType,
+    location,
+    locationName,
+    city,
+    country,
+    skillLevel
+  });
+
+  // Validate sanitized required fields are not empty
+  if (!sanitized.title || !sanitized.sportType) {
+    throw new BadRequestError('Title and sport type cannot be empty or whitespace-only');
+  }
+
+  // Validate dateTime
+  const eventDate = new Date(dateTime);
+  if (isNaN(eventDate.getTime())) {
+    throw new BadRequestError('Invalid dateTime format');
+  }
+
+  // Check if dateTime is in the future
+  if (eventDate <= new Date()) {
+    throw new BadRequestError('dateTime must be in the future');
+  }
+
+  // Validate playersNeeded if provided
+  const players = playersNeeded ? parseInt(playersNeeded) : 1;
+  if (players < 1) {
+    throw new BadRequestError('playersNeeded must be at least 1');
+  }
+
+  // Set expiration to 1 hour after the session time
+  const expiresAt = new Date(eventDate.getTime() + 60 * 60 * 1000);
+
+  // Parse coordinates once if provided
+  const coordinates = latitude && longitude ? parseCoordinates(latitude, longitude) : null;
+
+  const teamUpRequest = await prisma.teamUpRequest.create({
+    data: {
+      creatorId: req.user!.id,
+      title: sanitized.title!,
+      description: sanitized.description,
+      sportType: sanitized.sportType!,
+      location: sanitized.location,
+      latitude: coordinates?.lat ?? null,
+      longitude: coordinates?.lon ?? null,
+      locationName: sanitized.locationName,
+      city: sanitized.city,
+      country: sanitized.country,
+      dateTime: eventDate,
+      playersNeeded: players,
+      skillLevel: sanitized.skillLevel,
+      status: 'open',
+      expiresAt
+    },
+    include: {
+      creator: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          city: true,
+          country: true,
+          profilePicture: true
+        }
+      },
+      _count: {
+        select: { responses: true }
+      }
+    }
+  });
+
+  const enrichedRequest = locationService.enrichWithLocationInfo(teamUpRequest);
+
+  // Notify users about the new TeamUp request in their area (async, don't wait)
+  teamUpNotificationService.notifyUsersAboutNewTeamUp({
+    id: teamUpRequest.id,
+    title: teamUpRequest.title,
+    sportType: teamUpRequest.sportType,
+    location: teamUpRequest.location,
+    latitude: teamUpRequest.latitude,
+    longitude: teamUpRequest.longitude,
+    city: teamUpRequest.city,
+    country: teamUpRequest.country,
+    dateTime: teamUpRequest.dateTime,
+    creatorId: teamUpRequest.creatorId,
+  }).catch(error => {
+    logger.error('Failed to send TeamUp notifications (non-blocking)', 'teamUpController', { error });
+  });
+
+  res.status(201).json(enrichedRequest);
 };
 
 // Get all TeamUp requests (browse with filters)

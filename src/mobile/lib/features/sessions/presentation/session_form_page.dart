@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../../core/error/app_exception.dart';
+import '../../../core/error/error_utils.dart';
 import '../../../core/models/session_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../features/groups/state/groups_notifier.dart';
@@ -95,11 +95,6 @@ class _SessionFormPageState extends ConsumerState<SessionFormPage> {
     return 'football';
   }
 
-  String _extractMsg(Exception e) {
-    if (e is AppException) return e.message;
-    return e.toString().replaceFirst('Exception: ', '');
-  }
-
   Future<void> _pickDateTime({required bool isStart}) async {
     final date = await showDatePicker(
       context: context,
@@ -183,7 +178,7 @@ class _SessionFormPageState extends ConsumerState<SessionFormPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_extractMsg(e)),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );

@@ -2,31 +2,32 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/teamup_model.dart';
 import '../data/teamup_repository_impl.dart';
-import '../domain/teamup_repository.dart';
 
 // ---------------------------------------------------------------------------
 // Browse requests
 // ---------------------------------------------------------------------------
 
-class TeamUpNotifier
-    extends StateNotifier<AsyncValue<List<TeamUpRequestModel>>> {
-  TeamUpNotifier(this._repo) : super(const AsyncValue.loading()) {
-    load();
-  }
-
-  final TeamUpRepository _repo;
+class TeamUpNotifier extends AsyncNotifier<List<TeamUpRequestModel>> {
   String? _sportType;
   String? _requestType;
+
+  @override
+  Future<List<TeamUpRequestModel>> build() {
+    return ref.watch(teamUpRepositoryProvider).getRequests(
+          sportType: _sportType,
+          requestType: _requestType,
+        );
+  }
 
   Future<void> load({String? sportType, String? requestType}) async {
     _sportType = sportType;
     _requestType = requestType;
-    state = const AsyncValue.loading();
+    state = const AsyncLoading();
     state = await AsyncValue.guard(
-      () => _repo.getRequests(
-        sportType: _sportType,
-        requestType: _requestType,
-      ),
+      () => ref.read(teamUpRepositoryProvider).getRequests(
+            sportType: _sportType,
+            requestType: _requestType,
+          ),
     );
   }
 
@@ -35,9 +36,8 @@ class TeamUpNotifier
 }
 
 final teamUpNotifierProvider =
-    StateNotifierProvider<TeamUpNotifier, AsyncValue<List<TeamUpRequestModel>>>(
-  (ref) => TeamUpNotifier(ref.watch(teamUpRepositoryProvider)),
-);
+    AsyncNotifierProvider<TeamUpNotifier, List<TeamUpRequestModel>>(
+        TeamUpNotifier.new);
 
 // ---------------------------------------------------------------------------
 // My requests

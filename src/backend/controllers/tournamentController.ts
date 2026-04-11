@@ -1861,13 +1861,15 @@ export const removeTeamFromPool = async (req: Request, res: Response) => {
           }
         });
 
-        // Update each entry's position
-        for (const entry of remainingEntries) {
-          await prisma.tournamentPoolWaitlist.update({
-            where: { id: entry.id },
-            data: { position: entry.position - 1 }
-          });
-        }
+        // Update positions for remaining waitlist entries in parallel
+        await Promise.all(
+          remainingEntries.map(entry =>
+            prisma.tournamentPoolWaitlist.update({
+              where: { id: entry.id },
+              data: { position: entry.position - 1 }
+            })
+          )
+        );
 
         logger.info('Team promoted from waitlist', 'TournamentController', {
           tournamentId: id,
@@ -1951,13 +1953,15 @@ export const removeTeamFromWaitlist = async (req: Request, res: Response) => {
       }
     });
 
-    // Update each entry's position
-    for (const entry of remainingEntries) {
-      await prisma.tournamentPoolWaitlist.update({
-        where: { id: entry.id },
-        data: { position: entry.position - 1 }
-      });
-    }
+    // Update positions for remaining entries in parallel
+    await Promise.all(
+      remainingEntries.map(entry =>
+        prisma.tournamentPoolWaitlist.update({
+          where: { id: entry.id },
+          data: { position: entry.position - 1 }
+        })
+      )
+    );
 
     logger.info('Team removed from waitlist', 'TournamentController', {
       tournamentId: id,

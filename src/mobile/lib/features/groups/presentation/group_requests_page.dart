@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/error/app_exception.dart';
+import '../../../core/error/error_utils.dart';
 import '../../../core/models/group_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/error_display.dart';
@@ -73,11 +73,6 @@ class _InvitationsTab extends ConsumerStatefulWidget {
 class _InvitationsTabState extends ConsumerState<_InvitationsTab> {
   final Map<String, bool> _responding = {};
 
-  String _extractMsg(Exception e) {
-    if (e is AppException) return e.message;
-    return e.toString().replaceFirst('Exception: ', '');
-  }
-
   Future<void> _respond(GroupInvitationModel inv, String action) async {
     setState(() => _responding[inv.id] = true);
     try {
@@ -106,7 +101,7 @@ class _InvitationsTabState extends ConsumerState<_InvitationsTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_extractMsg(e)),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -123,7 +118,7 @@ class _InvitationsTabState extends ConsumerState<_InvitationsTab> {
     return invitationsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => ErrorDisplay(
-        message: e.toString(),
+        message: extractErrorMessage(e),
         onRetry: () => ref.invalidate(userInvitationsProvider),
       ),
       data: (invitations) {
@@ -172,11 +167,6 @@ class _MyRequestsTab extends ConsumerStatefulWidget {
 class _MyRequestsTabState extends ConsumerState<_MyRequestsTab> {
   final Map<String, bool> _cancelling = {};
 
-  String _extractMsg(Exception e) {
-    if (e is AppException) return e.message;
-    return e.toString().replaceFirst('Exception: ', '');
-  }
-
   Future<void> _cancel(UserJoinRequestModel req) async {
     setState(() => _cancelling[req.id] = true);
     try {
@@ -193,7 +183,7 @@ class _MyRequestsTabState extends ConsumerState<_MyRequestsTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_extractMsg(e)),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -210,7 +200,7 @@ class _MyRequestsTabState extends ConsumerState<_MyRequestsTab> {
     return requestsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => ErrorDisplay(
-        message: e.toString(),
+        message: extractErrorMessage(e),
         onRetry: () => ref.invalidate(myJoinRequestsProvider),
       ),
       data: (requests) {

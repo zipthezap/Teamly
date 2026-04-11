@@ -2,7 +2,7 @@ import prisma from '../config/database';
 import { sanitizeUserInput } from '../utils/validation';
 import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/asyncHandler';
-import { BadRequestError, NotFoundError } from '../utils/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '../utils/errors';
 
 // Get notifications for the current user (session and group notifications)
 export const getNotifications = asyncHandler(async (req: Request, res: Response) => {
@@ -63,7 +63,16 @@ export const unmarkLate = asyncHandler(async (req: Request, res: Response) => {
 export const createMessage = asyncHandler(async (req: Request, res: Response) => {
   const { groupId, content } = req.body;
   const userId = req.user!.id;
-  
+
+  // Verify the sender is a member of the group
+  const membership = await prisma.groupMember.findUnique({
+    where: { userId_groupId: { userId, groupId } },
+    select: { id: true }
+  });
+  if (!membership) {
+    throw new ForbiddenError('You are not a member of this group');
+  }
+
   // Sanitize content to prevent XSS
   const sanitizedContent = sanitizeUserInput(content);
   
@@ -76,12 +85,32 @@ export const createMessage = asyncHandler(async (req: Request, res: Response) =>
 
 export const getMessages = asyncHandler(async (req: Request, res: Response) => {
   const { groupId } = req.params;
+  const userId = req.user!.id;
+
+  // Verify caller is a member of the group before exposing chat history
+  const membership = await prisma.groupMember.findUnique({
+    where: { userId_groupId: { userId, groupId } },
+    select: { id: true }
+  });
+  if (!membership) {
+    throw new ForbiddenError('You are not a member of this group');
+  }
+
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+  const before = req.query.before as string | undefined; // cursor: createdAt ISO string
+
   const messages = await prisma.groupMessage.findMany({
-    where: { groupId },
-    orderBy: { createdAt: 'asc' },
+    where: {
+      groupId,
+      ...(before ? { createdAt: { lt: new Date(before) } } : {})
+    },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
     include: { user: { select: { id: true, name: true, profilePicture: true, email: true } } }
   });
-  res.json(messages);
+
+  // Return in ascending order so the client can append directly
+  res.json(messages.reverse());
 });
 
 // Event Attendance (late)

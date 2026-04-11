@@ -21,6 +21,7 @@ class PushNotificationsController {
 
   StreamSubscription<String>? _tokenRefreshSub;
   StreamSubscription<RemoteMessage>? _foregroundSub;
+  StreamSubscription<RemoteMessage>? _openedAppSub;
 
   bool _initialized = false;
 
@@ -39,7 +40,7 @@ class PushNotificationsController {
       await syncBadgeCount();
     });
 
-    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+    _openedAppSub = FirebaseMessaging.onMessageOpenedApp.listen((message) {
       final path = _routePathFromMessage(message);
       if (path != null) {
         _ref.read(_pendingPushPathProvider.notifier).state = path;
@@ -70,6 +71,7 @@ class PushNotificationsController {
   void dispose() {
     _tokenRefreshSub?.cancel();
     _foregroundSub?.cancel();
+    _openedAppSub?.cancel();
   }
 
   Future<void> registerCurrentToken() async {

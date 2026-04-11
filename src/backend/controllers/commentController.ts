@@ -204,11 +204,16 @@ export const getEventComments = asyncHandler(async (req: Request, res: Response)
   }
 
   // Get top-level comments with their replies
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+  const offset = parseInt(req.query.offset as string) || 0;
+
   const comments = await prisma.comment.findMany({
     where: {
       sessionId,
       parentId: null
     },
+    take: limit,
+    skip: offset,
     include: {
       user: {
         select: { id: true, name: true, email: true }

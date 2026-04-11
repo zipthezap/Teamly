@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../core/error/error_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/error/app_exception.dart';
 import '../../../core/models/extended_models.dart';
 import '../../../core/network/api_client.dart';
 import '../../../shared/widgets/error_display.dart';
@@ -35,7 +35,7 @@ class OAuthConnectionsPage extends ConsumerWidget {
       body: statusAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(
-          message: e.toString(),
+          message: extractErrorMessage(e),
           onRetry: () => ref.invalidate(_oauthStatusProvider),
         ),
         data: (status) => ListView(
@@ -168,12 +168,9 @@ class OAuthConnectionsPage extends ConsumerWidget {
       }
     } on Exception catch (e) {
       if (context.mounted) {
-        final msg = e is AppException
-            ? e.message
-            : e.toString().replaceFirst('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(msg),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );

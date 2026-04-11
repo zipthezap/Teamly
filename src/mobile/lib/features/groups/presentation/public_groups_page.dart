@@ -3,7 +3,7 @@ import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/error/app_exception.dart';
+import '../../../core/error/error_utils.dart';
 import '../../../core/models/group_model.dart';
 import '../../../features/auth/state/auth_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
@@ -31,11 +31,6 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
     super.dispose();
   }
 
-  String _extractMsg(Exception e) {
-    if (e is AppException) return e.message;
-    return e.toString().replaceFirst('Exception: ', '');
-  }
-
   Future<void> _apply(GroupModel group) async {
     setState(() => _requesting[group.id] = true);
     try {
@@ -51,7 +46,7 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_extractMsg(e)),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -111,8 +106,7 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
       body: publicGroupsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(
-          message: e.toString(),
-          onRetry: () => ref.invalidate(publicGroupsProvider),
+          message: extractErrorMessage(e),
         ),
         data: (groups) {
           final nonMemberGroups = currentUserId == null

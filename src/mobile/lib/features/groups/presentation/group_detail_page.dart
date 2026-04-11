@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/error/app_exception.dart';
+import '../../../core/error/error_utils.dart';
 import '../../../core/models/group_model.dart';
 import '../../../core/utils/maps_utils.dart';
 import '../../../features/auth/state/auth_notifier.dart';
@@ -22,11 +22,6 @@ import 'group_invite_analytics_page.dart';
 // ---------------------------------------------------------------------------
 // Shared group-action helpers (top-level to avoid duplication)
 // ---------------------------------------------------------------------------
-
-String _groupExtractMsg(Exception e) {
-  if (e is AppException) return e.message;
-  return e.toString().replaceFirst('Exception: ', '');
-}
 
 Future<void> _groupShowInviteMemberDialog(
     BuildContext context, WidgetRef ref, String groupId) async {
@@ -67,7 +62,7 @@ Future<void> _groupShowInviteMemberDialog(
       } on Exception catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
+              .showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
         }
       }
     }
@@ -94,7 +89,7 @@ Future<void> _groupPickAndUploadPicture(
   } on Exception catch (e) {
     if (context.mounted) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
+          .showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
     }
   }
 }
@@ -129,7 +124,7 @@ Future<void> _groupDeletePicture(
     } on Exception catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
+            .showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
       }
     }
   }
@@ -337,7 +332,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
       body: groupAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(
-          message: e.toString(),
+          message: extractErrorMessage(e),
           onRetry: () => ref.invalidate(groupDetailProvider(widget.groupId)),
         ),
         data: (group) {
@@ -392,7 +387,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
+            .showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
       }
     }
   }
@@ -450,7 +445,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
           } on Exception catch (e) {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(_groupExtractMsg(e)),
+                  content: Text(extractErrorMessage(e)),
                   backgroundColor: Theme.of(context).colorScheme.error));
             }
           }
@@ -494,7 +489,6 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
 
     try {
       await ref.read(groupRepositoryProvider).leaveGroup(widget.groupId);
-      ref.invalidate(groupDetailProvider(widget.groupId));
       ref.read(groupsNotifierProvider.notifier).reload();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -509,7 +503,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_groupExtractMsg(e)),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -880,7 +874,7 @@ class _JoinCtaState extends ConsumerState<_JoinCta> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_groupExtractMsg(e)),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -1269,7 +1263,7 @@ class _MembersTab extends ConsumerWidget {
     } on Exception catch (e) {
       if (ctx.mounted) {
         ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-            content: Text(_groupExtractMsg(e)),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(ctx).colorScheme.error));
       }
     }
@@ -1305,7 +1299,7 @@ class _MembersTab extends ConsumerWidget {
           } on Exception catch (e) {
             if (ctx.mounted) {
               ScaffoldMessenger.of(ctx)
-                  .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
+                  .showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
             }
           }
         }
@@ -1319,7 +1313,7 @@ class _MembersTab extends ConsumerWidget {
         } on Exception catch (e) {
           if (ctx.mounted) {
             ScaffoldMessenger.of(ctx)
-                .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
+                .showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
           }
         }
         break;
@@ -1332,7 +1326,7 @@ class _MembersTab extends ConsumerWidget {
         } on Exception catch (e) {
           if (ctx.mounted) {
             ScaffoldMessenger.of(ctx)
-                .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
+                .showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
           }
         }
         break;
@@ -1345,7 +1339,7 @@ class _MembersTab extends ConsumerWidget {
         } on Exception catch (e) {
           if (ctx.mounted) {
             ScaffoldMessenger.of(ctx)
-                .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
+                .showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
           }
         }
         break;
@@ -1375,7 +1369,7 @@ class _MembersTab extends ConsumerWidget {
           } on Exception catch (e) {
             if (ctx.mounted) {
               ScaffoldMessenger.of(ctx)
-                  .showSnackBar(SnackBar(content: Text(_groupExtractMsg(e))));
+                  .showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
             }
           }
         }
@@ -1408,7 +1402,7 @@ class _EventsTab extends ConsumerWidget {
     return eventsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => ErrorDisplay(
-        message: e.toString(),
+        message: extractErrorMessage(e),
         onRetry: () => ref.invalidate(groupEventsProvider(groupId)),
       ),
       data: (rawEvents) {
@@ -1710,7 +1704,7 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
           child: chatAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => ErrorDisplay(
-              message: e.toString(),
+              message: extractErrorMessage(e),
               onRetry: () => ref
                   .read(chatNotifierProvider(widget.groupId).notifier)
                   .load(),

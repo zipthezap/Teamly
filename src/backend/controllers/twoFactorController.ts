@@ -139,23 +139,23 @@ export const validate2FAToken = async (userId: string, token: string): Promise<{
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { twoFactorSecret: true, twoFactorBackupCodes: true }
+      select: { twoFactorSecret: true }
     });
 
     if (!user.twoFactorSecret) {
       return { valid: false, error: '2FA not configured' };
     }
 
-    // Check if it's a backup code
-    if (user.twoFactorBackupCodes.includes(token.toUpperCase())) {
-      // Remove the used backup code
-      const updatedCodes = user.twoFactorBackupCodes.filter(
-        code => code !== token.toUpperCase()
-      );
-      await prisma.user.update({
-        where: { id: userId },
-        data: { twoFactorBackupCodes: updatedCodes }
-      });
+    // Check if it's a backup code using an atomic array-remove so concurrent
+    // requests cannot consume the same code twice.
+    const upperToken = token.toUpperCase();
+    const affected = await prisma.$executeRaw`
+      UPDATE "User"
+      SET "twoFactorBackupCodes" = array_remove("twoFactorBackupCodes", ${upperToken})
+      WHERE id = ${userId}
+        AND ${upperToken} = ANY("twoFactorBackupCodes")
+    `;
+    if (affected > 0) {
       return { valid: true, usedBackupCode: true };
     }
 

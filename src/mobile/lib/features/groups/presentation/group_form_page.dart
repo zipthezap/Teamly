@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../../core/error/app_exception.dart';
+import '../../../core/error/error_utils.dart';
 import '../../../core/models/group_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/ui_primitives.dart';
@@ -69,11 +69,6 @@ class _GroupFormPageState extends ConsumerState<GroupFormPage> {
     super.dispose();
   }
 
-  String _extractMsg(Exception e) {
-    if (e is AppException) return e.message;
-    return e.toString().replaceFirst('Exception: ', '');
-  }
-
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _saving = true);
@@ -118,7 +113,7 @@ class _GroupFormPageState extends ConsumerState<GroupFormPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_extractMsg(e)),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );

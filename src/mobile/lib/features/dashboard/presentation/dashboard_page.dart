@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/error/error_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -47,7 +48,7 @@ class DashboardPage extends ConsumerWidget {
         child: dashboardAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => ErrorDisplay(
-            message: e.toString(),
+            message: extractErrorMessage(e),
             onRetry: () =>
                 ref.read(dashboardNotifierProvider.notifier).reload(),
           ),

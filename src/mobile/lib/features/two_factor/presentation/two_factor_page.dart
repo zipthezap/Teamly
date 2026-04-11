@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/error/app_exception.dart';
+import '../../../core/error/error_utils.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -36,16 +36,6 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
     super.dispose();
   }
 
-  String _extractMsg(Exception e) {
-    if (e is DioException) {
-      final inner = e.error;
-      if (inner is AppException) return inner.message;
-      return e.message ?? 'Network error';
-    }
-    if (e is AppException) return e.message;
-    return e.toString().replaceFirst('Exception: ', '');
-  }
-
   Future<void> _loadStatus() async {
     setState(() {
       _loading = true;
@@ -63,7 +53,7 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
       });
     } on Exception catch (e) {
       if (!mounted) return;
-      setState(() => _error = _extractMsg(e));
+      setState(() => _error = extractErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -81,7 +71,7 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(_extractMsg(e)),
+          content: Text(extractErrorMessage(e)),
           backgroundColor: Theme.of(context).colorScheme.error,
         ));
         setState(() => _settingUp = false);
@@ -111,7 +101,7 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(_extractMsg(e)),
+          content: Text(extractErrorMessage(e)),
           backgroundColor: Theme.of(context).colorScheme.error,
         ));
       }
@@ -178,7 +168,7 @@ class _TwoFactorPageState extends ConsumerState<TwoFactorPage> {
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(_extractMsg(e)),
+          content: Text(extractErrorMessage(e)),
           backgroundColor: Theme.of(context).colorScheme.error,
         ));
       }

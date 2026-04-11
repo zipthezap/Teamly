@@ -3,6 +3,7 @@ import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/error/error_utils.dart';
 import '../../../core/models/session_request_model.dart';
 import '../../../features/auth/state/auth_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
@@ -31,9 +32,6 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
     _sportCtrl.dispose();
     super.dispose();
   }
-
-  String _extractMsg(Exception e) =>
-      e.toString().replaceFirst('Exception: ', '');
 
   UiStatusType _statusType(String status) {
     switch (status) {
@@ -144,7 +142,7 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
                     if (_requestedDate != null)
                       'requestedDate':
                           _requestedDate!.toIso8601String(),
-                  }, widget.groupId);
+                  });
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -154,7 +152,7 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
                 } on Exception catch (e) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(_extractMsg(e)),
+                      content: Text(extractErrorMessage(e)),
                       backgroundColor:
                           Theme.of(context).colorScheme.error,
                     ));
@@ -242,15 +240,15 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
       body: requestsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(
-          message: e.toString(),
+          message: extractErrorMessage(e),
           onRetry: () => ref
               .read(eventRequestsNotifierProvider(widget.groupId).notifier)
-              .load(widget.groupId),
+              .reload(),
         ),
         data: (requests) => RefreshIndicator(
           onRefresh: () => ref
               .read(eventRequestsNotifierProvider(widget.groupId).notifier)
-              .load(widget.groupId),
+              .reload(),
           child: requests.isEmpty
               ? const UiEmptyState(
                   icon: Icons.event_note_outlined,
@@ -278,12 +276,12 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
                                       .read(eventRequestsNotifierProvider(
                                               widget.groupId)
                                           .notifier)
-                                      .vote(req.id, true, widget.groupId);
+                                      .vote(req.id, true);
                                 } on Exception catch (e) {
                                   if (mounted) {
                                     ScaffoldMessenger.of(context)
                                         .showSnackBar(SnackBar(
-                                      content: Text(_extractMsg(e)),
+                                      content: Text(extractErrorMessage(e)),
                                       backgroundColor: Theme.of(context)
                                           .colorScheme
                                           .error,
@@ -299,12 +297,12 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
                                       .read(eventRequestsNotifierProvider(
                                               widget.groupId)
                                           .notifier)
-                                      .finalize(req.id, widget.groupId);
+                                      .finalize(req.id);
                                 } on Exception catch (e) {
                                   if (mounted) {
                                     ScaffoldMessenger.of(context)
                                         .showSnackBar(SnackBar(
-                                      content: Text(_extractMsg(e)),
+                                      content: Text(extractErrorMessage(e)),
                                       backgroundColor: Theme.of(context)
                                           .colorScheme
                                           .error,
@@ -320,12 +318,12 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
                                       .read(eventRequestsNotifierProvider(
                                               widget.groupId)
                                           .notifier)
-                                      .cancel(req.id, widget.groupId);
+                                      .cancel(req.id);
                                 } on Exception catch (e) {
                                   if (mounted) {
                                     ScaffoldMessenger.of(context)
                                         .showSnackBar(SnackBar(
-                                      content: Text(_extractMsg(e)),
+                                      content: Text(extractErrorMessage(e)),
                                       backgroundColor: Theme.of(context)
                                           .colorScheme
                                           .error,

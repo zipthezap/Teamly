@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:dio/dio.dart';
 
-import '../../../core/error/app_exception.dart';
+import '../../../core/error/error_utils.dart';
 import '../../../core/models/extended_models.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../../../shared/widgets/user_avatar.dart';
@@ -173,10 +173,7 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
           );
       setState(() => _results = results);
     } on Exception catch (e) {
-      final msg = e is AppException
-          ? e.message
-          : e.toString().replaceFirst('Exception: ', '');
-      setState(() => _error = msg);
+      setState(() => _error = extractErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -195,12 +192,9 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
       }
     } on Exception catch (e) {
       if (mounted) {
-        final msg = e is AppException
-            ? e.message
-            : e.toString().replaceFirst('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(msg),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );

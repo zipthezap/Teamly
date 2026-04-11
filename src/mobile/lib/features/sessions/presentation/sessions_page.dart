@@ -1,4 +1,5 @@
 import '../../../core/constants/app_constants.dart';
+import '../../../core/error/error_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,6 +25,7 @@ class _SessionsPageState extends ConsumerState<SessionsPage>
     with WidgetsBindingObserver {
   final _searchCtrl = TextEditingController();
   _EventFilter _filter = _EventFilter.upcoming;
+  DateTime? _lastResumeReload;
 
   @override
   void initState() {
@@ -37,6 +39,14 @@ class _SessionsPageState extends ConsumerState<SessionsPage>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      final now = DateTime.now();
+      // Debounce: skip if we reloaded within the last 5 seconds to avoid
+      // duplicate requests when multiple pages are alive in an IndexedStack.
+      if (_lastResumeReload != null &&
+          now.difference(_lastResumeReload!) < const Duration(seconds: 5)) {
+        return;
+      }
+      _lastResumeReload = now;
       ref.read(sessionsNotifierProvider.notifier).reload();
     }
   }
@@ -88,7 +98,7 @@ class _SessionsPageState extends ConsumerState<SessionsPage>
       child: eventsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(
-          message: e.toString(),
+          message: extractErrorMessage(e),
           onRetry: () => ref.read(sessionsNotifierProvider.notifier).reload(),
         ),
         data: (events) {

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../../core/error/error_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/error/app_exception.dart';
 import '../../../core/models/extended_models.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/network/api_client.dart';
@@ -44,7 +44,7 @@ class ProfilePicturesPage extends ConsumerWidget {
       body: picturesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(
-          message: e.toString(),
+          message: extractErrorMessage(e),
           onRetry: () => ref.invalidate(_profilePicturesProvider),
         ),
         data: (pictures) {
@@ -179,12 +179,9 @@ class ProfilePicturesPage extends ConsumerWidget {
       }
     } on Exception catch (e) {
       if (context.mounted) {
-        final msg = e is AppException
-            ? e.message
-            : e.toString().replaceFirst('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(msg),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
