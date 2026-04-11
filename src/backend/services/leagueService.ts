@@ -19,6 +19,26 @@ export interface CreateLeagueData {
   maxTeams?: number;
 }
 
+const DEFAULT_LEAGUE_PAGE = 1;
+const DEFAULT_LEAGUE_LIMIT = 20;
+const MAX_LEAGUE_LIMIT = 100;
+
+function normalizePositiveInt(
+  value: number | string | undefined,
+  fallback: number,
+  options?: { min?: number; max?: number }
+) {
+  const min = options?.min ?? 1;
+  const max = options?.max ?? Number.MAX_SAFE_INTEGER;
+  const parsed = typeof value === 'string' ? Number.parseInt(value, 10) : value;
+
+  if (!Number.isInteger(parsed) || parsed === undefined || Number.isNaN(parsed)) {
+    return fallback;
+  }
+
+  return Math.min(Math.max(parsed, min), max);
+}
+
 export class LeagueService {
   async createLeague(data: CreateLeagueData, userId: string) {
     const { groupId, sport, startDate, endDate, ...rest } = data;
@@ -38,8 +58,12 @@ export class LeagueService {
     });
   }
 
-  async getLeagues(params: { groupId?: string; status?: string; page?: number; limit?: number }) {
-    const { groupId, status, page = 1, limit = 20 } = params;
+  async getLeagues(params: { groupId?: string; status?: string; page?: number | string; limit?: number | string }) {
+    const { groupId, status } = params;
+    const page = normalizePositiveInt(params.page, DEFAULT_LEAGUE_PAGE);
+    const limit = normalizePositiveInt(params.limit, DEFAULT_LEAGUE_LIMIT, {
+      max: MAX_LEAGUE_LIMIT,
+    });
     const where: any = {};
     if (groupId) where.groupId = groupId;
     if (status) where.status = status;
