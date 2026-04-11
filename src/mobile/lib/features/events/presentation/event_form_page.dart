@@ -221,9 +221,9 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: AppThemeTokens.heroGradient,
+                gradient: AppThemeTokens.heroGrad(context),
                 borderRadius: BorderRadius.circular(AppThemeTokens.radiusLg),
-                border: Border.all(color: AppThemeTokens.darkBorder),
+                border: Border.all(color: AppThemeTokens.border(context)),
               ),
               child: Row(
                 children: [
@@ -244,8 +244,8 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                       children: [
                         Text(
                           _isEditing ? 'Edit Event' : 'New Event',
-                          style: const TextStyle(
-                            color: AppThemeTokens.darkText,
+                          style: TextStyle(
+                            color: AppThemeTokens.text(context),
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                           ),
@@ -254,8 +254,8 @@ class _EventFormPageState extends ConsumerState<EventFormPage> {
                           _isEditing
                               ? 'Update event details below'
                               : 'Fill in the details to create your event',
-                          style: const TextStyle(
-                            color: AppThemeTokens.darkTextSecondary,
+                          style: TextStyle(
+                            color: AppThemeTokens.textSecondary(context),
                             fontSize: 12,
                           ),
                         ),
@@ -505,9 +505,9 @@ class _EventSwitchRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppThemeTokens.darkCard,
+        color: AppThemeTokens.card(context),
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-        border: Border.all(color: AppThemeTokens.darkBorder),
+        border: Border.all(color: AppThemeTokens.border(context)),
       ),
       child: Row(
         children: [
@@ -528,14 +528,14 @@ class _EventSwitchRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
-                        color: AppThemeTokens.darkText)),
+                        color: AppThemeTokens.text(context))),
                 Text(subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12,
-                        color: AppThemeTokens.darkTextSecondary)),
+                        color: AppThemeTokens.textSecondary(context))),
               ],
             ),
           ),
@@ -564,10 +564,10 @@ class _FormSectionTitle extends StatelessWidget {
         const SizedBox(width: 7),
         Text(
           title.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            color: AppThemeTokens.darkTextSecondary,
+            color: AppThemeTokens.textSecondary(context),
             letterSpacing: 1.1,
           ),
         ),
@@ -575,7 +575,7 @@ class _FormSectionTitle extends StatelessWidget {
         Expanded(
           child: Container(
             height: 1,
-            color: AppThemeTokens.darkBorderSubtle,
+            color: AppThemeTokens.borderSubtle(context),
           ),
         ),
       ],

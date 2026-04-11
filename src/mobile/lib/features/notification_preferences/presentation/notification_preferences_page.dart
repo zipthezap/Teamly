@@ -81,9 +81,9 @@ class _NotificationPreferencesPageState
     return Scaffold(
       appBar: AppBar(
         title: const Text('Notification Preferences'),
-        bottom: const PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, color: AppThemeTokens.darkBorder),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(height: 1, color: AppThemeTokens.border(context)),
         ),
       ),
       body: prefsAsync.when(
@@ -108,7 +108,7 @@ class _NotificationPreferencesPageState
                   'Choose which notifications you want to receive.',
                   style: TextStyle(
                     fontSize: 13,
-                    color: AppThemeTokens.darkTextSecondary,
+                    color: AppThemeTokens.textSecondary(context),
                   ),
                 ),
               ),
@@ -120,11 +120,11 @@ class _NotificationPreferencesPageState
                 const SizedBox(height: 8),
                 Container(
                   decoration: BoxDecoration(
-                    color: AppThemeTokens.darkCard,
+                    color: AppThemeTokens.card(context),
                     borderRadius:
                         BorderRadius.circular(AppThemeTokens.radiusMd),
                     border:
-                        Border.all(color: AppThemeTokens.darkBorder),
+                        Border.all(color: AppThemeTokens.border(context)),
                   ),
                   child: Column(
                     children: [
@@ -140,10 +140,10 @@ class _NotificationPreferencesPageState
                               setState(() => _prefs![section.items[i].key] = v),
                         ),
                         if (i < section.items.length - 1)
-                          const Divider(
+                          Divider(
                               height: 1,
                               indent: 60,
-                              color: AppThemeTokens.darkBorder),
+                              color: AppThemeTokens.border(context)),
                       ],
                     ],
                   ),
@@ -245,10 +245,10 @@ class _SectionHeader extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           title.toUpperCase(),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
-            color: AppThemeTokens.darkTextSecondary,
+            color: AppThemeTokens.textSecondary(context),
             letterSpacing: 1.0,
           ),
         ),
@@ -282,13 +282,13 @@ class _ToggleRow extends StatelessWidget {
             decoration: BoxDecoration(
               color: value
                   ? color.withValues(alpha: 0.12)
-                  : AppThemeTokens.darkCardElevated,
+                  : AppThemeTokens.cardElevated(context),
               borderRadius:
                   BorderRadius.circular(AppThemeTokens.radiusSm),
             ),
             child: Icon(
               Icons.notifications_rounded,
-              color: value ? color : AppThemeTokens.darkTextMuted,
+              color: value ? color : AppThemeTokens.textMuted(context),
               size: 17,
             ),
           ),
@@ -303,16 +303,16 @@ class _ToggleRow extends StatelessWidget {
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: value
-                        ? AppThemeTokens.darkText
-                        : AppThemeTokens.darkTextSecondary,
+                        ? AppThemeTokens.text(context)
+                        : AppThemeTokens.textSecondary(context),
                   ),
                 ),
                 if (item.subtitle != null)
                   Text(
                     item.subtitle!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: AppThemeTokens.darkTextMuted,
+                      color: AppThemeTokens.textMuted(context),
                     ),
                   ),
               ],

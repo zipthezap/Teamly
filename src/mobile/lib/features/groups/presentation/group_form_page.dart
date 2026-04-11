@@ -334,9 +334,9 @@ class _SwitchRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppThemeTokens.darkCard,
+        color: AppThemeTokens.card(context),
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-        border: Border.all(color: AppThemeTokens.darkBorder),
+        border: Border.all(color: AppThemeTokens.border(context)),
       ),
       child: Row(
         children: [
@@ -355,14 +355,14 @@ class _SwitchRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
-                        color: AppThemeTokens.darkText)),
+                        color: AppThemeTokens.text(context))),
                 Text(subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12,
-                        color: AppThemeTokens.darkTextSecondary)),
+                        color: AppThemeTokens.textSecondary(context))),
               ],
             ),
           ),
