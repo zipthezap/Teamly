@@ -109,7 +109,7 @@ class _SessionsPageState extends ConsumerState<SessionsPage>
             final haystack = [
               event.title,
               event.group.name,
-              event.eventType,
+              event.sessionType,
               event.locationName,
               event.location,
               event.city,
@@ -344,7 +344,7 @@ class _EventListCard extends StatelessWidget {
   final bool isHosting;
 
   Color _accentColor() {
-    switch (event.eventType as String?) {
+    switch (event.sessionType as String?) {
       case 'football':
       case 'americanFootball':
       case 'rugby':
@@ -472,9 +472,9 @@ class _EventListCard extends StatelessWidget {
                             spacing: 6,
                             runSpacing: 4,
                             children: [
-                              if (event.eventType != null)
+                              if (event.sessionType != null)
                                 _MiniTag(
-                                  label: sportTypeLabel(event.eventType as String?),
+                                  label: sportTypeLabel(event.sessionType as String?),
                                   color: accent,
                                 ),
                               _MiniTag(

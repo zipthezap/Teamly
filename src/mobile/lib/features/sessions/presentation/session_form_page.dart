@@ -67,7 +67,7 @@ class _SessionFormPageState extends ConsumerState<SessionFormPage> {
     _maxPlayersCtrl = TextEditingController(
       text: e?.maxPlayers != null ? '${e!.maxPlayers}' : '',
     );
-    _eventType = _validSportType(e?.eventType);
+    _eventType = _validSportType(e?.sessionType);
     _isPublic = e?.isPublic ?? true;
     if (e != null) {
       _startTime = e.startTime;
