@@ -1,6 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/user_model.dart';
@@ -115,8 +118,120 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     await _disablePushTokenSafely();
+    // Sign out of any active social provider sessions so the next sign-in
+    // shows the account-picker rather than silently reusing cached credentials.
+    try {
+      await GoogleSignIn().signOut();
+    } catch (_) {}
+    try {
+      await FacebookAuth.instance.logOut();
+    } catch (_) {}
     await _repo.logout();
     state = const AuthState.unauthenticated();
+  }
+
+  // -------------------------------------------------------------------------
+  // Social login / register (Google, Facebook, Apple)
+  // -------------------------------------------------------------------------
+
+  /// Authenticate with Google via the native SDK, then exchange the Google
+  /// ID token for a Teamly server JWT.
+  Future<void> loginWithGoogle() async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+      final account = await googleSignIn.signIn();
+      if (account == null) {
+        // User cancelled
+        state = state.copyWith(isLoading: false);
+        return;
+      }
+      final auth = await account.authentication;
+      final idToken = auth.idToken;
+      if (idToken == null) {
+        throw Exception('Google sign-in did not return an ID token');
+      }
+      final user = await _repo.socialLogin(
+        provider: 'google',
+        credentials: {'idToken': idToken},
+      );
+      state = AuthState(status: AuthStatus.authenticated, user: user);
+      await _registerPushTokenSafely();
+    } on Exception catch (e) {
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        isLoading: false,
+        error: _extractMessage(e),
+      );
+    }
+  }
+
+  /// Authenticate with Facebook via the native SDK, then exchange the
+  /// Facebook access token for a Teamly server JWT.
+  Future<void> loginWithFacebook() async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final result = await FacebookAuth.instance.login(permissions: ['email', 'public_profile']);
+      if (result.status == LoginStatus.cancelled) {
+        state = state.copyWith(isLoading: false);
+        return;
+      }
+      if (result.status != LoginStatus.success || result.accessToken == null) {
+        throw Exception('Facebook sign-in failed: ${result.message}');
+      }
+      final user = await _repo.socialLogin(
+        provider: 'facebook',
+        credentials: {'accessToken': result.accessToken!.tokenString},
+      );
+      state = AuthState(status: AuthStatus.authenticated, user: user);
+      await _registerPushTokenSafely();
+    } on Exception catch (e) {
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        isLoading: false,
+        error: _extractMessage(e),
+      );
+    }
+  }
+
+  /// Authenticate with Apple ID (iOS/macOS only), then exchange the Apple
+  /// identity token for a Teamly server JWT.
+  Future<void> loginWithApple() async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+      final Map<String, String> body = {
+        'identityToken': credential.identityToken ?? '',
+      };
+      if (credential.givenName != null) body['givenName'] = credential.givenName!;
+      if (credential.familyName != null) body['familyName'] = credential.familyName!;
+      if (credential.email != null) body['email'] = credential.email!;
+
+      final user = await _repo.socialLogin(provider: 'apple', credentials: body);
+      state = AuthState(status: AuthStatus.authenticated, user: user);
+      await _registerPushTokenSafely();
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        state = state.copyWith(isLoading: false);
+        return;
+      }
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        isLoading: false,
+        error: e.message,
+      );
+    } on Exception catch (e) {
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        isLoading: false,
+        error: _extractMessage(e),
+      );
+    }
   }
 
   /// Called by the profile page after a successful PUT /auth/profile.

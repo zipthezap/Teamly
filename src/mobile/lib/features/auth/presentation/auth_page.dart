@@ -137,6 +137,10 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     final authState = ref.watch(authNotifierProvider);
 
     ref.listen<AuthState>(authNotifierProvider, (_, next) {
+      if (next.isAuthenticated && mounted) {
+        context.go('/dashboard');
+        return;
+      }
       if (next.error != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -297,6 +301,60 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
                     const SizedBox(height: 16),
 
+                    // Social login divider
+                    Row(
+                      children: [
+                        const Expanded(child: Divider(color: AppThemeTokens.darkBorder)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'or continue with',
+                            style: TextStyle(
+                              color: AppThemeTokens.darkTextSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        const Expanded(child: Divider(color: AppThemeTokens.darkBorder)),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Social login buttons
+                    Column(
+                      children: [
+                        _SocialButton(
+                          label: 'Continue with Google',
+                          icon: _GoogleIcon(),
+                          loading: authState.isLoading,
+                          onPressed: authState.isLoading
+                              ? null
+                              : () => ref.read(authNotifierProvider.notifier).loginWithGoogle(),
+                        ),
+                        const SizedBox(height: 10),
+                        _SocialButton(
+                          label: 'Continue with Facebook',
+                          icon: const Icon(Icons.facebook, color: Color(0xFF1877F2), size: 22),
+                          loading: authState.isLoading,
+                          onPressed: authState.isLoading
+                              ? null
+                              : () => ref.read(authNotifierProvider.notifier).loginWithFacebook(),
+                        ),
+                        const SizedBox(height: 10),
+                        _SocialButton(
+                          label: 'Continue with Apple',
+                          icon: const Icon(Icons.apple, color: AppThemeTokens.darkText, size: 22),
+                          loading: authState.isLoading,
+                          onPressed: authState.isLoading
+                              ? null
+                              : () => ref.read(authNotifierProvider.notifier).loginWithApple(),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
                     // Toggle login/register
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -350,4 +408,121 @@ class _AuthPageState extends ConsumerState<AuthPage> {
       ),
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Social login helper widgets
+// ---------------------------------------------------------------------------
+
+class _SocialButton extends StatelessWidget {
+  const _SocialButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.loading = false,
+  });
+
+  final String label;
+  final Widget icon;
+  final VoidCallback? onPressed;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: OutlinedButton(
+        onPressed: loading ? null : onPressed,
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: AppThemeTokens.darkBorder),
+          backgroundColor: AppThemeTokens.darkCard,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+        ),
+        child: loading
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(width: 22, height: 22, child: icon),
+                  const SizedBox(width: 10),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: AppThemeTokens.darkText,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+/// A simple hand-painted Google 'G' logo using [CustomPainter].
+class _GoogleIcon extends StatelessWidget {
+  const _GoogleIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(size: const Size(22, 22), painter: _GoogleLogoPainter());
+  }
+}
+
+class _GoogleLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final r = size.width / 2;
+
+    // Clip to circle
+    canvas.clipPath(Path()..addOval(Rect.fromCircle(center: Offset(cx, cy), radius: r)));
+
+    // White background
+    canvas.drawCircle(Offset(cx, cy), r, Paint()..color = Colors.white);
+
+    // Draw the four colour arcs that make up the Google 'G'
+    const strokeW = 3.5;
+    final rect = Rect.fromCircle(center: Offset(cx, cy), radius: r * 0.68);
+
+    void arc(double startDeg, double sweepDeg, Color color) {
+      final paint = Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeW
+        ..strokeCap = StrokeCap.butt;
+      final startRad = startDeg * 3.14159 / 180;
+      final sweepRad = sweepDeg * 3.14159 / 180;
+      canvas.drawArc(rect, startRad, sweepRad, false, paint);
+    }
+
+    arc(-10, 100, const Color(0xFF4285F4)); // blue  – top-right
+    arc(90, 100, const Color(0xFF34A853));  // green – bottom
+    arc(190, 90, const Color(0xFFFBBC05));  // yellow – bottom-left
+    arc(280, 80, const Color(0xFFEA4335)); // red   – top-left
+
+    // Blue horizontal bar of the 'G'
+    final barPaint = Paint()
+      ..color = const Color(0xFF4285F4)
+      ..strokeWidth = strokeW
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(cx, cy),
+      Offset(cx + r * 0.62, cy),
+      barPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

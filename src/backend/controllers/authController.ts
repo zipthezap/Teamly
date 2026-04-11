@@ -9,7 +9,8 @@
  * - Session management
  * - Profile management (view, update)
  * - Profile picture management (upload, delete, restore)
- * - OAuth integration (Google, Facebook)
+ * - OAuth integration (Google, Facebook, Apple)
+ * - Mobile OAuth token exchange (Google, Facebook, Apple)
  */
 
 import bcrypt from 'bcryptjs';
@@ -23,6 +24,7 @@ import { validateEmail, validateStrongPassword, isRequired, ValidationError, san
 import { BadRequestError, NotFoundError, UnauthorizedError } from '../utils/errors';
 import crypto from 'crypto';
 import { sendEmail } from '../utils/emailService';
+import { verifyGoogleToken, verifyFacebookToken, verifyAppleToken, OAuthProfile } from '../utils/mobileOAuth';
 import path from 'path';
 import { 
   validateImage, 
@@ -1131,4 +1133,123 @@ export const getDashboard = async (req: Request, res: Response): Promise<void> =
       groupCount: groups.length,
     },
   });
+};
+
+// ---------------------------------------------------------------------------
+// Mobile OAuth – shared helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Find or create a user from a verified OAuth profile, then return a token pair.
+ * Works identically whether the user is signing in for the first time (register)
+ * or returning (login).
+ */
+async function handleMobileOAuth(
+  req: Request,
+  res: Response,
+  provider: 'google' | 'facebook' | 'apple',
+  profile: OAuthProfile,
+): Promise<void> {
+  const idField = `${provider}Id` as 'googleId' | 'facebookId' | 'appleId';
+
+  // 1. Look up by provider ID
+  let user = await prisma.user.findUnique({ where: { [idField]: profile.providerId } as never });
+
+  if (!user) {
+    // 2. Look up by email (link accounts)
+    user = await prisma.user.findUnique({ where: { email: profile.email } });
+    if (user) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          [idField]: profile.providerId,
+          emailVerified: true,
+          oauthProfilePicture: profile.picture ?? user.oauthProfilePicture,
+          lastOAuthSync: new Date(),
+        } as never,
+      });
+    } else {
+      // 3. Create new user
+      user = await prisma.user.create({
+        data: {
+          email: profile.email,
+          name: profile.name,
+          [idField]: profile.providerId,
+          authProvider: provider,
+          emailVerified: true,
+          password: null,
+          oauthProfilePicture: profile.picture ?? null,
+          lastOAuthSync: new Date(),
+        } as never,
+      });
+      logger.info(`New user registered via mobile ${provider} OAuth`, 'AuthController', {
+        userId: user.id,
+      });
+    }
+  }
+
+  const deviceInfo = req.headers['user-agent'];
+  const ipAddress = req.ip;
+  const tokens = await generateTokenPair(user.id, deviceInfo, ipAddress);
+
+  res.json({
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      profilePicture: user.profilePicture ?? user.oauthProfilePicture,
+      emailVerified: user.emailVerified,
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Mobile OAuth – per-provider endpoints
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /auth/google/mobile
+ * Body: { idToken: string }
+ */
+export const mobileGoogleLogin = async (req: Request, res: Response): Promise<void> => {
+  const { idToken } = req.body as { idToken?: string };
+  if (!idToken) throw new BadRequestError('idToken is required');
+
+  const profile = await verifyGoogleToken(idToken);
+  await handleMobileOAuth(req, res, 'google', profile);
+};
+
+/**
+ * POST /auth/facebook/mobile
+ * Body: { accessToken: string }
+ */
+export const mobileFacebookLogin = async (req: Request, res: Response): Promise<void> => {
+  const { accessToken } = req.body as { accessToken?: string };
+  if (!accessToken) throw new BadRequestError('accessToken is required');
+
+  const profile = await verifyFacebookToken(accessToken);
+  await handleMobileOAuth(req, res, 'facebook', profile);
+};
+
+/**
+ * POST /auth/apple/mobile
+ * Body: { identityToken: string, givenName?: string, familyName?: string, email?: string }
+ *
+ * Apple only returns name/email in the very first authorisation response.
+ * The mobile app must forward them here when present.
+ */
+export const mobileAppleLogin = async (req: Request, res: Response): Promise<void> => {
+  const { identityToken, givenName, familyName, email } =
+    req.body as {
+      identityToken?: string;
+      givenName?: string;
+      familyName?: string;
+      email?: string;
+    };
+  if (!identityToken) throw new BadRequestError('identityToken is required');
+
+  const profile = await verifyAppleToken(identityToken, givenName, familyName, email);
+  await handleMobileOAuth(req, res, 'apple', profile);
 };

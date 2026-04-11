@@ -8,7 +8,6 @@ import { asyncHandler } from '../middleware/asyncHandler';
 import passport from '../config/passport';
 import { noCache } from '../middleware/cacheControl';
 import { etagMiddleware } from '../middleware/etag';
-
 // Extend session type to include inviteGroupId
 declare module 'express-session' {
   interface SessionData {
@@ -67,6 +66,11 @@ router.get(
 // Email verification
 router.post('/verify-email', distributedEmailVerificationLimiter, noCache, asyncHandler(authController.verifyEmail));
 router.post('/resend-verification', distributedEmailVerificationLimiter, noCache, asyncHandler(authController.resendVerificationEmail));
+
+// Mobile OAuth token exchange (native SDK tokens → server JWT)
+router.post('/google/mobile', distributedAuthLimiter, noCache, asyncHandler(authController.mobileGoogleLogin));
+router.post('/facebook/mobile', distributedAuthLimiter, noCache, asyncHandler(authController.mobileFacebookLogin));
+router.post('/apple/mobile', distributedAuthLimiter, noCache, asyncHandler(authController.mobileAppleLogin));
 
 // Dashboard aggregate endpoint – single round-trip for mobile home screen
 router.get('/me/dashboard', authMiddleware, authenticatedLimiter, etagMiddleware({ weak: true }), asyncHandler(authController.getDashboard));
