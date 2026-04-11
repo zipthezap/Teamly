@@ -63,24 +63,31 @@ class AuthState extends Equatable {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier(this._repo, this._ref) : super(const AuthState.unknown()) {
-    // Build the GoogleSignIn instance with the web client ID so that
-    // authentication.idToken is populated on Android (and optionally iOS).
-    // The serverClientId must match GOOGLE_CLIENT_ID on the backend.
-    // We pass null (not an empty string) when no ID is configured so that
-    // GoogleSignIn skips idToken generation rather than rejecting the empty value.
-    final googleClientId = _ref.read(appConfigProvider).googleClientId;
-    _googleSignIn = GoogleSignIn(
-      scopes: ['email', 'profile'],
-      serverClientId: googleClientId.isNotEmpty ? googleClientId : null,
-    );
     _initAuth();
   }
 
   final AuthRepository _repo;
   final Ref _ref;
 
-  // Reuse a single GoogleSignIn instance to preserve cached credentials.
-  late final GoogleSignIn _googleSignIn;
+  // Lazily initialized on the first Google sign-in attempt so that the
+  // native `init` platform-channel call is never made at app startup.
+  // This avoids a MissingPluginException on platforms where the plugin
+  // has no native implementation (e.g. desktop runners without a keystore).
+  GoogleSignIn? _googleSignIn;
+
+  // Returns the cached GoogleSignIn instance, creating it on first call.
+  // The serverClientId must match GOOGLE_CLIENT_ID on the backend.
+  // We pass null (not an empty string) when no ID is configured so that
+  // GoogleSignIn skips idToken generation rather than rejecting the empty value.
+  GoogleSignIn _getOrCreateGoogleSignIn() {
+    if (_googleSignIn != null) return _googleSignIn!;
+    final googleClientId = _ref.read(appConfigProvider).googleClientId;
+    _googleSignIn = GoogleSignIn(
+      scopes: ['email', 'profile'],
+      serverClientId: googleClientId.isNotEmpty ? googleClientId : null,
+    );
+    return _googleSignIn!;
+  }
 
   Future<void> _initAuth() async {
     try {
@@ -135,7 +142,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     // Sign out of any active social provider sessions so the next sign-in
     // shows the account-picker rather than silently reusing cached credentials.
     try {
-      await _googleSignIn.signOut();
+      await _googleSignIn?.signOut();
     } catch (_) {}
     try {
       await FacebookAuth.instance.logOut();
@@ -153,7 +160,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> loginWithGoogle() async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final account = await _googleSignIn.signIn();
+      final account = await _getOrCreateGoogleSignIn().signIn();
       if (account == null) {
         // User cancelled
         state = state.copyWith(isLoading: false);
