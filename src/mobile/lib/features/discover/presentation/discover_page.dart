@@ -19,7 +19,7 @@ class DiscoverPage extends StatelessWidget {
 
     return MobileShell(
       title: 'Discover',
-      currentIndex: 3,
+      currentIndex: 4,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
