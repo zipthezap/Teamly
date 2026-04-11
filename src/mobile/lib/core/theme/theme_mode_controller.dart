@@ -17,8 +17,9 @@ class ThemeModeController extends StateNotifier<ThemeMode> {
   SharedPreferences? _prefs;
 
   Future<void> _init() async {
-    _prefs = await SharedPreferences.getInstance();
-    final stored = _prefs!.getString(_kThemeModeKey);
+    final prefs = await SharedPreferences.getInstance();
+    _prefs = prefs;
+    final stored = prefs.getString(_kThemeModeKey);
     if (stored == 'dark') {
       state = ThemeMode.dark;
     }
