@@ -11,22 +11,22 @@ final themeModeProvider =
 
 class ThemeModeController extends StateNotifier<ThemeMode> {
   ThemeModeController() : super(ThemeMode.light) {
-    _loadTheme();
+    _init();
   }
 
-  Future<void> _loadTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    final stored = prefs.getString(_kThemeModeKey);
+  SharedPreferences? _prefs;
+
+  Future<void> _init() async {
+    _prefs = await SharedPreferences.getInstance();
+    final stored = _prefs!.getString(_kThemeModeKey);
     if (stored == 'dark') {
       state = ThemeMode.dark;
-    } else {
-      state = ThemeMode.light;
     }
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
     state = mode;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kThemeModeKey, mode == ThemeMode.dark ? 'dark' : 'light');
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs!.setString(_kThemeModeKey, mode == ThemeMode.dark ? 'dark' : 'light');
   }
 }
