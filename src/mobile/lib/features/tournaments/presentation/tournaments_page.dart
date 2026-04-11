@@ -98,9 +98,9 @@ class _TournamentCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: AppThemeTokens.darkCard,
+          color: AppThemeTokens.card(context),
           borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-          border: Border.all(color: AppThemeTokens.darkBorder),
+          border: Border.all(color: AppThemeTokens.border(context)),
         ),
         child: IntrinsicHeight(
           child: Row(
@@ -148,8 +148,8 @@ class _TournamentCard extends StatelessWidget {
                               t.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppThemeTokens.darkText,
+                              style: TextStyle(
+                                color: AppThemeTokens.text(context),
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -187,7 +187,7 @@ class _TournamentCard extends StatelessWidget {
                               icon: Icons.calendar_today_outlined,
                               label: DateFormat('MMM d, y')
                                   .format(t.startDate!.toLocal()),
-                              color: AppThemeTokens.darkTextSecondary,
+                              color: AppThemeTokens.textSecondary(context),
                             ),
                         ],
                       ),
@@ -196,10 +196,10 @@ class _TournamentCard extends StatelessWidget {
                 ),
               ),
               // Chevron
-              const Padding(
-                padding: EdgeInsets.only(right: 12),
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
                 child: Icon(Icons.chevron_right_rounded,
-                    color: AppThemeTokens.darkTextMuted, size: 20),
+                    color: AppThemeTokens.textMuted(context), size: 20),
               ),
             ],
           ),
@@ -270,10 +270,10 @@ class TournamentDetailPage extends ConsumerWidget {
               // ── Header ──────────────────────────────────────────────
               Container(
                 padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
-                  gradient: AppThemeTokens.heroGradient,
+                decoration: BoxDecoration(
+                  gradient: AppThemeTokens.heroGrad(context),
                   border: Border(
-                    bottom: BorderSide(color: AppThemeTokens.darkBorder),
+                    bottom: BorderSide(color: AppThemeTokens.border(context)),
                   ),
                 ),
                 child: Column(
@@ -349,8 +349,8 @@ class TournamentDetailPage extends ConsumerWidget {
                       const SizedBox(height: 12),
                       Text(
                         t.description!,
-                        style: const TextStyle(
-                          color: AppThemeTokens.darkTextSecondary,
+                        style: TextStyle(
+                          color: AppThemeTokens.textSecondary(context),
                           fontSize: 13,
                           height: 1.5,
                         ),
@@ -371,10 +371,10 @@ class TournamentDetailPage extends ConsumerWidget {
               ),
               // ── Tab bar ─────────────────────────────────────────────
               Container(
-                decoration: const BoxDecoration(
-                  color: AppThemeTokens.darkBg,
+                decoration: BoxDecoration(
+                  color: AppThemeTokens.bg(context),
                   border: Border(
-                    bottom: BorderSide(color: AppThemeTokens.darkBorder),
+                    bottom: BorderSide(color: AppThemeTokens.border(context)),
                   ),
                 ),
                 child: const TabBar(
@@ -502,9 +502,9 @@ class _TeamRow extends StatelessWidget {
       margin: EdgeInsets.only(bottom: isLast ? 0 : 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppThemeTokens.darkCardElevated,
+        color: AppThemeTokens.cardElevated(context),
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-        border: Border.all(color: AppThemeTokens.darkBorder),
+        border: Border.all(color: AppThemeTokens.border(context)),
       ),
       child: Row(
         children: [
@@ -513,25 +513,25 @@ class _TeamRow extends StatelessWidget {
             width: 28,
             height: 28,
             decoration: BoxDecoration(
-              color: AppThemeTokens.darkCard,
+              color: AppThemeTokens.card(context),
               borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
-              border: Border.all(color: AppThemeTokens.darkBorder),
+              border: Border.all(color: AppThemeTokens.border(context)),
             ),
             alignment: Alignment.center,
             child: Text(
               '$rank',
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: AppThemeTokens.darkTextSecondary),
+                  color: AppThemeTokens.textSecondary(context)),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               team.name,
-              style: const TextStyle(
-                  color: AppThemeTokens.darkText,
+              style: TextStyle(
+                  color: AppThemeTokens.text(context),
                   fontSize: 14,
                   fontWeight: FontWeight.w500),
             ),
@@ -595,27 +595,27 @@ class _StandingsTab extends StatelessWidget {
         if (i == 0) {
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: const BoxDecoration(
-              color: AppThemeTokens.darkCardElevated,
+            decoration: BoxDecoration(
+              color: AppThemeTokens.cardElevated(context),
               border: Border(
-                bottom: BorderSide(color: AppThemeTokens.darkBorder),
+                bottom: BorderSide(color: AppThemeTokens.border(context)),
               ),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                SizedBox(width: 42),
+                const SizedBox(width: 42),
                 Expanded(
                   child: Text(
                     'TEAM',
                     style: TextStyle(
-                      color: AppThemeTokens.darkTextMuted,
+                      color: AppThemeTokens.textMuted(context),
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.8,
                     ),
                   ),
                 ),
-                SizedBox(
+                const SizedBox(
                   width: 40,
                   child: Text(
                     'W',
@@ -628,7 +628,7 @@ class _StandingsTab extends StatelessWidget {
                     ),
                   ),
                 ),
-                SizedBox(
+                const SizedBox(
                   width: 40,
                   child: Text(
                     'L',
@@ -641,7 +641,7 @@ class _StandingsTab extends StatelessWidget {
                     ),
                   ),
                 ),
-                SizedBox(
+                const SizedBox(
                   width: 44,
                   child: Text(
                     'PTS',
@@ -678,9 +678,9 @@ class _StandingsTab extends StatelessWidget {
           rankWidget = const Text('🥉', style: TextStyle(fontSize: 18));
         } else {
           rowBg = i.isEven
-              ? AppThemeTokens.darkCard
-              : AppThemeTokens.darkCardElevated;
-          rankColor = AppThemeTokens.darkTextMuted;
+              ? AppThemeTokens.card(context)
+              : AppThemeTokens.cardElevated(context);
+          rankColor = AppThemeTokens.textMuted(context);
           rankWidget = Text(
             '$i',
             style: TextStyle(
@@ -694,8 +694,9 @@ class _StandingsTab extends StatelessWidget {
         return Container(
           decoration: BoxDecoration(
             color: rowBg,
-            border: const Border(
-              bottom: BorderSide(color: AppThemeTokens.darkBorder, width: 0.5),
+            border: Border(
+              bottom:
+                  BorderSide(color: AppThemeTokens.border(context), width: 0.5),
             ),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -712,7 +713,7 @@ class _StandingsTab extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: i <= 3 ? FontWeight.w700 : FontWeight.w500,
                     fontSize: 13,
-                    color: AppThemeTokens.darkText,
+                    color: AppThemeTokens.text(context),
                   ),
                 ),
               ),
@@ -815,9 +816,9 @@ class _MatchTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: AppThemeTokens.darkCardElevated,
+        color: AppThemeTokens.cardElevated(context),
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-        border: Border.all(color: AppThemeTokens.darkBorder),
+        border: Border.all(color: AppThemeTokens.border(context)),
       ),
       child: Row(
         children: [
@@ -828,7 +829,9 @@ class _MatchTile extends StatelessWidget {
               textAlign: TextAlign.end,
               style: TextStyle(
                 fontWeight: aWins ? FontWeight.w700 : FontWeight.w500,
-                color: aWins ? AppThemeTokens.success : AppThemeTokens.darkText,
+                color: aWins
+                    ? AppThemeTokens.success
+                    : AppThemeTokens.text(context),
                 fontSize: 13,
               ),
             ),
@@ -838,13 +841,10 @@ class _MatchTile extends StatelessWidget {
             margin: const EdgeInsets.symmetric(horizontal: 14),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color:
-                  hasScore ? AppThemeTokens.darkCard : AppThemeTokens.darkCard,
+              color: AppThemeTokens.card(context),
               borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
               border: Border.all(
-                color: hasScore
-                    ? AppThemeTokens.darkBorder
-                    : AppThemeTokens.darkBorder,
+                color: AppThemeTokens.border(context),
               ),
             ),
             child: Text(
@@ -853,8 +853,8 @@ class _MatchTile extends StatelessWidget {
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
                 color: hasScore
-                    ? AppThemeTokens.darkText
-                    : AppThemeTokens.darkTextMuted,
+                    ? AppThemeTokens.text(context)
+                    : AppThemeTokens.textMuted(context),
                 letterSpacing: 1,
               ),
             ),
@@ -865,7 +865,9 @@ class _MatchTile extends StatelessWidget {
               teamB,
               style: TextStyle(
                 fontWeight: bWins ? FontWeight.w700 : FontWeight.w500,
-                color: bWins ? AppThemeTokens.success : AppThemeTokens.darkText,
+                color: bWins
+                    ? AppThemeTokens.success
+                    : AppThemeTokens.text(context),
                 fontSize: 13,
               ),
             ),
@@ -921,7 +923,8 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _saving = true);
     try {
-      final t = await ref.read(tournamentRepositoryProvider).createTournament({
+      final tournament =
+          await ref.read(tournamentRepositoryProvider).createTournament({
         'name': _nameCtrl.text.trim(),
         if (_sportType.isNotEmpty) 'sportType': _sportType,
         'format': _format,
@@ -931,25 +934,25 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
           'maxTeams': int.tryParse(_maxTeamsCtrl.text.trim()),
         if (_startDate != null) 'startDate': _startDate!.toIso8601String(),
       });
+
       ref.read(tournamentsNotifierProvider.notifier).load();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tournament created!')),
-        );
-        context.go('/tournaments/${t.id}');
-      }
-    } on Exception catch (e) {
-      if (mounted) {
-        final msg = e is AppException
-            ? e.message
-            : e.toString().replaceFirst('Exception: ', '');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tournament created!')),
+      );
+      context.go('/tournaments/${tournament.id}');
+    } on Exception catch (error) {
+      if (!mounted) return;
+      final message = error is AppException
+          ? error.message
+          : error.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -971,8 +974,8 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
                 prefixIcon: Icon(Icons.emoji_events_outlined),
               ),
               textCapitalization: TextCapitalization.words,
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Required' : null,
+              validator: (value) =>
+                  (value == null || value.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
@@ -981,16 +984,16 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
                 labelText: 'Sport type',
                 prefixIcon: Icon(Icons.sports_outlined),
               ),
-              dropdownColor: AppThemeTokens.darkCardElevated,
+              dropdownColor: AppThemeTokens.cardElevated(context),
               items: kSportTypes
                   .map(
-                    (s) => DropdownMenuItem(
-                      value: s['value'],
-                      child: Text(s['label']!),
+                    (sport) => DropdownMenuItem(
+                      value: sport['value'],
+                      child: Text(sport['label']!),
                     ),
                   )
                   .toList(),
-              onChanged: (v) => setState(() => _sportType = v ?? ''),
+              onChanged: (value) => setState(() => _sportType = value ?? ''),
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
@@ -999,16 +1002,17 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
                 labelText: 'Format',
                 prefixIcon: Icon(Icons.account_tree_outlined),
               ),
-              dropdownColor: AppThemeTokens.darkCardElevated,
+              dropdownColor: AppThemeTokens.cardElevated(context),
               items: kTournamentFormats
                   .map(
-                    (f) => DropdownMenuItem(
-                      value: f['value'],
-                      child: Text(f['label']!),
+                    (format) => DropdownMenuItem(
+                      value: format['value'],
+                      child: Text(format['label']!),
                     ),
                   )
                   .toList(),
-              onChanged: (v) => setState(() => _format = v ?? 'bracket'),
+              onChanged: (value) =>
+                  setState(() => _format = value ?? 'bracket'),
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -1044,8 +1048,8 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
                       : 'Tap to select',
                   style: TextStyle(
                     color: _startDate == null
-                        ? AppThemeTokens.darkTextSecondary
-                        : AppThemeTokens.darkText,
+                        ? AppThemeTokens.textSecondary(context)
+                        : AppThemeTokens.text(context),
                     fontSize: 14,
                   ),
                 ),

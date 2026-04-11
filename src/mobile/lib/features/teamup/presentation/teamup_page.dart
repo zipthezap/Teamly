@@ -58,7 +58,8 @@ class _TeamUpPageState extends ConsumerState<TeamUpPage>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final divider = isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
+    final divider =
+        isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
@@ -78,7 +79,8 @@ class _TeamUpPageState extends ConsumerState<TeamUpPage>
               child: TabBar(
                 controller: _tabController,
                 indicator: BoxDecoration(
-                  color: AppThemeTokens.primary500.withValues(alpha: isDark ? 0.2 : 0.12),
+                  color: AppThemeTokens.primary500
+                      .withValues(alpha: isDark ? 0.2 : 0.12),
                   borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
                 ),
                 indicatorPadding: const EdgeInsets.all(5),
@@ -87,8 +89,10 @@ class _TeamUpPageState extends ConsumerState<TeamUpPage>
                 unselectedLabelColor: isDark
                     ? AppThemeTokens.darkTextSecondary
                     : AppThemeTokens.lightTextSecondary,
-                labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                labelStyle:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                unselectedLabelStyle:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                 tabs: const [
                   Tab(text: 'Browse'),
                   Tab(text: 'My Requests'),
@@ -133,12 +137,13 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
 
     return Column(
       children: [
-        // Filters
         Container(
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+                color: isDark
+                    ? AppThemeTokens.darkBorder
+                    : AppThemeTokens.lightBorder,
               ),
             ),
           ),
@@ -151,14 +156,15 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
                   label: 'Sport',
                   value: _sportFilter,
                   options: kSportTypes
-                      .where((s) => s['value']!.isNotEmpty)
-                      .map((s) => MapEntry(s['value']!, s['label']!))
+                      .where((sport) => sport['value']!.isNotEmpty)
+                      .map(
+                          (sport) => MapEntry(sport['value']!, sport['label']!))
                       .toList(),
-                  onSelected: (v) {
-                    setState(() => _sportFilter = v);
+                  onSelected: (value) {
+                    setState(() => _sportFilter = value);
                     ref
                         .read(teamUpNotifierProvider.notifier)
-                        .load(sportType: v, requestType: _typeFilter);
+                        .load(sportType: value, requestType: _typeFilter);
                   },
                 ),
                 const SizedBox(width: 8),
@@ -169,24 +175,22 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
                     MapEntry('looking_for_play', 'Looking to play'),
                     MapEntry('need_players', 'Need players'),
                   ],
-                  onSelected: (v) {
-                    setState(() => _typeFilter = v);
+                  onSelected: (value) {
+                    setState(() => _typeFilter = value);
                     ref
                         .read(teamUpNotifierProvider.notifier)
-                        .load(sportType: _sportFilter, requestType: v);
+                        .load(sportType: _sportFilter, requestType: value);
                   },
                 ),
               ],
             ),
           ),
         ),
-
-        // List
         Expanded(
           child: requestsAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => ErrorDisplay(
-              message: e.toString(),
+            error: (error, _) => ErrorDisplay(
+              message: error.toString(),
               onRetry: () => ref
                   .read(teamUpNotifierProvider.notifier)
                   .load(sportType: _sportFilter, requestType: _typeFilter),
@@ -196,7 +200,8 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
                 return const UiEmptyState(
                   icon: Icons.handshake_outlined,
                   title: 'No requests found',
-                  message: 'Try adjusting your filters or be the first to post a TeamUp request.',
+                  message:
+                      'Try adjusting your filters or be the first to post a TeamUp request.',
                 );
               }
 
@@ -205,9 +210,11 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
                     .read(teamUpNotifierProvider.notifier)
                     .load(sportType: _sportFilter, requestType: _typeFilter),
                 child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   itemCount: requests.length,
-                  itemBuilder: (context, i) => _RequestTile(request: requests[i]),
+                  itemBuilder: (context, index) =>
+                      _RequestTile(request: requests[index]),
                 ),
               );
             },
@@ -294,10 +301,12 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
     try {
       await ref.read(teamUpRepositoryProvider).createRequest({
         'title': _titleCtrl.text.trim(),
-        if (_descCtrl.text.trim().isNotEmpty) 'description': _descCtrl.text.trim(),
+        if (_descCtrl.text.trim().isNotEmpty)
+          'description': _descCtrl.text.trim(),
         'requestType': _requestType,
         if (_sportType.isNotEmpty) 'sportType': _sportType,
-        if (_locationCtrl.text.trim().isNotEmpty) 'location': _locationCtrl.text.trim(),
+        if (_locationCtrl.text.trim().isNotEmpty)
+          'location': _locationCtrl.text.trim(),
         if (_cityCtrl.text.trim().isNotEmpty) 'city': _cityCtrl.text.trim(),
         if (_playersCtrl.text.trim().isNotEmpty)
           'playersNeeded': int.tryParse(_playersCtrl.text.trim()),
@@ -357,34 +366,35 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
 
           // Request type
           DropdownButtonFormField<String>(
-            key: ValueKey(_requestType),
             initialValue: _requestType,
             decoration: const InputDecoration(
               labelText: 'Request type',
               prefixIcon: Icon(Icons.category_outlined),
             ),
-            dropdownColor:
-                isDark ? AppThemeTokens.darkCardElevated : AppThemeTokens.lightCardElevated,
+            dropdownColor: isDark
+                ? AppThemeTokens.darkCardElevated
+                : AppThemeTokens.lightCardElevated,
             items: const [
               DropdownMenuItem(
                   value: 'looking_for_play', child: Text('Looking to play')),
               DropdownMenuItem(
                   value: 'need_players', child: Text('Need players')),
             ],
-            onChanged: (v) => setState(() => _requestType = v ?? 'looking_for_play'),
+            onChanged: (v) =>
+                setState(() => _requestType = v ?? 'looking_for_play'),
           ),
           const SizedBox(height: 16),
 
           // Sport type
           DropdownButtonFormField<String>(
-            key: ValueKey(_sportType),
             initialValue: _sportType,
             decoration: const InputDecoration(
               labelText: 'Sport type',
               prefixIcon: Icon(Icons.sports_outlined),
             ),
-            dropdownColor:
-                isDark ? AppThemeTokens.darkCardElevated : AppThemeTokens.lightCardElevated,
+            dropdownColor: isDark
+                ? AppThemeTokens.darkCardElevated
+                : AppThemeTokens.lightCardElevated,
             items: kSportTypes
                 .map(
                   (s) => DropdownMenuItem(
@@ -477,125 +487,131 @@ class _RequestTile extends StatelessWidget {
               : AppThemeTokens.lightCard.withValues(alpha: 0.98),
           borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
           border: Border.all(
-            color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+            color:
+                isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
           ),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Left accent bar
-            Container(
-              width: 4,
-              decoration: BoxDecoration(
-                color: accent,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(AppThemeTokens.radiusMd),
-                  bottomLeft: Radius.circular(AppThemeTokens.radiusMd),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Left accent bar
+              Container(
+                width: 4,
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(AppThemeTokens.radiusMd),
+                    bottomLeft: Radius.circular(AppThemeTokens.radiusMd),
+                  ),
                 ),
               ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Top row: avatar + name + status badge
-                    Row(
-                      children: [
-                        UserAvatar(
-                          name: request.creatorName,
-                          imageUrl: request.creatorPicture,
-                          radius: 14,
-                          borderColor: accent.withValues(alpha: 0.4),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Top row: avatar + name + status badge
+                      Row(
+                        children: [
+                          UserAvatar(
+                            name: request.creatorName,
+                            imageUrl: request.creatorPicture,
+                            radius: 14,
+                            borderColor: accent.withValues(alpha: 0.4),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              request.creatorName,
+                              style: TextStyle(
+                                color: isDark
+                                    ? AppThemeTokens.darkTextSecondary
+                                    : AppThemeTokens.lightTextSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          UiStatusBadge(
+                            label: request.status == 'open' ? 'Open' : 'Closed',
+                            status: request.status == 'open'
+                                ? UiStatusType.success
+                                : UiStatusType.defaultStatus,
+                            dot: true,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Title
+                      Text(
+                        request.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: isDark
+                              ? AppThemeTokens.darkText
+                              : AppThemeTokens.lightText,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            request.creatorName,
-                            style: TextStyle(
+                      ),
+                      const SizedBox(height: 8),
+                      // Meta row
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 4,
+                        children: [
+                          if (request.sportType.isNotEmpty)
+                            _MetaChip(
+                              icon: Icons.sports_outlined,
+                              label: sportTypeLabel(request.sportType),
+                              color: accent,
+                            ),
+                          _MetaChip(
+                            icon: request.requestType == 'need_players'
+                                ? Icons.group_add_outlined
+                                : Icons.person_search_outlined,
+                            label: request.requestType == 'need_players'
+                                ? 'Need players'
+                                : 'Looking to play',
+                            color: AppThemeTokens.primary400,
+                          ),
+                          if (request.city != null)
+                            _MetaChip(
+                              icon: Icons.place_outlined,
+                              label: request.city!,
                               color: isDark
                                   ? AppThemeTokens.darkTextSecondary
                                   : AppThemeTokens.lightTextSecondary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        UiStatusBadge(
-                          label: request.status == 'open' ? 'Open' : 'Closed',
-                          status: request.status == 'open'
-                              ? UiStatusType.success
-                              : UiStatusType.defaultStatus,
-                          dot: true,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    // Title
-                    Text(
-                      request.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                          if (request.availableFrom != null)
+                            _MetaChip(
+                              icon: Icons.calendar_today_outlined,
+                              label:
+                                  df.format(request.availableFrom!.toLocal()),
+                              color: isDark
+                                  ? AppThemeTokens.darkTextSecondary
+                                  : AppThemeTokens.lightTextSecondary,
+                            ),
+                          if (request.responseCount > 0)
+                            _MetaChip(
+                              icon: Icons.chat_bubble_outline,
+                              label:
+                                  '${request.responseCount} response${request.responseCount == 1 ? '' : 's'}',
+                              color: AppThemeTokens.info,
+                            ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    // Meta row
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 4,
-                      children: [
-                        if (request.sportType.isNotEmpty)
-                          _MetaChip(
-                            icon: Icons.sports_outlined,
-                            label: sportTypeLabel(request.sportType),
-                            color: accent,
-                          ),
-                        _MetaChip(
-                          icon: request.requestType == 'need_players'
-                              ? Icons.group_add_outlined
-                              : Icons.person_search_outlined,
-                          label: request.requestType == 'need_players'
-                              ? 'Need players'
-                              : 'Looking to play',
-                          color: AppThemeTokens.primary400,
-                        ),
-                        if (request.city != null)
-                          _MetaChip(
-                            icon: Icons.place_outlined,
-                            label: request.city!,
-                            color: isDark
-                                ? AppThemeTokens.darkTextSecondary
-                                : AppThemeTokens.lightTextSecondary,
-                          ),
-                        if (request.availableFrom != null)
-                          _MetaChip(
-                            icon: Icons.calendar_today_outlined,
-                            label: df.format(request.availableFrom!.toLocal()),
-                            color: isDark
-                                ? AppThemeTokens.darkTextSecondary
-                                : AppThemeTokens.lightTextSecondary,
-                          ),
-                        if (request.responseCount > 0)
-                          _MetaChip(
-                            icon: Icons.chat_bubble_outline,
-                            label:
-                                '${request.responseCount} response${request.responseCount == 1 ? '' : 's'}',
-                            color: AppThemeTokens.info,
-                          ),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -611,7 +627,8 @@ class _RequestTile extends StatelessWidget {
 }
 
 class _MetaChip extends StatelessWidget {
-  const _MetaChip({required this.icon, required this.label, required this.color});
+  const _MetaChip(
+      {required this.icon, required this.label, required this.color});
   final IconData icon;
   final String label;
   final Color color;
@@ -695,8 +712,7 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
   @override
   Widget build(BuildContext context) {
     final r = widget.request;
-    final responsesAsync =
-        ref.watch(teamUpRequestResponsesProvider(r.id));
+    final responsesAsync = ref.watch(teamUpRequestResponsesProvider(r.id));
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final accent = _sportAccentColor(r.sportType);
@@ -718,7 +734,9 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+                  color: isDark
+                      ? AppThemeTokens.darkBorder
+                      : AppThemeTokens.lightBorder,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -735,9 +753,12 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                         color: isDark
                             ? AppThemeTokens.darkCard.withValues(alpha: 0.94)
                             : AppThemeTokens.lightCard.withValues(alpha: 0.98),
-                        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+                        borderRadius:
+                            BorderRadius.circular(AppThemeTokens.radiusMd),
                         border: Border.all(
-                          color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+                          color: isDark
+                              ? AppThemeTokens.darkBorder
+                              : AppThemeTokens.lightBorder,
                         ),
                       ),
                       child: Column(
@@ -812,7 +833,8 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
 
                     // Meta rows
                     UiCard(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
                       child: Column(
                         children: [
                           if (r.playersNeeded != null)
@@ -832,7 +854,8 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                             UiInfoRow(
                               icon: Icons.calendar_today_outlined,
                               label: 'Available from',
-                              value: DateFormat.yMMMd().format(r.availableFrom!.toLocal()),
+                              value: DateFormat.yMMMd()
+                                  .format(r.availableFrom!.toLocal()),
                               iconColor: AppThemeTokens.info,
                             ),
                           Row(
@@ -841,8 +864,10 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                                 width: 28,
                                 height: 28,
                                 decoration: BoxDecoration(
-                                  color: AppThemeTokens.primary500.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+                                  color: AppThemeTokens.primary500
+                                      .withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(
+                                      AppThemeTokens.radiusSm),
                                 ),
                                 child: const Icon(Icons.person_outline,
                                     size: 14, color: AppThemeTokens.primary400),
@@ -854,15 +879,15 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                                 radius: 12,
                               ),
                               const SizedBox(width: 6),
-                                Text(
-                                  r.creatorName,
-                                  style: TextStyle(
-                                    color: isDark
-                                        ? AppThemeTokens.darkTextSecondary
-                                        : AppThemeTokens.lightTextSecondary,
-                                    fontSize: 13,
-                                  ),
+                              Text(
+                                r.creatorName,
+                                style: TextStyle(
+                                  color: isDark
+                                      ? AppThemeTokens.darkTextSecondary
+                                      : AppThemeTokens.lightTextSecondary,
+                                  fontSize: 13,
                                 ),
+                              ),
                             ],
                           ),
                         ],
@@ -888,8 +913,8 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                               color: isDark
                                   ? AppThemeTokens.darkCardElevated
                                   : AppThemeTokens.lightCardElevated,
-                              borderRadius:
-                                  BorderRadius.circular(AppThemeTokens.radiusMd),
+                              borderRadius: BorderRadius.circular(
+                                  AppThemeTokens.radiusMd),
                               border: Border.all(
                                 color: isDark
                                     ? AppThemeTokens.darkBorder
@@ -952,34 +977,40 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                                             Row(
                                               children: [
                                                 Expanded(
-                                                   child: Text(
-                                                     resp.responderName,
-                                                     style: TextStyle(
-                                                       fontWeight: FontWeight.w600,
-                                                       fontSize: 13,
-                                                       color: isDark
-                                                           ? AppThemeTokens.darkText
-                                                           : AppThemeTokens.lightText,
-                                                     ),
-                                                   ),
-                                                 ),
+                                                  child: Text(
+                                                    resp.responderName,
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      fontSize: 13,
+                                                      color: isDark
+                                                          ? AppThemeTokens
+                                                              .darkText
+                                                          : AppThemeTokens
+                                                              .lightText,
+                                                    ),
+                                                  ),
+                                                ),
                                                 UiStatusBadge(
                                                   label: resp.status,
-                                                  status: UiStatusBadge.fromString(
-                                                      resp.status),
+                                                  status:
+                                                      UiStatusBadge.fromString(
+                                                          resp.status),
                                                 ),
                                               ],
                                             ),
                                             const SizedBox(height: 4),
-                                             Text(
-                                               resp.message,
-                                               style: TextStyle(
-                                                 color: isDark
-                                                     ? AppThemeTokens.darkTextSecondary
-                                                     : AppThemeTokens.lightTextSecondary,
-                                                 fontSize: 13,
-                                                 height: 1.4,
-                                               ),
+                                            Text(
+                                              resp.message,
+                                              style: TextStyle(
+                                                color: isDark
+                                                    ? AppThemeTokens
+                                                        .darkTextSecondary
+                                                    : AppThemeTokens
+                                                        .lightTextSecondary,
+                                                fontSize: 13,
+                                                height: 1.4,
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -1014,8 +1045,8 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                           Container(
                             decoration: BoxDecoration(
                               gradient: AppThemeTokens.primaryGradient,
-                              borderRadius:
-                                  BorderRadius.circular(AppThemeTokens.radiusMd),
+                              borderRadius: BorderRadius.circular(
+                                  AppThemeTokens.radiusMd),
                             ),
                             child: IconButton(
                               onPressed: _sending ? null : _respond,
@@ -1100,13 +1131,15 @@ class _FilterChip extends StatelessWidget {
           color: selected
               ? AppThemeTokens.primary500.withValues(alpha: 0.15)
               : (isDark
-                    ? AppThemeTokens.darkCardElevated
-                    : AppThemeTokens.lightCardElevated),
+                  ? AppThemeTokens.darkCardElevated
+                  : AppThemeTokens.lightCardElevated),
           borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
           border: Border.all(
             color: selected
                 ? AppThemeTokens.primary500
-                : (isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder),
+                : (isDark
+                    ? AppThemeTokens.darkBorder
+                    : AppThemeTokens.lightBorder),
             width: selected ? 1.5 : 1,
           ),
         ),
@@ -1114,8 +1147,8 @@ class _FilterChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (selected)
-              Padding(
-                padding: const EdgeInsets.only(right: 5),
+              const Padding(
+                padding: EdgeInsets.only(right: 5),
                 child: Icon(Icons.check_circle_rounded,
                     size: 13, color: AppThemeTokens.primary400),
               ),
@@ -1125,8 +1158,8 @@ class _FilterChip extends StatelessWidget {
                 color: selected
                     ? AppThemeTokens.primary400
                     : (isDark
-                          ? AppThemeTokens.darkTextSecondary
-                          : AppThemeTokens.lightTextSecondary),
+                        ? AppThemeTokens.darkTextSecondary
+                        : AppThemeTokens.lightTextSecondary),
                 fontSize: 13,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
               ),
@@ -1138,8 +1171,8 @@ class _FilterChip extends StatelessWidget {
               color: selected
                   ? AppThemeTokens.primary400
                   : (isDark
-                        ? AppThemeTokens.darkTextMuted
-                        : AppThemeTokens.lightTextMuted),
+                      ? AppThemeTokens.darkTextMuted
+                      : AppThemeTokens.lightTextMuted),
             ),
           ],
         ),

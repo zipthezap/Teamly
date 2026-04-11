@@ -250,7 +250,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       case ThemeMode.dark:
         return 'Dark mode';
       case ThemeMode.system:
-        return 'System theme';
+        return 'Light mode';
     }
   }
 
@@ -268,12 +268,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   'Appearance',
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
-              ),
-              RadioListTile<ThemeMode>(
-                value: ThemeMode.system,
-                groupValue: selectedMode,
-                onChanged: (value) => Navigator.of(context).pop(value),
-                title: const Text('System'),
               ),
               RadioListTile<ThemeMode>(
                 value: ThemeMode.light,
