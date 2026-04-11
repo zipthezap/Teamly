@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../../core/error/error_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../../core/error/app_exception.dart';
 import '../../../core/models/tournament_model.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
@@ -34,7 +34,7 @@ class _TournamentsPageState extends ConsumerState<TournamentsPage> {
       body: tournamentsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(
-          message: e.toString(),
+          message: extractErrorMessage(e),
           onRetry: () => ref.read(tournamentsNotifierProvider.notifier).reload(),
         ),
         data: (tournaments) {
@@ -259,7 +259,7 @@ class TournamentDetailPage extends ConsumerWidget {
       body: tournamentAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(
-          message: e.toString(),
+          message: extractErrorMessage(e),
           onRetry: () => ref.invalidate(tournamentDetailProvider(tournamentId)),
         ),
         data: (t) => DefaultTabController(
@@ -944,12 +944,9 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
       context.go('/tournaments/${tournament.id}');
     } on Exception catch (error) {
       if (!mounted) return;
-      final message = error is AppException
-          ? error.message
-          : error.toString().replaceFirst('Exception: ', '');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(message),
+          content: Text(extractErrorMessage(error)),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );

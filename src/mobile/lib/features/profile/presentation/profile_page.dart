@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../core/error/app_exception.dart';
+import '../../../core/error/error_utils.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
@@ -52,16 +52,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     super.dispose();
   }
 
-  String _errorMsg(Exception e) {
-    if (e is DioException) {
-      final inner = e.error;
-      if (inner is AppException) return inner.message;
-      return e.message ?? 'Network error';
-    }
-    if (e is AppException) return e.message;
-    return e.toString().replaceFirst('Exception: ', '');
-  }
-
   Future<void> _pickAndUploadProfilePicture() async {
     final picker = ImagePicker();
     final file = await picker.pickImage(
@@ -99,7 +89,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_errorMsg(e)),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -129,7 +119,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         (response.data?['user'] ?? response.data!) as Map<String, dynamic>,
       );
       ref.read(authNotifierProvider.notifier).updateUser(updatedUser);
-
+      if (!mounted) return;
       setState(() => _editing = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -140,7 +130,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_errorMsg(e)),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -231,7 +221,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_errorMsg(e)),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/error/error_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -91,7 +92,7 @@ class _NotificationPreferencesPageState
         error: (e, _) => UiEmptyState(
           icon: Icons.error_outline_rounded,
           title: 'Failed to load',
-          message: e.toString(),
+          message: extractErrorMessage(e),
           action: () => ref.invalidate(notificationPreferencesProvider),
           actionLabel: 'Retry',
         ),

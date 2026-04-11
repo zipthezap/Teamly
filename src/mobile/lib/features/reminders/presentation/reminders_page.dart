@@ -3,6 +3,7 @@ import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/error/error_utils.dart';
 import '../../../core/models/reminder_model.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
@@ -38,9 +39,6 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
         return '$minutes min';
     }
   }
-
-  String _extractMsg(Exception e) =>
-      e.toString().replaceFirst('Exception: ', '');
 
   Future<void> _showEditDialog(ReminderModel reminder) async {
     int selectedMinutes = reminder.minutesBefore;
@@ -103,7 +101,7 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(_extractMsg(e)),
+          content: Text(extractErrorMessage(e)),
           backgroundColor: Theme.of(context).colorScheme.error,
         ));
       }
@@ -147,7 +145,7 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(_extractMsg(e)),
+          content: Text(extractErrorMessage(e)),
           backgroundColor: Theme.of(context).colorScheme.error,
         ));
       }
@@ -175,7 +173,7 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
       body: remindersAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(
-          message: e.toString(),
+          message: extractErrorMessage(e),
           onRetry: () => ref.invalidate(_remindersProvider),
         ),
         data: (reminders) => RefreshIndicator(

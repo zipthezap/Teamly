@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/error/error_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -32,7 +33,7 @@ class LeaguesPage extends ConsumerWidget {
       body: leaguesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, _) => ErrorDisplay(
-          message: err.toString(),
+          message: extractErrorMessage(err),
           onRetry: () => ref.read(leaguesNotifierProvider.notifier).refresh(),
         ),
         data: (leagues) {

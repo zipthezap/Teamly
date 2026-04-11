@@ -7,7 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/error/app_exception.dart';
+import '../../../core/error/error_utils.dart';
 import '../../../core/models/comment_model.dart';
 import '../../../core/utils/maps_utils.dart';
 import '../../../features/auth/state/auth_notifier.dart';
@@ -48,16 +48,6 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
   // is reflected after the user explicitly marks/unmarks late.
   bool _isMarkedLate = false;
 
-  String _errorMessage(Exception e) {
-    if (e is DioException) {
-      final inner = e.error;
-      if (inner is AppException) return inner.message;
-      return e.message ?? 'Network error';
-    }
-    if (e is AppException) return e.message;
-    return e.toString().replaceFirst('Exception: ', '');
-  }
-
   Future<void> _toggleArchive(bool archived) async {
     final groupId =
         ref.read(eventDetailProvider(widget.eventId)).value?.group.id;
@@ -80,7 +70,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(_errorMessage(e)),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error));
       }
     }
@@ -107,7 +97,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(_errorMessage(e)),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error));
       }
     } finally {
@@ -130,7 +120,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(_errorMessage(e)),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error));
       }
     }
@@ -154,7 +144,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_errorMessage(e)),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -182,7 +172,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_errorMessage(e)),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -233,7 +223,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_errorMessage(e)),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -397,7 +387,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
       body: eventAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(
-          message: e.toString(),
+          message: extractErrorMessage(e),
           onRetry: () => ref.invalidate(eventDetailProvider(widget.eventId)),
         ),
         data: (event) {
@@ -1212,7 +1202,7 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          content: Text(extractErrorMessage(e)),
           backgroundColor: Theme.of(context).colorScheme.error,
         ));
       }
@@ -1228,7 +1218,7 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          content: Text(extractErrorMessage(e)),
           backgroundColor: Theme.of(context).colorScheme.error,
         ));
       }
@@ -1246,7 +1236,7 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          content: Text(extractErrorMessage(e)),
           backgroundColor: Theme.of(context).colorScheme.error,
         ));
       }

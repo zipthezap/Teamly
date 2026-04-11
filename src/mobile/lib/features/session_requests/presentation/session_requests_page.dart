@@ -3,6 +3,7 @@ import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/error/error_utils.dart';
 import '../../../core/models/session_request_model.dart';
 import '../../../features/auth/state/auth_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
@@ -31,9 +32,6 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
     _sportCtrl.dispose();
     super.dispose();
   }
-
-  String _extractMsg(Exception e) =>
-      e.toString().replaceFirst('Exception: ', '');
 
   UiStatusType _statusType(String status) {
     switch (status) {
@@ -154,7 +152,7 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
                 } on Exception catch (e) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(_extractMsg(e)),
+                      content: Text(extractErrorMessage(e)),
                       backgroundColor:
                           Theme.of(context).colorScheme.error,
                     ));
@@ -242,7 +240,7 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
       body: requestsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(
-          message: e.toString(),
+          message: extractErrorMessage(e),
           onRetry: () => ref
               .read(eventRequestsNotifierProvider(widget.groupId).notifier)
               .reload(),
@@ -283,7 +281,7 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
                                   if (mounted) {
                                     ScaffoldMessenger.of(context)
                                         .showSnackBar(SnackBar(
-                                      content: Text(_extractMsg(e)),
+                                      content: Text(extractErrorMessage(e)),
                                       backgroundColor: Theme.of(context)
                                           .colorScheme
                                           .error,
@@ -304,7 +302,7 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
                                   if (mounted) {
                                     ScaffoldMessenger.of(context)
                                         .showSnackBar(SnackBar(
-                                      content: Text(_extractMsg(e)),
+                                      content: Text(extractErrorMessage(e)),
                                       backgroundColor: Theme.of(context)
                                           .colorScheme
                                           .error,
@@ -325,7 +323,7 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
                                   if (mounted) {
                                     ScaffoldMessenger.of(context)
                                         .showSnackBar(SnackBar(
-                                      content: Text(_extractMsg(e)),
+                                      content: Text(extractErrorMessage(e)),
                                       backgroundColor: Theme.of(context)
                                           .colorScheme
                                           .error,

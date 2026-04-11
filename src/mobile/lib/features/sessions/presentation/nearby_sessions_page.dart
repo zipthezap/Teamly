@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../../core/error/app_exception.dart';
+import '../../../core/error/error_utils.dart';
 import '../../../core/models/extended_models.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/ui_primitives.dart';
@@ -57,9 +57,8 @@ class _NearbySessionsPageState extends ConsumerState<NearbySessionsPage> {
         _loading = false;
       });
     } on Exception catch (e) {
-      final msg = e is AppException ? e.message : e.toString();
       setState(() {
-        _error = msg;
+        _error = extractErrorMessage(e);
         _loading = false;
       });
     }

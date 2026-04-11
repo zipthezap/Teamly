@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../../core/error/app_exception.dart';
+import '../../../core/error/error_utils.dart';
 import '../../../core/models/teamup_model.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
@@ -190,7 +190,7 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
           child: requestsAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, _) => ErrorDisplay(
-              message: error.toString(),
+              message: extractErrorMessage(error),
               onRetry: () => ref
                   .read(teamUpNotifierProvider.notifier)
                   .load(sportType: _sportFilter, requestType: _typeFilter),
@@ -238,7 +238,7 @@ class _MyRequestsTab extends ConsumerWidget {
     return myAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => ErrorDisplay(
-        message: e.toString(),
+        message: extractErrorMessage(e),
         onRetry: () => ref.invalidate(myTeamUpRequestsProvider),
       ),
       data: (requests) {
@@ -329,12 +329,9 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
       }
     } on Exception catch (e) {
       if (mounted) {
-        final msg = e is AppException
-            ? e.message
-            : e.toString().replaceFirst('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(msg),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -694,12 +691,9 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
       }
     } on Exception catch (e) {
       if (mounted) {
-        final msg2 = e is AppException
-            ? e.message
-            : e.toString().replaceFirst('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(msg2),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );

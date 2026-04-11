@@ -3,8 +3,7 @@ import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/error/app_exception.dart';
-import '../../../core/models/attendance_model.dart';
+import '../../../core/error/error_utils.dart';import '../../../core/models/attendance_model.dart';
 import '../../../features/auth/state/auth_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
@@ -24,11 +23,6 @@ class AttendancePage extends ConsumerStatefulWidget {
 
 class _AttendancePageState extends ConsumerState<AttendancePage> {
   bool _markingAttendance = false;
-
-  String _extractMsg(Object e) {
-    if (e is AppException) return e.message;
-    return e.toString().replaceFirst('Exception: ', '');
-  }
 
   Future<void> _markAttendance(String status) async {
     setState(() => _markingAttendance = true);
@@ -51,7 +45,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_extractMsg(e)),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -77,7 +71,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_extractMsg(e)),
+            content: Text(extractErrorMessage(e)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -239,7 +233,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
               loading: () =>
                   const Center(child: CircularProgressIndicator()),
               error: (e, _) => ErrorDisplay(
-                message: e.toString(),
+                message: extractErrorMessage(e),
                 onRetry: () =>
                     ref.invalidate(attendanceProvider(widget.eventId)),
               ),
