@@ -258,7 +258,7 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
           preferredSize: const Size.fromHeight(1),
           child: Container(
             height: 1,
-            color: AppThemeTokens.darkBorder,
+            color: AppThemeTokens.border(context),
           ),
         ),
         actions: [
@@ -422,10 +422,10 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    gradient: AppThemeTokens.heroGradient,
+                    gradient: AppThemeTokens.heroGrad(context),
                     borderRadius:
                         BorderRadius.circular(AppThemeTokens.radiusLg),
-                    border: Border.all(color: AppThemeTokens.darkBorder),
+                    border: Border.all(color: AppThemeTokens.border(context)),
                   ),
                   child: ClipRRect(
                     borderRadius:
@@ -501,8 +501,8 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                               const SizedBox(height: 12),
                               Text(
                                 event.title,
-                                style: const TextStyle(
-                                  color: AppThemeTokens.darkText,
+                                style: TextStyle(
+                                  color: AppThemeTokens.text(context),
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: -0.3,
@@ -517,21 +517,21 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.group_outlined,
+                                    Icon(Icons.group_outlined,
                                         size: 13,
-                                        color: AppThemeTokens.darkTextSecondary),
+                                        color: AppThemeTokens.textSecondary(context)),
                                     const SizedBox(width: 4),
                                     Text(
                                       event.group.name,
-                                      style: const TextStyle(
-                                        color: AppThemeTokens.darkTextSecondary,
+                                      style: TextStyle(
+                                        color: AppThemeTokens.textSecondary(context),
                                         fontSize: 13,
                                       ),
                                     ),
                                     const SizedBox(width: 2),
-                                    const Icon(Icons.chevron_right,
+                                    Icon(Icons.chevron_right,
                                         size: 13,
-                                        color: AppThemeTokens.darkTextSecondary),
+                                        color: AppThemeTokens.textSecondary(context)),
                                   ],
                                 ),
                               ),
@@ -698,10 +698,10 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                 // ── Event details card ─────────────────────────────────────
                 Container(
                   decoration: BoxDecoration(
-                    color: AppThemeTokens.darkCard,
+                    color: AppThemeTokens.card(context),
                     borderRadius:
                         BorderRadius.circular(AppThemeTokens.radiusMd),
-                    border: Border.all(color: AppThemeTokens.darkBorder),
+                    border: Border.all(color: AppThemeTokens.border(context)),
                   ),
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -762,10 +762,10 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                 // ── Host card ──────────────────────────────────────────────
                 Container(
                   decoration: BoxDecoration(
-                    color: AppThemeTokens.darkCard,
+                    color: AppThemeTokens.card(context),
                     borderRadius:
                         BorderRadius.circular(AppThemeTokens.radiusMd),
-                    border: Border.all(color: AppThemeTokens.darkBorder),
+                    border: Border.all(color: AppThemeTokens.border(context)),
                   ),
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -790,7 +790,7 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                                 Text(
                                   event.creator.email,
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: AppThemeTokens.darkTextSecondary,
+                                    color: AppThemeTokens.textSecondary(context),
                                   ),
                                 ),
                               ],
@@ -807,10 +807,10 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                   const SizedBox(height: 16),
                   Container(
                     decoration: BoxDecoration(
-                      color: AppThemeTokens.darkCard,
+                      color: AppThemeTokens.card(context),
                       borderRadius:
                           BorderRadius.circular(AppThemeTokens.radiusMd),
-                      border: Border.all(color: AppThemeTokens.darkBorder),
+                      border: Border.all(color: AppThemeTokens.border(context)),
                     ),
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -820,8 +820,8 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                         const SizedBox(height: 10),
                         Text(
                           event.description!,
-                          style: const TextStyle(
-                            color: AppThemeTokens.darkTextSecondary,
+                          style: TextStyle(
+                            color: AppThemeTokens.textSecondary(context),
                             fontSize: 14,
                             height: 1.5,
                           ),
@@ -837,21 +837,21 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                 if (isParticipant)
                   Container(
                     decoration: BoxDecoration(
-                      color: AppThemeTokens.darkCard,
+                      color: AppThemeTokens.card(context),
                       borderRadius:
                           BorderRadius.circular(AppThemeTokens.radiusMd),
-                      border: Border.all(color: AppThemeTokens.darkBorder),
+                      border: Border.all(color: AppThemeTokens.border(context)),
                     ),
                     child: ListTile(
                       dense: true,
-                      leading: const Icon(Icons.access_time,
+                      leading: Icon(Icons.access_time,
                           size: 18,
-                          color: AppThemeTokens.darkTextSecondary),
-                      title: const Text(
+                          color: AppThemeTokens.textSecondary(context)),
+                      title: Text(
                         'Mark me as late',
                         style: TextStyle(
                           fontSize: 14,
-                          color: AppThemeTokens.darkText,
+                          color: AppThemeTokens.text(context),
                         ),
                       ),
                       trailing: _markingLate
@@ -877,10 +877,10 @@ class _EventDetailPageState extends ConsumerState<EventDetailPage> {
                   const SizedBox(height: 8),
                   Container(
                     decoration: BoxDecoration(
-                      color: AppThemeTokens.darkCard,
+                      color: AppThemeTokens.card(context),
                       borderRadius:
                           BorderRadius.circular(AppThemeTokens.radiusMd),
-                      border: Border.all(color: AppThemeTokens.darkBorder),
+                      border: Border.all(color: AppThemeTokens.border(context)),
                     ),
                     child: Column(
                       children: [
@@ -950,9 +950,9 @@ class _CompactActionCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
-            color: AppThemeTokens.darkCard,
+            color: AppThemeTokens.card(context),
             borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-            border: Border.all(color: AppThemeTokens.darkBorder),
+            border: Border.all(color: AppThemeTokens.border(context)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -961,10 +961,10 @@ class _CompactActionCard extends StatelessWidget {
               const SizedBox(height: 5),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
-                  color: AppThemeTokens.darkTextSecondary,
+                  color: AppThemeTokens.textSecondary(context),
                 ),
               ),
             ],
@@ -1003,8 +1003,8 @@ class _CompactParticipantRow extends StatelessWidget {
           Expanded(
             child: Text(
               name,
-              style: const TextStyle(
-                color: AppThemeTokens.darkText,
+              style: TextStyle(
+                color: AppThemeTokens.text(context),
                 fontSize: 13,
               ),
               overflow: TextOverflow.ellipsis,
@@ -1092,8 +1092,8 @@ class _ActivityFeedSectionState extends ConsumerState<_ActivityFeedSection> {
               ),
               label: Text('Activity (${entries.length})'),
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: AppThemeTokens.darkBorder),
-                foregroundColor: AppThemeTokens.darkTextSecondary,
+                side: BorderSide(color: AppThemeTokens.border(context)),
+                foregroundColor: AppThemeTokens.textSecondary(context),
                 minimumSize: const Size(double.infinity, 44),
                 shape: RoundedRectangleBorder(
                   borderRadius:
@@ -1109,10 +1109,10 @@ class _ActivityFeedSectionState extends ConsumerState<_ActivityFeedSection> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
-                        color: AppThemeTokens.darkCard,
+                        color: AppThemeTokens.card(context),
                         borderRadius:
                             BorderRadius.circular(AppThemeTokens.radiusMd),
-                        border: Border.all(color: AppThemeTokens.darkBorder),
+                        border: Border.all(color: AppThemeTokens.border(context)),
                       ),
                       child: Row(
                         children: [
@@ -1126,20 +1126,20 @@ class _ActivityFeedSectionState extends ConsumerState<_ActivityFeedSection> {
                                   width: 32,
                                   height: 32,
                                   decoration: BoxDecoration(
-                                    color: AppThemeTokens.darkCardElevated,
+                                    color: AppThemeTokens.cardElevated(context),
                                     borderRadius: BorderRadius.circular(
                                         AppThemeTokens.radiusSm),
                                   ),
-                                  child: const Icon(Icons.info_outline,
+                                  child: Icon(Icons.info_outline,
                                       size: 14,
-                                      color: AppThemeTokens.darkTextSecondary),
+                                      color: AppThemeTokens.textSecondary(context)),
                                 ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               entry.summary,
-                              style: const TextStyle(
-                                color: AppThemeTokens.darkTextSecondary,
+                              style: TextStyle(
+                                color: AppThemeTokens.textSecondary(context),
                                 fontSize: 13,
                               ),
                             ),
@@ -1147,8 +1147,8 @@ class _ActivityFeedSectionState extends ConsumerState<_ActivityFeedSection> {
                           const SizedBox(width: 8),
                           Text(
                             _formatTime(entry.createdAt),
-                            style: const TextStyle(
-                              color: AppThemeTokens.darkTextMuted,
+                            style: TextStyle(
+                              color: AppThemeTokens.textMuted(context),
                               fontSize: 11,
                             ),
                           ),
@@ -1291,10 +1291,10 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
               if (comments.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: const Text(
+                  child: Text(
                     'No comments yet.',
                     style: TextStyle(
-                      color: AppThemeTokens.darkTextSecondary,
+                      color: AppThemeTokens.textSecondary(context),
                       fontSize: 13,
                     ),
                   ),
@@ -1307,10 +1307,10 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppThemeTokens.darkCard,
+                      color: AppThemeTokens.card(context),
                       borderRadius:
                           BorderRadius.circular(AppThemeTokens.radiusMd),
-                      border: Border.all(color: AppThemeTokens.darkBorder),
+                      border: Border.all(color: AppThemeTokens.border(context)),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1329,8 +1329,8 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                                 children: [
                                   Text(
                                     c.userName,
-                                    style: const TextStyle(
-                                      color: AppThemeTokens.darkText,
+                                    style: TextStyle(
+                                      color: AppThemeTokens.text(context),
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -1338,8 +1338,8 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                                   const SizedBox(width: 6),
                                   Text(
                                     _formatTime(c.createdAt),
-                                    style: const TextStyle(
-                                      color: AppThemeTokens.darkTextMuted,
+                                    style: TextStyle(
+                                      color: AppThemeTokens.textMuted(context),
                                       fontSize: 11,
                                     ),
                                   ),
@@ -1357,8 +1357,8 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                                           border: OutlineInputBorder(
                                             borderRadius: BorderRadius.circular(
                                                 AppThemeTokens.radiusSm),
-                                            borderSide: const BorderSide(
-                                                color: AppThemeTokens.darkBorder),
+                                            borderSide: BorderSide(
+                                                color: AppThemeTokens.border(context)),
                                           ),
                                           contentPadding:
                                               const EdgeInsets.symmetric(
@@ -1374,9 +1374,9 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                                       onPressed: () => _submitEdit(c.id),
                                     ),
                                     IconButton(
-                                      icon: const Icon(Icons.close,
+                                      icon: Icon(Icons.close,
                                           size: 18,
-                                          color: AppThemeTokens.darkTextSecondary),
+                                          color: AppThemeTokens.textSecondary(context)),
                                       onPressed: () => setState(
                                           () => _editingCommentId = null),
                                     ),
@@ -1386,8 +1386,8 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                                 const SizedBox(height: 4),
                                 Text(
                                   c.content,
-                                  style: const TextStyle(
-                                    color: AppThemeTokens.darkTextSecondary,
+                                  style: TextStyle(
+                                    color: AppThemeTokens.textSecondary(context),
                                     fontSize: 13,
                                     height: 1.4,
                                   ),
@@ -1398,9 +1398,9 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                         ),
                         if (isOwner && !isEditing) ...[
                           IconButton(
-                            icon: const Icon(Icons.edit_outlined,
+                            icon: Icon(Icons.edit_outlined,
                                 size: 15,
-                                color: AppThemeTokens.darkTextSecondary),
+                                color: AppThemeTokens.textSecondary(context)),
                             visualDensity: VisualDensity.compact,
                             onPressed: () {
                               _editCtrl.text = c.content;
@@ -1430,21 +1430,21 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                 controller: _textCtrl,
                 decoration: InputDecoration(
                   hintText: 'Add a comment…',
-                  hintStyle: const TextStyle(
-                      color: AppThemeTokens.darkTextMuted, fontSize: 13),
+                  hintStyle: TextStyle(
+                      color: AppThemeTokens.textMuted(context), fontSize: 13),
                   filled: true,
-                  fillColor: AppThemeTokens.darkCardElevated,
+                  fillColor: AppThemeTokens.cardElevated(context),
                   border: OutlineInputBorder(
                     borderRadius:
                         BorderRadius.circular(AppThemeTokens.radiusMd),
                     borderSide:
-                        const BorderSide(color: AppThemeTokens.darkBorder),
+                        BorderSide(color: AppThemeTokens.border(context)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius:
                         BorderRadius.circular(AppThemeTokens.radiusMd),
                     borderSide:
-                        const BorderSide(color: AppThemeTokens.darkBorder),
+                        BorderSide(color: AppThemeTokens.border(context)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius:
@@ -1455,8 +1455,8 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 ),
-                style: const TextStyle(
-                    color: AppThemeTokens.darkText, fontSize: 13),
+                style: TextStyle(
+                    color: AppThemeTokens.text(context), fontSize: 13),
                 textCapitalization: TextCapitalization.sentences,
                 minLines: 1,
                 maxLines: 3,
@@ -1468,7 +1468,7 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                 gradient: _sending
                     ? null
                     : AppThemeTokens.primaryGradient,
-                color: _sending ? AppThemeTokens.darkCardElevated : null,
+                color: _sending ? AppThemeTokens.cardElevated(context) : null,
                 borderRadius:
                     BorderRadius.circular(AppThemeTokens.radiusMd),
               ),
