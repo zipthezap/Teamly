@@ -96,11 +96,11 @@ class _EventsPageState extends ConsumerState<EventsPage>
           final now = DateTime.now();
           final filteredEvents = events.where((event) {
             final matchesFilter = switch (_filter) {
-              _EventFilter.all => event.endTime.isAfter(now),
+              _EventFilter.all => !event.endTime.isBefore(now),
               _EventFilter.upcoming => event.startTime.isAfter(now),
               _EventFilter.hosting =>
                 event.creator.id == authState.user?.id,
-              _EventFilter.past => event.endTime.isBefore(now),
+              _EventFilter.past => !event.endTime.isAfter(now),
             };
 
             if (!matchesFilter) return false;
@@ -252,7 +252,7 @@ class _EventsPageState extends ConsumerState<EventsPage>
                   padding: const EdgeInsets.only(bottom: 10),
                   child: _EventListCard(
                     event: event,
-                    isPast: event.endTime.isBefore(now),
+                    isPast: !event.endTime.isAfter(now),
                     isHosting: event.creator.id == authState.user?.id,
                   ),
                 );
