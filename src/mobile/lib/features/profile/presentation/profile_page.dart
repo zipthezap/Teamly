@@ -428,16 +428,17 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
-      foregroundColor: AppThemeTokens.darkText,
+      foregroundColor: AppThemeTokens.text(context),
       title: _editing
-          ? const Text(
+          ? Text(
               'Edit Profile',
               style: TextStyle(
-                color: AppThemeTokens.darkText,
+                color: AppThemeTokens.text(context),
                 fontSize: 17,
                 fontWeight: FontWeight.w600,
               ),
@@ -455,9 +456,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         else ...[
           TextButton(
             onPressed: () => setState(() => _editing = false),
-            child: const Text(
+            child: Text(
               'Cancel',
-              style: TextStyle(color: AppThemeTokens.darkTextSecondary),
+              style: TextStyle(color: AppThemeTokens.textSecondary(context)),
             ),
           ),
           Padding(
@@ -486,11 +487,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   Widget _buildHero(UserModel user) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final topPadding = MediaQuery.of(context).padding.top;
     return Container(
       width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: AppThemeTokens.heroGradient,
+      decoration: BoxDecoration(
+        gradient: AppThemeTokens.heroGrad(context),
       ),
       child: Column(
         children: [
@@ -507,8 +509,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ),
                 child: Container(
                   padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF0D1B2E),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0D1B2E) : Colors.white,
                     shape: BoxShape.circle,
                   ),
                   child: UserAvatar(
@@ -533,11 +535,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           ? null
                           : AppThemeTokens.primaryGradient,
                       color: _uploadingPicture
-                          ? AppThemeTokens.darkCardElevated
+                          ? (isDark ? AppThemeTokens.darkCardElevated : AppThemeTokens.lightCardElevated)
                           : null,
                       shape: BoxShape.circle,
                       border: Border.all(
-                          color: const Color(0xFF0D1B2E), width: 2.5),
+                          color: isDark ? const Color(0xFF0D1B2E) : Colors.white, width: 2.5),
                     ),
                     child: _uploadingPicture
                         ? const Padding(
@@ -556,8 +558,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           // Name
           Text(
             user.name,
-            style: const TextStyle(
-              color: AppThemeTokens.darkText,
+            style: TextStyle(
+              color: AppThemeTokens.text(context),
               fontSize: 24,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.4,
@@ -567,8 +569,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           // Email
           Text(
             user.email,
-            style: const TextStyle(
-              color: AppThemeTokens.darkTextSecondary,
+            style: TextStyle(
+              color: AppThemeTokens.textSecondary(context),
               fontSize: 13,
             ),
           ),
@@ -593,16 +595,16 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.place_rounded,
-                    size: 14, color: AppThemeTokens.darkTextMuted),
+                Icon(Icons.place_rounded,
+                    size: 14, color: AppThemeTokens.textMuted(context)),
                 const SizedBox(width: 4),
                 Text(
                   [user.city, user.country]
                       .whereType<String>()
                       .where((s) => s.isNotEmpty)
                       .join(', '),
-                  style: const TextStyle(
-                    color: AppThemeTokens.darkTextMuted,
+                  style: TextStyle(
+                    color: AppThemeTokens.textMuted(context),
                     fontSize: 13,
                   ),
                 ),

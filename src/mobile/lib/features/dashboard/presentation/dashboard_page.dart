@@ -103,57 +103,6 @@ class DashboardPage extends ConsumerWidget {
               ),
             ),
 
-            // ── Quick actions ──────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  UiSectionTitle('Quick Actions'),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _ActionTile(
-                          icon: Icons.add_circle_rounded,
-                          label: 'New Event',
-                          color: AppThemeTokens.primary500,
-                          onTap: () => context.push('/events/new'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _ActionTile(
-                          icon: Icons.group_add_rounded,
-                          label: 'New Group',
-                          color: const Color(0xFF7C4DFF),
-                          onTap: () => context.push('/groups/new'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _ActionTile(
-                          icon: Icons.emoji_events_rounded,
-                          label: 'Tournaments',
-                          color: const Color(0xFFFF9800),
-                          onTap: () => context.push('/tournaments'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _ActionTile(
-                          icon: Icons.explore_rounded,
-                          label: 'Discover',
-                          color: const Color(0xFF00BCD4),
-                          onTap: () => context.go('/discover'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
             // ── Upcoming events ────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
@@ -231,6 +180,59 @@ class DashboardPage extends ConsumerWidget {
               },
             ),
 
+            const SizedBox(height: 24),
+
+            // ── Quick actions ──────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  UiSectionTitle('Quick Actions'),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ActionTile(
+                          icon: Icons.add_circle_rounded,
+                          label: 'New Event',
+                          color: AppThemeTokens.primary500,
+                          onTap: () => context.push('/events/new'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _ActionTile(
+                          icon: Icons.group_add_rounded,
+                          label: 'New Group',
+                          color: const Color(0xFF7C4DFF),
+                          onTap: () => context.push('/groups/new'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _ActionTile(
+                          icon: Icons.emoji_events_rounded,
+                          label: 'Tournaments',
+                          color: const Color(0xFFFF9800),
+                          onTap: () => context.push('/tournaments'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _ActionTile(
+                          icon: Icons.explore_rounded,
+                          label: 'Discover',
+                          color: const Color(0xFF00BCD4),
+                          onTap: () => context.go('/discover'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
             const SizedBox(height: 32),
           ],
         ),
@@ -250,7 +252,7 @@ class _HeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       decoration: BoxDecoration(
         color: isDark
             ? AppThemeTokens.darkCard.withValues(alpha: 0.94)
@@ -261,16 +263,16 @@ class _HeroCard extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
           children: [
             UserAvatar(
               name: user.name as String,
               imageUrl: user.profilePicture as String?,
-              radius: 30,
+              radius: 22,
               borderColor: AppThemeTokens.primary500.withValues(alpha: 0.4),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -278,21 +280,21 @@ class _HeroCard extends StatelessWidget {
                   Text(
                     '$greeting 👋',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       color: isDark
                           ? AppThemeTokens.darkTextSecondary
                           : AppThemeTokens.lightTextSecondary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 1),
                   Text(
                     user.name as String,
                     style: TextStyle(
-                      fontSize: 22,
+                      fontSize: 17,
                       fontWeight: FontWeight.w800,
                       color: isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText,
-                      letterSpacing: -0.5,
+                      letterSpacing: -0.3,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -300,12 +302,12 @@ class _HeroCard extends StatelessWidget {
                   if ((user.city as String?) != null)
                     Row(
                       children: [
-                        const Icon(Icons.place_rounded, size: 12, color: AppThemeTokens.primary400),
+                        const Icon(Icons.place_rounded, size: 11, color: AppThemeTokens.primary400),
                         const SizedBox(width: 3),
                         Text(
                           user.city as String,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             color: isDark
                                 ? AppThemeTokens.darkTextSecondary
                                 : AppThemeTokens.lightTextSecondary,

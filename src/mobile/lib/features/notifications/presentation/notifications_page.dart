@@ -209,12 +209,12 @@ class _NotificationCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: isUnread
                   ? color.withValues(alpha: 0.06)
-                  : AppThemeTokens.darkCard,
+                  : AppThemeTokens.card(context),
               borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
               border: Border.all(
                 color: isUnread
                     ? color.withValues(alpha: 0.25)
-                    : AppThemeTokens.darkBorder,
+                    : AppThemeTokens.border(context),
               ),
             ),
             child: Padding(
@@ -242,8 +242,8 @@ class _NotificationCard extends StatelessWidget {
                             fontSize: 13,
                             fontWeight: isUnread ? FontWeight.w600 : FontWeight.w400,
                             color: isUnread
-                                ? AppThemeTokens.darkText
-                                : AppThemeTokens.darkTextSecondary,
+                                ? AppThemeTokens.text(context)
+                                : AppThemeTokens.textSecondary(context),
                             height: 1.4,
                           ),
                           maxLines: 2,
@@ -252,9 +252,9 @@ class _NotificationCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           timeLabel,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
-                            color: AppThemeTokens.darkTextMuted,
+                            color: AppThemeTokens.textMuted(context),
                           ),
                         ),
                       ],
