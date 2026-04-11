@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../features/notifications/state/notifications_notifier.dart';
+import 'teamly_logo.dart';
 
 class MobileShell extends ConsumerWidget {
   const MobileShell({
@@ -60,7 +61,26 @@ class MobileShell extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: titleWidget ?? Text(title),
+        title: titleWidget ??
+            (title == 'Teamly'
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const TeamlyLogo(size: 26),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Teamly',
+                        style: Theme.of(context).appBarTheme.titleTextStyle ??
+                            const TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.5,
+                            ),
+                      ),
+                    ],
+                  )
+                : Text(title)),
         actions: [
           _NotificationIconButton(unreadCount: unreadCount, onTap: () => context.go('/notifications')),
           if (actions != null) ...actions!,
