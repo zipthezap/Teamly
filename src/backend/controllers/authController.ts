@@ -491,9 +491,12 @@ export const verifyEmail = async (req: Request, res: Response): Promise<void> =>
     throw new BadRequestError('Verification token is required');
   }
 
+  // Hash the incoming plain token before comparing to the stored hashed token
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
   const user = await prisma.user.findFirst({
     where: {
-      emailVerificationToken: token,
+      emailVerificationToken: hashedToken,
       emailVerified: false
     }
   });
@@ -539,15 +542,15 @@ export const resendVerificationEmail = async (req: Request, res: Response): Prom
     throw new BadRequestError('Email is already verified');
   }
 
-  // Generate new verification token
-  const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+  // Generate new verification token (plain for the email URL, hashed for DB storage)
+  const { token: emailVerificationToken, hashedToken: hashedEmailToken } = authService.generateEmailVerificationToken();
   
   await prisma.user.update({
     where: { id: user.id },
-    data: { emailVerificationToken }
+    data: { emailVerificationToken: hashedEmailToken }
   });
 
-  // Send verification email
+  // Send verification email with the plain token
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
   const verificationUrl = `${frontendUrl}/verify-email?token=${emailVerificationToken}`;
   
