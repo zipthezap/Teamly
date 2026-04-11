@@ -693,12 +693,17 @@ async function main() {
 
   await prisma.eventNotification.upsert({
     where: { id: 'seed-event-notif-5' },
-    update: {},
+    update: {
+      type: 'session_updated',
+      params: { userName: user3.name, eventTitle: weekendFootballEvent.title },
+      metadata: { updatedFields: ['location', 'startTime'] },
+      read: false,
+    },
     create: {
       id: 'seed-event-notif-5',
       eventId: weekendFootballEvent.id,
       userId: user3.id,
-      type: 'event_updated',
+      type: 'session_updated',
       params: { userName: user3.name, eventTitle: weekendFootballEvent.title },
       metadata: { updatedFields: ['location', 'startTime'] },
       read: false,
@@ -708,12 +713,17 @@ async function main() {
 
   await prisma.eventNotification.upsert({
     where: { id: 'seed-event-notif-6' },
-    update: {},
+    update: {
+      type: 'session_cancelled',
+      params: { userName: user1.name, eventTitle: morningYogaEvent.title },
+      metadata: { reason: 'Weather alert' },
+      read: true,
+    },
     create: {
       id: 'seed-event-notif-6',
       eventId: morningYogaEvent.id,
       userId: user1.id,
-      type: 'event_cancelled',
+      type: 'session_cancelled',
       params: { userName: user1.name, eventTitle: morningYogaEvent.title },
       metadata: { reason: 'Weather alert' },
       read: true,
