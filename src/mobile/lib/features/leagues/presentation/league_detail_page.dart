@@ -293,7 +293,7 @@ class _OverviewTab extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const UiSectionTitle(title: 'About'),
+                const UiSectionTitle('About'),
                 const SizedBox(height: 8),
                 Text(league.description!,
                     style: TextStyle(color: textSecondary, fontFamily: 'Inter')),
@@ -307,7 +307,7 @@ class _OverviewTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const UiSectionTitle(title: 'Details'),
+              const UiSectionTitle('Details'),
               const SizedBox(height: 8),
               UiInfoRow(
                 icon: Icons.calendar_today_outlined,

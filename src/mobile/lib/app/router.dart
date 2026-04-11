@@ -4,14 +4,14 @@ import 'package:go_router/go_router.dart';
 
 import '../core/theme/app_theme.dart';
 import '../features/auth/presentation/auth_page.dart';
-import '../features/auth/presentation/sessions_page.dart';
+import '../features/auth/presentation/sessions_page.dart' as auth_presentation;
 import '../features/auth/state/auth_notifier.dart';
 import '../features/dashboard/presentation/dashboard_page.dart';
 import '../features/discover/presentation/discover_page.dart';
 import '../features/sessions/presentation/session_detail_page.dart';
 import '../features/sessions/presentation/session_form_page.dart';
 import '../features/sessions/presentation/session_statistics_page.dart';
-import '../features/sessions/presentation/sessions_page.dart';
+import '../features/sessions/presentation/sessions_page.dart' as sessions_presentation;
 import '../features/sessions/data/session_repository_impl.dart';
 import '../features/sessions/presentation/nearby_sessions_page.dart';
 import '../features/groups/data/group_repository_impl.dart';
@@ -120,7 +120,7 @@ final _routerProvider = Provider<GoRouter>((ref) {
       // Events
       GoRoute(
         path: '/sessions',
-        builder: (context, state) => const SessionsPage(),
+        builder: (context, state) => const sessions_presentation.SessionsPage(),
         routes: [
           GoRoute(
             path: 'new',
@@ -237,7 +237,7 @@ final _routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: 'sessions',
-            builder: (context, state) => const SessionsPage(),
+            builder: (context, state) => const auth_presentation.SessionsPage(),
           ),
           GoRoute(
             path: 'pictures',

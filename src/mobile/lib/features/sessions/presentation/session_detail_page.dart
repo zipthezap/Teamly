@@ -18,8 +18,8 @@ import '../../../shared/widgets/user_avatar.dart';
 import '../data/session_repository_impl.dart';
 import '../state/sessions_notifier.dart';
 import 'attendance_page.dart';
-import 'event_form_page.dart';
-import 'event_invite_analytics_page.dart';
+import 'session_form_page.dart';
+import 'session_invite_analytics_page.dart';
 import 'participants_page.dart';
 
 final _eventCommentsProvider =

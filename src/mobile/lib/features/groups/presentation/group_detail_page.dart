@@ -1005,14 +1005,18 @@ class _ActionButton extends StatelessWidget {
                     : AppThemeTokens.textSecondary(context),
               ),
               const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: primary
-                      ? AppThemeTokens.primary400
-                      : AppThemeTokens.textSecondary(context),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: primary
+                        ? AppThemeTokens.primary400
+                        : AppThemeTokens.textSecondary(context),
+                  ),
                 ),
               ),
             ],
@@ -1892,6 +1896,9 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width - 48,
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: AppThemeTokens.cardElevated(context),
@@ -1903,11 +1910,15 @@ class _InfoChip extends StatelessWidget {
         children: [
           Icon(icon, size: 13, color: AppThemeTokens.primary400),
           const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppThemeTokens.textSecondary(context),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppThemeTokens.textSecondary(context),
+              ),
             ),
           ),
         ],

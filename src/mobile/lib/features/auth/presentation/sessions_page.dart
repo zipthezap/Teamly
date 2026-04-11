@@ -203,7 +203,7 @@ class SessionsPage extends ConsumerWidget {
 class _SessionTile extends StatelessWidget {
   const _SessionTile({required this.session, required this.onRevoke});
 
-  final SessionModel session;
+  final AuthSessionModel session;
   final VoidCallback onRevoke;
 
   @override

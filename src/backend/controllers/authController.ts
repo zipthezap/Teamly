@@ -1116,10 +1116,9 @@ export const getDashboard = async (req: Request, res: Response): Promise<void> =
 
   // Normalize group `picture` → `profilePicture` to match the shared mobile contract.
   // Prisma does not support field aliasing in select, so the rename is done here.
-  const recentGroups = groups.map(g => ({
-    ...g,
-    profilePicture: g.picture,
-    picture: undefined,
+  const recentGroups = groups.map(({ picture, ...group }) => ({
+    ...group,
+    profilePicture: picture,
   }));
 
   res.json({

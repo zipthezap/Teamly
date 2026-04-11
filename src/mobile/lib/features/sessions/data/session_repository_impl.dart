@@ -275,6 +275,6 @@ class SessionRepositoryImpl implements SessionRepository {
   }
 }
 
-final eventRepositoryProvider = Provider<SessionRepository>((ref) {
+final sessionRepositoryProvider = Provider<SessionRepository>((ref) {
   return SessionRepositoryImpl(ref.watch(dioProvider));
 });

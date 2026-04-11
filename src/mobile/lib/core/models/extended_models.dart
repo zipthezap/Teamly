@@ -42,7 +42,7 @@ class SessionParticipantDetailModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, userId, eventId, status, joinedAt];
+  List<Object?> get props => [id, userId, sessionId, status, joinedAt];
 }
 
 class SessionGuestModel extends Equatable {
@@ -71,7 +71,7 @@ class SessionGuestModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, eventId, name, status, joinedAt];
+  List<Object?> get props => [id, sessionId, name, status, joinedAt];
 }
 
 class ParticipantSummaryModel extends Equatable {
@@ -171,6 +171,8 @@ class CreatedSessionsStatsModel extends Equatable {
   final int total;
   final int totalParticipants;
   final double avgParticipantsPerSession;
+
+  double get avgParticipantsPerEvent => avgParticipantsPerSession;
 
   factory CreatedSessionsStatsModel.fromJson(Map<String, dynamic> json) {
     return CreatedSessionsStatsModel(

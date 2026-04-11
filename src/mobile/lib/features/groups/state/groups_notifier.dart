@@ -69,6 +69,8 @@ class ChatNotifier extends FamilyAsyncNotifier<List<ChatMessageModel>, String> {
     );
   }
 
+  Future<void> load() => refresh();
+
   /// Send a message then refresh the list.
   Future<void> send(String content) async {
     await ref.read(groupRepositoryProvider).sendChatMessage(arg, content);

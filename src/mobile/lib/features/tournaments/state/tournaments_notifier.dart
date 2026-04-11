@@ -20,6 +20,8 @@ class TournamentsNotifier
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() => _repo.getTournaments());
   }
+
+  Future<void> reload() => load();
 }
 
 final tournamentsNotifierProvider = StateNotifierProvider<TournamentsNotifier,

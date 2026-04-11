@@ -283,27 +283,36 @@ class UiInfoRow extends StatelessWidget {
           Expanded(
             child: value != null
                 ? Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                        Text(
+                      Expanded(
+                        child: Text(
                           label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: secondaryText,
                             fontSize: 13,
                           ),
                         ),
-                      Text(
-                        value!,
-                        style: TextStyle(
-                          color: onTap != null
-                              ? AppThemeTokens.primary400
-                              : primaryText,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          decoration: onTap != null
-                              ? TextDecoration.underline
-                              : null,
-                          decorationColor: AppThemeTokens.primary400,
+                      ),
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: Text(
+                          value!,
+                          textAlign: TextAlign.right,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: onTap != null
+                                ? AppThemeTokens.primary400
+                                : primaryText,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            decoration: onTap != null
+                                ? TextDecoration.underline
+                                : null,
+                            decorationColor: AppThemeTokens.primary400,
+                          ),
                         ),
                       ),
                     ],

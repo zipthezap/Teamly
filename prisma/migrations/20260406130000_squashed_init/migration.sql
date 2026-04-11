@@ -1,11 +1,11 @@
--- Squashed migration created by combining historical migrations
--- Order preserved from original migration timestamps
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
 
 -- CreateEnum
-CREATE TYPE "EventNotificationType" AS ENUM ('join', 'leave', 'late', 'confirmed', 'declined', 'status_change', 'comment', 'event_updated', 'event_cancelled');
+CREATE TYPE "SessionNotificationType" AS ENUM ('join', 'leave', 'late', 'confirmed', 'declined', 'status_change', 'comment', 'session_updated', 'session_cancelled');
 
 -- CreateEnum
-CREATE TYPE "GroupNotificationType" AS ENUM ('accepted', 'invited', 'join_request', 'event_created', 'nearby_created', 'removed');
+CREATE TYPE "GroupNotificationType" AS ENUM ('accepted', 'invited', 'join_request', 'session_created', 'nearby_created', 'removed');
 
 -- CreateEnum
 CREATE TYPE "TeamUpNotificationType" AS ENUM ('teamup_response', 'teamup_accepted', 'teamup_declined', 'teamup_nearby', 'teamup_comment');
@@ -14,16 +14,43 @@ CREATE TYPE "TeamUpNotificationType" AS ENUM ('teamup_response', 'teamup_accepte
 CREATE TYPE "TournamentNotificationType" AS ENUM ('team_registered', 'tournament_updated', 'tournament_cancelled', 'match_scheduled', 'score_submitted');
 
 -- CreateEnum
-CREATE TYPE "EventParticipantStatus" AS ENUM ('pending', 'confirmed', 'declined');
+CREATE TYPE "PushDevicePlatform" AS ENUM ('android', 'ios', 'web');
+
+-- CreateEnum
+CREATE TYPE "SessionParticipantStatus" AS ENUM ('pending', 'confirmed', 'declined', 'waitlisted', 'co_organizer');
 
 -- CreateEnum
 CREATE TYPE "GuestParticipantStatus" AS ENUM ('confirmed', 'declined');
 
 -- CreateEnum
-CREATE TYPE "EventStatus" AS ENUM ('upcoming', 'ongoing', 'completed', 'cancelled');
+CREATE TYPE "GroupJoinRequestSource" AS ENUM ('USER', 'INVITE', 'LINK');
+
+-- CreateEnum
+CREATE TYPE "GroupJoinRequestStatus" AS ENUM ('pending', 'approved', 'rejected');
+
+-- CreateEnum
+CREATE TYPE "GroupMemberRole" AS ENUM ('member', 'moderator', 'admin');
+
+-- CreateEnum
+CREATE TYPE "SessionAttendanceStatus" AS ENUM ('on_time', 'late');
+
+-- CreateEnum
+CREATE TYPE "SessionStatus" AS ENUM ('upcoming', 'ongoing', 'completed', 'cancelled');
 
 -- CreateEnum
 CREATE TYPE "SportType" AS ENUM ('football', 'basketball', 'tennis', 'volleyball', 'running', 'cycling', 'swimming', 'cricket', 'americanFootball', 'iceHockey', 'baseball', 'rugby', 'handball', 'fieldHockey', 'other');
+
+-- CreateEnum
+CREATE TYPE "SessionRequestStatus" AS ENUM ('voting', 'finalized', 'cancelled', 'expired');
+
+-- CreateEnum
+CREATE TYPE "EmailQueueStatus" AS ENUM ('pending', 'sent', 'failed', 'retry');
+
+-- CreateEnum
+CREATE TYPE "TeamUpRequestStatus" AS ENUM ('open', 'filled', 'cancelled', 'expired');
+
+-- CreateEnum
+CREATE TYPE "TeamUpResponseStatus" AS ENUM ('pending', 'accepted', 'declined');
 
 -- CreateEnum
 CREATE TYPE "TournamentFormat" AS ENUM ('single_elimination', 'double_elimination', 'round_robin', 'groups_knockout');
@@ -39,6 +66,9 @@ CREATE TYPE "BracketStage" AS ENUM ('group_stage', 'round_of_32', 'round_of_16',
 
 -- CreateEnum
 CREATE TYPE "InvitationStatus" AS ENUM ('pending', 'accepted', 'declined', 'expired', 'cancelled');
+
+-- CreateEnum
+CREATE TYPE "LeagueStatus" AS ENUM ('draft', 'registration', 'active', 'completed', 'cancelled');
 
 -- CreateTable
 CREATE TABLE "UserProfilePicture" (
@@ -67,39 +97,39 @@ CREATE TABLE "GroupMessage" (
 );
 
 -- CreateTable
-CREATE TABLE "EventReminder" (
+CREATE TABLE "SessionReminder" (
     "id" TEXT NOT NULL,
-    "eventId" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "remindAt" TIMESTAMP(3) NOT NULL,
     "sent" BOOLEAN NOT NULL DEFAULT false,
 
-    CONSTRAINT "EventReminder_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "SessionReminder_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "EventAttendance" (
+CREATE TABLE "SessionAttendance" (
     "id" TEXT NOT NULL,
-    "eventId" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "status" TEXT NOT NULL DEFAULT 'on-time',
+    "status" "SessionAttendanceStatus" NOT NULL DEFAULT 'on_time',
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "EventAttendance_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "SessionAttendance_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "EventNotification" (
+CREATE TABLE "SessionNotification" (
     "id" TEXT NOT NULL,
-    "eventId" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "type" "EventNotificationType" NOT NULL,
+    "type" "SessionNotificationType" NOT NULL,
     "params" JSONB,
     "metadata" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "read" BOOLEAN NOT NULL DEFAULT false,
 
-    CONSTRAINT "EventNotification_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "SessionNotification_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -141,6 +171,26 @@ CREATE TABLE "TournamentNotification" (
     "read" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "TournamentNotification_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "InviteLog" (
+    "id" TEXT NOT NULL,
+    "inviterType" TEXT NOT NULL,
+    "entityId" TEXT NOT NULL,
+    "inviterId" TEXT NOT NULL,
+    "inviteeEmail" TEXT NOT NULL,
+    "inviteeId" TEXT,
+    "status" TEXT NOT NULL,
+    "sentAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "respondedAt" TIMESTAMP(3),
+    "expiresAt" TIMESTAMP(3),
+    "revokedAt" TIMESTAMP(3),
+    "revokedBy" TEXT,
+    "message" TEXT,
+    "metadata" JSONB,
+
+    CONSTRAINT "InviteLog_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -199,6 +249,8 @@ CREATE TABLE "Group" (
     "tags" TEXT,
     "allowMemberInvites" BOOLEAN NOT NULL DEFAULT false,
     "allowMemberCopyLink" BOOLEAN NOT NULL DEFAULT true,
+    "inviteToken" TEXT,
+    "inviteTokenExpiresAt" TIMESTAMP(3),
     "creatorId" TEXT NOT NULL,
 
     CONSTRAINT "Group_pkey" PRIMARY KEY ("id")
@@ -209,9 +261,11 @@ CREATE TABLE "GroupJoinRequest" (
     "id" TEXT NOT NULL,
     "groupId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "status" TEXT NOT NULL DEFAULT 'pending',
+    "status" "GroupJoinRequestStatus" NOT NULL DEFAULT 'pending',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "createdBy" TEXT NOT NULL DEFAULT 'user',
+    "createdBy" "GroupJoinRequestSource" NOT NULL DEFAULT 'USER',
+    "expiresAt" TIMESTAMP(3),
+    "invitedBy" TEXT,
 
     CONSTRAINT "GroupJoinRequest_pkey" PRIMARY KEY ("id")
 );
@@ -219,7 +273,7 @@ CREATE TABLE "GroupJoinRequest" (
 -- CreateTable
 CREATE TABLE "GroupMember" (
     "id" TEXT NOT NULL,
-    "role" TEXT NOT NULL DEFAULT 'member',
+    "role" "GroupMemberRole" NOT NULL DEFAULT 'member',
     "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "userId" TEXT NOT NULL,
     "groupId" TEXT NOT NULL,
@@ -228,11 +282,36 @@ CREATE TABLE "GroupMember" (
 );
 
 -- CreateTable
-CREATE TABLE "Event" (
+CREATE TABLE "GroupBan" (
+    "id" TEXT NOT NULL,
+    "groupId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "bannedBy" TEXT NOT NULL,
+    "reason" TEXT,
+    "bannedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "GroupBan_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AuditLog" (
+    "id" TEXT NOT NULL,
+    "entityType" TEXT NOT NULL,
+    "entityId" TEXT NOT NULL,
+    "actorId" TEXT NOT NULL,
+    "action" TEXT NOT NULL,
+    "metadata" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "AuditLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Session" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
-    "eventType" "SportType" NOT NULL,
+    "sessionType" "SportType" NOT NULL,
     "location" TEXT,
     "latitude" DOUBLE PRECISION,
     "longitude" DOUBLE PRECISION,
@@ -245,33 +324,34 @@ CREATE TABLE "Event" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "archived" BOOLEAN NOT NULL DEFAULT false,
-    "status" "EventStatus" NOT NULL DEFAULT 'upcoming',
+    "status" "SessionStatus" NOT NULL DEFAULT 'upcoming',
     "isPublic" BOOLEAN NOT NULL DEFAULT false,
     "inviteToken" TEXT,
+    "inviteTokenExpiresAt" TIMESTAMP(3),
     "isRecurring" BOOLEAN NOT NULL DEFAULT false,
     "recurrenceRule" TEXT,
     "recurrenceEnd" TIMESTAMP(3),
-    "parentEventId" TEXT,
+    "parentSessionId" TEXT,
     "exceptionDates" JSONB,
     "creatorId" TEXT NOT NULL,
     "groupId" TEXT NOT NULL,
 
-    CONSTRAINT "Event_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Session_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "EventParticipant" (
+CREATE TABLE "SessionParticipant" (
     "id" TEXT NOT NULL,
-    "status" "EventParticipantStatus" NOT NULL DEFAULT 'pending',
+    "status" "SessionParticipantStatus" NOT NULL DEFAULT 'pending',
     "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "eventId" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
 
-    CONSTRAINT "EventParticipant_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "SessionParticipant_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "EventRequest" (
+CREATE TABLE "SessionRequest" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
@@ -281,51 +361,74 @@ CREATE TABLE "EventRequest" (
     "endTime" TIMESTAMP(3),
     "maxPlayers" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "status" TEXT NOT NULL DEFAULT 'voting',
+    "status" "SessionRequestStatus" NOT NULL DEFAULT 'voting',
     "voteDeadline" TIMESTAMP(3),
     "voteThreshold" DOUBLE PRECISION DEFAULT 0.5,
     "creatorId" TEXT NOT NULL,
     "groupId" TEXT NOT NULL,
-    "finalizedEventId" TEXT,
+    "finalizedSessionId" TEXT,
 
-    CONSTRAINT "EventRequest_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "SessionRequest_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "EventVote" (
+CREATE TABLE "SessionVote" (
     "id" TEXT NOT NULL,
     "vote" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "eventRequestId" TEXT NOT NULL,
+    "sessionRequestId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
 
-    CONSTRAINT "EventVote_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "SessionVote_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "EmailPreference" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "eventInvites" BOOLEAN NOT NULL DEFAULT true,
-    "eventReminders" BOOLEAN NOT NULL DEFAULT true,
-    "eventUpdates" BOOLEAN NOT NULL DEFAULT true,
-    "eventCancellations" BOOLEAN NOT NULL DEFAULT true,
+    "sessionInvites" BOOLEAN NOT NULL DEFAULT true,
+    "sessionReminders" BOOLEAN NOT NULL DEFAULT true,
+    "sessionUpdates" BOOLEAN NOT NULL DEFAULT true,
+    "sessionCancellations" BOOLEAN NOT NULL DEFAULT true,
     "groupInvites" BOOLEAN NOT NULL DEFAULT true,
     "commentMentions" BOOLEAN NOT NULL DEFAULT true,
     "nearbyTeamUps" BOOLEAN NOT NULL DEFAULT true,
-    "muteEventInvites" BOOLEAN NOT NULL DEFAULT false,
-    "muteEventReminders" BOOLEAN NOT NULL DEFAULT false,
-    "muteEventUpdates" BOOLEAN NOT NULL DEFAULT false,
-    "muteEventCancellations" BOOLEAN NOT NULL DEFAULT false,
+    "muteSessionInvites" BOOLEAN NOT NULL DEFAULT false,
+    "muteSessionReminders" BOOLEAN NOT NULL DEFAULT false,
+    "muteSessionUpdates" BOOLEAN NOT NULL DEFAULT false,
+    "muteSessionCancellations" BOOLEAN NOT NULL DEFAULT false,
     "muteGroupInvites" BOOLEAN NOT NULL DEFAULT false,
     "muteGroupRequests" BOOLEAN NOT NULL DEFAULT false,
     "muteNearbyGroups" BOOLEAN NOT NULL DEFAULT false,
-    "muteEventCreated" BOOLEAN NOT NULL DEFAULT false,
+    "muteSessionCreated" BOOLEAN NOT NULL DEFAULT false,
     "muteNearbyTeamUps" BOOLEAN NOT NULL DEFAULT false,
+    "pushEnabled" BOOLEAN NOT NULL DEFAULT true,
+    "pushSessions" BOOLEAN NOT NULL DEFAULT true,
+    "pushGroups" BOOLEAN NOT NULL DEFAULT true,
+    "pushTeamUp" BOOLEAN NOT NULL DEFAULT true,
+    "pushTournaments" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "EmailPreference_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PushDeviceToken" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "platform" "PushDevicePlatform" NOT NULL,
+    "token" TEXT NOT NULL,
+    "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "locale" TEXT,
+    "timezone" TEXT,
+    "appVersion" TEXT,
+    "deviceModel" TEXT,
+    "lastSeen" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PushDeviceToken_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -334,7 +437,7 @@ CREATE TABLE "Comment" (
     "content" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "eventId" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "parentId" TEXT,
 
@@ -357,7 +460,7 @@ CREATE TABLE "GuestParticipant" (
     "name" TEXT NOT NULL,
     "status" "GuestParticipantStatus" NOT NULL DEFAULT 'confirmed',
     "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "eventId" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
 
     CONSTRAINT "GuestParticipant_pkey" PRIMARY KEY ("id")
 );
@@ -408,7 +511,7 @@ CREATE TABLE "EmailQueue" (
     "textContent" TEXT,
     "templateType" TEXT,
     "templateData" JSONB,
-    "status" TEXT NOT NULL DEFAULT 'pending',
+    "status" "EmailQueueStatus" NOT NULL DEFAULT 'pending',
     "attempts" INTEGER NOT NULL DEFAULT 0,
     "maxAttempts" INTEGER NOT NULL DEFAULT 3,
     "lastError" TEXT,
@@ -436,7 +539,7 @@ CREATE TABLE "TeamUpRequest" (
     "skillLevel" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "status" TEXT NOT NULL DEFAULT 'open',
+    "status" "TeamUpRequestStatus" NOT NULL DEFAULT 'open',
     "expiresAt" TIMESTAMP(3),
     "creatorId" TEXT NOT NULL,
 
@@ -447,7 +550,7 @@ CREATE TABLE "TeamUpRequest" (
 CREATE TABLE "TeamUpResponse" (
     "id" TEXT NOT NULL,
     "message" TEXT,
-    "status" TEXT NOT NULL DEFAULT 'pending',
+    "status" "TeamUpResponseStatus" NOT NULL DEFAULT 'pending',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "teamUpRequestId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -621,32 +724,136 @@ CREATE TABLE "TournamentTeamInvitation" (
     CONSTRAINT "TournamentTeamInvitation_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "League" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "sport" "SportType" NOT NULL,
+    "location" TEXT,
+    "latitude" DOUBLE PRECISION,
+    "longitude" DOUBLE PRECISION,
+    "locationName" TEXT,
+    "city" TEXT,
+    "country" TEXT,
+    "startDate" TIMESTAMP(3) NOT NULL,
+    "endDate" TIMESTAMP(3),
+    "sessionCount" INTEGER,
+    "status" "LeagueStatus" NOT NULL DEFAULT 'draft',
+    "isPublic" BOOLEAN NOT NULL DEFAULT false,
+    "isPremium" BOOLEAN NOT NULL DEFAULT true,
+    "maxTeams" INTEGER,
+    "creatorId" TEXT NOT NULL,
+    "groupId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "League_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "LeagueTeam" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "leagueId" TEXT NOT NULL,
+    "captainUserId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "LeagueTeam_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "LeaguePlayer" (
+    "id" TEXT NOT NULL,
+    "teamId" TEXT NOT NULL,
+    "userId" TEXT,
+    "playerName" TEXT,
+    "jerseyNumber" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "LeaguePlayer_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "LeagueSessionEntry" (
+    "id" TEXT NOT NULL,
+    "leagueId" TEXT NOT NULL,
+    "sessionId" TEXT NOT NULL,
+    "roundNumber" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "LeagueSessionEntry_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "LeagueMatch" (
+    "id" TEXT NOT NULL,
+    "leagueId" TEXT NOT NULL,
+    "roundNumber" INTEGER,
+    "homeTeamId" TEXT NOT NULL,
+    "awayTeamId" TEXT NOT NULL,
+    "homeScore" INTEGER,
+    "awayScore" INTEGER,
+    "status" TEXT NOT NULL DEFAULT 'scheduled',
+    "scheduledAt" TIMESTAMP(3),
+    "playedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "LeagueMatch_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "LeagueStanding" (
+    "id" TEXT NOT NULL,
+    "leagueId" TEXT NOT NULL,
+    "teamId" TEXT NOT NULL,
+    "played" INTEGER NOT NULL DEFAULT 0,
+    "won" INTEGER NOT NULL DEFAULT 0,
+    "drawn" INTEGER NOT NULL DEFAULT 0,
+    "lost" INTEGER NOT NULL DEFAULT 0,
+    "goalsFor" INTEGER NOT NULL DEFAULT 0,
+    "goalsAgainst" INTEGER NOT NULL DEFAULT 0,
+    "points" INTEGER NOT NULL DEFAULT 0,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "LeagueStanding_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE INDEX "UserProfilePicture_userId_isCurrent_idx" ON "UserProfilePicture"("userId", "isCurrent");
 
 -- CreateIndex
-CREATE INDEX "EventReminder_sent_idx" ON "EventReminder"("sent");
+CREATE INDEX "SessionReminder_sent_idx" ON "SessionReminder"("sent");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "EventReminder_eventId_userId_remindAt_key" ON "EventReminder"("eventId", "userId", "remindAt");
+CREATE UNIQUE INDEX "SessionReminder_sessionId_userId_remindAt_key" ON "SessionReminder"("sessionId", "userId", "remindAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "EventAttendance_eventId_userId_key" ON "EventAttendance"("eventId", "userId");
+CREATE INDEX "SessionAttendance_status_idx" ON "SessionAttendance"("status");
 
 -- CreateIndex
-CREATE INDEX "EventNotification_userId_idx" ON "EventNotification"("userId");
+CREATE UNIQUE INDEX "SessionAttendance_sessionId_userId_key" ON "SessionAttendance"("sessionId", "userId");
 
 -- CreateIndex
-CREATE INDEX "EventNotification_eventId_idx" ON "EventNotification"("eventId");
+CREATE INDEX "SessionNotification_userId_idx" ON "SessionNotification"("userId");
 
 -- CreateIndex
-CREATE INDEX "EventNotification_read_idx" ON "EventNotification"("read");
+CREATE INDEX "SessionNotification_sessionId_idx" ON "SessionNotification"("sessionId");
 
 -- CreateIndex
-CREATE INDEX "EventNotification_userId_read_idx" ON "EventNotification"("userId", "read");
+CREATE INDEX "SessionNotification_read_idx" ON "SessionNotification"("read");
 
 -- CreateIndex
-CREATE INDEX "EventNotification_createdAt_idx" ON "EventNotification"("createdAt");
+CREATE INDEX "SessionNotification_userId_read_idx" ON "SessionNotification"("userId", "read");
+
+-- CreateIndex
+CREATE INDEX "SessionNotification_createdAt_idx" ON "SessionNotification"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "SessionNotification_userId_createdAt_id_idx" ON "SessionNotification"("userId", "createdAt", "id");
+
+-- CreateIndex
+CREATE INDEX "SessionNotification_userId_read_createdAt_idx" ON "SessionNotification"("userId", "read", "createdAt");
 
 -- CreateIndex
 CREATE INDEX "GroupNotification_userId_idx" ON "GroupNotification"("userId");
@@ -664,6 +871,12 @@ CREATE INDEX "GroupNotification_userId_read_idx" ON "GroupNotification"("userId"
 CREATE INDEX "GroupNotification_createdAt_idx" ON "GroupNotification"("createdAt");
 
 -- CreateIndex
+CREATE INDEX "GroupNotification_userId_createdAt_id_idx" ON "GroupNotification"("userId", "createdAt", "id");
+
+-- CreateIndex
+CREATE INDEX "GroupNotification_userId_read_createdAt_idx" ON "GroupNotification"("userId", "read", "createdAt");
+
+-- CreateIndex
 CREATE INDEX "TeamUpNotification_userId_idx" ON "TeamUpNotification"("userId");
 
 -- CreateIndex
@@ -679,6 +892,12 @@ CREATE INDEX "TeamUpNotification_userId_read_idx" ON "TeamUpNotification"("userI
 CREATE INDEX "TeamUpNotification_createdAt_idx" ON "TeamUpNotification"("createdAt");
 
 -- CreateIndex
+CREATE INDEX "TeamUpNotification_userId_createdAt_id_idx" ON "TeamUpNotification"("userId", "createdAt", "id");
+
+-- CreateIndex
+CREATE INDEX "TeamUpNotification_userId_read_createdAt_idx" ON "TeamUpNotification"("userId", "read", "createdAt");
+
+-- CreateIndex
 CREATE INDEX "TournamentNotification_userId_idx" ON "TournamentNotification"("userId");
 
 -- CreateIndex
@@ -692,6 +911,30 @@ CREATE INDEX "TournamentNotification_userId_read_idx" ON "TournamentNotification
 
 -- CreateIndex
 CREATE INDEX "TournamentNotification_createdAt_idx" ON "TournamentNotification"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "TournamentNotification_userId_createdAt_id_idx" ON "TournamentNotification"("userId", "createdAt", "id");
+
+-- CreateIndex
+CREATE INDEX "TournamentNotification_userId_read_createdAt_idx" ON "TournamentNotification"("userId", "read", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "InviteLog_inviterType_entityId_idx" ON "InviteLog"("inviterType", "entityId");
+
+-- CreateIndex
+CREATE INDEX "InviteLog_inviterId_idx" ON "InviteLog"("inviterId");
+
+-- CreateIndex
+CREATE INDEX "InviteLog_inviteeEmail_idx" ON "InviteLog"("inviteeEmail");
+
+-- CreateIndex
+CREATE INDEX "InviteLog_status_idx" ON "InviteLog"("status");
+
+-- CreateIndex
+CREATE INDEX "InviteLog_sentAt_idx" ON "InviteLog"("sentAt");
+
+-- CreateIndex
+CREATE INDEX "InviteLog_expiresAt_idx" ON "InviteLog"("expiresAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
@@ -724,6 +967,18 @@ CREATE INDEX "User_googleId_idx" ON "User"("googleId");
 CREATE INDEX "User_facebookId_idx" ON "User"("facebookId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Group_inviteToken_key" ON "Group"("inviteToken");
+
+-- CreateIndex
+CREATE INDEX "GroupJoinRequest_status_idx" ON "GroupJoinRequest"("status");
+
+-- CreateIndex
+CREATE INDEX "GroupJoinRequest_userId_status_idx" ON "GroupJoinRequest"("userId", "status");
+
+-- CreateIndex
+CREATE INDEX "GroupJoinRequest_expiresAt_idx" ON "GroupJoinRequest"("expiresAt");
+
+-- CreateIndex
 CREATE INDEX "GroupMember_userId_idx" ON "GroupMember"("userId");
 
 -- CreateIndex
@@ -739,82 +994,112 @@ CREATE INDEX "GroupMember_groupId_role_idx" ON "GroupMember"("groupId", "role");
 CREATE UNIQUE INDEX "GroupMember_userId_groupId_key" ON "GroupMember"("userId", "groupId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Event_inviteToken_key" ON "Event"("inviteToken");
+CREATE INDEX "GroupBan_userId_idx" ON "GroupBan"("userId");
 
 -- CreateIndex
-CREATE INDEX "Event_groupId_idx" ON "Event"("groupId");
+CREATE INDEX "GroupBan_groupId_idx" ON "GroupBan"("groupId");
 
 -- CreateIndex
-CREATE INDEX "Event_creatorId_idx" ON "Event"("creatorId");
+CREATE UNIQUE INDEX "GroupBan_groupId_userId_key" ON "GroupBan"("groupId", "userId");
 
 -- CreateIndex
-CREATE INDEX "Event_startTime_idx" ON "Event"("startTime");
+CREATE INDEX "AuditLog_entityType_entityId_idx" ON "AuditLog"("entityType", "entityId");
 
 -- CreateIndex
-CREATE INDEX "Event_status_idx" ON "Event"("status");
+CREATE INDEX "AuditLog_actorId_idx" ON "AuditLog"("actorId");
 
 -- CreateIndex
-CREATE INDEX "Event_eventType_idx" ON "Event"("eventType");
+CREATE INDEX "AuditLog_createdAt_idx" ON "AuditLog"("createdAt");
 
 -- CreateIndex
-CREATE INDEX "Event_inviteToken_idx" ON "Event"("inviteToken");
+CREATE UNIQUE INDEX "Session_inviteToken_key" ON "Session"("inviteToken");
 
 -- CreateIndex
-CREATE INDEX "Event_archived_idx" ON "Event"("archived");
+CREATE INDEX "Session_groupId_idx" ON "Session"("groupId");
 
 -- CreateIndex
-CREATE INDEX "Event_groupId_startTime_idx" ON "Event"("groupId", "startTime");
+CREATE INDEX "Session_creatorId_idx" ON "Session"("creatorId");
 
 -- CreateIndex
-CREATE INDEX "Event_creatorId_startTime_idx" ON "Event"("creatorId", "startTime");
+CREATE INDEX "Session_startTime_idx" ON "Session"("startTime");
 
 -- CreateIndex
-CREATE INDEX "Event_city_country_idx" ON "Event"("city", "country");
+CREATE INDEX "Session_status_idx" ON "Session"("status");
 
 -- CreateIndex
-CREATE INDEX "Event_status_startTime_idx" ON "Event"("status", "startTime");
+CREATE INDEX "Session_sessionType_idx" ON "Session"("sessionType");
 
 -- CreateIndex
-CREATE INDEX "Event_eventType_startTime_idx" ON "Event"("eventType", "startTime");
+CREATE INDEX "Session_inviteToken_idx" ON "Session"("inviteToken");
 
 -- CreateIndex
-CREATE INDEX "Event_isPublic_startTime_idx" ON "Event"("isPublic", "startTime");
+CREATE INDEX "Session_archived_idx" ON "Session"("archived");
 
 -- CreateIndex
-CREATE INDEX "Event_archived_status_startTime_idx" ON "Event"("archived", "status", "startTime");
+CREATE INDEX "Session_groupId_startTime_idx" ON "Session"("groupId", "startTime");
 
 -- CreateIndex
-CREATE INDEX "EventParticipant_eventId_idx" ON "EventParticipant"("eventId");
+CREATE INDEX "Session_creatorId_startTime_idx" ON "Session"("creatorId", "startTime");
 
 -- CreateIndex
-CREATE INDEX "EventParticipant_userId_idx" ON "EventParticipant"("userId");
+CREATE INDEX "Session_city_country_idx" ON "Session"("city", "country");
 
 -- CreateIndex
-CREATE INDEX "EventParticipant_status_idx" ON "EventParticipant"("status");
+CREATE INDEX "Session_status_startTime_idx" ON "Session"("status", "startTime");
 
 -- CreateIndex
-CREATE INDEX "EventParticipant_eventId_status_idx" ON "EventParticipant"("eventId", "status");
+CREATE INDEX "Session_sessionType_startTime_idx" ON "Session"("sessionType", "startTime");
 
 -- CreateIndex
-CREATE INDEX "EventParticipant_joinedAt_idx" ON "EventParticipant"("joinedAt");
+CREATE INDEX "Session_isPublic_startTime_idx" ON "Session"("isPublic", "startTime");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "EventParticipant_eventId_userId_key" ON "EventParticipant"("eventId", "userId");
+CREATE INDEX "Session_archived_status_startTime_idx" ON "Session"("archived", "status", "startTime");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "EventRequest_finalizedEventId_key" ON "EventRequest"("finalizedEventId");
+CREATE INDEX "SessionParticipant_sessionId_idx" ON "SessionParticipant"("sessionId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "EventVote_eventRequestId_userId_key" ON "EventVote"("eventRequestId", "userId");
+CREATE INDEX "SessionParticipant_userId_idx" ON "SessionParticipant"("userId");
+
+-- CreateIndex
+CREATE INDEX "SessionParticipant_status_idx" ON "SessionParticipant"("status");
+
+-- CreateIndex
+CREATE INDEX "SessionParticipant_sessionId_status_idx" ON "SessionParticipant"("sessionId", "status");
+
+-- CreateIndex
+CREATE INDEX "SessionParticipant_joinedAt_idx" ON "SessionParticipant"("joinedAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SessionParticipant_sessionId_userId_key" ON "SessionParticipant"("sessionId", "userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SessionRequest_finalizedSessionId_key" ON "SessionRequest"("finalizedSessionId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SessionVote_sessionRequestId_userId_key" ON "SessionVote"("sessionRequestId", "userId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "EmailPreference_userId_key" ON "EmailPreference"("userId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "PushDeviceToken_token_key" ON "PushDeviceToken"("token");
+
+-- CreateIndex
+CREATE INDEX "PushDeviceToken_userId_enabled_idx" ON "PushDeviceToken"("userId", "enabled");
+
+-- CreateIndex
+CREATE INDEX "PushDeviceToken_lastSeen_idx" ON "PushDeviceToken"("lastSeen");
+
+-- CreateIndex
+CREATE INDEX "PushDeviceToken_platform_idx" ON "PushDeviceToken"("platform");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "CommentMention_commentId_userId_key" ON "CommentMention"("commentId", "userId");
 
 -- CreateIndex
-CREATE INDEX "GuestParticipant_eventId_idx" ON "GuestParticipant"("eventId");
+CREATE INDEX "GuestParticipant_sessionId_idx" ON "GuestParticipant"("sessionId");
 
 -- CreateIndex
 CREATE INDEX "GuestParticipant_joinedAt_idx" ON "GuestParticipant"("joinedAt");
@@ -1041,6 +1326,51 @@ CREATE INDEX "TournamentTeamInvitation_expiresAt_idx" ON "TournamentTeamInvitati
 -- CreateIndex
 CREATE INDEX "TournamentTeamInvitation_teamId_inviteeEmail_status_idx" ON "TournamentTeamInvitation"("teamId", "inviteeEmail", "status");
 
+-- CreateIndex
+CREATE INDEX "League_groupId_idx" ON "League"("groupId");
+
+-- CreateIndex
+CREATE INDEX "League_creatorId_idx" ON "League"("creatorId");
+
+-- CreateIndex
+CREATE INDEX "League_status_idx" ON "League"("status");
+
+-- CreateIndex
+CREATE INDEX "League_sport_idx" ON "League"("sport");
+
+-- CreateIndex
+CREATE INDEX "LeagueTeam_leagueId_idx" ON "LeagueTeam"("leagueId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "LeagueTeam_leagueId_name_key" ON "LeagueTeam"("leagueId", "name");
+
+-- CreateIndex
+CREATE INDEX "LeaguePlayer_teamId_idx" ON "LeaguePlayer"("teamId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "LeaguePlayer_teamId_userId_key" ON "LeaguePlayer"("teamId", "userId");
+
+-- CreateIndex
+CREATE INDEX "LeagueSessionEntry_leagueId_idx" ON "LeagueSessionEntry"("leagueId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "LeagueSessionEntry_leagueId_sessionId_key" ON "LeagueSessionEntry"("leagueId", "sessionId");
+
+-- CreateIndex
+CREATE INDEX "LeagueMatch_leagueId_idx" ON "LeagueMatch"("leagueId");
+
+-- CreateIndex
+CREATE INDEX "LeagueMatch_homeTeamId_idx" ON "LeagueMatch"("homeTeamId");
+
+-- CreateIndex
+CREATE INDEX "LeagueMatch_awayTeamId_idx" ON "LeagueMatch"("awayTeamId");
+
+-- CreateIndex
+CREATE INDEX "LeagueStanding_leagueId_idx" ON "LeagueStanding"("leagueId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "LeagueStanding_leagueId_teamId_key" ON "LeagueStanding"("leagueId", "teamId");
+
 -- AddForeignKey
 ALTER TABLE "UserProfilePicture" ADD CONSTRAINT "UserProfilePicture_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -1051,22 +1381,22 @@ ALTER TABLE "GroupMessage" ADD CONSTRAINT "GroupMessage_userId_fkey" FOREIGN KEY
 ALTER TABLE "GroupMessage" ADD CONSTRAINT "GroupMessage_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "Group"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "EventReminder" ADD CONSTRAINT "EventReminder_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "SessionReminder" ADD CONSTRAINT "SessionReminder_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "Session"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "EventReminder" ADD CONSTRAINT "EventReminder_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "SessionReminder" ADD CONSTRAINT "SessionReminder_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "EventAttendance" ADD CONSTRAINT "EventAttendance_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "SessionAttendance" ADD CONSTRAINT "SessionAttendance_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "Session"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "EventAttendance" ADD CONSTRAINT "EventAttendance_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "SessionAttendance" ADD CONSTRAINT "SessionAttendance_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "EventNotification" ADD CONSTRAINT "EventNotification_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "SessionNotification" ADD CONSTRAINT "SessionNotification_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "Session"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "EventNotification" ADD CONSTRAINT "EventNotification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "SessionNotification" ADD CONSTRAINT "SessionNotification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "GroupNotification" ADD CONSTRAINT "GroupNotification_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "Group"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -1087,6 +1417,15 @@ ALTER TABLE "TournamentNotification" ADD CONSTRAINT "TournamentNotification_tour
 ALTER TABLE "TournamentNotification" ADD CONSTRAINT "TournamentNotification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "InviteLog" ADD CONSTRAINT "InviteLog_inviterId_fkey" FOREIGN KEY ("inviterId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InviteLog" ADD CONSTRAINT "InviteLog_inviteeId_fkey" FOREIGN KEY ("inviteeId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InviteLog" ADD CONSTRAINT "InviteLog_revokedBy_fkey" FOREIGN KEY ("revokedBy") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Group" ADD CONSTRAINT "Group_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -1096,43 +1435,61 @@ ALTER TABLE "GroupJoinRequest" ADD CONSTRAINT "GroupJoinRequest_groupId_fkey" FO
 ALTER TABLE "GroupJoinRequest" ADD CONSTRAINT "GroupJoinRequest_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "GroupJoinRequest" ADD CONSTRAINT "GroupJoinRequest_invitedBy_fkey" FOREIGN KEY ("invitedBy") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "GroupMember" ADD CONSTRAINT "GroupMember_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "GroupMember" ADD CONSTRAINT "GroupMember_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "Group"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Event" ADD CONSTRAINT "Event_parentEventId_fkey" FOREIGN KEY ("parentEventId") REFERENCES "Event"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "GroupBan" ADD CONSTRAINT "GroupBan_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "Group"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Event" ADD CONSTRAINT "Event_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "GroupBan" ADD CONSTRAINT "GroupBan_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Event" ADD CONSTRAINT "Event_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "Group"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "GroupBan" ADD CONSTRAINT "GroupBan_bannedBy_fkey" FOREIGN KEY ("bannedBy") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "EventParticipant" ADD CONSTRAINT "EventParticipant_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "EventParticipant" ADD CONSTRAINT "EventParticipant_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Session" ADD CONSTRAINT "Session_parentSessionId_fkey" FOREIGN KEY ("parentSessionId") REFERENCES "Session"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "EventRequest" ADD CONSTRAINT "EventRequest_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Session" ADD CONSTRAINT "Session_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "EventRequest" ADD CONSTRAINT "EventRequest_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "Group"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Session" ADD CONSTRAINT "Session_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "Group"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "EventVote" ADD CONSTRAINT "EventVote_eventRequestId_fkey" FOREIGN KEY ("eventRequestId") REFERENCES "EventRequest"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "SessionParticipant" ADD CONSTRAINT "SessionParticipant_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "Session"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "EventVote" ADD CONSTRAINT "EventVote_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "SessionParticipant" ADD CONSTRAINT "SessionParticipant_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SessionRequest" ADD CONSTRAINT "SessionRequest_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SessionRequest" ADD CONSTRAINT "SessionRequest_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "Group"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SessionVote" ADD CONSTRAINT "SessionVote_sessionRequestId_fkey" FOREIGN KEY ("sessionRequestId") REFERENCES "SessionRequest"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SessionVote" ADD CONSTRAINT "SessionVote_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "EmailPreference" ADD CONSTRAINT "EmailPreference_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Comment" ADD CONSTRAINT "Comment_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "PushDeviceToken" ADD CONSTRAINT "PushDeviceToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Comment" ADD CONSTRAINT "Comment_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "Session"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Comment" ADD CONSTRAINT "Comment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -1147,7 +1504,7 @@ ALTER TABLE "CommentMention" ADD CONSTRAINT "CommentMention_commentId_fkey" FORE
 ALTER TABLE "CommentMention" ADD CONSTRAINT "CommentMention_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "GuestParticipant" ADD CONSTRAINT "GuestParticipant_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "GuestParticipant" ADD CONSTRAINT "GuestParticipant_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "Session"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "RefreshToken" ADD CONSTRAINT "RefreshToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -1233,341 +1590,39 @@ ALTER TABLE "TournamentTeamInvitation" ADD CONSTRAINT "TournamentTeamInvitation_
 -- AddForeignKey
 ALTER TABLE "TournamentTeamInvitation" ADD CONSTRAINT "TournamentTeamInvitation_inviterId_fkey" FOREIGN KEY ("inviterId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
-
--- Next migration: 20260121225308_add_group_invite_token_and_improve_join_request
-
--- CreateEnum for GroupJoinRequestSource
-CREATE TYPE "GroupJoinRequestSource" AS ENUM ('USER', 'INVITE', 'LINK');
-
--- Add inviteToken to Group table
-ALTER TABLE "Group" ADD COLUMN "inviteToken" TEXT;
-
--- Add unique constraint for inviteToken
-CREATE UNIQUE INDEX "Group_inviteToken_key" ON "Group"("inviteToken");
-
--- Migrate existing GroupJoinRequest.createdBy from String to Enum
--- First, update existing data to match enum values
-UPDATE "GroupJoinRequest" 
-SET "createdBy" = CASE 
-  WHEN "createdBy" = 'user' THEN 'USER'
-  WHEN "createdBy" = 'invite' THEN 'INVITE'
-  ELSE 'USER'
-END;
-
--- Alter column type to use the new enum
-ALTER TABLE "GroupJoinRequest" 
-ALTER COLUMN "createdBy" DROP DEFAULT,
-ALTER COLUMN "createdBy" TYPE "GroupJoinRequestSource" USING "createdBy"::"GroupJoinRequestSource",
-ALTER COLUMN "createdBy" SET DEFAULT 'USER';
-
-
--- Next migration: 20260121232658_enhance_roles_and_permissions
-
--- AlterTable: Add invite tracking fields to GroupJoinRequest
-ALTER TABLE "GroupJoinRequest" ADD COLUMN "expiresAt" TIMESTAMP(3);
-ALTER TABLE "GroupJoinRequest" ADD COLUMN "invitedBy" TEXT;
-
--- AlterTable: Add invite token expiration to Group
-ALTER TABLE "Group" ADD COLUMN "inviteTokenExpiresAt" TIMESTAMP(3);
-
--- AlterTable: Add invite token expiration to Event
-ALTER TABLE "Event" ADD COLUMN "inviteTokenExpiresAt" TIMESTAMP(3);
-
--- CreateTable: Create InviteLog for auditing
-CREATE TABLE "InviteLog" (
-    "id" TEXT NOT NULL,
-    "inviterType" TEXT NOT NULL,
-    "entityId" TEXT NOT NULL,
-    "inviterId" TEXT NOT NULL,
-    "inviteeEmail" TEXT NOT NULL,
-    "inviteeId" TEXT,
-    "status" TEXT NOT NULL,
-    "sentAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "respondedAt" TIMESTAMP(3),
-    "expiresAt" TIMESTAMP(3),
-    "revokedAt" TIMESTAMP(3),
-    "revokedBy" TEXT,
-    "message" TEXT,
-    "metadata" JSONB,
-
-    CONSTRAINT "InviteLog_pkey" PRIMARY KEY ("id")
-);
-
--- CreateIndex
-CREATE INDEX "GroupJoinRequest_expiresAt_idx" ON "GroupJoinRequest"("expiresAt");
-
--- CreateIndex
-CREATE INDEX "InviteLog_inviterType_entityId_idx" ON "InviteLog"("inviterType", "entityId");
-
--- CreateIndex
-CREATE INDEX "InviteLog_inviterId_idx" ON "InviteLog"("inviterId");
-
--- CreateIndex
-CREATE INDEX "InviteLog_inviteeEmail_idx" ON "InviteLog"("inviteeEmail");
-
--- CreateIndex
-CREATE INDEX "InviteLog_status_idx" ON "InviteLog"("status");
-
--- CreateIndex
-CREATE INDEX "InviteLog_sentAt_idx" ON "InviteLog"("sentAt");
-
--- CreateIndex
-CREATE INDEX "InviteLog_expiresAt_idx" ON "InviteLog"("expiresAt");
+-- AddForeignKey
+ALTER TABLE "League" ADD CONSTRAINT "League_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "GroupJoinRequest" ADD CONSTRAINT "GroupJoinRequest_invitedBy_fkey" FOREIGN KEY ("invitedBy") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "League" ADD CONSTRAINT "League_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "Group"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "InviteLog" ADD CONSTRAINT "InviteLog_inviterId_fkey" FOREIGN KEY ("inviterId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "LeagueTeam" ADD CONSTRAINT "LeagueTeam_leagueId_fkey" FOREIGN KEY ("leagueId") REFERENCES "League"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "InviteLog" ADD CONSTRAINT "InviteLog_inviteeId_fkey" FOREIGN KEY ("inviteeId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "LeagueTeam" ADD CONSTRAINT "LeagueTeam_captainUserId_fkey" FOREIGN KEY ("captainUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "InviteLog" ADD CONSTRAINT "InviteLog_revokedBy_fkey" FOREIGN KEY ("revokedBy") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "LeaguePlayer" ADD CONSTRAINT "LeaguePlayer_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "LeagueTeam"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+-- AddForeignKey
+ALTER TABLE "LeaguePlayer" ADD CONSTRAINT "LeaguePlayer_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- Next migration: 20260402000000_add_notification_composite_indexes
+-- AddForeignKey
+ALTER TABLE "LeagueSessionEntry" ADD CONSTRAINT "LeagueSessionEntry_leagueId_fkey" FOREIGN KEY ("leagueId") REFERENCES "League"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddIndex: Composite indexes for cursor-based pagination on notification tables.
--- (userId, createdAt, id) covers the ORDER BY createdAt DESC, id DESC pattern used
--- by getUserNotifications cursor pagination.
-CREATE INDEX "EventNotification_userId_createdAt_id_idx" ON "EventNotification"("userId", "createdAt", "id");
-CREATE INDEX "GroupNotification_userId_createdAt_id_idx" ON "GroupNotification"("userId", "createdAt", "id");
-CREATE INDEX "TeamUpNotification_userId_createdAt_id_idx" ON "TeamUpNotification"("userId", "createdAt", "id");
-CREATE INDEX "TournamentNotification_userId_createdAt_id_idx" ON "TournamentNotification"("userId", "createdAt", "id");
+-- AddForeignKey
+ALTER TABLE "LeagueSessionEntry" ADD CONSTRAINT "LeagueSessionEntry_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "Session"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddIndex: Composite indexes for unread + sorted queries.
--- (userId, read, createdAt) covers the common WHERE userId = ? AND read = false ORDER BY createdAt
--- access pattern used by getNotificationStats and getUserNotifications unread queries.
-CREATE INDEX "EventNotification_userId_read_createdAt_idx" ON "EventNotification"("userId", "read", "createdAt");
-CREATE INDEX "GroupNotification_userId_read_createdAt_idx" ON "GroupNotification"("userId", "read", "createdAt");
-CREATE INDEX "TeamUpNotification_userId_read_createdAt_idx" ON "TeamUpNotification"("userId", "read", "createdAt");
-CREATE INDEX "TournamentNotification_userId_read_createdAt_idx" ON "TournamentNotification"("userId", "read", "createdAt");
+-- AddForeignKey
+ALTER TABLE "LeagueMatch" ADD CONSTRAINT "LeagueMatch_homeTeamId_fkey" FOREIGN KEY ("homeTeamId") REFERENCES "LeagueTeam"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+-- AddForeignKey
+ALTER TABLE "LeagueMatch" ADD CONSTRAINT "LeagueMatch_awayTeamId_fkey" FOREIGN KEY ("awayTeamId") REFERENCES "LeagueTeam"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- Next migration: 20260406000000_add_waitlist_ban_auditlog
+-- AddForeignKey
+ALTER TABLE "LeagueStanding" ADD CONSTRAINT "LeagueStanding_leagueId_fkey" FOREIGN KEY ("leagueId") REFERENCES "League"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AlterEnum: Add waitlisted and co_organizer values to EventParticipantStatus
-ALTER TYPE "EventParticipantStatus" ADD VALUE IF NOT EXISTS 'waitlisted';
-ALTER TYPE "EventParticipantStatus" ADD VALUE IF NOT EXISTS 'co_organizer';
+-- AddForeignKey
+ALTER TABLE "LeagueStanding" ADD CONSTRAINT "LeagueStanding_teamId_fkey" FOREIGN KEY ("teamId") REFERENCES "LeagueTeam"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- CreateTable: GroupBan
-CREATE TABLE "GroupBan" (
-    "id" TEXT NOT NULL,
-    "groupId" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "bannedBy" TEXT NOT NULL,
-    "reason" TEXT,
-    "bannedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "GroupBan_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable: AuditLog
-CREATE TABLE "AuditLog" (
-    "id" TEXT NOT NULL,
-    "entityType" TEXT NOT NULL,
-    "entityId" TEXT NOT NULL,
-    "actorId" TEXT NOT NULL,
-    "action" TEXT NOT NULL,
-    "metadata" JSONB,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "AuditLog_pkey" PRIMARY KEY ("id")
-);
-
--- CreateIndex: GroupBan unique on (groupId, userId)
-CREATE UNIQUE INDEX "GroupBan_groupId_userId_key" ON "GroupBan"("groupId", "userId");
-
--- CreateIndex
-CREATE INDEX "GroupBan_userId_idx" ON "GroupBan"("userId");
-
--- CreateIndex
-CREATE INDEX "GroupBan_groupId_idx" ON "GroupBan"("groupId");
-
--- CreateIndex
-CREATE INDEX "AuditLog_entityType_entityId_idx" ON "AuditLog"("entityType", "entityId");
-
--- CreateIndex
-CREATE INDEX "AuditLog_actorId_idx" ON "AuditLog"("actorId");
-
--- CreateIndex
-CREATE INDEX "AuditLog_createdAt_idx" ON "AuditLog"("createdAt");
-
--- AddForeignKey: GroupBan -> Group
-ALTER TABLE "GroupBan" ADD CONSTRAINT "GroupBan_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "Group"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey: GroupBan -> User (banned user)
-ALTER TABLE "GroupBan" ADD CONSTRAINT "GroupBan_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey: GroupBan -> User (banner)
-ALTER TABLE "GroupBan" ADD CONSTRAINT "GroupBan_bannedBy_fkey" FOREIGN KEY ("bannedBy") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey: AuditLog -> User
-ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
-
--- Repair enum-backed columns and missing enum types that were emitted as TEXT
--- in the squashed init migration.
-
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_type
-        WHERE typnamespace = 'public'::regnamespace
-            AND typname = 'GroupJoinRequestStatus'
-    ) THEN
-        CREATE TYPE "GroupJoinRequestStatus" AS ENUM ('pending', 'approved', 'rejected');
-    END IF;
-END $$;
-
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_type
-        WHERE typnamespace = 'public'::regnamespace
-            AND typname = 'GroupMemberRole'
-    ) THEN
-        CREATE TYPE "GroupMemberRole" AS ENUM ('member', 'moderator', 'admin');
-    END IF;
-END $$;
-
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_type
-        WHERE typnamespace = 'public'::regnamespace
-            AND typname = 'EventAttendanceStatus'
-    ) THEN
-        CREATE TYPE "EventAttendanceStatus" AS ENUM ('on_time', 'late');
-    END IF;
-END $$;
-
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_type
-        WHERE typnamespace = 'public'::regnamespace
-            AND typname = 'EventRequestStatus'
-    ) THEN
-        CREATE TYPE "EventRequestStatus" AS ENUM ('voting', 'finalized', 'cancelled', 'expired');
-    END IF;
-END $$;
-
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_type
-        WHERE typnamespace = 'public'::regnamespace
-            AND typname = 'EmailQueueStatus'
-    ) THEN
-        CREATE TYPE "EmailQueueStatus" AS ENUM ('pending', 'sent', 'failed', 'retry');
-    END IF;
-END $$;
-
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_type
-        WHERE typnamespace = 'public'::regnamespace
-            AND typname = 'TeamUpRequestStatus'
-    ) THEN
-        CREATE TYPE "TeamUpRequestStatus" AS ENUM ('open', 'filled', 'cancelled', 'expired');
-    END IF;
-END $$;
-
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_type
-        WHERE typnamespace = 'public'::regnamespace
-            AND typname = 'TeamUpResponseStatus'
-    ) THEN
-        CREATE TYPE "TeamUpResponseStatus" AS ENUM ('pending', 'accepted', 'declined');
-    END IF;
-END $$;
-
-ALTER TYPE "EventParticipantStatus" ADD VALUE IF NOT EXISTS 'waitlisted';
-ALTER TYPE "EventParticipantStatus" ADD VALUE IF NOT EXISTS 'co_organizer';
-
-UPDATE "EventAttendance"
-SET "status" = 'on_time'
-WHERE "status" = 'on-time';
-
-ALTER TABLE "EventAttendance"
-    ALTER COLUMN "status" DROP DEFAULT;
-
-ALTER TABLE "EventAttendance"
-    ALTER COLUMN "status" TYPE "EventAttendanceStatus"
-    USING "status"::"EventAttendanceStatus";
-
-ALTER TABLE "EventAttendance"
-    ALTER COLUMN "status" SET DEFAULT 'on_time';
-
-ALTER TABLE "GroupJoinRequest"
-    ALTER COLUMN "status" DROP DEFAULT;
-
-ALTER TABLE "GroupJoinRequest"
-    ALTER COLUMN "status" TYPE "GroupJoinRequestStatus"
-    USING "status"::"GroupJoinRequestStatus";
-
-ALTER TABLE "GroupJoinRequest"
-    ALTER COLUMN "status" SET DEFAULT 'pending';
-
-ALTER TABLE "GroupMember"
-    ALTER COLUMN "role" DROP DEFAULT;
-
-ALTER TABLE "GroupMember"
-    ALTER COLUMN "role" TYPE "GroupMemberRole"
-    USING "role"::"GroupMemberRole";
-
-ALTER TABLE "GroupMember"
-    ALTER COLUMN "role" SET DEFAULT 'member';
-
-ALTER TABLE "EventRequest"
-    ALTER COLUMN "status" DROP DEFAULT;
-
-ALTER TABLE "EventRequest"
-    ALTER COLUMN "status" TYPE "EventRequestStatus"
-    USING "status"::"EventRequestStatus";
-
-ALTER TABLE "EventRequest"
-    ALTER COLUMN "status" SET DEFAULT 'voting';
-
-ALTER TABLE "EmailQueue"
-    ALTER COLUMN "status" DROP DEFAULT;
-
-ALTER TABLE "EmailQueue"
-    ALTER COLUMN "status" TYPE "EmailQueueStatus"
-    USING "status"::"EmailQueueStatus";
-
-ALTER TABLE "EmailQueue"
-    ALTER COLUMN "status" SET DEFAULT 'pending';
-
-ALTER TABLE "TeamUpRequest"
-    ALTER COLUMN "status" DROP DEFAULT;
-
-ALTER TABLE "TeamUpRequest"
-    ALTER COLUMN "status" TYPE "TeamUpRequestStatus"
-    USING "status"::"TeamUpRequestStatus";
-
-ALTER TABLE "TeamUpRequest"
-    ALTER COLUMN "status" SET DEFAULT 'open';
-
-ALTER TABLE "TeamUpResponse"
-    ALTER COLUMN "status" DROP DEFAULT;
-
-ALTER TABLE "TeamUpResponse"
-    ALTER COLUMN "status" TYPE "TeamUpResponseStatus"
-    USING "status"::"TeamUpResponseStatus";
-
-ALTER TABLE "TeamUpResponse"
-    ALTER COLUMN "status" SET DEFAULT 'pending';

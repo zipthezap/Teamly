@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 class AuthSessionModel extends Equatable {
-  const SessionModel({
+  const AuthSessionModel({
     required this.id,
     required this.lastActive,
     required this.createdAt,
@@ -17,7 +17,7 @@ class AuthSessionModel extends Equatable {
   final String? deviceInfo;
   final String? ipAddress;
 
-  factory SessionModel.fromJson(Map<String, dynamic> json) {
+  factory AuthSessionModel.fromJson(Map<String, dynamic> json) {
     return AuthSessionModel(
       id: json['id'] as String,
       lastActive: DateTime.parse(json['lastActive'] as String),

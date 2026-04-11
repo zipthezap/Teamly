@@ -154,7 +154,7 @@ class _CreateLeaguePageState extends ConsumerState<CreateLeaguePage> {
           padding: const EdgeInsets.all(16),
           children: [
             // ── Basic info ──────────────────────────────────────────────────
-            const UiSectionTitle(title: 'Basic Info'),
+            const UiSectionTitle('Basic Info'),
             const SizedBox(height: 10),
 
             TextFormField(
@@ -245,7 +245,7 @@ class _CreateLeaguePageState extends ConsumerState<CreateLeaguePage> {
             const SizedBox(height: 20),
 
             // ── Schedule type ───────────────────────────────────────────────
-            const UiSectionTitle(title: 'Schedule'),
+            const UiSectionTitle('Schedule'),
             const SizedBox(height: 10),
 
             // Toggle: Sessions vs Duration
