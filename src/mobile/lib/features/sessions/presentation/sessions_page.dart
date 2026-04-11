@@ -80,11 +80,10 @@ class _SessionsPageState extends ConsumerState<SessionsPage>
           },
         ),
       ],
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/sessions/new'),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('New Event',
-            style: TextStyle(fontWeight: FontWeight.w600)),
+        tooltip: 'New Event',
+        child: const Icon(Icons.add_rounded),
       ),
       child: eventsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

@@ -115,9 +115,14 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
           onRetry: () => ref.invalidate(publicGroupsProvider),
         ),
         data: (groups) {
-          final filtered = _searchQuery.isEmpty
+          final nonMemberGroups = currentUserId == null
               ? groups
               : groups
+                  .where((g) => !g.members.any((m) => m.id == currentUserId))
+                  .toList();
+          final filtered = _searchQuery.isEmpty
+              ? nonMemberGroups
+              : nonMemberGroups
                   .where(
                     (g) =>
                         g.name.toLowerCase().contains(_searchQuery) ||

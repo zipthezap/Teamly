@@ -234,10 +234,10 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Event Requests')),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: _showCreateDialog,
-        icon: const Icon(Icons.add),
-        label: const Text('New Request'),
+        tooltip: 'New Request',
+        child: const Icon(Icons.add),
       ),
       body: requestsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
