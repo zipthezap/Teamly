@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogTitle, DialogContent } from '@mui/material';
-import { eventsAPI } from '../../services/api';
-import EventForm, { EventFormData } from '../common/EventForm';
-import { SportType, SessionWithDetails } from '../../../../shared/types/event.types';
+import { sessionsAPI } from '../../services/api';
+import SessionForm, { SessionFormData } from '../common/SessionForm';
+import { SportType, SessionWithDetails } from '../../../../shared/types/session.types';
 
-interface EventFormModalProps {
+interface SessionFormModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess?: () => void;
@@ -14,7 +14,7 @@ interface EventFormModalProps {
   submitLabel?: string;
 }
 
-const EventFormModal: React.FC<EventFormModalProps> = React.memo(({ 
+const SessionFormModal: React.FC<SessionFormModalProps> = React.memo(({ 
   open, 
   onClose, 
   onSuccess,
@@ -25,7 +25,7 @@ const EventFormModal: React.FC<EventFormModalProps> = React.memo(({
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [formInitialData, setFormInitialData] = useState<Partial<EventFormData>>({});
+  const [formInitialData, setFormInitialData] = useState<Partial<SessionFormData>>({});
 
   // Parse initialData when editing an event
   useEffect(() => {
@@ -66,7 +66,7 @@ const EventFormModal: React.FC<EventFormModalProps> = React.memo(({
     }
   }, [initialData, groupId]);
 
-  const handleSubmit = useCallback(async (formData: EventFormData) => {
+  const handleSubmit = useCallback(async (formData: SessionFormData) => {
     setError('');
     setLoading(true);
     
@@ -116,9 +116,9 @@ const EventFormModal: React.FC<EventFormModalProps> = React.memo(({
       
       // Create or update event
       if (initialData && initialData.id) {
-        await eventsAPI.update(initialData.id, data);
+        await sessionsAPI.update(initialData.id, data);
       } else {
-        await eventsAPI.create(data);
+        await sessionsAPI.create(data);
       }
       
       setLoading(false);
@@ -137,7 +137,7 @@ const EventFormModal: React.FC<EventFormModalProps> = React.memo(({
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>{initialData?.id ? 'Edit Event' : 'Create Event'}</DialogTitle>
       <DialogContent>
-        <EventForm
+        <SessionForm
           groups={groups}
           initialData={formInitialData}
           loading={loading}
@@ -151,6 +151,6 @@ const EventFormModal: React.FC<EventFormModalProps> = React.memo(({
   );
 });
 
-EventFormModal.displayName = 'EventFormModal';
+SessionFormModal.displayName = 'SessionFormModal';
 
-export default EventFormModal;
+export default SessionFormModal;

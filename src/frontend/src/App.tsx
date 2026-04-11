@@ -10,15 +10,15 @@ import GroupsList from './pages/GroupsList';
 import GroupDetailsPage from './pages/GroupDetailsPage';
 import CreateGroup from './pages/CreateGroup';
 import EditGroup from './pages/EditGroup';
-import EventsList from './pages/EventsList';
-import EventDetails from './pages/EventDetails';
-import CreateEvent from './pages/CreateEvent';
-import EditEvent from './pages/EditEvent';
+import SessionsList from './pages/SessionsList';
+import SessionDetails from './pages/SessionDetails';
+import CreateSession from './pages/CreateSession';
+import EditSession from './pages/EditSession';
 import PublicGroups from './pages/PublicGroups';
 import TwoFactorSetup from './pages/TwoFactorSetup';
-import EventRequests from './pages/EventRequests';
+import SessionRequests from './pages/SessionRequests';
 import JoinGroup from './pages/JoinGroup';
-import JoinEventByInvite from './pages/JoinEventByInvite';
+import JoinSessionByInvite from './pages/JoinSessionByInvite';
 import Profile from './pages/Profile';
 import NotificationsCenter from './pages/NotificationsCenter';
 import TeamUp from './pages/TeamUp';
@@ -26,6 +26,9 @@ import TournamentsList from './pages/TournamentsList';
 import CreateTournament from './pages/CreateTournament';
 import TournamentDetails from './pages/TournamentDetails';
 import TournamentTeamDetails from './pages/TournamentTeamDetails';
+import LeaguesList from './pages/LeaguesList';
+import LeagueDetails from './pages/LeagueDetails';
+import CreateLeague from './pages/CreateLeague';
 
 function App() {
   return (
@@ -39,7 +42,7 @@ function App() {
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/public-groups" element={<PublicGroups />} />
             <Route path="/join-group/:groupId" element={<JoinGroup />} />
-            <Route path="/events/join/:token" element={<JoinEventByInvite />} />
+            <Route path="/sessions/join/:token" element={<JoinSessionByInvite />} />
             <Route
               path="/dashboard"
               element={
@@ -105,42 +108,42 @@ function App() {
               }
             />
             <Route
-              path="/event-requests/:groupId"
+              path="/session-requests/:groupId"
               element={
                 <PrivateRoute>
-                  <EventRequests />
+                  <SessionRequests />
                 </PrivateRoute>
               }
             />
             <Route
-              path="/events"
+              path="/sessions"
               element={
                 <PrivateRoute>
-                  <EventsList />
+                  <SessionsList />
                 </PrivateRoute>
               }
             />
             <Route
-              path="/events/new"
+              path="/sessions/new"
               element={
                 <PrivateRoute>
-                  <CreateEvent />
+                  <CreateSession />
                 </PrivateRoute>
               }
             />
             <Route
-              path="/events/:id"
+              path="/sessions/:id"
               element={
                 <PrivateRoute>
-                  <EventDetails />
+                  <SessionDetails />
                 </PrivateRoute>
               }
             />
             <Route
-              path="/events/:id/edit"
+              path="/sessions/:id/edit"
               element={
                 <PrivateRoute>
-                  <EditEvent />
+                  <EditSession />
                 </PrivateRoute>
               }
             />
@@ -181,6 +184,30 @@ function App() {
               element={
                 <PrivateRoute>
                   <TournamentTeamDetails />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/leagues"
+              element={
+                <PrivateRoute>
+                  <LeaguesList />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/leagues/new"
+              element={
+                <PrivateRoute>
+                  <CreateLeague />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/leagues/:id"
+              element={
+                <PrivateRoute>
+                  <LeagueDetails />
                 </PrivateRoute>
               }
             />

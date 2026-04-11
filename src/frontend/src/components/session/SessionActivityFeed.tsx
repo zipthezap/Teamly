@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import HistoryIcon from '@mui/icons-material/History';
 import CloseIcon from '@mui/icons-material/Close';
-import { EventWithDetails, PublicUser, EventParticipant } from '../../../../shared/types';
+import { SessionWithDetails, PublicUser, SessionParticipant } from '../../../../shared/types';
 
 // Local EventNotification interface extends the shared type with user info
 // which is needed for the activity feed display
@@ -29,8 +29,8 @@ interface EventNotification {
   metadata?: Record<string, unknown>;
 }
 
-interface EventActivityFeedProps {
-  event: EventWithDetails;
+interface SessionActivityFeedProps {
+  event: SessionWithDetails;
   activityDialogOpen: boolean;
   onOpenDialog: () => void;
   onCloseDialog: () => void;
@@ -89,7 +89,7 @@ const getActivityIcon = (type: string) => {
 };
 
 
-const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
+const SessionActivityFeed: React.FC<SessionActivityFeedProps> = ({
   event,
   activityDialogOpen,
   onOpenDialog,
@@ -176,7 +176,7 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
                 </Box>
               ))
             ) : recentParticipants.length > 0 ? (
-              recentParticipants.map((p: EventParticipant, idx: number) => (
+              recentParticipants.map((p: SessionParticipant, idx: number) => (
                 <Box
                   key={p.id || idx}
                   sx={{
@@ -307,4 +307,4 @@ const EventActivityFeed: React.FC<EventActivityFeedProps> = ({
   );
 };
 
-export default EventActivityFeed;
+export default SessionActivityFeed;

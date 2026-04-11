@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme, alpha } from '@mui/material/styles';
-import { eventsAPI } from '../../services/api';
+import { sessionsAPI } from '../../services/api';
 
 interface Statistics {
   totalEventsJoined: number;
@@ -35,7 +35,7 @@ const UserStatistics: React.FC = () => {
 
   const fetchStatistics = useCallback(async () => {
     try {
-      const response = await eventsAPI.getStatistics();
+      const response = await sessionsAPI.getStatistics();
       setStatistics(response.data);
     } catch {
       setError(t('common.error') + ': ' + t('dashboard.loadingDashboard'));

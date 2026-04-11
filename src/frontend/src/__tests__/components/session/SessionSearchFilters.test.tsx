@@ -2,9 +2,9 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import EventSearchFilters from '../../../components/event/EventSearchFilters';
+import SessionSearchFilters from '../../../components/session/SessionSearchFilters';
 
-describe('EventSearchFilters', () => {
+describe('SessionSearchFilters', () => {
   const mockOnSearch = vi.fn();
 
   beforeEach(() => {
@@ -12,20 +12,20 @@ describe('EventSearchFilters', () => {
   });
 
   it('should render search input', () => {
-    render(<EventSearchFilters onSearch={mockOnSearch} />);
+    render(<SessionSearchFilters onSearch={mockOnSearch} />);
     const searchInput = screen.getByPlaceholderText(/search events/i);
     expect(searchInput).toBeInTheDocument();
   });
 
   it('should render filter and search buttons', () => {
-    render(<EventSearchFilters onSearch={mockOnSearch} />);
+    render(<SessionSearchFilters onSearch={mockOnSearch} />);
     expect(screen.getByRole('button', { name: /filters/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
   });
 
   it('should toggle filter panel when filter button is clicked', async () => {
     const user = userEvent.setup();
-    render(<EventSearchFilters onSearch={mockOnSearch} />);
+    render(<SessionSearchFilters onSearch={mockOnSearch} />);
     
     const filterButton = screen.getByRole('button', { name: /filters/i });
     
@@ -45,7 +45,7 @@ describe('EventSearchFilters', () => {
 
   it('should call onSearch with filters when search button is clicked', async () => {
     const user = userEvent.setup();
-    render(<EventSearchFilters onSearch={mockOnSearch} />);
+    render(<SessionSearchFilters onSearch={mockOnSearch} />);
     
     const searchInput = screen.getByPlaceholderText(/search events/i);
     await user.type(searchInput, 'Football');
@@ -58,7 +58,7 @@ describe('EventSearchFilters', () => {
 
   it('should call onSearch when Enter key is pressed in search input', async () => {
     const user = userEvent.setup();
-    render(<EventSearchFilters onSearch={mockOnSearch} />);
+    render(<SessionSearchFilters onSearch={mockOnSearch} />);
     
     const searchInput = screen.getByPlaceholderText(/search events/i);
     await user.type(searchInput, 'Basketball{Enter}');
@@ -68,7 +68,7 @@ describe('EventSearchFilters', () => {
 
   it('should not include empty values in search', async () => {
     const user = userEvent.setup();
-    render(<EventSearchFilters onSearch={mockOnSearch} />);
+    render(<SessionSearchFilters onSearch={mockOnSearch} />);
     
     // Open filter panel
     const filterButton = screen.getByRole('button', { name: /filters/i });

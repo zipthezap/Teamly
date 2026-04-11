@@ -1,16 +1,16 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme, alpha } from '@mui/material/styles';
-import { EventWithDetails } from '../../../../shared/types';
+import { SessionWithDetails } from '../../../../shared/types';
 // Removed all MUI imports; using Tailwind and SVGs
 
-interface UpcomingEventsCalendarProps {
-  events: EventWithDetails[];
+interface UpcomingSessionsCalendarProps {
+  events: SessionWithDetails[];
   onEventClick: (eventId: string) => void;
   userId?: string;
 }
 
-const UpcomingEventsCalendar: React.FC<UpcomingEventsCalendarProps> = ({ events, onEventClick, userId }) => {
+const UpcomingSessionsCalendar: React.FC<UpcomingSessionsCalendarProps> = ({ events, onEventClick, userId }) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
@@ -156,4 +156,4 @@ const UpcomingEventsCalendar: React.FC<UpcomingEventsCalendarProps> = ({ events,
   );
 };
 
-export default UpcomingEventsCalendar;
+export default UpcomingSessionsCalendar;

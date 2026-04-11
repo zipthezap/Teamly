@@ -19,10 +19,10 @@ import {
 import { getAvatarColor } from '../../utils/colors';
 import { getImageUrl, getInitials } from '../../utils/imageUtils';
 import { getParticipantStatusColor } from '../../utils/statusHelpers';
-import { EventWithDetails, EventAttendance, EventParticipant } from '../../../../shared/types';
+import { SessionWithDetails, SessionAttendance, SessionParticipant } from '../../../../shared/types';
 
 interface ParticipantsListProps {
-  event: EventWithDetails;
+  event: SessionWithDetails;
   participantCount: number;
 }
 
@@ -86,9 +86,9 @@ const ParticipantsList: React.FC<ParticipantsListProps> = ({ event, participantC
         </Box>
       ) : (
         <List sx={{ py: 0 }}>
-          {event.participants.map((participant: EventParticipant, idx: number) => {
+          {event.participants.map((participant: SessionParticipant, idx: number) => {
             // Match attendance by userId, not id
-            const attendance = event.eventAttendances?.find((a: EventAttendance) => a.userId === participant.userId);
+            const attendance = event.eventAttendances?.find((a: SessionAttendance) => a.userId === participant.userId);
             const isLate = attendance?.status === 'late';
             const profilePictureUrl = getImageUrl(participant.user?.profilePicture);
             

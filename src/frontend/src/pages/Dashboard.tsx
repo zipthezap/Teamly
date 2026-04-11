@@ -13,21 +13,21 @@ import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
 import AvatarGroup from '@mui/material/AvatarGroup';
 import { useTheme, alpha } from '@mui/material/styles';
-import { groupsAPI, eventsAPI } from '../services/api';
+import { groupsAPI, sessionsAPI } from '../services/api';
 import { LoadingSpinner, EmptyState } from '../components/common';
 import UserStatistics from '../components/dashboard/UserStatistics';
-import UpcomingEventsCalendar from '../components/dashboard/UpcomingEventsCalendar';
+import UpcomingSessionsCalendar from '../components/dashboard/UpcomingSessionsCalendar';
 import RecentActivityTimeline from '../components/dashboard/RecentActivityTimeline';
 import QuickLinks from '../components/dashboard/QuickLinks';
 import GroupIcon from '@mui/icons-material/Group';
 import EventIcon from '@mui/icons-material/Event';
 import { useAuth } from '../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../utils/imageUtils';
-import { EventWithDetails, GroupWithDetails, EventParticipant } from '../../../shared/types';
+import { SessionWithDetails, GroupWithDetails, SessionParticipant } from '../../../shared/types';
 
 const Dashboard = () => {
   const [groups, setGroups] = useState<GroupWithDetails[]>([]);
-  const [events, setEvents] = useState<EventWithDetails[]>([]);
+  const [events, setEvents] = useState<SessionWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
@@ -46,14 +46,14 @@ const Dashboard = () => {
     try {
       const [groupsRes, eventsRes] = await Promise.all([
         groupsAPI.getAll(),
-        eventsAPI.getAll(),
+        sessionsAPI.getAll(),
       ]);
       // Ensure groupsRes.data is always an array
       const groupsArray = Array.isArray(groupsRes.data) ? groupsRes.data : (groupsRes.data?.data ?? []);
       setGroups(groupsArray);
       // Ensure eventsRes.data is always an array
       const eventsArray = Array.isArray(eventsRes.data) ? eventsRes.data : (eventsRes.data?.data ?? []);
-      const sortedEvents = eventsArray.sort((a: EventWithDetails, b: EventWithDetails) => 
+      const sortedEvents = eventsArray.sort((a: SessionWithDetails, b: SessionWithDetails) => 
         new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
       );
       setEvents(sortedEvents);
@@ -78,11 +78,11 @@ const Dashboard = () => {
     // Show if user is the organizer
     if (e.creatorId === user?.id) return true;
     // Show if user is a confirmed participant
-    const isConfirmed = e.participants?.some((p: EventParticipant) => p.userId === user?.id && p.status === 'confirmed');
+    const isConfirmed = e.participants?.some((p: SessionParticipant) => p.userId === user?.id && p.status === 'confirmed');
     return isConfirmed;
   });
   const _myEvents = safeEvents.filter(e => 
-    e.participants?.some((p: EventParticipant) => p.userId === user?.id)
+    e.participants?.some((p: SessionParticipant) => p.userId === user?.id)
   );
 
   return (
@@ -131,7 +131,7 @@ const Dashboard = () => {
               userId={typeof user?.id === 'string' ? user.id : String(user?.id)}
               onActivityClick={(id, type) => {
                 if (type === 'event') {
-                  navigate(`/events/${id}`);
+                  navigate(`/sessions/${id}`);
                 } else {
                   navigate(`/groups/${id}`);
                 }
@@ -139,9 +139,9 @@ const Dashboard = () => {
             />
 
             {/* Upcoming Schedule */}
-            <UpcomingEventsCalendar
+            <UpcomingSessionsCalendar
               events={events}
-              onEventClick={(eventId) => navigate(`/events/${eventId}`)}
+              onEventClick={(eventId) => navigate(`/sessions/${eventId}`)}
               userId={typeof user?.id === 'string' ? user.id : String(user?.id)}
             />
 
@@ -157,7 +157,7 @@ const Dashboard = () => {
                 {
                   label: t('dashboard.allEvents'),
                   icon: <EventIcon sx={{ color: 'white' }} />,
-                  path: '/events',
+                  path: '/sessions',
                   color: 'bg-pink-500',
                 },
                 {
@@ -207,7 +207,7 @@ const Dashboard = () => {
               <Button
                 variant="text"
                 size="small"
-                onClick={() => navigate('/events')}
+                onClick={() => navigate('/sessions')}
                 sx={{ textTransform: 'none', minWidth: 'auto' }}
               >
                 {t('common.viewAll')}
@@ -316,7 +316,7 @@ const Dashboard = () => {
                       <Button
                         variant="contained"
                         fullWidth
-                        onClick={() => navigate(`/events/${event.id}`)}
+                        onClick={() => navigate(`/sessions/${event.id}`)}
                         sx={{ minHeight: '44px' }}
                       >
                         {t('common.viewDetails')}
@@ -332,8 +332,8 @@ const Dashboard = () => {
                     title={t('dashboard.noUpcomingEvents')}
                     description={t('dashboard.noUpcomingEventsDesc')}
                     actions={[
-                      { label: t('dashboard.createFirstEvent'), onClick: () => navigate('/events/new') },
-                      { label: t('dashboard.findEvents'), onClick: () => navigate('/events') }
+                      { label: t('dashboard.createFirstEvent'), onClick: () => navigate('/sessions/new') },
+                      { label: t('dashboard.findEvents'), onClick: () => navigate('/sessions') }
                     ]}
                     gradient="linear-gradient(135deg, rgba(245, 0, 87, 0.05) 0%, rgba(245, 0, 87, 0.02) 100%)"
                   />

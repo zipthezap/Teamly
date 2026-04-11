@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Box, Button, MenuItem, Paper, TextField, Typography, Alert, FormControlLabel, Switch } from '@mui/material';
 import LocationAutocomplete from './LocationAutocomplete';
-import { SportType } from '../../../../shared/types/event.types';
+import { SportType } from '../../../../shared/types/session.types';
 
-export interface EventFormData {
+export interface SessionFormData {
   groupId?: string;
   title: string;
   description: string;
@@ -27,12 +27,12 @@ export interface EventFormData {
   recurrenceRule?: string;
 }
 
-export interface EventFormProps {
+export interface SessionFormProps {
   groups?: Array<{ id: string; name: string }>;
-  initialData?: Partial<EventFormData>;
+  initialData?: Partial<SessionFormData>;
   loading?: boolean;
   error?: string;
-  onSubmit: (data: EventFormData) => void;
+  onSubmit: (data: SessionFormData) => void;
   onCancel?: () => void;
   submitLabel?: string;
   showGroupSelect?: boolean;
@@ -40,7 +40,7 @@ export interface EventFormProps {
 
 const EVENT_TYPES = Object.values(SportType);
 
-const EventForm: React.FC<EventFormProps> = ({
+const SessionForm: React.FC<SessionFormProps> = ({
   groups = [],
   initialData = {},
   loading = false,
@@ -51,7 +51,7 @@ const EventForm: React.FC<EventFormProps> = ({
   showGroupSelect: _showGroupSelect = true,
 }) => {
   const { t } = useTranslation();
-  const [formData, setFormData] = useState<EventFormData>({
+  const [formData, setFormData] = useState<SessionFormData>({
     groupId: initialData.groupId || '',
     title: initialData.title || '',
     description: initialData.description || '',
@@ -129,7 +129,7 @@ const EventForm: React.FC<EventFormProps> = ({
       {groups && groups.length > 0 && (
         <TextField
           select
-          label={t('events.group')}
+          label={t('sessions.group')}
           name="groupId"
           fullWidth
           margin="normal"
@@ -147,7 +147,7 @@ const EventForm: React.FC<EventFormProps> = ({
         </TextField>
       )}
       <TextField
-        label={t('events.eventTitle')}
+        label={t('sessions.eventTitle')}
         name="title"
         fullWidth
         margin="normal"
@@ -157,7 +157,7 @@ const EventForm: React.FC<EventFormProps> = ({
         sx={{ '& .MuiInputBase-root': { minHeight: '44px' } }}
       />
       <TextField
-        label={t('events.description')}
+        label={t('sessions.description')}
         name="description"
         fullWidth
         multiline
@@ -169,7 +169,7 @@ const EventForm: React.FC<EventFormProps> = ({
       />
       <TextField
         select
-        label={t('events.eventType')}
+        label={t('sessions.eventType')}
         name="eventType"
         fullWidth
         margin="normal"
@@ -187,10 +187,10 @@ const EventForm: React.FC<EventFormProps> = ({
       <LocationAutocomplete
         value={formData.location}
         onChange={(value) => handleChange({ target: { name: 'location', value } } as React.ChangeEvent<HTMLInputElement>)}
-        label={t('events.location')}
+        label={t('sessions.location')}
       />
       <TextField
-        label={t('events.eventDate')}
+        label={t('sessions.eventDate')}
         name="startDate"
         type="date"
         fullWidth
@@ -202,11 +202,11 @@ const EventForm: React.FC<EventFormProps> = ({
         sx={{ '& .MuiInputBase-root': { minHeight: '44px' } }}
       />
       <Box sx={{ mt: 2 }}>
-        <Typography sx={{ mb: 1 }}>{t('events.startTime')}</Typography>
+        <Typography sx={{ mb: 1 }}>{t('sessions.startTime')}</Typography>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
           <TextField
             select
-            label={t('events.hour')}
+            label={t('sessions.hour')}
             name="startHour"
             value={formData.startHour}
             onChange={handleHourChange('startHour')}
@@ -221,7 +221,7 @@ const EventForm: React.FC<EventFormProps> = ({
           </TextField>
           <TextField
             select
-            label={t('events.minute')}
+            label={t('sessions.minute')}
             name="startMinute"
             value={formData.startMinute}
             onChange={handleMinuteChange('startMinute')}
@@ -235,11 +235,11 @@ const EventForm: React.FC<EventFormProps> = ({
         </Box>
       </Box>
       <Box sx={{ mt: 2 }}>
-        <Typography sx={{ mb: 1 }}>{t('events.endTimeOptional')}</Typography>
+        <Typography sx={{ mb: 1 }}>{t('sessions.endTimeOptional')}</Typography>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
           <TextField
             select
-            label={t('events.hour')}
+            label={t('sessions.hour')}
             name="endHour"
             value={formData.endHour}
             onChange={handleHourChange('endHour')}
@@ -254,7 +254,7 @@ const EventForm: React.FC<EventFormProps> = ({
           </TextField>
           <TextField
             select
-            label={t('events.minute')}
+            label={t('sessions.minute')}
             name="endMinute"
             value={formData.endMinute}
             onChange={handleMinuteChange('endMinute')}
@@ -267,7 +267,7 @@ const EventForm: React.FC<EventFormProps> = ({
         </Box>
       </Box>
       <TextField
-        label={t('events.maxPlayers')}
+        label={t('sessions.maxPlayers')}
         name="maxPlayers"
         type="number"
         fullWidth
@@ -451,11 +451,11 @@ const EventForm: React.FC<EventFormProps> = ({
             width: { xs: '100%', sm: 'auto' }
           }}
         >
-          {loading ? t('events.submitting') : submitLabel}
+          {loading ? t('sessions.submitting') : submitLabel}
         </Button>
       </Box>
     </form>
   );
 };
 
-export default EventForm;
+export default SessionForm;

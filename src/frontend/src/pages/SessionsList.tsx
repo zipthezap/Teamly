@@ -38,24 +38,24 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import DataObjectIcon from '@mui/icons-material/DataObject';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { eventsAPI, groupsAPI } from '../services/api';
-import EventFormModal from '../components/event/EventFormModal';
+import { sessionsAPI, groupsAPI } from '../services/api';
+import SessionFormModal from '../components/session/SessionFormModal';
 import { useAuth } from '../contexts/AuthContext';
-import EventSearchFilters from '../components/event/EventSearchFilters';
+import SessionSearchFilters from '../components/session/SessionSearchFilters';
 import { LoadingSpinner, EmptyState } from '../components/common';
 import { StatusBadge, StatusType } from '../components/common/StatusBadge';
-import { EventWithDetails, EventSearchParams, GroupWithDetails, EventParticipant, GroupMember } from '../../../shared/types';
+import { SessionWithDetails, SessionSearchParams, GroupWithDetails, SessionParticipant, GroupMember } from '../../../shared/types';
 import { AxiosError } from 'axios';
 
-const EventsList = () => {
+const SessionsList = () => {
   // All hooks at top level, before any conditional returns
-  const [searchFilters, setSearchFilters] = useState<EventSearchParams>({});
+  const [searchFilters, setSearchFilters] = useState<SessionSearchParams>({});
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editEvent, setEditEvent] = useState<EventWithDetails | undefined>(undefined);
+  const [editEvent, setEditSession] = useState<SessionWithDetails | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [eventToDelete, setEventToDelete] = useState<EventWithDetails | null>(null);
-  const [events, setEvents] = useState<EventWithDetails[]>([]);
+  const [eventToDelete, setEventToDelete] = useState<SessionWithDetails | null>(null);
+  const [events, setEvents] = useState<SessionWithDetails[]>([]);
   const [groups, setGroups] = useState<GroupWithDetails[]>([]);
   const [tab, setTab] = useState<'my' | 'upcoming' | 'past'>('my');
   const [isLoading, setIsLoading] = useState(true);
@@ -98,10 +98,10 @@ const EventsList = () => {
         setIsFetching(true);
       }
       const offset = (page - 1) * visibleCount;
-      const params: EventSearchParams = { ...searchFilters, offset, limit: visibleCount };
-      const response = await eventsAPI.getAll(params);
+      const params: SessionSearchParams = { ...searchFilters, offset, limit: visibleCount };
+      const response = await sessionsAPI.getAll(params);
       // Always expect API response shape { data: [...] }
-      let newEvents: EventWithDetails[] = [];
+      let newEvents: SessionWithDetails[] = [];
       if (Array.isArray(response.data?.data)) {
         newEvents = response.data.data;
       } else if (Array.isArray(response.data)) {
@@ -127,15 +127,15 @@ const EventsList = () => {
 
   const handleDeleteEvent = useCallback(async (eventId: string | number) => {
     try {
-      await eventsAPI.delete(eventId);
-      setToast({ message: t('events.eventDeleted'), type: 'success' });
+      await sessionsAPI.delete(eventId);
+      setToast({ message: t('sessions.eventDeleted'), type: 'success' });
       setDeleteDialogOpen(false);
       setEventToDelete(null);
       fetchEvents();
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
-        ? err.response?.data?.message || t('events.errorDeletingEvent')
-        : t('events.errorDeletingEvent');
+        ? err.response?.data?.message || t('sessions.errorDeletingEvent')
+        : t('sessions.errorDeletingEvent');
       setToast({ message: errorMessage, type: 'error' });
     }
   }, [t, fetchEvents]);
@@ -143,13 +143,13 @@ const EventsList = () => {
   // Join event
   const handleJoinEvent = useCallback(async (eventId: string | number) => {
     try {
-      await eventsAPI.join(eventId);
-      setToast({ message: t('events.eventJoined'), type: 'success' });
+      await sessionsAPI.join(eventId);
+      setToast({ message: t('sessions.eventJoined'), type: 'success' });
       fetchEvents();
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
-        ? err.response?.data?.message || t('events.errorJoiningEvent')
-        : t('events.errorJoiningEvent');
+        ? err.response?.data?.message || t('sessions.errorJoiningEvent')
+        : t('sessions.errorJoiningEvent');
       setToast({ message: errorMessage, type: 'error' });
     }
   }, [t, fetchEvents]);
@@ -157,13 +157,13 @@ const EventsList = () => {
   // Leave event
   const handleLeaveEvent = useCallback(async (eventId: string | number) => {
     try {
-      await eventsAPI.leave(eventId);
-      setToast({ message: t('events.leftEvent'), type: 'success' });
+      await sessionsAPI.leave(eventId);
+      setToast({ message: t('sessions.leftEvent'), type: 'success' });
       fetchEvents();
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
-        ? err.response?.data?.message || t('events.failedToLeaveEvent')
-        : t('events.failedToLeaveEvent');
+        ? err.response?.data?.message || t('sessions.failedToLeaveEvent')
+        : t('sessions.failedToLeaveEvent');
       setToast({ message: errorMessage, type: 'error' });
     }
   }, [t, fetchEvents]);
@@ -174,7 +174,7 @@ const EventsList = () => {
       setIsExporting(true);
       setExportMenuAnchor(null);
       
-      const response = await eventsAPI.export(format);
+      const response = await sessionsAPI.export(format);
       
       // Create a blob from the response data
       const blob = new Blob([response.data], { 
@@ -207,12 +207,12 @@ const EventsList = () => {
       window.URL.revokeObjectURL(url);
       
       setToast({ 
-        message: t('events.exportSuccess', { format: format.toUpperCase() }) || `Events exported successfully as ${format.toUpperCase()}`, 
+        message: t('sessions.exportSuccess', { format: format.toUpperCase() }) || `Events exported successfully as ${format.toUpperCase()}`, 
         type: 'success' 
       });
     } catch {
       setToast({ 
-        message: t('events.exportError') || 'Failed to export events', 
+        message: t('sessions.exportError') || 'Failed to export events', 
         type: 'error' 
       });
     } finally {
@@ -221,7 +221,7 @@ const EventsList = () => {
   };
 
   // Handle search/filter
-  const handleSearch = useCallback((filters: EventSearchParams) => {
+  const handleSearch = useCallback((filters: SessionSearchParams) => {
     setSearchFilters(filters);
     setPage(1);
     const paramsObj = Object.entries({ ...filters, page: '1' })
@@ -239,24 +239,24 @@ const EventsList = () => {
     fetchEvents();
   }, [fetchEvents]);
 
-  const handleCreateEvent = useCallback(() => {
-    setEditEvent(undefined);
+  const handleCreateSession = useCallback(() => {
+    setEditSession(undefined);
     setModalOpen(true);
   }, []);
 
-  const handleEditEvent = useCallback((event: EventWithDetails) => {
-    setEditEvent(event);
+  const handleEditSession = useCallback((event: SessionWithDetails) => {
+    setEditSession(event);
     setModalOpen(true);
   }, []);
 
   // Handle page change - pagination removed
 
   // Get event status
-  const getEventStatus = (event: EventWithDetails): { label: string; status: StatusType } => {
+  const getSessionStatus = (event: SessionWithDetails): { label: string; status: StatusType } => {
     const now = new Date();
     const eventDate = new Date(event.startTime);
     const isFull = event.maxPlayers && event.participants && event.participants.length >= event.maxPlayers;
-    const isJoined = event.participants?.some((p: EventParticipant) => p.id === user?.id);
+    const isJoined = event.participants?.some((p: SessionParticipant) => p.id === user?.id);
     if (eventDate < now) return { label: t('common.past'), status: 'default' };
     if (isFull) return { label: t('common.full'), status: 'warning' };
     if (isJoined) return { label: t('common.joined'), status: 'success' };
@@ -282,12 +282,12 @@ const EventsList = () => {
     // Always use events as an array
     const eventsArray = Array.isArray(events) ? events : [];
 
-    let filtered: EventWithDetails[] = [];
+    let filtered: SessionWithDetails[] = [];
 
     if (tab === 'my') {
       filtered = eventsArray.filter(event => {
         const eventDate = new Date(event.startTime);
-        const isJoined = Array.isArray(event.participants) && event.participants.some((p: EventParticipant) => p.userId === user.id);
+        const isJoined = Array.isArray(event.participants) && event.participants.some((p: SessionParticipant) => p.userId === user.id);
         const isCreator = event.creatorId === user.id;
         const result = eventDate >= now && (isJoined || isCreator);
         return result;
@@ -296,7 +296,7 @@ const EventsList = () => {
       filtered = eventsArray.filter(event => {
         const eventDate = new Date(event.startTime);
         const isUserGroup = event.group && userGroupIds.includes(event.group.id);
-        const isJoined = Array.isArray(event.participants) && event.participants.some((p: EventParticipant) => p.userId === user.id);
+        const isJoined = Array.isArray(event.participants) && event.participants.some((p: SessionParticipant) => p.userId === user.id);
         const isCreator = event.creatorId === user.id;
         const result = (
           eventDate >= now &&
@@ -309,7 +309,7 @@ const EventsList = () => {
     } else {
       filtered = eventsArray.filter(event => {
         const eventDate = new Date(event.startTime);
-        const isJoined = Array.isArray(event.participants) && event.participants.some((p: EventParticipant) => p.userId === user.id);
+        const isJoined = Array.isArray(event.participants) && event.participants.some((p: SessionParticipant) => p.userId === user.id);
         const isCreator = event.creatorId === user.id;
         const result = eventDate < now && (isJoined || isCreator);
         return result;
@@ -321,13 +321,13 @@ const EventsList = () => {
 
   // Robust loading and error handling
   if (userLoading) {
-    return <LoadingSpinner message={t('events.loadingUser')} />;
+    return <LoadingSpinner message={t('sessions.loadingUser')} />;
   }
   if (!user || !user.id) {
-    return <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh"><Typography variant="h6">{t('events.userNotFoundOrLoggedOut')}</Typography></Box>;
+    return <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh"><Typography variant="h6">{t('sessions.userNotFoundOrLoggedOut')}</Typography></Box>;
   }
   if (isLoading) {
-    return <LoadingSpinner message={t('events.loadingEvents')} />;
+    return <LoadingSpinner message={t('sessions.loadingEvents')} />;
   }
 
   // DEBUG: Log every render and key data 
@@ -359,10 +359,10 @@ const EventsList = () => {
       >
         <Box>
           <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' } }}>
-            {t('events.allEvents')}
+            {t('sessions.allEvents')}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-            {events.length} {events.length !== 1 ? t('events.eventsFound') : t('events.eventFound')}
+            {events.length} {events.length !== 1 ? t('sessions.eventsFound') : t('sessions.eventFound')}
           </Typography>
         </Box>
         <Box 
@@ -384,19 +384,19 @@ const EventsList = () => {
               width: { xs: '100%', sm: 'auto' }
             }}
           >
-            {isExporting ? t('events.exporting', 'Exporting...') : t('events.export', 'Export')}
+            {isExporting ? t('sessions.exporting', 'Exporting...') : t('sessions.export', 'Export')}
           </Button>
           <Button
             variant="contained"
             color="secondary"
             startIcon={<AddIcon />}
-            onClick={handleCreateEvent}
+            onClick={handleCreateSession}
             sx={{ 
               fontSize: '0.875rem',
               width: { xs: '100%', sm: 'auto' }
             }}
           >
-            {t('events.createEvent')}
+            {t('sessions.createEvent')}
           </Button>
         </Box>
       </Box>
@@ -412,8 +412,8 @@ const EventsList = () => {
             <DescriptionIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText 
-            primary={t('events.exportCSV', 'Export as CSV')} 
-            secondary={t('events.exportCSVDesc', 'Spreadsheet format')}
+            primary={t('sessions.exportCSV', 'Export as CSV')} 
+            secondary={t('sessions.exportCSVDesc', 'Spreadsheet format')}
           />
         </MenuItem>
         <MenuItem onClick={() => handleExportEvents('ical')}>
@@ -421,8 +421,8 @@ const EventsList = () => {
             <CalendarTodayIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText 
-            primary={t('events.exportICalendar', 'Export as iCalendar')} 
-            secondary={t('events.exportICalendarDesc', 'For Google Calendar, Outlook')}
+            primary={t('sessions.exportICalendar', 'Export as iCalendar')} 
+            secondary={t('sessions.exportICalendarDesc', 'For Google Calendar, Outlook')}
           />
         </MenuItem>
         <MenuItem onClick={() => handleExportEvents('json')}>
@@ -430,8 +430,8 @@ const EventsList = () => {
             <DataObjectIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText 
-            primary={t('events.exportJSON', 'Export as JSON')} 
-            secondary={t('events.exportJSONDesc', 'Developer format')}
+            primary={t('sessions.exportJSON', 'Export as JSON')} 
+            secondary={t('sessions.exportJSONDesc', 'Developer format')}
           />
         </MenuItem>
       </Menu>
@@ -453,22 +453,22 @@ const EventsList = () => {
             }
           }}
         >
-          <Tab value="my" label={t('events.myEvents') || 'My Events'} />
-          <Tab value="upcoming" label={t('events.upcomingEvents') || 'Upcoming Events'} />
-          <Tab value="past" label={t('events.pastEvents') || 'Past Events'} />
+          <Tab value="my" label={t('sessions.myEvents') || 'My Events'} />
+          <Tab value="upcoming" label={t('sessions.upcomingEvents') || 'Upcoming Events'} />
+          <Tab value="past" label={t('sessions.pastEvents') || 'Past Events'} />
         </Tabs>
       </Box>
       {/* Filters and Search */}
       <Box mb={3}>
-        <EventSearchFilters onSearch={handleSearch} />
+        <SessionSearchFilters onSearch={handleSearch} />
       </Box>
       {filteredEvents.length === 0 ? (
         <EmptyState
           icon={<EventIcon />}
-          title={Object.keys(searchFilters).length > 0 ? t('events.noEventsMatch') : t('events.noEventsAvailable')}
-          description={Object.keys(searchFilters).length === 0 ? t('events.createFirstEventDesc') : ''}
+          title={Object.keys(searchFilters).length > 0 ? t('sessions.noEventsMatch') : t('sessions.noEventsAvailable')}
+          description={Object.keys(searchFilters).length === 0 ? t('sessions.createFirstEventDesc') : ''}
           actions={Object.keys(searchFilters).length === 0 ? [
-            { label: t('events.createFirstEvent'), onClick: handleCreateEvent }
+            { label: t('sessions.createFirstEvent'), onClick: handleCreateSession }
           ] : []}
           gradient="linear-gradient(135deg, rgba(245, 0, 87, 0.05) 0%, rgba(245, 0, 87, 0.02) 100%)"
         />
@@ -478,12 +478,12 @@ const EventsList = () => {
           gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, 
           gap: { xs: 2, sm: 3, md: 4 }
         }}>
-          {filteredEvents.map((event: EventWithDetails, _idx) => {
+          {filteredEvents.map((event: SessionWithDetails, _idx) => {
             // DEBUG: Log each event in the map
-            const status = getEventStatus(event);
+            const status = getSessionStatus(event);
             const participantCount = event.participants?.length || 0;
             const spotsLeft = event.maxPlayers ? event.maxPlayers - participantCount : null;
-            const isJoined = event.participants?.some((p: EventParticipant) => p.userId === user.id);
+            const isJoined = event.participants?.some((p: SessionParticipant) => p.userId === user.id);
             const isEventCreator = event.creatorId === user.id;
             const isGroupManager = event.userGroupRole === 'admin' || event.userGroupRole === 'moderator';
             const isAdmin = isEventCreator || isGroupManager;
@@ -515,7 +515,7 @@ const EventsList = () => {
                           <>
                             <IconButton 
                               size="small" 
-                              onClick={() => handleEditEvent(event)}
+                              onClick={() => handleEditSession(event)}
                               sx={{ ml: 0.5, minWidth: '44px', minHeight: '44px' }}
                             >
                               <EditIcon fontSize="small" />
@@ -577,7 +577,7 @@ const EventsList = () => {
                       </Box>
                       {spotsLeft !== null && spotsLeft > 0 && spotsLeft <= 3 && (
                         <Chip 
-                          label={t('events.spotsLeft', { count: spotsLeft })} 
+                          label={t('sessions.spotsLeft', { count: spotsLeft })} 
                           size="small" 
                           color="warning"
                           sx={{ mt: 0.5, alignSelf: 'flex-start' }}
@@ -605,7 +605,7 @@ const EventsList = () => {
                         disabled={isFetching || status.label === t('common.full')}
                         sx={{ minHeight: '44px' }}
                       >
-                        {t('events.joinEvent')}
+                        {t('sessions.joinEvent')}
                       </Button>
                     )}
                     {status.label !== t('common.past') && !isAdmin && isJoined && (
@@ -616,7 +616,7 @@ const EventsList = () => {
                         disabled={isFetching}
                         sx={{ minHeight: '44px' }}
                       >
-                        {t('events.leaveEvent')}
+                        {t('sessions.leaveEvent')}
                       </Button>
                     )}
                   </CardActions>
@@ -628,9 +628,9 @@ const EventsList = () => {
 
       {/* Delete confirmation dialog */}
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-        <DialogTitle>{t('events.confirmDeleteTitle') || 'Delete Event?'}</DialogTitle>
+        <DialogTitle>{t('sessions.confirmDeleteTitle') || 'Delete Event?'}</DialogTitle>
         <DialogContent>
-          {t('events.confirmDeleteText') || 'Are you sure you want to delete this event? This action cannot be undone.'}
+          {t('sessions.confirmDeleteText') || 'Are you sure you want to delete this event? This action cannot be undone.'}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteDialogOpen(false)}>
@@ -648,7 +648,7 @@ const EventsList = () => {
       </Dialog>
 
       {/* Event create/edit modal */}
-      <EventFormModal
+      <SessionFormModal
         open={modalOpen}
         onClose={handleModalClose}
         onSuccess={handleModalSuccess}
@@ -678,4 +678,4 @@ const EventsList = () => {
   );
 };
 
-export default EventsList;
+export default SessionsList;

@@ -14,7 +14,7 @@ export enum GroupNotificationType {
   accepted = 'accepted',
   invited = 'invited',
   join_request = 'join_request',
-  event_created = 'event_created',
+  session_created = 'session_created',
   nearby_created = 'nearby_created',
   removed = 'removed',
 }

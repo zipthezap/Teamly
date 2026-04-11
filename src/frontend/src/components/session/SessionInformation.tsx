@@ -1,5 +1,5 @@
 import React from 'react';
-import { EventWithDetails } from '../../../../shared/types';
+import { SessionWithDetails } from '../../../../shared/types';
 import { 
   Box, 
   Typography, 
@@ -14,14 +14,14 @@ import {
   Repeat
 } from '@mui/icons-material';
 
-interface EventInformationProps {
-  event: EventWithDetails;
+interface SessionInformationProps {
+  event: SessionWithDetails;
   isParticipant: boolean;
   isCreator: boolean;
   isFull: boolean;
 }
 
-const EventInformation: React.FC<EventInformationProps> = ({
+const SessionInformation: React.FC<SessionInformationProps> = ({
   event,
   isParticipant,
   isCreator,
@@ -230,4 +230,4 @@ const EventInformation: React.FC<EventInformationProps> = ({
   );
 };
 
-export default EventInformation;
+export default SessionInformation;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { eventsAPI } from '../services/api';
+import { sessionsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { getImageUrl, getInitials } from '../utils/imageUtils';
 import { 
@@ -30,16 +30,16 @@ import {
   Person,
   AccessTime
 } from '@mui/icons-material';
-import { EventWithDetails, EventParticipant, GuestParticipant } from '../../../shared/types';
+import { SessionWithDetails, SessionParticipant, GuestParticipant } from '../../../shared/types';
 import { AxiosError } from 'axios';
 import { useQueryClient } from '@tanstack/react-query';
 
-const JoinEventByInvite = () => {
+const JoinSessionByInvite = () => {
   const { token } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [event, setEvent] = useState<EventWithDetails | null>(null);
+  const [event, setEvent] = useState<SessionWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState('');
@@ -51,7 +51,7 @@ const JoinEventByInvite = () => {
     
     const fetchEvent = async () => {
       try {
-        const response = await eventsAPI.getByInviteToken(token);
+        const response = await sessionsAPI.getByInviteToken(token);
         setEvent(response.data);
       } catch (err: unknown) {
         const errorMessage = err instanceof AxiosError 
@@ -87,11 +87,11 @@ const JoinEventByInvite = () => {
     setError('');
     
     try {
-      await eventsAPI.joinAsGuest(token!, guestName);
+      await sessionsAPI.joinAsGuest(token!, guestName);
       setSuccess('Successfully joined the event! The organizer will have your details.');
       setGuestName('');
       // Refresh event data to show updated participant count
-      const response = await eventsAPI.getByInviteToken(token!);
+      const response = await sessionsAPI.getByInviteToken(token!);
       setEvent(response.data);
     } catch (err: unknown) {
       const errorMessage = err instanceof AxiosError 
@@ -109,7 +109,7 @@ const JoinEventByInvite = () => {
     
     try {
       // Join as authenticated user
-      await eventsAPI.join(event!.id);
+      await sessionsAPI.join(event!.id);
       setSuccess('Successfully joined the event! Redirecting to event details...');
       
       // Invalidate caches so the joined event is reflected
@@ -119,7 +119,7 @@ const JoinEventByInvite = () => {
       
       // Redirect to event details after a short delay
       setTimeout(() => {
-        navigate(`/events/${event!.id}`);
+        navigate(`/sessions/${event!.id}`);
       }, 1500);
     } catch (err: unknown) {
       const errorMsg = err instanceof AxiosError 
@@ -169,13 +169,13 @@ const JoinEventByInvite = () => {
   }
 
   const totalParticipants = 
-    (event.participants?.filter((p: EventParticipant) => p.status === 'confirmed').length || 0) +
+    (event.participants?.filter((p: SessionParticipant) => p.status === 'confirmed').length || 0) +
     (event.guestParticipants?.filter((g: GuestParticipant) => g.status === 'confirmed').length || 0);
 
   const isFull = event.maxPlayers && totalParticipants >= event.maxPlayers;
 
   // Check if user is already a participant (done efficiently with some())
-  const isAlreadyParticipant = user && event.participants?.some((p: EventParticipant) => p.userId === user.id);
+  const isAlreadyParticipant = user && event.participants?.some((p: SessionParticipant) => p.userId === user.id);
 
   return (
     <Container maxWidth="md" sx={{ mt: { xs: 3, sm: 4 }, mb: { xs: 3, sm: 4 }, px: { xs: 2, sm: 3 } }}>
@@ -294,7 +294,7 @@ const JoinEventByInvite = () => {
           {totalParticipants > 0 && (
             <Box sx={{ mb: 2 }}>
               <AvatarGroup max={8} sx={{ justifyContent: 'flex-start' }}>
-                {event.participants?.filter((p: EventParticipant) => p.status === 'confirmed').map((p: EventParticipant) => {
+                {event.participants?.filter((p: SessionParticipant) => p.status === 'confirmed').map((p: SessionParticipant) => {
                   // Prefer current profile picture from history if available
                   const currentPic = p.user?.profilePictures?.find((pic) => pic.isCurrent && !pic.deletedAt);
                   const profilePictureUrl = getImageUrl(currentPic?.url || p.user?.profilePicture);
@@ -350,7 +350,7 @@ const JoinEventByInvite = () => {
           You're already participating in this event! 
           <Button 
             size="small" 
-            onClick={() => navigate(`/events/${event.id}`)}
+            onClick={() => navigate(`/sessions/${event.id}`)}
             sx={{ ml: 2 }}
           >
             View Event
@@ -446,4 +446,4 @@ const JoinEventByInvite = () => {
   );
 };
 
-export default JoinEventByInvite;
+export default JoinSessionByInvite;

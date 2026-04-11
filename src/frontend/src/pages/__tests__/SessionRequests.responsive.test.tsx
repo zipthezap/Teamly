@@ -3,12 +3,12 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import EventRequests from '../EventRequests';
+import SessionRequests from '../SessionRequests';
 import * as api from '../../services/api';
 
 // Mock the API
 vi.mock('../../services/api', () => ({
-  eventRequestsAPI: {
+  sessionRequestsAPI: {
     getByGroup: vi.fn(),
     vote: vi.fn(),
     finalize: vi.fn(),
@@ -44,7 +44,7 @@ vi.mock('../../contexts/AuthContext', () => ({
   }),
 }));
 
-describe('EventRequests - Mobile Responsive Tests', () => {
+describe('SessionRequests - Mobile Responsive Tests', () => {
   const mockGroup = {
     id: 'group1',
     name: 'Soccer Club',
@@ -96,7 +96,7 @@ describe('EventRequests - Mobile Responsive Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (api.eventRequestsAPI.getByGroup as any).mockResolvedValue({ data: mockRequests });
+    (api.sessionRequestsAPI.getByGroup as any).mockResolvedValue({ data: mockRequests });
     (api.groupsAPI.getById as any).mockResolvedValue({ data: mockGroup });
   });
 
@@ -132,26 +132,26 @@ describe('EventRequests - Mobile Responsive Tests', () => {
     });
 
     it('should render without crashing on mobile', async () => {
-      renderWithProviders(<EventRequests />);
+      renderWithProviders(<SessionRequests />);
       await waitFor(() => {
-        expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+        expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
       });
     });
 
     it('should render event requests in single column layout', async () => {
-      renderWithProviders(<EventRequests />);
+      renderWithProviders(<SessionRequests />);
       await waitFor(() => {
-        expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+        expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
       });
       await waitFor(() => {
-        expect(api.eventRequestsAPI.getByGroup).toHaveBeenCalledWith('group1');
+        expect(api.sessionRequestsAPI.getByGroup).toHaveBeenCalledWith('group1');
       });
     });
 
     it('should have touch-friendly button sizes (min 44px height)', async () => {
-      renderWithProviders(<EventRequests />);
+      renderWithProviders(<SessionRequests />);
       await waitFor(() => {
-        expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+        expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
       });
 
       const buttons = screen.getAllByRole('button');
@@ -165,9 +165,9 @@ describe('EventRequests - Mobile Responsive Tests', () => {
     });
 
     it('should stack content vertically on mobile', async () => {
-      renderWithProviders(<EventRequests />);
+      renderWithProviders(<SessionRequests />);
       await waitFor(() => {
-        expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+        expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
       });
 
       const bodyWidth = document.body.scrollWidth;
@@ -175,12 +175,12 @@ describe('EventRequests - Mobile Responsive Tests', () => {
     });
 
     it('should render voting buttons with full width on mobile', async () => {
-      renderWithProviders(<EventRequests />);
+      renderWithProviders(<SessionRequests />);
       await waitFor(() => {
-        expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+        expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
       });
 
-      const yesButtons = screen.getAllByText('events.eventRequests.yes');
+      const yesButtons = screen.getAllByText('sessions.eventRequests.yes');
       expect(yesButtons.length).toBeGreaterThan(0);
     });
   });
@@ -192,9 +192,9 @@ describe('EventRequests - Mobile Responsive Tests', () => {
     });
 
     it('should render event request cards properly', async () => {
-      renderWithProviders(<EventRequests />);
+      renderWithProviders(<SessionRequests />);
       await waitFor(() => {
-        expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+        expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
       });
       
       await waitFor(() => {
@@ -204,9 +204,9 @@ describe('EventRequests - Mobile Responsive Tests', () => {
     });
 
     it('should have readable text without zooming (min 14px)', async () => {
-      renderWithProviders(<EventRequests />);
+      renderWithProviders(<SessionRequests />);
       await waitFor(() => {
-        expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+        expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
       });
 
       const textElements = document.querySelectorAll('p, span, button, a, h1, h2, h3, h4, h5, h6');
@@ -222,9 +222,9 @@ describe('EventRequests - Mobile Responsive Tests', () => {
     });
 
     it('should render create dialog button with full width on mobile', async () => {
-      renderWithProviders(<EventRequests />);
+      renderWithProviders(<SessionRequests />);
       await waitFor(() => {
-        expect(screen.getByText('events.eventRequests.createRequest')).toBeInTheDocument();
+        expect(screen.getByText('sessions.eventRequests.createRequest')).toBeInTheDocument();
       });
     });
   });
@@ -236,18 +236,18 @@ describe('EventRequests - Mobile Responsive Tests', () => {
     });
 
     it('should render with optimized layout on tablet', async () => {
-      renderWithProviders(<EventRequests />);
+      renderWithProviders(<SessionRequests />);
       await waitFor(() => {
-        expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+        expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
       });
       
-      expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+      expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
     });
 
     it('should maintain touch-friendly targets on tablet', async () => {
-      renderWithProviders(<EventRequests />);
+      renderWithProviders(<SessionRequests />);
       await waitFor(() => {
-        expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+        expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
       });
 
       const buttons = screen.getAllByRole('button');
@@ -260,9 +260,9 @@ describe('EventRequests - Mobile Responsive Tests', () => {
     });
 
     it('should display voting progress bars', async () => {
-      renderWithProviders(<EventRequests />);
+      renderWithProviders(<SessionRequests />);
       await waitFor(() => {
-        expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+        expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
       });
 
       await waitFor(() => {
@@ -279,18 +279,18 @@ describe('EventRequests - Mobile Responsive Tests', () => {
     });
 
     it('should render with expanded layout', async () => {
-      renderWithProviders(<EventRequests />);
+      renderWithProviders(<SessionRequests />);
       await waitFor(() => {
-        expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+        expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
       });
       
-      expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+      expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
     });
 
     it('should show all interactive elements', async () => {
-      renderWithProviders(<EventRequests />);
+      renderWithProviders(<SessionRequests />);
       await waitFor(() => {
-        expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+        expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
       });
 
       const buttons = screen.getAllByRole('button');
@@ -306,13 +306,13 @@ describe('EventRequests - Mobile Responsive Tests', () => {
         global.innerWidth = width;
         global.dispatchEvent(new Event('resize'));
 
-        const { unmount } = renderWithProviders(<EventRequests />);
+        const { unmount } = renderWithProviders(<SessionRequests />);
         
         await waitFor(() => {
-          expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+          expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
         });
 
-        expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+        expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
 
         unmount();
       }
@@ -322,10 +322,10 @@ describe('EventRequests - Mobile Responsive Tests', () => {
   describe('Touch Target Validation', () => {
     it('should have all interactive elements with minimum 44x44px touch targets', async () => {
       global.innerWidth = 375;
-      renderWithProviders(<EventRequests />);
+      renderWithProviders(<SessionRequests />);
       
       await waitFor(() => {
-        expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+        expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
       });
 
       const buttons = screen.getAllByRole('button');
@@ -346,10 +346,10 @@ describe('EventRequests - Mobile Responsive Tests', () => {
         global.innerWidth = width;
         global.dispatchEvent(new Event('resize'));
 
-        const { unmount } = renderWithProviders(<EventRequests />);
+        const { unmount } = renderWithProviders(<SessionRequests />);
         
         await waitFor(() => {
-          expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+          expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
         });
 
         const bodyWidth = document.body.scrollWidth;
@@ -362,32 +362,32 @@ describe('EventRequests - Mobile Responsive Tests', () => {
 
   describe('Empty State', () => {
     it('should render empty state when no requests', async () => {
-      (api.eventRequestsAPI.getByGroup as any).mockResolvedValue({ data: [] });
+      (api.sessionRequestsAPI.getByGroup as any).mockResolvedValue({ data: [] });
       
-      renderWithProviders(<EventRequests />);
+      renderWithProviders(<SessionRequests />);
       await waitFor(() => {
-        expect(screen.getByText('events.eventRequests.noRequests')).toBeInTheDocument();
+        expect(screen.getByText('sessions.eventRequests.noRequests')).toBeInTheDocument();
       });
     });
 
     it('should render empty state responsively on mobile', async () => {
-      (api.eventRequestsAPI.getByGroup as any).mockResolvedValue({ data: [] });
+      (api.sessionRequestsAPI.getByGroup as any).mockResolvedValue({ data: [] });
       global.innerWidth = 320;
       
-      renderWithProviders(<EventRequests />);
+      renderWithProviders(<SessionRequests />);
       await waitFor(() => {
-        expect(screen.getByText('events.eventRequests.noRequests')).toBeInTheDocument();
+        expect(screen.getByText('sessions.eventRequests.noRequests')).toBeInTheDocument();
       });
     });
   });
 
   describe('Loading State', () => {
     it('should show loading spinner on mobile', async () => {
-      (api.eventRequestsAPI.getByGroup as any).mockImplementation(
+      (api.sessionRequestsAPI.getByGroup as any).mockImplementation(
         () => new Promise(resolve => setTimeout(() => resolve({ data: mockRequests }), 100))
       );
       
-      renderWithProviders(<EventRequests />);
+      renderWithProviders(<SessionRequests />);
       
       // Check for CircularProgress (loading spinner) by querying for a specific size
       const spinners = document.querySelectorAll('[role="progressbar"]');
@@ -400,7 +400,7 @@ describe('EventRequests - Mobile Responsive Tests', () => {
       }
       
       await waitFor(() => {
-        expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+        expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
       });
     });
   });
@@ -408,10 +408,10 @@ describe('EventRequests - Mobile Responsive Tests', () => {
   describe('Text Readability', () => {
     it('should have appropriate text sizes for mobile', async () => {
       global.innerWidth = 375;
-      renderWithProviders(<EventRequests />);
+      renderWithProviders(<SessionRequests />);
       
       await waitFor(() => {
-        expect(screen.getByText('events.eventRequests.title')).toBeInTheDocument();
+        expect(screen.getByText('sessions.eventRequests.title')).toBeInTheDocument();
       });
 
       const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');

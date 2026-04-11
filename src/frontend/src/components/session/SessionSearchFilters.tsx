@@ -12,7 +12,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ClearIcon from '@mui/icons-material/Clear';
 
-interface EventSearchFiltersProps {
+interface SessionSearchFiltersProps {
   onSearch: (filters: {
     search?: string;
     eventType?: string;
@@ -22,7 +22,7 @@ interface EventSearchFiltersProps {
   }) => void;
 }
 
-const EventSearchFilters: React.FC<EventSearchFiltersProps> = React.memo(({ onSearch }) => {
+const SessionSearchFilters: React.FC<SessionSearchFiltersProps> = React.memo(({ onSearch }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     search: '',
@@ -212,6 +212,6 @@ const EventSearchFilters: React.FC<EventSearchFiltersProps> = React.memo(({ onSe
   );
 });
 
-EventSearchFilters.displayName = 'EventSearchFilters';
+SessionSearchFilters.displayName = 'SessionSearchFilters';
 
-export default EventSearchFilters;
+export default SessionSearchFilters;

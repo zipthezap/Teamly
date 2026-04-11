@@ -5,10 +5,10 @@ import {
   Stack,
 } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
-import { EventWithDetails } from '../../../../shared/types';
+import { SessionWithDetails } from '../../../../shared/types';
 
-interface EventActionsProps {
-  event: EventWithDetails;
+interface SessionActionsProps {
+  event: SessionWithDetails;
   isParticipant: boolean;
   isCreator: boolean;
   isFull: boolean;
@@ -20,7 +20,7 @@ interface EventActionsProps {
   onUnmarkLate: () => Promise<void>;
 }
 
-const EventActions: React.FC<EventActionsProps> = ({
+const SessionActions: React.FC<SessionActionsProps> = ({
   event,
   isParticipant,
   isCreator,
@@ -146,4 +146,4 @@ const EventActions: React.FC<EventActionsProps> = ({
   );
 };
 
-export default EventActions;
+export default SessionActions;

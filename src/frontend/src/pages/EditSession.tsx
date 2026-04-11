@@ -11,7 +11,7 @@ import {
   MenuItem,
   CircularProgress,
 } from '@mui/material';
-import { eventsAPI } from '../services/api';
+import { sessionsAPI } from '../services/api';
 import { getErrorMessage } from '../utils/errorHandler';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -33,7 +33,7 @@ const EVENT_TYPES = [
   'other',
 ];
 
-const EditEvent = () => {
+const EditSession = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -62,7 +62,7 @@ const EditEvent = () => {
     }
     
     try {
-      const response = await eventsAPI.getById(id);
+      const response = await sessionsAPI.getById(id);
       const event = response.data;
       
       // Parse the event data to populate the form
@@ -185,7 +185,7 @@ const EditEvent = () => {
         return;
       }
 
-      await eventsAPI.update(id, data);
+      await sessionsAPI.update(id, data);
       
       // Invalidate caches so the updated event is reflected
       queryClient.invalidateQueries({ queryKey: ['eventDetails', id] });
@@ -410,4 +410,4 @@ const EditEvent = () => {
   );
 };
 
-export default EditEvent;
+export default EditSession;

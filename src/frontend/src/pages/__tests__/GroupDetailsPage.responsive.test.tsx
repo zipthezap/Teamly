@@ -11,7 +11,7 @@ vi.mock('../../services/api', () => ({
   groupsAPI: {
     getById: vi.fn(),
   },
-  eventsAPI: {
+  sessionsAPI: {
     getByGroup: vi.fn(),
   },
 }));
@@ -63,7 +63,7 @@ describe('GroupDetailsPage - Mobile Responsive Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (api.groupsAPI.getById as any).mockResolvedValue({ data: mockGroup });
-    (api.eventsAPI.getByGroup as any).mockResolvedValue({ data: mockEvents });
+    (api.sessionsAPI.getByGroup as any).mockResolvedValue({ data: mockEvents });
   });
 
   afterEach(() => {
@@ -225,7 +225,7 @@ describe('GroupDetailsPage - Mobile Responsive Tests', () => {
         unmount();
         vi.clearAllMocks();
         (api.groupsAPI.getById as any).mockResolvedValue({ data: mockGroup });
-        (api.eventsAPI.getByGroup as any).mockResolvedValue({ data: mockEvents });
+        (api.sessionsAPI.getByGroup as any).mockResolvedValue({ data: mockEvents });
       }
     });
   });
@@ -265,7 +265,7 @@ describe('GroupDetailsPage - Mobile Responsive Tests', () => {
         unmount();
         vi.clearAllMocks();
         (api.groupsAPI.getById as any).mockResolvedValue({ data: mockGroup });
-        (api.eventsAPI.getByGroup as any).mockResolvedValue({ data: mockEvents });
+        (api.sessionsAPI.getByGroup as any).mockResolvedValue({ data: mockEvents });
       }
     });
   });

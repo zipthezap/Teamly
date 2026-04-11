@@ -1,13 +1,13 @@
 import React, { useState } from "react";
-import GroupEventsModal from "./GroupEventsModal";
+import GroupSessionsModal from "./GroupSessionsModal";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import Button from "../common/Button";
 import PlusIcon from "../icons/PlusIcon";
-import { EventWithDetails } from "../../../../shared/types";
+import { SessionWithDetails } from "../../../../shared/types";
 
-interface EventListProps {
-  events: EventWithDetails[];
+interface SessionListProps {
+  events: SessionWithDetails[];
   onEventClick: (eventId: string) => void;
   onCreate?: () => void;
   isAdmin?: boolean;
@@ -27,7 +27,7 @@ const formatEventDate = (dateString: string) => {
 };
 
 
-const EventList: React.FC<EventListProps> = React.memo(({ events, onEventClick, onCreate, isAdmin, groupId, isMember }) => {
+const SessionList: React.FC<SessionListProps> = React.memo(({ events, onEventClick, onCreate, isAdmin, groupId, isMember }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [viewAllOpen, setViewAllOpen] = useState(false);
@@ -49,7 +49,7 @@ const EventList: React.FC<EventListProps> = React.memo(({ events, onEventClick, 
     : [];
 
 
-  // Wrap t to match GroupEventsModal's required signature
+  // Wrap t to match GroupSessionsModal's required signature
   const tModal = (key: string, defaultText?: string) => t(key, defaultText ?? "");
 
   // All events for modal, sorted soonest first
@@ -70,7 +70,7 @@ const EventList: React.FC<EventListProps> = React.memo(({ events, onEventClick, 
             {t('groupDetails.viewAll', 'View All')}
           </button>
           {/* View All Modal */}
-          <GroupEventsModal
+          <GroupSessionsModal
             open={viewAllOpen}
             onClose={() => setViewAllOpen(false)}
             events={allUpcomingEvents}
@@ -156,6 +156,6 @@ const EventList: React.FC<EventListProps> = React.memo(({ events, onEventClick, 
   );
 });
 
-EventList.displayName = 'EventList';
+SessionList.displayName = 'SessionList';
 
-export default EventList;
+export default SessionList;

@@ -22,7 +22,7 @@ interface NotificationPreferencesProps {
     commentMentions: boolean;
     nearbyTeamUps: boolean;
     muteEventInvites?: boolean;
-    muteEventReminders?: boolean;
+    muteSessionReminders?: boolean;
     muteEventUpdates?: boolean;
     muteEventCancellations?: boolean;
     muteGroupInvites?: boolean;
@@ -184,8 +184,8 @@ const NotificationPreferences: React.FC<NotificationPreferencesProps> = ({
           <FormControlLabel
             control={
               <Switch
-                checked={emailPreferences.muteEventReminders || false}
-                onChange={onPreferenceChange('muteEventReminders')}
+                checked={emailPreferences.muteSessionReminders || false}
+                onChange={onPreferenceChange('muteSessionReminders')}
                 disabled={allNotificationsMuted}
               />
             }

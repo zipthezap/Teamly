@@ -9,12 +9,12 @@ import { useAuth } from "../contexts/AuthContext";
 import GroupHeader from "../components/GroupDetails/GroupHeader";
 import GroupStats from "../components/GroupDetails/GroupStats";
 import MemberList from "../components/GroupDetails/MemberList";
-import EventList from "../components/GroupDetails/EventList";
-import EventFormModal from "../components/event/EventFormModal";
+import SessionList from "../components/GroupDetails/SessionList";
+import SessionFormModal from "../components/session/SessionFormModal";
 import ChatBox from "../components/GroupDetails/ChatBox";
 import { GroupWithDetails, GroupMember, ChatMessage } from "../types/group";
-import { groupsAPI, eventsAPI, groupChatAPI } from "../services/api";
-import { EventWithDetails, UpdateGroupData } from "../../../shared/types";
+import { groupsAPI, sessionsAPI, groupChatAPI } from "../services/api";
+import { SessionWithDetails, UpdateGroupData } from "../../../shared/types";
 import { AxiosError } from "axios";
 import { getErrorMessage } from "../utils/errorHandler";
 import { useNotification } from "../hooks/useNotification";
@@ -27,7 +27,7 @@ export default function GroupDetailsPage() {
   const { user } = useAuth();
   const { notification, showSuccess, showError, hideNotification } = useNotification();
   const [eventModalOpen, setEventModalOpen] = useState(false);
-  const [editEvent, setEditEvent] = useState<EventWithDetails | undefined>(undefined);
+  const [editEvent, setEditSession] = useState<SessionWithDetails | undefined>(undefined);
   const { id: groupId } = useParams();
   const queryClient = useQueryClient();
 
@@ -83,7 +83,7 @@ export default function GroupDetailsPage() {
   const { data: events, isLoading: eventsLoading, refetch: refetchEvents } = useQuery({
     queryKey: ["groupEvents", groupId],
     queryFn: async () => {
-      const res = await eventsAPI.getAll({ groupId });
+      const res = await sessionsAPI.getAll({ groupId });
       return res.data;
     },
     enabled: !!groupId,
@@ -154,7 +154,7 @@ export default function GroupDetailsPage() {
   // Delete event mutation
   const _deleteEventMutation = useApiMutation({
     mutationFn: async (eventId: number) => {
-      await eventsAPI.delete(eventId);
+      await sessionsAPI.delete(eventId);
       return eventId;
     },
     invalidateKeys: [["groupEvents", groupId], ["groupsList"]],
@@ -500,8 +500,8 @@ export default function GroupDetailsPage() {
   };
 
   // Create event handler
-  const handleCreateEvent = useCallback(() => {
-    setEditEvent(undefined);
+  const handleCreateSession = useCallback(() => {
+    setEditSession(undefined);
     setEventModalOpen(true);
   }, []);
 
@@ -514,7 +514,7 @@ export default function GroupDetailsPage() {
   }, [refetchEvents]);
 
   // Navigate to event requests page
-  const handleViewEventRequests = useCallback(() => {
+  const handleViewSessionRequests = useCallback(() => {
     if (groupId) {
       navigate(`/event-requests/${groupId}`);
     }
@@ -558,7 +558,7 @@ export default function GroupDetailsPage() {
           onLeave={isMember ? handleLeaveGroup : undefined}
           onInvite={canInvite ? handleInviteMember : undefined}
           onCopyLink={canCopyLink ? handleCopyLink : undefined}
-          onViewEventRequests={isAdmin ? handleViewEventRequests : undefined}
+          onViewSessionRequests={isAdmin ? handleViewSessionRequests : undefined}
           isAdmin={isAdmin}
         />
         {/* Group Statistics */}
@@ -623,10 +623,10 @@ export default function GroupDetailsPage() {
           {groupId && isMember && (
             <MemberList groupId={groupId} isAdmin={isAdmin} onRemove={isAdmin ? handleRemoveMember : undefined} />
           )}
-          <EventList
+          <SessionList
             events={eventsArray}
             onEventClick={handleEventClick}
-            onCreate={isMember ? handleCreateEvent : undefined}
+            onCreate={isMember ? handleCreateSession : undefined}
             isAdmin={isModerator}
             groupId={groupId}
             isMember={isMember}
@@ -637,7 +637,7 @@ export default function GroupDetailsPage() {
         </Box>
       </Container>
       {/* Event create/edit modal */}
-      <EventFormModal
+      <SessionFormModal
         open={eventModalOpen}
         onClose={handleEventModalClose}
         onSuccess={handleEventModalSuccess}

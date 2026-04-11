@@ -1,10 +1,10 @@
 import React from "react";
-import { EventWithDetails } from '../../../../shared/types';
+import { SessionWithDetails } from '../../../../shared/types';
 
-interface GroupEventsModalProps {
+interface GroupSessionsModalProps {
   open: boolean;
   onClose: () => void;
-  events: EventWithDetails[];
+  events: SessionWithDetails[];
   onEventClick: (eventId: string) => void;
   t: (key: string, defaultText?: string) => string;
 }
@@ -19,7 +19,7 @@ const formatEventDate = (dateString: string | Date) => {
   });
 };
 
-const GroupEventsModal: React.FC<GroupEventsModalProps> = ({ open, onClose, events, onEventClick, t }) => {
+const GroupSessionsModal: React.FC<GroupSessionsModalProps> = ({ open, onClose, events, onEventClick, t }) => {
   if (!open) return null;
 
   return (
@@ -83,4 +83,4 @@ const GroupEventsModal: React.FC<GroupEventsModalProps> = ({ open, onClose, even
   );
 };
 
-export default GroupEventsModal;
+export default GroupSessionsModal;

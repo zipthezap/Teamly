@@ -10,8 +10,8 @@ Object.defineProperty(window, 'matchMedia', {
     onchange: null,
     addListener: vi.fn(), // deprecated
     removeListener: vi.fn(), // deprecated
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
+    addSessionListener: vi.fn(),
+    removeSessionListener: vi.fn(),
     dispatchEvent: vi.fn(),
   })),
 });

@@ -3,12 +3,12 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import EventDetails from '../EventDetails';
+import SessionDetails from '../SessionDetails';
 import * as api from '../../services/api';
 
 // Mock the API
 vi.mock('../../services/api', () => ({
-  eventsAPI: {
+  sessionsAPI: {
     getById: vi.fn(),
     join: vi.fn(),
     leave: vi.fn(),
@@ -39,7 +39,7 @@ vi.mock('../../contexts/AuthContext', () => ({
   }),
 }));
 
-describe('EventDetails - Mobile Responsive Tests', () => {
+describe('SessionDetails - Mobile Responsive Tests', () => {
   const mockEvent = {
     id: '1',
     title: 'Football Match',
@@ -60,7 +60,7 @@ describe('EventDetails - Mobile Responsive Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (api.eventsAPI.getById as any).mockResolvedValue({ data: mockEvent });
+    (api.sessionsAPI.getById as any).mockResolvedValue({ data: mockEvent });
     (api.commentsAPI.getByEvent as any).mockResolvedValue({ data: [] });
   });
 
@@ -96,16 +96,16 @@ describe('EventDetails - Mobile Responsive Tests', () => {
     });
 
     it('should render without crashing on smallest mobile screen', async () => {
-      renderWithProviders(<EventDetails />);
+      renderWithProviders(<SessionDetails />);
       await waitFor(() => {
         expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
       }, { timeout: 3000 });
     });
 
     it('should stack information vertically on mobile', async () => {
-      renderWithProviders(<EventDetails />);
+      renderWithProviders(<SessionDetails />);
       await waitFor(() => {
-        expect(api.eventsAPI.getById).toHaveBeenCalled();
+        expect(api.sessionsAPI.getById).toHaveBeenCalled();
       });
       
       // Check no horizontal scroll
@@ -114,9 +114,9 @@ describe('EventDetails - Mobile Responsive Tests', () => {
     });
 
     it('should have touch-friendly action buttons', async () => {
-      renderWithProviders(<EventDetails />);
+      renderWithProviders(<SessionDetails />);
       await waitFor(() => {
-        expect(api.eventsAPI.getById).toHaveBeenCalled();
+        expect(api.sessionsAPI.getById).toHaveBeenCalled();
       }, { timeout: 3000 });
 
       // Verify buttons exist (use query to avoid throwing if none found during loading)
@@ -145,16 +145,16 @@ describe('EventDetails - Mobile Responsive Tests', () => {
     });
 
     it('should display event details clearly', async () => {
-      renderWithProviders(<EventDetails />);
+      renderWithProviders(<SessionDetails />);
       await waitFor(() => {
-        expect(api.eventsAPI.getById).toHaveBeenCalled();
+        expect(api.sessionsAPI.getById).toHaveBeenCalled();
       });
     });
 
     it('should have readable text sizes', async () => {
-      renderWithProviders(<EventDetails />);
+      renderWithProviders(<SessionDetails />);
       await waitFor(() => {
-        expect(api.eventsAPI.getById).toHaveBeenCalled();
+        expect(api.sessionsAPI.getById).toHaveBeenCalled();
       }, { timeout: 3000 });
 
       // Verify text elements exist
@@ -170,16 +170,16 @@ describe('EventDetails - Mobile Responsive Tests', () => {
     });
 
     it('should render with expanded layout on tablet', async () => {
-      renderWithProviders(<EventDetails />);
+      renderWithProviders(<SessionDetails />);
       await waitFor(() => {
-        expect(api.eventsAPI.getById).toHaveBeenCalled();
+        expect(api.sessionsAPI.getById).toHaveBeenCalled();
       });
     });
 
     it('should maintain touch targets on tablet', async () => {
-      renderWithProviders(<EventDetails />);
+      renderWithProviders(<SessionDetails />);
       await waitFor(() => {
-        expect(api.eventsAPI.getById).toHaveBeenCalled();
+        expect(api.sessionsAPI.getById).toHaveBeenCalled();
       }, { timeout: 3000 });
 
       // If component still loading, just verify it rendered
@@ -195,9 +195,9 @@ describe('EventDetails - Mobile Responsive Tests', () => {
     });
 
     it('should utilize full width appropriately', async () => {
-      renderWithProviders(<EventDetails />);
+      renderWithProviders(<SessionDetails />);
       await waitFor(() => {
-        expect(api.eventsAPI.getById).toHaveBeenCalled();
+        expect(api.sessionsAPI.getById).toHaveBeenCalled();
       });
     });
   });
@@ -210,15 +210,15 @@ describe('EventDetails - Mobile Responsive Tests', () => {
         global.innerWidth = width;
         global.dispatchEvent(new Event('resize'));
 
-        const { unmount } = renderWithProviders(<EventDetails />);
+        const { unmount } = renderWithProviders(<SessionDetails />);
         
         await waitFor(() => {
-          expect(api.eventsAPI.getById).toHaveBeenCalled();
+          expect(api.sessionsAPI.getById).toHaveBeenCalled();
         });
 
         unmount();
         vi.clearAllMocks();
-        (api.eventsAPI.getById as any).mockResolvedValue({ data: mockEvent });
+        (api.sessionsAPI.getById as any).mockResolvedValue({ data: mockEvent });
         (api.commentsAPI.getByEvent as any).mockResolvedValue({ data: [] });
       }
     });
@@ -227,10 +227,10 @@ describe('EventDetails - Mobile Responsive Tests', () => {
   describe('Touch Target Validation', () => {
     it('should have adequate touch targets for mobile', async () => {
       global.innerWidth = 375;
-      renderWithProviders(<EventDetails />);
+      renderWithProviders(<SessionDetails />);
       
       await waitFor(() => {
-        expect(api.eventsAPI.getById).toHaveBeenCalled();
+        expect(api.sessionsAPI.getById).toHaveBeenCalled();
       }, { timeout: 3000 });
 
       // If component still loading, just verify it rendered
@@ -247,10 +247,10 @@ describe('EventDetails - Mobile Responsive Tests', () => {
         global.innerWidth = width;
         global.dispatchEvent(new Event('resize'));
 
-        const { unmount } = renderWithProviders(<EventDetails />);
+        const { unmount } = renderWithProviders(<SessionDetails />);
         
         await waitFor(() => {
-          expect(api.eventsAPI.getById).toHaveBeenCalled();
+          expect(api.sessionsAPI.getById).toHaveBeenCalled();
         });
 
         const bodyWidth = document.body.scrollWidth;
@@ -258,7 +258,7 @@ describe('EventDetails - Mobile Responsive Tests', () => {
 
         unmount();
         vi.clearAllMocks();
-        (api.eventsAPI.getById as any).mockResolvedValue({ data: mockEvent });
+        (api.sessionsAPI.getById as any).mockResolvedValue({ data: mockEvent });
         (api.commentsAPI.getByEvent as any).mockResolvedValue({ data: [] });
       }
     });

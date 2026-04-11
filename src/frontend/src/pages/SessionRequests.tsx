@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import EventForm, { EventFormData } from '../components/common/EventForm';
+import SessionForm, { SessionFormData } from '../components/common/SessionForm';
 import { useNavigate, useParams } from 'react-router-dom';
-import { eventRequestsAPI, groupsAPI } from '../services/api';
+import { sessionRequestsAPI, groupsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { EventRequestWithDetails, GroupWithDetails } from '../../../shared/types';
+import { SessionRequestWithDetails, GroupWithDetails } from '../../../shared/types';
 import { getErrorMessage } from '../utils/errorHandler';
 import {
   Container,
@@ -30,18 +30,18 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CloseIcon from '@mui/icons-material/Close';
 
-const EventRequests = () => {
+const SessionRequests = () => {
   const { groupId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useTranslation();
-  const [requests, setRequests] = useState<EventRequestWithDetails[]>([]);
+  const [requests, setRequests] = useState<SessionRequestWithDetails[]>([]);
   const [group, setGroup] = useState<GroupWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [voting, setVoting] = useState<Record<string, boolean>>({});
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
-  const [newRequest, setNewRequest] = useState<EventFormData>({
+  const [newRequest, setNewRequest] = useState<SessionFormData>({
     title: '',
     description: '',
     eventType: 'football',
@@ -64,7 +64,7 @@ const EventRequests = () => {
     setLoading(true);
     try {
       const [requestsRes, groupRes] = await Promise.all([
-        eventRequestsAPI.getByGroup(groupId),
+        sessionRequestsAPI.getByGroup(groupId),
         groupsAPI.getById(groupId),
       ]);
       setRequests(requestsRes.data);
@@ -72,7 +72,7 @@ const EventRequests = () => {
     } catch (error: unknown) {
       setSnackbar({
         open: true,
-        message: getErrorMessage(error) || t('events.eventRequests.failedToLoad'),
+        message: getErrorMessage(error) || t('sessions.eventRequests.failedToLoad'),
         severity: 'error',
       });
     } finally {
@@ -89,17 +89,17 @@ const EventRequests = () => {
   const handleVote = async (requestId: string, vote: 'yes' | 'no') => {
     setVoting((prev) => ({ ...prev, [requestId]: true }));
     try {
-      await eventRequestsAPI.vote(requestId, vote);
+      await sessionRequestsAPI.vote(requestId, vote);
       await fetchData();
       setSnackbar({
         open: true,
-        message: t('events.eventRequests.voteRecorded'),
+        message: t('sessions.eventRequests.voteRecorded'),
         severity: 'success',
       });
     } catch (error: unknown) {
       setSnackbar({
         open: true,
-        message: getErrorMessage(error) || t('events.eventRequests.failedToVote'),
+        message: getErrorMessage(error) || t('sessions.eventRequests.failedToVote'),
         severity: 'error',
       });
     } finally {
@@ -109,17 +109,17 @@ const EventRequests = () => {
 
   const handleFinalize = async (requestId: string) => {
     try {
-      await eventRequestsAPI.finalize(requestId);
+      await sessionRequestsAPI.finalize(requestId);
       await fetchData();
       setSnackbar({
         open: true,
-        message: t('events.eventRequests.finalized'),
+        message: t('sessions.eventRequests.finalized'),
         severity: 'success',
       });
     } catch (error: unknown) {
       setSnackbar({
         open: true,
-        message: getErrorMessage(error) || t('events.eventRequests.failedToFinalize'),
+        message: getErrorMessage(error) || t('sessions.eventRequests.failedToFinalize'),
         severity: 'error',
       });
     }
@@ -127,26 +127,26 @@ const EventRequests = () => {
 
   const handleCancel = async (requestId: string) => {
     try {
-      await eventRequestsAPI.cancel(requestId);
+      await sessionRequestsAPI.cancel(requestId);
       await fetchData();
       setSnackbar({
         open: true,
-        message: t('events.eventRequests.cancelled'),
+        message: t('sessions.eventRequests.cancelled'),
         severity: 'success',
       });
     } catch (error: unknown) {
       setSnackbar({
         open: true,
-        message: getErrorMessage(error) || t('events.eventRequests.failedToCancel'),
+        message: getErrorMessage(error) || t('sessions.eventRequests.failedToCancel'),
         severity: 'error',
       });
     }
   };
 
-  const handleCreateRequest = async (formData: EventFormData) => {
+  const handleCreateRequest = async (formData: SessionFormData) => {
     try {
       if (!formData.startDate || !formData.startHour) {
-        setSnackbar({ open: true, message: t('events.startDateRequired'), severity: 'error' });
+        setSnackbar({ open: true, message: t('sessions.startDateRequired'), severity: 'error' });
         return;
       }
       const startTime = `${formData.startHour.padStart(2, '0')}:${formData.startMinute}`;
@@ -159,13 +159,13 @@ const EventRequests = () => {
       if (endTime) {
         endDateTime = new Date(`${formData.startDate}T${endTime}`);
         if (endDateTime <= startDateTime) {
-          setSnackbar({ open: true, message: t('events.eventRequests.endTimeAfterStart'), severity: 'error' });
+          setSnackbar({ open: true, message: t('sessions.eventRequests.endTimeAfterStart'), severity: 'error' });
           return;
         }
       }
       
       if (!groupId) {
-        setSnackbar({ open: true, message: t('events.eventRequests.groupIdRequired'), severity: 'error' });
+        setSnackbar({ open: true, message: t('sessions.eventRequests.groupIdRequired'), severity: 'error' });
         return;
       }
       
@@ -179,7 +179,7 @@ const EventRequests = () => {
         endTime: endDateTime ? endDateTime.toISOString() : undefined,
         maxPlayers: formData.maxPlayers ? parseInt(formData.maxPlayers) : undefined,
       };
-      await eventRequestsAPI.create(data);
+      await sessionRequestsAPI.create(data);
       await fetchData();
       setCreateDialogOpen(false);
       setNewRequest({
@@ -197,13 +197,13 @@ const EventRequests = () => {
       });
       setSnackbar({
         open: true,
-        message: t('events.eventRequests.created'),
+        message: t('sessions.eventRequests.created'),
         severity: 'success',
       });
     } catch (error: unknown) {
       setSnackbar({
         open: true,
-        message: getErrorMessage(error) || t('events.eventRequests.failedToCreate'),
+        message: getErrorMessage(error) || t('sessions.eventRequests.failedToCreate'),
         severity: 'error',
       });
     }
@@ -217,13 +217,13 @@ const EventRequests = () => {
     (m) => m.id === user?.id
   );
 
-  const getVotePercentage = (request: EventRequestWithDetails) => {
+  const getVotePercentage = (request: SessionRequestWithDetails) => {
     const total = (request.yesVotes || 0) + (request.noVotes || 0);
     if (total === 0) return 0;
     return ((request.yesVotes || 0) / total) * 100;
   };
 
-  const getUserVote = (request: EventRequestWithDetails) => {
+  const getUserVote = (request: SessionRequestWithDetails) => {
     return request.votes?.find((v) => v.id === user?.id)?.vote;
   };
 
@@ -256,7 +256,7 @@ const EventRequests = () => {
               fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
             }}
           >
-            {t('events.eventRequests.title')}
+            {t('sessions.eventRequests.title')}
           </Typography>
           {group && (
             <Typography 
@@ -293,7 +293,7 @@ const EventRequests = () => {
               width: { xs: '100%', sm: 'auto' }
             }}
           >
-            {t('events.eventRequests.createRequest')}
+            {t('sessions.eventRequests.createRequest')}
           </Button>
         )}
       </Box>
@@ -333,7 +333,7 @@ const EventRequests = () => {
               fontSize: { xs: '1rem', sm: '1.25rem' }
             }}
           >
-            {t('events.eventRequests.noRequests')}
+            {t('sessions.eventRequests.noRequests')}
           </Typography>
           <Typography 
             variant="body2" 
@@ -341,8 +341,8 @@ const EventRequests = () => {
             sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
           >
             {isMember
-              ? t('events.eventRequests.noRequestsMember')
-              : t('events.eventRequests.noRequestsUser')}
+              ? t('sessions.eventRequests.noRequestsMember')
+              : t('sessions.eventRequests.noRequestsUser')}
           </Typography>
         </Box>
       ) : (
@@ -425,21 +425,21 @@ const EventRequests = () => {
                       color="text.secondary"
                       sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}
                     >
-                      {t('events.eventType')}: {request.eventType}
+                      {t('sessions.eventType')}: {request.eventType}
                     </Typography>
                     <Typography 
                       variant="body2" 
                       color="text.secondary"
                       sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}
                     >
-                      {t('events.location')}: {request.location || t('events.eventRequests.tbd')}
+                      {t('sessions.location')}: {request.location || t('sessions.eventRequests.tbd')}
                     </Typography>
                     <Typography 
                       variant="body2" 
                       color="text.secondary"
                       sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}
                     >
-                      {t('events.eventDate')}: {new Date(request.startTime).toLocaleString()}
+                      {t('sessions.eventDate')}: {new Date(request.startTime).toLocaleString()}
                     </Typography>
                     {request.maxPlayers && (
                       <Typography 
@@ -447,7 +447,7 @@ const EventRequests = () => {
                         color="text.secondary"
                         sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' } }}
                       >
-                        {t('events.maxPlayers')}: {request.maxPlayers}
+                        {t('sessions.maxPlayers')}: {request.maxPlayers}
                       </Typography>
                     )}
                   </Box>
@@ -464,10 +464,10 @@ const EventRequests = () => {
                           }}
                         >
                           <Typography variant="body2" color="text.secondary">
-                            {t('events.eventRequests.yes')}: {request.yesVotes} | {t('events.eventRequests.no')}: {request.noVotes}
+                            {t('sessions.eventRequests.yes')}: {request.yesVotes} | {t('sessions.eventRequests.no')}: {request.noVotes}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            {votePercentage.toFixed(0)}% {t('events.eventRequests.approval')}
+                            {votePercentage.toFixed(0)}% {t('sessions.eventRequests.approval')}
                           </Typography>
                         </Box>
                         <LinearProgress 
@@ -489,7 +489,7 @@ const EventRequests = () => {
                             py: { xs: 0.5, sm: 1 }
                           }}
                         >
-                          {t('events.eventRequests.youVoted', { vote: t(`events.eventRequests.${userVote}`) })}
+                          {t('sessions.eventRequests.youVoted', { vote: t(`events.eventRequests.${userVote}`) })}
                         </Alert>
                       )}
                     </>
@@ -518,7 +518,7 @@ const EventRequests = () => {
                             flex: { xs: '1 1 100%', sm: '0 1 auto' }
                           }}
                         >
-                          {t('events.eventRequests.yes')}
+                          {t('sessions.eventRequests.yes')}
                         </Button>
                         <Button
                           variant={userVote === 'no' ? 'contained' : 'outlined'}
@@ -532,7 +532,7 @@ const EventRequests = () => {
                             flex: { xs: '1 1 100%', sm: '0 1 auto' }
                           }}
                         >
-                          {t('events.eventRequests.no')}
+                          {t('sessions.eventRequests.no')}
                         </Button>
                         {isAdmin && (
                           <>
@@ -547,7 +547,7 @@ const EventRequests = () => {
                                 flex: { xs: '1 1 100%', sm: '0 1 auto' }
                               }}
                             >
-                              {t('events.eventRequests.finalize')}
+                              {t('sessions.eventRequests.finalize')}
                             </Button>
                             <Button
                               variant="outlined"
@@ -575,7 +575,7 @@ const EventRequests = () => {
                           py: { xs: 0.5, sm: 1 }
                         }}
                       >
-                        {t('events.eventRequests.eventCreated')}
+                        {t('sessions.eventRequests.eventCreated')}
                       </Alert>
                     )}
                     {request.status === 'cancelled' && (
@@ -587,7 +587,7 @@ const EventRequests = () => {
                           py: { xs: 0.5, sm: 1 }
                         }}
                       >
-                        {t('events.eventRequests.cancelled')}
+                        {t('sessions.eventRequests.cancelled')}
                       </Alert>
                     )}
                   </Box>
@@ -621,7 +621,7 @@ const EventRequests = () => {
             fontSize: { xs: '1.125rem', sm: '1.25rem' }
           }}
         >
-          {t('events.eventRequests.createRequest')}
+          {t('sessions.eventRequests.createRequest')}
           <IconButton
             edge="end"
             color="inherit"
@@ -633,7 +633,7 @@ const EventRequests = () => {
           </IconButton>
         </DialogTitle>
         <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: { xs: 2, sm: 2 } }}>
-          <EventForm
+          <SessionForm
             initialData={{ ...newRequest, groupId: groupId || '' }}
             loading={false}
             error={''}
@@ -663,4 +663,4 @@ const EventRequests = () => {
   );
 };
 
-export default EventRequests;
+export default SessionRequests;

@@ -2,7 +2,7 @@
  * Re-export Group types from shared types
  */
 export * from '../../../shared/types/group.types';
-export * from '../../../shared/types/event.types';
+export * from '../../../shared/types/session.types';
 
 // Legacy/UI-specific types that may still be used in some components
 export interface Member {

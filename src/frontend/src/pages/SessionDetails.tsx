@@ -1,12 +1,12 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import EventActions from '../components/event/EventActions';
+import SessionActions from '../components/session/SessionActions';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
-import { eventsAPI, groupChatAPI } from '../services/api';
+import { sessionsAPI, groupChatAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import InviteLinkCard from '../components/InviteLinkCard';
-import { SessionParticipant, GuestParticipant, SessionParticipantStatus, GuestParticipantStatus } from '../../../shared/types/event.types';
+import { SessionParticipant, GuestParticipant, SessionParticipantStatus, GuestParticipantStatus } from '../../../shared/types/session.types';
 import { PublicUser, UserProfilePicture } from '../../../shared/types/user.types';
 import { useNotification } from '../hooks/useNotification';
 import { useApiMutation } from '../hooks/useApiMutation';
@@ -34,7 +34,7 @@ interface EventNotification {
   createdAt: Date | string;
 }
 
-const EventDetails = () => {
+const SessionDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -48,7 +48,7 @@ const EventDetails = () => {
   } = useQuery({
     queryKey: ['eventDetails', id],
     queryFn: async () => {
-      const response = await eventsAPI.getById(id!);
+      const response = await sessionsAPI.getById(id!);
       return response.data;
     },
     enabled: !!id,
@@ -57,39 +57,39 @@ const EventDetails = () => {
   });
 
   const joinMutation = useApiMutation({
-    mutationFn: async () => eventsAPI.join(id!),
+    mutationFn: async () => sessionsAPI.join(id!),
     invalidateKeys: [['eventDetails', id], ['events']],
-    onSuccess: () => showSuccess(t('eventDetails.joined')),
-    onError: (error) => showError(error || t('eventDetails.failedToJoin')),
+    onSuccess: () => showSuccess(t('sessionDetails.joined')),
+    onError: (error) => showError(error || t('sessionDetails.failedToJoin')),
   });
   const handleJoin = useCallback(async () => {
     await joinMutation.mutateAsync();
   }, [joinMutation]);
 
   const leaveMutation = useApiMutation({
-    mutationFn: async () => eventsAPI.leave(id!),
+    mutationFn: async () => sessionsAPI.leave(id!),
     invalidateKeys: [['eventDetails', id], ['events']],
-    onSuccess: () => showSuccess(t('eventDetails.left')),
-    onError: (error) => showError(error || t('eventDetails.failedToLeave')),
+    onSuccess: () => showSuccess(t('sessionDetails.left')),
+    onError: (error) => showError(error || t('sessionDetails.failedToLeave')),
   });
   const handleLeave = useCallback(async () => {
     setConfirmDialog({ open: true, action: 'leave' });
   }, []);
 
   const updateStatusMutation = useApiMutation({
-    mutationFn: async (status: string) => eventsAPI.updateStatus(id!, status),
+    mutationFn: async (status: string) => sessionsAPI.updateStatus(id!, status),
     invalidateKeys: [['eventDetails', id], ['events']],
-    onSuccess: (_data, status) => showSuccess(t('eventDetails.statusUpdated', { status })),
-    onError: (error) => showError(error || t('eventDetails.failedToUpdateStatus')),
+    onSuccess: (_data, status) => showSuccess(t('sessionDetails.statusUpdated', { status })),
+    onError: (error) => showError(error || t('sessionDetails.failedToUpdateStatus')),
   });
   const handleUpdateStatus = useCallback(async (status: string) => {
     await updateStatusMutation.mutateAsync(status);
   }, [updateStatusMutation]);
 
   const deleteMutation = useApiMutation({
-    mutationFn: async () => eventsAPI.delete(id!),
+    mutationFn: async () => sessionsAPI.delete(id!),
     onSuccess: () => navigate('/events'),
-    onError: (error) => showError(error || t('eventDetails.failedToDelete')),
+    onError: (error) => showError(error || t('sessionDetails.failedToDelete')),
   });
   const handleDelete = useCallback(async () => {
     setConfirmDialog({ open: true, action: 'delete' });
@@ -98,8 +98,8 @@ const EventDetails = () => {
   const markLateMutation = useApiMutation({
     mutationFn: async () => groupChatAPI.markLate(id!),
     invalidateKeys: [['eventDetails', id]],
-    onSuccess: () => showSuccess(t('eventDetails.markedLate')),
-    onError: () => showError(t('eventDetails.failedToMarkLate')),
+    onSuccess: () => showSuccess(t('sessionDetails.markedLate')),
+    onError: () => showError(t('sessionDetails.failedToMarkLate')),
   });
   const handleMarkLate = useCallback(async () => {
     await markLateMutation.mutateAsync();
@@ -108,15 +108,15 @@ const EventDetails = () => {
   const unmarkLateMutation = useApiMutation({
     mutationFn: async () => groupChatAPI.unmarkLate(id!),
     invalidateKeys: [['eventDetails', id]],
-    onSuccess: () => showSuccess(t('eventDetails.lateUndone')),
-    onError: () => showError(t('eventDetails.failedToUndoLate')),
+    onSuccess: () => showSuccess(t('sessionDetails.lateUndone')),
+    onError: () => showError(t('sessionDetails.failedToUndoLate')),
   });
   const handleUnmarkLate = useCallback(async () => {
     await unmarkLateMutation.mutateAsync();
   }, [unmarkLateMutation]);
 
   const generateInviteLinkMutation = useApiMutation({
-    mutationFn: async () => eventsAPI.generateInviteToken(id!),
+    mutationFn: async () => sessionsAPI.generateInviteToken(id!),
     invalidateKeys: [['eventDetails', id]],
     onSuccess: (response: { data: { inviteToken: string } }) => {
       const inviteUrl = `${window.location.origin}/events/join/${response.data.inviteToken}`;
@@ -171,7 +171,7 @@ const EventDetails = () => {
     };
   }, [event, user?.id]);
 
-  const isEventParticipant = useMemo(() => {
+  const isSessionParticipant = useMemo(() => {
     if (!event || !user?.id) return false;
     return (event.participants?.some((p: SessionParticipant) => p.userId === user.id) ?? false);
   }, [event, user?.id]);
@@ -184,14 +184,14 @@ const EventDetails = () => {
   const confirmDialogContent = useMemo(() => {
     if (confirmDialog.action === 'leave') {
       return {
-        title: t('eventDetails.confirmLeave'),
-        message: t('eventDetails.confirmLeaveMessage', 'Are you sure you want to leave this event?'),
+        title: t('sessionDetails.confirmLeave'),
+        message: t('sessionDetails.confirmLeaveMessage', 'Are you sure you want to leave this event?'),
         color: 'primary' as const,
       };
     }
     return {
-      title: t('eventDetails.confirmDelete'),
-      message: t('eventDetails.confirmDeleteMessage', 'Are you sure you want to delete this event?'),
+      title: t('sessionDetails.confirmDelete'),
+      message: t('sessionDetails.confirmDeleteMessage', 'Are you sure you want to delete this event?'),
       color: 'error' as const,
     };
   }, [confirmDialog.action, t]);
@@ -200,7 +200,7 @@ const EventDetails = () => {
   if (!id) {
     return (
       <Box sx={{ p: { xs: 2, sm: 3 } }}>
-        <Alert severity="error">{t('eventDetails.invalidEventId')}</Alert>
+        <Alert severity="error">{t('sessionDetails.invalidEventId')}</Alert>
       </Box>
     );
   }
@@ -216,7 +216,7 @@ const EventDetails = () => {
   if (!event) {
     return (
       <Container maxWidth="md" sx={{ mt: { xs: 2, sm: 3, md: 4 } }}>
-        <Alert severity="error">{t('eventDetails.notFound')}</Alert>
+        <Alert severity="error">{t('sessionDetails.notFound')}</Alert>
       </Container>
     );
   }
@@ -408,16 +408,16 @@ const EventDetails = () => {
               />
               <Box>
                 <Typography sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' }, color: 'text.secondary', mb: 0.5 }}>
-                  {t('eventDetails.organizedBy')}
+                  {t('sessionDetails.organizedBy')}
                 </Typography>
                 <Typography sx={{ fontSize: { xs: '0.875rem', sm: '1rem' }, fontWeight: 600 }}>
                   {event.creator?.name}
                 </Typography>
               </Box>
               <Typography sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, color: 'text.secondary', mt: { xs: 0, sm: 0 }, ml: { xs: 0, sm: 'auto' } }}>
-                {t('eventDetails.group')}: <Box component="span" sx={{ fontWeight: 700, color: 'primary.main' }}>{event.group?.name}</Box>
+                {t('sessionDetails.group')}: <Box component="span" sx={{ fontWeight: 700, color: 'primary.main' }}>{event.group?.name}</Box>
               </Typography>
-              {isEventParticipant && groupId && (
+              {isSessionParticipant && groupId && (
                 <Link
                   component="button"
                   type="button"
@@ -445,10 +445,10 @@ const EventDetails = () => {
               <Card>
                 <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
                   <Typography sx={{ fontWeight: 600, mb: { xs: 1.5, sm: 2 }, fontSize: { xs: '1rem', sm: '1.125rem' } }}>
-                    {t('eventDetails.capacity')}
+                    {t('sessionDetails.capacity')}
                   </Typography>
                   <Typography sx={{ fontSize: { xs: '0.875rem', sm: '1rem' }, color: 'text.secondary', mb: 2 }}>
-                    {event.maxPlayers ? t('eventDetails.participantsCount', { count: eventStats.totalParticipants, max: event.maxPlayers }) : t('eventDetails.participants', { count: eventStats.totalParticipants })}
+                    {event.maxPlayers ? t('sessionDetails.participantsCount', { count: eventStats.totalParticipants, max: event.maxPlayers }) : t('sessionDetails.participants', { count: eventStats.totalParticipants })}
                   </Typography>
                   {event.maxPlayers && (
                     <Box sx={{ width: '100%', bgcolor: 'grey.700', borderRadius: '4px', height: 12, mb: 2, overflow: 'hidden' }}>
@@ -457,10 +457,10 @@ const EventDetails = () => {
                   )}
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1, sm: 1.5 }, fontSize: { xs: '0.75rem', sm: '0.813rem' } }}>
                     <Box component="span" sx={{ bgcolor: 'background.paper', px: 1, py: 0.5, borderRadius: 0.5, color: 'text.secondary' }}>
-                      ✅ {eventStats.confirmedCount} {t('eventDetails.confirmed')}
+                      ✅ {eventStats.confirmedCount} {t('sessionDetails.confirmed')}
                     </Box>
                     <Box component="span" sx={{ bgcolor: 'background.paper', px: 1, py: 0.5, borderRadius: 0.5, color: 'text.secondary' }}>
-                      ❌ {eventStats.declinedCount} {t('eventDetails.declined')}
+                      ❌ {eventStats.declinedCount} {t('sessionDetails.declined')}
                     </Box>
                   </Box>
                 </CardContent>
@@ -471,9 +471,9 @@ const EventDetails = () => {
                 <Card>
                   <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
                     <Typography sx={{ fontWeight: 600, mb: { xs: 1.5, sm: 2 }, fontSize: { xs: '1rem', sm: '1.125rem' } }}>
-                      {t('eventDetails.yourAttendance')}
+                      {t('sessionDetails.yourAttendance')}
                     </Typography>
-                    <EventActions
+                    <SessionActions
                       event={event}
                       isParticipant={eventStats.isParticipant}
                       isCreator={isCreator}
@@ -491,10 +491,10 @@ const EventDetails = () => {
                 <Card sx={{ opacity: 0.5, pointerEvents: 'none' }}>
                   <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
                     <Typography sx={{ fontWeight: 600, mb: { xs: 1.5, sm: 2 }, fontSize: { xs: '1rem', sm: '1.125rem' } }}>
-                      {t('eventDetails.activityDisabled')}
+                      {t('sessionDetails.activityDisabled')}
                     </Typography>
                     <Typography sx={{ fontSize: { xs: '0.875rem', sm: '1rem' }, color: 'text.secondary' }}>
-                      {t('eventDetails.pastEventNoActions')}
+                      {t('sessionDetails.pastEventNoActions')}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -528,14 +528,14 @@ const EventDetails = () => {
             >
               <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 }, display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <Typography sx={{ fontWeight: 600, mb: { xs: 1.5, sm: 2 }, fontSize: { xs: '1rem', sm: '1.125rem' }, flexShrink: 0 }}>
-                  {t('eventDetails.activityFeed')}
+                  {t('sessionDetails.activityFeed')}
                 </Typography>
                 <Box sx={{ flex: 1, overflowY: 'auto', fontSize: { xs: '0.875rem', sm: '1rem' }, color: 'text.secondary', pr: 1 }}>
                   {(event.eventNotifications || []).length === 0 ? (
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', textAlign: 'center' }}>
                       <Box>
                         <Box sx={{ fontSize: '2.5rem', mb: 1 }}>📋</Box>
-                        <Typography>{t('eventDetails.noActivity')}</Typography>
+                        <Typography>{t('sessionDetails.noActivity')}</Typography>
                       </Box>
                     </Box>
                   ) : (
@@ -543,19 +543,19 @@ const EventDetails = () => {
                       let action = '';
                       switch (n.type) {
                         case 'join':
-                          action = t('eventDetails.activityJoin', { name: n.user?.name || t('eventDetails.user') });
+                          action = t('sessionDetails.activityJoin', { name: n.user?.name || t('sessionDetails.user') });
                           break;
                         case 'leave':
-                          action = t('eventDetails.activityLeave', { name: n.user?.name || t('eventDetails.user') });
+                          action = t('sessionDetails.activityLeave', { name: n.user?.name || t('sessionDetails.user') });
                           break;
                         case 'confirmed':
-                          action = t('eventDetails.activityConfirmed', { name: n.user?.name || t('eventDetails.user') });
+                          action = t('sessionDetails.activityConfirmed', { name: n.user?.name || t('sessionDetails.user') });
                           break;
                         case 'declined':
-                          action = t('eventDetails.activityDeclined', { name: n.user?.name || t('eventDetails.user') });
+                          action = t('sessionDetails.activityDeclined', { name: n.user?.name || t('sessionDetails.user') });
                           break;
                         case 'late':
-                          action = t('eventDetails.activityLate', { name: n.user?.name || t('eventDetails.user') });
+                          action = t('sessionDetails.activityLate', { name: n.user?.name || t('sessionDetails.user') });
                           break;
                         default:
                           action = n.type;
@@ -574,12 +574,12 @@ const EventDetails = () => {
                           <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
                             <ProfileAvatar
                               picture={getCurrentProfilePicture(n.user?.profilePictures, n.user?.profilePicture)}
-                              name={n.user?.name || t('eventDetails.user')}
+                              name={n.user?.name || t('sessionDetails.user')}
                               size={36}
                             />
                             <Box sx={{ flex: 1, minWidth: 0 }}>
                               <Typography sx={{ color: 'text.primary', fontWeight: 500, fontSize: { xs: '0.875rem', sm: '1rem' }, mb: 0.5 }}>
-                                {n.user?.name || t('eventDetails.user')}
+                                {n.user?.name || t('sessionDetails.user')}
                               </Typography>
                               <Typography sx={{ fontSize: { xs: '0.75rem', sm: '0.813rem' }, color: 'text.secondary', mb: 0.5 }}>
                                 {action}
@@ -604,7 +604,7 @@ const EventDetails = () => {
       <Card sx={{ mt: { xs: 2, sm: 3, md: 4 } }}>
         <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
           <Typography sx={{ fontWeight: 600, mb: { xs: 2, sm: 3 }, fontSize: { xs: '1.125rem', sm: '1.25rem' } }}>
-            {t('eventDetails.participantsList', { count: eventStats.totalParticipants })}
+            {t('sessionDetails.participantsList', { count: eventStats.totalParticipants })}
           </Typography>
           <Box 
             sx={{ 
@@ -660,7 +660,7 @@ const EventDetails = () => {
                           color: 'warning.light'
                         }}
                       >
-                        {t('eventDetails.willBeLate', 'Will be late')}
+                        {t('sessionDetails.willBeLate', 'Will be late')}
                       </Box>
                     )}
                   </Box>
@@ -767,4 +767,4 @@ const EventDetails = () => {
   );
 };
 
-export default EventDetails;
+export default SessionDetails;

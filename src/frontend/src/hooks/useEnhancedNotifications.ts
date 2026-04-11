@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { notificationsAPI } from '../services/api';
 import { useTranslation } from 'react-i18next';
-import { SessionNotificationType, GroupNotificationType, TeamUpNotificationType } from '../../../shared/types/event.types';
+import { SessionNotificationType, GroupNotificationType, TeamUpNotificationType } from '../../../shared/types/session.types';
 import { getNotificationText } from '../utils/notificationText';
 
 export interface NotificationMetadata {

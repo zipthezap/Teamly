@@ -16,6 +16,7 @@ import {
   UpdateEmailPreferenceData,
   NotificationQueryParams
 } from '../../../shared/types';
+import type { League, LeagueWithDetails, LeagueTeam, LeagueStanding, LeagueSessionEntry, CreateLeagueData, UpdateLeagueData } from '../../../shared/types/league.types';
 
 const API_BASE_URL = typeof import.meta.env.VITE_API_URL !== 'undefined' ? import.meta.env.VITE_API_URL : 'http://localhost:3000/api';
 
@@ -129,7 +130,7 @@ export const groupsAPI = {
 };
 
 // Events API
-export const eventsAPI = {
+export const sessionsAPI = {
   create: (data: CreateSessionData) => api.post('/sessions', data),
   getAll: (params?: SessionSearchParams) => api.get('/sessions', { params }),
   getStatistics: () => api.get('/events/statistics'),
@@ -157,7 +158,7 @@ export const twoFactorAPI = {
 };
 
 // Event Requests API
-export const eventRequestsAPI = {
+export const sessionRequestsAPI = {
   create: (data: CreateSessionRequestData) => api.post('/session-requests', data),
   getByGroup: (groupId: string | number) => api.get(`/session-requests/group/${groupId}`),
   getById: (id: string | number) => api.get(`/session-requests/${id}`),
@@ -208,6 +209,20 @@ export const teamUpAPI = {
   getComments: (id: string | number) => api.get(`/teamup/${id}/comments`),
   addComment: (id: string | number, content: string) => api.post(`/teamup/${id}/comments`, { content }),
   deleteComment: (id: string | number, commentId: string | number) => api.delete(`/teamup/${id}/comments/${commentId}`),
+};
+
+export const leaguesAPI = {
+  getAll: (params?: Record<string, string>) => api.get<League[]>('/leagues', { params }),
+  getById: (id: string) => api.get<LeagueWithDetails>(`/leagues/${id}`),
+  create: (data: CreateLeagueData) => api.post<League>('/leagues', data),
+  update: (id: string, data: UpdateLeagueData) => api.put<League>(`/leagues/${id}`, data),
+  delete: (id: string) => api.delete<void>(`/leagues/${id}`),
+  addTeam: (leagueId: string, data: { name: string; captainUserId?: string }) =>
+    api.post<LeagueTeam>(`/leagues/${leagueId}/teams`, data),
+  getStandings: (leagueId: string) =>
+    api.get<(LeagueStanding & { team: LeagueTeam })[]>(`/leagues/${leagueId}/standings`),
+  linkSession: (leagueId: string, sessionId: string, roundNumber?: number) =>
+    api.post<LeagueSessionEntry>(`/leagues/${leagueId}/sessions`, { sessionId, roundNumber }),
 };
 
 export default api;

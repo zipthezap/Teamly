@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { eventsAPI, groupsAPI } from '../services/api';
-import EventForm, { EventFormData } from '../components/common/EventForm';
+import { sessionsAPI, groupsAPI } from '../services/api';
+import SessionForm, { SessionFormData } from '../components/common/SessionForm';
 import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import { useQueryClient } from '@tanstack/react-query';
 
-const CreateEvent = () => {
+const CreateSession = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [groups, setGroups] = useState([]);
@@ -27,7 +27,7 @@ const CreateEvent = () => {
     fetchGroups();
   }, []);
 
-  const handleSubmit = async (formData: EventFormData) => {
+  const handleSubmit = async (formData: SessionFormData) => {
     setError('');
     setLoading(true);
     try {
@@ -108,7 +108,7 @@ const CreateEvent = () => {
         }
       }
 
-      const response = await eventsAPI.create(data);
+      const response = await sessionsAPI.create(data);
       
       // Invalidate caches so the new event appears
       queryClient.invalidateQueries({ queryKey: ['eventsList'] });
@@ -134,7 +134,7 @@ const CreateEvent = () => {
         <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' } }}>
           Create New Event
         </Typography>
-        <EventForm
+        <SessionForm
           groups={groups}
           initialData={{ groupId: location.state?.groupId || '' }}
           loading={loading}
@@ -149,4 +149,4 @@ const CreateEvent = () => {
   );
 };
 
-export default CreateEvent;
+export default CreateSession;
