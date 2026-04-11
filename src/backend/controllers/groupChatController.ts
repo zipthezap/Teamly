@@ -85,6 +85,17 @@ export const createMessage = asyncHandler(async (req: Request, res: Response) =>
 
 export const getMessages = asyncHandler(async (req: Request, res: Response) => {
   const { groupId } = req.params;
+  const userId = req.user!.id;
+
+  // Verify caller is a member of the group before exposing chat history
+  const membership = await prisma.groupMember.findUnique({
+    where: { userId_groupId: { userId, groupId } },
+    select: { id: true }
+  });
+  if (!membership) {
+    throw new ForbiddenError('You are not a member of this group');
+  }
+
   const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
   const before = req.query.before as string | undefined; // cursor: createdAt ISO string
 
