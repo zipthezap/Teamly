@@ -13,13 +13,15 @@ Environment values are loaded using Dart defines:
 
 - `APP_ENV` (`dev|staging|prod`)
 - `API_BASE_URL`
+- `GOOGLE_CLIENT_ID` – The OAuth 2.0 **web** client ID from Google Cloud Console (same value as the `GOOGLE_CLIENT_ID` backend env var). Required for Google Sign-In to return an `idToken` on Android.
 
 Examples:
 
 ```bash
 flutter run \
   --dart-define=APP_ENV=dev \
-  --dart-define=API_BASE_URL=http://localhost:3000/api
+  --dart-define=API_BASE_URL=http://localhost:3000/api \
+  --dart-define=GOOGLE_CLIENT_ID=<your-web-client-id>
 ```
 
 ## Mobile Push Notifications
