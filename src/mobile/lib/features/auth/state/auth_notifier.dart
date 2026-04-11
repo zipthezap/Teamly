@@ -68,6 +68,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _repo;
   final Ref _ref;
 
+  // Reuse a single GoogleSignIn instance to preserve cached credentials.
+  final _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+
   Future<void> _initAuth() async {
     try {
       final token = await _repo.getToken();
@@ -121,7 +124,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     // Sign out of any active social provider sessions so the next sign-in
     // shows the account-picker rather than silently reusing cached credentials.
     try {
-      await GoogleSignIn().signOut();
+      await _googleSignIn.signOut();
     } catch (_) {}
     try {
       await FacebookAuth.instance.logOut();
@@ -139,8 +142,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> loginWithGoogle() async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
-      final account = await googleSignIn.signIn();
+      final account = await _googleSignIn.signIn();
       if (account == null) {
         // User cancelled
         state = state.copyWith(isLoading: false);
