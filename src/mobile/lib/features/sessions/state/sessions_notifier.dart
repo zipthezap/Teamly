@@ -13,19 +13,16 @@ import '../domain/session_repository.dart';
 /// Riverpod 2.x [AsyncNotifier] for the session list.
 ///
 /// Replaces the deprecated `StateNotifier<AsyncValue<T>>` pattern.
-/// Loads all sessions on first build; call [reload] to refresh with an
-/// optional [groupId] filter.
+/// Loads all sessions on first build; call [reload] to refresh, optionally
+/// filtered by [groupId].
 class SessionsNotifier extends AsyncNotifier<List<SessionModel>> {
-  String? _groupId;
-
   @override
   Future<List<SessionModel>> build() {
-    return ref.watch(sessionRepositoryProvider).getEvents(groupId: _groupId);
+    return ref.watch(sessionRepositoryProvider).getEvents();
   }
 
   /// Reload sessions, optionally filtered by [groupId].
   Future<void> reload({String? groupId}) async {
-    _groupId = groupId;
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(
       () => ref.read(sessionRepositoryProvider).getEvents(groupId: groupId),
