@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/network/session_expired_notifier.dart';
@@ -62,6 +63,16 @@ class AuthState extends Equatable {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier(this._repo, this._ref) : super(const AuthState.unknown()) {
+    // Build the GoogleSignIn instance with the web client ID so that
+    // authentication.idToken is populated on Android (and optionally iOS).
+    // The serverClientId must match GOOGLE_CLIENT_ID on the backend.
+    // We pass null (not an empty string) when no ID is configured so that
+    // GoogleSignIn skips idToken generation rather than rejecting the empty value.
+    final googleClientId = _ref.read(appConfigProvider).googleClientId;
+    _googleSignIn = GoogleSignIn(
+      scopes: ['email', 'profile'],
+      serverClientId: googleClientId.isNotEmpty ? googleClientId : null,
+    );
     _initAuth();
   }
 
@@ -69,7 +80,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final Ref _ref;
 
   // Reuse a single GoogleSignIn instance to preserve cached credentials.
-  final _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+  late final GoogleSignIn _googleSignIn;
 
   Future<void> _initAuth() async {
     try {

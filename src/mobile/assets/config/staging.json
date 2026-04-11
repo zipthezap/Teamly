@@ -1,4 +1,5 @@
 {
   "env": "staging",
-  "apiBaseUrl": "https://staging-api.teamly.app/api"
+  "apiBaseUrl": "https://staging-api.teamly.app/api",
+  "googleClientId": ""
 }
