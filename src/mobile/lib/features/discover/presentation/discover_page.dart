@@ -118,6 +118,14 @@ class DiscoverPage extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _DiscoverCard(
+            icon: Icons.military_tech_rounded,
+            title: 'Leagues',
+            subtitle: 'Join and manage recurring league competitions',
+            iconColor: const Color(0xFF8B5CF6),
+            onTap: () => context.push('/leagues'),
+          ),
+          const SizedBox(height: 10),
+          _DiscoverCard(
             icon: Icons.handshake_rounded,
             title: 'TeamUp',
             subtitle: 'Find players or join a team',
