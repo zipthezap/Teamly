@@ -13,6 +13,12 @@ import {
   recordFailedLoginAttempt,
   resetFailedLoginAttempts,
   verifyPassword,
+  validatePasswordResetToken,
+  validateEmailVerificationToken,
+  createPasswordResetToken,
+  getUserProfile,
+  updateUserProfile,
+  validateCurrentPassword,
 } from '../../services/authService';
 import prisma from '../../config/database';
 
@@ -280,6 +286,158 @@ describe('Auth Service', () => {
       (bcrypt.compare as any).mockResolvedValue(false);
 
       const result = await verifyPassword('wrongPassword', 'hashed_password');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('validatePasswordResetToken', () => {
+    it('should return valid true when token matches an unexpired user', async () => {
+      const mockUser = { id: 'user-1', email: 'test@example.com' };
+      (prisma.user.findFirst as any).mockResolvedValue(mockUser);
+
+      const result = await validatePasswordResetToken('valid-token');
+
+      expect(result.valid).toBe(true);
+      expect(result.user).toEqual(mockUser);
+    });
+
+    it('should return valid false when no user found (expired or invalid token)', async () => {
+      (prisma.user.findFirst as any).mockResolvedValue(null);
+
+      const result = await validatePasswordResetToken('bad-token');
+
+      expect(result.valid).toBe(false);
+      expect(result.error).toBe('Invalid or expired password reset token');
+    });
+  });
+
+  describe('validateEmailVerificationToken', () => {
+    it('should return valid true for an unverified user with matching token', async () => {
+      const mockUser = { id: 'user-1', emailVerified: false };
+      (prisma.user.findFirst as any).mockResolvedValue(mockUser);
+
+      const result = await validateEmailVerificationToken('valid-token');
+
+      expect(result.valid).toBe(true);
+      expect(result.user).toEqual(mockUser);
+    });
+
+    it('should return valid false when no user found', async () => {
+      (prisma.user.findFirst as any).mockResolvedValue(null);
+
+      const result = await validateEmailVerificationToken('bad-token');
+
+      expect(result.valid).toBe(false);
+      expect(result.error).toBe('Invalid verification token');
+    });
+
+    it('should return valid false when email is already verified', async () => {
+      const mockUser = { id: 'user-1', emailVerified: true };
+      (prisma.user.findFirst as any).mockResolvedValue(mockUser);
+
+      const result = await validateEmailVerificationToken('already-used-token');
+
+      expect(result.valid).toBe(false);
+      expect(result.error).toBe('Email already verified');
+    });
+  });
+
+  describe('createPasswordResetToken', () => {
+    it('should update user with hashed token and return plain token', async () => {
+      (prisma.user.update as any).mockResolvedValue({});
+
+      const token = await createPasswordResetToken('user-1');
+
+      expect(typeof token).toBe('string');
+      expect(token.length).toBeGreaterThan(0);
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'user-1' },
+          data: expect.objectContaining({
+            passwordResetToken: expect.any(String),
+            passwordResetExpires: expect.any(Date),
+          }),
+        })
+      );
+      // Plain token must differ from stored hash
+      const callData = (prisma.user.update as any).mock.calls[0][0].data;
+      expect(callData.passwordResetToken).not.toBe(token);
+    });
+  });
+
+  describe('getUserProfile', () => {
+    it('should query user with correct fields', async () => {
+      const mockProfile = { id: 'user-1', email: 'test@example.com', name: 'Alice' };
+      (prisma.user.findUnique as any).mockResolvedValue(mockProfile);
+
+      const result = await getUserProfile('user-1');
+
+      expect(result).toEqual(mockProfile);
+      expect(prisma.user.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'user-1' } })
+      );
+    });
+
+    it('should return null when user is not found', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue(null);
+
+      const result = await getUserProfile('non-existent');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('updateUserProfile', () => {
+    it('should update name (trimmed) and emailNotifications', async () => {
+      const updated = { id: 'user-1', name: 'Bob', emailNotifications: true };
+      (prisma.user.update as any).mockResolvedValue(updated);
+
+      const result = await updateUserProfile('user-1', { name: '  Bob  ', emailNotifications: true });
+
+      expect(result).toEqual(updated);
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'user-1' },
+          data: expect.objectContaining({ name: 'Bob', emailNotifications: true }),
+        })
+      );
+    });
+
+    it('should only update provided fields', async () => {
+      (prisma.user.update as any).mockResolvedValue({});
+
+      await updateUserProfile('user-1', { emailNotifications: false });
+
+      const callData = (prisma.user.update as any).mock.calls[0][0].data;
+      expect(callData.name).toBeUndefined();
+      expect(callData.emailNotifications).toBe(false);
+    });
+  });
+
+  describe('validateCurrentPassword', () => {
+    it('should return true when current password matches', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue({ password: 'hashed' });
+      (bcrypt.compare as any).mockResolvedValue(true);
+
+      const result = await validateCurrentPassword('user-1', 'correct-password');
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false when user is not found', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue(null);
+
+      const result = await validateCurrentPassword('user-1', 'any-password');
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false when password does not match', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue({ password: 'hashed' });
+      (bcrypt.compare as any).mockResolvedValue(false);
+
+      const result = await validateCurrentPassword('user-1', 'wrong-password');
 
       expect(result).toBe(false);
     });
