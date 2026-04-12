@@ -1604,7 +1604,7 @@ class _EventsTab extends ConsumerWidget {
                 onPressed: () =>
                     context.push('/groups/$groupId/session-requests'),
                 icon: const Icon(Icons.event_available_outlined),
-                label: const Text('Request Event'),
+                label: const Text('Request Session'),
               ),
             ),
         ],

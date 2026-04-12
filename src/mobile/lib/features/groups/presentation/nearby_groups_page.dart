@@ -38,15 +38,19 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
 
   // Geocoding helper – uses Google API when key is configured, Nominatim otherwise
   late final GeocodingUtils _geocoding;
+  bool _geocodingInitialized = false;
 
   // Debounce timer for address search
   DateTime _lastAddressSearch = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
-  void initState() {
-    super.initState();
-    final mapsKey = ref.read(appConfigProvider).googleMapsApiKey;
-    _geocoding = GeocodingUtils(googleMapsApiKey: mapsKey);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_geocodingInitialized) {
+      final mapsKey = ref.read(appConfigProvider).googleMapsApiKey;
+      _geocoding = GeocodingUtils(googleMapsApiKey: mapsKey);
+      _geocodingInitialized = true;
+    }
   }
 
   @override

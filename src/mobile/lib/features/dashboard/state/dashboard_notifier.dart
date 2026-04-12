@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/dashboard_model.dart';
@@ -17,6 +19,17 @@ class DashboardNotifier extends AsyncNotifier<DashboardModel> {
   @override
   Future<DashboardModel> build() {
     final authState = ref.watch(authNotifierProvider);
+
+    // While authentication status is still being determined (app start-up),
+    // return a never-completing future so the UI shows a loading spinner
+    // rather than a flash of empty content or a spurious 401 error.
+    if (authState.status == AuthStatus.unknown) {
+      return Completer<DashboardModel>().future;
+    }
+
+    // Router redirects unauthenticated users to /auth, but if the provider
+    // is evaluated before the redirect fires, return an empty shell so no
+    // 401 API call is made.
     if (!authState.isAuthenticated) {
       return Future.value(const DashboardModel(
         upcomingSessions: [],
@@ -29,6 +42,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardModel> {
         ),
       ));
     }
+
     return ref.read(dashboardRepositoryProvider).getDashboard();
   }
 
