@@ -284,7 +284,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
                       value: 'event_requests',
                       child: ListTile(
                           leading: Icon(Icons.how_to_vote_outlined),
-                          title: Text('Event Requests'),
+                          title: Text('Session Requests'),
                           contentPadding: EdgeInsets.zero)),
                   if (admin) ...[
                     const PopupMenuItem(
@@ -409,7 +409,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
         await _groupPickAndUploadPicture(context, ref, widget.groupId);
         break;
       case 'event_requests':
-        context.push('/groups/${widget.groupId}/event-requests');
+        context.push('/groups/${widget.groupId}/session-requests');
         break;
       case 'invite_analytics':
         await Navigator.of(context).push(MaterialPageRoute(
@@ -1602,7 +1602,7 @@ class _EventsTab extends ConsumerWidget {
               right: 16,
               child: FloatingActionButton.extended(
                 onPressed: () =>
-                    context.push('/groups/$groupId/event-requests'),
+                    context.push('/groups/$groupId/session-requests'),
                 icon: const Icon(Icons.event_available_outlined),
                 label: const Text('Request Event'),
               ),

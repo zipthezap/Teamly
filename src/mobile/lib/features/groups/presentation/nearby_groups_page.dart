@@ -3,10 +3,11 @@ import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:dio/dio.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/error/error_utils.dart';
 import '../../../core/models/extended_models.dart';
+import '../../../core/utils/geocoding_utils.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../data/group_repository_impl.dart';
@@ -30,21 +31,28 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
   bool _joining = false;
 
   // Address autocomplete state
-  List<_PlaceSuggestion> _suggestions = [];
+  List<PlaceSuggestion> _suggestions = [];
   bool _searchingAddress = false;
   bool _gettingLocation = false;
   String? _geocodeError;
 
-  // Reusable Dio instance for geocoding
-  final _geocodeDio = Dio();
+  // Geocoding helper – uses Google API when key is configured, Nominatim otherwise
+  late final GeocodingUtils _geocoding;
 
   // Debounce timer for address search
   DateTime _lastAddressSearch = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
+  void initState() {
+    super.initState();
+    final mapsKey = ref.read(appConfigProvider).googleMapsApiKey;
+    _geocoding = GeocodingUtils(googleMapsApiKey: mapsKey);
+  }
+
+  @override
   void dispose() {
     _locationCtrl.dispose();
-    _geocodeDio.close();
+    _geocoding.close();
     super.dispose();
   }
 
@@ -106,31 +114,10 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
       _geocodeError = null;
     });
     try {
-      final response = await _geocodeDio.get<List<dynamic>>(
-        'https://nominatim.openstreetmap.org/search',
-        queryParameters: {
-          'q': query,
-          'format': 'json',
-          'limit': '5',
-          'addressdetails': '1',
-        },
-        options: Options(
-          headers: {'User-Agent': 'TeamlyMobileApp/1.0'},
-          sendTimeout: const Duration(seconds: 5),
-          receiveTimeout: const Duration(seconds: 5),
-        ),
-      );
-      final items = response.data ?? [];
-      setState(() {
-        _suggestions = items.map((e) {
-          final m = e as Map<String, dynamic>;
-          return _PlaceSuggestion(
-            displayName: m['display_name'] as String? ?? '',
-            lat: double.tryParse(m['lat'] as String? ?? '') ?? 0,
-            lng: double.tryParse(m['lon'] as String? ?? '') ?? 0,
-          );
-        }).toList();
-      });
+      final suggestions = await _geocoding.search(query);
+      if (mounted) {
+        setState(() => _suggestions = suggestions);
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -143,7 +130,7 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
     }
   }
 
-  void _selectSuggestion(_PlaceSuggestion suggestion) {
+  void _selectSuggestion(PlaceSuggestion suggestion) {
     setState(() {
       _lat = suggestion.lat;
       _lng = suggestion.lng;
@@ -286,19 +273,6 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
   }
 }
 
-// ── Place suggestion model ────────────────────────────────────────────────────
-
-class _PlaceSuggestion {
-  const _PlaceSuggestion({
-    required this.displayName,
-    required this.lat,
-    required this.lng,
-  });
-  final String displayName;
-  final double lat;
-  final double lng;
-}
-
 // ── Location search form ──────────────────────────────────────────────────────
 
 class _LocationSearchForm extends StatelessWidget {
@@ -323,11 +297,11 @@ class _LocationSearchForm extends StatelessWidget {
   final bool loading;
   final bool gettingLocation;
   final bool searchingAddress;
-  final List<_PlaceSuggestion> suggestions;
+  final List<PlaceSuggestion> suggestions;
   final String? error;
   final String? geocodeError;
   final ValueChanged<String> onAddressChanged;
-  final ValueChanged<_PlaceSuggestion> onSuggestionSelected;
+  final ValueChanged<PlaceSuggestion> onSuggestionSelected;
   final ValueChanged<double> onRadiusChanged;
   final VoidCallback? onSearch;
   final VoidCallback onUseCurrentLocation;

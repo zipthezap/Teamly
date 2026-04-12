@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/dashboard_model.dart';
+import '../../auth/state/auth_notifier.dart';
 import '../data/dashboard_repository_impl.dart';
 
 /// AsyncNotifier that loads the dashboard aggregate in a single API call.
@@ -8,10 +9,27 @@ import '../data/dashboard_repository_impl.dart';
 /// The dashboard page watches this provider instead of the separate
 /// [groupsNotifierProvider] and [sessionsNotifierProvider], reducing the
 /// initial render from 2 network round-trips to 1.
+///
+/// Watching [authNotifierProvider] causes the build to re-run when the user
+/// authenticates, so a fresh fetch is performed immediately after login
+/// instead of displaying the stale unauthenticated error state.
 class DashboardNotifier extends AsyncNotifier<DashboardModel> {
   @override
   Future<DashboardModel> build() {
-    return ref.watch(dashboardRepositoryProvider).getDashboard();
+    final authState = ref.watch(authNotifierProvider);
+    if (!authState.isAuthenticated) {
+      return Future.value(const DashboardModel(
+        upcomingSessions: [],
+        recentGroups: [],
+        unreadNotifications: 0,
+        stats: DashboardStats(
+          totalSessions: 0,
+          upcomingCount: 0,
+          groupCount: 0,
+        ),
+      ));
+    }
+    return ref.read(dashboardRepositoryProvider).getDashboard();
   }
 
   /// Reload dashboard data (e.g. on pull-to-refresh).
