@@ -230,3 +230,95 @@ describe('requireTeamUpPermission wiring', () => {
     );
   });
 });
+
+// ─── requireGroupMembership - additional edge cases ────────────────────────────
+
+describe('requireGroupMembership - additional edge cases', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('falls back to body.groupId when params.id is absent', async () => {
+    vi.mocked(groupService.isGroupMember).mockResolvedValue(true);
+    const req = makeReq({ params: {}, body: { groupId: 'group-from-body' } });
+    const next = makeNext();
+
+    await requireGroupMembership(req, res, next);
+
+    expect(groupService.isGroupMember).toHaveBeenCalledWith('group-from-body', 'user-1');
+    expect(next).toHaveBeenCalledWith();
+  });
+
+  it('calls next(BadRequestError) when no groupId is provided', async () => {
+    const req = makeReq({ params: {}, body: {} });
+    const next = makeNext();
+
+    await requireGroupMembership(req, res, next);
+
+    expect(next).toHaveBeenCalledWith(expect.any(BadRequestError));
+  });
+
+  it('propagates service errors through next()', async () => {
+    const serviceError = new Error('DB failure');
+    vi.mocked(groupService.isGroupMember).mockRejectedValue(serviceError);
+    const req = makeReq({ params: { id: 'group-1' } });
+    const next = makeNext();
+
+    await requireGroupMembership(req, res, next);
+
+    expect(next).toHaveBeenCalledWith(serviceError);
+  });
+});
+
+// ─── requireGroupAdmin - service error propagation ────────────────────────────
+
+describe('requireGroupAdmin - service error propagation', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('propagates service errors through next()', async () => {
+    const serviceError = new Error('DB failure');
+    vi.mocked(groupService.checkGroupAdmin).mockRejectedValue(serviceError);
+    const req = makeReq({ params: { id: 'group-1' } });
+    const next = makeNext();
+
+    await requireGroupAdmin(req, res, next);
+
+    expect(next).toHaveBeenCalledWith(serviceError);
+  });
+});
+
+// ─── requirePermission - service error propagation ───────────────────────────
+
+describe('requirePermission - service error propagation', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('propagates service errors through next()', async () => {
+    const serviceError = new Error('permission check failed');
+    vi.mocked(permissionService.hasPermission).mockRejectedValue(serviceError);
+    const middleware = requirePermission('manage_sessions' as any, 'group', (req) => req.params.id);
+    const req = makeReq({ params: { id: 'group-1' } });
+    const next = makeNext();
+
+    await middleware(req, res, next);
+
+    expect(next).toHaveBeenCalledWith(serviceError);
+  });
+});
+
+// ─── requireGroupPermission wiring ───────────────────────────────────────────
+
+describe('requireGroupPermission wiring', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('passes resourceType=group and uses req.params.id', async () => {
+    vi.mocked(permissionService.hasPermission).mockResolvedValue(true);
+    const { requireGroupPermission } = await import('../../middleware/authorization');
+    const middleware = requireGroupPermission('manage_sessions' as any);
+    const req = makeReq({ params: { id: 'group-99' } });
+    const next = makeNext();
+
+    await middleware(req, res, next);
+
+    expect(permissionService.hasPermission).toHaveBeenCalledWith(
+      expect.objectContaining({ resourceType: 'group', resourceId: 'group-99' })
+    );
+  });
+});

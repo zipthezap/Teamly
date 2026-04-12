@@ -4,6 +4,7 @@
  */
 
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { BadRequestError } from '../../utils/errors';
 import {
   checkGroupAdmin,
   checkGroupMember,
@@ -22,6 +23,8 @@ import {
   isValidRole,
   getGroupMember,
   isGroupMember,
+  checkGroupCapacityAndMembership,
+  validateCoordinateCompleteness,
 } from '../../services/groupService';
 import prisma from '../../config/database';
 import { CacheService } from '../../services/cacheService';
@@ -203,7 +206,7 @@ describe('Group Service', () => {
         expect.objectContaining({
           where: { id: 'group-1' },
           include: expect.objectContaining({
-            events: expect.objectContaining({
+            sessions: expect.objectContaining({
               where: { archived: false }
             })
           })
@@ -701,6 +704,96 @@ describe('Group Service', () => {
 
       expect(result.name).toBe('Test-Group_123!');
       expect(result.tags).toBe('Soccer, Basketball, Tennis');
+    });
+  });
+
+  // ─── checkGroupCapacityAndMembership ─────────────────────────────────────────
+
+  describe('checkGroupCapacityAndMembership', () => {
+    it('should throw BadRequestError if user is already a member', async () => {
+      vi.mocked(prisma.groupMember.findFirst).mockResolvedValue({ id: 'member-1' } as unknown);
+
+      await expect(
+        checkGroupCapacityAndMembership('group-1', 'user-1', null)
+      ).rejects.toThrow(BadRequestError);
+    });
+
+    it('should throw with correct message when user is already a member', async () => {
+      vi.mocked(prisma.groupMember.findFirst).mockResolvedValue({ id: 'member-1' } as unknown);
+
+      await expect(
+        checkGroupCapacityAndMembership('group-1', 'user-1', null)
+      ).rejects.toThrow('User is already a member of this group');
+    });
+
+    it('should throw BadRequestError if group has reached max capacity', async () => {
+      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce(null);
+      vi.mocked(prisma.groupMember.count).mockResolvedValueOnce(10);
+
+      await expect(
+        checkGroupCapacityAndMembership('group-1', 'user-1', 10)
+      ).rejects.toThrow('Group has reached maximum member capacity');
+    });
+
+    it('should not throw when user is not a member and group is not full', async () => {
+      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce(null);
+      vi.mocked(prisma.groupMember.count).mockResolvedValueOnce(5);
+
+      await expect(
+        checkGroupCapacityAndMembership('group-1', 'user-1', 10)
+      ).resolves.toBeUndefined();
+    });
+
+    it('should skip capacity check when maxMembers is null', async () => {
+      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce(null);
+
+      await expect(
+        checkGroupCapacityAndMembership('group-1', 'user-1', null)
+      ).resolves.toBeUndefined();
+
+      expect(prisma.groupMember.count).not.toHaveBeenCalled();
+    });
+
+    it('should not throw when current member count is below maxMembers', async () => {
+      vi.mocked(prisma.groupMember.findFirst).mockResolvedValueOnce(null);
+      vi.mocked(prisma.groupMember.count).mockResolvedValueOnce(9);
+
+      await expect(
+        checkGroupCapacityAndMembership('group-1', 'user-1', 10)
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  // ─── validateCoordinateCompleteness ──────────────────────────────────────────
+
+  describe('validateCoordinateCompleteness', () => {
+    it('should return valid true when both coordinates are provided', () => {
+      expect(validateCoordinateCompleteness(40.7, -74.0)).toEqual({ valid: true });
+    });
+
+    it('should return valid true when both coordinates are undefined', () => {
+      expect(validateCoordinateCompleteness(undefined, undefined)).toEqual({ valid: true });
+    });
+
+    it('should return valid true when both coordinates are null', () => {
+      expect(validateCoordinateCompleteness(null, null)).toEqual({ valid: true });
+    });
+
+    it('should return valid false when only latitude is provided', () => {
+      const result = validateCoordinateCompleteness(40.7, undefined);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('Both latitude and longitude must be provided together');
+    });
+
+    it('should return valid false when only longitude is provided', () => {
+      const result = validateCoordinateCompleteness(undefined, -74.0);
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('Both latitude and longitude must be provided together');
+    });
+
+    it('should return valid false when lat is null but lon is provided', () => {
+      const result = validateCoordinateCompleteness(null, -74.0);
+      expect(result.valid).toBe(false);
     });
   });
 });

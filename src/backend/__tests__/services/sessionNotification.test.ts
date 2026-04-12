@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 // Mock dependencies at the top level
 vi.mock('../../config/database', () => ({
   default: {
-    eventNotification: {
+    sessionNotification: {
       create: vi.fn(),
       findMany: vi.fn()
     }
@@ -35,10 +35,10 @@ import {
   sendEventInvitations,
   sendEventUpdateNotifications,
   sendEventCancellationNotifications,
-  createEventNotifications,
+  createSessionNotifications as createEventNotifications,
   createActivityNotification,
-  getEventActivity
-} from '../../services/eventNotification';
+  getSessionActivity
+} from '../../services/sessionNotification';
 
 const mockPrisma = vi.mocked(prisma);
 const mockSendEmail = vi.mocked(sendEmailWithQueue);
@@ -72,7 +72,7 @@ describe('EventNotificationService', () => {
         'Sports Group'
       );
 
-      expect(mockBatchNotification).toHaveBeenCalledWith(['user-1', 'user-2'], 'eventInvites');
+      expect(mockBatchNotification).toHaveBeenCalledWith(['user-1', 'user-2'], 'sessionInvites');
       expect(mockSendEmail).toHaveBeenCalledTimes(2);
       expect(mockSendEmail).toHaveBeenCalledWith(
         'alice@example.com',
@@ -99,7 +99,7 @@ describe('EventNotificationService', () => {
         'Sports Group'
       );
 
-      expect(mockBatchNotification).toHaveBeenCalledWith([], 'eventInvites');
+      expect(mockBatchNotification).toHaveBeenCalledWith([], 'sessionInvites');
       expect(mockSendEmail).not.toHaveBeenCalled();
     });
 
@@ -155,7 +155,7 @@ describe('EventNotificationService', () => {
         'Sports Group'
       );
 
-      expect(mockBatchNotification).toHaveBeenCalledWith(['user-1', 'user-2'], 'eventUpdates');
+      expect(mockBatchNotification).toHaveBeenCalledWith(['user-1', 'user-2'], 'sessionUpdates');
       expect(mockSendEmail).toHaveBeenCalledTimes(2);
     });
 
@@ -207,7 +207,7 @@ describe('EventNotificationService', () => {
         'Sports Group'
       );
 
-      expect(mockBatchNotification).toHaveBeenCalledWith(['user-1', 'user-2'], 'eventCancellations');
+      expect(mockBatchNotification).toHaveBeenCalledWith(['user-1', 'user-2'], 'sessionCancellations');
       expect(mockSendEmail).toHaveBeenCalledTimes(2);
       expect(mockSendEmail).toHaveBeenCalledWith(
         expect.any(String),
@@ -223,7 +223,7 @@ describe('EventNotificationService', () => {
   describe('createEventNotifications', () => {
     it('should create notification records for multiple users', async () => {
       const userIds = ['user-1', 'user-2', 'user-3'];
-      mockPrisma.eventNotification.create = vi.fn().mockResolvedValue({});
+      mockPrisma.sessionNotification.create = vi.fn().mockResolvedValue({});
 
       await createEventNotifications(
         'session-123',
@@ -232,8 +232,8 @@ describe('EventNotificationService', () => {
         mockPrisma as unknown as PrismaClient
       );
 
-      expect(mockPrisma.eventNotification.create).toHaveBeenCalledTimes(3);
-      expect(mockPrisma.eventNotification.create).toHaveBeenCalledWith({
+      expect(mockPrisma.sessionNotification.create).toHaveBeenCalledTimes(3);
+      expect(mockPrisma.sessionNotification.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           sessionId: 'session-123',
           userId: 'user-1',
@@ -245,7 +245,7 @@ describe('EventNotificationService', () => {
     it('should include metadata when provided', async () => {
       const userIds = ['user-1'];
       const metadata = { eventTitle: 'Soccer Match', groupName: 'Sports Group' };
-      mockPrisma.eventNotification.create = vi.fn().mockResolvedValue({});
+      mockPrisma.sessionNotification.create = vi.fn().mockResolvedValue({});
 
       await createEventNotifications(
         'session-123',
@@ -255,7 +255,7 @@ describe('EventNotificationService', () => {
         metadata
       );
 
-      expect(mockPrisma.eventNotification.create).toHaveBeenCalledWith({
+      expect(mockPrisma.sessionNotification.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           sessionId: 'session-123',
           userId: 'user-1',
@@ -266,7 +266,7 @@ describe('EventNotificationService', () => {
     });
 
     it('should handle empty user list', async () => {
-      mockPrisma.eventNotification.create = vi.fn().mockResolvedValue({});
+      mockPrisma.sessionNotification.create = vi.fn().mockResolvedValue({});
 
       await createEventNotifications(
         'session-123',
@@ -275,14 +275,14 @@ describe('EventNotificationService', () => {
         mockPrisma as unknown as PrismaClient
       );
 
-      expect(mockPrisma.eventNotification.create).not.toHaveBeenCalled();
+      expect(mockPrisma.sessionNotification.create).not.toHaveBeenCalled();
     });
   });
 
   describe('createActivityNotification', () => {
     it('should create a single activity notification', async () => {
       const metadata = { action: 'joined', userName: 'Alice' };
-      mockPrisma.eventNotification.create = vi.fn().mockResolvedValue({});
+      mockPrisma.sessionNotification.create = vi.fn().mockResolvedValue({});
 
       await createActivityNotification(
         'session-123',
@@ -292,7 +292,7 @@ describe('EventNotificationService', () => {
         mockPrisma as unknown as PrismaClient
       );
 
-      expect(mockPrisma.eventNotification.create).toHaveBeenCalledWith({
+      expect(mockPrisma.sessionNotification.create).toHaveBeenCalledWith({
         data: {
           sessionId: 'session-123',
           userId: 'user-1',
@@ -306,7 +306,7 @@ describe('EventNotificationService', () => {
     it('should include optional params', async () => {
       const metadata = { action: 'joined' };
       const params = { userName: 'Alice' };
-      mockPrisma.eventNotification.create = vi.fn().mockResolvedValue({});
+      mockPrisma.sessionNotification.create = vi.fn().mockResolvedValue({});
 
       await createActivityNotification(
         'session-123',
@@ -317,7 +317,7 @@ describe('EventNotificationService', () => {
         params
       );
 
-      expect(mockPrisma.eventNotification.create).toHaveBeenCalledWith({
+      expect(mockPrisma.sessionNotification.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           params
         })
@@ -325,7 +325,7 @@ describe('EventNotificationService', () => {
     });
   });
 
-  describe('getEventActivity', () => {
+  describe('getSessionActivity', () => {
     it('should retrieve session activity with default limit', async () => {
       const mockActivity = [
         {
@@ -341,15 +341,15 @@ describe('EventNotificationService', () => {
         }
       ];
 
-      mockPrisma.eventNotification.findMany = vi.fn().mockResolvedValue(mockActivity);
+      mockPrisma.sessionNotification.findMany = vi.fn().mockResolvedValue(mockActivity);
 
-      const result = await getEventActivity(
+      const result = await getSessionActivity(
         'session-123',
         mockPrisma as unknown as PrismaClient
       );
 
       expect(result).toEqual(mockActivity);
-      expect(mockPrisma.eventNotification.findMany).toHaveBeenCalledWith({
+      expect(mockPrisma.sessionNotification.findMany).toHaveBeenCalledWith({
         where: { sessionId: 'session-123' },
         include: {
           user: {
@@ -368,15 +368,15 @@ describe('EventNotificationService', () => {
     });
 
     it('should filter by notification type', async () => {
-      mockPrisma.eventNotification.findMany = vi.fn().mockResolvedValue([]);
+      mockPrisma.sessionNotification.findMany = vi.fn().mockResolvedValue([]);
 
-      await getEventActivity(
+      await getSessionActivity(
         'session-123',
         mockPrisma as unknown as PrismaClient,
         { type: 'join' as SessionNotificationType }
       );
 
-      expect(mockPrisma.eventNotification.findMany).toHaveBeenCalledWith(
+      expect(mockPrisma.sessionNotification.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             sessionId: 'session-123',
@@ -387,15 +387,15 @@ describe('EventNotificationService', () => {
     });
 
     it('should apply custom limit', async () => {
-      mockPrisma.eventNotification.findMany = vi.fn().mockResolvedValue([]);
+      mockPrisma.sessionNotification.findMany = vi.fn().mockResolvedValue([]);
 
-      await getEventActivity(
+      await getSessionActivity(
         'session-123',
         mockPrisma as unknown as PrismaClient,
         { limit: 20 }
       );
 
-      expect(mockPrisma.eventNotification.findMany).toHaveBeenCalledWith(
+      expect(mockPrisma.sessionNotification.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           take: 20
         })
@@ -405,15 +405,15 @@ describe('EventNotificationService', () => {
     it('should filter by date range', async () => {
       const startDate = new Date('2026-01-01');
       const endDate = new Date('2026-01-31');
-      mockPrisma.eventNotification.findMany = vi.fn().mockResolvedValue([]);
+      mockPrisma.sessionNotification.findMany = vi.fn().mockResolvedValue([]);
 
-      await getEventActivity(
+      await getSessionActivity(
         'session-123',
         mockPrisma as unknown as PrismaClient,
         { startDate, endDate }
       );
 
-      expect(mockPrisma.eventNotification.findMany).toHaveBeenCalledWith(
+      expect(mockPrisma.sessionNotification.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             sessionId: 'session-123',
@@ -428,15 +428,15 @@ describe('EventNotificationService', () => {
 
     it('should filter by start date only', async () => {
       const startDate = new Date('2026-01-01');
-      mockPrisma.eventNotification.findMany = vi.fn().mockResolvedValue([]);
+      mockPrisma.sessionNotification.findMany = vi.fn().mockResolvedValue([]);
 
-      await getEventActivity(
+      await getSessionActivity(
         'session-123',
         mockPrisma as unknown as PrismaClient,
         { startDate }
       );
 
-      expect(mockPrisma.eventNotification.findMany).toHaveBeenCalledWith(
+      expect(mockPrisma.sessionNotification.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             createdAt: {
@@ -449,15 +449,15 @@ describe('EventNotificationService', () => {
 
     it('should filter by end date only', async () => {
       const endDate = new Date('2026-01-31');
-      mockPrisma.eventNotification.findMany = vi.fn().mockResolvedValue([]);
+      mockPrisma.sessionNotification.findMany = vi.fn().mockResolvedValue([]);
 
-      await getEventActivity(
+      await getSessionActivity(
         'session-123',
         mockPrisma as unknown as PrismaClient,
         { endDate }
       );
 
-      expect(mockPrisma.eventNotification.findMany).toHaveBeenCalledWith(
+      expect(mockPrisma.sessionNotification.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             createdAt: {

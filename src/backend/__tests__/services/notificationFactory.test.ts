@@ -9,7 +9,7 @@ import prisma from '../../config/database';
 // Mock the dependencies
 vi.mock('../../config/database', () => ({
   default: {
-    eventNotification: {
+    sessionNotification: {
       createMany: vi.fn(),
       findMany: vi.fn(),
       count: vi.fn().mockResolvedValue(0),
@@ -61,7 +61,7 @@ describe('NotificationFactory', () => {
       const mockCreateMany = vi.mocked(prisma.sessionNotification.createMany);
       mockCreateMany.mockResolvedValue({ count: 3 });
 
-      const result = await NotificationFactory.createEventNotifications({
+      const result = await NotificationFactory.createSessionNotifications({
         sessionId: 'session-1',
         type: 'join',
         userIds: ['user-1', 'user-2', 'user-3'],
@@ -97,7 +97,7 @@ describe('NotificationFactory', () => {
     });
 
     it('should handle empty user list', async () => {
-      const result = await NotificationFactory.createEventNotifications({
+      const result = await NotificationFactory.createSessionNotifications({
         sessionId: 'session-1',
         type: 'join',
         userIds: [],
@@ -119,7 +119,7 @@ describe('NotificationFactory', () => {
       ] as any);
       mockCreateMany.mockResolvedValue({ count: 2 });
 
-      const result = await NotificationFactory.createEventNotifications({
+      const result = await NotificationFactory.createSessionNotifications({
         sessionId: 'session-1',
         type: 'join',
         userIds: ['user-1', 'user-2', 'user-3'],
@@ -141,7 +141,7 @@ describe('NotificationFactory', () => {
         priority: 'high' as const
       };
 
-      await NotificationFactory.createEventNotifications({
+      await NotificationFactory.createSessionNotifications({
         sessionId: 'session-1',
         type: 'late',
         userIds: ['user-1'],
@@ -276,7 +276,7 @@ describe('NotificationFactory', () => {
       mockCreateMany.mockRejectedValue(error);
 
       await expect(
-        NotificationFactory.createEventNotifications({
+        NotificationFactory.createSessionNotifications({
           sessionId: 'session-1',
           type: 'join',
           userIds: ['user-1'],
@@ -289,13 +289,13 @@ describe('NotificationFactory', () => {
   describe('transaction support', () => {
     it('should use provided transaction client', async () => {
       const mockTx = {
-        eventNotification: {
+        sessionNotification: {
           createMany: vi.fn().mockResolvedValue({ count: 1 }),
           findMany: vi.fn().mockResolvedValue([])
         }
       } as any;
 
-      const result = await NotificationFactory.createEventNotifications(
+      const result = await NotificationFactory.createSessionNotifications(
         {
           sessionId: 'session-1',
           type: 'join',
@@ -306,7 +306,7 @@ describe('NotificationFactory', () => {
       );
 
       expect(result.created).toBe(1);
-      expect(mockTx.eventNotification.createMany).toHaveBeenCalled();
+      expect(mockTx.sessionNotification.createMany).toHaveBeenCalled();
       expect(prisma.sessionNotification.createMany).not.toHaveBeenCalled();
     });
   });

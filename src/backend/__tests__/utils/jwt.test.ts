@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { vi } from 'vitest';
+import { vi, beforeEach } from 'vitest';
 
 // Mock database module before importing JWT utilities
 vi.mock('../../config/database', () => ({
@@ -28,7 +28,9 @@ import {
   generateRefreshToken,
   verifyToken,
   verifyRefreshToken,
+  isTokenRevoked,
 } from '../../utils/jwt';
+import prisma from '../../config/database';
 
 describe('JWT Utilities', () => {
   const testUserId = 'test-user-123';
@@ -205,5 +207,42 @@ describe('JWT Utilities', () => {
       expect(decoded2.jti.length).toBe(32);
       expect(decoded1.jti).not.toBe(decoded2.jti);
     });
+  });
+});
+
+describe('isTokenRevoked', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should return false when token is not in revoked list', async () => {
+    (prisma.revokedToken.findUnique as any).mockResolvedValue(null);
+
+    const token = generateToken('user-123');
+    const result = await isTokenRevoked(token);
+
+    expect(result).toBe(false);
+    expect(prisma.revokedToken.findUnique).toHaveBeenCalledOnce();
+  });
+
+  it('should return true when token is in the revoked list', async () => {
+    (prisma.revokedToken.findUnique as any).mockResolvedValue({ id: 'revoked-1' });
+
+    const token = generateToken('user-123');
+    const result = await isTokenRevoked(token);
+
+    expect(result).toBe(true);
+  });
+
+  it('should hash the token before querying the database', async () => {
+    (prisma.revokedToken.findUnique as any).mockResolvedValue(null);
+
+    const token = generateToken('user-abc');
+    await isTokenRevoked(token);
+
+    const callArg = (prisma.revokedToken.findUnique as any).mock.calls[0][0];
+    // The stored token should be a hex string (SHA-256 hash), not the raw JWT
+    expect(callArg.where.token).not.toBe(token);
+    expect(callArg.where.token).toMatch(/^[a-f0-9]{64}$/);
   });
 });

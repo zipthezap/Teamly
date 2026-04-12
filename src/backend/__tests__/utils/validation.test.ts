@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
   ValidationError,
   isRequired,
@@ -14,8 +15,10 @@ import {
   validateEnum,
   sanitizeString,
   sanitizeUserInput,
+  escapeHtml,
   validateNoCRLF,
   validateEmailSubject,
+  validateAndSanitize,
   parseFloatStrict,
   parseIntStrict,
   parseCoordinates,
@@ -379,5 +382,143 @@ describe('parsePaginationParams', () => {
     const result = parsePaginationParams('', '');
     expect(result.limit).toBe(50);
     expect(result.offset).toBe(0);
+  });
+
+  it('should handle non-numeric string values and use defaults', () => {
+    const result = parsePaginationParams('abc', 'xyz');
+    expect(result.limit).toBe(50);
+    expect(result.offset).toBe(0);
+  });
+});
+
+describe('escapeHtml', () => {
+  it('should escape ampersand', () => {
+    expect(escapeHtml('a & b')).toBe('a &amp; b');
+  });
+
+  it('should escape less-than and greater-than', () => {
+    expect(escapeHtml('<script>')).toBe('&lt;script&gt;');
+  });
+
+  it('should escape double quotes', () => {
+    expect(escapeHtml('"value"')).toBe('&quot;value&quot;');
+  });
+
+  it('should escape single quotes', () => {
+    expect(escapeHtml("it's")).toBe('it&#x27;s');
+  });
+
+  it('should escape forward slashes', () => {
+    expect(escapeHtml('a/b')).toBe('a&#x2F;b');
+  });
+
+  it('should escape a full XSS payload', () => {
+    const input = '<script>alert("xss")</script>';
+    const result = escapeHtml(input);
+    expect(result).not.toContain('<');
+    expect(result).not.toContain('>');
+    expect(result).not.toContain('"');
+  });
+
+  it('should return unchanged string when no special characters', () => {
+    expect(escapeHtml('hello world')).toBe('hello world');
+  });
+
+  it('should return empty string unchanged', () => {
+    expect(escapeHtml('')).toBe('');
+  });
+});
+
+describe('validateAndSanitize', () => {
+  it('should sanitize string fields that have validators', () => {
+    const result = validateAndSanitize(
+      { name: '  Alice  ', age: 30 },
+      { name: (_v) => {} }
+    );
+    expect(result.name).toBe('Alice');
+    expect(result.age).toBe(30);
+  });
+
+  it('should run validators for specified fields', () => {
+    const validator = vi.fn();
+    validateAndSanitize({ email: 'test@example.com' }, { email: validator });
+    expect(validator).toHaveBeenCalledWith('test@example.com');
+  });
+
+  it('should throw if validator throws', () => {
+    const validator = () => { throw new ValidationError('bad', 'email'); };
+    expect(() =>
+      validateAndSanitize({ email: 'bad' }, { email: validator })
+    ).toThrow(ValidationError);
+  });
+
+  it('should not modify non-string fields', () => {
+    const result = validateAndSanitize({ count: 5 }, {});
+    expect(result.count).toBe(5);
+  });
+
+  it('should not sanitize fields without validators', () => {
+    const result = validateAndSanitize(
+      { name: '  Alice  ', bio: '  bio text  ' },
+      { name: (_v) => {} }
+    );
+    expect(result.name).toBe('Alice');
+    // bio has no validator so it is not processed
+    expect(result.bio).toBe('  bio text  ');
+  });
+
+  it('should run multiple validators on different fields', () => {
+    const nameValidator = vi.fn();
+    const emailValidator = vi.fn();
+    validateAndSanitize(
+      { name: '  Bob  ', email: '  bob@example.com  ' },
+      { name: nameValidator, email: emailValidator }
+    );
+    expect(nameValidator).toHaveBeenCalledWith('  Bob  ');
+    expect(emailValidator).toHaveBeenCalledWith('  bob@example.com  ');
+  });
+});
+
+describe('ValidationError - instanceof checks', () => {
+  it('should be an instance of Error', () => {
+    const error = new ValidationError('test', 'field');
+    expect(error).toBeInstanceOf(Error);
+  });
+
+  it('should be an instance of ValidationError', () => {
+    const error = new ValidationError('test', 'field');
+    expect(error).toBeInstanceOf(ValidationError);
+  });
+
+  it('should work without field parameter', () => {
+    const error = new ValidationError('test');
+    expect(error.field).toBeUndefined();
+    expect(error.code).toBe('VALIDATION_ERROR');
+  });
+});
+
+describe('parseCoordinates - boundary values', () => {
+  it('should accept boundary latitude -90', () => {
+    const result = parseCoordinates('-90', '0');
+    expect(result.lat).toBe(-90);
+  });
+
+  it('should accept boundary latitude 90', () => {
+    const result = parseCoordinates('90', '0');
+    expect(result.lat).toBe(90);
+  });
+
+  it('should accept boundary longitude -180', () => {
+    const result = parseCoordinates('0', '-180');
+    expect(result.lon).toBe(-180);
+  });
+
+  it('should accept boundary longitude 180', () => {
+    const result = parseCoordinates('0', '180');
+    expect(result.lon).toBe(180);
+  });
+
+  it('should throw for null latitude', () => {
+    expect(() => parseCoordinates(null, '0')).toThrow('Latitude is required');
   });
 });

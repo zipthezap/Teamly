@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 // Mock dependencies at the top level
 vi.mock('../../config/database', () => ({
   default: {
-    eventNotification: {
+    sessionNotification: {
       createMany: vi.fn()
     },
     groupNotification: {
@@ -53,7 +53,7 @@ describe('BulkNotificationService', () => {
   describe('createBulkEventNotifications', () => {
     it('should create session notifications for multiple users', async () => {
       const userIds = ['user-1', 'user-2', 'user-3'];
-      mockPrisma.eventNotification.createMany = vi.fn().mockResolvedValue({ count: 3 });
+      mockPrisma.sessionNotification.createMany = vi.fn().mockResolvedValue({ count: 3 });
 
       await createBulkEventNotifications(
         'session-123',
@@ -62,7 +62,7 @@ describe('BulkNotificationService', () => {
         { eventTitle: 'Soccer Match' }
       );
 
-      expect(mockPrisma.eventNotification.createMany).toHaveBeenCalledWith({
+      expect(mockPrisma.sessionNotification.createMany).toHaveBeenCalledWith({
         data: expect.arrayContaining([
           expect.objectContaining({
             sessionId: 'session-123',
@@ -77,7 +77,7 @@ describe('BulkNotificationService', () => {
 
     it('should remove duplicate user IDs', async () => {
       const userIds = ['user-1', 'user-1', 'user-2', 'user-2', 'user-3'];
-      mockPrisma.eventNotification.createMany = vi.fn().mockResolvedValue({ count: 3 });
+      mockPrisma.sessionNotification.createMany = vi.fn().mockResolvedValue({ count: 3 });
 
       await createBulkEventNotifications(
         'session-123',
@@ -85,12 +85,12 @@ describe('BulkNotificationService', () => {
         'session_created'
       );
 
-      const call = mockPrisma.eventNotification.createMany.mock.calls[0][0];
+      const call = mockPrisma.sessionNotification.createMany.mock.calls[0][0];
       expect(call.data).toHaveLength(3);
     });
 
     it('should handle empty user list', async () => {
-      mockPrisma.eventNotification.createMany = vi.fn();
+      mockPrisma.sessionNotification.createMany = vi.fn();
 
       await createBulkEventNotifications(
         'session-123',
@@ -98,13 +98,13 @@ describe('BulkNotificationService', () => {
         'session_created'
       );
 
-      expect(mockPrisma.eventNotification.createMany).not.toHaveBeenCalled();
+      expect(mockPrisma.sessionNotification.createMany).not.toHaveBeenCalled();
     });
 
     it('should process large batches in chunks', async () => {
       // Create large batch of user IDs
       const userIds = Array.from({ length: TEST_LARGE_BATCH_SIZE }, (_, i) => `user-${i}`);
-      mockPrisma.eventNotification.createMany = vi.fn().mockResolvedValue({ count: 500 });
+      mockPrisma.sessionNotification.createMany = vi.fn().mockResolvedValue({ count: 500 });
 
       await createBulkEventNotifications(
         'session-123',
@@ -113,13 +113,13 @@ describe('BulkNotificationService', () => {
       );
 
       // Should be called twice (default batch size is 500)
-      expect(mockPrisma.eventNotification.createMany).toHaveBeenCalledTimes(2);
+      expect(mockPrisma.sessionNotification.createMany).toHaveBeenCalledTimes(2);
     });
 
     it('should include metadata when provided', async () => {
       const userIds = ['user-1'];
       const metadata = { groupName: 'Sports Group' };
-      mockPrisma.eventNotification.createMany = vi.fn().mockResolvedValue({ count: 1 });
+      mockPrisma.sessionNotification.createMany = vi.fn().mockResolvedValue({ count: 1 });
 
       await createBulkEventNotifications(
         'session-123',
@@ -129,7 +129,7 @@ describe('BulkNotificationService', () => {
         metadata
       );
 
-      expect(mockPrisma.eventNotification.createMany).toHaveBeenCalledWith({
+      expect(mockPrisma.sessionNotification.createMany).toHaveBeenCalledWith({
         data: expect.arrayContaining([
           expect.objectContaining({
             metadata
@@ -141,7 +141,7 @@ describe('BulkNotificationService', () => {
 
     it('should set default params and metadata', async () => {
       const userIds = ['user-1'];
-      mockPrisma.eventNotification.createMany = vi.fn().mockResolvedValue({ count: 1 });
+      mockPrisma.sessionNotification.createMany = vi.fn().mockResolvedValue({ count: 1 });
 
       await createBulkEventNotifications(
         'session-123',
@@ -149,7 +149,7 @@ describe('BulkNotificationService', () => {
         'session_created'
       );
 
-      expect(mockPrisma.eventNotification.createMany).toHaveBeenCalledWith({
+      expect(mockPrisma.sessionNotification.createMany).toHaveBeenCalledWith({
         data: expect.arrayContaining([
           expect.objectContaining({
             params: {},
@@ -275,12 +275,12 @@ describe('BulkNotificationService', () => {
   describe('markNotificationsAsReadBulk', () => {
     it('should mark session notifications as read', async () => {
       const notificationIds = ['notif-1', 'notif-2', 'notif-3'];
-      mockPrisma.eventNotification.updateMany = vi.fn().mockResolvedValue({ count: 3 });
+      mockPrisma.sessionNotification.updateMany = vi.fn().mockResolvedValue({ count: 3 });
 
       const count = await markNotificationsAsReadBulk(notificationIds, 'session');
 
       expect(count).toBe(3);
-      expect(mockPrisma.eventNotification.updateMany).toHaveBeenCalledWith({
+      expect(mockPrisma.sessionNotification.updateMany).toHaveBeenCalledWith({
         where: { id: { in: notificationIds } },
         data: { read: true }
       });
@@ -316,19 +316,19 @@ describe('BulkNotificationService', () => {
       const count = await markNotificationsAsReadBulk([], 'session');
 
       expect(count).toBe(0);
-      expect(mockPrisma.eventNotification.updateMany).not.toHaveBeenCalled();
+      expect(mockPrisma.sessionNotification.updateMany).not.toHaveBeenCalled();
     });
   });
 
   describe('deleteNotificationsBulk', () => {
     it('should delete session notifications', async () => {
       const notificationIds = ['notif-1', 'notif-2'];
-      mockPrisma.eventNotification.deleteMany = vi.fn().mockResolvedValue({ count: 2 });
+      mockPrisma.sessionNotification.deleteMany = vi.fn().mockResolvedValue({ count: 2 });
 
       const count = await deleteNotificationsBulk(notificationIds, 'session');
 
       expect(count).toBe(2);
-      expect(mockPrisma.eventNotification.deleteMany).toHaveBeenCalledWith({
+      expect(mockPrisma.sessionNotification.deleteMany).toHaveBeenCalledWith({
         where: { id: { in: notificationIds } }
       });
     });
@@ -361,7 +361,7 @@ describe('BulkNotificationService', () => {
       const count = await deleteNotificationsBulk([], 'session');
 
       expect(count).toBe(0);
-      expect(mockPrisma.eventNotification.deleteMany).not.toHaveBeenCalled();
+      expect(mockPrisma.sessionNotification.deleteMany).not.toHaveBeenCalled();
     });
   });
 });

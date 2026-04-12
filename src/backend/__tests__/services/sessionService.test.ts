@@ -5,25 +5,25 @@
 
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import {
-  sanitizeEventData,
+  sanitizeSessionData,
   sanitizeGuestName,
-  validateEventTimes,
+  validateSessionTimes,
   validateRecurrence,
   determineSessionStatus,
-  buildEventFilters,
-  canModifyEvent,
-  checkEventManagementPermission,
-  isEventFull,
+  buildSessionFilters,
+  canModifySession,
+  checkSessionManagementPermission,
+  isSessionFull,
   getParticipant,
   getEventById,
   getGroupWithMembers,
-  createEventNotifications,
-  createEventUpdateNotifications,
-  createEventDeletionNotifications,
-  sendEventEmailNotifications
-} from '../../services/eventService';
+  createSessionNotifications,
+  createSessionUpdateNotifications,
+  createSessionDeletionNotifications,
+  sendSessionEmailNotifications
+} from '../../services/sessionService';
 import prisma from '../../config/database';
-import { SessionNotificationType, SessionParticipantStatus } from '../../../shared/types/event.types';
+import { SessionNotificationType, SessionParticipantStatus } from '../../../shared/types/session.types';
 
 // Mock dependencies
 vi.mock('../../config/database', () => ({
@@ -37,14 +37,14 @@ vi.mock('../../config/database', () => ({
     groupMember: {
       findFirst: vi.fn(),
     },
-    eventParticipant: {
+    sessionParticipant: {
       findFirst: vi.fn(),
       count: vi.fn(),
     },
     groupNotification: {
       createMany: vi.fn(),
     },
-    eventNotification: {
+    sessionNotification: {
       createMany: vi.fn(),
       create: vi.fn(),
     },
@@ -90,9 +90,9 @@ describe('Event Service', () => {
     vi.clearAllMocks();
   });
 
-  describe('sanitizeEventData', () => {
+  describe('sanitizeSessionData', () => {
     it('should sanitize all string fields', () => {
-      const result = sanitizeEventData({
+      const result = sanitizeSessionData({
         title: '  Test Event  ',
         description: '  Test description  ',
         sessionType: '  soccer  ',
@@ -106,7 +106,7 @@ describe('Event Service', () => {
     });
 
     it('should handle undefined fields', () => {
-      const result = sanitizeEventData({});
+      const result = sanitizeSessionData({});
 
       expect(result.title).toBeUndefined();
       expect(result.description).toBeUndefined();
@@ -115,7 +115,7 @@ describe('Event Service', () => {
     });
 
     it('should handle partial data', () => {
-      const result = sanitizeEventData({
+      const result = sanitizeSessionData({
         title: '  Test Event  ',
         sessionType: '  soccer  ',
       });
@@ -142,10 +142,10 @@ describe('Event Service', () => {
     });
   });
 
-  describe('validateEventTimes', () => {
+  describe('validateSessionTimes', () => {
     it('should return valid true for future start time', () => {
       const futureDate = new Date(Date.now() + 86400000).toISOString();
-      const result = validateEventTimes(futureDate);
+      const result = validateSessionTimes(futureDate);
 
       expect(result.valid).toBe(true);
       expect(result.error).toBeUndefined();
@@ -153,7 +153,7 @@ describe('Event Service', () => {
 
     it('should return valid false for past start time', () => {
       const pastDate = new Date(Date.now() - 86400000).toISOString();
-      const result = validateEventTimes(pastDate);
+      const result = validateSessionTimes(pastDate);
 
       expect(result.valid).toBe(false);
       expect(result.error).toContain('must be in the future');
@@ -163,7 +163,7 @@ describe('Event Service', () => {
       const startDate = new Date(Date.now() + 86400000);
       const endDate = new Date(startDate.getTime() - 3600000);
       
-      const result = validateEventTimes(startDate.toISOString(), endDate.toISOString());
+      const result = validateSessionTimes(startDate.toISOString(), endDate.toISOString());
 
       expect(result.valid).toBe(false);
       expect(result.error).toContain('End time must be after start time');
@@ -173,7 +173,7 @@ describe('Event Service', () => {
       const startDate = new Date(Date.now() + 86400000);
       const endDate = new Date(startDate.getTime() + 86400000); // Next day
       
-      const result = validateEventTimes(startDate.toISOString(), endDate.toISOString());
+      const result = validateSessionTimes(startDate.toISOString(), endDate.toISOString());
 
       expect(result.valid).toBe(false);
       expect(result.error).toContain('must be single-day only');
@@ -183,7 +183,7 @@ describe('Event Service', () => {
       const startDate = new Date(Date.now() + 86400000);
       const endDate = new Date(startDate.getTime() + 3600000); // 1 hour later
       
-      const result = validateEventTimes(startDate.toISOString(), endDate.toISOString());
+      const result = validateSessionTimes(startDate.toISOString(), endDate.toISOString());
 
       expect(result.valid).toBe(true);
     });
@@ -251,23 +251,23 @@ describe('Event Service', () => {
     });
   });
 
-  describe('buildEventFilters', () => {
+  describe('buildSessionFilters', () => {
     const userId = 'test-user-id';
 
     it('should build filters with group ID', () => {
-      const filters = buildEventFilters(userId, { groupId: 'test-group-id' });
+      const filters = buildSessionFilters(userId, { groupId: 'test-group-id' });
 
       expect(filters.groupId).toBe('test-group-id');
     });
 
     it('should build filters with search term', () => {
-      const filters = buildEventFilters(userId, { search: 'soccer' });
+      const filters = buildSessionFilters(userId, { search: 'soccer' });
 
       expect(filters.AND).toBeDefined();
     });
 
     it('should build filters with session type', () => {
-      const filters = buildEventFilters(userId, { sessionType: 'soccer' });
+      const filters = buildSessionFilters(userId, { sessionType: 'soccer' });
 
       expect(filters.sessionType).toEqual({ contains: 'soccer', mode: 'insensitive' });
     });
@@ -276,38 +276,38 @@ describe('Event Service', () => {
       const startDate = new Date().toISOString();
       const endDate = new Date(Date.now() + 86400000).toISOString();
       
-      const filters = buildEventFilters(userId, { startDate, endDate });
+      const filters = buildSessionFilters(userId, { startDate, endDate });
 
       expect(filters.startTime).toBeDefined();
     });
 
     it('should build filters with location', () => {
-      const filters = buildEventFilters(userId, { location: 'New York' });
+      const filters = buildSessionFilters(userId, { location: 'New York' });
 
       expect(filters.location).toEqual({ contains: 'New York', mode: 'insensitive' });
     });
 
     it('should exclude archived events by default', () => {
-      const filters = buildEventFilters(userId, {});
+      const filters = buildSessionFilters(userId, {});
 
       expect(filters.archived).toBe(false);
     });
 
     it('should include archived events when specified', () => {
-      const filters = buildEventFilters(userId, { archived: 'true' });
+      const filters = buildSessionFilters(userId, { archived: 'true' });
 
       expect(filters.archived).toBe(true);
     });
 
     it('should apply access control filters', () => {
-      const filters = buildEventFilters(userId, {});
+      const filters = buildSessionFilters(userId, {});
 
       expect(filters.OR).toBeDefined();
       expect(Array.isArray(filters.OR)).toBe(true);
     });
   });
 
-  describe('canModifyEvent', () => {
+  describe('canModifySession', () => {
     it('should return true for session creator', () => {
       const session = {
         creatorId: 'user-1',
@@ -318,7 +318,7 @@ describe('Event Service', () => {
         }
       };
 
-      const result = canModifyEvent(session, 'user-1');
+      const result = canModifySession(session, 'user-1');
       expect(result).toBe(true);
     });
 
@@ -332,7 +332,7 @@ describe('Event Service', () => {
         }
       };
 
-      const result = canModifyEvent(session, 'user-2');
+      const result = canModifySession(session, 'user-2');
       expect(result).toBe(true);
     });
 
@@ -346,7 +346,7 @@ describe('Event Service', () => {
         }
       };
 
-      const result = canModifyEvent(session, 'user-2');
+      const result = canModifySession(session, 'user-2');
       expect(result).toBe(true);
     });
 
@@ -360,7 +360,7 @@ describe('Event Service', () => {
         }
       };
 
-      const result = canModifyEvent(session, 'user-2');
+      const result = canModifySession(session, 'user-2');
       expect(result).toBe(false);
     });
 
@@ -374,12 +374,12 @@ describe('Event Service', () => {
         }
       };
 
-      const result = canModifyEvent(session, 'user-3');
+      const result = canModifySession(session, 'user-3');
       expect(result).toBe(false);
     });
   });
 
-  describe('checkEventManagementPermission', () => {
+  describe('checkSessionManagementPermission', () => {
     it('should return authorized true for session creator', async () => {
       const session = {
         id: 'session-1',
@@ -387,7 +387,7 @@ describe('Event Service', () => {
         groupId: 'group-1'
       };
 
-      const result = await checkEventManagementPermission(session, 'user-1');
+      const result = await checkSessionManagementPermission(session, 'user-1');
 
       expect(result.isAuthorized).toBe(true);
       expect(result.isEventCreator).toBe(true);
@@ -403,14 +403,14 @@ describe('Event Service', () => {
         groupId: 'group-1'
       };
 
-      const result = await checkEventManagementPermission(session, 'user-2');
+      const result = await checkSessionManagementPermission(session, 'user-2');
 
       expect(result.isAuthorized).toBe(true);
       expect(result.isGroupAdmin).toBe(true);
     });
 
     it('should return authorized false for null session', async () => {
-      const result = await checkEventManagementPermission(null, 'user-1');
+      const result = await checkSessionManagementPermission(null, 'user-1');
 
       expect(result.isAuthorized).toBe(false);
       expect(result.isEventCreator).toBe(false);
@@ -440,9 +440,9 @@ describe('Event Service', () => {
     });
   });
 
-  describe('isEventFull', () => {
+  describe('isSessionFull', () => {
     it('should return false if no max participants limit', async () => {
-      const result = await isEventFull('session-1', null);
+      const result = await isSessionFull('session-1', null);
 
       expect(result).toBe(false);
     });
@@ -450,7 +450,7 @@ describe('Event Service', () => {
     it('should return true if session is at capacity', async () => {
       vi.mocked(prisma.sessionParticipant.count).mockResolvedValueOnce(20);
 
-      const result = await isEventFull('session-1', 20);
+      const result = await isSessionFull('session-1', 20);
 
       expect(result).toBe(true);
       expect(prisma.sessionParticipant.count).toHaveBeenCalledWith({
@@ -464,7 +464,7 @@ describe('Event Service', () => {
     it('should return false if session is not full', async () => {
       vi.mocked(prisma.sessionParticipant.count).mockResolvedValueOnce(15);
 
-      const result = await isEventFull('session-1', 20);
+      const result = await isSessionFull('session-1', 20);
 
       expect(result).toBe(false);
     });
@@ -482,7 +482,7 @@ describe('Event Service', () => {
       };
       vi.mocked(prisma.session.findUnique).mockResolvedValueOnce(mockEvent as unknown);
 
-      const result = await getSessionById('session-1');
+      const result = await getEventById('session-1');
 
       expect(result).toEqual(mockEvent);
       expect(prisma.session.findUnique).toHaveBeenCalledWith(
@@ -517,12 +517,12 @@ describe('Event Service', () => {
     });
   });
 
-  describe('createEventNotifications', () => {
+  describe('createSessionNotifications', () => {
     it('should create notifications for all members', async () => {
       const { filterUnmutedUsers: mockFilterUnmuted } = await import('../../utils/notificationHelper');
       vi.mocked(mockFilterUnmuted).mockResolvedValueOnce(['user-1', 'user-2']);
 
-      await createEventNotifications(
+      await createSessionNotifications(
         'group-1',
         'Test Event',
         'Creator Name',
@@ -539,7 +539,7 @@ describe('Event Service', () => {
     });
 
     it('should not create notifications if no members', async () => {
-      await createEventNotifications(
+      await createSessionNotifications(
         'group-1',
         'Test Event',
         'Creator Name',
@@ -554,7 +554,7 @@ describe('Event Service', () => {
       const { filterUnmutedUsers: mockFilterUnmuted } = await import('../../utils/notificationHelper');
       vi.mocked(mockFilterUnmuted).mockResolvedValueOnce([]);
 
-      await createEventNotifications(
+      await createSessionNotifications(
         'group-1',
         'Test Event',
         'Creator Name',
@@ -566,12 +566,12 @@ describe('Event Service', () => {
     });
   });
 
-  describe('createEventUpdateNotifications', () => {
+  describe('createSessionUpdateNotifications', () => {
     it('should create update notifications for participants', async () => {
       const { filterUnmutedUsers: mockFilterUnmuted } = await import('../../utils/notificationHelper');
       vi.mocked(mockFilterUnmuted).mockResolvedValueOnce(['user-1', 'user-2']);
 
-      await createEventUpdateNotifications(
+      await createSessionUpdateNotifications(
         'session-1',
         'Test Event',
         'Updater Name',
@@ -587,7 +587,7 @@ describe('Event Service', () => {
     });
 
     it('should not create notifications if no participants', async () => {
-      await createEventUpdateNotifications(
+      await createSessionUpdateNotifications(
         'session-1',
         'Test Event',
         'Updater Name',
@@ -598,13 +598,13 @@ describe('Event Service', () => {
     });
   });
 
-  describe('createEventDeletionNotifications', () => {
+  describe('createSessionDeletionNotifications', () => {
     it('should create deletion notifications for participants', async () => {
       const { filterUnmutedUsers: mockFilterUnmuted } = await import('../../utils/notificationHelper');
       vi.mocked(mockFilterUnmuted).mockResolvedValueOnce(['user-1', 'user-2']);
       vi.mocked(prisma.sessionNotification.createMany).mockResolvedValue({ count: 2 });
 
-      await createEventDeletionNotifications(
+      await createSessionDeletionNotifications(
         'session-1',
         'Test Event',
         'Deleter Name',
@@ -617,12 +617,12 @@ describe('Event Service', () => {
             expect.objectContaining({
               sessionId: 'session-1',
               userId: 'user-1',
-              type: SessionNotificationType.event_cancelled
+              type: SessionNotificationType.session_cancelled
             }),
             expect.objectContaining({
               sessionId: 'session-1',
               userId: 'user-2',
-              type: SessionNotificationType.event_cancelled
+              type: SessionNotificationType.session_cancelled
             })
           ]),
           skipDuplicates: true
@@ -631,7 +631,7 @@ describe('Event Service', () => {
     });
 
     it('should not create notifications if no participants', async () => {
-      await createEventDeletionNotifications(
+      await createSessionDeletionNotifications(
         'session-1',
         'Test Event',
         'Deleter Name',
@@ -642,7 +642,7 @@ describe('Event Service', () => {
     });
   });
 
-  describe('sendEventEmailNotifications', () => {
+  describe('sendSessionEmailNotifications', () => {
     it('should send emails to unmuted participants excluding sender', async () => {
       const { sendEmail: mockSendEmail } = await import('../../utils/emailService');
       const { batchShouldSendEmailNotification: mockBatchNotification } = await import('../../utils/notificationHelper');
@@ -658,7 +658,7 @@ describe('Event Service', () => {
         { user: { id: 'sender-id', name: 'Sender', email: 'sender@test.com' } }
       ];
 
-      await sendEventEmailNotifications(
+      await sendSessionEmailNotifications(
         participants,
         'sender-id',
         'eventUpdates',
@@ -691,7 +691,7 @@ describe('Event Service', () => {
         { user: { id: 'user-2', name: 'User 2', email: 'user2@test.com' } }
       ];
 
-      await sendEventEmailNotifications(
+      await sendSessionEmailNotifications(
         participants,
         'sender-id',
         'eventUpdates',
@@ -713,7 +713,7 @@ describe('Event Service', () => {
     it('should handle empty participants list', async () => {
       const { sendEmail: mockSendEmail } = await import('../../utils/emailService');
 
-      await sendEventEmailNotifications(
+      await sendSessionEmailNotifications(
         [],
         'sender-id',
         'eventUpdates',
@@ -726,17 +726,17 @@ describe('Event Service', () => {
     });
   });
 
-  describe('buildEventFilters - additional edge cases', () => {
+  describe('buildSessionFilters - additional edge cases', () => {
     const userId = 'test-user-id';
 
     it('should handle status filter', () => {
-      const filters = buildEventFilters(userId, { status: 'upcoming' });
+      const filters = buildSessionFilters(userId, { status: 'upcoming' });
 
       expect(filters.status).toBe('upcoming');
     });
 
     it('should handle multiple filters combined', () => {
-      const filters = buildEventFilters(userId, {
+      const filters = buildSessionFilters(userId, {
         groupId: 'group-1',
         sessionType: 'soccer',
         location: 'New York',
@@ -750,19 +750,19 @@ describe('Event Service', () => {
     });
 
     it('should handle empty search term', () => {
-      const filters = buildEventFilters(userId, { search: '' });
+      const filters = buildSessionFilters(userId, { search: '' });
 
       // Should not add search filter for empty string
       expect(filters.AND).toBeUndefined();
     });
   });
 
-  describe('validateEventTimes - additional edge cases', () => {
+  describe('validateSessionTimes - additional edge cases', () => {
     it('should handle very short events (less than 1 hour)', () => {
       const startDate = new Date(Date.now() + 86400000);
       const endDate = new Date(startDate.getTime() + 1800000); // 30 minutes later
       
-      const result = validateEventTimes(startDate.toISOString(), endDate.toISOString());
+      const result = validateSessionTimes(startDate.toISOString(), endDate.toISOString());
 
       expect(result.valid).toBe(true);
     });
@@ -775,7 +775,7 @@ describe('Event Service', () => {
       const endDate = new Date(startDate);
       endDate.setHours(23, 59, 59, 999); // Same day, before midnight
       
-      const result = validateEventTimes(startDate.toISOString(), endDate.toISOString());
+      const result = validateSessionTimes(startDate.toISOString(), endDate.toISOString());
 
       expect(result.valid).toBe(true);
     });

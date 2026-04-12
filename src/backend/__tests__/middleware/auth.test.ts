@@ -164,6 +164,58 @@ describe('Auth Middleware', () => {
       expect(mockResponse.json).toHaveBeenCalledWith({ error: 'Authentication failed' });
       expect(mockNext).not.toHaveBeenCalled();
     });
+
+    it('should return 401 when authorization uses wrong case prefix (bearer vs Bearer)', async () => {
+      mockRequest.headers = { authorization: 'bearer valid-token' };
+
+      await authMiddleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(401);
+      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'No token provided' });
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it('should return 401 when Bearer token is empty string after prefix', async () => {
+      mockRequest.headers = { authorization: 'Bearer ' };
+      (jwt.isTokenRevoked as any).mockResolvedValue(false);
+      (jwt.verifyToken as any).mockReturnValue(null);
+
+      await authMiddleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(401);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it('should set req.token to the extracted token value', async () => {
+      const mockUser = {
+        id: 'user-123',
+        email: 'test@example.com',
+        name: 'Test User',
+        city: 'Test City',
+        country: 'Test Country'
+      };
+
+      mockRequest.headers = { authorization: 'Bearer my-token-value' };
+      (jwt.isTokenRevoked as any).mockResolvedValue(false);
+      (jwt.verifyToken as any).mockReturnValue({ userId: 'user-123' });
+      (prisma.user.findUnique as any).mockResolvedValue(mockUser);
+
+      await authMiddleware(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext
+      );
+
+      expect(mockRequest.token).toBe('my-token-value');
+    });
   });
 
   describe('optionalAuthMiddleware', () => {

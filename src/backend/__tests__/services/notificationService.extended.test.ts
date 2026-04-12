@@ -19,7 +19,7 @@ import {
 // Mock dependencies
 vi.mock('../../config/database', () => ({
   default: {
-    eventNotification: {
+    sessionNotification: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),

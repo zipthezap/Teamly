@@ -221,3 +221,93 @@ describe('ServiceUnavailableError', () => {
     expect(error.isOperational).toBe(false);
   });
 });
+
+describe('Error inheritance and instanceof checks', () => {
+  it('BadRequestError should be an instance of ApiError and Error', () => {
+    const error = new BadRequestError();
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toBeInstanceOf(Error);
+  });
+
+  it('UnauthorizedError should be an instance of ApiError and Error', () => {
+    const error = new UnauthorizedError();
+    expect(error).toBeInstanceOf(UnauthorizedError);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toBeInstanceOf(Error);
+  });
+
+  it('ForbiddenError should be an instance of ApiError and Error', () => {
+    const error = new ForbiddenError();
+    expect(error).toBeInstanceOf(ForbiddenError);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toBeInstanceOf(Error);
+  });
+
+  it('NotFoundError should be an instance of ApiError and Error', () => {
+    const error = new NotFoundError();
+    expect(error).toBeInstanceOf(NotFoundError);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toBeInstanceOf(Error);
+  });
+
+  it('ConflictError should be an instance of ApiError and Error', () => {
+    const error = new ConflictError();
+    expect(error).toBeInstanceOf(ConflictError);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toBeInstanceOf(Error);
+  });
+
+  it('ValidationError should be an instance of ApiError and Error', () => {
+    const error = new ValidationError();
+    expect(error).toBeInstanceOf(ValidationError);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toBeInstanceOf(Error);
+  });
+
+  it('LockedError should be an instance of ApiError and Error', () => {
+    const error = new LockedError();
+    expect(error).toBeInstanceOf(LockedError);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toBeInstanceOf(Error);
+  });
+
+  it('TooManyRequestsError should be an instance of ApiError and Error', () => {
+    const error = new TooManyRequestsError();
+    expect(error).toBeInstanceOf(TooManyRequestsError);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toBeInstanceOf(Error);
+  });
+
+  it('InternalServerError should be an instance of ApiError and Error', () => {
+    const error = new InternalServerError();
+    expect(error).toBeInstanceOf(InternalServerError);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toBeInstanceOf(Error);
+  });
+
+  it('ServiceUnavailableError should be an instance of ApiError and Error', () => {
+    const error = new ServiceUnavailableError();
+    expect(error).toBeInstanceOf(ServiceUnavailableError);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toBeInstanceOf(Error);
+  });
+});
+
+describe('ApiError isOperational flag', () => {
+  it('operational errors have isOperational true', () => {
+    expect(new BadRequestError().isOperational).toBe(true);
+    expect(new UnauthorizedError().isOperational).toBe(true);
+    expect(new ForbiddenError().isOperational).toBe(true);
+    expect(new NotFoundError().isOperational).toBe(true);
+    expect(new ConflictError().isOperational).toBe(true);
+    expect(new ValidationError().isOperational).toBe(true);
+    expect(new LockedError().isOperational).toBe(true);
+    expect(new TooManyRequestsError().isOperational).toBe(true);
+  });
+
+  it('non-operational errors have isOperational false', () => {
+    expect(new InternalServerError().isOperational).toBe(false);
+    expect(new ServiceUnavailableError().isOperational).toBe(false);
+  });
+});
