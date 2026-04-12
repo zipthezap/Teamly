@@ -13,6 +13,12 @@ export default defineConfig({
         'src/backend/**/*.d.ts',
         'src/backend/**/index.ts',
       ],
+      thresholds: {
+        lines: 60,
+        branches: 50,
+        functions: 60,
+        statements: 60,
+      },
     },
     setupFiles: ['./src/backend/__tests__/setup.ts'],
     globals: true,

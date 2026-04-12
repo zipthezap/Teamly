@@ -24,7 +24,8 @@
     "pm2:logs": "pm2 logs teamly-api",
     "pm2:monit": "pm2 monit",
     "lint": "eslint src/backend --ext .ts",
-    "lint:fix": "eslint src/backend --ext .ts --fix"
+    "lint:fix": "eslint src/backend --ext .ts --fix",
+    "test:ci": "vitest run --coverage"
   },
   "keywords": [
     "sports",
