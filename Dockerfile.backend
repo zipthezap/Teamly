@@ -1,35 +1,54 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 1 – build: compile TypeScript and generate Prisma client.
+# Dev dependencies are only present in this stage and are discarded afterwards.
+# ─────────────────────────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install ALL dependencies (including devDependencies needed for tsc / ts-node).
+COPY package*.json ./
+RUN npm ci
+
+# Copy source files required for the build.
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+COPY src/backend ./src/backend
+COPY src/shared ./src/shared
+COPY tsconfig.json ./
+
+# Generate Prisma Client and compile TypeScript.
+RUN npm run prisma:generate && npm run build
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 2 – runtime: production-only dependencies + compiled output.
+# The final image contains no source files and no devDependencies.
+# ─────────────────────────────────────────────────────────────────────────────
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files
+# Install only production dependencies.
 COPY package*.json ./
+RUN npm ci --omit=dev
 
-# Install all dependencies
-RUN npm install
+# Copy compiled JavaScript from the builder stage.
+COPY --from=builder /app/dist ./dist
 
+# Copy the generated Prisma client (platform-native binaries).
+# The docker-compose entrypoint also runs `prisma generate` at startup, but
+# having the pre-built client avoids a cold-start delay.
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
-# Copy backend source files
+# Prisma schema and config are needed at runtime for migrations / generate.
 COPY prisma ./prisma
 COPY prisma.config.ts ./
-COPY src/backend ./src/backend
-# Copy shared types for backend imports
-COPY src/shared ./src/shared
-# Copy tsconfig.json for TypeScript build
-COPY tsconfig.json ./
 
-
-# Generate Prisma Client (uses already installed prisma)
-RUN npm run prisma:generate
-
-# Build backend TypeScript
-RUN npm run build
-
-# Create uploads directories
+# Create uploads directories.
 RUN mkdir -p /app/uploads/profiles /app/uploads/groups /app/uploads/temp
 
-# Expose ports (3000 for HTTP/default, 3443 for HTTPS if configured)
+# Expose ports (3000 for HTTP/default, 3443 for HTTPS if configured).
 EXPOSE 3000 3443
 
-# Start the application
+# Start the application.
 CMD ["npm", "start"]
