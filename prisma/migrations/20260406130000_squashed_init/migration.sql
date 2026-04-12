@@ -77,7 +77,6 @@ CREATE TABLE "UserProfilePicture" (
     "url" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "isCurrent" BOOLEAN NOT NULL DEFAULT false,
-    "deletedAt" TIMESTAMP(3),
     "createdBy" TEXT,
     "updatedBy" TEXT,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -87,6 +86,7 @@ CREATE TABLE "UserProfilePicture" (
 
 -- CreateTable
 CREATE TABLE "GroupMessage" (
+        "appleId" TEXT,
     "id" TEXT NOT NULL,
     "content" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -113,34 +113,27 @@ CREATE TABLE "SessionAttendance" (
     "sessionId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "status" "SessionAttendanceStatus" NOT NULL DEFAULT 'on_time',
-    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "SessionAttendance_pkey" PRIMARY KEY ("id")
-);
 
 -- CreateTable
-CREATE TABLE "SessionNotification" (
     "id" TEXT NOT NULL,
+
+    -- CreateIndex
+    CREATE UNIQUE INDEX "User_appleId_key" ON "User"("appleId");
     "sessionId" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
     "type" "SessionNotificationType" NOT NULL,
     "params" JSONB,
-    "metadata" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "read" BOOLEAN NOT NULL DEFAULT false,
-
     CONSTRAINT "SessionNotification_pkey" PRIMARY KEY ("id")
 );
-
 -- CreateTable
 CREATE TABLE "GroupNotification" (
-    "id" TEXT NOT NULL,
     "groupId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "type" "GroupNotificationType" NOT NULL,
     "params" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "read" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "GroupNotification_pkey" PRIMARY KEY ("id")
 );
