@@ -22,14 +22,14 @@ class SessionRequestsPage extends ConsumerStatefulWidget {
 class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
-  final _sportCtrl = TextEditingController();
-  DateTime? _requestedDate;
+  final _sessionTypeCtrl = TextEditingController();
+  DateTime? _startTime;
 
   @override
   void dispose() {
     _titleCtrl.dispose();
     _descCtrl.dispose();
-    _sportCtrl.dispose();
+    _sessionTypeCtrl.dispose();
     super.dispose();
   }
 
@@ -47,14 +47,14 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
   Future<void> _showCreateDialog() async {
     _titleCtrl.clear();
     _descCtrl.clear();
-    _sportCtrl.clear();
-    _requestedDate = null;
+    _sessionTypeCtrl.clear();
+    _startTime = null;
 
     await showDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('New Event Request'),
+          title: const Text('New Session Request'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -71,16 +71,16 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
                   controller: _descCtrl,
                   decoration: const InputDecoration(
                     labelText: 'Description',
-                    hintText: 'Briefly describe the event (optional)',
+                    hintText: 'Briefly describe the session (optional)',
                   ),
                   maxLines: 3,
                 ),
                 const SizedBox(height: 12),
                 TextField(
-                  controller: _sportCtrl,
+                  controller: _sessionTypeCtrl,
                   decoration: const InputDecoration(
-                    labelText: 'Sport type',
-                    hintText: 'e.g. Football, Basketball (optional)',
+                    labelText: 'Session type *',
+                    hintText: 'e.g. Training, Match, Scrimmage',
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -88,10 +88,10 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.calendar_today_outlined),
                   title: Text(
-                    _requestedDate != null
-                        ? DateFormat('MMM d, y').format(_requestedDate!)
-                        : 'Select preferred date (optional)',
-                    style: _requestedDate == null
+                    _startTime != null
+                        ? DateFormat('MMM d, y').format(_startTime!)
+                        : 'Select start date *',
+                    style: _startTime == null
                         ? const TextStyle(
                             color: AppThemeTokens.darkTextSecondary)
                         : null,
@@ -106,7 +106,7 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
                           DateTime.now().add(const Duration(days: 365)),
                     );
                     if (picked != null) {
-                      setDialogState(() => _requestedDate = picked);
+                      setDialogState(() => _startTime = picked);
                     }
                   },
                 ),
@@ -121,9 +121,22 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
             FilledButton(
               onPressed: () async {
                 final title = _titleCtrl.text.trim();
+                final sessionType = _sessionTypeCtrl.text.trim();
                 if (title.isEmpty) {
                   ScaffoldMessenger.of(ctx).showSnackBar(
                     const SnackBar(content: Text('Title is required')),
+                  );
+                  return;
+                }
+                if (sessionType.isEmpty) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(content: Text('Session type is required')),
+                  );
+                  return;
+                }
+                if (_startTime == null) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(content: Text('Start date is required')),
                   );
                   return;
                 }
@@ -135,18 +148,15 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
                       .create({
                     'groupId': widget.groupId,
                     'title': title,
+                    'sessionType': sessionType,
+                    'startTime': _startTime!.toIso8601String(),
                     if (_descCtrl.text.trim().isNotEmpty)
                       'description': _descCtrl.text.trim(),
-                    if (_sportCtrl.text.trim().isNotEmpty)
-                      'sportType': _sportCtrl.text.trim(),
-                    if (_requestedDate != null)
-                      'requestedDate':
-                          _requestedDate!.toIso8601String(),
                   });
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content: Text('Event request created!')),
+                          content: Text('Session request created!')),
                     );
                   }
                 } on Exception catch (e) {
@@ -231,7 +241,7 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
         ref.watch(authNotifierProvider).user?.id;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Event Requests')),
+      appBar: AppBar(title: const Text('Session Requests')),
       floatingActionButton: FloatingActionButton(
         onPressed: _showCreateDialog,
         tooltip: 'New Request',
@@ -252,9 +262,9 @@ class _SessionRequestsPageState extends ConsumerState<SessionRequestsPage> {
           child: requests.isEmpty
               ? const UiEmptyState(
                   icon: Icons.event_note_outlined,
-                  title: 'No Event Requests',
+                  title: 'No Session Requests',
                   message:
-                      'Be the first to suggest an event for your group.',
+                      'Be the first to suggest a session for your group.',
                 )
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),

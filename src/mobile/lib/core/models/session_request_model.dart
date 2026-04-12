@@ -28,16 +28,21 @@ class SessionRequestModel {
   final DateTime createdAt;
 
   factory SessionRequestModel.fromJson(Map<String, dynamic> json) {
-    final creator = json['createdBy'] as Map<String, dynamic>?;
+    // Backend returns the creator under the 'creator' key (not 'createdBy').
+    final creator = json['creator'] as Map<String, dynamic>?;
     return SessionRequestModel(
       id: json['id'] as String,
       groupId: json['groupId'] as String,
       title: json['title'] as String,
       description: json['description'] as String?,
-      requestedDate: json['requestedDate'] != null
-          ? DateTime.parse(json['requestedDate'] as String)
+      // Backend stores the date as 'startTime' (the SessionRequest schema uses
+      // startTime as the requested date for the session).
+      requestedDate: (json['startTime'] ?? json['requestedDate']) != null
+          ? DateTime.parse((json['startTime'] ?? json['requestedDate']) as String)
           : null,
-      sportType: json['sportType'] as String?,
+      // Backend stores the session category as 'eventType' in the DB, exposed
+      // as-is in the JSON response. Fall back to 'sportType' for compatibility.
+      sportType: json['eventType'] as String? ?? json['sportType'] as String?,
       status: json['status'] as String? ?? 'pending',
       createdById:
           creator?['id'] as String? ?? json['createdById'] as String? ?? '',
