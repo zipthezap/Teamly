@@ -15,3 +15,25 @@ build
 .github
 test-api.sh
 test-api.bat
+
+# Source directories not needed for the backend build
+src/mobile
+src/frontend
+
+# Non-build directories
+archive
+docs
+nginx
+scripts
+uploads
+
+# Test / local tooling
+vitest.config.ts
+eslint.config.mjs
+ecosystem.config.js
+TESTING.md
+IMPROVEMENTS_SUMMARY.md
+ENHANCED_ROLES_PERMISSIONS_SUMMARY.md
+MOBILE_RESPONSIVE_ROADMAP.md
+NEXT_STEPS.md
+RACE_CONDITIONS_SUMMARY.md

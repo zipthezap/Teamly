@@ -35,11 +35,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@emotion/react": "^11.14.0",
-    "@mui/material": "^7.3.7",
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
-    "@types/express-session": "^1.18.2",
     "bcryptjs": "^3.0.3",
     "compression": "^1.8.1",
     "connect-redis": "^7.1.1",
@@ -69,6 +66,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
     "@types/bcryptjs": "^2.4.6",
+    "@types/express-session": "^1.18.2",
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
