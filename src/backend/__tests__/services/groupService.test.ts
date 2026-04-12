@@ -203,7 +203,7 @@ describe('Group Service', () => {
         expect.objectContaining({
           where: { id: 'group-1' },
           include: expect.objectContaining({
-            events: expect.objectContaining({
+            sessions: expect.objectContaining({
               where: { archived: false }
             })
           })

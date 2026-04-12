@@ -6,11 +6,11 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import prisma from '../../config/database';
 import {
-  mockEvent,
-  mockEventWithGroup as _mockEventWithGroup,
-  mockRecurringEvent,
-  mockEventParticipants,
-  mockEventActivity,
+  mockSession as mockEvent,
+  mockSessionWithGroup as _mockEventWithGroup,
+  mockRecurringSession as mockRecurringEvent,
+  mockSessionParticipants as mockEventParticipants,
+  mockSessionActivity as mockEventActivity,
 } from '../__mocks__/mockData';
 
 // Mock dependencies
@@ -23,14 +23,14 @@ vi.mock('../../config/database', () => ({
       findUnique: vi.fn(),
       findMany: vi.fn(),
     },
-    eventParticipant: {
+    sessionParticipant: {
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
       findMany: vi.fn(),
       count: vi.fn(),
     },
-    eventActivity: {
+    sessionActivity: {
       create: vi.fn(),
       findMany: vi.fn(),
     },
@@ -269,9 +269,9 @@ describe('Event Service - Extended Tests', () => {
   describe('Event Activity Tracking', () => {
     it('should create activity record', async () => {
       const activity = mockEventActivity[0];
-      vi.mocked(prisma.eventActivity.create).mockResolvedValueOnce(activity as unknown);
+      vi.mocked(prisma.sessionActivity.create).mockResolvedValueOnce(activity as unknown);
 
-      const result = await prisma.eventActivity.create({
+      const result = await prisma.sessionActivity.create({
         data: {
           sessionId: activity.sessionId,
           userId: activity.userId,
@@ -284,9 +284,9 @@ describe('Event Service - Extended Tests', () => {
     });
 
     it('should fetch session activity with user details', async () => {
-      vi.mocked(prisma.eventActivity.findMany).mockResolvedValueOnce(mockEventActivity as unknown);
+      vi.mocked(prisma.sessionActivity.findMany).mockResolvedValueOnce(mockEventActivity as unknown);
 
-      const result = await prisma.eventActivity.findMany({
+      const result = await prisma.sessionActivity.findMany({
         where: { sessionId: 'session-1' },
         include: { user: true },
         orderBy: { createdAt: 'desc' },
@@ -298,9 +298,9 @@ describe('Event Service - Extended Tests', () => {
 
     it('should filter activity by type', async () => {
       const filteredActivity = mockEventActivity.filter(a => a.type === 'session_created');
-      vi.mocked(prisma.eventActivity.findMany).mockResolvedValueOnce(filteredActivity as unknown);
+      vi.mocked(prisma.sessionActivity.findMany).mockResolvedValueOnce(filteredActivity as unknown);
 
-      const result = await prisma.eventActivity.findMany({
+      const result = await prisma.sessionActivity.findMany({
         where: { sessionId: 'session-1', type: 'session_created' },
       });
 

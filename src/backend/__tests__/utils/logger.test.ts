@@ -1,5 +1,8 @@
+import { vi } from 'vitest';
+vi.unmock('../../utils/logger');
+
 import { logger, LogLevel } from '../../utils/logger';
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('Logger', () => {
   let consoleSpy: {

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../config/database', () => ({
   default: {
-    eventNotification: { count: vi.fn() },
+    sessionNotification: { count: vi.fn() },
     groupNotification: { count: vi.fn() },
     teamUpNotification: { count: vi.fn() },
     tournamentNotification: { count: vi.fn() },
@@ -52,7 +52,7 @@ describe('pushNotificationService', () => {
     process.env.FCM_PROJECT_ID = '';
     process.env.FCM_SERVICE_ACCOUNT_JSON = '';
     mockSend.mockClear();
-    mockPrisma.eventNotification.count.mockResolvedValue(1 as never);
+    mockPrisma.sessionNotification.count.mockResolvedValue(1 as never);
     mockPrisma.groupNotification.count.mockResolvedValue(2 as never);
     mockPrisma.teamUpNotification.count.mockResolvedValue(0 as never);
     mockPrisma.tournamentNotification.count.mockResolvedValue(1 as never);

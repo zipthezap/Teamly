@@ -6,10 +6,10 @@ vi.mock('../../config/database', () => ({
       findMany: vi.fn(),
       count: vi.fn(),
     },
-    eventParticipant: {
+    sessionParticipant: {
       findMany: vi.fn(),
     },
-    eventAttendance: {
+    sessionAttendance: {
       findMany: vi.fn(),
     },
     groupMember: {
@@ -24,8 +24,8 @@ vi.mock('../../config/database', () => ({
   },
 }));
 
-vi.mock('../../services/eventService', () => ({
-  buildEventFilters: vi.fn(() => ({})),
+vi.mock('../../services/sessionService', () => ({
+  buildSessionFilters: vi.fn(() => ({})),
 }));
 
 vi.mock('../../services/cacheService', () => ({
@@ -47,7 +47,7 @@ vi.mock('../../services/metricsService', () => ({
 }));
 
 import prisma from '../../config/database';
-import { getEvents, getNearbyEvents } from '../../controllers/eventController';
+import { getEvents, getNearbyEvents } from '../../controllers/sessionController';
 import { getNearbyGroups, getPublicGroups } from '../../controllers/groupController';
 import { recordSearchQuery } from '../../services/metricsService';
 
@@ -61,8 +61,8 @@ describe('Discovery controllers', () => {
   it('applies composite cursor filtering in getEvents', async () => {
     mockPrisma.session.findMany.mockResolvedValue([]);
     mockPrisma.session.count.mockResolvedValue(0);
-    mockPrisma.eventParticipant.findMany.mockResolvedValue([]);
-    mockPrisma.eventAttendance.findMany.mockResolvedValue([]);
+    mockPrisma.sessionParticipant.findMany.mockResolvedValue([]);
+    mockPrisma.sessionAttendance.findMany.mockResolvedValue([]);
     mockPrisma.groupMember.findMany.mockResolvedValue([]);
 
     const cursor = Buffer.from(
@@ -77,7 +77,7 @@ describe('Discovery controllers', () => {
     const json = vi.fn();
     const res = { setHeader: vi.fn(), json };
 
-    await getSessions(req as never, res as never);
+    await getEvents(req as never, res as never);
 
     expect(mockPrisma.session.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -118,7 +118,7 @@ describe('Discovery controllers', () => {
 
     await getNearbyEvents(req as never, res as never);
 
-    expect(recordSearchQuery).toHaveBeenCalledWith('events');
+    expect(recordSearchQuery).toHaveBeenCalledWith('sessions');
     expect(mockPrisma.session.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({

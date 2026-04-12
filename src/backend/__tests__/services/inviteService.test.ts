@@ -32,7 +32,7 @@ vi.mock('../../config/database', () => ({
       deleteMany: vi.fn(),
       updateMany: vi.fn()
     },
-    eventParticipant: {
+    sessionParticipant: {
       findMany: vi.fn(),
       deleteMany: vi.fn()
     },
