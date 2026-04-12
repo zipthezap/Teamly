@@ -34,6 +34,61 @@ export function createTestApp(router?: Router, basePath: string = '/api'): Expre
 }
 
 /**
+ * Creates an Express test app that injects a mock authenticated user into
+ * every request via middleware, before the provided router is mounted.
+ *
+ * @param router   - The router under test
+ * @param userId   - The user id to inject (default: 'test-user-id')
+ * @param basePath - Base path for the router (default: '/api')
+ */
+export function createAuthenticatedTestApp(
+  router: Router,
+  userId: string = 'test-user-id',
+  basePath: string = '/api'
+): Express {
+  const app = express();
+
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+  app.use(sanitizeInput);
+
+  // Inject mock user — simulates a successfully verified JWT
+  app.use((req, _res, next) => {
+    (req as any).user = {
+      id: userId,
+      email: 'test@example.com',
+      name: 'Test User',
+    };
+    next();
+  });
+
+  app.use(basePath, router);
+  app.use(errorHandler);
+
+  return app;
+}
+
+/**
+ * Creates an Express test app WITHOUT any auth middleware.
+ * Useful for asserting that protected routes return 401.
+ *
+ * @param router   - The router under test
+ * @param basePath - Base path for the router (default: '/api')
+ */
+export function createUnauthenticatedTestApp(router: Router, basePath: string = '/api'): Express {
+  const app = express();
+
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+  app.use(sanitizeInput);
+
+  app.use(basePath, router);
+  app.use(errorHandler);
+
+  return app;
+}
+
+/**
  * Mock authentication helper
  * Returns a valid JWT token for testing authenticated routes
  */
