@@ -10,6 +10,7 @@ import '../../../core/error/error_utils.dart';
 import '../../../core/models/extended_models.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/geocoding_utils.dart';
+import '../../../shared/widgets/location_search_form.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../data/session_repository_impl.dart';
 
@@ -174,7 +175,6 @@ class _NearbySessionsPageState extends ConsumerState<NearbySessionsPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final panelBg = isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
     final panelBorder = isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
     final secondaryText = isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary;
     final cardColor = isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
@@ -186,167 +186,20 @@ class _NearbySessionsPageState extends ConsumerState<NearbySessionsPage> {
       appBar: AppBar(title: const Text('Nearby Sessions')),
       body: Column(
         children: [
-          // ── Search panel ────────────────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-            decoration: BoxDecoration(
-              color: panelBg,
-              border: Border(bottom: BorderSide(color: panelBorder)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Location search field + GPS button
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _locationCtrl,
-                        onChanged: _searchAddress,
-                        decoration: InputDecoration(
-                          labelText: 'Location',
-                          hintText: 'Search address or city…',
-                          prefixIcon: const Icon(Icons.location_on_outlined, size: 18),
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                              vertical: 10, horizontal: 12),
-                          labelStyle: TextStyle(color: secondaryText, fontSize: 13),
-                          suffixIcon: _searchingAddress
-                              ? const Padding(
-                                  padding: EdgeInsets.all(12),
-                                  child: SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  ),
-                                )
-                              : null,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // GPS button
-                    _gettingLocation
-                        ? const SizedBox(
-                            width: 40,
-                            height: 40,
-                            child: Center(
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              ),
-                            ),
-                          )
-                        : IconButton(
-                            onPressed: _useCurrentLocation,
-                            icon: const Icon(Icons.my_location_rounded),
-                            tooltip: 'Use current location',
-                            color: AppThemeTokens.primary400,
-                          ),
-                  ],
-                ),
-                // Address suggestions dropdown
-                if (_suggestions.isNotEmpty)
-                  Container(
-                    margin: const EdgeInsets.only(top: 4),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppThemeTokens.darkCardElevated : AppThemeTokens.lightCard,
-                      borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
-                      border: Border.all(color: panelBorder),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: _suggestions.length,
-                      separatorBuilder: (_, __) =>
-                          Divider(height: 1, color: panelBorder),
-                      itemBuilder: (_, i) {
-                        final s = _suggestions[i];
-                        return InkWell(
-                          onTap: () => _selectSuggestion(s),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
-                            child: Row(
-                              children: [
-                                Icon(Icons.place_outlined,
-                                    size: 16, color: secondaryText),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    s.displayName,
-                                    style: TextStyle(
-                                        fontSize: 13, color: mainText),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                if (_geocodeError != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      _geocodeError!,
-                      style: const TextStyle(
-                          color: AppThemeTokens.error, fontSize: 11),
-                    ),
-                  ),
-                const SizedBox(height: 10),
-                // Radius slider + Search button
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Radius: ${_radius.toStringAsFixed(0)} km',
-                            style: TextStyle(color: secondaryText, fontSize: 12),
-                          ),
-                          Slider(
-                            value: _radius,
-                            min: 5,
-                            max: 100,
-                            divisions: 19,
-                            activeColor: AppThemeTokens.primary500,
-                            onChanged: (v) => setState(() => _radius = v),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    UiPrimaryButton(
-                      text: 'Search',
-                      onPressed: (_loading || _lat == null) ? null : _search,
-                      icon: Icons.search,
-                      fullWidth: false,
-                    ),
-                  ],
-                ),
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      _error!,
-                      style: const TextStyle(
-                          color: AppThemeTokens.error, fontSize: 12),
-                    ),
-                  ),
-              ],
-            ),
+          LocationSearchForm(
+            locationCtrl: _locationCtrl,
+            radius: _radius,
+            loading: _loading,
+            gettingLocation: _gettingLocation,
+            searchingAddress: _searchingAddress,
+            suggestions: _suggestions,
+            error: _error,
+            geocodeError: _geocodeError,
+            onAddressChanged: _searchAddress,
+            onSuggestionSelected: _selectSuggestion,
+            onRadiusChanged: (v) => setState(() => _radius = v),
+            onSearch: (_lat != null && _lng != null) ? _search : null,
+            onUseCurrentLocation: _useCurrentLocation,
           ),
           // ── Results ─────────────────────────────────────────────────────
           Expanded(
