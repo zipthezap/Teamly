@@ -86,6 +86,11 @@ class TournamentRepositoryImpl implements TournamentRepository {
     return response.data!;
   }
 
+  @override
+  Future<void> selfUnregisterTeam(String tournamentId) async {
+    await _dio.delete<void>('/tournaments/$tournamentId/teams/self-register');
+  }
+
   // ---------------------------------------------------------------------------
   // Pool management
   // ---------------------------------------------------------------------------

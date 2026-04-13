@@ -389,14 +389,15 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
               SliverAppBar(
                 expandedHeight: 120,
                 pinned: true,
-                flexibleSpace: FlexibleSpaceBar(
-                  title: Text(t.name,
-                      style: const TextStyle(fontSize: 16),
-                      overflow: TextOverflow.ellipsis),
-                  background: Container(
-                    decoration: BoxDecoration(
-                      gradient: AppThemeTokens.heroGrad(context),
-                    ),
+                title: Text(
+                  t.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                flexibleSpace: Container(
+                  decoration: BoxDecoration(
+                    gradient: AppThemeTokens.heroGrad(context),
                   ),
                 ),
                 actions: [
@@ -478,11 +479,15 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
   TournamentModel get t => widget.tournament;
   bool get isAdmin => widget.isAdmin;
   TournamentTeamModel? get myTeam => widget.myTeam;
+  String? get currentUserId => widget.currentUserId;
   VoidCallback get onRefresh => widget.onRefresh;
 
   @override
   Widget build(BuildContext context) {
     final canRegister = t.status == 'registration' && myTeam == null;
+    final canUnregister = (t.status == 'registration' || t.status == 'draft') &&
+        myTeam != null &&
+        myTeam!.captainUserId == currentUserId;
     final dateFormat = DateFormat.yMMMd();
 
     return RefreshIndicator(
@@ -547,6 +552,15 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                         color: AppThemeTokens.textSecondary(context),
                         fontSize: 14))),
           ],
+          const SizedBox(height: 12),
+          _SectionCard(
+            title: 'Admins',
+            child: _AdminList(
+              organizerName: t.organizerName,
+              organizerEmail: t.organizerEmail,
+              admins: t.admins,
+            ),
+          ),
           if (t.prizesDescription != null) ...[
             const SizedBox(height: 12),
             _SectionCard(
@@ -585,6 +599,17 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                     onPressed: () => context.push(
                         '/tournaments/${t.id}/teams/${myTeam!.id}/roster'),
                   ),
+                  if (canUnregister) ...[
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.remove_circle_outline, size: 16),
+                      label: const Text('Unregister Team'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.error,
+                      ),
+                      onPressed: () => _confirmUnregister(context),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -706,6 +731,50 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
         }
       }
     });
+  }
+
+  Future<void> _confirmUnregister(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Unregister Team'),
+        content: const Text(
+          'Do you want to unregister your team from this tournament? This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            child: const Text('Unregister'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await ref.read(tournamentRepositoryProvider).selfUnregisterTeam(t.id);
+      onRefresh();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Team unregistered successfully')),
+        );
+      }
+    } on Exception catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    }
   }
 
   String _fmtLabel(String f) {
@@ -1778,6 +1847,61 @@ class _SectionCard extends StatelessWidget {
           child,
         ]),
       ),
+    );
+  }
+}
+
+class _AdminList extends StatelessWidget {
+  const _AdminList({
+    required this.organizerName,
+    required this.organizerEmail,
+    required this.admins,
+  });
+
+  final String? organizerName;
+  final String? organizerEmail;
+  final List<TournamentAdminModel> admins;
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = <String>[
+      if ((organizerName ?? '').trim().isNotEmpty)
+        '${organizerName!.trim()} (Organizer)'
+      else if ((organizerEmail ?? '').trim().isNotEmpty)
+        '${organizerEmail!.trim()} (Organizer)',
+      ...admins.map((a) {
+        final name = a.userName.trim();
+        if (name.isNotEmpty) return name;
+        final email = a.userEmail.trim();
+        if (email.isNotEmpty) return email;
+        return 'Admin';
+      }),
+    ];
+
+    if (entries.isEmpty) {
+      return Text(
+        'No admins listed.',
+        style: TextStyle(
+          color: AppThemeTokens.textSecondary(context),
+          fontSize: 14,
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < entries.length; i++) ...[
+          Text(
+            entries[i],
+            style: TextStyle(
+              color: AppThemeTokens.textSecondary(context),
+              fontSize: 14,
+            ),
+          ),
+          if (i != entries.length - 1) const SizedBox(height: 4),
+        ]
+      ],
     );
   }
 }

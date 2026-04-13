@@ -48,6 +48,11 @@ router.post(
   noCache,
   asyncHandler(tournamentController.selfRegisterTeam)
 );
+router.delete(
+  '/:id/teams/self-register',
+  noCache,
+  asyncHandler(tournamentController.selfUnregisterTeam)
+);
 router.post(
   '/:id/teams',
   noCache,
