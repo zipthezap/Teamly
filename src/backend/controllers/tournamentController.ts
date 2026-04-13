@@ -2624,7 +2624,7 @@ export const removeAdmin = async (req: Request, res: Response) => {
 export const selfRegisterTeam = async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = req.user!.id;
-  const { name, poolId } = req.body;
+  const { name, poolId, categoryId } = req.body;
 
   isRequired(name, 'Team name');
   if (typeof name === 'string' && name.trim().length > MAX_NAME_LENGTH) {
@@ -2646,12 +2646,29 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
     throw new BadRequestError('You already have a registered team in this tournament');
   }
 
+  if (poolId && categoryId) {
+    throw new BadRequestError('Select either a category or a pool, not both');
+  }
+
+  let selectedCategoryName: string | null = null;
+  if (categoryId) {
+    const category = await prisma.tournamentCategory.findFirst({
+      where: { id: categoryId, tournamentId: id },
+      select: { id: true, name: true }
+    });
+    if (!category) {
+      throw new NotFoundError('Category not found');
+    }
+    selectedCategoryName = category.name;
+  }
+
   try {
     const team = await prisma.tournamentTeam.create({
       data: {
         name: name.trim(),
         tournamentId: id,
-        captainUserId: userId
+        captainUserId: userId,
+        ...(selectedCategoryName != null ? { poolName: selectedCategoryName } : {})
       },
       include: {
         captainUser: { select: { id: true, name: true, email: true } }
@@ -2695,7 +2712,11 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
       }
     }
 
-    res.status(201).json({ team, onWaitlist: false });
+    res.status(201).json({
+      team,
+      onWaitlist: false,
+      ...(categoryId ? { categoryId, categoryName: selectedCategoryName } : {})
+    });
   } catch (error: unknown) {
     if (isPrismaUniqueError(error)) {
       throw new BadRequestError('A team with this name already exists in the tournament');

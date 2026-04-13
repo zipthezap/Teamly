@@ -1725,6 +1725,42 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
     expect(res.status).toBe(201);
   });
 
+  it('returns 201 when registering with a category selection', async () => {
+    const registeredTournament = { ...mockTournament, status: 'registration' };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.tournamentCategory.findFirst).mockResolvedValue({
+      id: 'cat-1',
+      name: 'Category B',
+    } as any);
+    vi.mocked(prisma.tournamentTeam.create).mockResolvedValue({ ...mockTeam, captainUser: null } as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/teams/self-register')
+      .send({ name: 'New Team', categoryId: 'cat-1' });
+
+    expect(res.status).toBe(201);
+    expect(prisma.tournamentTeam.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          poolName: 'Category B',
+        }),
+      })
+    );
+  });
+
+  it('returns 400 when both pool and category are provided', async () => {
+    const registeredTournament = { ...mockTournament, status: 'registration' };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/teams/self-register')
+      .send({ name: 'New Team', poolId: 'pool-1', categoryId: 'cat-1' });
+
+    expect(res.status).toBe(400);
+  });
+
   it('returns 400 when tournament is not in registration status', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue({ ...mockTournament, status: 'in_progress' } as any);
 
