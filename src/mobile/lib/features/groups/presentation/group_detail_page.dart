@@ -534,6 +534,12 @@ class _OverviewTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final memberLabel =
+        '${group.memberCount} member${group.memberCount == 1 ? '' : 's'}';
+    final eventCount = group.count?.events ?? 0;
+    final hasDescription =
+        group.description != null && group.description!.trim().isNotEmpty;
+    final description = group.description?.trim();
     final detailRows = <Widget>[
       if (group.sportType != null)
         UiInfoRow(
@@ -569,6 +575,40 @@ class _OverviewTab extends ConsumerWidget {
         label: 'Created',
         value: DateFormat.yMMMd().format(group.createdAt),
         iconColor: AppThemeTokens.textSecondary(context),
+      ),
+    ];
+
+    final accessRows = <Widget>[
+      UiInfoRow(
+        icon: group.allowMemberInvites
+            ? Icons.person_add_alt_1_outlined
+            : Icons.block_outlined,
+        label: 'Member invites',
+        value: group.allowMemberInvites ? 'Enabled' : 'Disabled',
+        iconColor: group.allowMemberInvites
+            ? AppThemeTokens.success
+            : AppThemeTokens.textSecondary(context),
+      ),
+      if (group.isPublic)
+        UiInfoRow(
+          icon: group.allowMemberCopyLink
+              ? Icons.link_outlined
+              : Icons.link_off_outlined,
+          label: 'Invite link sharing',
+          value: group.allowMemberCopyLink ? 'Enabled' : 'Disabled',
+          iconColor: group.allowMemberCopyLink
+              ? AppThemeTokens.info
+              : AppThemeTokens.textSecondary(context),
+        ),
+      UiInfoRow(
+        icon: group.autoApproveJoinRequests
+            ? Icons.flash_on_outlined
+            : Icons.fact_check_outlined,
+        label: 'Join approval',
+        value: group.autoApproveJoinRequests ? 'Automatic' : 'Manual review',
+        iconColor: group.autoApproveJoinRequests
+            ? AppThemeTokens.warning
+            : AppThemeTokens.textSecondary(context),
       ),
     ];
 
@@ -647,16 +687,17 @@ class _OverviewTab extends ConsumerWidget {
                                     color: AppThemeTokens.text(context),
                                   ),
                                 ),
-                                if (group.description != null &&
-                                    group.description!.isNotEmpty) ...[
+                                if (group.city != null || group.country != null) ...[
                                   const SizedBox(height: 4),
                                   Text(
-                                    group.description!,
+                                    [group.city, group.country]
+                                        .whereType<String>()
+                                        .join(', '),
                                     style: TextStyle(
                                       fontSize: 13,
                                       color: AppThemeTokens.textSecondary(context),
                                     ),
-                                    maxLines: 2,
+                                    maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
@@ -705,8 +746,7 @@ class _OverviewTab extends ConsumerWidget {
         UiSectionTitle('Group Details'),
         const SizedBox(height: 10),
         Container(
-          decoration: BoxDecoration(
-            color: AppThemeTokens.card(context),
+                            label: memberLabel,
             borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
             border: Border.all(color: AppThemeTokens.border(context)),
           ),
@@ -719,91 +759,151 @@ class _OverviewTab extends ConsumerWidget {
                   if (i < detailRows.length - 1)
                     Divider(
                         height: 1, color: AppThemeTokens.borderSubtle(context)),
-                ],
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
 
-        // ── Stats chips ───────────────────────────────────────────────────
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            if (group.count?.events != null)
-              _InfoChip(
-                  icon: Icons.event_outlined,
-                  label:
-                      '${group.count!.events} event${group.count!.events == 1 ? '' : 's'}'),
-            _InfoChip(
-              icon: group.allowMemberInvites
-                  ? Icons.person_add_alt_1_outlined
-                  : Icons.block_outlined,
-              label: group.allowMemberInvites
-                  ? 'Member invites on'
-                  : 'Member invites off',
-            ),
-            if (group.isPublic)
-              _InfoChip(
-                icon: group.allowMemberCopyLink
-                    ? Icons.link_outlined
-                    : Icons.link_off_outlined,
-                label: group.allowMemberCopyLink
-                    ? 'Link sharing on'
-                    : 'Link sharing off',
-              ),
-            _InfoChip(
-              icon: group.autoApproveJoinRequests
-                  ? Icons.flash_on_outlined
-                  : Icons.fact_check_outlined,
-              label: group.autoApproveJoinRequests
-                  ? 'Auto-approve joins'
-                  : 'Manual join approval',
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-
-        // ── Compact member actions ─────────────────────────────────────────
-        if (isMember)
-          Row(
+        // ── Snapshot ──────────────────────────────────────────────────────
+        UiCard(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: _ActionButton(
-                  icon: Icons.add_circle_outline,
-                  label: 'Create Event',
-                  primary: true,
-                  onPressed: () =>
-                      context.push('/groups/${group.id}/events/new'),
-                ),
+              const UiSectionTitle('Snapshot'),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _MetricTile(
+                      label: 'Members',
+                      value: '${group.memberCount}',
+                      caption: group.maxMembers != null
+                          ? 'of ${group.maxMembers} spots filled'
+                          : 'current roster',
+                      icon: Icons.people_outline,
+                      tint: AppThemeTokens.info,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _MetricTile(
+                      label: 'Events',
+                      value: '$eventCount',
+                      caption: eventCount == 0
+                          ? 'nothing scheduled yet'
+                          : 'available to members',
+                      icon: Icons.event_outlined,
+                      tint: AppThemeTokens.primary500,
+                    ),
+                  ),
+                ],
               ),
-              if (canInvite) ...[
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _ActionButton(
-                    icon: Icons.person_add_outlined,
-                    label: 'Invite',
-                    onPressed: () =>
-                        _groupShowInviteMemberDialog(context, ref, groupId),
+              if (hasDescription) ...[
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppThemeTokens.cardElevated(context),
+                    borderRadius:
+                        BorderRadius.circular(AppThemeTokens.radiusMd),
+                    border: Border.all(
+                      color: AppThemeTokens.borderSubtle(context),
+                    ),
+                  ),
+                  child: Text(
+                    description!,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppThemeTokens.textSecondary(context),
+                      height: 1.5,
+                    ),
                   ),
                 ),
               ],
             ],
           ),
+        ),
+        const SizedBox(height: 16),
+                ],
+              ],
+            ),
+          ),
+        UiCard(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Column(
+            children: [
+              for (int i = 0; i < detailRows.length; i++) ...[
+                detailRows[i],
+                if (i < detailRows.length - 1)
+                  Divider(
+                    height: 1,
+                    color: AppThemeTokens.borderSubtle(context),
+                  ),
+              ],
+            ],
+          ),
+                  child: _ActionButton(
+        const SizedBox(height: 16),
 
-        // ── Join CTA for non-members (public groups only) ─────────────────
-        if (!isMember && group.isPublic)
-          _JoinCta(groupId: groupId, group: group),
+        // ── Access & Rules ────────────────────────────────────────────────
+        UiSectionTitle('Access & Rules'),
+        const SizedBox(height: 10),
+        UiCard(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Column(
+            children: [
+              for (int i = 0; i < accessRows.length; i++) ...[
+                accessRows[i],
+                if (i < accessRows.length - 1)
+                  Divider(
+                    height: 1,
+                    color: AppThemeTokens.borderSubtle(context),
+                  ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+                    label: 'Invite',
+        // ── Actions ────────────────────────────────────────────────────────
+                        _groupShowInviteMemberDialog(context, ref, groupId),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const UiSectionTitle('Actions'),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _ActionButton(
+                      icon: Icons.add_circle_outline,
+                      label: 'Create Event',
+                      primary: true,
+                      onPressed: () =>
+                          context.push('/groups/${group.id}/events/new'),
+                    ),
+                  ),
+                  if (canInvite) ...[
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _ActionButton(
+                        icon: Icons.person_add_outlined,
+                        label: 'Invite Member',
+                        onPressed: () => _groupShowInviteMemberDialog(
+                          context,
+                          ref,
+                          groupId,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
 
-        // ── About ─────────────────────────────────────────────────────────
-        if (group.description != null && group.description!.isNotEmpty) ...[
-          const SizedBox(height: 20),
-          UiSectionTitle('About'),
-          const SizedBox(height: 10),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
+              if (!canInvite) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'This group currently restricts member invites.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppThemeTokens.textMuted(context),
             decoration: BoxDecoration(
               color: AppThemeTokens.card(context),
               borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
@@ -811,31 +911,10 @@ class _OverviewTab extends ConsumerWidget {
             ),
             child: Text(
               group.description!,
-              style: TextStyle(
+        if (!isMember && group.isPublic) ...[
+          const UiSectionTitle('Join This Group'),
+          const SizedBox(height: 10),
                 fontSize: 14,
-                color: AppThemeTokens.textSecondary(context),
-                height: 1.5,
-              ),
-            ),
-          ),
-        ],
-
-        // ── Tags ──────────────────────────────────────────────────────────
-        if (group.tags != null && group.tags!.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: group.tags!
-                .split(',')
-                .map((t) => _InfoChip(
-                      icon: Icons.label_outline,
-                      label: t.trim(),
-                    ))
-                .toList(),
-          ),
-        ],
-        const SizedBox(height: 24),
       ],
     );
   }
@@ -1844,6 +1923,77 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
+
+class _MetricTile extends StatelessWidget {
+  const _MetricTile({
+    required this.label,
+    required this.value,
+    required this.caption,
+    required this.icon,
+    required this.tint,
+  });
+
+  final String label;
+  final String value;
+  final String caption;
+  final IconData icon;
+  final Color tint;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppThemeTokens.cardElevated(context),
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        border: Border.all(
+          color: AppThemeTokens.borderSubtle(context),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: tint.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 16, color: tint),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: AppThemeTokens.text(context),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppThemeTokens.text(context),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            caption,
+            style: TextStyle(
+              fontSize: 12,
+              color: AppThemeTokens.textSecondary(context),
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _HeroPill extends StatelessWidget {
   const _HeroPill({required this.label, required this.color, this.icon});

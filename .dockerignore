@@ -17,13 +17,11 @@ test-api.sh
 test-api.bat
 
 # Source directories not needed for the backend build
-src/mobile
 src/frontend
 
 # Non-build directories
 archive
 docs
-nginx
 scripts
 uploads
 
@@ -37,3 +35,19 @@ ENHANCED_ROLES_PERMISSIONS_SUMMARY.md
 MOBILE_RESPONSIVE_ROADMAP.md
 NEXT_STEPS.md
 RACE_CONDITIONS_SUMMARY.md
+
+# Needed by the flutter-web image build
+!src/mobile/
+!src/mobile/**
+!nginx/
+!nginx/flutter-web.conf
+
+# Exclude generated Flutter artifacts from the flutter-web build context
+src/mobile/.dart_tool/
+src/mobile/.idea/
+src/mobile/.metadata
+src/mobile/.flutter-plugins-dependencies
+src/mobile/build/
+src/mobile/windows/
+src/mobile/*.iml
+src/mobile/NuGet.Config
