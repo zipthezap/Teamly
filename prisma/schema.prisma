@@ -330,6 +330,8 @@ model User {
   tournamentPlayers TournamentPlayer[] @relation("TournamentPlayer")
   receivedTeamInvitations TournamentTeamInvitation[] @relation("TeamInvitations")
   sentTeamInvitations     TournamentTeamInvitation[] @relation("SentTeamInvitations")
+  tournamentAdminRoles    TournamentAdminRole[] @relation("TournamentAdminRoles")
+  grantedAdminRoles       TournamentAdminRole[] @relation("TournamentAdminRolesGranted")
   groupBans         GroupBan[]
   issuedGroupBans   GroupBan[]       @relation("GroupBanner")
   auditLogs         AuditLog[]
@@ -924,6 +926,7 @@ model Tournament {
   group       Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
   
   // Admin controls
+  registrationStartDate DateTime? // Registration opens on this date
   registrationDeadline DateTime?
   isPublic            Boolean  @default(true)
   allowLateRegistration Boolean @default(false)
@@ -947,6 +950,8 @@ model Tournament {
   matches     TournamentMatch[]
   standings   TournamentStanding[]
   pools       TournamentPool[]
+  categories  TournamentCategory[]
+  adminRoles  TournamentAdminRole[]
   notifications TournamentNotification[]
   
   @@index([organizerId])
@@ -1102,6 +1107,10 @@ model TournamentPool {
   tournamentId String
   tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   
+  // Optional category association
+  categoryId   String?
+  category     TournamentCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   
@@ -1110,6 +1119,7 @@ model TournamentPool {
   
   @@unique([tournamentId, name])
   @@index([tournamentId])
+  @@index([categoryId])
 }
 
 // Tournament pool waitlist - teams waiting for a spot in a full pool
@@ -1131,6 +1141,52 @@ model TournamentPoolWaitlist {
   @@index([poolId])
   @@index([teamId])
   @@index([poolId, position])
+}
+
+// Tournament categories - ranking tiers (e.g. "Elite", "Intermediate", "Beginner")
+model TournamentCategory {
+  id           String   @id @default(uuid())
+  name         String   // Category name (e.g., "Elite", "Intermediate", "Beginner")
+  description  String?
+  sortOrder    Int      @default(0) // Lower = higher ranking / shown first
+  
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  pools        TournamentPool[]
+  
+  @@unique([tournamentId, name])
+  @@index([tournamentId])
+  @@index([tournamentId, sortOrder])
+}
+
+// Delegated admin roles – organizer can grant co_organizer to other users
+enum TournamentAdminRoleType {
+  co_organizer
+}
+
+model TournamentAdminRole {
+  id           String   @id @default(uuid())
+  
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  
+  userId       String
+  user         User     @relation("TournamentAdminRoles", fields: [userId], references: [id], onDelete: Cascade)
+  
+  role         TournamentAdminRoleType @default(co_organizer)
+  
+  grantedById  String
+  grantedBy    User     @relation("TournamentAdminRolesGranted", fields: [grantedById], references: [id])
+  
+  createdAt    DateTime @default(now())
+  
+  @@unique([tournamentId, userId])
+  @@index([tournamentId])
+  @@index([userId])
 }
 
 // Tournament team invitations - captains can invite players to join their team

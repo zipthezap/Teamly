@@ -10,6 +10,9 @@ import { etagMiddleware } from '../middleware/etag';
 
 const router = Router();
 
+// Public endpoint - no auth required
+router.get('/public', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getPublicTournaments));
+
 // All tournament routes require authentication
 router.use(authMiddleware);
 router.use(authenticatedLimiter);
@@ -26,6 +29,12 @@ router.put(
   requireTournamentPermission(Permission.TOURNAMENT_UPDATE),
   asyncHandler(tournamentController.updateTournament)
 );
+router.put(
+  '/:id/status',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_UPDATE),
+  asyncHandler(tournamentController.updateTournamentStatus)
+);
 router.delete(
   '/:id',
   noCache,
@@ -34,6 +43,11 @@ router.delete(
 );
 
 // Team management
+router.post(
+  '/:id/teams/self-register',
+  noCache,
+  asyncHandler(tournamentController.selfRegisterTeam)
+);
 router.post(
   '/:id/teams',
   noCache,
@@ -157,6 +171,18 @@ router.post(
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
   asyncHandler(tournamentController.createPool)
 );
+router.put(
+  '/:id/pools/:poolId',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
+  asyncHandler(tournamentController.updatePool)
+);
+router.delete(
+  '/:id/pools/:poolId',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
+  asyncHandler(tournamentController.deletePool)
+);
 router.post(
   '/:id/pools/:poolId/teams/:teamId',
   noCache,
@@ -174,6 +200,61 @@ router.delete(
   noCache,
   requireTeamPermission(Permission.TEAM_REGISTER_TO_POOL),
   asyncHandler(tournamentController.removeTeamFromWaitlist)
+);
+
+// Category management
+router.get('/:id/categories', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getCategories));
+router.post(
+  '/:id/categories',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
+  asyncHandler(tournamentController.createCategory)
+);
+router.put(
+  '/:id/categories/:categoryId',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
+  asyncHandler(tournamentController.updateCategory)
+);
+router.delete(
+  '/:id/categories/:categoryId',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
+  asyncHandler(tournamentController.deleteCategory)
+);
+router.put(
+  '/:id/pools/:poolId/category',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
+  asyncHandler(tournamentController.assignPoolToCategory)
+);
+
+// Admin delegation
+router.get(
+  '/:id/admins',
+  etagMiddleware({ weak: true }),
+  requireTournamentPermission(Permission.TOURNAMENT_VIEW_ADMIN_PANEL),
+  asyncHandler(tournamentController.getAdmins)
+);
+router.post(
+  '/:id/admins',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_UPDATE),
+  asyncHandler(tournamentController.addAdmin)
+);
+router.delete(
+  '/:id/admins/:adminUserId',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_UPDATE),
+  asyncHandler(tournamentController.removeAdmin)
+);
+
+// Notifications
+router.get(
+  '/:id/notifications',
+  etagMiddleware({ weak: true }),
+  requireTournamentPermission(Permission.TOURNAMENT_VIEW_ADMIN_PANEL),
+  asyncHandler(tournamentController.getTournamentNotifications)
 );
 
 export default router;
