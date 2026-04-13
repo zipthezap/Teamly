@@ -75,12 +75,14 @@ class TournamentRepositoryImpl implements TournamentRepository {
     String tournamentId,
     String teamName, {
     String? poolId,
+    String? categoryId,
   }) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/tournaments/$tournamentId/teams/self-register',
       data: {
         'name': teamName,
         if (poolId != null) 'poolId': poolId,
+        if (categoryId != null) 'categoryId': categoryId,
       },
     );
     return response.data!;

@@ -484,11 +484,13 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
 
   @override
   Widget build(BuildContext context) {
-    final canRegister = t.status == 'registration' && myTeam == null;
+    final canRegister =
+        (t.status == 'registration' || t.status == 'draft') && myTeam == null;
     final canUnregister = (t.status == 'registration' || t.status == 'draft') &&
         myTeam != null &&
         myTeam!.captainUserId == currentUserId;
     final dateFormat = DateFormat.yMMMd();
+    final teamById = {for (final team in t.teams) team.id: team};
 
     return RefreshIndicator(
       onRefresh: () async => onRefresh(),
@@ -543,14 +545,43 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                         color: AppThemeTokens.textSecondary(context),
                         fontSize: 14))),
           ],
-          if (t.rulesDescription != null) ...[
+          if (t.rulesDescription != null || t.prizesDescription != null) ...[
             const SizedBox(height: 12),
             _SectionCard(
-                title: 'Rules',
-                child: Text(t.rulesDescription!,
-                    style: TextStyle(
-                        color: AppThemeTokens.textSecondary(context),
-                        fontSize: 14))),
+              title: 'Quick Links',
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (t.rulesDescription != null)
+                    TextButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => _TournamentTextDetailPage(
+                            title: 'Tournament Rules',
+                            content: t.rulesDescription!,
+                          ),
+                        ),
+                      ),
+                      icon: const Icon(Icons.rule_folder_outlined, size: 16),
+                      label: const Text('View Rules'),
+                    ),
+                  if (t.prizesDescription != null)
+                    TextButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => _TournamentTextDetailPage(
+                            title: 'Tournament Prizes',
+                            content: t.prizesDescription!,
+                          ),
+                        ),
+                      ),
+                      icon: const Icon(Icons.workspace_premium_outlined, size: 16),
+                      label: const Text('View Prizes'),
+                    ),
+                ],
+              ),
+            ),
           ],
           const SizedBox(height: 12),
           _SectionCard(
@@ -561,20 +592,11 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               admins: t.admins,
             ),
           ),
-          if (t.prizesDescription != null) ...[
-            const SizedBox(height: 12),
-            _SectionCard(
-                title: 'Prizes',
-                child: Text(t.prizesDescription!,
-                    style: TextStyle(
-                        color: AppThemeTokens.textSecondary(context),
-                        fontSize: 14))),
-          ],
           if (canRegister) ...[
             const SizedBox(height: 16),
-            UiPrimaryButton(
-              text: 'Register My Team',
-              icon: Icons.add_circle_outline,
+            FilledButton.tonalIcon(
+              icon: const Icon(Icons.how_to_reg_outlined, size: 18),
+              label: const Text('Register Team'),
               onPressed: () async {
                 final ok =
                     await context.push<bool>('/tournaments/${t.id}/register');
@@ -593,23 +615,31 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                       '${myTeam!.wins}W / ${myTeam!.losses}L — ${myTeam!.points} pts',
                       style: const TextStyle(fontWeight: FontWeight.w500)),
                   const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.group_outlined, size: 16),
-                    label: const Text('Manage Roster'),
-                    onPressed: () => context.push(
-                        '/tournaments/${t.id}/teams/${myTeam!.id}/roster'),
-                  ),
-                  if (canUnregister) ...[
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.remove_circle_outline, size: 16),
-                      label: const Text('Unregister Team'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.error,
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: [
+                      TextButton.icon(
+                        icon: const Icon(Icons.group_outlined, size: 16),
+                        label: const Text('Manage roster'),
+                        onPressed: () => context
+                            .push('/tournaments/${t.id}/teams/${myTeam!.id}/roster'),
                       ),
-                      onPressed: () => _confirmUnregister(context),
-                    ),
-                  ],
+                      if (canUnregister)
+                        TextButton.icon(
+                          icon: Icon(Icons.logout_outlined,
+                              size: 16,
+                              color: Theme.of(context).colorScheme.error),
+                          label: Text(
+                            'Unregister',
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                          onPressed: () => _confirmUnregister(context),
+                        ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -617,12 +647,22 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
           const SizedBox(height: 16),
           if (t.categories.isNotEmpty)
             for (final cat in t.categories)
-              _CategorySection(category: cat, isAdmin: isAdmin, tournament: t)
+              _CategorySection(
+                category: cat,
+                isAdmin: isAdmin,
+                tournament: t,
+                teamsById: teamById,
+              )
           else if (t.pools.isNotEmpty) ...[
             UiSectionTitle('Pools'),
             const SizedBox(height: 8),
             for (final pool in t.pools)
-              _PoolCard(pool: pool, isAdmin: isAdmin, tournament: t),
+              _PoolCard(
+                pool: pool,
+                isAdmin: isAdmin,
+                tournament: t,
+                teamsById: teamById,
+              ),
           ] else ...[
             UiSectionTitle('Teams'),
             const SizedBox(height: 8),
@@ -632,7 +672,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                   message: 'No teams registered yet.')
             else
               for (final team in t.teams)
-                _TeamRow(team: team, tournamentId: t.id),
+                _TeamRow(team: team),
           ],
           if (isAdmin) ...[
             const SizedBox(height: 16),
@@ -806,14 +846,21 @@ class _CategorySection extends StatelessWidget {
   const _CategorySection(
       {required this.category,
       required this.isAdmin,
-      required this.tournament});
+      required this.tournament,
+      required this.teamsById});
 
   final TournamentCategoryModel category;
   final bool isAdmin;
   final TournamentModel tournament;
+  final Map<String, TournamentTeamModel> teamsById;
 
   @override
   Widget build(BuildContext context) {
+    final categoryTeams = tournament.teams
+        .where((team) =>
+            team.poolId == null &&
+            (team.poolName ?? '').toLowerCase() == category.name.toLowerCase())
+        .toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -828,15 +875,27 @@ class _CategorySection extends StatelessWidget {
           ),
         const SizedBox(height: 6),
         if (category.pools.isEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text('No pools in this category.',
-                style: TextStyle(
-                    color: AppThemeTokens.textMuted(context), fontSize: 13)),
-          )
+          if (categoryTeams.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text('No teams registered in this category yet.',
+                  style: TextStyle(
+                      color: AppThemeTokens.textMuted(context), fontSize: 13)),
+            )
+          else
+            for (final team in categoryTeams)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: _TeamRow(team: teamsById[team.id] ?? team),
+              )
         else
           for (final pool in category.pools)
-            _PoolCard(pool: pool, isAdmin: isAdmin, tournament: tournament),
+            _PoolCard(
+              pool: pool,
+              isAdmin: isAdmin,
+              tournament: tournament,
+              teamsById: teamsById,
+            ),
         const SizedBox(height: 8),
       ],
     );
@@ -845,11 +904,15 @@ class _CategorySection extends StatelessWidget {
 
 class _PoolCard extends StatelessWidget {
   const _PoolCard(
-      {required this.pool, required this.isAdmin, required this.tournament});
+      {required this.pool,
+      required this.isAdmin,
+      required this.tournament,
+      required this.teamsById});
 
   final TournamentPoolModel pool;
   final bool isAdmin;
   final TournamentModel tournament;
+  final Map<String, TournamentTeamModel> teamsById;
 
   @override
   Widget build(BuildContext context) {
@@ -895,7 +958,7 @@ class _PoolCard extends StatelessWidget {
           for (final team in pool.teams)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-              child: _TeamRow(team: team, tournamentId: tournament.id),
+              child: _TeamRow(team: teamsById[team.id] ?? team),
             ),
           if (pool.waitlist.isNotEmpty) ...[
             Padding(
@@ -921,50 +984,107 @@ class _PoolCard extends StatelessWidget {
   }
 }
 
-class _TeamRow extends StatelessWidget {
-  const _TeamRow({required this.team, required this.tournamentId});
+class _TeamRow extends StatefulWidget {
+  const _TeamRow({required this.team});
 
   final TournamentTeamModel team;
-  final String tournamentId;
+
+  @override
+  State<_TeamRow> createState() => _TeamRowState();
+}
+
+class _TeamRowState extends State<_TeamRow> {
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () =>
-          context.push('/tournaments/$tournamentId/teams/${team.id}/roster'),
-      borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: [
-            Icon(Icons.shield_outlined,
-                size: 16, color: AppThemeTokens.textMuted(context)),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                team.name,
-                style: const TextStyle(fontSize: 13),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                '${team.wins}W ${team.losses}L',
-                style: TextStyle(
-                  color: AppThemeTokens.textMuted(context),
-                  fontSize: 12,
+    final team = widget.team;
+    final players = team.players;
+    return Column(
+      children: [
+        InkWell(
+          onTap: () => setState(() => _expanded = !_expanded),
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Icon(Icons.shield_outlined,
+                    size: 16, color: AppThemeTokens.textMuted(context)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    team.name,
+                    style: const TextStyle(fontSize: 13),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.right,
-              ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    '${team.wins}W ${team.losses}L',
+                    style: TextStyle(
+                      color: AppThemeTokens.textMuted(context),
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                  size: 18,
+                  color: AppThemeTokens.textMuted(context),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+        if (_expanded)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 2, 0, 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (players.isEmpty)
+                  Text(
+                    'No players listed yet.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppThemeTokens.textMuted(context),
+                    ),
+                  )
+                else
+                  for (final player in players)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: Text(
+                        '• ${_playerLabel(player)}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppThemeTokens.textSecondary(context),
+                        ),
+                      ),
+                    ),
+              ],
+            ),
+          ),
+      ],
     );
+  }
+
+  String _playerLabel(Map<String, dynamic> player) {
+    final user = player['user'] as Map<String, dynamic>?;
+    final userName = user?['name'] as String?;
+    if ((userName ?? '').trim().isNotEmpty) return userName!.trim();
+    final playerName = player['playerName'] as String?;
+    if ((playerName ?? '').trim().isNotEmpty) return playerName!.trim();
+    final email = user?['email'] as String? ?? player['playerEmail'] as String?;
+    if ((email ?? '').trim().isNotEmpty) return email!.trim();
+    return 'Player';
   }
 }
 
@@ -1906,6 +2026,34 @@ class _AdminList extends StatelessWidget {
   }
 }
 
+class _TournamentTextDetailPage extends StatelessWidget {
+  const _TournamentTextDetailPage(
+      {required this.title, required this.content});
+
+  final String title;
+  final String content;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          SelectableText(
+            content,
+            style: TextStyle(
+              fontSize: 14,
+              color: AppThemeTokens.textSecondary(context),
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ===========================================================================
 // Register Team Page
 // ===========================================================================
@@ -1922,16 +2070,16 @@ class RegisterTeamPage extends ConsumerStatefulWidget {
 class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
-  String? _selectedPoolId;
+  String? _selectedCategoryId;
   bool _loading = false;
-  bool _poolsLoading = true;
-  List<TournamentPoolModel> _pools = [];
+  bool _optionsLoading = true;
+  List<TournamentCategoryModel> _categories = [];
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadPools();
+    _loadCategories();
   }
 
   @override
@@ -1940,21 +2088,21 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
     super.dispose();
   }
 
-  Future<void> _loadPools() async {
+  Future<void> _loadCategories() async {
     try {
-      final pools = await ref
+      final categories = await ref
           .read(tournamentRepositoryProvider)
-          .getPools(widget.tournamentId);
+          .getCategories(widget.tournamentId);
       if (mounted)
         setState(() {
-          _pools = pools;
-          _poolsLoading = false;
+          _categories = categories;
+          _optionsLoading = false;
         });
     } on Exception catch (e) {
       if (mounted)
         setState(() {
           _error = extractErrorMessage(e);
-          _poolsLoading = false;
+          _optionsLoading = false;
         });
     }
   }
@@ -1966,7 +2114,7 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
       final result = await ref
           .read(tournamentRepositoryProvider)
           .selfRegisterTeam(widget.tournamentId, _nameCtrl.text.trim(),
-              poolId: _selectedPoolId);
+              categoryId: _selectedCategoryId);
       if (!mounted) return;
       final onWaitlist = result['onWaitlist'] == true;
       if (onWaitlist) {
@@ -1996,10 +2144,10 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Register Team')),
-      body: _poolsLoading
+      body: _optionsLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? ErrorDisplay(message: _error!, onRetry: _loadPools)
+              ? ErrorDisplay(message: _error!, onRetry: _loadCategories)
               : Form(
                   key: _formKey,
                   child: ListView(
@@ -2014,24 +2162,33 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
                         validator: (v) =>
                             (v == null || v.trim().isEmpty) ? 'Required' : null,
                       ),
-                      if (_pools.isNotEmpty) ...[
+                      if (_categories.isNotEmpty) ...[
                         const SizedBox(height: 16),
-                        DropdownButtonFormField<String?>(
-                          value: _selectedPoolId,
+                        DropdownButtonFormField<String>(
+                          value: _selectedCategoryId,
                           decoration: const InputDecoration(
-                              labelText: 'Pool (optional)',
-                              prefixIcon: Icon(Icons.layers_outlined)),
+                              labelText: 'Category *',
+                              prefixIcon: Icon(Icons.category_outlined)),
                           dropdownColor: AppThemeTokens.cardElevated(context),
                           items: [
-                            const DropdownMenuItem(
-                                value: null, child: Text('No pool')),
-                            for (final pool in _pools)
+                            for (final category in _categories)
                               DropdownMenuItem(
-                                  value: pool.id,
-                                  child: Text(
-                                      '${pool.name} (${pool.teams.length}/${pool.maxTeams}${pool.isFull ? " – FULL" : ""})'))
+                                  value: category.id,
+                                  child: Text(category.name))
                           ],
-                          onChanged: (v) => setState(() => _selectedPoolId = v),
+                          validator: (value) =>
+                              value == null ? 'Please select a category' : null,
+                          onChanged: (v) =>
+                              setState(() => _selectedCategoryId = v),
+                        ),
+                      ] else ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'No categories configured yet. You can still register and get assigned later.',
+                          style: TextStyle(
+                            color: AppThemeTokens.textMuted(context),
+                            fontSize: 13,
+                          ),
                         ),
                       ],
                       const SizedBox(height: 24),
