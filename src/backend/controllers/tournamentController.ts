@@ -51,6 +51,7 @@ export const createTournament = async (req: Request, res: Response) => {
     groupId,
     // Admin controls
     registrationDeadline,
+    registrationStartDate,
     isPublic,
     allowLateRegistration,
     autoGenerateBrackets,
@@ -145,6 +146,7 @@ export const createTournament = async (req: Request, res: Response) => {
       groupId: groupId || undefined,
       // Admin controls
       registrationDeadline: registrationDeadline ? new Date(registrationDeadline) : undefined,
+      registrationStartDate: registrationStartDate ? new Date(registrationStartDate) : undefined,
       isPublic: isPublic !== undefined ? isPublic : true,
       allowLateRegistration: allowLateRegistration || false,
       autoGenerateBrackets: autoGenerateBrackets || false,
@@ -267,6 +269,31 @@ export const getTournament = async (req: Request, res: Response) => {
           { points: 'desc' },
           { goalsFor: 'desc' }
         ]
+      },
+      categories: {
+        orderBy: { sortOrder: 'asc' }
+      },
+      pools: {
+        include: {
+          teams: {
+            select: { id: true, name: true }
+          },
+          waitlist: {
+            orderBy: { position: 'asc' },
+            include: {
+              team: { select: { id: true, name: true } }
+            }
+          },
+          category: {
+            select: { id: true, name: true, sortOrder: true }
+          }
+        }
+      },
+      adminRoles: {
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          grantedBy: { select: { id: true, name: true } }
+        }
       }
     }
   });
@@ -286,7 +313,7 @@ export const updateTournament = async (req: Request, res: Response) => {
     name, description, status, startDate, endDate, maxTeams, 
     location, locationName, city, country, latitude, longitude,
     // Admin controls
-    registrationDeadline, isPublic, allowLateRegistration,
+    registrationDeadline, registrationStartDate, isPublic, allowLateRegistration,
     autoGenerateBrackets, useManualBrackets, prizesDescription, rulesDescription, contactEmail,
     // Sport-specific configuration
     sportConfig
@@ -355,6 +382,9 @@ export const updateTournament = async (req: Request, res: Response) => {
   // Admin controls
   if (registrationDeadline !== undefined) {
     updateData.registrationDeadline = registrationDeadline ? new Date(registrationDeadline) : null;
+  }
+  if (registrationStartDate !== undefined) {
+    updateData.registrationStartDate = registrationStartDate ? new Date(registrationStartDate) : null;
   }
   if (isPublic !== undefined) {
     updateData.isPublic = isPublic;
@@ -2238,4 +2268,372 @@ export const cancelTeamInvitation = async (req: Request, res: Response) => {
   });
 
   res.json({ message: 'Invitation cancelled successfully' });
+};
+
+// ==================== CATEGORY MANAGEMENT ====================
+
+/**
+ * Get all categories for a tournament (with their pools)
+ */
+export const getCategories = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const tournament = await prisma.tournament.findUnique({ where: { id } });
+  ensureResourceExists(tournament, 'Tournament');
+
+  const categories = await prisma.tournamentCategory.findMany({
+    where: { tournamentId: id },
+    orderBy: { sortOrder: 'asc' },
+    include: {
+      pools: {
+        include: {
+          teams: { select: { id: true, name: true } },
+          waitlist: {
+            orderBy: { position: 'asc' },
+            include: { team: { select: { id: true, name: true } } }
+          }
+        }
+      }
+    }
+  });
+
+  res.json(categories);
+};
+
+/**
+ * Create a category for a tournament
+ */
+export const createCategory = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+  const { name, description, sortOrder } = req.body;
+
+  isRequired(name, 'Name');
+
+  const tournament = await prisma.tournament.findUnique({ where: { id } });
+  ensureResourceExists(tournament, 'Tournament');
+
+  // Only organizer or co-organizer can create categories
+  const isOrganizerOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament!, userId);
+  if (!isOrganizerOrAdmin) {
+    throw new ForbiddenError('Only the organizer or a co-organizer can manage categories');
+  }
+
+  try {
+    const category = await prisma.tournamentCategory.create({
+      data: {
+        name: name.trim(),
+        description: description?.trim() || undefined,
+        sortOrder: sortOrder ?? 0,
+        tournamentId: id
+      }
+    });
+
+    logger.info('Category created', 'TournamentController', { tournamentId: id, categoryId: category.id, userId });
+    res.status(201).json(category);
+  } catch (error: unknown) {
+    if (isPrismaUniqueError(error)) {
+      throw new BadRequestError('A category with this name already exists in the tournament');
+    }
+    throw error;
+  }
+};
+
+/**
+ * Update a category
+ */
+export const updateCategory = async (req: Request, res: Response) => {
+  const { id, categoryId } = req.params;
+  const userId = req.user!.id;
+  const { name, description, sortOrder } = req.body;
+
+  const tournament = await prisma.tournament.findUnique({ where: { id } });
+  ensureResourceExists(tournament, 'Tournament');
+
+  const isOrganizerOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament!, userId);
+  if (!isOrganizerOrAdmin) {
+    throw new ForbiddenError('Only the organizer or a co-organizer can manage categories');
+  }
+
+  const category = await prisma.tournamentCategory.findFirst({
+    where: { id: categoryId, tournamentId: id }
+  });
+  ensureResourceExists(category, 'Category');
+
+  const updateData: Record<string, unknown> = {};
+  if (name !== undefined) updateData.name = name.trim();
+  if (description !== undefined) updateData.description = description?.trim() || null;
+  if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
+
+  try {
+    const updated = await prisma.tournamentCategory.update({
+      where: { id: categoryId },
+      data: updateData
+    });
+
+    res.json(updated);
+  } catch (error: unknown) {
+    if (isPrismaUniqueError(error)) {
+      throw new BadRequestError('A category with this name already exists in the tournament');
+    }
+    throw error;
+  }
+};
+
+/**
+ * Delete a category
+ */
+export const deleteCategory = async (req: Request, res: Response) => {
+  const { id, categoryId } = req.params;
+  const userId = req.user!.id;
+
+  const tournament = await prisma.tournament.findUnique({ where: { id } });
+  ensureResourceExists(tournament, 'Tournament');
+
+  const isOrganizerOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament!, userId);
+  if (!isOrganizerOrAdmin) {
+    throw new ForbiddenError('Only the organizer or a co-organizer can manage categories');
+  }
+
+  const category = await prisma.tournamentCategory.findFirst({
+    where: { id: categoryId, tournamentId: id }
+  });
+  ensureResourceExists(category, 'Category');
+
+  await prisma.tournamentCategory.delete({ where: { id: categoryId } });
+
+  logger.info('Category deleted', 'TournamentController', { tournamentId: id, categoryId, userId });
+  res.json({ message: 'Category deleted successfully' });
+};
+
+/**
+ * Assign a pool to a category
+ */
+export const assignPoolToCategory = async (req: Request, res: Response) => {
+  const { id, poolId } = req.params;
+  const userId = req.user!.id;
+  const { categoryId } = req.body;
+
+  const tournament = await prisma.tournament.findUnique({ where: { id } });
+  ensureResourceExists(tournament, 'Tournament');
+
+  const isOrganizerOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament!, userId);
+  if (!isOrganizerOrAdmin) {
+    throw new ForbiddenError('Only the organizer or a co-organizer can assign pools to categories');
+  }
+
+  const pool = await prisma.tournamentPool.findFirst({
+    where: { id: poolId, tournamentId: id }
+  });
+  ensureResourceExists(pool, 'Pool');
+
+  if (categoryId) {
+    const category = await prisma.tournamentCategory.findFirst({
+      where: { id: categoryId, tournamentId: id }
+    });
+    ensureResourceExists(category, 'Category');
+  }
+
+  const updated = await prisma.tournamentPool.update({
+    where: { id: poolId },
+    data: { categoryId: categoryId || null },
+    include: {
+      category: { select: { id: true, name: true } }
+    }
+  });
+
+  res.json(updated);
+};
+
+// ==================== ADMIN DELEGATION ====================
+
+/**
+ * List co-organizers for a tournament
+ */
+export const getAdmins = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+
+  const tournament = await prisma.tournament.findUnique({ where: { id } });
+  ensureResourceExists(tournament, 'Tournament');
+
+  if (!tournamentService.isOrganizer(tournament!, userId)) {
+    throw new ForbiddenError('Only the organizer can view admin roles');
+  }
+
+  const admins = await prisma.tournamentAdminRole.findMany({
+    where: { tournamentId: id },
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+      grantedBy: { select: { id: true, name: true } }
+    },
+    orderBy: { createdAt: 'asc' }
+  });
+
+  res.json(admins);
+};
+
+/**
+ * Add a co-organizer to a tournament
+ */
+export const addAdmin = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+  const { userId: targetUserId, email } = req.body;
+
+  const tournament = await prisma.tournament.findUnique({ where: { id } });
+  ensureResourceExists(tournament, 'Tournament');
+
+  if (!tournamentService.isOrganizer(tournament!, userId)) {
+    throw new ForbiddenError('Only the organizer can delegate admin roles');
+  }
+
+  // Resolve user by userId or email
+  let resolvedUserId = targetUserId;
+  if (!resolvedUserId && email) {
+    const user = await prisma.user.findFirst({
+      where: { email: email.toLowerCase().trim(), deletedAt: null }
+    });
+    if (!user) {
+      throw new BadRequestError('No user found with that email');
+    }
+    resolvedUserId = user.id;
+  }
+
+  if (!resolvedUserId) {
+    throw new BadRequestError('userId or email is required');
+  }
+
+  if (resolvedUserId === userId) {
+    throw new BadRequestError('You cannot add yourself as a co-organizer (you are already the organizer)');
+  }
+
+  try {
+    const adminRole = await prisma.tournamentAdminRole.create({
+      data: {
+        tournamentId: id,
+        userId: resolvedUserId,
+        grantedById: userId
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        grantedBy: { select: { id: true, name: true } }
+      }
+    });
+
+    logger.info('Co-organizer added', 'TournamentController', { tournamentId: id, addedUserId: resolvedUserId, grantedBy: userId });
+    res.status(201).json(adminRole);
+  } catch (error: unknown) {
+    if (isPrismaUniqueError(error)) {
+      throw new BadRequestError('This user is already a co-organizer');
+    }
+    throw error;
+  }
+};
+
+/**
+ * Remove a co-organizer from a tournament
+ */
+export const removeAdmin = async (req: Request, res: Response) => {
+  const { id, adminUserId } = req.params;
+  const userId = req.user!.id;
+
+  const tournament = await prisma.tournament.findUnique({ where: { id } });
+  ensureResourceExists(tournament, 'Tournament');
+
+  if (!tournamentService.isOrganizer(tournament!, userId)) {
+    throw new ForbiddenError('Only the organizer can remove admin roles');
+  }
+
+  const adminRole = await prisma.tournamentAdminRole.findFirst({
+    where: { tournamentId: id, userId: adminUserId }
+  });
+  ensureResourceExists(adminRole, 'Admin role');
+
+  await prisma.tournamentAdminRole.delete({ where: { id: adminRole!.id } });
+
+  logger.info('Co-organizer removed', 'TournamentController', { tournamentId: id, removedUserId: adminUserId, removedBy: userId });
+  res.json({ message: 'Co-organizer removed successfully' });
+};
+
+// ==================== CAPTAIN SELF-REGISTRATION ====================
+
+/**
+ * Captain self-registers their team and becomes its captain.
+ * No admin permission required — any authenticated user can create and captain their own team.
+ */
+export const selfRegisterTeam = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+  const { name, poolId } = req.body;
+
+  isRequired(name, 'Team name');
+
+  const tournament = await prisma.tournament.findUnique({ where: { id } });
+  ensureResourceExists(tournament, 'Tournament');
+
+  if (tournament!.status !== 'registration' && tournament!.status !== 'draft') {
+    throw new BadRequestError('Tournament is not open for registration');
+  }
+
+  // Prevent the same captain from registering multiple teams in one tournament
+  const existingTeam = await prisma.tournamentTeam.findFirst({
+    where: { tournamentId: id, captainUserId: userId }
+  });
+  if (existingTeam) {
+    throw new BadRequestError('You already have a registered team in this tournament');
+  }
+
+  try {
+    const team = await prisma.tournamentTeam.create({
+      data: {
+        name: name.trim(),
+        tournamentId: id,
+        captainUserId: userId
+      },
+      include: {
+        captainUser: { select: { id: true, name: true, email: true } }
+      }
+    });
+
+    logger.info('Team self-registered', 'TournamentController', { tournamentId: id, teamId: team.id, captainUserId: userId });
+
+    // If a poolId was provided, attempt to register the new team to the pool immediately
+    if (poolId) {
+      const pool = await prisma.tournamentPool.findFirst({
+        where: { id: poolId, tournamentId: id },
+        include: {
+          _count: { select: { teams: true } },
+          waitlist: { orderBy: { position: 'asc' } }
+        }
+      });
+
+      if (pool) {
+        const teamCount = (pool as any)._count.teams as number;
+        if (teamCount < pool.maxTeams) {
+          await prisma.tournamentTeam.update({
+            where: { id: team.id },
+            data: { poolId: pool.id }
+          });
+          return res.status(201).json({ team, pool, onWaitlist: false });
+        } else {
+          // Pool full — add to waitlist
+          const waitlistPosition = await prisma.tournamentPoolWaitlist.count({
+            where: { poolId: pool.id }
+          });
+          const waitlistEntry = await prisma.tournamentPoolWaitlist.create({
+            data: { poolId: pool.id, teamId: team.id, position: waitlistPosition }
+          });
+          return res.status(201).json({ team, pool, onWaitlist: true, waitlistEntry });
+        }
+      }
+    }
+
+    res.status(201).json({ team, onWaitlist: false });
+  } catch (error: unknown) {
+    if (isPrismaUniqueError(error)) {
+      throw new BadRequestError('A team with this name already exists in the tournament');
+    }
+    throw error;
+  }
 };

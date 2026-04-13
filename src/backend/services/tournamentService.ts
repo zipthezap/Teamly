@@ -118,6 +118,17 @@ export const isOrganizer = (tournament: { organizerId: string }, userId: string)
 };
 
 /**
+ * Check if user is the organizer or a delegated co-organizer of the tournament
+ */
+export const isOrganizerOrAdmin = async (tournament: { id: string; organizerId: string }, userId: string): Promise<boolean> => {
+  if (tournament.organizerId === userId) return true;
+  const adminRole = await prisma.tournamentAdminRole.findFirst({
+    where: { tournamentId: tournament.id, userId }
+  });
+  return adminRole !== null;
+};
+
+/**
  * Check if user is team captain
  */
 export const isTeamCaptain = async (teamId: string, userId: string): Promise<boolean> => {

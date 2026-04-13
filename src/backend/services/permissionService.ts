@@ -193,6 +193,15 @@ export async function hasTournamentPermission(
         }
       }
 
+      // Check if user has an explicit co-organizer admin role delegation
+      const explicitAdminRole = await prisma.tournamentAdminRole.findFirst({
+        where: { tournamentId, userId }
+      });
+      if (explicitAdminRole) {
+        const rolePermissions = TournamentRolePermissions[TournamentRole.CO_ORGANIZER];
+        return rolePermissions.includes(permission);
+      }
+
       // Check if user is a team captain
       const captainTeam = await prisma.tournamentTeam.findFirst({
         where: {
@@ -475,6 +484,14 @@ export async function getUserTournamentRole(userId: string, tournamentId: string
       if (isGroupAdmin) {
         return TournamentRole.CO_ORGANIZER;
       }
+    }
+
+    // Check for explicit delegated co-organizer role
+    const explicitAdminRole = await prisma.tournamentAdminRole.findFirst({
+      where: { tournamentId, userId }
+    });
+    if (explicitAdminRole) {
+      return TournamentRole.CO_ORGANIZER;
     }
 
     // Check if team captain
