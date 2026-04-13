@@ -535,6 +535,69 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                   icon: Icons.location_on_outlined,
                   label: 'Location',
                   value: t.locationName ?? t.location ?? ''),
+            if (t.rulesDescription != null || t.prizesDescription != null) ...[
+              const SizedBox(height: 8),
+              Divider(color: AppThemeTokens.borderSubtle(context), height: 1),
+              const SizedBox(height: 10),
+              Text(
+                'Quick Links',
+                style: TextStyle(
+                  color: AppThemeTokens.text(context),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (t.rulesDescription != null)
+                    _CompactActionButton(
+                      icon: Icons.rule_folder_outlined,
+                      label: 'View Rules',
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => _TournamentTextDetailPage(
+                            title: 'Tournament Rules',
+                            content: t.rulesDescription!,
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (t.prizesDescription != null)
+                    _CompactActionButton(
+                      icon: Icons.workspace_premium_outlined,
+                      label: 'View Prizes',
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => _TournamentTextDetailPage(
+                            title: 'Tournament Prizes',
+                            content: t.prizesDescription!,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 8),
+            Divider(color: AppThemeTokens.borderSubtle(context), height: 1),
+            const SizedBox(height: 10),
+            Text(
+              'Admins',
+              style: TextStyle(
+                color: AppThemeTokens.text(context),
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 6),
+            _AdminList(
+              organizerName: t.organizerName,
+              organizerEmail: t.organizerEmail,
+              admins: t.admins,
+            ),
           ]),
           if (t.description != null) ...[
             const SizedBox(height: 12),
@@ -545,58 +608,12 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                         color: AppThemeTokens.textSecondary(context),
                         fontSize: 14))),
           ],
-          if (t.rulesDescription != null || t.prizesDescription != null) ...[
-            const SizedBox(height: 12),
-            _SectionCard(
-              title: 'Quick Links',
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  if (t.rulesDescription != null)
-                    TextButton.icon(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => _TournamentTextDetailPage(
-                            title: 'Tournament Rules',
-                            content: t.rulesDescription!,
-                          ),
-                        ),
-                      ),
-                      icon: const Icon(Icons.rule_folder_outlined, size: 16),
-                      label: const Text('View Rules'),
-                    ),
-                  if (t.prizesDescription != null)
-                    TextButton.icon(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => _TournamentTextDetailPage(
-                            title: 'Tournament Prizes',
-                            content: t.prizesDescription!,
-                          ),
-                        ),
-                      ),
-                      icon: const Icon(Icons.workspace_premium_outlined, size: 16),
-                      label: const Text('View Prizes'),
-                    ),
-                ],
-              ),
-            ),
-          ],
-          const SizedBox(height: 12),
-          _SectionCard(
-            title: 'Admins',
-            child: _AdminList(
-              organizerName: t.organizerName,
-              organizerEmail: t.organizerEmail,
-              admins: t.admins,
-            ),
-          ),
           if (canRegister) ...[
             const SizedBox(height: 16),
-            FilledButton.tonalIcon(
-              icon: const Icon(Icons.how_to_reg_outlined, size: 18),
-              label: const Text('Register Team'),
+            _CompactActionButton(
+              icon: Icons.how_to_reg_outlined,
+              label: 'Register Team',
+              primary: true,
               onPressed: () async {
                 final ok =
                     await context.push<bool>('/tournaments/${t.id}/register');
@@ -616,26 +633,21 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                       style: const TextStyle(fontWeight: FontWeight.w500)),
                   const SizedBox(height: 8),
                   Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      TextButton.icon(
-                        icon: const Icon(Icons.group_outlined, size: 16),
-                        label: const Text('Manage roster'),
+                      _CompactActionButton(
+                        icon: Icons.group_outlined,
+                        label: 'Manage roster',
+                        primary: true,
                         onPressed: () => context
                             .push('/tournaments/${t.id}/teams/${myTeam!.id}/roster'),
                       ),
                       if (canUnregister)
-                        TextButton.icon(
-                          icon: Icon(Icons.logout_outlined,
-                              size: 16,
-                              color: Theme.of(context).colorScheme.error),
-                          label: Text(
-                            'Unregister',
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                          ),
+                        _CompactActionButton(
+                          icon: Icons.logout_outlined,
+                          label: 'Unregister',
+                          destructive: true,
                           onPressed: () => _confirmUnregister(context),
                         ),
                     ],
@@ -1896,6 +1908,55 @@ class _StatusChip extends StatelessWidget {
 // Shared helper widgets
 // ---------------------------------------------------------------------------
 
+class _CompactActionButton extends StatelessWidget {
+  const _CompactActionButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    this.primary = false,
+    this.destructive = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+  final bool primary;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = destructive
+        ? Theme.of(context).colorScheme.error
+        : AppThemeTokens.primary500;
+
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 14),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(0, 34),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        visualDensity: VisualDensity.compact,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        foregroundColor: baseColor,
+        backgroundColor: primary
+            ? baseColor.withValues(alpha: isDark ? 0.16 : 0.1)
+            : Colors.transparent,
+        side: BorderSide(color: baseColor.withValues(alpha: 0.38)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+        ),
+        textStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.1,
+        ),
+      ),
+    );
+  }
+}
+
 class _InfoCard extends StatelessWidget {
   const _InfoCard({required this.children});
 
@@ -1909,7 +1970,12 @@ class _InfoCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
           border: Border.all(color: AppThemeTokens.border(context))),
       child: Padding(
-          padding: const EdgeInsets.all(12), child: Column(children: children)),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: children,
+        ),
+      ),
     );
   }
 }

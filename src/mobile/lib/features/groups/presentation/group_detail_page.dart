@@ -856,23 +856,24 @@ class _OverviewTab extends ConsumerWidget {
             ),
           ),
         ],
-        if (isMember) ...[
+        if (isMember && (isAdmin || canInvite)) ...[
           const SizedBox(height: 16),
           const UiSectionTitle('Actions'),
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(
-                child: _ActionButton(
-                  icon: Icons.add_circle_outline,
-                  label: 'Create Event',
-                  primary: true,
-                  onPressed: () =>
-                      context.push('/groups/${group.id}/sessions/new'),
+              if (isAdmin)
+                Expanded(
+                  child: _ActionButton(
+                    icon: Icons.add_circle_outline,
+                    label: 'Create Event',
+                    primary: true,
+                    onPressed: () =>
+                        context.push('/groups/${group.id}/sessions/new'),
+                  ),
                 ),
-              ),
               if (canInvite) ...[
-                const SizedBox(width: 10),
+                if (isAdmin) const SizedBox(width: 10),
                 Expanded(
                   child: _ActionButton(
                     icon: Icons.person_add_outlined,
@@ -887,16 +888,6 @@ class _OverviewTab extends ConsumerWidget {
               ],
             ],
           ),
-          if (!canInvite) ...[
-            const SizedBox(height: 10),
-            Text(
-              'This group currently restricts member invites.',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppThemeTokens.textMuted(context),
-              ),
-            ),
-          ],
         ],
         if (!isMember && group.isPublic) ...[
           const SizedBox(height: 16),
@@ -932,12 +923,18 @@ class _JoinCtaState extends ConsumerState<_JoinCta> {
       await ref.read(groupRepositoryProvider).requestJoinGroup(widget.groupId);
       ref.invalidate(myJoinRequestsProvider);
       ref.invalidate(groupDetailProvider(widget.groupId));
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Join request sent to "${widget.group.name}"')),
-        );
-      }
+      ref.invalidate(groupEventsProvider(widget.groupId));
+      await ref.read(groupsNotifierProvider.notifier).reload();
+      await ref.read(sessionsNotifierProvider.notifier).reload();
+      await ref.read(dashboardNotifierProvider.notifier).reload();
+
+      if (!mounted) return;
+      final message = widget.group.autoApproveJoinRequests
+          ? 'You joined "${widget.group.name}"!'
+          : 'Join request sent to "${widget.group.name}"';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1488,10 +1485,10 @@ class _EventsTab extends ConsumerWidget {
                     child: UiEmptyState(
                       icon: Icons.event_busy_outlined,
                       message: 'This group has no events yet.',
-                      action: isModerator
+                      action: isAdmin
                           ? () => context.push('/groups/$groupId/sessions/new')
                           : null,
-                      actionLabel: isModerator ? 'Create event' : null,
+                      actionLabel: isAdmin ? 'Create event' : null,
                     ),
                   )
                 : ListView.builder(
@@ -1645,8 +1642,8 @@ class _EventsTab extends ConsumerWidget {
                       );
                     },
                   ),
-            // Create event FAB for admins/moderators
-            if (isModerator)
+            // Create event FAB for admins only
+            if (isAdmin)
               Positioned(
                 bottom: 16,
                 right: 16,
@@ -1658,7 +1655,7 @@ class _EventsTab extends ConsumerWidget {
                 ),
               ),
             // Request event button for regular members
-            if (isMember && !isModerator)
+            if (isMember && !isAdmin)
               Positioned(
                 bottom: 16,
                 right: 16,
