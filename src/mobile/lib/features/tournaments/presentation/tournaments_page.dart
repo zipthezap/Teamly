@@ -2047,6 +2047,29 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
       setState(() => _saving = false);
       return;
     }
+    // Validate date ordering
+    if (_endDate != null && !_endDate!.isAfter(_startDate!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tournament end date must be after the start date')),
+      );
+      setState(() => _saving = false);
+      return;
+    }
+    if (_registrationDeadline != null && !_startDate!.isAfter(_registrationDeadline!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registration deadline must be before the tournament start date')),
+      );
+      setState(() => _saving = false);
+      return;
+    }
+    if (_registrationStartDate != null && _registrationDeadline != null &&
+        !_registrationDeadline!.isAfter(_registrationStartDate!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registration deadline must be after the registration open date')),
+      );
+      setState(() => _saving = false);
+      return;
+    }
     try {
       final tournament = await ref.read(tournamentRepositoryProvider).createTournament({
         'name': _nameCtrl.text.trim(),
@@ -2152,7 +2175,15 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
             const SizedBox(height: 16),
             TextFormField(controller: _descCtrl, decoration: const InputDecoration(labelText: 'Description', prefixIcon: Icon(Icons.notes_outlined), alignLabelWithHint: true), maxLines: 3),
             const SizedBox(height: 16),
-            TextFormField(controller: _maxTeamsCtrl, decoration: const InputDecoration(labelText: 'Max teams', prefixIcon: Icon(Icons.group_outlined)), keyboardType: TextInputType.number),
+            TextFormField(controller: _maxTeamsCtrl, decoration: const InputDecoration(labelText: 'Max teams', prefixIcon: Icon(Icons.group_outlined)), keyboardType: TextInputType.number,
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return null;
+                final n = int.tryParse(v.trim());
+                if (n == null) return 'Must be a number';
+                if (n < 2) return 'At least 2 teams required';
+                if (n > 1000) return 'Max 1,000 teams';
+                return null;
+              }),
             const SizedBox(height: 24),
             UiSectionTitle('Dates'),
             const SizedBox(height: 8),
@@ -2161,6 +2192,11 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
             _dateTile(label: 'Registration deadline', value: _registrationDeadline, onTap: () async { final d = await _pickDate(_registrationDeadline); if (d != null) setState(() => _registrationDeadline = d); }),
             const SizedBox(height: 12),
             _dateTile(label: 'Tournament start *', value: _startDate, onTap: () async { final d = await _pickDate(_startDate); if (d != null) setState(() => _startDate = d); }),
+            if (_startDate == null && _saving)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, left: 12),
+                child: Text('Please select a start date', style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12)),
+              ),
             const SizedBox(height: 12),
             _dateTile(label: 'Tournament end', value: _endDate, onTap: () async { final d = await _pickDate(_endDate, firstDate: _startDate); if (d != null) setState(() => _endDate = d); }),
             const SizedBox(height: 24),
