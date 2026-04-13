@@ -1,9 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/services.dart' show MissingPluginException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/error/app_exception.dart';
@@ -148,6 +150,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       await _googleSignIn?.signOut();
     } catch (_) {}
+    try {
+      if (!kIsWeb) await FacebookAuth.instance.logOut();
+    } catch (_) {}
     await _repo.logout();
     state = const AuthState.unauthenticated();
   }
@@ -187,6 +192,126 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } on Exception catch (e) {
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
+        isLoading: false,
+        error: _extractMessage(e),
+      );
+    }
+  }
+
+  /// Authenticate with Apple via the native Sign in with Apple SDK, then
+  /// exchange the Apple identity token for a Teamly server JWT.
+  ///
+  /// Only available on iOS and macOS; the button must not be shown on other
+  /// platforms.
+  Future<void> loginWithApple() async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+      final identityToken = credential.identityToken;
+      if (identityToken == null) {
+        throw Exception('Apple sign-in did not return an identity token');
+      }
+      final user = await _repo.socialLogin(
+        provider: 'apple',
+        credentials: {
+          'identityToken': identityToken,
+          if (credential.givenName != null) 'givenName': credential.givenName!,
+          if (credential.familyName != null)
+            'familyName': credential.familyName!,
+          if (credential.email != null) 'email': credential.email!,
+        },
+      );
+      state = AuthState(status: AuthStatus.authenticated, user: user);
+      await _registerPushTokenSafely();
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        // User dismissed the sheet — treat as a no-op.
+        state = state.copyWith(isLoading: false);
+        return;
+      }
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        isLoading: false,
+        error: e.localizedDescription ?? 'Apple sign-in failed.',
+      );
+    } on MissingPluginException {
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        isLoading: false,
+        error: 'Apple Sign-In is not supported on this platform.',
+      );
+    } on Exception catch (e) {
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        isLoading: false,
+        error: _extractMessage(e),
+      );
+    }
+  }
+
+  /// Authenticate with Facebook via the native SDK, then exchange the
+  /// Facebook access token for a Teamly server JWT.
+  Future<void> loginWithFacebook() async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final result = await FacebookAuth.instance.login(
+        permissions: const ['email', 'public_profile'],
+      );
+      if (result.status == LoginStatus.cancelled) {
+        state = state.copyWith(isLoading: false);
+        return;
+      }
+      if (result.status != LoginStatus.success || result.accessToken == null) {
+        throw Exception(result.message ?? 'Facebook sign-in failed');
+      }
+      final user = await _repo.socialLogin(
+        provider: 'facebook',
+        credentials: {'accessToken': result.accessToken!.tokenString},
+      );
+      state = AuthState(status: AuthStatus.authenticated, user: user);
+      await _registerPushTokenSafely();
+    } on MissingPluginException {
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        isLoading: false,
+        error: 'Facebook Sign-In is not supported on this platform.',
+      );
+    } on Exception catch (e) {
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        isLoading: false,
+        error: _extractMessage(e),
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Account management
+  // -------------------------------------------------------------------------
+
+  /// Permanently deletes the current user's account.
+  ///
+  /// Calls `DELETE /auth/account` to soft-delete the server record and
+  /// revoke all active tokens, then clears local session state.
+  Future<void> deleteAccount() async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      await _disablePushTokenSafely();
+      try {
+        await _googleSignIn?.signOut();
+      } catch (_) {}
+      try {
+        if (!kIsWeb) await FacebookAuth.instance.logOut();
+      } catch (_) {}
+      await _repo.deleteAccount();
+      state = const AuthState.unauthenticated();
+    } on Exception catch (e) {
+      state = state.copyWith(
         isLoading: false,
         error: _extractMessage(e),
       );

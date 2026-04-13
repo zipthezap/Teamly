@@ -110,4 +110,7 @@ router.post('/oauth/sync-picture', authMiddleware, noCache, asyncHandler(authCon
 router.post('/forgot-password', distributedPasswordResetLimiter, noCache, asyncHandler(authController.requestPasswordReset));
 router.post('/reset-password', distributedPasswordResetLimiter, noCache, asyncHandler(authController.resetPassword));
 
+// Account deletion (authenticated, rate-limited)
+router.delete('/account', authMiddleware, authenticatedLimiter, noCache, asyncHandler(authController.deleteAccount));
+
 export default router;

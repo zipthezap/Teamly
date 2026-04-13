@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/theme/app_theme.dart';
 import '../features/auth/presentation/auth_page.dart';
+import '../features/auth/presentation/reset_password_page.dart';
 import '../features/auth/presentation/sessions_page.dart' as auth_presentation;
 import '../features/auth/state/auth_notifier.dart';
 import '../features/dashboard/presentation/dashboard_page.dart';
@@ -50,12 +51,14 @@ final _routerProvider = Provider<GoRouter>((ref) {
       final isPublicSessionInviteRoute =
           path.startsWith('/events/invite/') || path.startsWith('/events/join/');
       final isEmailVerifyRoute = path.startsWith('/email/verify/');
+      final isPasswordResetRoute = path.startsWith('/reset-password/');
 
       if (authState.status == AuthStatus.unknown) return null;
       if (!authState.isAuthenticated &&
           !isAuthRoute &&
           !isPublicSessionInviteRoute &&
-          !isEmailVerifyRoute) {
+          !isEmailVerifyRoute &&
+          !isPasswordResetRoute) {
         return '/auth';
       }
       if (authState.isAuthenticated && isAuthRoute) return '/dashboard';
@@ -66,6 +69,13 @@ final _routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/auth',
         builder: (context, state) => const AuthPage(),
+      ),
+
+      // Password reset deep link (public — accessible without auth)
+      GoRoute(
+        path: '/reset-password/:token',
+        builder: (context, state) =>
+            ResetPasswordPage(token: state.pathParameters['token']!),
       ),
       GoRoute(
         path: '/dashboard',

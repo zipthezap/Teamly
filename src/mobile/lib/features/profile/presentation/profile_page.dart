@@ -298,6 +298,104 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   // ─── Build ──────────────────────────────────────────────────────────────────
 
+  /// Shows a two-step confirmation dialog before permanently deleting the
+  /// account.  The user must type "DELETE" to proceed, matching the App Store
+  /// and Google Play requirement to make deletion intentional and irreversible.
+  Future<void> _deleteAccount() async {
+    // Step 1: explain what will be deleted and ask for confirmation.
+    final step1Confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete account?'),
+        content: const Text(
+          'This will permanently delete your account and all personal data '
+          'associated with it, including your profile, profile pictures, and '
+          'active sessions.\n\n'
+          'Group messages and session records you created will be preserved '
+          'for other users but will no longer be linked to an active account.\n\n'
+          'This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(ctx).colorScheme.error),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+
+    if (step1Confirmed != true || !mounted) return;
+
+    // Step 2: type "DELETE" to confirm — prevents accidental deletion.
+    final confirmCtrl = TextEditingController();
+    final step2Confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Confirm deletion'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Type DELETE in the box below to permanently delete your account.',
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: confirmCtrl,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'DELETE',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (_) => setDialogState(() {}),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                  backgroundColor: confirmCtrl.text == 'DELETE'
+                      ? Theme.of(ctx).colorScheme.error
+                      : null),
+              onPressed: confirmCtrl.text == 'DELETE'
+                  ? () => Navigator.of(ctx).pop(true)
+                  : null,
+              child: const Text('Delete my account'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    confirmCtrl.dispose();
+    if (step2Confirmed != true || !mounted) return;
+
+    try {
+      await ref.read(authNotifierProvider.notifier).deleteAccount();
+      if (mounted) context.go('/auth');
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(extractErrorMessage(e)),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authNotifierProvider);
@@ -393,6 +491,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     color: const Color(0xFF7C4DFF),
                     label: 'Connected accounts',
                     onTap: () => context.push('/profile/connected-accounts'),
+                  ),
+                  _TileData(
+                    icon: Icons.delete_forever_rounded,
+                    color: AppThemeTokens.error,
+                    label: 'Delete account',
+                    onTap: _deleteAccount,
                   ),
                 ]),
                 const SizedBox(height: 32),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -329,6 +330,29 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                               ? null
                               : () => ref.read(authNotifierProvider.notifier).loginWithGoogle(),
                         ),
+                        const SizedBox(height: 10),
+                        _SocialButton(
+                          label: 'Continue with Facebook',
+                          icon: const _FacebookIcon(),
+                          loading: authState.isLoading,
+                          onPressed: authState.isLoading
+                              ? null
+                              : () => ref.read(authNotifierProvider.notifier).loginWithFacebook(),
+                        ),
+                        // Apple Sign-In is only shown on Apple platforms (iOS / macOS)
+                        if (!kIsWeb &&
+                            (defaultTargetPlatform == TargetPlatform.iOS ||
+                                defaultTargetPlatform == TargetPlatform.macOS)) ...[
+                          const SizedBox(height: 10),
+                          _SocialButton(
+                            label: 'Continue with Apple',
+                            icon: const _AppleIcon(),
+                            loading: authState.isLoading,
+                            onPressed: authState.isLoading
+                                ? null
+                                : () => ref.read(authNotifierProvider.notifier).loginWithApple(),
+                          ),
+                        ],
                       ],
                     ),
 
@@ -499,6 +523,130 @@ class _GoogleLogoPainter extends CustomPainter {
       Offset(cx, cy),
       Offset(cx + r * 0.62, cy),
       barPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Facebook 'f' icon drawn with CustomPainter.
+class _FacebookIcon extends StatelessWidget {
+  const _FacebookIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(size: const Size(22, 22), painter: _FacebookLogoPainter());
+  }
+}
+
+class _FacebookLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final r = size.width / 2;
+
+    // Blue circle background
+    canvas.drawCircle(
+      Offset(cx, cy),
+      r,
+      Paint()..color = const Color(0xFF1877F2),
+    );
+
+    // White 'f' letter
+    final paint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+
+    // Vertical bar of 'f'
+    final barLeft = cx - r * 0.08;
+    final barTop = cy - r * 0.65;
+    final barWidth = r * 0.22;
+    final barBottom = cy + r * 0.72;
+    canvas.drawRect(
+      Rect.fromLTRB(barLeft, barTop, barLeft + barWidth, barBottom),
+      paint,
+    );
+
+    // Crossbar of 'f'
+    final crossTop = cy - r * 0.1;
+    final crossLeft = barLeft - r * 0.22;
+    final crossRight = barLeft + barWidth + r * 0.12;
+    canvas.drawRect(
+      Rect.fromLTRB(crossLeft, crossTop, crossRight, crossTop + barWidth),
+      paint,
+    );
+
+    // Top curve of 'f' (rounded head)
+    final headRadius = r * 0.3;
+    canvas.drawCircle(
+      Offset(barLeft + barWidth / 2, barTop + headRadius),
+      headRadius,
+      paint,
+    );
+    // Erase the inner part to make it a partial circle / just a rounded cap
+    canvas.drawRect(
+      Rect.fromLTRB(
+          barLeft, barTop + headRadius, barLeft + barWidth, barTop + headRadius * 2),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Apple logo icon using an Icon widget (available via Material icons set).
+class _AppleIcon extends StatelessWidget {
+  const _AppleIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    // Use a simple  icon representation. The  brand icon is not in
+    // Material icons, so we draw a stylised apple shape with CustomPainter.
+    return CustomPaint(size: const Size(22, 22), painter: _AppleLogoPainter());
+  }
+}
+
+class _AppleLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    final paint = Paint()
+      ..color = AppThemeTokens.darkText
+      ..style = PaintingStyle.fill;
+
+    // Draw a simple Apple-like silhouette using a Path.
+    final path = Path();
+    // Apple body (rough approximation)
+    path.moveTo(w * 0.50, h * 0.18);
+    path.cubicTo(w * 0.62, h * 0.04, w * 0.88, h * 0.10, w * 0.88, h * 0.38);
+    path.cubicTo(w * 0.88, h * 0.62, w * 0.78, h * 0.78, w * 0.66, h * 0.88);
+    path.cubicTo(w * 0.57, h * 0.96, w * 0.50, h * 0.96, w * 0.50, h * 0.96);
+    path.cubicTo(w * 0.50, h * 0.96, w * 0.43, h * 0.96, w * 0.34, h * 0.88);
+    path.cubicTo(w * 0.22, h * 0.78, w * 0.12, h * 0.62, w * 0.12, h * 0.38);
+    path.cubicTo(w * 0.12, h * 0.10, w * 0.38, h * 0.04, w * 0.50, h * 0.18);
+    path.close();
+    canvas.drawPath(path, paint);
+
+    // Leaf / stem
+    final stemPath = Path();
+    stemPath.moveTo(w * 0.50, h * 0.18);
+    stemPath.cubicTo(w * 0.50, h * 0.08, w * 0.60, h * 0.02, w * 0.66, h * 0.06);
+    stemPath.cubicTo(w * 0.60, h * 0.10, w * 0.52, h * 0.14, w * 0.50, h * 0.18);
+    stemPath.close();
+    canvas.drawPath(stemPath, paint);
+
+    // Bite out of the right side (white eraser circle)
+    canvas.drawCircle(
+      Offset(w * 0.78, h * 0.28),
+      w * 0.18,
+      Paint()
+        ..color = AppThemeTokens.darkCard
+        ..style = PaintingStyle.fill,
     );
   }
 

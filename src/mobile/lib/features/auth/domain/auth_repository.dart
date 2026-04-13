@@ -10,5 +10,6 @@ abstract class AuthRepository {
   Future<UserModel> socialLogin({required String provider, required Map<String, String> credentials});
   Future<UserModel> getProfile();
   Future<void> logout();
+  Future<void> deleteAccount();
   Future<String?> getToken();
 }
