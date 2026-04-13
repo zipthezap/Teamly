@@ -27,6 +27,21 @@ import { isRequired, parseCoordinates } from '../utils/validation';
 import { ensureResourceExists } from '../utils/controllerHelpers';
 import { isPrismaUniqueError } from '../utils/typeGuards';
 
+// ==================== CONSTANTS ====================
+
+const TOURNAMENT_VALID_STATUSES = ['draft', 'registration', 'in_progress', 'completed', 'cancelled'] as const;
+const INVITATION_EXPIRY_DAYS = 7;
+const MAX_PAGE_SIZE = 100;
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_NAME_LENGTH = 100;
+const MAX_DESCRIPTION_LENGTH = 2000;
+const MAX_POOL_NAME_LENGTH = 100;
+const MAX_PLAYER_NAME_LENGTH = 100;
+const MAX_TEAMS_UPPER_BOUND = 1000;
+
+// Re-export for use in tests
+export { INVITATION_EXPIRY_DAYS };
+
 // ==================== TOURNAMENT CRUD OPERATIONS ====================
 
 /**
@@ -86,6 +101,17 @@ export const createTournament = async (req: Request, res: Response) => {
 
   if (!sanitized.name) {
     throw new BadRequestError('Name cannot be empty or whitespace-only');
+  }
+  if (sanitized.name.length > MAX_NAME_LENGTH) {
+    throw new BadRequestError(`Name must be at most ${MAX_NAME_LENGTH} characters`);
+  }
+  if (sanitized.description && sanitized.description.length > MAX_DESCRIPTION_LENGTH) {
+    throw new BadRequestError(`Description must be at most ${MAX_DESCRIPTION_LENGTH} characters`);
+  }
+  if (maxTeams !== undefined && maxTeams !== null) {
+    if (maxTeams > MAX_TEAMS_UPPER_BOUND) {
+      throw new BadRequestError(`Max teams cannot exceed ${MAX_TEAMS_UPPER_BOUND}`);
+    }
   }
 
   // Validate dates
@@ -183,7 +209,11 @@ export const createTournament = async (req: Request, res: Response) => {
  * Get all tournaments (with optional filters)
  */
 export const getTournaments = async (req: Request, res: Response) => {
-  const { groupId, status, sportType } = req.query;
+  const { groupId, status, sportType, page, limit } = req.query;
+
+  const parsedPage = Math.max(1, parseInt(page as string, 10) || 1);
+  const parsedLimit = Math.min(Math.max(1, parseInt(limit as string, 10) || DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
+  const skip = (parsedPage - 1) * parsedLimit;
 
   const where: Record<string, unknown> = {};
 
@@ -199,26 +229,39 @@ export const getTournaments = async (req: Request, res: Response) => {
     where.sportType = sportType as string;
   }
 
-  const tournaments = await prisma.tournament.findMany({
-    where,
-    include: {
-      organizer: {
-        select: { id: true, name: true, email: true }
-      },
-      group: {
-        select: { id: true, name: true }
-      },
-      _count: {
-        select: {
-          teams: true,
-          matches: true
+  const [tournaments, total] = await Promise.all([
+    prisma.tournament.findMany({
+      where,
+      include: {
+        organizer: {
+          select: { id: true, name: true, email: true }
+        },
+        group: {
+          select: { id: true, name: true }
+        },
+        _count: {
+          select: {
+            teams: true,
+            matches: true
+          }
         }
-      }
-    },
-    orderBy: { startDate: 'desc' }
-  });
+      },
+      orderBy: { startDate: 'desc' },
+      skip,
+      take: parsedLimit,
+    }),
+    prisma.tournament.count({ where }),
+  ]);
 
-  res.json(tournaments);
+  res.json({
+    data: tournaments,
+    pagination: {
+      page: parsedPage,
+      limit: parsedLimit,
+      total,
+      totalPages: Math.ceil(total / parsedLimit),
+    },
+  });
 };
 
 /**
@@ -348,11 +391,17 @@ export const updateTournament = async (req: Request, res: Response) => {
     if (!sanitized.name) {
       throw new BadRequestError('Name cannot be empty or whitespace-only');
     }
+    if (sanitized.name.length > MAX_NAME_LENGTH) {
+      throw new BadRequestError(`Name must be at most ${MAX_NAME_LENGTH} characters`);
+    }
     updateData.name = sanitized.name;
   }
 
   if (description !== undefined) {
     const sanitized = tournamentService.sanitizeTournamentData({ description });
+    if (sanitized.description && sanitized.description.length > MAX_DESCRIPTION_LENGTH) {
+      throw new BadRequestError(`Description must be at most ${MAX_DESCRIPTION_LENGTH} characters`);
+    }
     updateData.description = sanitized.description || null;
   }
 
@@ -369,6 +418,9 @@ export const updateTournament = async (req: Request, res: Response) => {
   }
 
   if (maxTeams !== undefined) {
+    if (maxTeams > MAX_TEAMS_UPPER_BOUND) {
+      throw new BadRequestError(`Max teams cannot exceed ${MAX_TEAMS_UPPER_BOUND}`);
+    }
     updateData.maxTeams = maxTeams;
   }
 
@@ -1191,6 +1243,9 @@ export const addPlayer = async (req: Request, res: Response) => {
   if (!playerName) {
     throw new BadRequestError('Player name is required');
   }
+  if (playerName.length > MAX_PLAYER_NAME_LENGTH) {
+    throw new BadRequestError(`Player name must be at most ${MAX_PLAYER_NAME_LENGTH} characters`);
+  }
 
   const tournament = ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
@@ -1222,21 +1277,28 @@ export const addPlayer = async (req: Request, res: Response) => {
     }
   }
 
-  // Note: Prisma P2002 error (duplicate player) will be caught by error middleware
-  // which will return: "A record with this field already exists" (409 Conflict)
-  const player = await prisma.tournamentPlayer.create({
-    data: {
-      teamId,
-      userId: playerId,
-      playerName,
-      playerEmail
-    },
-    include: {
-      user: {
-        select: { id: true, name: true, email: true }
+  // Explicitly catch Prisma unique constraint violations (P2002) and return 409
+  let player;
+  try {
+    player = await prisma.tournamentPlayer.create({
+      data: {
+        teamId,
+        userId: playerId,
+        playerName,
+        playerEmail
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true }
+        }
       }
+    });
+  } catch (error: unknown) {
+    if (isPrismaUniqueError(error)) {
+      throw new BadRequestError('This player is already registered on this team');
     }
-  });
+    throw error;
+  }
 
   logger.info('Player added to team', 'TournamentController', {
     tournamentId: id,
@@ -1406,21 +1468,39 @@ export const removePlayer = async (req: Request, res: Response) => {
  */
 export const getPools = async (req: Request, res: Response) => {
   const { id } = req.params;
+  const { page, limit } = req.query;
 
-  const pools = await prisma.tournamentPool.findMany({
-    where: { tournamentId: id },
-    include: {
-      _count: {
-        select: {
-          teams: true,
-          waitlist: true
+  const parsedPage = Math.max(1, parseInt(page as string, 10) || 1);
+  const parsedLimit = Math.min(Math.max(1, parseInt(limit as string, 10) || DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
+  const skip = (parsedPage - 1) * parsedLimit;
+
+  const [pools, total] = await Promise.all([
+    prisma.tournamentPool.findMany({
+      where: { tournamentId: id },
+      include: {
+        _count: {
+          select: {
+            teams: true,
+            waitlist: true
+          }
         }
-      }
-    },
-    orderBy: { createdAt: 'asc' }
-  });
+      },
+      orderBy: { createdAt: 'asc' },
+      skip,
+      take: parsedLimit,
+    }),
+    prisma.tournamentPool.count({ where: { tournamentId: id } }),
+  ]);
 
-  res.json(pools);
+  res.json({
+    data: pools,
+    pagination: {
+      page: parsedPage,
+      limit: parsedLimit,
+      total,
+      totalPages: Math.ceil(total / parsedLimit),
+    },
+  });
 };
 
 /**
@@ -1477,8 +1557,16 @@ export const createPool = async (req: Request, res: Response) => {
     throw new BadRequestError('Pool name and max teams are required');
   }
 
+  if (name.trim().length > MAX_POOL_NAME_LENGTH) {
+    throw new BadRequestError(`Pool name must be at most ${MAX_POOL_NAME_LENGTH} characters`);
+  }
+
   if (maxTeams < 2) {
     throw new BadRequestError('Pool must allow at least 2 teams');
+  }
+
+  if (maxTeams > MAX_TEAMS_UPPER_BOUND) {
+    throw new BadRequestError(`Pool max teams cannot exceed ${MAX_TEAMS_UPPER_BOUND}`);
   }
 
   const tournament = ensureResourceExists(
@@ -1539,10 +1627,16 @@ export const updatePool = async (req: Request, res: Response) => {
   );
 
   const updateData: Record<string, unknown> = {};
-  if (name !== undefined) updateData.name = name;
+  if (name !== undefined) {
+    if (name.trim().length > MAX_POOL_NAME_LENGTH) {
+      throw new BadRequestError(`Pool name must be at most ${MAX_POOL_NAME_LENGTH} characters`);
+    }
+    updateData.name = name;
+  }
   if (description !== undefined) updateData.description = description || null;
   if (maxTeams !== undefined) {
     if (maxTeams < 2) throw new BadRequestError('Pool must allow at least 2 teams');
+    if (maxTeams > MAX_TEAMS_UPPER_BOUND) throw new BadRequestError(`Pool max teams cannot exceed ${MAX_TEAMS_UPPER_BOUND}`);
     const teamCount = await prisma.tournamentTeam.count({ where: { poolId } });
     if (maxTeams < teamCount) {
       throw new BadRequestError(`Cannot reduce max teams below current team count (${teamCount})`);
@@ -1644,90 +1738,103 @@ export const registerTeamToPool = async (req: Request, res: Response) => {
     throw new BadRequestError('Team is already registered to a pool');
   }
 
-  // Check if team is already on a waitlist
+  // Check if team is already on a waitlist for this specific pool (or any pool)
   const existingWaitlist = await prisma.tournamentPoolWaitlist.findFirst({
     where: { teamId }
   });
 
   if (existingWaitlist) {
+    if (existingWaitlist.poolId === poolId) {
+      throw new BadRequestError('Team is already on the waitlist for this pool');
+    }
     throw new BadRequestError('Team is already on a waitlist for another pool');
   }
 
-  const pool = ensureResourceExists(
-    await prisma.tournamentPool.findFirst({
+  // Wrap the capacity check and registration/waitlist insert in a transaction
+  // to prevent race conditions where two concurrent requests both see space available
+  // or both see the pool full and compute the same waitlist position.
+  const result = await prisma.$transaction(async (tx) => {
+    const pool = await tx.tournamentPool.findFirst({
       where: { id: poolId, tournamentId: id },
       include: { teams: true }
-    }),
-    'Pool'
-  );
-
-  // Check if pool is full
-  if (pool.teams.length >= pool.maxTeams) {
-    // Add to waitlist
-    const waitlistPosition = await prisma.tournamentPoolWaitlist.count({
-      where: { poolId }
     });
 
-    const waitlistEntry = await prisma.tournamentPoolWaitlist.create({
+    if (!pool) {
+      throw new NotFoundError('Pool not found');
+    }
+
+    if (pool.teams.length >= pool.maxTeams) {
+      // Pool full — add to waitlist atomically
+      const waitlistPosition = await tx.tournamentPoolWaitlist.count({
+        where: { poolId }
+      });
+
+      const waitlistEntry = await tx.tournamentPoolWaitlist.create({
+        data: {
+          poolId,
+          teamId,
+          position: waitlistPosition + 1
+        },
+        include: {
+          pool: true,
+          team: {
+            include: {
+              captainUser: {
+                select: { id: true, name: true, email: true }
+              }
+            }
+          }
+        }
+      });
+
+      return { type: 'waitlist' as const, waitlistEntry, position: waitlistPosition + 1 };
+    }
+
+    // Space available — register atomically
+    const registrationOrder = pool.teams.length + 1;
+
+    const updatedTeam = await tx.tournamentTeam.update({
+      where: { id: teamId },
       data: {
         poolId,
-        teamId,
-        position: waitlistPosition + 1
+        poolName: pool.name,
+        registrationOrder
       },
       include: {
         pool: true,
-        team: {
-          include: {
-            captainUser: {
-              select: { id: true, name: true, email: true }
-            }
-          }
+        captainUser: {
+          select: { id: true, name: true, email: true }
         }
       }
     });
 
+    return { type: 'registered' as const, updatedTeam, registrationOrder };
+  });
+
+  if (result.type === 'waitlist') {
     logger.info('Team added to pool waitlist', 'TournamentController', {
       tournamentId: id,
       poolId,
       teamId,
-      position: waitlistPosition + 1,
+      position: result.position,
       userId
     });
 
     return res.status(201).json({
       message: 'Pool is full. Team added to waitlist',
-      waitlist: waitlistEntry
+      waitlist: result.waitlistEntry
     });
   }
-
-  // Register team to pool
-  const registrationOrder = pool.teams.length + 1;
-
-  const updatedTeam = await prisma.tournamentTeam.update({
-    where: { id: teamId },
-    data: {
-      poolId,
-      poolName: pool.name,
-      registrationOrder
-      // Note: poolNumber is legacy field, poolId is now the primary pool reference
-    },
-    include: {
-      pool: true,
-      captainUser: {
-        select: { id: true, name: true, email: true }
-      }
-    }
-  });
 
   logger.info('Team registered to pool', 'TournamentController', {
     tournamentId: id,
     poolId,
     teamId,
-    registrationOrder,
+    registrationOrder: result.registrationOrder,
     userId
   });
 
-  res.json(updatedTeam);
+  res.json(result.updatedTeam);
 };
 
 /**
@@ -1758,15 +1865,69 @@ export const removeTeamFromPool = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the organizer or team captain can remove teams from pools');
   }
 
-  // Remove team from pool
-  await prisma.tournamentTeam.update({
-    where: { id: teamId },
-    data: {
-      poolId: null,
-      poolNumber: null,
-      poolName: null,
-      registrationOrder: null
+  // Remove team from pool and handle waitlist promotion atomically
+  const promotionResult = await prisma.$transaction(async (tx) => {
+    // Remove team from pool
+    await tx.tournamentTeam.update({
+      where: { id: teamId },
+      data: {
+        poolId: null,
+        poolNumber: null,
+        poolName: null,
+        registrationOrder: null
+      }
+    });
+
+    // Check for waitlist and promote first team
+    const firstWaitlistEntry = await tx.tournamentPoolWaitlist.findFirst({
+      where: { poolId },
+      orderBy: { position: 'asc' },
+      include: { team: true }
+    });
+
+    if (!firstWaitlistEntry) {
+      return null;
     }
+
+    const pool = await tx.tournamentPool.findUnique({
+      where: { id: poolId },
+      include: { teams: true }
+    });
+
+    if (!pool) {
+      return null;
+    }
+
+    const registrationOrder = pool.teams.length + 1;
+
+    await tx.tournamentTeam.update({
+      where: { id: firstWaitlistEntry.teamId },
+      data: {
+        poolId,
+        poolName: pool.name,
+        registrationOrder
+      }
+    });
+
+    await tx.tournamentPoolWaitlist.delete({
+      where: { id: firstWaitlistEntry.id }
+    });
+
+    // Reorder remaining waitlist entries
+    const remainingEntries = await tx.tournamentPoolWaitlist.findMany({
+      where: { poolId, position: { gt: firstWaitlistEntry.position } }
+    });
+
+    await Promise.all(
+      remainingEntries.map(entry =>
+        tx.tournamentPoolWaitlist.update({
+          where: { id: entry.id },
+          data: { position: entry.position - 1 }
+        })
+      )
+    );
+
+    return firstWaitlistEntry.team;
   });
 
   logger.info('Team removed from pool', 'TournamentController', {
@@ -1776,60 +1937,17 @@ export const removeTeamFromPool = async (req: Request, res: Response) => {
     userId
   });
 
-  // Check for waitlist and promote first team
-  const firstWaitlistEntry = await prisma.tournamentPoolWaitlist.findFirst({
-    where: { poolId },
-    orderBy: { position: 'asc' },
-    include: { team: true }
-  });
-
-  if (firstWaitlistEntry) {
-    const pool = await prisma.tournamentPool.findUnique({
-      where: { id: poolId },
-      include: { teams: true }
+  if (promotionResult) {
+    logger.info('Team promoted from waitlist', 'TournamentController', {
+      tournamentId: id,
+      poolId,
+      promotedTeamId: promotionResult.id
     });
 
-    if (pool) {
-      const registrationOrder = pool.teams.length + 1;
-
-      await prisma.tournamentTeam.update({
-        where: { id: firstWaitlistEntry.teamId },
-        data: {
-          poolId,
-          poolName: pool.name,
-          registrationOrder
-        }
-      });
-
-      await prisma.tournamentPoolWaitlist.delete({
-        where: { id: firstWaitlistEntry.id }
-      });
-
-      const remainingEntries = await prisma.tournamentPoolWaitlist.findMany({
-        where: { poolId, position: { gt: firstWaitlistEntry.position } }
-      });
-
-      await Promise.all(
-        remainingEntries.map(entry =>
-          prisma.tournamentPoolWaitlist.update({
-            where: { id: entry.id },
-            data: { position: entry.position - 1 }
-          })
-        )
-      );
-
-      logger.info('Team promoted from waitlist', 'TournamentController', {
-        tournamentId: id,
-        poolId,
-        promotedTeamId: firstWaitlistEntry.teamId,
-        previousPosition: firstWaitlistEntry.position
-      });
-
-      return res.json({
-        message: 'Team removed from pool and first waitlist team promoted',
-        promotedTeam: firstWaitlistEntry.team
-      });
-    }
+    return res.json({
+      message: 'Team removed from pool and first waitlist team promoted',
+      promotedTeam: promotionResult
+    });
   }
 
   // Suppress unused variable warning
@@ -1867,24 +1985,25 @@ export const removeTeamFromWaitlist = async (req: Request, res: Response) => {
     'Team not found in waitlist'
   );
 
-  // Remove from waitlist
-  await prisma.tournamentPoolWaitlist.delete({
-    where: { id: waitlistEntry.id }
-  });
+  // Remove from waitlist and reorder remaining entries atomically
+  await prisma.$transaction(async (tx) => {
+    await tx.tournamentPoolWaitlist.delete({
+      where: { id: waitlistEntry.id }
+    });
 
-  // Update positions for remaining entries
-  const remainingEntries = await prisma.tournamentPoolWaitlist.findMany({
-    where: { poolId, position: { gt: waitlistEntry.position } }
-  });
+    const remainingEntries = await tx.tournamentPoolWaitlist.findMany({
+      where: { poolId, position: { gt: waitlistEntry.position } }
+    });
 
-  await Promise.all(
-    remainingEntries.map(entry =>
-      prisma.tournamentPoolWaitlist.update({
-        where: { id: entry.id },
-        data: { position: entry.position - 1 }
-      })
-    )
-  );
+    await Promise.all(
+      remainingEntries.map(entry =>
+        tx.tournamentPoolWaitlist.update({
+          where: { id: entry.id },
+          data: { position: entry.position - 1 }
+        })
+      )
+    );
+  });
 
   logger.info('Team removed from waitlist', 'TournamentController', {
     tournamentId: id,
@@ -1973,19 +2092,29 @@ export const sendTeamInvitation = async (req: Request, res: Response) => {
     message
   );
 
-  // Send email notification
-  const inviteUrl = `${process.env.FRONTEND_URL}/tournaments/${id}/teams/${teamId}/invitations/${invitation.inviteToken}/accept`;
-  const { sendEmail } = await import('../utils/emailService');
-  await sendEmail(
-    inviteeEmail,
-    'tournamentTeamInvitation',
-    inviteeName || inviteeEmail,
-    req.user!.name,
-    team.name,
-    tournament.name,
-    inviteUrl,
-    message
-  );
+  // Send email notification — failure is non-fatal (invitation is already created)
+  try {
+    const inviteUrl = `${process.env.FRONTEND_URL}/tournaments/${id}/teams/${teamId}/invitations/${invitation.inviteToken}/accept`;
+    const { sendEmail } = await import('../utils/emailService');
+    await sendEmail(
+      inviteeEmail,
+      'tournamentTeamInvitation',
+      inviteeName || inviteeEmail,
+      req.user!.name,
+      team.name,
+      tournament.name,
+      inviteUrl,
+      message
+    );
+  } catch (emailError) {
+    logger.error('Failed to send team invitation email', 'TournamentController', {
+      tournamentId: id,
+      teamId,
+      inviteeEmail,
+      error: emailError
+    });
+    // Continue — the invitation record was created successfully
+  }
 
   logger.info('Team invitation sent', 'TournamentController', {
     tournamentId: id,
@@ -2166,27 +2295,45 @@ export const cancelTeamInvitation = async (req: Request, res: Response) => {
  */
 export const getCategories = async (req: Request, res: Response) => {
   const { id } = req.params;
+  const { page, limit } = req.query;
+
+  const parsedPage = Math.max(1, parseInt(page as string, 10) || 1);
+  const parsedLimit = Math.min(Math.max(1, parseInt(limit as string, 10) || DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
+  const skip = (parsedPage - 1) * parsedLimit;
 
   const tournament = await prisma.tournament.findUnique({ where: { id } });
   ensureResourceExists(tournament, 'Tournament');
 
-  const categories = await prisma.tournamentCategory.findMany({
-    where: { tournamentId: id },
-    orderBy: { sortOrder: 'asc' },
-    include: {
-      pools: {
-        include: {
-          teams: { select: { id: true, name: true } },
-          waitlist: {
-            orderBy: { position: 'asc' },
-            include: { team: { select: { id: true, name: true } } }
+  const [categories, total] = await Promise.all([
+    prisma.tournamentCategory.findMany({
+      where: { tournamentId: id },
+      orderBy: { sortOrder: 'asc' },
+      skip,
+      take: parsedLimit,
+      include: {
+        pools: {
+          include: {
+            teams: { select: { id: true, name: true } },
+            waitlist: {
+              orderBy: { position: 'asc' },
+              include: { team: { select: { id: true, name: true } } }
+            }
           }
         }
       }
-    }
-  });
+    }),
+    prisma.tournamentCategory.count({ where: { tournamentId: id } }),
+  ]);
 
-  res.json(categories);
+  res.json({
+    data: categories,
+    pagination: {
+      page: parsedPage,
+      limit: parsedLimit,
+      total,
+      totalPages: Math.ceil(total / parsedLimit),
+    },
+  });
 };
 
 /**
@@ -2198,6 +2345,9 @@ export const createCategory = async (req: Request, res: Response) => {
   const { name, description, sortOrder } = req.body;
 
   isRequired(name, 'Name');
+  if (name.trim().length > MAX_NAME_LENGTH) {
+    throw new BadRequestError(`Category name must be at most ${MAX_NAME_LENGTH} characters`);
+  }
 
   const tournament = await prisma.tournament.findUnique({ where: { id } });
   ensureResourceExists(tournament, 'Tournament');
@@ -2397,6 +2547,20 @@ export const addAdmin = async (req: Request, res: Response) => {
     throw new BadRequestError('You cannot add yourself as a co-organizer (you are already the organizer)');
   }
 
+  // Only users with verified email addresses can be granted admin roles
+  const targetUser = await prisma.user.findUnique({
+    where: { id: resolvedUserId },
+    select: { id: true, emailVerified: true, deletedAt: true }
+  });
+
+  if (!targetUser || targetUser.deletedAt) {
+    throw new BadRequestError('User not found');
+  }
+
+  if (!targetUser.emailVerified) {
+    throw new BadRequestError('Cannot grant admin role to a user with an unverified email address');
+  }
+
   try {
     const adminRole = await prisma.tournamentAdminRole.create({
       data: {
@@ -2432,6 +2596,12 @@ export const removeAdmin = async (req: Request, res: Response) => {
 
   if (!tournamentService.isOrganizer(tournament!, userId)) {
     throw new ForbiddenError('Only the organizer can remove admin roles');
+  }
+
+  // The tournament organizer is always an admin by virtue of their organizerId.
+  // Prevent removing an admin entry that belongs to the organizer themselves.
+  if (adminUserId === tournament!.organizerId) {
+    throw new BadRequestError('Cannot remove the tournament organizer from admin roles');
   }
 
   const adminRole = await prisma.tournamentAdminRole.findFirst({
@@ -2534,9 +2704,8 @@ export const updateTournamentStatus = async (req: Request, res: Response) => {
   const userId = req.user!.id;
   const { status } = req.body;
 
-  const allowedStatuses = ['draft', 'registration', 'in_progress', 'completed', 'cancelled'];
-  if (!status || !allowedStatuses.includes(status)) {
-    throw new BadRequestError(`Invalid status. Must be one of: ${allowedStatuses.join(', ')}`);
+  if (!status || !TOURNAMENT_VALID_STATUSES.includes(status as typeof TOURNAMENT_VALID_STATUSES[number])) {
+    throw new BadRequestError(`Invalid status. Must be one of: ${TOURNAMENT_VALID_STATUSES.join(', ')}`);
   }
 
   const tournament = ensureResourceExists(
@@ -2565,6 +2734,23 @@ export const updateTournamentStatus = async (req: Request, res: Response) => {
     );
   }
 
+  // Enforce pre-conditions for each transition
+  if (status === 'registration') {
+    // draft → registration: require at least one pool
+    const poolCount = await prisma.tournamentPool.count({ where: { tournamentId: id } });
+    if (poolCount === 0) {
+      throw new BadRequestError('Cannot open registration: tournament must have at least one pool');
+    }
+  }
+
+  if (status === 'in_progress') {
+    // registration → in_progress: require at least 2 registered teams
+    const teamCount = await prisma.tournamentTeam.count({ where: { tournamentId: id } });
+    if (teamCount < 2) {
+      throw new BadRequestError('Cannot start tournament: at least 2 teams must be registered');
+    }
+  }
+
   const updated = await prisma.tournament.update({
     where: { id },
     data: { status },
@@ -2573,6 +2759,38 @@ export const updateTournamentStatus = async (req: Request, res: Response) => {
       group: { select: { id: true, name: true } },
     },
   });
+
+  // On cancellation, notify all registered teams via tournament notifications
+  if (status === 'cancelled') {
+    try {
+      const teams = await prisma.tournamentTeam.findMany({
+        where: { tournamentId: id },
+        include: { captainUser: { select: { id: true } } }
+      });
+
+      await Promise.all(
+        teams
+          .filter(team => team.captainUserId)
+          .map(team =>
+            prisma.tournamentNotification.create({
+              data: {
+                userId: team.captainUserId!,
+                tournamentId: id,
+                type: 'tournament_cancelled',
+                params: { tournamentName: tournament.name },
+                metadata: { cancelledBy: userId }
+              }
+            })
+          )
+      );
+    } catch (notifError) {
+      logger.error('Failed to send cancellation notifications', 'TournamentController', {
+        tournamentId: id,
+        error: notifError
+      });
+      // Non-fatal: status update already succeeded
+    }
+  }
 
   logger.info('Tournament status updated', 'TournamentController', {
     tournamentId: id,
@@ -2587,22 +2805,39 @@ export const updateTournamentStatus = async (req: Request, res: Response) => {
 // ==================== PUBLIC DISCOVERY ====================
 
 export const getPublicTournaments = async (req: Request, res: Response) => {
-  const { sportType, status } = req.query;
+  const { sportType, status, page, limit } = req.query;
+
+  const parsedPage = Math.max(1, parseInt(page as string, 10) || 1);
+  const parsedLimit = Math.min(Math.max(1, parseInt(limit as string, 10) || DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
+  const skip = (parsedPage - 1) * parsedLimit;
+
   const where: Record<string, unknown> = { isPublic: true };
   if (sportType) where.sportType = sportType;
   if (status) where.status = status;
 
-  const tournaments = await prisma.tournament.findMany({
-    where,
-    include: {
-      organizer: { select: { id: true, name: true } },
-      _count: { select: { teams: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-  });
+  const [tournaments, total] = await Promise.all([
+    prisma.tournament.findMany({
+      where,
+      include: {
+        organizer: { select: { id: true, name: true } },
+        _count: { select: { teams: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: parsedLimit,
+    }),
+    prisma.tournament.count({ where }),
+  ]);
 
-  res.json(tournaments);
+  res.json({
+    data: tournaments,
+    pagination: {
+      page: parsedPage,
+      limit: parsedLimit,
+      total,
+      totalPages: Math.ceil(total / parsedLimit),
+    },
+  });
 };
 
 // ==================== NOTIFICATIONS ====================
@@ -2610,6 +2845,11 @@ export const getPublicTournaments = async (req: Request, res: Response) => {
 export const getTournamentNotifications = async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = req.user!.id;
+  const { page, limit } = req.query;
+
+  const parsedPage = Math.max(1, parseInt(page as string, 10) || 1);
+  const parsedLimit = Math.min(Math.max(1, parseInt(limit as string, 10) || DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
+  const skip = (parsedPage - 1) * parsedLimit;
 
   const tournament = ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
@@ -2621,11 +2861,23 @@ export const getTournamentNotifications = async (req: Request, res: Response) =>
     throw new ForbiddenError('Only the organizer or a co-organizer can view notifications');
   }
 
-  const notifications = await prisma.tournamentNotification.findMany({
-    where: { tournamentId: id },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-  });
+  const [notifications, total] = await Promise.all([
+    prisma.tournamentNotification.findMany({
+      where: { tournamentId: id },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: parsedLimit,
+    }),
+    prisma.tournamentNotification.count({ where: { tournamentId: id } }),
+  ]);
 
-  res.json(notifications);
+  res.json({
+    data: notifications,
+    pagination: {
+      page: parsedPage,
+      limit: parsedLimit,
+      total,
+      totalPages: Math.ceil(total / parsedLimit),
+    },
+  });
 };
