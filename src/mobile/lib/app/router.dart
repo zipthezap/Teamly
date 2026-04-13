@@ -52,13 +52,15 @@ final _routerProvider = Provider<GoRouter>((ref) {
           path.startsWith('/events/invite/') || path.startsWith('/events/join/');
       final isEmailVerifyRoute = path.startsWith('/email/verify/');
       final isPasswordResetRoute = path.startsWith('/reset-password/');
+      final isTournamentInviteRoute = path.startsWith('/tournaments/invite/');
 
       if (authState.status == AuthStatus.unknown) return null;
       if (!authState.isAuthenticated &&
           !isAuthRoute &&
           !isPublicSessionInviteRoute &&
           !isEmailVerifyRoute &&
-          !isPasswordResetRoute) {
+          !isPasswordResetRoute &&
+          !isTournamentInviteRoute) {
         return '/auth';
       }
       if (authState.isAuthenticated && isAuthRoute) return '/dashboard';
@@ -200,11 +202,41 @@ final _routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const CreateTournamentPage(),
           ),
           GoRoute(
+            path: 'invitations',
+            builder: (context, state) => const MyInvitationsPage(),
+          ),
+          GoRoute(
             path: ':id',
             builder: (context, state) => TournamentDetailPage(
                 tournamentId: state.pathParameters['id']!),
+            routes: [
+              GoRoute(
+                path: 'register',
+                builder: (context, state) => RegisterTeamPage(
+                    tournamentId: state.pathParameters['id']!),
+              ),
+              GoRoute(
+                path: 'admins',
+                builder: (context, state) => AdminManagementPage(
+                    tournamentId: state.pathParameters['id']!),
+              ),
+              GoRoute(
+                path: 'teams/:teamId/roster',
+                builder: (context, state) => TeamRosterPage(
+                  tournamentId: state.pathParameters['id']!,
+                  teamId: state.pathParameters['teamId']!,
+                ),
+              ),
+            ],
           ),
         ],
+      ),
+
+      // Tournament invitation deep link (public — accessible without auth)
+      GoRoute(
+        path: '/tournaments/invite/:token',
+        builder: (context, state) =>
+            TournamentInvitePage(inviteToken: state.pathParameters['token']!),
       ),
 
       // Leagues
