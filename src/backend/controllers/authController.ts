@@ -405,6 +405,13 @@ export const requestPasswordReset = async (req: Request, res: Response): Promise
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
   const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
 
+  // Optionally include a mobile deep-link when MOBILE_APP_SCHEME is configured
+  // e.g. MOBILE_APP_SCHEME=teamly  →  teamly://reset-password/TOKEN
+  const mobileScheme = process.env.MOBILE_APP_SCHEME;
+  const mobileSection = mobileScheme
+    ? `<p>Using the Teamly mobile app? <a href="${mobileScheme}://reset-password/${resetToken}">Open in app</a></p>`
+    : '';
+
   await sendEmail(
     user.email,
     'Password Reset Request',
@@ -413,6 +420,7 @@ export const requestPasswordReset = async (req: Request, res: Response): Promise
       <p>Hi ${user.name},</p>
       <p>You requested to reset your password. Click the link below to reset it:</p>
       <p><a href="${resetUrl}">${resetUrl}</a></p>
+      ${mobileSection}
       <p>This link will expire in 1 hour.</p>
       <p>If you didn't request this, please ignore this email.</p>
     `
@@ -1255,4 +1263,47 @@ export const mobileAppleLogin = async (req: Request, res: Response): Promise<voi
 
   const profile = await verifyAppleToken(identityToken, givenName, familyName, email);
   await handleMobileOAuth(req, res, 'apple', profile);
+};
+
+// ---------------------------------------------------------------------------
+// Account deletion
+// ---------------------------------------------------------------------------
+
+/**
+ * DELETE /auth/account
+ *
+ * Soft-deletes the authenticated user's account by setting `deletedAt`.
+ * All active tokens are revoked immediately so subsequent requests are
+ * rejected by the auth middleware, regardless of token expiry.
+ *
+ * Data that is deleted / anonymised:
+ *   - User record (soft-deleted via `deletedAt` timestamp)
+ *   - All refresh tokens and active sessions (hard-revoked)
+ *   - Push device tokens (removed from future notification delivery)
+ *
+ * Data that is retained for integrity:
+ *   - Group messages, session records, and other relational data are
+ *     preserved with their existing foreign keys so that other users'
+ *     history is not broken. Personal identifiers in those records
+ *     remain but the parent user row is no longer accessible.
+ */
+export const deleteAccount = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user!.id;
+
+  // Revoke all tokens before soft-deleting so the current session is
+  // immediately invalidated even before the client clears its local state.
+  await revokeAllUserTokens(userId, 'account_deletion');
+
+  // Remove push device tokens so the deleted account no longer receives
+  // push notifications.
+  await prisma.pushDeviceToken.deleteMany({ where: { userId } });
+
+  // Soft-delete the user record.
+  await prisma.user.update({
+    where: { id: userId },
+    data: { deletedAt: new Date() },
+  });
+
+  logger.info('User account deleted', 'AuthController', { userId });
+  res.json({ message: 'Your account has been deleted.' });
 };

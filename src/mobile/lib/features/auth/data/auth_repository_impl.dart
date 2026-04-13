@@ -112,6 +112,15 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<void> deleteAccount() async {
+    try {
+      await _dio.delete<void>('/auth/account');
+    } finally {
+      await _tokenStore.clear();
+    }
+  }
+
+  @override
   Future<String?> getToken() => _tokenStore.getToken();
 }
 
