@@ -101,7 +101,7 @@ class TournamentRepositoryImpl implements TournamentRepository {
   Future<List<TournamentPoolModel>> getPools(String tournamentId) async {
     final response =
         await _dio.get<dynamic>('/tournaments/$tournamentId/pools');
-    final items = _extractList(response.data);
+    final items = _extractList(response.data, ['data']);
     return items
         .map((e) =>
             TournamentPoolModel.fromJson(e as Map<String, dynamic>))
@@ -162,7 +162,7 @@ class TournamentRepositoryImpl implements TournamentRepository {
       String tournamentId) async {
     final response =
         await _dio.get<dynamic>('/tournaments/$tournamentId/categories');
-    final items = _extractList(response.data);
+    final items = _extractList(response.data, ['data']);
     return items
         .map((e) =>
             TournamentCategoryModel.fromJson(e as Map<String, dynamic>))

@@ -253,6 +253,25 @@ export const getTournaments = async (req: Request, res: Response) => {
     prisma.tournament.count({ where }),
   ]);
 
+  // Auto-advance statuses based on tournament dates (fire-and-forget)
+  const statusUpdates: { id: string; status: string }[] = [];
+  for (const t of tournaments) {
+    const autoStatus = tournamentService.computeAutoStatus(t);
+    if (autoStatus) {
+      statusUpdates.push({ id: t.id, status: autoStatus });
+      (t as Record<string, unknown>).status = autoStatus;
+    }
+  }
+  if (statusUpdates.length > 0) {
+    Promise.all(
+      statusUpdates.map(({ id, status }) =>
+        prisma.tournament.update({ where: { id }, data: { status } })
+      )
+    ).catch((err: unknown) =>
+      logger.warn('Auto-status batch update failed', 'TournamentController', { error: err })
+    );
+  }
+
   res.json({
     data: tournaments,
     pagination: {
