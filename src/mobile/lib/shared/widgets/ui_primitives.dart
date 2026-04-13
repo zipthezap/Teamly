@@ -163,6 +163,9 @@ class UiEmptyState extends StatelessWidget {
     this.action,
     this.actionLabel,
     this.actionIcon,
+    this.secondaryAction,
+    this.secondaryActionLabel,
+    this.secondaryActionIcon,
   });
 
   final IconData icon;
@@ -171,6 +174,9 @@ class UiEmptyState extends StatelessWidget {
   final VoidCallback? action;
   final String? actionLabel;
   final IconData? actionIcon;
+  final VoidCallback? secondaryAction;
+  final String? secondaryActionLabel;
+  final IconData? secondaryActionIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -230,6 +236,26 @@ class UiEmptyState extends StatelessWidget {
                 onPressed: action,
                 fullWidth: false,
                 icon: actionIcon ?? Icons.add,
+              ),
+            ],
+            if (secondaryAction != null && secondaryActionLabel != null) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: secondaryAction,
+                icon: Icon(secondaryActionIcon ?? Icons.arrow_forward_rounded,
+                    size: 16),
+                label: Text(secondaryActionLabel!),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppThemeTokens.primary400,
+                  side: BorderSide(
+                      color: AppThemeTokens.primary500.withValues(alpha: 0.5)),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(AppThemeTokens.radiusMd),
+                  ),
+                ),
               ),
             ],
           ],

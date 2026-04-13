@@ -116,9 +116,15 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
       await ref.read(groupRepositoryProvider).requestJoinGroup(group.id);
       ref.invalidate(myJoinRequestsProvider);
       if (mounted) {
+        final message = group.autoApproveJoinRequests
+            ? 'You joined "${group.name}"!'
+            : 'Join request sent to "${group.name}"';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Join request sent to "${group.name}"')),
+          SnackBar(content: Text(message)),
         );
+        if (group.autoApproveJoinRequests) {
+          ref.read(groupsNotifierProvider.notifier).reload();
+        }
       }
     } on Exception catch (e) {
       if (mounted) {
@@ -516,7 +522,9 @@ class _PublicGroupCard extends StatelessWidget {
                       : hasPendingRequest
                           ? _SmallPendingButton()
                           : _SmallFilledButton(
-                              label: 'Apply',
+                              label: group.autoApproveJoinRequests
+                                  ? 'Join'
+                                  : 'Apply',
                               color: AppThemeTokens.primary500,
                               onPressed: onApply,
                             ),

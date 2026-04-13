@@ -143,6 +143,10 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
                   action: () => context.push('/groups/new'),
                   actionLabel: 'Create Group',
                   actionIcon: Icons.group_add_rounded,
+                  secondaryAction: () =>
+                      context.push('/discover/public-groups'),
+                  secondaryActionLabel: 'Discover Groups',
+                  secondaryActionIcon: Icons.explore_outlined,
                 );
               }
 
