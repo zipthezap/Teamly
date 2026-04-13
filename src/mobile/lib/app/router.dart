@@ -35,6 +35,8 @@ import '../features/leagues/presentation/leagues_page.dart';
 import '../features/leagues/presentation/league_detail_page.dart';
 import '../features/leagues/presentation/create_league_page.dart';
 import '../features/two_factor/presentation/two_factor_page.dart';
+import '../features/profile/presentation/email_preferences_page.dart';
+import '../features/profile/presentation/email_verify_page.dart';
 import '../features/session_requests/presentation/session_requests_page.dart';
 import '../core/error/app_exception.dart';
 
@@ -47,11 +49,13 @@ final _routerProvider = Provider<GoRouter>((ref) {
       final isAuthRoute = state.matchedLocation == '/auth';
       final isPublicSessionInviteRoute =
           path.startsWith('/events/invite/') || path.startsWith('/events/join/');
+      final isEmailVerifyRoute = path.startsWith('/email/verify/');
 
       if (authState.status == AuthStatus.unknown) return null;
       if (!authState.isAuthenticated &&
           !isAuthRoute &&
-          !isPublicSessionInviteRoute) {
+          !isPublicSessionInviteRoute &&
+          !isEmailVerifyRoute) {
         return '/auth';
       }
       if (authState.isAuthenticated && isAuthRoute) return '/dashboard';
@@ -216,6 +220,13 @@ final _routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const NotificationsPage(),
       ),
 
+      // Email verification deep link (public — accessible without auth)
+      GoRoute(
+        path: '/email/verify/:token',
+        builder: (context, state) =>
+            EmailVerifyPage(token: state.pathParameters['token']!),
+      ),
+
       // Profile
       GoRoute(
         path: '/profile',
@@ -224,6 +235,10 @@ final _routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'notification-preferences',
             builder: (context, state) => const NotificationPreferencesPage(),
+          ),
+          GoRoute(
+            path: 'email-preferences',
+            builder: (context, state) => const EmailPreferencesPage(),
           ),
           GoRoute(
             path: 'two-factor',

@@ -11,8 +11,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_mode_controller.dart';
 import '../../../features/auth/state/auth_notifier.dart';
-import '../../../shared/widgets/ui_primitives.dart';
-import '../../../shared/widgets/user_avatar.dart';
+import '../data/email_preferences_repository_impl.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -247,7 +246,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       case ThemeMode.dark:
         return 'Dark mode';
       case ThemeMode.system:
-        return 'Light mode';
+        return 'System default';
     }
   }
 
@@ -277,6 +276,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 groupValue: selectedMode,
                 onChanged: (value) => Navigator.of(context).pop(value),
                 title: const Text('Dark'),
+              ),
+              RadioListTile<ThemeMode>(
+                value: ThemeMode.system,
+                groupValue: selectedMode,
+                onChanged: (value) => Navigator.of(context).pop(value),
+                title: const Text('System default'),
               ),
             ],
           ),
@@ -357,6 +362,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     label: 'Notification preferences',
                     onTap: () =>
                         context.push('/profile/notification-preferences'),
+                  ),
+                  _TileData(
+                    icon: Icons.email_outlined,
+                    color: const Color(0xFF00BCD4),
+                    label: 'Email preferences',
+                    onTap: () => context.push('/profile/email-preferences'),
                   ),
                   _TileData(
                     icon: Icons.alarm_rounded,
@@ -579,12 +590,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               status: UiStatusType.success,
               dot: true,
             )
-          else
+          else ...[
             UiStatusBadge(
               label: 'Email not verified',
               status: UiStatusType.warning,
               dot: true,
             ),
+            const SizedBox(height: 8),
+            const _SendVerificationButton(),
+          ],
           // Location row
           if ((user.city != null && user.city!.isNotEmpty) ||
               (user.country != null && user.country!.isNotEmpty)) ...[
@@ -910,6 +924,80 @@ class _SettingsTile extends StatelessWidget {
         Icons.arrow_forward_ios_rounded,
         size: 14,
         color: arrowColor,
+      ),
+    );
+  }
+}
+
+/// Small button shown below the "Email not verified" badge that lets users
+/// trigger a verification email directly from their profile hero.
+class _SendVerificationButton extends ConsumerStatefulWidget {
+  const _SendVerificationButton();
+
+  @override
+  ConsumerState<_SendVerificationButton> createState() =>
+      _SendVerificationButtonState();
+}
+
+class _SendVerificationButtonState
+    extends ConsumerState<_SendVerificationButton> {
+  bool _sending = false;
+  bool _sent = false;
+
+  Future<void> _send() async {
+    if (_sending || _sent) return;
+    setState(() => _sending = true);
+    try {
+      await ref
+          .read(emailPreferencesRepositoryProvider)
+          .sendVerificationEmail();
+      if (mounted) setState(() { _sent = true; _sending = false; });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Verification email sent — check your inbox')),
+        );
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        setState(() => _sending = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(extractErrorMessage(e)),
+            backgroundColor: AppThemeTokens.error,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      onPressed: (_sending || _sent) ? null : _send,
+      icon: _sending
+          ? const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: AppThemeTokens.warning),
+            )
+          : Icon(
+              _sent ? Icons.check_rounded : Icons.send_outlined,
+              size: 14,
+              color: AppThemeTokens.warning,
+            ),
+      label: Text(
+        _sent ? 'Email sent' : 'Send verification email',
+        style: const TextStyle(
+          fontSize: 12,
+          color: AppThemeTokens.warning,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
     );
   }
