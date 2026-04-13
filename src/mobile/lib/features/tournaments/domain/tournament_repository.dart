@@ -1,7 +1,7 @@
 import '../../../core/models/tournament_model.dart';
 
 abstract class TournamentRepository {
-  Future<List<TournamentModel>> getTournaments();
+  Future<List<TournamentModel>> getTournaments({String? status, String? sportType, String? search});
   Future<TournamentModel> getTournament(String id);
   Future<TournamentModel> createTournament(Map<String, dynamic> data);
   Future<void> addTeam(String tournamentId, Map<String, dynamic> data);
@@ -61,4 +61,13 @@ abstract class TournamentRepository {
       String tournamentId, String teamId);
   Future<void> removePlayer(
       String tournamentId, String teamId, String playerId);
+
+  // Tournament update
+  Future<TournamentModel> updateTournament(String id, Map<String, dynamic> data);
+  Future<TournamentModel> updateTournamentStatus(String id, String status);
+
+  // Match management
+  Future<void> createMatch(String tournamentId, Map<String, dynamic> data);
+  Future<void> updateMatch(String tournamentId, String matchId, Map<String, dynamic> data);
+  Future<void> deleteMatch(String tournamentId, String matchId);
 }

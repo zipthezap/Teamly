@@ -10,6 +10,9 @@ import { etagMiddleware } from '../middleware/etag';
 
 const router = Router();
 
+// Public endpoint - no auth required
+router.get('/public', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getPublicTournaments));
+
 // All tournament routes require authentication
 router.use(authMiddleware);
 router.use(authenticatedLimiter);
@@ -25,6 +28,12 @@ router.put(
   noCache,
   requireTournamentPermission(Permission.TOURNAMENT_UPDATE),
   asyncHandler(tournamentController.updateTournament)
+);
+router.put(
+  '/:id/status',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_UPDATE),
+  asyncHandler(tournamentController.updateTournamentStatus)
 );
 router.delete(
   '/:id',
@@ -238,6 +247,14 @@ router.delete(
   noCache,
   requireTournamentPermission(Permission.TOURNAMENT_UPDATE),
   asyncHandler(tournamentController.removeAdmin)
+);
+
+// Notifications
+router.get(
+  '/:id/notifications',
+  etagMiddleware({ weak: true }),
+  requireTournamentPermission(Permission.TOURNAMENT_VIEW_ADMIN_PANEL),
+  asyncHandler(tournamentController.getTournamentNotifications)
 );
 
 export default router;

@@ -237,6 +237,26 @@ final _routerProvider = Provider<GoRouter>((ref) {
                   teamId: state.pathParameters['teamId']!,
                 ),
               ),
+              GoRoute(
+                path: 'edit',
+                builder: (context, state) {
+                  final extra = state.extra as TournamentModel?;
+                  return EditTournamentPage(
+                    tournamentId: state.pathParameters['id']!,
+                    tournament: extra,
+                  );
+                },
+              ),
+              GoRoute(
+                path: 'matches',
+                builder: (context, state) {
+                  final extra = state.extra as TournamentModel?;
+                  return MatchesManagementPage(
+                    tournamentId: state.pathParameters['id']!,
+                    tournament: extra,
+                  );
+                },
+              ),
             ],
           ),
         ],

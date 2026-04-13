@@ -27,6 +27,16 @@ class TournamentsPage extends ConsumerStatefulWidget {
 }
 
 class _TournamentsPageState extends ConsumerState<TournamentsPage> {
+  final _searchCtrl = TextEditingController();
+  String _searchQuery = '';
+  String? _statusFilter;
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final tournamentsAsync = ref.watch(tournamentsNotifierProvider);
@@ -47,39 +57,100 @@ class _TournamentsPageState extends ConsumerState<TournamentsPage> {
         tooltip: 'Create tournament',
         child: const Icon(Icons.add),
       ),
-      body: tournamentsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ErrorDisplay(
-          message: extractErrorMessage(e),
-          onRetry: () =>
-              ref.read(tournamentsNotifierProvider.notifier).reload(),
-        ),
-        data: (tournaments) {
-          if (tournaments.isEmpty) {
-            return const UiEmptyState(
-              icon: Icons.emoji_events_outlined,
-              message: 'No tournaments yet.',
-            );
-          }
-          return RefreshIndicator(
-            onRefresh: () =>
-                ref.read(tournamentsNotifierProvider.notifier).reload(),
-            child: ListView.builder(
-              padding:
-                  const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              itemCount: tournaments.length,
-              itemBuilder: (ctx, i) {
-                final t = tournaments[i];
-                return _TournamentCard(
-                  tournament: t,
-                  onTap: () => context.push('/tournaments/${t.id}'),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: TextField(
+              controller: _searchCtrl,
+              decoration: InputDecoration(
+                hintText: 'Search tournaments…',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 20),
+                        onPressed: () {
+                          _searchCtrl.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      )
+                    : null,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              onChanged: (v) => setState(() => _searchQuery = v),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: [
+                for (final s in [null, 'draft', 'registration', 'in_progress', 'completed', 'cancelled'])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: FilterChip(
+                      label: Text(s == null ? 'All' : _formatStatus(s)),
+                      selected: _statusFilter == s,
+                      onSelected: (_) => setState(() => _statusFilter = s),
+                    ),
+                  ),
+              ]),
+            ),
+          ),
+          Expanded(
+            child: tournamentsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => ErrorDisplay(
+                message: extractErrorMessage(e),
+                onRetry: () =>
+                    ref.read(tournamentsNotifierProvider.notifier).reload(),
+              ),
+              data: (all) {
+                final tournaments = all.where((t) {
+                  if (_statusFilter != null && t.status != _statusFilter) return false;
+                  if (_searchQuery.isNotEmpty &&
+                      !t.name.toLowerCase().contains(_searchQuery.toLowerCase())) return false;
+                  return true;
+                }).toList();
+                if (tournaments.isEmpty) {
+                  return const UiEmptyState(
+                    icon: Icons.emoji_events_outlined,
+                    message: 'No tournaments found.',
+                  );
+                }
+                return RefreshIndicator(
+                  onRefresh: () =>
+                      ref.read(tournamentsNotifierProvider.notifier).reload(),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    itemCount: tournaments.length,
+                    itemBuilder: (ctx, i) {
+                      final t = tournaments[i];
+                      return _TournamentCard(
+                        tournament: t,
+                        onTap: () => context.push('/tournaments/${t.id}'),
+                      );
+                    },
+                  ),
                 );
               },
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
+  }
+
+  String _formatStatus(String s) {
+    const m = {
+      'draft': 'Draft',
+      'registration': 'Registration',
+      'in_progress': 'In Progress',
+      'completed': 'Completed',
+      'cancelled': 'Cancelled',
+    };
+    return m[s] ?? s;
   }
 }
 
@@ -325,6 +396,12 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
                 actions: [
                   if (isAdmin)
                     IconButton(
+                      icon: const Icon(Icons.edit_outlined),
+                      tooltip: 'Edit tournament',
+                      onPressed: () => context.push('/tournaments/${t.id}/edit', extra: t),
+                    ),
+                  if (isAdmin)
+                    IconButton(
                       icon: const Icon(Icons.admin_panel_settings_outlined),
                       tooltip: 'Admin panel',
                       onPressed: () =>
@@ -371,7 +448,7 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
 // Overview Tab
 // ---------------------------------------------------------------------------
 
-class _OverviewTab extends ConsumerWidget {
+class _OverviewTab extends ConsumerStatefulWidget {
   const _OverviewTab({
     required this.tournament,
     required this.currentUserId,
@@ -387,8 +464,17 @@ class _OverviewTab extends ConsumerWidget {
   final VoidCallback onRefresh;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = tournament;
+  ConsumerState<_OverviewTab> createState() => _OverviewTabState();
+}
+
+class _OverviewTabState extends ConsumerState<_OverviewTab> {
+  TournamentModel get t => widget.tournament;
+  bool get isAdmin => widget.isAdmin;
+  TournamentTeamModel? get myTeam => widget.myTeam;
+  VoidCallback get onRefresh => widget.onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
     final canRegister = t.status == 'registration' && myTeam == null;
     final dateFormat = DateFormat.yMMMd();
 
@@ -493,12 +579,68 @@ class _OverviewTab extends ConsumerWidget {
                 label: const Text('Admins'),
                 onPressed: () => context.push('/tournaments/${t.id}/admins'),
               ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.sports_outlined, size: 16),
+                label: const Text('Matches'),
+                onPressed: () => context.push('/tournaments/${t.id}/matches', extra: t),
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.pending_actions_outlined, size: 16),
+                label: const Text('Update Status'),
+                onPressed: () => _showStatusDialog(context, t, onRefresh),
+              ),
             ]),
           ],
           const SizedBox(height: 32),
         ],
       ),
     );
+  }
+
+  void _showStatusDialog(BuildContext context, TournamentModel t, VoidCallback onRefresh) {
+    final Map<String, List<String>> transitions = {
+      'draft': ['registration', 'cancelled'],
+      'registration': ['in_progress', 'cancelled'],
+      'in_progress': ['completed', 'cancelled'],
+      'completed': [],
+      'cancelled': [],
+    };
+    final allowed = transitions[t.status] ?? [];
+    if (allowed.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Tournament is ${t.status} — no further transitions available')),
+      );
+      return;
+    }
+    showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Update Status'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final s in allowed)
+              ListTile(
+                title: Text(_statusLabel(s)),
+                onTap: () => Navigator.pop(ctx, s),
+              ),
+          ],
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel'))],
+      ),
+    ).then((newStatus) async {
+      if (newStatus == null) return;
+      try {
+        await ref.read(tournamentRepositoryProvider).updateTournamentStatus(t.id, newStatus);
+        onRefresh();
+      } on Exception catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(extractErrorMessage(e)), backgroundColor: Theme.of(context).colorScheme.error),
+          );
+        }
+      }
+    });
   }
 
   String _fmtLabel(String f) {
@@ -1898,6 +2040,13 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _saving = true);
+    if (_startDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a tournament start date')),
+      );
+      setState(() => _saving = false);
+      return;
+    }
     try {
       final tournament = await ref.read(tournamentRepositoryProvider).createTournament({
         'name': _nameCtrl.text.trim(),
@@ -2521,6 +2670,456 @@ class _CategoriesManagementPageState extends ConsumerState<CategoriesManagementP
                       const SizedBox(height: 80),
                     ],
                   ),
+                ),
+    );
+  }
+}
+
+// ===========================================================================
+// Edit Tournament Page
+// ===========================================================================
+
+class EditTournamentPage extends ConsumerStatefulWidget {
+  const EditTournamentPage({
+    super.key,
+    required this.tournamentId,
+    this.tournament,
+  });
+
+  final String tournamentId;
+  final TournamentModel? tournament;
+
+  @override
+  ConsumerState<EditTournamentPage> createState() => _EditTournamentPageState();
+}
+
+class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
+  final _maxTeamsCtrl = TextEditingController();
+  final _locationCtrl = TextEditingController();
+  final _rulesCtrl = TextEditingController();
+  final _prizesCtrl = TextEditingController();
+
+  String _sportType = '';
+  String _format = 'single_elimination';
+  DateTime? _startDate;
+  DateTime? _endDate;
+  DateTime? _registrationStartDate;
+  DateTime? _registrationDeadline;
+  bool _useManualBrackets = false;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final t = widget.tournament;
+    if (t != null) {
+      _nameCtrl.text = t.name;
+      _descCtrl.text = t.description ?? '';
+      _maxTeamsCtrl.text = t.maxTeams?.toString() ?? '';
+      _locationCtrl.text = t.location ?? t.locationName ?? '';
+      _rulesCtrl.text = t.rulesDescription ?? '';
+      _prizesCtrl.text = t.prizesDescription ?? '';
+      _sportType = t.sportType;
+      _format = t.format;
+      _startDate = t.startDate;
+      _endDate = t.endDate;
+      _registrationStartDate = t.registrationStartDate;
+      _registrationDeadline = t.registrationDeadline;
+      _useManualBrackets = t.useManualBrackets;
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _descCtrl.dispose();
+    _maxTeamsCtrl.dispose();
+    _locationCtrl.dispose();
+    _rulesCtrl.dispose();
+    _prizesCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<DateTime?> _pickDate(DateTime? initial, {DateTime? firstDate}) async {
+    return showDatePicker(
+      context: context,
+      initialDate: initial ?? (firstDate ?? DateTime.now()).add(const Duration(days: 7)),
+      firstDate: firstDate ?? DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
+    );
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    setState(() => _saving = true);
+    try {
+      await ref.read(tournamentRepositoryProvider).updateTournament(widget.tournamentId, {
+        'name': _nameCtrl.text.trim(),
+        if (_sportType.isNotEmpty) 'sportType': _sportType,
+        'format': _format,
+        'description': _descCtrl.text.trim().isNotEmpty ? _descCtrl.text.trim() : null,
+        if (_maxTeamsCtrl.text.trim().isNotEmpty) 'maxTeams': int.tryParse(_maxTeamsCtrl.text.trim()),
+        if (_startDate != null) 'startDate': _startDate!.toIso8601String(),
+        if (_endDate != null) 'endDate': _endDate!.toIso8601String(),
+        if (_registrationStartDate != null) 'registrationStartDate': _registrationStartDate!.toIso8601String(),
+        if (_registrationDeadline != null) 'registrationDeadline': _registrationDeadline!.toIso8601String(),
+        'location': _locationCtrl.text.trim().isNotEmpty ? _locationCtrl.text.trim() : null,
+        'rulesDescription': _rulesCtrl.text.trim().isNotEmpty ? _rulesCtrl.text.trim() : null,
+        'prizesDescription': _prizesCtrl.text.trim().isNotEmpty ? _prizesCtrl.text.trim() : null,
+        'useManualBrackets': _useManualBrackets,
+      });
+      ref.read(tournamentsNotifierProvider.notifier).reload();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tournament updated!')));
+      context.pop();
+    } on Exception catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(extractErrorMessage(error)),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Widget _dateTile({required String label, required DateTime? value, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+      child: InputDecorator(
+        decoration: InputDecoration(labelText: label, prefixIcon: const Icon(Icons.calendar_today_outlined)),
+        child: Text(
+          value != null ? DateFormat.yMMMd().format(value) : 'Tap to select',
+          style: TextStyle(
+            color: value == null ? AppThemeTokens.textSecondary(context) : AppThemeTokens.text(context),
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Edit Tournament')),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            UiSectionTitle('Basic Info'),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _nameCtrl,
+              decoration: const InputDecoration(labelText: 'Tournament name *', prefixIcon: Icon(Icons.emoji_events_outlined)),
+              textCapitalization: TextCapitalization.words,
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _sportType.isNotEmpty ? _sportType : null,
+              decoration: const InputDecoration(labelText: 'Sport type *', prefixIcon: Icon(Icons.sports_outlined)),
+              dropdownColor: AppThemeTokens.cardElevated(context),
+              items: kSportTypes.where((s) => s['value']!.isNotEmpty).map((s) => DropdownMenuItem(value: s['value'], child: Text(s['label']!))).toList(),
+              validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+              onChanged: (v) => setState(() => _sportType = v ?? ''),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _format,
+              decoration: const InputDecoration(labelText: 'Format *', prefixIcon: Icon(Icons.account_tree_outlined)),
+              dropdownColor: AppThemeTokens.cardElevated(context),
+              items: const [
+                DropdownMenuItem(value: 'single_elimination', child: Text('Single Elimination')),
+                DropdownMenuItem(value: 'double_elimination', child: Text('Double Elimination')),
+                DropdownMenuItem(value: 'round_robin', child: Text('Round Robin')),
+                DropdownMenuItem(value: 'groups_knockout', child: Text('Groups + Knockout')),
+              ],
+              onChanged: (v) => setState(() => _format = v ?? 'single_elimination'),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _descCtrl,
+              decoration: const InputDecoration(labelText: 'Description', prefixIcon: Icon(Icons.notes_outlined), alignLabelWithHint: true),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _maxTeamsCtrl,
+              decoration: const InputDecoration(labelText: 'Max teams', prefixIcon: Icon(Icons.group_outlined)),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 24),
+            UiSectionTitle('Dates'),
+            const SizedBox(height: 8),
+            _dateTile(label: 'Registration opens', value: _registrationStartDate, onTap: () async { final d = await _pickDate(_registrationStartDate); if (d != null) setState(() => _registrationStartDate = d); }),
+            const SizedBox(height: 12),
+            _dateTile(label: 'Registration deadline', value: _registrationDeadline, onTap: () async { final d = await _pickDate(_registrationDeadline); if (d != null) setState(() => _registrationDeadline = d); }),
+            const SizedBox(height: 12),
+            _dateTile(label: 'Tournament start', value: _startDate, onTap: () async { final d = await _pickDate(_startDate); if (d != null) setState(() => _startDate = d); }),
+            const SizedBox(height: 12),
+            _dateTile(label: 'Tournament end', value: _endDate, onTap: () async { final d = await _pickDate(_endDate, firstDate: _startDate); if (d != null) setState(() => _endDate = d); }),
+            const SizedBox(height: 24),
+            UiSectionTitle('Location'),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _locationCtrl,
+              decoration: const InputDecoration(labelText: 'Location / Venue', prefixIcon: Icon(Icons.location_on_outlined)),
+            ),
+            const SizedBox(height: 24),
+            UiSectionTitle('Additional Info'),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _rulesCtrl,
+              decoration: const InputDecoration(labelText: 'Rules', prefixIcon: Icon(Icons.rule_outlined), alignLabelWithHint: true),
+              maxLines: 4,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _prizesCtrl,
+              decoration: const InputDecoration(labelText: 'Prizes', prefixIcon: Icon(Icons.card_giftcard_outlined), alignLabelWithHint: true),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 24),
+            UiSectionTitle('Settings'),
+            SwitchListTile(
+              title: const Text('Manual pool/bracket management'),
+              subtitle: const Text('Manually create pools and assign teams instead of auto-generating'),
+              value: _useManualBrackets,
+              onChanged: (v) => setState(() => _useManualBrackets = v),
+            ),
+            const SizedBox(height: 28),
+            UiPrimaryButton(
+              text: 'Save Changes',
+              icon: Icons.save_outlined,
+              onPressed: _saving ? null : _submit,
+              loading: _saving,
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ===========================================================================
+// Matches Management Page
+// ===========================================================================
+
+class MatchesManagementPage extends ConsumerStatefulWidget {
+  const MatchesManagementPage({
+    super.key,
+    required this.tournamentId,
+    required this.tournament,
+  });
+
+  final String tournamentId;
+  final TournamentModel? tournament;
+
+  @override
+  ConsumerState<MatchesManagementPage> createState() => _MatchesManagementPageState();
+}
+
+class _MatchesManagementPageState extends ConsumerState<MatchesManagementPage> {
+  bool _loading = false;
+
+  List<TournamentMatchModel> get _matches =>
+      widget.tournament?.matches ?? [];
+
+  Map<String, List<TournamentMatchModel>> get _matchesByRound {
+    final grouped = <String, List<TournamentMatchModel>>{};
+    for (final m in _matches) {
+      grouped.putIfAbsent(m.round, () => []).add(m);
+    }
+    return grouped;
+  }
+
+  void _refresh() => ref.invalidate(tournamentDetailProvider(widget.tournamentId));
+
+  Future<void> _showMatchDialog({TournamentMatchModel? match}) async {
+    final teams = widget.tournament?.teams ?? [];
+    String? homeTeamId = match?.teamAId;
+    String? awayTeamId = match?.teamBId;
+    String? refereeTeamId;
+    final scheduledCtrl = TextEditingController(text: match?.scheduledAt?.toIso8601String().substring(0, 16) ?? '');
+    final locationCtrl = TextEditingController(text: match?.location ?? '');
+    final roundCtrl = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: Text(match == null ? 'Add Match' : 'Edit Match'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              DropdownButtonFormField<String>(
+                value: homeTeamId,
+                decoration: const InputDecoration(labelText: 'Home team *'),
+                items: teams.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name))).toList(),
+                onChanged: (v) => setS(() => homeTeamId = v),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: awayTeamId,
+                decoration: const InputDecoration(labelText: 'Away team *'),
+                items: teams.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name))).toList(),
+                onChanged: (v) => setS(() => awayTeamId = v),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: refereeTeamId,
+                decoration: const InputDecoration(labelText: 'Referee team (optional)'),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('None')),
+                  ...teams.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name))),
+                ],
+                onChanged: (v) => setS(() => refereeTeamId = v),
+              ),
+              const SizedBox(height: 12),
+              TextField(controller: roundCtrl, decoration: const InputDecoration(labelText: 'Round number'), keyboardType: TextInputType.number),
+              const SizedBox(height: 12),
+              TextField(controller: scheduledCtrl, decoration: const InputDecoration(labelText: 'Scheduled (YYYY-MM-DDTHH:mm)')),
+              const SizedBox(height: 12),
+              TextField(controller: locationCtrl, decoration: const InputDecoration(labelText: 'Location')),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, {
+                'homeTeamId': homeTeamId,
+                'awayTeamId': awayTeamId,
+                if (refereeTeamId != null) 'refereeTeamId': refereeTeamId,
+                if (roundCtrl.text.isNotEmpty) 'roundNumber': int.tryParse(roundCtrl.text),
+                if (scheduledCtrl.text.isNotEmpty) 'scheduledAt': scheduledCtrl.text,
+                if (locationCtrl.text.isNotEmpty) 'location': locationCtrl.text,
+              }),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    ).then((data) async {
+      if (data == null) return;
+      if (data['homeTeamId'] == null || data['awayTeamId'] == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Home and away teams are required')),
+        );
+        return;
+      }
+      setState(() => _loading = true);
+      try {
+        if (match == null) {
+          await ref.read(tournamentRepositoryProvider).createMatch(widget.tournamentId, data);
+        } else {
+          await ref.read(tournamentRepositoryProvider).updateMatch(widget.tournamentId, match.id, data);
+        }
+        _refresh();
+      } on Exception catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(extractErrorMessage(e)),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ));
+        }
+      } finally {
+        if (mounted) setState(() => _loading = false);
+      }
+    });
+  }
+
+  Future<void> _deleteMatch(TournamentMatchModel match) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Match'),
+        content: const Text('Are you sure you want to delete this match?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _loading = true);
+    try {
+      await ref.read(tournamentRepositoryProvider).deleteMatch(widget.tournamentId, match.id);
+      _refresh();
+    } on Exception catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final byRound = _matchesByRound;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Matches')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _loading ? null : () => _showMatchDialog(),
+        tooltip: 'Add match',
+        child: const Icon(Icons.add),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _matches.isEmpty
+              ? const UiEmptyState(icon: Icons.sports_outlined, message: 'No matches yet. Tap + to create one.')
+              : ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    for (final entry in byRound.entries) ...[
+                      UiSectionTitle(entry.key.isEmpty ? 'Unassigned' : entry.key),
+                      const SizedBox(height: 8),
+                      for (final m in entry.value)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: AppThemeTokens.card(context),
+                            borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+                            border: Border.all(color: AppThemeTokens.border(context)),
+                          ),
+                          child: ListTile(
+                            title: Text(
+                              '${m.teamAName ?? m.teamAId ?? '?'} vs ${m.teamBName ?? m.teamBId ?? '?'}',
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                            ),
+                            subtitle: m.scheduledAt != null
+                                ? Text(DateFormat.yMMMd().add_jm().format(m.scheduledAt!.toLocal()), style: const TextStyle(fontSize: 12))
+                                : null,
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(icon: const Icon(Icons.edit_outlined, size: 18), onPressed: () => _showMatchDialog(match: m)),
+                                IconButton(
+                                  icon: Icon(Icons.delete_outline, size: 18, color: Theme.of(context).colorScheme.error),
+                                  onPressed: () => _deleteMatch(m),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 8),
+                    ],
+                    const SizedBox(height: 80),
+                  ],
                 ),
     );
   }

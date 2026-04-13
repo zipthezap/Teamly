@@ -9,6 +9,7 @@ import {
   sanitizeTournamentData,
   validateTournamentDates,
   isOrganizer,
+  isOrganizerOrAdmin,
   isTeamCaptain,
   isRegisteredPlayer,
   canSubmitScore,
@@ -31,6 +32,9 @@ vi.mock('../../config/database', () => ({
     },
     tournamentMatch: {
       createMany: vi.fn(),
+    },
+    tournamentAdminRole: {
+      findFirst: vi.fn(),
     },
   },
 }));
@@ -249,6 +253,32 @@ describe('Tournament Service', () => {
       const result = validateTournamentDates(startDate, endDate);
 
       expect(result.valid).toBe(true);
+    });
+  });
+
+  describe('isOrganizerOrAdmin', () => {
+    it('returns true when user is organizer', async () => {
+      const result = await isOrganizerOrAdmin({ id: 'tournament-1', organizerId: 'user-1' } as any, 'user-1');
+      expect(result).toBe(true);
+    });
+
+    it('returns true when user has admin role', async () => {
+      vi.mocked(prisma.tournamentAdminRole.findFirst).mockResolvedValue({
+        id: 'role-1',
+        tournamentId: 'tournament-1',
+        userId: 'user-2',
+        grantedById: 'user-1',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any);
+      const result = await isOrganizerOrAdmin({ id: 'tournament-1', organizerId: 'user-1' } as any, 'user-2');
+      expect(result).toBe(true);
+    });
+
+    it('returns false when user has no role', async () => {
+      vi.mocked(prisma.tournamentAdminRole.findFirst).mockResolvedValue(null);
+      const result = await isOrganizerOrAdmin({ id: 'tournament-1', organizerId: 'user-1' } as any, 'user-3');
+      expect(result).toBe(false);
     });
   });
 

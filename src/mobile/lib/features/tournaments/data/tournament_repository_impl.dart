@@ -29,12 +29,23 @@ class TournamentRepositoryImpl implements TournamentRepository {
   // ---------------------------------------------------------------------------
 
   @override
-  Future<List<TournamentModel>> getTournaments() async {
-    final response = await _dio.get<dynamic>('/tournaments');
+  Future<List<TournamentModel>> getTournaments({String? status, String? sportType, String? search}) async {
+    final queryParams = <String, dynamic>{};
+    if (status != null) queryParams['status'] = status;
+    if (sportType != null) queryParams['sportType'] = sportType;
+    final response = await _dio.get<dynamic>(
+      '/tournaments',
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
     final items = _extractList(response.data, ['tournaments', 'data']);
-    return items
+    var tournaments = items
         .map((e) => TournamentModel.fromJson(e as Map<String, dynamic>))
         .toList();
+    if (search != null && search.isNotEmpty) {
+      final q = search.toLowerCase();
+      tournaments = tournaments.where((t) => t.name.toLowerCase().contains(q)).toList();
+    }
+    return tournaments;
   }
 
   @override
@@ -301,6 +312,44 @@ class TournamentRepositoryImpl implements TournamentRepository {
       String tournamentId, String teamId, String playerId) async {
     await _dio.delete<void>(
         '/tournaments/$tournamentId/teams/$teamId/players/$playerId');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tournament update & status
+  // ---------------------------------------------------------------------------
+
+  @override
+  Future<TournamentModel> updateTournament(String id, Map<String, dynamic> data) async {
+    final response = await _dio.put<Map<String, dynamic>>('/tournaments/$id', data: data);
+    return TournamentModel.fromJson(response.data!);
+  }
+
+  @override
+  Future<TournamentModel> updateTournamentStatus(String id, String status) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/tournaments/$id/status',
+      data: {'status': status},
+    );
+    return TournamentModel.fromJson(response.data!);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Match management
+  // ---------------------------------------------------------------------------
+
+  @override
+  Future<void> createMatch(String tournamentId, Map<String, dynamic> data) async {
+    await _dio.post('/tournaments/$tournamentId/matches', data: data);
+  }
+
+  @override
+  Future<void> updateMatch(String tournamentId, String matchId, Map<String, dynamic> data) async {
+    await _dio.put('/tournaments/$tournamentId/matches/$matchId', data: data);
+  }
+
+  @override
+  Future<void> deleteMatch(String tournamentId, String matchId) async {
+    await _dio.delete('/tournaments/$tournamentId/matches/$matchId');
   }
 }
 
