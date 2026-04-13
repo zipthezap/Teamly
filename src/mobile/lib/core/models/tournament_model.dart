@@ -236,6 +236,7 @@ class TournamentTeamModel extends Equatable {
     this.losses = 0,
     this.points = 0,
     this.poolId,
+    this.poolName,
     this.captainUserId,
     this.players = const [],
   });
@@ -247,6 +248,7 @@ class TournamentTeamModel extends Equatable {
   final int losses;
   final int points;
   final String? poolId;
+  final String? poolName;
   final String? captainUserId;
   final List<Map<String, dynamic>> players;
 
@@ -263,6 +265,7 @@ class TournamentTeamModel extends Equatable {
       losses: (json['losses'] as num?)?.toInt() ?? 0,
       points: (json['points'] as num?)?.toInt() ?? 0,
       poolId: json['poolId'] as String?,
+      poolName: json['poolName'] as String?,
       captainUserId: json['captainUserId'] as String?,
       players: playersList,
     );

@@ -9,7 +9,7 @@ abstract class TournamentRepository {
   // Captain self-registration
   Future<Map<String, dynamic>> selfRegisterTeam(
       String tournamentId, String teamName,
-      {String? poolId});
+      {String? poolId, String? categoryId});
   Future<void> selfUnregisterTeam(String tournamentId);
 
   // Pool management
