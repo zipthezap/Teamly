@@ -2627,6 +2627,9 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
   const { name, poolId } = req.body;
 
   isRequired(name, 'Team name');
+  if (typeof name === 'string' && name.trim().length > MAX_NAME_LENGTH) {
+    throw new BadRequestError(`Team name must be at most ${MAX_NAME_LENGTH} characters`);
+  }
 
   const tournament = await prisma.tournament.findUnique({ where: { id } });
   ensureResourceExists(tournament, 'Tournament');
@@ -2657,34 +2660,38 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
 
     logger.info('Team self-registered', 'TournamentController', { tournamentId: id, teamId: team.id, captainUserId: userId });
 
-    // If a poolId was provided, attempt to register the new team to the pool immediately
+    // If a poolId was provided, attempt to register the new team to the pool atomically
     if (poolId) {
-      const pool = await prisma.tournamentPool.findFirst({
-        where: { id: poolId, tournamentId: id },
-        include: {
-          _count: { select: { teams: true } },
-          waitlist: { orderBy: { position: 'asc' } }
+      const poolResult = await prisma.$transaction(async (tx) => {
+        const pool = await tx.tournamentPool.findFirst({
+          where: { id: poolId, tournamentId: id },
+          include: {
+            teams: true,
+          }
+        });
+
+        if (!pool) return null;
+
+        if (pool.teams.length < pool.maxTeams) {
+          await tx.tournamentTeam.update({
+            where: { id: team.id },
+            data: { poolId: pool.id, poolName: pool.name }
+          });
+          return { pool, onWaitlist: false, waitlistEntry: null };
+        } else {
+          // Pool full — add to waitlist atomically
+          const waitlistPosition = await tx.tournamentPoolWaitlist.count({
+            where: { poolId: pool.id }
+          });
+          const waitlistEntry = await tx.tournamentPoolWaitlist.create({
+            data: { poolId: pool.id, teamId: team.id, position: waitlistPosition + 1 }
+          });
+          return { pool, onWaitlist: true, waitlistEntry };
         }
       });
 
-      if (pool) {
-        const teamCount = (pool as any)._count.teams as number;
-        if (teamCount < pool.maxTeams) {
-          await prisma.tournamentTeam.update({
-            where: { id: team.id },
-            data: { poolId: pool.id }
-          });
-          return res.status(201).json({ team, pool, onWaitlist: false });
-        } else {
-          // Pool full — add to waitlist
-          const waitlistPosition = await prisma.tournamentPoolWaitlist.count({
-            where: { poolId: pool.id }
-          });
-          const waitlistEntry = await prisma.tournamentPoolWaitlist.create({
-            data: { poolId: pool.id, teamId: team.id, position: waitlistPosition + 1 }
-          });
-          return res.status(201).json({ team, pool, onWaitlist: true, waitlistEntry });
-        }
+      if (poolResult) {
+        return res.status(201).json({ team, pool: poolResult.pool, onWaitlist: poolResult.onWaitlist, ...(poolResult.waitlistEntry ? { waitlistEntry: poolResult.waitlistEntry } : {}) });
       }
     }
 
