@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/services.dart' show MissingPluginException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
@@ -131,7 +132,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final user = await _repo.register(email: email, password: password, name: name);
+      final user =
+          await _repo.register(email: email, password: password, name: name);
       state = AuthState(status: AuthStatus.authenticated, user: user);
       await _registerPushTokenSafely();
     } on Exception catch (e) {
@@ -237,7 +239,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
         isLoading: false,
-        error: e.localizedDescription ?? 'Apple sign-in failed.',
+        error: 'Apple sign-in failed (${e.code.name}).',
       );
     } on MissingPluginException {
       state = state.copyWith(
@@ -332,7 +334,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> _registerPushTokenSafely() async {
     try {
-      await _ref.read(pushNotificationsControllerProvider).registerCurrentToken();
+      await _ref
+          .read(pushNotificationsControllerProvider)
+          .registerCurrentToken();
       await _ref.read(pushNotificationsControllerProvider).syncBadgeCount();
     } catch (_) {
       // no-op
@@ -341,7 +345,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> _disablePushTokenSafely() async {
     try {
-      await _ref.read(pushNotificationsControllerProvider).disableCurrentToken();
+      await _ref
+          .read(pushNotificationsControllerProvider)
+          .disableCurrentToken();
     } catch (_) {
       // no-op
     }
@@ -361,7 +367,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 }
 
-final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+final authNotifierProvider =
+    StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final repo = ref.watch(authRepositoryProvider);
   final notifier = AuthNotifier(repo, ref);
 

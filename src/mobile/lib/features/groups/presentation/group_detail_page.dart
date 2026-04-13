@@ -57,8 +57,8 @@ Future<void> _groupShowInviteMemberDialog(
       try {
         await ref.read(groupRepositoryProvider).inviteMember(groupId, email);
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Invite sent to $email')));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('Invite sent to $email')));
         }
       } on Exception catch (e) {
         if (context.mounted) {
@@ -169,8 +169,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
 
   // Any member of the group
   bool _isMember(GroupModel group, String? userId) =>
-      userId != null &&
-      group.members.any((m) => m.id == userId);
+      userId != null && group.members.any((m) => m.id == userId);
 
   @override
   Widget build(BuildContext context) {
@@ -187,7 +186,8 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
           // Leave button — visible to all members (admins who are sole member see "Delete")
           groupAsync.maybeWhen(
             data: (group) {
-              if (!_isMember(group, currentUserId)) return const SizedBox.shrink();
+              if (!_isMember(group, currentUserId))
+                return const SizedBox.shrink();
               return IconButton(
                 icon: const Icon(Icons.logout),
                 tooltip: 'Leave group',
@@ -220,8 +220,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
               }
               final joinAsync = ref.watch(joinRequestsProvider(group.id));
               final pendingCount = joinAsync.maybeWhen(
-                data: (reqs) =>
-                    reqs.where((r) => r.status == 'pending').length,
+                data: (reqs) => reqs.where((r) => r.status == 'pending').length,
                 orElse: () => 0,
               );
               return Badge(
@@ -301,8 +300,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
                             leading: Icon(Icons.delete_outline,
                                 color: AppThemeTokens.error),
                             title: Text('Delete group',
-                                style:
-                                    TextStyle(color: AppThemeTokens.error)),
+                                style: TextStyle(color: AppThemeTokens.error)),
                             contentPadding: EdgeInsets.zero)),
                   ],
                 ],
@@ -340,8 +338,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
           final admin = _isAdmin(group, currentUserId);
           final moderator = _isModerator(group, currentUserId);
           final member = _isMember(group, currentUserId);
-          final canInvite = admin ||
-              (member && group.allowMemberInvites);
+          final canInvite = admin || (member && group.allowMemberInvites);
           final canCopyLink = group.isPublic &&
               (admin || (member && group.allowMemberCopyLink));
           return TabBarView(
@@ -377,13 +374,12 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
 
   Future<void> _copyInviteLink() async {
     try {
-      final link = await ref
-          .read(groupRepositoryProvider)
-          .getInviteLink(widget.groupId);
+      final link =
+          await ref.read(groupRepositoryProvider).getInviteLink(widget.groupId);
       await Clipboard.setData(ClipboardData(text: link));
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Invite link copied!')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Invite link copied!')));
       }
     } on Exception catch (e) {
       if (mounted) {
@@ -541,6 +537,11 @@ class _OverviewTab extends ConsumerWidget {
     final hasDescription =
         group.description != null && group.description!.trim().isNotEmpty;
     final description = group.description?.trim();
+    final locationLabel = [group.locationName, group.city, group.country]
+        .whereType<String>()
+        .where((value) => value.trim().isNotEmpty)
+        .join(', ');
+
     final detailRows = <Widget>[
       if (group.sportType != null)
         UiInfoRow(
@@ -549,20 +550,13 @@ class _OverviewTab extends ConsumerWidget {
           value: group.sportType!,
           iconColor: AppThemeTokens.primary500,
         ),
-      if (group.locationName != null || group.city != null || group.country != null)
+      if (locationLabel.isNotEmpty)
         UiInfoRow(
           icon: Icons.pin_drop_outlined,
           label: 'Location',
-          value: [group.locationName, group.city, group.country]
-              .whereType<String>()
-              .join(', '),
+          value: locationLabel,
           iconColor: AppThemeTokens.info,
-          onTap: () => openInMaps(
-            context,
-            [group.locationName, group.city, group.country]
-                .whereType<String>()
-                .join(', '),
-          ),
+          onTap: () => openInMaps(context, locationLabel),
         ),
       if (group.maxMembers != null)
         UiInfoRow(
@@ -616,7 +610,6 @@ class _OverviewTab extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // ── Hero Card ─────────────────────────────────────────────────────
         Container(
           width: double.infinity,
           decoration: BoxDecoration(
@@ -688,7 +681,8 @@ class _OverviewTab extends ConsumerWidget {
                                     color: AppThemeTokens.text(context),
                                   ),
                                 ),
-                                if (group.city != null || group.country != null) ...[
+                                if (group.city != null ||
+                                    group.country != null) ...[
                                   const SizedBox(height: 4),
                                   Text(
                                     [group.city, group.country]
@@ -696,7 +690,8 @@ class _OverviewTab extends ConsumerWidget {
                                         .join(', '),
                                     style: TextStyle(
                                       fontSize: 13,
-                                      color: AppThemeTokens.textSecondary(context),
+                                      color:
+                                          AppThemeTokens.textSecondary(context),
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -728,8 +723,7 @@ class _OverviewTab extends ConsumerWidget {
                           ),
                           _HeroPill(
                             icon: Icons.people_outline,
-                            label:
-                                '${group.memberCount} member${group.memberCount == 1 ? '' : 's'}',
+                            label: memberLabel,
                             color: AppThemeTokens.info,
                           ),
                         ],
@@ -742,26 +736,6 @@ class _OverviewTab extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 20),
-
-        // ── Group Details ─────────────────────────────────────────────────
-        UiSectionTitle('Group Details'),
-        const SizedBox(height: 10),
-        Container(
-                            label: memberLabel,
-            borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-            border: Border.all(color: AppThemeTokens.border(context)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Column(
-              children: [
-                for (int i = 0; i < detailRows.length; i++) ...[
-                  detailRows[i],
-                  if (i < detailRows.length - 1)
-                    Divider(
-                        height: 1, color: AppThemeTokens.borderSubtle(context)),
-
-        // ── Snapshot ──────────────────────────────────────────────────────
         UiCard(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -823,10 +797,8 @@ class _OverviewTab extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 16),
-                ],
-              ],
-            ),
-          ),
+        const UiSectionTitle('Group Details'),
+        const SizedBox(height: 10),
         UiCard(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Column(
@@ -841,11 +813,9 @@ class _OverviewTab extends ConsumerWidget {
               ],
             ],
           ),
-                  child: _ActionButton(
+        ),
         const SizedBox(height: 16),
-
-        // ── Access & Rules ────────────────────────────────────────────────
-        UiSectionTitle('Access & Rules'),
+        const UiSectionTitle('Access & Rules'),
         const SizedBox(height: 10),
         UiCard(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -862,60 +832,54 @@ class _OverviewTab extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
-                    label: 'Invite',
-        // ── Actions ────────────────────────────────────────────────────────
-                        _groupShowInviteMemberDialog(context, ref, groupId),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        if (isMember) ...[
+          const SizedBox(height: 16),
+          const UiSectionTitle('Actions'),
+          const SizedBox(height: 10),
+          Row(
             children: [
-              const UiSectionTitle('Actions'),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _ActionButton(
-                      icon: Icons.add_circle_outline,
-                      label: 'Create Event',
-                      primary: true,
-                      onPressed: () =>
-                          context.push('/groups/${group.id}/sessions/new'),
+              Expanded(
+                child: _ActionButton(
+                  icon: Icons.add_circle_outline,
+                  label: 'Create Event',
+                  primary: true,
+                  onPressed: () =>
+                      context.push('/groups/${group.id}/sessions/new'),
+                ),
+              ),
+              if (canInvite) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _ActionButton(
+                    icon: Icons.person_add_outlined,
+                    label: 'Invite Member',
+                    onPressed: () => _groupShowInviteMemberDialog(
+                      context,
+                      ref,
+                      groupId,
                     ),
                   ),
-                  if (canInvite) ...[
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _ActionButton(
-                        icon: Icons.person_add_outlined,
-                        label: 'Invite Member',
-                        onPressed: () => _groupShowInviteMemberDialog(
-                          context,
-                          ref,
-                          groupId,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-
-              if (!canInvite) ...[
-                const SizedBox(height: 10),
-                Text(
-                  'This group currently restricts member invites.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppThemeTokens.textMuted(context),
-            decoration: BoxDecoration(
-              color: AppThemeTokens.card(context),
-              borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-              border: Border.all(color: AppThemeTokens.border(context)),
+                ),
+              ],
+            ],
+          ),
+          if (!canInvite) ...[
+            const SizedBox(height: 10),
+            Text(
+              'This group currently restricts member invites.',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppThemeTokens.textMuted(context),
+              ),
             ),
-            child: Text(
-              group.description!,
+          ],
+        ],
         if (!isMember && group.isPublic) ...[
+          const SizedBox(height: 16),
           const UiSectionTitle('Join This Group'),
           const SizedBox(height: 10),
-                fontSize: 14,
+          _JoinCta(groupId: groupId, group: group),
+        ],
       ],
     );
   }
@@ -1146,8 +1110,8 @@ class _MembersTab extends ConsumerWidget {
                             color: AppThemeTokens.card(context),
                             borderRadius:
                                 BorderRadius.circular(AppThemeTokens.radiusMd),
-                            border:
-                                Border.all(color: AppThemeTokens.border(context)),
+                            border: Border.all(
+                                color: AppThemeTokens.border(context)),
                           ),
                           child: Padding(
                             padding: const EdgeInsets.all(12),
@@ -1174,16 +1138,15 @@ class _MembersTab extends ConsumerWidget {
                                           req.userEmail!,
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color: AppThemeTokens
-                                                .textSecondary(context),
+                                            color: AppThemeTokens.textSecondary(
+                                                context),
                                           ),
                                         ),
                                     ],
                                   ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(
-                                      Icons.check_circle_outline,
+                                  icon: const Icon(Icons.check_circle_outline,
                                       color: AppThemeTokens.success),
                                   onPressed: () => _handleJoinReq(context, ref,
                                       group.id, req.id, 'approve'),
@@ -1191,8 +1154,8 @@ class _MembersTab extends ConsumerWidget {
                                 IconButton(
                                   icon: const Icon(Icons.cancel_outlined,
                                       color: AppThemeTokens.error),
-                                  onPressed: () => _handleJoinReq(context, ref,
-                                      group.id, req.id, 'reject'),
+                                  onPressed: () => _handleJoinReq(
+                                      context, ref, group.id, req.id, 'reject'),
                                 ),
                               ],
                             ),
@@ -1228,13 +1191,12 @@ class _MembersTab extends ConsumerWidget {
                 border: Border.all(color: AppThemeTokens.border(context)),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 child: Row(
                   children: [
                     UserAvatar(
-                        name: member.name,
-                        imageUrl: member.profilePicture),
+                        name: member.name, imageUrl: member.profilePicture),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -1378,8 +1340,8 @@ class _MembersTab extends ConsumerWidget {
             ref.invalidate(groupDetailProvider(groupId));
           } on Exception catch (e) {
             if (ctx.mounted) {
-              ScaffoldMessenger.of(ctx)
-                  .showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                  SnackBar(content: Text(extractErrorMessage(e))));
             }
           }
         }
@@ -1448,8 +1410,8 @@ class _MembersTab extends ConsumerWidget {
             ref.invalidate(groupDetailProvider(groupId));
           } on Exception catch (e) {
             if (ctx.mounted) {
-              ScaffoldMessenger.of(ctx)
-                  .showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                  SnackBar(content: Text(extractErrorMessage(e))));
             }
           }
         }
@@ -1491,204 +1453,200 @@ class _EventsTab extends ConsumerWidget {
             .where((e) => e.startTime.isAfter(now))
             .toList()
           ..sort((a, b) => a.startTime.compareTo(b.startTime));
-        final past = rawEvents
-            .where((e) => !e.startTime.isAfter(now))
-            .toList()
+        final past = rawEvents.where((e) => !e.startTime.isAfter(now)).toList()
           ..sort((a, b) => b.startTime.compareTo(a.startTime));
         final events = [...upcoming, ...past];
 
         return Stack(
-        children: [
-          events.isEmpty
-              ? Center(
-                  child: UiEmptyState(
-                    icon: Icons.event_busy_outlined,
-                    message: 'This group has no events yet.',
-                    action: isModerator
-                        ? () => context.push('/groups/$groupId/sessions/new')
-                        : null,
-                    actionLabel: isModerator ? 'Create event' : null,
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
-                  itemCount: events.length,
-                  itemBuilder: (ctx, i) {
-                    final e = events[i];
-                    final local = e.startTime.toLocal();
-                    final isPast = !e.startTime.isAfter(now);
-                    return GestureDetector(
-                      onTap: () => context.push('/sessions/${e.id}'),
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        decoration: BoxDecoration(
-                          color: AppThemeTokens.card(ctx),
-                          borderRadius:
-                              BorderRadius.circular(AppThemeTokens.radiusMd),
-                          border:
-                              Border.all(color: AppThemeTokens.border(ctx)),
-                        ),
-                        child: Row(
-                          children: [
-                            // Colored date strip
-                            Container(
-                              width: 60,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 18),
-                              decoration: BoxDecoration(
-                                color: isPast
-                                    ? AppThemeTokens.cardElevated(ctx)
-                                    : AppThemeTokens.primaryGlow,
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(
-                                      AppThemeTokens.radiusMd),
-                                  bottomLeft: Radius.circular(
-                                      AppThemeTokens.radiusMd),
+          children: [
+            events.isEmpty
+                ? Center(
+                    child: UiEmptyState(
+                      icon: Icons.event_busy_outlined,
+                      message: 'This group has no events yet.',
+                      action: isModerator
+                          ? () => context.push('/groups/$groupId/sessions/new')
+                          : null,
+                      actionLabel: isModerator ? 'Create event' : null,
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
+                    itemCount: events.length,
+                    itemBuilder: (ctx, i) {
+                      final e = events[i];
+                      final local = e.startTime.toLocal();
+                      final isPast = !e.startTime.isAfter(now);
+                      return GestureDetector(
+                        onTap: () => context.push('/sessions/${e.id}'),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          decoration: BoxDecoration(
+                            color: AppThemeTokens.card(ctx),
+                            borderRadius:
+                                BorderRadius.circular(AppThemeTokens.radiusMd),
+                            border:
+                                Border.all(color: AppThemeTokens.border(ctx)),
+                          ),
+                          child: Row(
+                            children: [
+                              // Colored date strip
+                              Container(
+                                width: 60,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 18),
+                                decoration: BoxDecoration(
+                                  color: isPast
+                                      ? AppThemeTokens.cardElevated(ctx)
+                                      : AppThemeTokens.primaryGlow,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(
+                                        AppThemeTokens.radiusMd),
+                                    bottomLeft: Radius.circular(
+                                        AppThemeTokens.radiusMd),
+                                  ),
+                                  border: Border(
+                                    right: BorderSide(
+                                        color: AppThemeTokens.border(ctx)),
+                                  ),
                                 ),
-                                border: Border(
-                                  right: BorderSide(
-                                      color: AppThemeTokens.border(ctx)),
-                                ),
-                              ),
-                              child: Column(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    DateFormat('MMM')
-                                        .format(local)
-                                        .toUpperCase(),
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.5,
-                                      color: isPast
-                                          ? AppThemeTokens.textMuted(ctx)
-                                          : AppThemeTokens.primary400,
-                                    ),
-                                  ),
-                                  Text(
-                                    DateFormat('d').format(local),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 20,
-                                      color: isPast
-                                          ? AppThemeTokens.textSecondary(ctx)
-                                          : AppThemeTokens.primary400,
-                                    ),
-                                  ),
-                                  Text(
-                                    DateFormat('EEE')
-                                        .format(local)
-                                        .toUpperCase(),
-                                    style: TextStyle(
-                                      fontSize: 8,
-                                      letterSpacing: 0.3,
-                                      color: isPast
-                                          ? AppThemeTokens.textMuted(ctx)
-                                          : AppThemeTokens
-                                              .textSecondary(ctx),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Event info
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 10),
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Text(
-                                      e.title,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                      DateFormat('MMM')
+                                          .format(local)
+                                          .toUpperCase(),
                                       style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14,
-                                        color: AppThemeTokens.text(ctx),
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.5,
+                                        color: isPast
+                                            ? AppThemeTokens.textMuted(ctx)
+                                            : AppThemeTokens.primary400,
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
                                     Text(
-                                      DateFormat('EEE, MMM d · h:mm a')
-                                          .format(local),
+                                      DateFormat('d').format(local),
                                       style: TextStyle(
-                                        fontSize: 11,
-                                        color: AppThemeTokens
-                                            .textSecondary(ctx),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 20,
+                                        color: isPast
+                                            ? AppThemeTokens.textSecondary(ctx)
+                                            : AppThemeTokens.primary400,
                                       ),
                                     ),
-                                    const SizedBox(height: 6),
-                                    Wrap(
-                                      spacing: 6,
-                                      runSpacing: 4,
-                                      children: [
-                                        if (e.sessionType != null)
-                                          _EventBadge(
-                                              label: e.sessionType!),
-                                        _EventBadge(
-                                          label: e.isPublic
-                                              ? 'Public'
-                                              : 'Private',
-                                          icon: e.isPublic
-                                              ? Icons.public_outlined
-                                              : Icons.lock_outline,
-                                        ),
-                                        _EventBadge(
-                                          label: e.maxPlayers != null
-                                              ? '${e.participantCount}/${e.maxPlayers}'
-                                              : '${e.participantCount} joined',
-                                          icon: Icons.people_outline,
-                                        ),
-                                      ],
+                                    Text(
+                                      DateFormat('EEE')
+                                          .format(local)
+                                          .toUpperCase(),
+                                      style: TextStyle(
+                                        fontSize: 8,
+                                        letterSpacing: 0.3,
+                                        color: isPast
+                                            ? AppThemeTokens.textMuted(ctx)
+                                            : AppThemeTokens.textSecondary(ctx),
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(right: 12),
-                              child: Icon(
-                                Icons.chevron_right,
-                                color: AppThemeTokens.textMuted(ctx),
-                                size: 18,
+                              // Event info
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 10),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        e.title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                          color: AppThemeTokens.text(ctx),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        DateFormat('EEE, MMM d · h:mm a')
+                                            .format(local),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color:
+                                              AppThemeTokens.textSecondary(ctx),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 4,
+                                        children: [
+                                          if (e.sessionType != null)
+                                            _EventBadge(label: e.sessionType!),
+                                          _EventBadge(
+                                            label: e.isPublic
+                                                ? 'Public'
+                                                : 'Private',
+                                            icon: e.isPublic
+                                                ? Icons.public_outlined
+                                                : Icons.lock_outline,
+                                          ),
+                                          _EventBadge(
+                                            label: e.maxPlayers != null
+                                                ? '${e.participantCount}/${e.maxPlayers}'
+                                                : '${e.participantCount} joined',
+                                            icon: Icons.people_outline,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
-                            ),
-                          ],
+                              Padding(
+                                padding: const EdgeInsets.only(right: 12),
+                                child: Icon(
+                                  Icons.chevron_right,
+                                  color: AppThemeTokens.textMuted(ctx),
+                                  size: 18,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
+            // Create event FAB for admins/moderators
+            if (isModerator)
+              Positioned(
+                bottom: 16,
+                right: 16,
+                child: FloatingActionButton(
+                  onPressed: () =>
+                      context.push('/groups/$groupId/sessions/new'),
+                  tooltip: 'Create event',
+                  child: const Icon(Icons.add),
                 ),
-          // Create event FAB for admins/moderators
-          if (isModerator)
-            Positioned(
-              bottom: 16,
-              right: 16,
-              child: FloatingActionButton(
-                onPressed: () => context.push('/groups/$groupId/sessions/new'),
-                tooltip: 'Create event',
-                child: const Icon(Icons.add),
               ),
-            ),
-          // Request event button for regular members
-          if (isMember && !isModerator)
-            Positioned(
-              bottom: 16,
-              right: 16,
-              child: FloatingActionButton.extended(
-                onPressed: () =>
-                    context.push('/groups/$groupId/session-requests'),
-                icon: const Icon(Icons.event_available_outlined),
-                label: const Text('Request Session'),
+            // Request event button for regular members
+            if (isMember && !isModerator)
+              Positioned(
+                bottom: 16,
+                right: 16,
+                child: FloatingActionButton.extended(
+                  onPressed: () =>
+                      context.push('/groups/$groupId/session-requests'),
+                  icon: const Icon(Icons.event_available_outlined),
+                  label: const Text('Request Session'),
+                ),
               ),
-            ),
-        ],
-      );
+          ],
+        );
       },
     );
   }
@@ -1810,8 +1768,8 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
               if (messages.isEmpty) {
                 return Center(
                   child: Text('No messages yet. Be the first!',
-                      style:
-                          TextStyle(color: AppThemeTokens.textSecondary(context))),
+                      style: TextStyle(
+                          color: AppThemeTokens.textSecondary(context))),
                 );
               }
               return RefreshIndicator(
@@ -1851,8 +1809,9 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
                                   Text(msg.senderName,
                                       style: theme.textTheme.labelSmall
                                           ?.copyWith(
-                                              color: AppThemeTokens
-                                                  .textSecondary(ctx))),
+                                              color:
+                                                  AppThemeTokens.textSecondary(
+                                                      ctx))),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 12, vertical: 8),
@@ -1898,8 +1857,8 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
               12, 8, 12, MediaQuery.of(context).viewInsets.bottom + 8),
           decoration: BoxDecoration(
             color: AppThemeTokens.card(context),
-            border: Border(
-                top: BorderSide(color: AppThemeTokens.border(context))),
+            border:
+                Border(top: BorderSide(color: AppThemeTokens.border(context))),
           ),
           child: Row(
             children: [
