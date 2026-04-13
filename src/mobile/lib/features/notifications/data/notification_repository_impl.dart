@@ -11,21 +11,26 @@ class NotificationRepositoryImpl implements NotificationRepository {
   final Dio _dio;
 
   @override
-  Future<List<NotificationModel>> getNotifications({
+  Future<(List<NotificationModel>, String?)> getNotifications({
     bool includeRead = false,
+    String? cursor,
+    int limit = 50,
   }) async {
     final response = await _dio.get<Map<String, dynamic>>(
       '/notifications',
       queryParameters: {
         'includeRead': includeRead.toString(),
-        'limit': '50',
+        'limit': limit.toString(),
+        if (cursor != null) 'cursor': cursor,
       },
     );
     final items =
         (response.data?['notifications'] as List<dynamic>?) ?? [];
-    return items
+    final notifications = items
         .map((e) => NotificationModel.fromJson(e as Map<String, dynamic>))
         .toList();
+    final nextCursor = response.data?['nextCursor'] as String?;
+    return (notifications, nextCursor);
   }
 
   @override

@@ -879,7 +879,7 @@ class _OverviewTab extends ConsumerWidget {
                       label: 'Create Event',
                       primary: true,
                       onPressed: () =>
-                          context.push('/groups/${group.id}/events/new'),
+                          context.push('/groups/${group.id}/sessions/new'),
                     ),
                   ),
                   if (canInvite) ...[
@@ -1505,7 +1505,7 @@ class _EventsTab extends ConsumerWidget {
                     icon: Icons.event_busy_outlined,
                     message: 'This group has no events yet.',
                     action: isModerator
-                        ? () => context.push('/groups/$groupId/events/new')
+                        ? () => context.push('/groups/$groupId/sessions/new')
                         : null,
                     actionLabel: isModerator ? 'Create event' : null,
                   ),
@@ -1518,7 +1518,7 @@ class _EventsTab extends ConsumerWidget {
                     final local = e.startTime.toLocal();
                     final isPast = !e.startTime.isAfter(now);
                     return GestureDetector(
-                      onTap: () => context.push('/events/${e.id}'),
+                      onTap: () => context.push('/sessions/${e.id}'),
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 10),
                         decoration: BoxDecoration(
@@ -1670,7 +1670,7 @@ class _EventsTab extends ConsumerWidget {
               bottom: 16,
               right: 16,
               child: FloatingActionButton(
-                onPressed: () => context.push('/groups/$groupId/events/new'),
+                onPressed: () => context.push('/groups/$groupId/sessions/new'),
                 tooltip: 'Create event',
                 child: const Icon(Icons.add),
               ),

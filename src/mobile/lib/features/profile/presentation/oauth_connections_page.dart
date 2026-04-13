@@ -42,13 +42,42 @@ class OAuthConnectionsPage extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           children: [
             Text(
-              'Link social accounts for easy sign-in.',
+              'Manage social accounts linked to your Teamly profile.',
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
                   ?.copyWith(color: AppThemeTokens.darkTextSecondary),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            // Info banner explaining how to link a new account
+            if (!status.googleConnected || !status.facebookConnected)
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppThemeTokens.info.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                      color: AppThemeTokens.info.withValues(alpha: 0.25)),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline,
+                        size: 16, color: AppThemeTokens.info),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'To link a new social account, sign out and sign in with that provider. '
+                        'Your accounts will be merged automatically.',
+                        style:
+                            TextStyle(fontSize: 12, color: AppThemeTokens.info),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 4),
 
             // Google
             _ConnectionTile(
@@ -57,7 +86,6 @@ class OAuthConnectionsPage extends ConsumerWidget {
               provider: 'Google',
               connected: status.googleConnected,
               isPrimary: status.primaryProvider == 'google',
-              onLink: () => _linkOAuth(context, ref, 'google'),
               onUnlink: () => _unlinkOAuth(context, ref, 'google'),
             ),
 
@@ -70,7 +98,6 @@ class OAuthConnectionsPage extends ConsumerWidget {
               provider: 'Facebook',
               connected: status.facebookConnected,
               isPrimary: status.primaryProvider == 'facebook',
-              onLink: () => _linkOAuth(context, ref, 'facebook'),
               onUnlink: () => _unlinkOAuth(context, ref, 'facebook'),
             ),
 
@@ -120,19 +147,6 @@ class OAuthConnectionsPage extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _linkOAuth(
-      BuildContext context, WidgetRef ref, String provider) async {
-    // Inform user to sign in via OAuth
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'To link $provider, sign out and sign in with $provider.'),
-        ),
-      );
-    }
   }
 
   Future<void> _unlinkOAuth(
@@ -186,7 +200,6 @@ class _ConnectionTile extends StatelessWidget {
     required this.provider,
     required this.connected,
     required this.isPrimary,
-    required this.onLink,
     required this.onUnlink,
   });
 
@@ -195,7 +208,6 @@ class _ConnectionTile extends StatelessWidget {
   final String provider;
   final bool connected;
   final bool isPrimary;
-  final VoidCallback onLink;
   final VoidCallback onUnlink;
 
   @override
@@ -215,7 +227,7 @@ class _ConnectionTile extends StatelessWidget {
           ? isPrimary
               ? 'Connected (primary account)'
               : 'Connected'
-          : 'Not connected'),
+          : 'Not connected — sign out and sign in with $provider to link'),
       trailing: connected
           ? isPrimary
               ? const Tooltip(
@@ -228,10 +240,9 @@ class _ConnectionTile extends StatelessWidget {
                   child: const Text('Unlink',
                       style: TextStyle(color: AppThemeTokens.error)),
                 )
-          : FilledButton.tonal(
-              onPressed: onLink,
-              child: const Text('Link'),
-            ),
+          : const Icon(Icons.link_off_rounded,
+              color: AppThemeTokens.darkTextSecondary, size: 20),
     );
   }
 }
+

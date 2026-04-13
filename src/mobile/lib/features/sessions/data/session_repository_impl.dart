@@ -13,20 +13,27 @@ class SessionRepositoryImpl implements SessionRepository {
   final Dio _dio;
 
   @override
-  Future<List<SessionModel>> getEvents({String? groupId}) async {
+  Future<(List<SessionModel>, String?)> getEvents(
+      {String? groupId, String? cursor, int limit = 50}) async {
     final response = await _dio.get<Map<String, dynamic>>(
       '/sessions',
       queryParameters: {
         if (groupId != null) 'groupId': groupId,
-        'limit': '50',
+        'limit': limit.toString(),
+        if (cursor != null) 'cursor': cursor,
       },
     );
 
     final data = response.data!;
     final items = data['data'] as List<dynamic>? ?? (data is List ? data as List<dynamic> : []);
-    return items
+    final sessions = items
         .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
         .toList();
+
+    final pagination = data['pagination'] as Map<String, dynamic>?;
+    final nextCursor = pagination?['nextCursor'] as String?;
+
+    return (sessions, nextCursor);
   }
 
   @override

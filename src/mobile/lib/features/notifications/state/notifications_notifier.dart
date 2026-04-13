@@ -11,19 +11,55 @@ import '../../push_notifications/state/push_notifications_controller.dart';
 class NotificationsNotifier
     extends AsyncNotifier<List<NotificationModel>> {
 
+  String? _nextCursor;
+  bool _hasMore = true;
+  bool _includeRead = false;
+
   @override
-  Future<List<NotificationModel>> build() {
-    return ref.watch(notificationRepositoryProvider)
+  Future<List<NotificationModel>> build() async {
+    _nextCursor = null;
+    _hasMore = true;
+    final (notifications, nextCursor) = await ref
+        .watch(notificationRepositoryProvider)
         .getNotifications(includeRead: false);
+    _nextCursor = nextCursor;
+    _hasMore = nextCursor != null;
+    return notifications;
   }
 
+  /// Whether more pages are available to load.
+  bool get hasMore => _hasMore;
+
   Future<void> load({bool includeRead = false}) async {
+    _includeRead = includeRead;
+    _nextCursor = null;
+    _hasMore = true;
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(
-      () => ref.read(notificationRepositoryProvider)
-          .getNotifications(includeRead: includeRead),
-    );
+    state = await AsyncValue.guard(() async {
+      final (notifications, nextCursor) = await ref
+          .read(notificationRepositoryProvider)
+          .getNotifications(includeRead: includeRead);
+      _nextCursor = nextCursor;
+      _hasMore = nextCursor != null;
+      return notifications;
+    });
     await _safeBadgeSync();
+  }
+
+  /// Append the next page of notifications to the current list.
+  Future<void> loadMore() async {
+    if (!_hasMore || _nextCursor == null) return;
+    final current = state.valueOrNull ?? [];
+    try {
+      final (more, nextCursor) = await ref
+          .read(notificationRepositoryProvider)
+          .getNotifications(includeRead: _includeRead, cursor: _nextCursor);
+      _nextCursor = nextCursor;
+      _hasMore = nextCursor != null;
+      state = AsyncValue.data([...current, ...more]);
+    } catch (_) {
+      // Keep current state on error.
+    }
   }
 
   Future<void> markAllRead() async {

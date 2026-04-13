@@ -19,6 +19,32 @@ class NotificationsPage extends ConsumerStatefulWidget {
 
 class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   bool _includeRead = false;
+  final _scrollCtrl = ScrollController();
+  bool _isLoadingMore = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollCtrl.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollCtrl.position.extentAfter < 200 && !_isLoadingMore) {
+      final notifier = ref.read(notificationsNotifierProvider.notifier);
+      if (notifier.hasMore) {
+        setState(() => _isLoadingMore = true);
+        notifier.loadMore().then((_) {
+          if (mounted) setState(() => _isLoadingMore = false);
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,9 +103,16 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
           return RefreshIndicator(
             onRefresh: () => ref.read(notificationsNotifierProvider.notifier).load(includeRead: _includeRead),
             child: ListView.builder(
+              controller: _scrollCtrl,
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              itemCount: notifications.length,
+              itemCount: notifications.length + (_isLoadingMore ? 1 : 0),
               itemBuilder: (context, index) {
+                if (index == notifications.length) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
                 final n = notifications[index];
                 final isUnread = !n.read;
                 return Padding(
@@ -94,7 +127,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                       }
                       if (!context.mounted) return;
                       if (n.eventId != null) {
-                        context.push('/events/${n.eventId}');
+                        context.push('/sessions/${n.eventId}');
                       } else if (n.groupId != null) {
                         context.push('/groups/${n.groupId}');
                       } else if (n.tournamentId != null) {

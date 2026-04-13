@@ -168,7 +168,7 @@ class PushNotificationsController {
 
     switch (kind) {
       case 'event':
-        return '/events/$entityId';
+        return '/sessions/$entityId';
       case 'group':
         return '/groups/$entityId';
       case 'teamup':
