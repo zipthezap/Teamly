@@ -70,7 +70,21 @@ vi.mock('../../controllers/tournamentController', () => ({
   createPool: vi.fn((req: any, res: any) => res.json({ ok: true })),
   registerTeamToPool: vi.fn((req: any, res: any) => res.json({ ok: true })),
   removeTeamFromPool: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  removeTeamFromWaitlist: vi.fn((req: any, res: any) => res.json({ ok: true }))
+  removeTeamFromWaitlist: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  updatePool: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  deletePool: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  selfRegisterTeam: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getCategories: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  createCategory: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  updateCategory: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  deleteCategory: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  assignPoolToCategory: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getAdmins: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  addAdmin: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  removeAdmin: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  updateTournamentStatus: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getPublicTournaments: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getTournamentNotifications: vi.fn((req: any, res: any) => res.json({ ok: true }))
 }));
 
 describe('Tournament Routes', () => {
