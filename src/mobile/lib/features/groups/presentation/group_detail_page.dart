@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 
 import '../../../core/error/error_utils.dart';
 import '../../../core/models/group_model.dart';
@@ -1745,9 +1746,26 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
   final _msgCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
   bool _sending = false;
+  Timer? _pollTimer;
+
+  // 12 seconds is a reasonable trade-off: short enough to feel near-real-time
+  // in a casual sports-group setting, long enough to avoid excessive battery
+  // drain and server load. A WebSocket would be ideal but adds complexity.
+  static const _kPollInterval = Duration(seconds: 12);
+
+  @override
+  void initState() {
+    super.initState();
+    _pollTimer = Timer.periodic(_kPollInterval, (_) {
+      if (mounted) {
+        ref.read(chatNotifierProvider(widget.groupId).notifier).silentRefresh();
+      }
+    });
+  }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _msgCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();

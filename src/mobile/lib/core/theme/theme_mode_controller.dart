@@ -10,7 +10,7 @@ final themeModeProvider =
 );
 
 class ThemeModeController extends StateNotifier<ThemeMode> {
-  ThemeModeController() : super(ThemeMode.light) {
+  ThemeModeController() : super(ThemeMode.system) {
     _init();
   }
 
@@ -22,12 +22,21 @@ class ThemeModeController extends StateNotifier<ThemeMode> {
     final stored = prefs.getString(_kThemeModeKey);
     if (stored == 'dark') {
       state = ThemeMode.dark;
+    } else if (stored == 'light') {
+      state = ThemeMode.light;
+    } else {
+      state = ThemeMode.system;
     }
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
     state = mode;
     _prefs ??= await SharedPreferences.getInstance();
-    await _prefs!.setString(_kThemeModeKey, mode == ThemeMode.dark ? 'dark' : 'light');
+    final value = mode == ThemeMode.dark
+        ? 'dark'
+        : mode == ThemeMode.light
+            ? 'light'
+            : 'system';
+    await _prefs!.setString(_kThemeModeKey, value);
   }
 }
