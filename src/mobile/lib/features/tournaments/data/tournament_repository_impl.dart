@@ -100,6 +100,20 @@ class TournamentRepositoryImpl implements TournamentRepository {
   }
 
   @override
+  Future<TournamentPoolModel> updatePool(
+      String tournamentId, String poolId, Map<String, dynamic> data) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+        '/tournaments/$tournamentId/pools/$poolId',
+        data: data);
+    return TournamentPoolModel.fromJson(response.data!);
+  }
+
+  @override
+  Future<void> deletePool(String tournamentId, String poolId) async {
+    await _dio.delete<void>('/tournaments/$tournamentId/pools/$poolId');
+  }
+
+  @override
   Future<Map<String, dynamic>> registerTeamToPool(
       String tournamentId, String poolId, String teamId) async {
     final response = await _dio.post<Map<String, dynamic>>(

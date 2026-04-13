@@ -1642,6 +1642,95 @@ export const createPool = async (req: Request, res: Response) => {
 };
 
 /**
+ * Update a pool (organizer only)
+ */
+export const updatePool = async (req: Request, res: Response) => {
+  try {
+    const { id, poolId } = req.params;
+    const userId = req.user!.id;
+    const { name, description, maxTeams } = req.body;
+
+    const tournament = await prisma.tournament.findUnique({ where: { id } });
+    if (!tournament) return res.status(404).json({ error: 'Tournament not found' });
+
+    if (!tournamentService.isOrganizer(tournament, userId)) {
+      return res.status(403).json({ error: 'Only the organizer can update pools' });
+    }
+
+    const pool = await prisma.tournamentPool.findFirst({ where: { id: poolId, tournamentId: id } });
+    if (!pool) return res.status(404).json({ error: 'Pool not found' });
+
+    const updateData: Record<string, unknown> = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description || null;
+    if (maxTeams !== undefined) {
+      if (maxTeams < 2) return res.status(400).json({ error: 'Pool must allow at least 2 teams' });
+      // Ensure new maxTeams is not less than current team count
+      const teamCount = await prisma.tournamentTeam.count({ where: { poolId } });
+      if (maxTeams < teamCount) {
+        return res.status(400).json({ error: `Cannot reduce max teams below current team count (${teamCount})` });
+      }
+      updateData.maxTeams = maxTeams;
+    }
+
+    const updatedPool = await prisma.tournamentPool.update({
+      where: { id: poolId },
+      data: updateData,
+      include: {
+        teams: { select: { id: true, name: true } },
+        waitlist: { orderBy: { position: 'asc' }, include: { team: { select: { id: true, name: true } } } },
+        category: { select: { id: true, name: true } }
+      }
+    });
+
+    logger.info('Pool updated', 'TournamentController', { tournamentId: id, poolId, userId });
+    res.json(updatedPool);
+  } catch (error: unknown) {
+    if (isPrismaUniqueError(error)) {
+      return res.status(400).json({ error: 'A pool with this name already exists in the tournament' });
+    }
+    logger.error('Error updating pool', 'TournamentController', { error });
+    return res.status(500).json({ error: 'Failed to update pool' });
+  }
+};
+
+/**
+ * Delete a pool (organizer only) — only allowed when pool is empty
+ */
+export const deletePool = async (req: Request, res: Response) => {
+  try {
+    const { id, poolId } = req.params;
+    const userId = req.user!.id;
+
+    const tournament = await prisma.tournament.findUnique({ where: { id } });
+    if (!tournament) return res.status(404).json({ error: 'Tournament not found' });
+
+    if (!tournamentService.isOrganizer(tournament, userId)) {
+      return res.status(403).json({ error: 'Only the organizer can delete pools' });
+    }
+
+    const pool = await prisma.tournamentPool.findFirst({
+      where: { id: poolId, tournamentId: id },
+      include: { _count: { select: { teams: true } } }
+    });
+    if (!pool) return res.status(404).json({ error: 'Pool not found' });
+
+    const teamCount = (pool as any)._count.teams as number;
+    if (teamCount > 0) {
+      return res.status(400).json({ error: `Cannot delete pool with ${teamCount} registered team(s). Remove all teams first.` });
+    }
+
+    await prisma.tournamentPool.delete({ where: { id: poolId } });
+
+    logger.info('Pool deleted', 'TournamentController', { tournamentId: id, poolId, userId });
+    res.json({ message: 'Pool deleted successfully' });
+  } catch (error) {
+    logger.error('Error deleting pool', 'TournamentController', { error });
+    return res.status(500).json({ error: 'Failed to delete pool' });
+  }
+};
+
+/**
  * Register a team to a pool (team captain only)
  */
 export const registerTeamToPool = async (req: Request, res: Response) => {

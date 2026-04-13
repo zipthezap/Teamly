@@ -15,6 +15,9 @@ abstract class TournamentRepository {
   Future<List<TournamentPoolModel>> getPools(String tournamentId);
   Future<TournamentPoolModel> createPool(
       String tournamentId, Map<String, dynamic> data);
+  Future<TournamentPoolModel> updatePool(
+      String tournamentId, String poolId, Map<String, dynamic> data);
+  Future<void> deletePool(String tournamentId, String poolId);
   Future<Map<String, dynamic>> registerTeamToPool(
       String tournamentId, String poolId, String teamId);
   Future<void> removeTeamFromPool(

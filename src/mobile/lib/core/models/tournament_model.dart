@@ -1,6 +1,58 @@
 import 'package:equatable/equatable.dart';
 
 // ---------------------------------------------------------------------------
+// Standing model (from TournamentStanding table)
+// ---------------------------------------------------------------------------
+
+class TournamentStandingModel extends Equatable {
+  const TournamentStandingModel({
+    required this.id,
+    required this.teamId,
+    required this.teamName,
+    required this.points,
+    required this.wins,
+    required this.losses,
+    required this.draws,
+    required this.goalsFor,
+    required this.goalsAgainst,
+    this.groupName,
+  });
+
+  final String id;
+  final String teamId;
+  final String teamName;
+  final int points;
+  final int wins;
+  final int losses;
+  final int draws;
+  final int goalsFor;
+  final int goalsAgainst;
+  final String? groupName;
+
+  int get goalDifference => goalsFor - goalsAgainst;
+  int get played => wins + losses + draws;
+
+  factory TournamentStandingModel.fromJson(Map<String, dynamic> json) {
+    final team = json['team'] as Map<String, dynamic>?;
+    return TournamentStandingModel(
+      id: json['id'] as String,
+      teamId: team?['id'] as String? ?? json['teamId'] as String? ?? '',
+      teamName: team?['name'] as String? ?? '',
+      points: (json['points'] as num?)?.toInt() ?? 0,
+      wins: (json['wins'] as num?)?.toInt() ?? 0,
+      losses: (json['losses'] as num?)?.toInt() ?? 0,
+      draws: (json['draws'] as num?)?.toInt() ?? 0,
+      goalsFor: (json['goalsFor'] as num?)?.toInt() ?? 0,
+      goalsAgainst: (json['goalsAgainst'] as num?)?.toInt() ?? 0,
+      groupName: json['groupName'] as String?,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, teamId];
+}
+
+// ---------------------------------------------------------------------------
 // Pool waitlist entry
 // ---------------------------------------------------------------------------
 
@@ -330,6 +382,7 @@ class TournamentModel extends Equatable {
     this.pools = const [],
     this.categories = const [],
     this.admins = const [],
+    this.standings = const [],
     this.teamCount = 0,
     this.myTeam,
   });
@@ -362,6 +415,7 @@ class TournamentModel extends Equatable {
   final List<TournamentPoolModel> pools;
   final List<TournamentCategoryModel> categories;
   final List<TournamentAdminModel> admins;
+  final List<TournamentStandingModel> standings;
   final int teamCount;
   final TournamentTeamModel? myTeam;
 
@@ -387,6 +441,11 @@ class TournamentModel extends Equatable {
     final adminsList = (json['adminRoles'] as List<dynamic>?)
             ?.map((a) =>
                 TournamentAdminModel.fromJson(a as Map<String, dynamic>))
+            .toList() ??
+        [];
+    final standingsList = (json['standings'] as List<dynamic>?)
+            ?.map((s) =>
+                TournamentStandingModel.fromJson(s as Map<String, dynamic>))
             .toList() ??
         [];
     final count = json['_count'] as Map<String, dynamic>?;
@@ -431,6 +490,7 @@ class TournamentModel extends Equatable {
       pools: poolsList,
       categories: categoriesList,
       admins: adminsList,
+      standings: standingsList,
       teamCount: (count?['teams'] as num?)?.toInt() ?? teamsList.length,
     );
   }

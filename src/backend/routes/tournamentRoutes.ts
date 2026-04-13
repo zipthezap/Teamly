@@ -162,6 +162,18 @@ router.post(
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
   asyncHandler(tournamentController.createPool)
 );
+router.put(
+  '/:id/pools/:poolId',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
+  asyncHandler(tournamentController.updatePool)
+);
+router.delete(
+  '/:id/pools/:poolId',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
+  asyncHandler(tournamentController.deletePool)
+);
 router.post(
   '/:id/pools/:poolId/teams/:teamId',
   noCache,
