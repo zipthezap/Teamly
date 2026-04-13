@@ -11,6 +11,7 @@ import '../../../core/error/error_utils.dart';
 import '../../../core/models/group_model.dart';
 import '../../../core/utils/maps_utils.dart';
 import '../../../features/auth/state/auth_notifier.dart';
+import '../../../features/dashboard/state/dashboard_notifier.dart';
 import '../../../features/sessions/state/sessions_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
@@ -487,6 +488,10 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
     try {
       await ref.read(groupRepositoryProvider).leaveGroup(widget.groupId);
       ref.read(groupsNotifierProvider.notifier).reload();
+      ref.read(dashboardNotifierProvider.notifier).reload();
+      ref.read(sessionsNotifierProvider.notifier).reload();
+      ref.invalidate(myJoinRequestsProvider);
+      ref.invalidate(groupDetailProvider(widget.groupId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
