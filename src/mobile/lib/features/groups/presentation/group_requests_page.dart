@@ -36,6 +36,7 @@ class _GroupRequestsPageState extends ConsumerState<GroupRequestsPage>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Requests & Invites'),
@@ -43,7 +44,9 @@ class _GroupRequestsPageState extends ConsumerState<GroupRequestsPage>
           controller: _tabCtrl,
           indicatorColor: AppThemeTokens.primary500,
           labelColor: AppThemeTokens.primary400,
-          unselectedLabelColor: AppThemeTokens.darkTextSecondary,
+          unselectedLabelColor: isDark
+              ? AppThemeTokens.darkTextSecondary
+              : AppThemeTokens.lightTextSecondary,
           tabs: const [
             Tab(text: 'Invitations'),
             Tab(text: 'My Requests'),
@@ -255,9 +258,19 @@ class _InvitationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor =
+        isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
+    final titleColor =
+        isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
+    final secondaryColor = isDark
+        ? AppThemeTokens.darkTextSecondary
+        : AppThemeTokens.lightTextSecondary;
+    final borderColor =
+        isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
     return Container(
       decoration: BoxDecoration(
-        color: AppThemeTokens.darkCard,
+        color: cardColor,
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
         border: Border.all(
             color: AppThemeTokens.primary500.withValues(alpha: 0.3)),
@@ -280,18 +293,18 @@ class _InvitationCard extends StatelessWidget {
                   children: [
                     Text(
                       invitation.groupName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
-                        color: AppThemeTokens.darkText,
+                        color: titleColor,
                       ),
                     ),
                     if (invitation.invitedByName != null)
                       Text(
                         'Invited by ${invitation.invitedByName}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppThemeTokens.darkTextSecondary,
+                          color: secondaryColor,
                         ),
                       ),
                   ],
@@ -322,9 +335,9 @@ class _InvitationCard extends StatelessWidget {
               invitation.groupDescription!,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: AppThemeTokens.darkTextSecondary,
+                color: secondaryColor,
               ),
             ),
           ],
@@ -343,9 +356,8 @@ class _InvitationCard extends StatelessWidget {
                       child: OutlinedButton(
                         onPressed: onView,
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: AppThemeTokens.darkTextSecondary,
-                          side: const BorderSide(
-                              color: AppThemeTokens.darkBorder),
+                          foregroundColor: secondaryColor,
+                          side: BorderSide(color: borderColor),
                           padding:
                               const EdgeInsets.symmetric(vertical: 8),
                           shape: RoundedRectangleBorder(
@@ -419,11 +431,18 @@ class _JoinRequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor =
+        isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
+    final titleColor =
+        isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
+    final borderColor =
+        isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
     return Container(
       decoration: BoxDecoration(
-        color: AppThemeTokens.darkCard,
+        color: cardColor,
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-        border: Border.all(color: AppThemeTokens.darkBorder),
+        border: Border.all(color: borderColor),
       ),
       padding: const EdgeInsets.all(14),
       child: Row(
@@ -440,10 +459,10 @@ class _JoinRequestCard extends StatelessWidget {
               children: [
                 Text(
                   request.groupName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
-                    color: AppThemeTokens.darkText,
+                    color: titleColor,
                   ),
                 ),
                 const SizedBox(height: 2),
