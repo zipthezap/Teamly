@@ -334,53 +334,61 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
     // Step 2: type "DELETE" to confirm — prevents accidental deletion.
     final confirmCtrl = TextEditingController();
-    final step2Confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Confirm deletion'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Type DELETE in the box below to permanently delete your account.',
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: confirmCtrl,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  hintText: 'DELETE',
-                  border: OutlineInputBorder(),
+    bool? step2Confirmed;
+    try {
+      step2Confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: const Text('Confirm deletion'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Type DELETE in the box below to permanently delete your account.',
                 ),
-                onChanged: (_) => setDialogState(() {}),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: confirmCtrl,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    hintText: 'DELETE',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (_) => setDialogState(() {}),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                    backgroundColor: confirmCtrl.text == 'DELETE'
+                        ? Theme.of(ctx).colorScheme.error
+                        : null),
+                onPressed: confirmCtrl.text == 'DELETE'
+                    ? () => Navigator.of(ctx).pop(true)
+                    : null,
+                child: const Text('Delete my account'),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                  backgroundColor: confirmCtrl.text == 'DELETE'
-                      ? Theme.of(ctx).colorScheme.error
-                      : null),
-              onPressed: confirmCtrl.text == 'DELETE'
-                  ? () => Navigator.of(ctx).pop(true)
-                  : null,
-              child: const Text('Delete my account'),
-            ),
-          ],
         ),
-      ),
-    );
+      );
+    } finally {
+      confirmCtrl.dispose();
+    }
 
-    confirmCtrl.dispose();
     if (step2Confirmed != true || !mounted) return;
 
+    await _performDeleteAccount();
+  }
+
+  Future<void> _performDeleteAccount() async {
     try {
       await ref.read(authNotifierProvider.notifier).deleteAccount();
       if (mounted) context.go('/auth');

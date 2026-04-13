@@ -603,7 +603,7 @@ class _AppleIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Use a simple  icon representation. The  brand icon is not in
+    // Use a simple icon representation. The Apple brand icon is not in
     // Material icons, so we draw a stylised apple shape with CustomPainter.
     return CustomPaint(size: const Size(22, 22), painter: _AppleLogoPainter());
   }

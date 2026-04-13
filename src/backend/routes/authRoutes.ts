@@ -111,6 +111,6 @@ router.post('/forgot-password', distributedPasswordResetLimiter, noCache, asyncH
 router.post('/reset-password', distributedPasswordResetLimiter, noCache, asyncHandler(authController.resetPassword));
 
 // Account deletion (authenticated, rate-limited)
-router.delete('/account', authMiddleware, authenticatedLimiter, noCache, asyncHandler(authController.deleteAccount));
+router.delete('/account', authMiddleware, authenticatedLimiter, distributedAuthLimiter, noCache, asyncHandler(authController.deleteAccount));
 
 export default router;
