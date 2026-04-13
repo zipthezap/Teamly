@@ -361,6 +361,8 @@ class TournamentModel extends Equatable {
     required this.status,
     required this.createdAt,
     required this.creatorId,
+    this.organizerName,
+    this.organizerEmail,
     this.description,
     this.startDate,
     this.endDate,
@@ -394,6 +396,8 @@ class TournamentModel extends Equatable {
   final String status; // draft, registration, active, completed
   final DateTime createdAt;
   final String creatorId;
+  final String? organizerName;
+  final String? organizerEmail;
   final String? description;
   final DateTime? startDate;
   final DateTime? endDate;
@@ -461,6 +465,8 @@ class TournamentModel extends Equatable {
           json['organizerId'] as String? ??
           json['creatorId'] as String? ??
           '',
+      organizerName: organizer?['name'] as String?,
+      organizerEmail: organizer?['email'] as String?,
       description: json['description'] as String?,
       startDate: json['startDate'] != null
           ? DateTime.tryParse(json['startDate'] as String)
@@ -498,4 +504,3 @@ class TournamentModel extends Equatable {
   @override
   List<Object?> get props => [id, name, sportType, format, status, createdAt];
 }
-

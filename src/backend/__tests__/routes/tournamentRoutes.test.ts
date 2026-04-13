@@ -74,6 +74,7 @@ vi.mock('../../controllers/tournamentController', () => ({
   updatePool: vi.fn((req: any, res: any) => res.json({ ok: true })),
   deletePool: vi.fn((req: any, res: any) => res.json({ ok: true })),
   selfRegisterTeam: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  selfUnregisterTeam: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getCategories: vi.fn((req: any, res: any) => res.json({ ok: true })),
   createCategory: vi.fn((req: any, res: any) => res.json({ ok: true })),
   updateCategory: vi.fn((req: any, res: any) => res.json({ ok: true })),
@@ -117,6 +118,11 @@ describe('Tournament Routes', () => {
 
   it('POST /api/:id/teams → 200', async () => {
     const res = await request(app).post('/api/tournament-1/teams').send({});
+    expect(res.status).toBe(200);
+  });
+
+  it('DELETE /api/:id/teams/self-register → 200', async () => {
+    const res = await request(app).delete('/api/tournament-1/teams/self-register');
     expect(res.status).toBe(200);
   });
 

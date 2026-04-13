@@ -1746,6 +1746,31 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
   });
 });
 
+describe('DELETE /api/tournaments/:id/teams/self-register (selfUnregisterTeam)', () => {
+  it('returns 200 on successful unregister', async () => {
+    const registeredTournament = { ...mockTournament, status: 'registration' };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(mockTeam as any);
+    vi.mocked(prisma.tournamentTeam.delete).mockResolvedValue(mockTeam as any);
+
+    const res = await request(app)
+      .delete('/api/tournaments/tournament-1/teams/self-register');
+
+    expect(res.status).toBe(200);
+  });
+
+  it('returns 400 when user has no registered team', async () => {
+    const registeredTournament = { ...mockTournament, status: 'registration' };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+
+    const res = await request(app)
+      .delete('/api/tournaments/tournament-1/teams/self-register');
+
+    expect(res.status).toBe(400);
+  });
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // CATEGORIES
 // ═══════════════════════════════════════════════════════════════════════════════

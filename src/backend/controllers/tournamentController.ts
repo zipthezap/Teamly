@@ -2704,6 +2704,43 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Captain self-unregisters their team from a tournament.
+ * No admin permission required — only the team captain can unregister their own team.
+ */
+export const selfUnregisterTeam = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+
+  const tournament = await prisma.tournament.findUnique({ where: { id } });
+  ensureResourceExists(tournament, 'Tournament');
+
+  if (tournament!.status !== TournamentStatus.REGISTRATION && tournament!.status !== TournamentStatus.DRAFT) {
+    throw new BadRequestError('Tournament registration is closed');
+  }
+
+  const existingTeam = await prisma.tournamentTeam.findFirst({
+    where: { tournamentId: id, captainUserId: userId },
+    select: { id: true, name: true }
+  });
+
+  if (!existingTeam) {
+    throw new BadRequestError('You do not have a registered team to unregister');
+  }
+
+  await prisma.tournamentTeam.delete({
+    where: { id: existingTeam.id }
+  });
+
+  logger.info('Team self-unregistered', 'TournamentController', {
+    tournamentId: id,
+    teamId: existingTeam.id,
+    captainUserId: userId
+  });
+
+  res.json({ message: 'Team unregistered successfully' });
+};
+
 // ==================== STATUS MANAGEMENT ====================
 
 export const updateTournamentStatus = async (req: Request, res: Response) => {

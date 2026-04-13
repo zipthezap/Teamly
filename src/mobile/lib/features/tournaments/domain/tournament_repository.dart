@@ -10,6 +10,7 @@ abstract class TournamentRepository {
   Future<Map<String, dynamic>> selfRegisterTeam(
       String tournamentId, String teamName,
       {String? poolId});
+  Future<void> selfUnregisterTeam(String tournamentId);
 
   // Pool management
   Future<List<TournamentPoolModel>> getPools(String tournamentId);
