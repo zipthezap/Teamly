@@ -348,7 +348,7 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
                   myTeam: myTeam,
                   onRefresh: refresh,
                 ),
-                if (isStarted) _ScoresTab(teams: t.teams, pools: t.pools),
+                if (isStarted) _ScoresTab(tournament: t),
                 if (isStarted)
                   _BracketsTab(tournament: t, currentUserId: currentUserId),
                 if (hasMyTeam)
@@ -651,88 +651,219 @@ class _TeamRow extends StatelessWidget {
 // Scores Tab
 // ---------------------------------------------------------------------------
 
-class _ScoresTab extends StatelessWidget {
-  const _ScoresTab({required this.teams, required this.pools});
+// Internal view model for a standings row – adapts both standings and team-only data.
+class _StandingRow {
+  _StandingRow({
+    required this.name,
+    required this.wins,
+    required this.losses,
+    required this.draws,
+    required this.points,
+    this.gf,
+    this.ga,
+  });
 
-  final List<TournamentTeamModel> teams;
-  final List<TournamentPoolModel> pools;
+  final String name;
+  final int wins;
+  final int losses;
+  final int draws;
+  final int points;
+  final int? gf; // goals / points scored
+  final int? ga; // goals / points conceded
+  int? get gd => gf != null && ga != null ? gf! - ga! : null;
+  int get played => wins + losses + draws;
+
+  factory _StandingRow.fromStanding(TournamentStandingModel s) =>
+      _StandingRow(name: s.teamName, wins: s.wins, losses: s.losses, draws: s.draws, points: s.points, gf: s.goalsFor, ga: s.goalsAgainst);
+
+  factory _StandingRow.fromTeam(TournamentTeamModel t) =>
+      _StandingRow(name: t.name, wins: t.wins, losses: t.losses, draws: 0, points: t.points);
+}
+
+class _ScoresTab extends StatelessWidget {
+  const _ScoresTab({required this.tournament});
+
+  final TournamentModel tournament;
 
   @override
   Widget build(BuildContext context) {
-    if (teams.isEmpty) {
+    final t = tournament;
+    final hasStandings = t.standings.isNotEmpty;
+
+    // Build teamId→poolId lookup
+    final teamPoolMap = {for (final tm in t.teams) tm.id: tm.poolId};
+
+    // Helper: get rows for a pool (or all teams if no pool given)
+    List<_StandingRow> rowsForPool(String? poolId) {
+      if (hasStandings) {
+        final filtered = poolId == null
+            ? t.standings
+            : t.standings.where((s) => teamPoolMap[s.teamId] == poolId).toList();
+        if (filtered.isEmpty && poolId != null) {
+          // Fallback to teams if standings not yet populated for this pool
+          final poolTeams = t.teams.where((tm) => tm.poolId == poolId).toList();
+          return poolTeams.map(_StandingRow.fromTeam).toList();
+        }
+        return filtered.map(_StandingRow.fromStanding).toList();
+      } else {
+        final poolTeams = poolId == null
+            ? t.teams
+            : t.teams.where((tm) => tm.poolId == poolId).toList();
+        return poolTeams.map(_StandingRow.fromTeam).toList();
+      }
+    }
+
+    if (t.teams.isEmpty && !hasStandings) {
       return const UiEmptyState(icon: Icons.leaderboard_outlined, message: 'No scores yet.');
     }
 
-    if (pools.isNotEmpty) {
-      final Map<String, List<TournamentTeamModel>> byPool = {};
-      for (final pool in pools) {
-        byPool[pool.name] = teams.where((t) => pool.teams.any((pt) => pt.id == t.id)).toList();
-      }
-      final unassigned = teams.where((t) => !pools.any((p) => p.teams.any((pt) => pt.id == t.id))).toList();
-      if (unassigned.isNotEmpty) byPool['Other'] = unassigned;
+    final showGF = hasStandings && t.standings.any((s) => s.goalsFor > 0 || s.goalsAgainst > 0);
 
-      return ListView(
-        padding: const EdgeInsets.all(16),
+    Widget buildSection(String title, String? poolId) {
+      final rows = rowsForPool(poolId);
+      if (rows.isEmpty) return const SizedBox.shrink();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final entry in byPool.entries) ...[
-            UiSectionTitle(entry.key),
-            const SizedBox(height: 6),
-            _ScoreTable(teams: entry.value),
-            const SizedBox(height: 16),
-          ],
+          UiSectionTitle(title),
+          const SizedBox(height: 6),
+          _ScoreTable(rows: rows, showGoals: showGF),
+          const SizedBox(height: 16),
         ],
       );
     }
 
-    return ListView(padding: const EdgeInsets.all(16), children: [_ScoreTable(teams: teams)]);
+    final children = <Widget>[];
+
+    if (t.categories.isNotEmpty) {
+      // Group by category → pool hierarchy
+      for (final cat in t.categories) {
+        if (cat.pools.isEmpty) continue;
+        children.add(Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: Text(cat.name.toUpperCase(),
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1.2, color: AppThemeTokens.textMuted(context))),
+        ));
+        for (final pool in cat.pools) {
+          children.add(buildSection(pool.name, pool.id));
+        }
+      }
+      // Uncategorised pools
+      final catPoolIds = t.categories.expand((c) => c.pools.map((p) => p.id)).toSet();
+      final uncatPools = t.pools.where((p) => !catPoolIds.contains(p.id)).toList();
+      for (final pool in uncatPools) {
+        children.add(buildSection(pool.name, pool.id));
+      }
+    } else if (t.pools.isNotEmpty) {
+      for (final pool in t.pools) {
+        children.add(buildSection(pool.name, pool.id));
+      }
+      // Teams not in any pool
+      final poolTeamIds = t.pools.expand((p) => p.teams.map((tm) => tm.id)).toSet();
+      final unassigned = t.teams.where((tm) => !poolTeamIds.contains(tm.id)).toList();
+      if (unassigned.isNotEmpty) {
+        final rows = hasStandings
+            ? t.standings.where((s) => !poolTeamIds.contains(s.teamId)).map(_StandingRow.fromStanding).toList()
+            : unassigned.map(_StandingRow.fromTeam).toList();
+        if (rows.isNotEmpty) {
+          children.add(UiSectionTitle('Other'));
+          children.add(const SizedBox(height: 6));
+          children.add(_ScoreTable(rows: rows, showGoals: showGF));
+          children.add(const SizedBox(height: 16));
+        }
+      }
+    } else {
+      final rows = rowsForPool(null);
+      if (rows.isEmpty) return const UiEmptyState(icon: Icons.leaderboard_outlined, message: 'No scores yet.');
+      children.add(_ScoreTable(rows: rows, showGoals: showGF));
+      children.add(const SizedBox(height: 16));
+    }
+
+    if (children.isEmpty) {
+      return const UiEmptyState(icon: Icons.leaderboard_outlined, message: 'No scores yet.');
+    }
+    return ListView(padding: const EdgeInsets.all(16), children: children);
   }
 }
 
 class _ScoreTable extends StatelessWidget {
-  const _ScoreTable({required this.teams});
+  const _ScoreTable({required this.rows, this.showGoals = false});
 
-  final List<TournamentTeamModel> teams;
+  final List<_StandingRow> rows;
+  final bool showGoals;
 
   @override
   Widget build(BuildContext context) {
-    final sorted = [...teams]..sort((a, b) => b.points.compareTo(a.points));
+    final sorted = [...rows]..sort((a, b) {
+        final pd = b.points.compareTo(a.points);
+        if (pd != 0) return pd;
+        if (showGoals) {
+          final gdd = (b.gd ?? 0).compareTo(a.gd ?? 0);
+          if (gdd != 0) return gdd;
+          return (b.gf ?? 0).compareTo(a.gf ?? 0);
+        }
+        return b.wins.compareTo(a.wins);
+      });
+
     return Container(
       decoration: BoxDecoration(
         color: AppThemeTokens.card(context),
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
         border: Border.all(color: AppThemeTokens.border(context)),
       ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              children: const [
-                SizedBox(width: 24),
-                Expanded(child: Text('Team', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
-                SizedBox(width: 36, child: Text('W', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
-                SizedBox(width: 36, child: Text('L', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
-                SizedBox(width: 36, child: Text('Pts', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          for (int i = 0; i < sorted.length; i++) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                children: [
-                  SizedBox(width: 24, child: Text('${i + 1}', style: TextStyle(color: AppThemeTokens.textMuted(context), fontSize: 13))),
-                  Expanded(child: Text(sorted[i].name, style: const TextStyle(fontSize: 13))),
-                  SizedBox(width: 36, child: Text('${sorted[i].wins}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13))),
-                  SizedBox(width: 36, child: Text('${sorted[i].losses}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13))),
-                  SizedBox(width: 36, child: Text('${sorted[i].points}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppThemeTokens.primary500))),
-                ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 32),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Row(children: [
+                  const SizedBox(width: 24),
+                  const SizedBox(width: 160, child: Text('Team', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                  const SizedBox(width: 32, child: Text('P', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                  const SizedBox(width: 32, child: Text('W', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                  if (rows.any((r) => r.draws > 0))
+                    const SizedBox(width: 32, child: Text('D', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                  const SizedBox(width: 32, child: Text('L', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                  if (showGoals) ...[
+                    const SizedBox(width: 36, child: Text('GF', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                    const SizedBox(width: 36, child: Text('GA', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                    const SizedBox(width: 36, child: Text('GD', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                  ],
+                  const SizedBox(width: 40, child: Text('Pts', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                ]),
               ),
-            ),
-            if (i < sorted.length - 1) const Divider(height: 1),
-          ],
-        ],
+              const Divider(height: 1),
+              for (int i = 0; i < sorted.length; i++) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(children: [
+                    SizedBox(width: 24, child: Text('${i + 1}', style: TextStyle(color: AppThemeTokens.textMuted(context), fontSize: 13))),
+                    SizedBox(width: 160, child: Text(sorted[i].name, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
+                    SizedBox(width: 32, child: Text('${sorted[i].played}', textAlign: TextAlign.center, style: TextStyle(color: AppThemeTokens.textSecondary(context), fontSize: 13))),
+                    SizedBox(width: 32, child: Text('${sorted[i].wins}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13))),
+                    if (rows.any((r) => r.draws > 0))
+                      SizedBox(width: 32, child: Text('${sorted[i].draws}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13))),
+                    SizedBox(width: 32, child: Text('${sorted[i].losses}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13))),
+                    if (showGoals) ...[
+                      SizedBox(width: 36, child: Text('${sorted[i].gf ?? 0}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13))),
+                      SizedBox(width: 36, child: Text('${sorted[i].ga ?? 0}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13))),
+                      SizedBox(width: 36, child: Text(
+                        '${(sorted[i].gd ?? 0) >= 0 ? '+' : ''}${sorted[i].gd ?? 0}',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 13, color: (sorted[i].gd ?? 0) >= 0 ? Colors.green : Colors.red),
+                      )),
+                    ],
+                    SizedBox(width: 40, child: Text('${sorted[i].points}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppThemeTokens.primary500))),
+                  ]),
+                ),
+                if (i < sorted.length - 1) const Divider(height: 1),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1198,8 +1329,19 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _loading = true);
     try {
-      await ref.read(tournamentRepositoryProvider).selfRegisterTeam(widget.tournamentId, _nameCtrl.text.trim(), poolId: _selectedPoolId);
+      final result = await ref.read(tournamentRepositoryProvider).selfRegisterTeam(widget.tournamentId, _nameCtrl.text.trim(), poolId: _selectedPoolId);
       if (!mounted) return;
+      final onWaitlist = result['onWaitlist'] == true;
+      if (onWaitlist) {
+        final pool = result['pool'] as Map<String, dynamic>?;
+        final poolName = pool?['name'] as String? ?? 'the pool';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Pool "$poolName" is full — your team is on the waitlist!'),
+          backgroundColor: Colors.orange,
+        ));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Team registered successfully!')));
+      }
       context.pop(true);
     } on Exception catch (e) {
       if (!mounted) return;
@@ -1538,33 +1680,36 @@ class TournamentInvitePage extends ConsumerStatefulWidget {
 }
 
 class _TournamentInvitePageState extends ConsumerState<TournamentInvitePage> {
-  bool _loading = false;
+  bool _acceptLoading = false;
+  bool _declineLoading = false;
   String? _result;
   String? _error;
 
   Future<void> _accept() async {
-    setState(() => _loading = true);
+    setState(() => _acceptLoading = true);
     try {
       await ref.read(tournamentRepositoryProvider).acceptInvitation(widget.inviteToken);
       if (mounted) setState(() => _result = 'accepted');
     } on Exception catch (e) {
       if (mounted) setState(() => _error = extractErrorMessage(e));
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => _acceptLoading = false);
     }
   }
 
   Future<void> _decline() async {
-    setState(() => _loading = true);
+    setState(() => _declineLoading = true);
     try {
       await ref.read(tournamentRepositoryProvider).declineInvitation(widget.inviteToken);
       if (mounted) setState(() => _result = 'declined');
     } on Exception catch (e) {
       if (mounted) setState(() => _error = extractErrorMessage(e));
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => _declineLoading = false);
     }
   }
+
+  bool get _anyLoading => _acceptLoading || _declineLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -1591,12 +1736,18 @@ class _TournamentInvitePageState extends ConsumerState<TournamentInvitePage> {
                   ],
                   const SizedBox(height: 32),
                   Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    OutlinedButton(onPressed: _loading ? null : _decline, child: const Text('Decline')),
+                    OutlinedButton.icon(
+                      icon: _declineLoading
+                          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.close),
+                      label: const Text('Decline'),
+                      onPressed: _anyLoading ? null : _decline,
+                    ),
                     const SizedBox(width: 16),
                     FilledButton.icon(
-                      icon: _loading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.check),
+                      icon: _acceptLoading ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.check),
                       label: const Text('Accept'),
-                      onPressed: _loading ? null : _accept,
+                      onPressed: _anyLoading ? null : _accept,
                     ),
                   ]),
                 ]),
@@ -1765,8 +1916,29 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
       });
       ref.read(tournamentsNotifierProvider.notifier).reload();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tournament created!')));
-      context.go('/tournaments/${tournament.id}');
+
+      // Prompt to set up pools/categories immediately after creation
+      final setup = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Tournament Created! 🎉'),
+          content: const Text('Would you like to set up pools or categories now to organise your teams?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, 'skip'), child: const Text('Skip')),
+            OutlinedButton(onPressed: () => Navigator.pop(ctx, 'categories'), child: const Text('Categories')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, 'pools'), child: const Text('Pools')),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      if (setup == 'pools') {
+        context.go('/tournaments/${tournament.id}/pools');
+      } else if (setup == 'categories') {
+        context.go('/tournaments/${tournament.id}/categories');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tournament created!')));
+        context.go('/tournaments/${tournament.id}');
+      }
     } on Exception catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(error)), backgroundColor: Theme.of(context).colorScheme.error));
@@ -1866,6 +2038,490 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ===========================================================================
+// Pools Management Page
+// ===========================================================================
+
+class PoolsManagementPage extends ConsumerStatefulWidget {
+  const PoolsManagementPage({super.key, required this.tournamentId});
+  final String tournamentId;
+
+  @override
+  ConsumerState<PoolsManagementPage> createState() => _PoolsManagementPageState();
+}
+
+class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
+  List<TournamentPoolModel> _pools = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final pools = await ref.read(tournamentRepositoryProvider).getPools(widget.tournamentId);
+      if (mounted) setState(() { _pools = pools; _loading = false; });
+    } on Exception catch (e) {
+      if (mounted) setState(() { _error = extractErrorMessage(e); _loading = false; });
+    }
+  }
+
+  Future<void> _createPool() async {
+    final nameCtrl = TextEditingController();
+    final maxCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Create Pool'),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Pool name *'), textCapitalization: TextCapitalization.words),
+            const SizedBox(height: 12),
+            TextField(controller: maxCtrl, decoration: const InputDecoration(labelText: 'Max teams *'), keyboardType: TextInputType.number),
+            const SizedBox(height: 12),
+            TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description (optional)')),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Create')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final name = nameCtrl.text.trim();
+    final maxTeams = int.tryParse(maxCtrl.text.trim());
+    if (name.isEmpty || maxTeams == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pool name and max teams are required')));
+      return;
+    }
+    try {
+      await ref.read(tournamentRepositoryProvider).createPool(widget.tournamentId, {
+        'name': name, 'maxTeams': maxTeams,
+        if (descCtrl.text.trim().isNotEmpty) 'description': descCtrl.text.trim(),
+      });
+      _load();
+    } on Exception catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e)), backgroundColor: Theme.of(context).colorScheme.error));
+    }
+  }
+
+  Future<void> _editPool(TournamentPoolModel pool) async {
+    final nameCtrl = TextEditingController(text: pool.name);
+    final maxCtrl = TextEditingController(text: '${pool.maxTeams}');
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Pool'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Pool name *'), textCapitalization: TextCapitalization.words),
+          const SizedBox(height: 12),
+          TextField(controller: maxCtrl, decoration: const InputDecoration(labelText: 'Max teams *'), keyboardType: TextInputType.number),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final name = nameCtrl.text.trim();
+    final maxTeams = int.tryParse(maxCtrl.text.trim());
+    if (name.isEmpty || maxTeams == null) return;
+    try {
+      await ref.read(tournamentRepositoryProvider).updatePool(widget.tournamentId, pool.id, {'name': name, 'maxTeams': maxTeams});
+      _load();
+    } on Exception catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e)), backgroundColor: Theme.of(context).colorScheme.error));
+    }
+  }
+
+  Future<void> _deletePool(TournamentPoolModel pool) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Pool'),
+        content: Text('Delete "${pool.name}"? This cannot be undone. All teams must be removed first.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error), onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await ref.read(tournamentRepositoryProvider).deletePool(widget.tournamentId, pool.id);
+      _load();
+    } on Exception catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e)), backgroundColor: Theme.of(context).colorScheme.error));
+    }
+  }
+
+  Future<void> _removeTeam(String poolId, TournamentTeamModel team) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove Team'),
+        content: Text('Remove "${team.name}" from this pool?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error), onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await ref.read(tournamentRepositoryProvider).removeTeamFromPool(widget.tournamentId, poolId, team.id);
+      _load();
+    } on Exception catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e)), backgroundColor: Theme.of(context).colorScheme.error));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Manage Pools')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _createPool,
+        tooltip: 'Create pool',
+        child: const Icon(Icons.add),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? ErrorDisplay(message: _error!, onRetry: _load)
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: _pools.isEmpty
+                      ? const UiEmptyState(icon: Icons.layers_outlined, message: 'No pools yet. Tap + to create one.')
+                      : ListView.separated(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _pools.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          itemBuilder: (context, i) {
+                            final pool = _pools[i];
+                            return Container(
+                              decoration: BoxDecoration(
+                                color: AppThemeTokens.card(context),
+                                borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+                                border: Border.all(color: AppThemeTokens.border(context)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ListTile(
+                                    leading: const Icon(Icons.layers_outlined),
+                                    title: Text(pool.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                    subtitle: Text('${pool.teams.length}/${pool.maxTeams} teams${pool.waitlist.isNotEmpty ? ' · ${pool.waitlist.length} waiting' : ''}'),
+                                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                                      IconButton(icon: const Icon(Icons.edit_outlined, size: 18), tooltip: 'Edit', onPressed: () => _editPool(pool)),
+                                      IconButton(icon: const Icon(Icons.delete_outline, size: 18), tooltip: 'Delete', onPressed: () => _deletePool(pool)),
+                                    ]),
+                                  ),
+                                  if (pool.teams.isNotEmpty) ...[
+                                    const Divider(height: 1),
+                                    for (final team in pool.teams)
+                                      ListTile(
+                                        dense: true,
+                                        leading: const Icon(Icons.shield_outlined, size: 16),
+                                        title: Text(team.name, style: const TextStyle(fontSize: 13)),
+                                        trailing: IconButton(
+                                          icon: const Icon(Icons.person_remove_outlined, size: 16),
+                                          tooltip: 'Remove from pool',
+                                          onPressed: () => _removeTeam(pool.id, team),
+                                        ),
+                                      ),
+                                  ],
+                                  if (pool.waitlist.isNotEmpty) ...[
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 2),
+                                      child: Text('Waitlist', style: TextStyle(color: AppThemeTokens.textMuted(context), fontSize: 12, fontWeight: FontWeight.w600)),
+                                    ),
+                                    for (final w in pool.waitlist)
+                                      ListTile(
+                                        dense: true,
+                                        leading: Text('${w.position + 1}.', style: TextStyle(color: AppThemeTokens.textMuted(context))),
+                                        title: Text(w.teamName, style: TextStyle(color: AppThemeTokens.textSecondary(context), fontSize: 13)),
+                                      ),
+                                  ],
+                                  const SizedBox(height: 4),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                ),
+    );
+  }
+}
+
+// ===========================================================================
+// Categories Management Page
+// ===========================================================================
+
+class CategoriesManagementPage extends ConsumerStatefulWidget {
+  const CategoriesManagementPage({super.key, required this.tournamentId});
+  final String tournamentId;
+
+  @override
+  ConsumerState<CategoriesManagementPage> createState() => _CategoriesManagementPageState();
+}
+
+class _CategoriesManagementPageState extends ConsumerState<CategoriesManagementPage> {
+  List<TournamentCategoryModel> _categories = [];
+  List<TournamentPoolModel> _pools = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final results = await Future.wait([
+        ref.read(tournamentRepositoryProvider).getCategories(widget.tournamentId),
+        ref.read(tournamentRepositoryProvider).getPools(widget.tournamentId),
+      ]);
+      if (mounted) {
+        setState(() {
+          _categories = results[0] as List<TournamentCategoryModel>;
+          _pools = results[1] as List<TournamentPoolModel>;
+          _loading = false;
+        });
+      }
+    } on Exception catch (e) {
+      if (mounted) setState(() { _error = extractErrorMessage(e); _loading = false; });
+    }
+  }
+
+  Future<void> _createCategory() async {
+    final nameCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Create Category'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Category name *'), textCapitalization: TextCapitalization.words),
+          const SizedBox(height: 12),
+          TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description (optional)')),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Create')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final name = nameCtrl.text.trim();
+    if (name.isEmpty) return;
+    try {
+      await ref.read(tournamentRepositoryProvider).createCategory(widget.tournamentId, {
+        'name': name,
+        if (descCtrl.text.trim().isNotEmpty) 'description': descCtrl.text.trim(),
+      });
+      _load();
+    } on Exception catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e)), backgroundColor: Theme.of(context).colorScheme.error));
+    }
+  }
+
+  Future<void> _editCategory(TournamentCategoryModel cat) async {
+    final nameCtrl = TextEditingController(text: cat.name);
+    final descCtrl = TextEditingController(text: cat.description ?? '');
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Category'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Category name *'), textCapitalization: TextCapitalization.words),
+          const SizedBox(height: 12),
+          TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description (optional)')),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final name = nameCtrl.text.trim();
+    if (name.isEmpty) return;
+    try {
+      await ref.read(tournamentRepositoryProvider).updateCategory(widget.tournamentId, cat.id, {
+        'name': name,
+        'description': descCtrl.text.trim().isNotEmpty ? descCtrl.text.trim() : null,
+      });
+      _load();
+    } on Exception catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e)), backgroundColor: Theme.of(context).colorScheme.error));
+    }
+  }
+
+  Future<void> _deleteCategory(TournamentCategoryModel cat) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Category'),
+        content: Text('Delete "${cat.name}"? Pools in this category will become uncategorised.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error), onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await ref.read(tournamentRepositoryProvider).deleteCategory(widget.tournamentId, cat.id);
+      _load();
+    } on Exception catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e)), backgroundColor: Theme.of(context).colorScheme.error));
+    }
+  }
+
+  Future<void> _assignPool(TournamentPoolModel pool) async {
+    String? selected = _categories.any((c) => c.pools.any((p) => p.id == pool.id))
+        ? _categories.firstWhere((c) => c.pools.any((p) => p.id == pool.id)).id
+        : null;
+
+    final result = await showDialog<String?>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text('Assign "${pool.name}" to category'),
+          content: DropdownButton<String?>(
+            value: selected,
+            isExpanded: true,
+            items: [
+              const DropdownMenuItem(value: null, child: Text('No category')),
+              for (final cat in _categories)
+                DropdownMenuItem(value: cat.id, child: Text(cat.name)),
+            ],
+            onChanged: (v) => setDialogState(() => selected = v),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, selected ?? ''), child: const Text('Assign')),
+          ],
+        ),
+      ),
+    );
+    if (result == null || !mounted) return;
+    try {
+      await ref.read(tournamentRepositoryProvider).assignPoolToCategory(
+        widget.tournamentId, pool.id, result.isEmpty ? null : result,
+      );
+      _load();
+    } on Exception catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e)), backgroundColor: Theme.of(context).colorScheme.error));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Manage Categories')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _createCategory,
+        tooltip: 'Create category',
+        child: const Icon(Icons.add),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? ErrorDisplay(message: _error!, onRetry: _load)
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      if (_categories.isEmpty)
+                        const UiEmptyState(icon: Icons.category_outlined, message: 'No categories yet. Tap + to create one.'),
+                      for (final cat in _categories)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: AppThemeTokens.card(context),
+                            borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+                            border: Border.all(color: AppThemeTokens.border(context)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.category_outlined),
+                                title: Text(cat.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                subtitle: cat.description != null ? Text(cat.description!, style: const TextStyle(fontSize: 12)) : null,
+                                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                                  IconButton(icon: const Icon(Icons.edit_outlined, size: 18), tooltip: 'Edit', onPressed: () => _editCategory(cat)),
+                                  IconButton(icon: const Icon(Icons.delete_outline, size: 18), tooltip: 'Delete', onPressed: () => _deleteCategory(cat)),
+                                ]),
+                              ),
+                              if (cat.pools.isNotEmpty) ...[
+                                const Divider(height: 1),
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 2),
+                                  child: Text('Pools', style: TextStyle(color: AppThemeTokens.textMuted(context), fontSize: 11, fontWeight: FontWeight.w600)),
+                                ),
+                                for (final pool in cat.pools)
+                                  ListTile(
+                                    dense: true,
+                                    leading: const Icon(Icons.layers_outlined, size: 16),
+                                    title: Text(pool.name, style: const TextStyle(fontSize: 13)),
+                                    subtitle: Text('${pool.teams.length}/${pool.maxTeams} teams'),
+                                  ),
+                              ],
+                              const SizedBox(height: 4),
+                            ],
+                          ),
+                        ),
+                      if (_pools.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        UiSectionTitle('Assign Pools to Categories'),
+                        const SizedBox(height: 8),
+                        for (final pool in _pools)
+                          ListTile(
+                            leading: const Icon(Icons.layers_outlined),
+                            title: Text(pool.name),
+                            subtitle: Text(
+                              _categories.any((c) => c.pools.any((p) => p.id == pool.id))
+                                  ? 'Category: ${_categories.firstWhere((c) => c.pools.any((p) => p.id == pool.id)).name}'
+                                  : 'No category',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            trailing: OutlinedButton(
+                              onPressed: () => _assignPool(pool),
+                              child: const Text('Assign'),
+                            ),
+                          ),
+                      ],
+                      const SizedBox(height: 80),
+                    ],
+                  ),
+                ),
     );
   }
 }

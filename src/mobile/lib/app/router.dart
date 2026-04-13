@@ -221,6 +221,16 @@ final _routerProvider = Provider<GoRouter>((ref) {
                     tournamentId: state.pathParameters['id']!),
               ),
               GoRoute(
+                path: 'pools',
+                builder: (context, state) => PoolsManagementPage(
+                    tournamentId: state.pathParameters['id']!),
+              ),
+              GoRoute(
+                path: 'categories',
+                builder: (context, state) => CategoriesManagementPage(
+                    tournamentId: state.pathParameters['id']!),
+              ),
+              GoRoute(
                 path: 'teams/:teamId/roster',
                 builder: (context, state) => TeamRosterPage(
                   tournamentId: state.pathParameters['id']!,
