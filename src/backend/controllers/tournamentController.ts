@@ -688,7 +688,7 @@ export const generateBrackets = async (req: Request, res: Response) => {
   }
 
   let result;
-  switch (tournament.format) {
+  switch (String(tournament.format)) {
     case TournamentFormat.SINGLE_ELIMINATION:
     case TournamentFormat.DOUBLE_ELIMINATION:
       result = await tournamentService.generateSingleEliminationBrackets(id);
