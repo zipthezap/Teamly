@@ -22,18 +22,18 @@ class _NotificationPreferencesPageState
   // Sections: title, icon, color, list of (key, label, subtitle?)
   static const _sections = <_Section>[
     _Section(
-      title: 'Events',
+      title: 'Sessions',
       icon: Icons.event_rounded,
       color: Color(0xFF2196F3),
       items: [
-        _PrefItem('eventJoin', 'Someone joins your event',
+        _PrefItem('eventJoin', 'Someone joins your session',
             'Notified when a participant joins'),
-        _PrefItem('eventLeave', 'Someone leaves your event',
+        _PrefItem('eventLeave', 'Someone leaves your session',
             'Notified when a participant leaves'),
-        _PrefItem('eventUpdate', 'Event is updated',
+        _PrefItem('eventUpdate', 'Session is updated',
             'Changes to time, location or details'),
-        _PrefItem('eventCancelled', 'Event is cancelled', null),
-        _PrefItem('eventInvite', 'You are invited to an event', null),
+        _PrefItem('eventCancelled', 'Session is cancelled', null),
+        _PrefItem('eventInvite', 'You are invited to a session', null),
       ],
     ),
     _Section(
@@ -66,7 +66,7 @@ class _NotificationPreferencesPageState
       items: [
         _PrefItem('pushEnabled', 'Enable mobile push',
             'Master toggle for push notifications'),
-        _PrefItem('pushEvents', 'Event push notifications', null),
+        _PrefItem('pushEvents', 'Session push notifications', null),
         _PrefItem('pushGroups', 'Group push notifications', null),
         _PrefItem('pushTeamUp', 'TeamUp push notifications', null),
         _PrefItem(
