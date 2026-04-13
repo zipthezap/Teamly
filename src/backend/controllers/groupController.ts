@@ -1873,13 +1873,13 @@ export const leaveGroup = async (req: Request, res: Response) => {
       where: { id: membership.id }
     });
 
-    // Clean up any pending invitations for this user
+    // Clean up any pending join requests/invitations for this user (both
+    // admin-sent invites and the user's own self-submitted requests)
     await tx.groupJoinRequest.deleteMany({
       where: {
         groupId: id,
         userId: userId,
         status: 'pending',
-        createdBy: 'INVITE'
       }
     });
 
