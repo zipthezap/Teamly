@@ -45,6 +45,10 @@ class _SessionFormPageState extends ConsumerState<SessionFormPage> {
   DateTime _endTime = DateTime.now().add(const Duration(days: 1, hours: 2));
   bool _saving = false;
 
+  // Recurrence state
+  String _recurrenceType = 'none'; // 'none' | 'daily' | 'weekly' | 'monthly'
+  DateTime? _recurrenceEndDate;
+
   /// Resolved group id — may be picked by the user when widget.groupId is empty.
   late String _selectedGroupId;
 
@@ -125,6 +129,32 @@ class _SessionFormPageState extends ConsumerState<SessionFormPage> {
     });
   }
 
+  Future<void> _pickRecurrenceEndDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _recurrenceEndDate ?? _startTime.add(const Duration(days: 30)),
+      firstDate: _startTime.add(const Duration(days: 1)),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
+    );
+    if (picked != null) {
+      setState(() => _recurrenceEndDate = picked);
+    }
+  }
+
+  /// Converts a simple recurrence type label to an RRULE string expected by the backend.
+  static String? _buildRRule(String type) {
+    switch (type) {
+      case 'daily':
+        return 'RRULE:FREQ=DAILY';
+      case 'weekly':
+        return 'RRULE:FREQ=WEEKLY';
+      case 'monthly':
+        return 'RRULE:FREQ=MONTHLY';
+      default:
+        return null;
+    }
+  }
+
   Future<void> _submit() async {
     if (_selectedGroupId.isEmpty && !_isEditing) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -141,18 +171,25 @@ class _SessionFormPageState extends ConsumerState<SessionFormPage> {
     }
     setState(() => _saving = true);
 
+    final isRecurring = _recurrenceType != 'none';
+    final recurrenceRule = _buildRRule(_recurrenceType);
+
     final data = <String, dynamic>{
       'title': _titleCtrl.text.trim(),
       'groupId': _selectedGroupId,
       'startTime': _startTime.toUtc().toIso8601String(),
       'endTime': _endTime.toUtc().toIso8601String(),
       'isPublic': _isPublic,
-      'eventType': _eventType,
+      'sessionType': _eventType,
       if (_descCtrl.text.trim().isNotEmpty) 'description': _descCtrl.text.trim(),
       if (_locationCtrl.text.trim().isNotEmpty) 'location': _locationCtrl.text.trim(),
       if (_cityCtrl.text.trim().isNotEmpty) 'city': _cityCtrl.text.trim(),
       if (_maxPlayersCtrl.text.trim().isNotEmpty)
         'maxPlayers': int.tryParse(_maxPlayersCtrl.text.trim()),
+      if (isRecurring) 'isRecurring': true,
+      if (isRecurring && recurrenceRule != null) 'recurrenceRule': recurrenceRule,
+      if (isRecurring && _recurrenceEndDate != null)
+        'recurrenceEnd': _recurrenceEndDate!.toUtc().toIso8601String(),
     };
 
     try {
@@ -337,6 +374,54 @@ class _SessionFormPageState extends ConsumerState<SessionFormPage> {
                 child: Text(df.format(_endTime.toLocal())),
               ),
             ),
+            const SizedBox(height: 24),
+
+            // ── Section: Recurrence ───────────────────────────────────
+            const _FormSectionTitle(title: 'Recurrence', icon: Icons.repeat_rounded),
+            const SizedBox(height: 12),
+
+            DropdownButtonFormField<String>(
+              value: _recurrenceType,
+              decoration: const InputDecoration(
+                labelText: 'Repeat',
+                prefixIcon: Icon(Icons.repeat_outlined),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'none', child: Text('Does not repeat')),
+                DropdownMenuItem(value: 'daily', child: Text('Daily')),
+                DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
+                DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
+              ],
+              onChanged: (v) => setState(() {
+                _recurrenceType = v ?? 'none';
+                if (_recurrenceType == 'none') _recurrenceEndDate = null;
+              }),
+            ),
+
+            if (_recurrenceType != 'none') ...[
+              const SizedBox(height: 14),
+              InkWell(
+                onTap: _pickRecurrenceEndDate,
+                borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'End date (optional)',
+                    prefixIcon: Icon(Icons.event_busy_outlined),
+                  ),
+                  child: Text(
+                    _recurrenceEndDate != null
+                        ? DateFormat('EEE, MMM d, y').format(_recurrenceEndDate!)
+                        : 'No end date',
+                    style: TextStyle(
+                      color: _recurrenceEndDate != null
+                          ? AppThemeTokens.text(context)
+                          : AppThemeTokens.textMuted(context),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+
             const SizedBox(height: 24),
 
             // ── Section: Details ──────────────────────────────────────

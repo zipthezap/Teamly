@@ -69,6 +69,18 @@ class ChatNotifier extends FamilyAsyncNotifier<List<ChatMessageModel>, String> {
     );
   }
 
+  /// Silently fetch new messages in the background without showing a loading
+  /// spinner. Used by the periodic polling timer in [_ChatTabState].
+  Future<void> silentRefresh() async {
+    try {
+      final messages =
+          await ref.read(groupRepositoryProvider).getChatMessages(arg);
+      state = AsyncValue.data(messages);
+    } catch (_) {
+      // Ignore background errors to avoid disrupting the user.
+    }
+  }
+
   Future<void> load() => refresh();
 
   /// Send a message then refresh the list.
