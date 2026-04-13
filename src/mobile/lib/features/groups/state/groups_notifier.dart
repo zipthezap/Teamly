@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/chat_model.dart';
 import '../../../core/models/group_model.dart';
+import '../../../features/auth/state/auth_notifier.dart';
 import '../data/group_repository_impl.dart';
 import '../domain/group_repository.dart';
 
@@ -108,6 +109,8 @@ final publicGroupsProvider =
 
 final userInvitationsProvider =
     FutureProvider<List<GroupInvitationModel>>((ref) async {
+  // Watch the current user so this provider re-fetches when the user changes.
+  ref.watch(authNotifierProvider.select((s) => s.user?.id));
   return ref.watch(groupRepositoryProvider).getUserInvitations();
 });
 
@@ -117,6 +120,8 @@ final userInvitationsProvider =
 
 final myJoinRequestsProvider =
     FutureProvider<List<UserJoinRequestModel>>((ref) async {
+  // Watch the current user so this provider re-fetches when the user changes.
+  ref.watch(authNotifierProvider.select((s) => s.user?.id));
   return ref.watch(groupRepositoryProvider).getMyJoinRequests();
 });
 

@@ -205,7 +205,7 @@ class GroupInvitationModel extends Equatable {
 
   factory GroupInvitationModel.fromJson(Map<String, dynamic> json) {
     final group = json['group'] as Map<String, dynamic>?;
-    final invitedBy = json['invitedBy'] as Map<String, dynamic>?;
+    final inviter = json['inviter'] as Map<String, dynamic>?;
     return GroupInvitationModel(
       id: json['id'] as String,
       groupId: (group?['id'] ?? json['groupId']) as String,
@@ -214,7 +214,7 @@ class GroupInvitationModel extends Equatable {
       createdAt: DateTime.parse(json['createdAt'] as String),
       groupDescription: group?['description'] as String?,
       groupPicture: group?['picture'] as String?,
-      invitedByName: invitedBy?['name'] as String?,
+      invitedByName: inviter?['name'] as String?,
     );
   }
 

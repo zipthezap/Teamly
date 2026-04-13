@@ -1651,6 +1651,12 @@ export const getUserInvitations = async (req: Request, res: Response) => {
           picture: true,
           isPublic: true
         }
+      },
+      inviter: {
+        select: {
+          id: true,
+          name: true
+        }
       }
     },
     orderBy: { createdAt: 'desc' }
