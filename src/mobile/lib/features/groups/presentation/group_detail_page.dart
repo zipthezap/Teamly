@@ -1669,6 +1669,9 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
   bool _sending = false;
   Timer? _pollTimer;
 
+  // 12 seconds is a reasonable trade-off: short enough to feel near-real-time
+  // in a casual sports-group setting, long enough to avoid excessive battery
+  // drain and server load. A WebSocket would be ideal but adds complexity.
   static const _kPollInterval = Duration(seconds: 12);
 
   @override

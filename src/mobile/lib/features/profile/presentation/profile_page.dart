@@ -11,6 +11,8 @@ import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_mode_controller.dart';
 import '../../../features/auth/state/auth_notifier.dart';
+import '../../../shared/widgets/ui_primitives.dart';
+import '../../../shared/widgets/user_avatar.dart';
 import '../data/email_preferences_repository_impl.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
