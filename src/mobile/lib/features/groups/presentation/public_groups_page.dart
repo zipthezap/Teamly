@@ -21,13 +21,92 @@ class PublicGroupsPage extends ConsumerStatefulWidget {
 
 class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
   final _searchCtrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
   String _searchQuery = '';
-  // Track per-group requesting state
   final Map<String, bool> _requesting = {};
+
+  // Paginated state
+  final List<GroupModel> _groups = [];
+  String? _nextCursor;
+  bool _hasMore = true;
+  bool _isLoading = true;
+  bool _isLoadingMore = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollCtrl.addListener(_onScroll);
+    _loadInitial();
+  }
+
+  Future<void> _loadInitial() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+      _groups.clear();
+      _nextCursor = null;
+      _hasMore = true;
+    });
+    try {
+      final (groups, nextCursor) = await ref
+          .read(groupRepositoryProvider)
+          .getPublicGroupsPaginated();
+      if (!mounted) return;
+      setState(() {
+        _groups.addAll(groups);
+        _nextCursor = nextCursor;
+        _hasMore = nextCursor != null;
+        _isLoading = false;
+      });
+    } on Exception catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = extractErrorMessage(e);
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _onScroll() {
+    if (_scrollCtrl.position.extentAfter < 200 &&
+        !_isLoadingMore &&
+        _hasMore &&
+        _nextCursor != null) {
+      _loadMore();
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoadingMore || !_hasMore || _nextCursor == null) return;
+    setState(() => _isLoadingMore = true);
+    try {
+      final (groups, nextCursor) = await ref
+          .read(groupRepositoryProvider)
+          .getPublicGroupsPaginated(cursor: _nextCursor);
+      if (!mounted) return;
+      setState(() {
+        _groups.addAll(groups);
+        _nextCursor = nextCursor;
+        _hasMore = nextCursor != null;
+        _isLoadingMore = false;
+      });
+    } on Exception catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoadingMore = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load more: ${extractErrorMessage(e)}'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
 
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
   }
 
@@ -35,7 +114,6 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
     setState(() => _requesting[group.id] = true);
     try {
       await ref.read(groupRepositoryProvider).requestJoinGroup(group.id);
-      ref.invalidate(publicGroupsProvider);
       ref.invalidate(myJoinRequestsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -58,7 +136,6 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final publicGroupsAsync = ref.watch(publicGroupsProvider);
     final currentUserId = ref.watch(authNotifierProvider).user?.id;
 
     // Badge counts for the mail icon
@@ -79,6 +156,18 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
       data: (list) => list.map((r) => r.groupId).toSet(),
       orElse: () => <String>{},
     );
+
+    final filtered = _searchQuery.isEmpty
+        ? _groups
+        : _groups
+            .where(
+              (g) =>
+                  g.name.toLowerCase().contains(_searchQuery) ||
+                  (g.description?.toLowerCase().contains(_searchQuery) ??
+                      false) ||
+                  (g.city?.toLowerCase().contains(_searchQuery) ?? false),
+            )
+            .toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -103,82 +192,80 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
           child: Container(height: 1, color: Theme.of(context).dividerColor),
         ),
       ),
-      body: publicGroupsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ErrorDisplay(
-          message: extractErrorMessage(e),
-        ),
-        data: (groups) {
-          final nonMemberGroups = currentUserId == null
-              ? groups
-              : groups
-                  .where((g) => !g.members.any((m) => m.id == currentUserId))
-                  .toList();
-          final filtered = _searchQuery.isEmpty
-              ? nonMemberGroups
-              : nonMemberGroups
-                  .where(
-                    (g) =>
-                        g.name.toLowerCase().contains(_searchQuery) ||
-                        (g.description?.toLowerCase().contains(_searchQuery) ??
-                            false) ||
-                        (g.city?.toLowerCase().contains(_searchQuery) ?? false),
-                  )
-                  .toList();
-
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(publicGroupsProvider);
-              ref.invalidate(myJoinRequestsProvider);
-            },
-            child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              itemCount: filtered.isEmpty ? 2 : filtered.length + 1,
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: _SearchBar(
-                      controller: _searchCtrl,
-                      query: _searchQuery,
-                      onChanged: (v) =>
-                          setState(() => _searchQuery = v.toLowerCase()),
-                      onClear: () {
-                        _searchCtrl.clear();
-                        setState(() => _searchQuery = '');
-                      },
-                    ),
-                  );
-                }
-                if (filtered.isEmpty) {
-                  return UiEmptyState(
-                    icon: Icons.search_off_rounded,
-                    title: _searchQuery.isNotEmpty ? 'No results' : 'No groups yet',
-                    message: _searchQuery.isNotEmpty
-                        ? 'No groups match "$_searchQuery"'
-                        : 'There are no public groups to join right now.',
-                  );
-                }
-                final group = filtered[index - 1];
-                final isMember = currentUserId != null &&
-                    group.members.any((m) => m.id == currentUserId);
-                final hasPendingRequest = pendingGroupIds.contains(group.id);
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _PublicGroupCard(
-                    group: group,
-                    requesting: _requesting[group.id] == true,
-                    isMember: isMember,
-                    hasPendingRequest: hasPendingRequest,
-                    onApply: () => _apply(group),
-                    onTap: () => context.push('/groups/${group.id}'),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? ErrorDisplay(
+                  message: _error!,
+                  onRetry: _loadInitial,
+                )
+              : RefreshIndicator(
+                  onRefresh: () async {
+                    await _loadInitial();
+                    ref.invalidate(myJoinRequestsProvider);
+                  },
+                  child: ListView.builder(
+                    controller: _scrollCtrl,
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                    itemCount: filtered.isEmpty
+                        ? 2
+                        : filtered.length + 1 + (_isLoadingMore ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: _SearchBar(
+                            controller: _searchCtrl,
+                            query: _searchQuery,
+                            onChanged: (v) =>
+                                setState(() => _searchQuery = v.toLowerCase()),
+                            onClear: () {
+                              _searchCtrl.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          ),
+                        );
+                      }
+                      if (filtered.isEmpty) {
+                        return UiEmptyState(
+                          icon: Icons.search_off_rounded,
+                          title: _searchQuery.isNotEmpty
+                              ? 'No results'
+                              : 'No groups yet',
+                          message: _searchQuery.isNotEmpty
+                              ? 'No groups match "$_searchQuery"'
+                              : 'There are no public groups to join right now.',
+                        );
+                      }
+                      // Load-more spinner
+                      if (index == filtered.length + 1) {
+                        return _isLoadingMore
+                            ? const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 20),
+                                child: Center(
+                                    child: CircularProgressIndicator()),
+                              )
+                            : const SizedBox.shrink();
+                      }
+                      final group = filtered[index - 1];
+                      final isMember = currentUserId != null &&
+                          group.members.any((m) => m.id == currentUserId);
+                      final hasPendingRequest =
+                          pendingGroupIds.contains(group.id);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _PublicGroupCard(
+                          group: group,
+                          requesting: _requesting[group.id] == true,
+                          isMember: isMember,
+                          hasPendingRequest: hasPendingRequest,
+                          onApply: () => _apply(group),
+                          onTap: () => context.push('/groups/${group.id}'),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
-          );
-        },
-      ),
+                ),
     );
   }
 }

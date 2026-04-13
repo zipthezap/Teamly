@@ -3,7 +3,9 @@ import '../../../core/models/session_model.dart';
 import '../../../core/models/extended_models.dart';
 
 abstract class SessionRepository {
-  Future<List<SessionModel>> getEvents({String? groupId});
+  /// Returns a page of sessions and an optional cursor for the next page.
+  Future<(List<SessionModel>, String?)> getEvents(
+      {String? groupId, String? cursor, int limit = 50});
   Future<SessionModel> getEvent(String id);
   Future<SessionModel> getEventByInviteToken(String token);
   Future<void> joinEvent(String id);

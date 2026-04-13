@@ -24,16 +24,41 @@ class SessionsPage extends ConsumerStatefulWidget {
 class _SessionsPageState extends ConsumerState<SessionsPage>
     with WidgetsBindingObserver {
   final _searchCtrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
   _EventFilter _filter = _EventFilter.upcoming;
   DateTime? _lastResumeReload;
+  bool _isLoadingMore = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _scrollCtrl.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(sessionsNotifierProvider.notifier).reload();
     });
+  }
+
+  void _onScroll() {
+    if (_scrollCtrl.position.extentAfter < 200 && !_isLoadingMore) {
+      final notifier = ref.read(sessionsNotifierProvider.notifier);
+      if (notifier.hasMore && !notifier.isLoadingMore) {
+        setState(() => _isLoadingMore = true);
+        notifier.loadMore().then((_) {
+          if (mounted) setState(() => _isLoadingMore = false);
+        }).catchError((Object e) {
+          if (mounted) {
+            setState(() => _isLoadingMore = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to load more: ${e.toString().replaceFirst('Exception: ', '')}'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        });
+      }
+    }
   }
 
   @override
@@ -55,6 +80,7 @@ class _SessionsPageState extends ConsumerState<SessionsPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _searchCtrl.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
   }
 
@@ -146,8 +172,9 @@ class _SessionsPageState extends ConsumerState<SessionsPage>
             onRefresh: () =>
                 ref.read(sessionsNotifierProvider.notifier).reload(),
             child: ListView.builder(
+              controller: _scrollCtrl,
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
-              itemCount: filteredEvents.length + 1,
+              itemCount: filteredEvents.length + 1 + (_isLoadingMore ? 1 : 0),
               itemBuilder: (context, index) {
                 if (index == 0) {
                   return Padding(
@@ -254,6 +281,16 @@ class _SessionsPageState extends ConsumerState<SessionsPage>
                       ],
                     ),
                   );
+                }
+
+                // Load-more spinner at the very end
+                if (index == filteredEvents.length + 1) {
+                  return _isLoadingMore
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      : const SizedBox.shrink();
                 }
 
                 final event = filteredEvents[index - 1];

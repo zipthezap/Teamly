@@ -193,32 +193,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Authenticate with Facebook via the native SDK, then exchange the
-  /// Facebook access token for a Teamly server JWT.
-  ///
-  /// NOTE: Facebook Sign-In is not yet configured. The Facebook App ID and
-  /// secret have not been set up. This method will be completed once those
-  /// credentials are available.
-  Future<void> loginWithFacebook() async {
-    state = state.copyWith(
-      isLoading: false,
-      error: 'Facebook Sign-In is not yet available.',
-    );
-  }
-
-  /// Authenticate with Apple ID (iOS/macOS only), then exchange the Apple
-  /// identity token for a Teamly server JWT.
-  ///
-  /// NOTE: Apple Sign-In is not yet configured. The Apple Service ID and keys
-  /// have not been set up. This method will be completed once those credentials
-  /// are available.
-  Future<void> loginWithApple() async {
-    state = state.copyWith(
-      isLoading: false,
-      error: 'Apple Sign-In is not yet available.',
-    );
-  }
-
   /// Called by the profile page after a successful PUT /auth/profile.
   void updateUser(UserModel user) {
     state = state.copyWith(user: user);

@@ -12,21 +12,61 @@ import '../domain/session_repository.dart';
 
 /// Riverpod 2.x [AsyncNotifier] for the session list.
 ///
-/// Replaces the deprecated `StateNotifier<AsyncValue<T>>` pattern.
-/// Loads all sessions on first build; call [reload] to refresh, optionally
-/// filtered by [groupId].
+/// Loads the first page of sessions on build; call [reload] to refresh from
+/// the beginning, or [loadMore] to append the next page.
 class SessionsNotifier extends AsyncNotifier<List<SessionModel>> {
+  String? _nextCursor;
+  bool _hasMore = true;
+
   @override
-  Future<List<SessionModel>> build() {
-    return ref.watch(sessionRepositoryProvider).getEvents();
+  Future<List<SessionModel>> build() async {
+    _nextCursor = null;
+    _hasMore = true;
+    final (sessions, nextCursor) =
+        await ref.watch(sessionRepositoryProvider).getEvents();
+    _nextCursor = nextCursor;
+    _hasMore = nextCursor != null;
+    return sessions;
   }
 
-  /// Reload sessions, optionally filtered by [groupId].
+  /// Whether more pages are available to load.
+  bool get hasMore => _hasMore;
+
+  /// Whether a loadMore is currently in flight.
+  bool _isLoadingMore = false;
+  bool get isLoadingMore => _isLoadingMore;
+
+  /// Reload sessions from the beginning, optionally filtered by [groupId].
   Future<void> reload({String? groupId}) async {
+    _nextCursor = null;
+    _hasMore = true;
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(
-      () => ref.read(sessionRepositoryProvider).getEvents(groupId: groupId),
-    );
+    state = await AsyncValue.guard(() async {
+      final (sessions, nextCursor) = await ref
+          .read(sessionRepositoryProvider)
+          .getEvents(groupId: groupId);
+      _nextCursor = nextCursor;
+      _hasMore = nextCursor != null;
+      return sessions;
+    });
+  }
+
+  /// Append the next page of sessions to the current list.
+  /// Throws on network/server errors so the caller can show feedback.
+  Future<void> loadMore() async {
+    if (_isLoadingMore || !_hasMore || _nextCursor == null) return;
+    _isLoadingMore = true;
+    final current = state.valueOrNull ?? [];
+    try {
+      final (more, nextCursor) = await ref
+          .read(sessionRepositoryProvider)
+          .getEvents(cursor: _nextCursor);
+      _nextCursor = nextCursor;
+      _hasMore = nextCursor != null;
+      state = AsyncValue.data([...current, ...more]);
+    } finally {
+      _isLoadingMore = false;
+    }
   }
 }
 
@@ -48,7 +88,10 @@ final eventDetailProvider = FutureProvider.family<SessionModel, String>((ref, id
 
 final groupEventsProvider =
     FutureProvider.family<List<SessionModel>, String>((ref, groupId) async {
-  return ref.watch(sessionRepositoryProvider).getEvents(groupId: groupId);
+  final (sessions, _) = await ref
+      .watch(sessionRepositoryProvider)
+      .getEvents(groupId: groupId);
+  return sessions;
 });
 
 // ---------------------------------------------------------------------------

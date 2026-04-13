@@ -132,6 +132,33 @@ class GroupRepositoryImpl implements GroupRepository {
   }
 
   @override
+  Future<(List<GroupModel>, String?)> getPublicGroupsPaginated(
+      {String? cursor, int limit = 20}) async {
+    final response = await _dio.get<dynamic>(
+      '/groups/public',
+      queryParameters: {
+        'limit': limit.toString(),
+        if (cursor != null) 'cursor': cursor,
+      },
+    );
+    final data = response.data;
+    final List<dynamic> items;
+    String? nextCursor;
+    if (data is Map<String, dynamic>) {
+      items = data['groups'] as List<dynamic>? ?? [];
+      nextCursor = data['nextCursor'] as String?;
+    } else if (data is List) {
+      items = data;
+    } else {
+      items = [];
+    }
+    final groups = items
+        .map((e) => GroupModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return (groups, nextCursor);
+  }
+
+  @override
   Future<String> getInviteLink(String groupId) async {
     final response =
         await _dio.get<Map<String, dynamic>>('/groups/$groupId/invite-link');

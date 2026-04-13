@@ -16,6 +16,9 @@ abstract class GroupRepository {
   Future<void> updateMemberRole(String groupId, String memberId, String role);
   Future<void> transferAdmin(String groupId, String newAdminId);
   Future<List<GroupModel>> getPublicGroups({double? latitude, double? longitude, double? radius});
+  /// Returns a page of public groups and an optional cursor for the next page.
+  Future<(List<GroupModel>, String?)> getPublicGroupsPaginated(
+      {String? cursor, int limit = 20});
   Future<List<NearbyGroupModel>> getNearbyGroups({
     required double latitude,
     required double longitude,

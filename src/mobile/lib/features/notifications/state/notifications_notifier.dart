@@ -11,19 +11,61 @@ import '../../push_notifications/state/push_notifications_controller.dart';
 class NotificationsNotifier
     extends AsyncNotifier<List<NotificationModel>> {
 
+  String? _nextCursor;
+  bool _hasMore = true;
+  bool _includeRead = false;
+
   @override
-  Future<List<NotificationModel>> build() {
-    return ref.watch(notificationRepositoryProvider)
+  Future<List<NotificationModel>> build() async {
+    _nextCursor = null;
+    _hasMore = true;
+    final (notifications, nextCursor) = await ref
+        .watch(notificationRepositoryProvider)
         .getNotifications(includeRead: false);
+    _nextCursor = nextCursor;
+    _hasMore = nextCursor != null;
+    return notifications;
   }
 
+  /// Whether more pages are available to load.
+  bool get hasMore => _hasMore;
+
+  /// Whether a loadMore is currently in flight.
+  bool _isLoadingMore = false;
+  bool get isLoadingMore => _isLoadingMore;
+
   Future<void> load({bool includeRead = false}) async {
+    _includeRead = includeRead;
+    _nextCursor = null;
+    _hasMore = true;
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(
-      () => ref.read(notificationRepositoryProvider)
-          .getNotifications(includeRead: includeRead),
-    );
+    state = await AsyncValue.guard(() async {
+      final (notifications, nextCursor) = await ref
+          .read(notificationRepositoryProvider)
+          .getNotifications(includeRead: includeRead);
+      _nextCursor = nextCursor;
+      _hasMore = nextCursor != null;
+      return notifications;
+    });
     await _safeBadgeSync();
+  }
+
+  /// Append the next page of notifications to the current list.
+  /// Throws on network/server errors so the caller can show feedback.
+  Future<void> loadMore() async {
+    if (_isLoadingMore || !_hasMore || _nextCursor == null) return;
+    _isLoadingMore = true;
+    final current = state.valueOrNull ?? [];
+    try {
+      final (more, nextCursor) = await ref
+          .read(notificationRepositoryProvider)
+          .getNotifications(includeRead: _includeRead, cursor: _nextCursor);
+      _nextCursor = nextCursor;
+      _hasMore = nextCursor != null;
+      state = AsyncValue.data([...current, ...more]);
+    } finally {
+      _isLoadingMore = false;
+    }
   }
 
   Future<void> markAllRead() async {
