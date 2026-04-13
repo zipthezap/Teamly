@@ -140,13 +140,13 @@ class GroupDetailPage extends ConsumerStatefulWidget {
 }
 
 class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late TabController _tabCtrl;
 
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 4, vsync: this);
+    _tabCtrl = TabController(length: 1, vsync: this);
   }
 
   @override
@@ -175,6 +175,26 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
   Widget build(BuildContext context) {
     final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
     final currentUserId = ref.watch(authNotifierProvider).user?.id;
+
+    final tabs = groupAsync.maybeWhen(
+      data: (group) {
+        final member = _isMember(group, currentUserId);
+        return <Tab>[
+          const Tab(text: 'Overview'),
+          if (member) ...const [
+            Tab(text: 'Members'),
+            Tab(text: 'Events'),
+            Tab(text: 'Chat'),
+          ],
+        ];
+      },
+      orElse: () => const <Tab>[Tab(text: 'Overview')],
+    );
+
+    if (_tabCtrl.length != tabs.length) {
+      _tabCtrl.dispose();
+      _tabCtrl = TabController(length: tabs.length, vsync: this);
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -316,12 +336,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
             children: [
               TabBar(
                 controller: _tabCtrl,
-                tabs: const [
-                  Tab(text: 'Overview'),
-                  Tab(text: 'Members'),
-                  Tab(text: 'Events'),
-                  Tab(text: 'Chat'),
-                ],
+                tabs: tabs,
               ),
               Divider(height: 1, color: AppThemeTokens.border(context)),
             ],
@@ -339,33 +354,35 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
           final moderator = _isModerator(group, currentUserId);
           final member = _isMember(group, currentUserId);
           final canInvite = admin || (member && group.allowMemberInvites);
-          final canCopyLink = group.isPublic &&
-              (admin || (member && group.allowMemberCopyLink));
-          return TabBarView(
-            controller: _tabCtrl,
-            children: [
-              _OverviewTab(
-                group: group,
-                isAdmin: admin,
-                isModerator: moderator,
-                isMember: member,
-                canInvite: canInvite,
-                groupId: widget.groupId,
-              ),
+          final tabViews = <Widget>[
+            _OverviewTab(
+              group: group,
+              isAdmin: admin,
+              isModerator: moderator,
+              isMember: member,
+              canInvite: canInvite,
+              groupId: widget.groupId,
+            ),
+            if (member)
               _MembersTab(
                 group: group,
                 isAdmin: admin,
                 isModerator: moderator,
                 currentUserId: currentUserId,
               ),
+            if (member)
               _EventsTab(
                 groupId: group.id,
                 isAdmin: admin,
                 isModerator: moderator,
                 isMember: member,
               ),
+            if (member)
               _ChatTab(groupId: group.id, currentUserId: currentUserId ?? ''),
-            ],
+          ];
+          return TabBarView(
+            controller: _tabCtrl,
+            children: tabViews,
           );
         },
       ),
@@ -814,24 +831,26 @@ class _OverviewTab extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        const UiSectionTitle('Access & Rules'),
-        const SizedBox(height: 10),
-        UiCard(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Column(
-            children: [
-              for (int i = 0; i < accessRows.length; i++) ...[
-                accessRows[i],
-                if (i < accessRows.length - 1)
-                  Divider(
-                    height: 1,
-                    color: AppThemeTokens.borderSubtle(context),
-                  ),
+        if (isAdmin) ...[
+          const SizedBox(height: 16),
+          const UiSectionTitle('Access & Rules'),
+          const SizedBox(height: 10),
+          UiCard(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Column(
+              children: [
+                for (int i = 0; i < accessRows.length; i++) ...[
+                  accessRows[i],
+                  if (i < accessRows.length - 1)
+                    Divider(
+                      height: 1,
+                      color: AppThemeTokens.borderSubtle(context),
+                    ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
+        ],
         if (isMember) ...[
           const SizedBox(height: 16),
           const UiSectionTitle('Actions'),

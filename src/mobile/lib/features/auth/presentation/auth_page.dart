@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -25,6 +26,20 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
   bool _isRegister = false;
   bool _obscurePassword = true;
+
+  InputDecoration _authFieldDecoration({
+    required String hintText,
+    required Widget prefixIcon,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      hintText: hintText,
+      floatingLabelBehavior: FloatingLabelBehavior.never,
+      prefixIcon: prefixIcon,
+      suffixIcon: suffixIcon,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+    );
+  }
 
   @override
   void dispose() {
@@ -182,7 +197,8 @@ class _AuthPageState extends ConsumerState<AuthPage> {
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -216,7 +232,8 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                     Container(
                       decoration: BoxDecoration(
                         color: AppThemeTokens.darkCard,
-                        borderRadius: BorderRadius.circular(AppThemeTokens.radiusLg),
+                        borderRadius:
+                            BorderRadius.circular(AppThemeTokens.radiusLg),
                         border: Border.all(color: AppThemeTokens.darkBorder),
                       ),
                       padding: const EdgeInsets.all(24),
@@ -233,14 +250,18 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                                       children: [
                                         TextFormField(
                                           controller: _nameCtrl,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Full name',
-                                            prefixIcon: Icon(Icons.person_rounded),
+                                          decoration: _authFieldDecoration(
+                                            hintText: 'Full name',
+                                            prefixIcon: const Icon(
+                                                Icons.person_rounded),
                                           ),
-                                          textCapitalization: TextCapitalization.words,
+                                          textCapitalization:
+                                              TextCapitalization.words,
                                           validator: (v) {
-                                            if (v == null || v.trim().isEmpty) return 'Name is required';
-                                            if (v.trim().length < 2) return 'At least 2 characters';
+                                            if (v == null || v.trim().isEmpty)
+                                              return 'Name is required';
+                                            if (v.trim().length < 2)
+                                              return 'At least 2 characters';
                                             return null;
                                           },
                                         ),
@@ -251,37 +272,45 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                             ),
                             TextFormField(
                               controller: _emailCtrl,
-                              decoration: const InputDecoration(
-                                labelText: 'Email address',
-                                prefixIcon: Icon(Icons.email_rounded),
+                              decoration: _authFieldDecoration(
+                                hintText: 'Email address',
+                                prefixIcon: const Icon(Icons.email_rounded),
                               ),
                               keyboardType: TextInputType.emailAddress,
                               autocorrect: false,
                               validator: (v) {
-                                if (v == null || v.trim().isEmpty) return 'Email is required';
-                                final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-                                if (!emailRegex.hasMatch(v.trim())) return 'Enter a valid email';
+                                if (v == null || v.trim().isEmpty)
+                                  return 'Email is required';
+                                final emailRegex =
+                                    RegExp(r'^[^@]+@[^@]+\.[^@]+');
+                                if (!emailRegex.hasMatch(v.trim()))
+                                  return 'Enter a valid email';
                                 return null;
                               },
                             ),
                             const SizedBox(height: 14),
                             TextFormField(
                               controller: _passwordCtrl,
-                              decoration: InputDecoration(
-                                labelText: 'Password',
+                              decoration: _authFieldDecoration(
+                                hintText: 'Password',
                                 prefixIcon: const Icon(Icons.lock_rounded),
                                 suffixIcon: IconButton(
                                   icon: Icon(
-                                    _obscurePassword ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                                    _obscurePassword
+                                        ? Icons.visibility_rounded
+                                        : Icons.visibility_off_rounded,
                                     size: 20,
                                   ),
-                                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                  onPressed: () => setState(() =>
+                                      _obscurePassword = !_obscurePassword),
                                 ),
                               ),
                               obscureText: _obscurePassword,
                               validator: (v) {
-                                if (v == null || v.isEmpty) return 'Password is required';
-                                if (_isRegister && v.length < 8) return 'At least 8 characters';
+                                if (v == null || v.isEmpty)
+                                  return 'Password is required';
+                                if (_isRegister && v.length < 8)
+                                  return 'At least 8 characters';
                                 return null;
                               },
                             ),
@@ -290,7 +319,9 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                               text: _isRegister ? 'Create Account' : 'Sign In',
                               loading: authState.isLoading,
                               onPressed: authState.isLoading ? null : _submit,
-                              icon: _isRegister ? Icons.person_add_rounded : Icons.login_rounded,
+                              icon: _isRegister
+                                  ? Icons.person_add_rounded
+                                  : Icons.login_rounded,
                             ),
                           ],
                         ),
@@ -302,7 +333,8 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                     // Social login divider
                     Row(
                       children: [
-                        const Expanded(child: Divider(color: AppThemeTokens.darkBorder)),
+                        const Expanded(
+                            child: Divider(color: AppThemeTokens.darkBorder)),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Text(
@@ -313,7 +345,8 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                             ),
                           ),
                         ),
-                        const Expanded(child: Divider(color: AppThemeTokens.darkBorder)),
+                        const Expanded(
+                            child: Divider(color: AppThemeTokens.darkBorder)),
                       ],
                     ),
 
@@ -328,7 +361,9 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                           loading: authState.isLoading,
                           onPressed: authState.isLoading
                               ? null
-                              : () => ref.read(authNotifierProvider.notifier).loginWithGoogle(),
+                              : () => ref
+                                  .read(authNotifierProvider.notifier)
+                                  .loginWithGoogle(),
                         ),
                         const SizedBox(height: 10),
                         _SocialButton(
@@ -337,12 +372,15 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                           loading: authState.isLoading,
                           onPressed: authState.isLoading
                               ? null
-                              : () => ref.read(authNotifierProvider.notifier).loginWithFacebook(),
+                              : () => ref
+                                  .read(authNotifierProvider.notifier)
+                                  .loginWithFacebook(),
                         ),
                         // Apple Sign-In is only shown on Apple platforms (iOS / macOS)
                         if (!kIsWeb &&
                             (defaultTargetPlatform == TargetPlatform.iOS ||
-                                defaultTargetPlatform == TargetPlatform.macOS)) ...[
+                                defaultTargetPlatform ==
+                                    TargetPlatform.macOS)) ...[
                           const SizedBox(height: 10),
                           _SocialButton(
                             label: 'Continue with Apple',
@@ -350,7 +388,9 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                             loading: authState.isLoading,
                             onPressed: authState.isLoading
                                 ? null
-                                : () => ref.read(authNotifierProvider.notifier).loginWithApple(),
+                                : () => ref
+                                    .read(authNotifierProvider.notifier)
+                                    .loginWithApple(),
                           ),
                         ],
                       ],
@@ -363,7 +403,9 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          _isRegister ? 'Already have an account?' : "Don't have an account?",
+                          _isRegister
+                              ? 'Already have an account?'
+                              : "Don't have an account?",
                           style: const TextStyle(
                             color: AppThemeTokens.darkTextSecondary,
                             fontSize: 14,
@@ -489,7 +531,8 @@ class _GoogleLogoPainter extends CustomPainter {
     final r = size.width / 2;
 
     // Clip to circle
-    canvas.clipPath(Path()..addOval(Rect.fromCircle(center: Offset(cx, cy), radius: r)));
+    canvas.clipPath(
+        Path()..addOval(Rect.fromCircle(center: Offset(cx, cy), radius: r)));
 
     // White background
     canvas.drawCircle(Offset(cx, cy), r, Paint()..color = Colors.white);
@@ -510,8 +553,8 @@ class _GoogleLogoPainter extends CustomPainter {
     }
 
     arc(-10, 100, const Color(0xFF4285F4)); // blue  – top-right
-    arc(90, 100, const Color(0xFF34A853));  // green – bottom
-    arc(190, 90, const Color(0xFFFBBC05));  // yellow – bottom-left
+    arc(90, 100, const Color(0xFF34A853)); // green – bottom
+    arc(190, 90, const Color(0xFFFBBC05)); // yellow – bottom-left
     arc(280, 80, const Color(0xFFEA4335)); // red   – top-left
 
     // Blue horizontal bar of the 'G'
@@ -536,7 +579,8 @@ class _FacebookIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(size: const Size(22, 22), painter: _FacebookLogoPainter());
+    return CustomPaint(
+        size: const Size(22, 22), painter: _FacebookLogoPainter());
   }
 }
 
@@ -587,8 +631,8 @@ class _FacebookLogoPainter extends CustomPainter {
     );
     // Erase the inner part to make it a partial circle / just a rounded cap
     canvas.drawRect(
-      Rect.fromLTRB(
-          barLeft, barTop + headRadius, barLeft + barWidth, barTop + headRadius * 2),
+      Rect.fromLTRB(barLeft, barTop + headRadius, barLeft + barWidth,
+          barTop + headRadius * 2),
       paint,
     );
   }
@@ -635,8 +679,10 @@ class _AppleLogoPainter extends CustomPainter {
     // Leaf / stem
     final stemPath = Path();
     stemPath.moveTo(w * 0.50, h * 0.18);
-    stemPath.cubicTo(w * 0.50, h * 0.08, w * 0.60, h * 0.02, w * 0.66, h * 0.06);
-    stemPath.cubicTo(w * 0.60, h * 0.10, w * 0.52, h * 0.14, w * 0.50, h * 0.18);
+    stemPath.cubicTo(
+        w * 0.50, h * 0.08, w * 0.60, h * 0.02, w * 0.66, h * 0.06);
+    stemPath.cubicTo(
+        w * 0.60, h * 0.10, w * 0.52, h * 0.14, w * 0.50, h * 0.18);
     stemPath.close();
     canvas.drawPath(stemPath, paint);
 
