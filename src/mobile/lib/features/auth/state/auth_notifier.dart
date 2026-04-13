@@ -1,10 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart' show MissingPluginException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/error/app_exception.dart';
@@ -77,15 +76,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
   GoogleSignIn? _googleSignIn;
 
   // Returns the cached GoogleSignIn instance, creating it on first call.
-  // The serverClientId must match GOOGLE_CLIENT_ID on the backend.
-  // We pass null (not an empty string) when no ID is configured so that
-  // GoogleSignIn skips idToken generation rather than rejecting the empty value.
+  // On web, clientId is required for google_sign_in_web to initialize the
+  // Google Identity Services (GIS) library in the browser.
+  // On Android/iOS, serverClientId triggers ID-token generation so the
+  // backend can verify the token.
+  // We pass null (not an empty string) when no ID is configured.
   GoogleSignIn _getOrCreateGoogleSignIn() {
     if (_googleSignIn != null) return _googleSignIn!;
     final googleClientId = _ref.read(appConfigProvider).googleClientId;
+    final clientIdValue = googleClientId.isNotEmpty ? googleClientId : null;
     _googleSignIn = GoogleSignIn(
       scopes: ['email', 'profile'],
-      serverClientId: googleClientId.isNotEmpty ? googleClientId : null,
+      clientId: kIsWeb ? clientIdValue : null,
+      serverClientId: kIsWeb ? null : clientIdValue,
     );
     return _googleSignIn!;
   }
@@ -145,9 +148,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       await _googleSignIn?.signOut();
     } catch (_) {}
-    try {
-      await FacebookAuth.instance.logOut();
-    } catch (_) {}
     await _repo.logout();
     state = const AuthState.unauthenticated();
   }
@@ -178,6 +178,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       state = AuthState(status: AuthStatus.authenticated, user: user);
       await _registerPushTokenSafely();
+    } on MissingPluginException {
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        isLoading: false,
+        error: 'Google Sign-In is not supported on this platform.',
+      );
     } on Exception catch (e) {
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
@@ -189,77 +195,28 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   /// Authenticate with Facebook via the native SDK, then exchange the
   /// Facebook access token for a Teamly server JWT.
+  ///
+  /// NOTE: Facebook Sign-In is not yet configured. The Facebook App ID and
+  /// secret have not been set up. This method will be completed once those
+  /// credentials are available.
   Future<void> loginWithFacebook() async {
-    state = state.copyWith(isLoading: true, clearError: true);
-    try {
-      final result = await FacebookAuth.instance.login(permissions: ['email', 'public_profile']);
-      if (result.status == LoginStatus.cancelled) {
-        state = state.copyWith(isLoading: false);
-        return;
-      }
-      if (result.status != LoginStatus.success || result.accessToken == null) {
-        throw Exception('Facebook sign-in failed: ${result.message}');
-      }
-      final user = await _repo.socialLogin(
-        provider: 'facebook',
-        credentials: {'accessToken': result.accessToken!.tokenString},
-      );
-      state = AuthState(status: AuthStatus.authenticated, user: user);
-      await _registerPushTokenSafely();
-    } on Exception catch (e) {
-      state = state.copyWith(
-        status: AuthStatus.unauthenticated,
-        isLoading: false,
-        error: _extractMessage(e),
-      );
-    }
+    state = state.copyWith(
+      isLoading: false,
+      error: 'Facebook Sign-In is not yet available.',
+    );
   }
 
   /// Authenticate with Apple ID (iOS/macOS only), then exchange the Apple
   /// identity token for a Teamly server JWT.
+  ///
+  /// NOTE: Apple Sign-In is not yet configured. The Apple Service ID and keys
+  /// have not been set up. This method will be completed once those credentials
+  /// are available.
   Future<void> loginWithApple() async {
-    if (kIsWeb) {
-      state = state.copyWith(
-        isLoading: false,
-        error: 'Apple sign-in is not available on web.',
-      );
-      return;
-    }
-    state = state.copyWith(isLoading: true, clearError: true);
-    try {
-      final credential = await SignInWithApple.getAppleIDCredential(
-        scopes: [
-          AppleIDAuthorizationScopes.email,
-          AppleIDAuthorizationScopes.fullName,
-        ],
-      );
-      final Map<String, String> body = {
-        'identityToken': credential.identityToken ?? '',
-      };
-      if (credential.givenName != null) body['givenName'] = credential.givenName!;
-      if (credential.familyName != null) body['familyName'] = credential.familyName!;
-      if (credential.email != null) body['email'] = credential.email!;
-
-      final user = await _repo.socialLogin(provider: 'apple', credentials: body);
-      state = AuthState(status: AuthStatus.authenticated, user: user);
-      await _registerPushTokenSafely();
-    } on SignInWithAppleAuthorizationException catch (e) {
-      if (e.code == AuthorizationErrorCode.canceled) {
-        state = state.copyWith(isLoading: false);
-        return;
-      }
-      state = state.copyWith(
-        status: AuthStatus.unauthenticated,
-        isLoading: false,
-        error: e.message,
-      );
-    } on Exception catch (e) {
-      state = state.copyWith(
-        status: AuthStatus.unauthenticated,
-        isLoading: false,
-        error: _extractMessage(e),
-      );
-    }
+    state = state.copyWith(
+      isLoading: false,
+      error: 'Apple Sign-In is not yet available.',
+    );
   }
 
   /// Called by the profile page after a successful PUT /auth/profile.
