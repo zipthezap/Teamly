@@ -31,10 +31,20 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
   void _onScroll() {
     if (_scrollCtrl.position.extentAfter < 200 && !_isLoadingMore) {
       final notifier = ref.read(notificationsNotifierProvider.notifier);
-      if (notifier.hasMore) {
+      if (notifier.hasMore && !notifier.isLoadingMore) {
         setState(() => _isLoadingMore = true);
         notifier.loadMore().then((_) {
           if (mounted) setState(() => _isLoadingMore = false);
+        }).catchError((Object e) {
+          if (mounted) {
+            setState(() => _isLoadingMore = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to load more: ${e.toString().replaceFirst('Exception: ', '')}'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
         });
       }
     }

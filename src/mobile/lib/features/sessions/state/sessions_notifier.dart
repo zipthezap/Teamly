@@ -32,6 +32,10 @@ class SessionsNotifier extends AsyncNotifier<List<SessionModel>> {
   /// Whether more pages are available to load.
   bool get hasMore => _hasMore;
 
+  /// Whether a loadMore is currently in flight.
+  bool _isLoadingMore = false;
+  bool get isLoadingMore => _isLoadingMore;
+
   /// Reload sessions from the beginning, optionally filtered by [groupId].
   Future<void> reload({String? groupId}) async {
     _nextCursor = null;
@@ -48,8 +52,10 @@ class SessionsNotifier extends AsyncNotifier<List<SessionModel>> {
   }
 
   /// Append the next page of sessions to the current list.
+  /// Throws on network/server errors so the caller can show feedback.
   Future<void> loadMore() async {
-    if (!_hasMore || _nextCursor == null) return;
+    if (_isLoadingMore || !_hasMore || _nextCursor == null) return;
+    _isLoadingMore = true;
     final current = state.valueOrNull ?? [];
     try {
       final (more, nextCursor) = await ref
@@ -58,8 +64,8 @@ class SessionsNotifier extends AsyncNotifier<List<SessionModel>> {
       _nextCursor = nextCursor;
       _hasMore = nextCursor != null;
       state = AsyncValue.data([...current, ...more]);
-    } catch (_) {
-      // Keep current state on error; the UI can retry via pull-to-refresh.
+    } finally {
+      _isLoadingMore = false;
     }
   }
 }

@@ -91,8 +91,15 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
         _hasMore = nextCursor != null;
         _isLoadingMore = false;
       });
-    } on Exception catch (_) {
-      if (mounted) setState(() => _isLoadingMore = false);
+    } on Exception catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoadingMore = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load more: ${extractErrorMessage(e)}'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 

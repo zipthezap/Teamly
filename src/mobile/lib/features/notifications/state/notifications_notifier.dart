@@ -30,6 +30,10 @@ class NotificationsNotifier
   /// Whether more pages are available to load.
   bool get hasMore => _hasMore;
 
+  /// Whether a loadMore is currently in flight.
+  bool _isLoadingMore = false;
+  bool get isLoadingMore => _isLoadingMore;
+
   Future<void> load({bool includeRead = false}) async {
     _includeRead = includeRead;
     _nextCursor = null;
@@ -47,8 +51,10 @@ class NotificationsNotifier
   }
 
   /// Append the next page of notifications to the current list.
+  /// Throws on network/server errors so the caller can show feedback.
   Future<void> loadMore() async {
-    if (!_hasMore || _nextCursor == null) return;
+    if (_isLoadingMore || !_hasMore || _nextCursor == null) return;
+    _isLoadingMore = true;
     final current = state.valueOrNull ?? [];
     try {
       final (more, nextCursor) = await ref
@@ -57,8 +63,8 @@ class NotificationsNotifier
       _nextCursor = nextCursor;
       _hasMore = nextCursor != null;
       state = AsyncValue.data([...current, ...more]);
-    } catch (_) {
-      // Keep current state on error.
+    } finally {
+      _isLoadingMore = false;
     }
   }
 
