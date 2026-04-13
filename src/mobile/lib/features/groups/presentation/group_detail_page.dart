@@ -9,6 +9,7 @@ import 'dart:async';
 
 import '../../../core/error/error_utils.dart';
 import '../../../core/models/group_model.dart';
+import '../../../core/models/session_model.dart';
 import '../../../core/utils/maps_utils.dart';
 import '../../../features/auth/state/auth_notifier.dart';
 import '../../../features/dashboard/state/dashboard_notifier.dart';
@@ -320,7 +321,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
                 tabs: const [
                   Tab(text: 'Overview'),
                   Tab(text: 'Members'),
-                  Tab(text: 'Events'),
+                  Tab(text: 'Sessions'),
                   Tab(text: 'Chat'),
                 ],
               ),
@@ -764,7 +765,7 @@ class _OverviewTab extends ConsumerWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: _MetricTile(
-                      label: 'Events',
+                      label: 'Sessions',
                       value: '$eventCount',
                       caption: eventCount == 0
                           ? 'nothing scheduled yet'
@@ -846,7 +847,7 @@ class _OverviewTab extends ConsumerWidget {
               Expanded(
                 child: _ActionButton(
                   icon: Icons.add_circle_outline,
-                  label: 'Create Event',
+                  label: 'Create Session',
                   primary: true,
                   onPressed: () =>
                       context.push('/groups/${group.id}/sessions/new'),
@@ -1429,7 +1430,7 @@ class _MembersTab extends ConsumerWidget {
 // Events tab
 // ---------------------------------------------------------------------------
 
-class _EventsTab extends ConsumerWidget {
+class _EventsTab extends ConsumerStatefulWidget {
   const _EventsTab({
     required this.groupId,
     required this.isAdmin,
@@ -1442,210 +1443,114 @@ class _EventsTab extends ConsumerWidget {
   final bool isMember;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final eventsAsync = ref.watch(groupEventsProvider(groupId));
+  ConsumerState<_EventsTab> createState() => _EventsTabState();
+}
+
+class _EventsTabState extends ConsumerState<_EventsTab> {
+  bool _showPast = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final eventsAsync = ref.watch(groupEventsProvider(widget.groupId));
     final now = DateTime.now();
 
     return eventsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => ErrorDisplay(
         message: extractErrorMessage(e),
-        onRetry: () => ref.invalidate(groupEventsProvider(groupId)),
+        onRetry: () => ref.invalidate(groupEventsProvider(widget.groupId)),
       ),
       data: (rawEvents) {
-        // Sort: upcoming events ascending, then past events descending (most recent first)
         final upcoming = rawEvents
             .where((e) => e.startTime.isAfter(now))
             .toList()
           ..sort((a, b) => a.startTime.compareTo(b.startTime));
         final past = rawEvents.where((e) => !e.startTime.isAfter(now)).toList()
           ..sort((a, b) => b.startTime.compareTo(a.startTime));
-        final events = [...upcoming, ...past];
 
         return Stack(
           children: [
-            events.isEmpty
+            upcoming.isEmpty && past.isEmpty
                 ? Center(
                     child: UiEmptyState(
                       icon: Icons.event_busy_outlined,
-                      message: 'This group has no events yet.',
-                      action: isModerator
-                          ? () => context.push('/groups/$groupId/sessions/new')
+                      message: 'This group has no sessions yet.',
+                      action: widget.isModerator
+                          ? () => context.push('/groups/${widget.groupId}/sessions/new')
                           : null,
-                      actionLabel: isModerator ? 'Create event' : null,
+                      actionLabel: widget.isModerator ? 'Create session' : null,
                     ),
                   )
-                : ListView.builder(
+                : ListView(
                     padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
-                    itemCount: events.length,
-                    itemBuilder: (ctx, i) {
-                      final e = events[i];
-                      final local = e.startTime.toLocal();
-                      final isPast = !e.startTime.isAfter(now);
-                      return GestureDetector(
-                        onTap: () => context.push('/sessions/${e.id}'),
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          decoration: BoxDecoration(
-                            color: AppThemeTokens.card(ctx),
-                            borderRadius:
-                                BorderRadius.circular(AppThemeTokens.radiusMd),
-                            border:
-                                Border.all(color: AppThemeTokens.border(ctx)),
+                    children: [
+                      if (upcoming.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          child: Center(
+                            child: Text(
+                              'No upcoming sessions',
+                              style: TextStyle(
+                                color: AppThemeTokens.textMuted(context),
+                                fontSize: 13,
+                              ),
+                            ),
                           ),
-                          child: Row(
-                            children: [
-                              // Colored date strip
-                              Container(
-                                width: 60,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 18),
-                                decoration: BoxDecoration(
-                                  color: isPast
-                                      ? AppThemeTokens.cardElevated(ctx)
-                                      : AppThemeTokens.primaryGlow,
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(
-                                        AppThemeTokens.radiusMd),
-                                    bottomLeft: Radius.circular(
-                                        AppThemeTokens.radiusMd),
-                                  ),
-                                  border: Border(
-                                    right: BorderSide(
-                                        color: AppThemeTokens.border(ctx)),
-                                  ),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      DateFormat('MMM')
-                                          .format(local)
-                                          .toUpperCase(),
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 0.5,
-                                        color: isPast
-                                            ? AppThemeTokens.textMuted(ctx)
-                                            : AppThemeTokens.primary400,
-                                      ),
-                                    ),
-                                    Text(
-                                      DateFormat('d').format(local),
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 20,
-                                        color: isPast
-                                            ? AppThemeTokens.textSecondary(ctx)
-                                            : AppThemeTokens.primary400,
-                                      ),
-                                    ),
-                                    Text(
-                                      DateFormat('EEE')
-                                          .format(local)
-                                          .toUpperCase(),
-                                      style: TextStyle(
-                                        fontSize: 8,
-                                        letterSpacing: 0.3,
-                                        color: isPast
-                                            ? AppThemeTokens.textMuted(ctx)
-                                            : AppThemeTokens.textSecondary(ctx),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // Event info
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 10),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        e.title,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
-                                          color: AppThemeTokens.text(ctx),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        DateFormat('EEE, MMM d · h:mm a')
-                                            .format(local),
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color:
-                                              AppThemeTokens.textSecondary(ctx),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Wrap(
-                                        spacing: 6,
-                                        runSpacing: 4,
-                                        children: [
-                                          if (e.sessionType != null)
-                                            _EventBadge(label: e.sessionType!),
-                                          _EventBadge(
-                                            label: e.isPublic
-                                                ? 'Public'
-                                                : 'Private',
-                                            icon: e.isPublic
-                                                ? Icons.public_outlined
-                                                : Icons.lock_outline,
-                                          ),
-                                          _EventBadge(
-                                            label: e.maxPlayers != null
-                                                ? '${e.participantCount}/${e.maxPlayers}'
-                                                : '${e.participantCount} joined',
-                                            icon: Icons.people_outline,
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.only(right: 12),
-                                child: Icon(
-                                  Icons.chevron_right,
-                                  color: AppThemeTokens.textMuted(ctx),
+                        )
+                      else
+                        ...upcoming.map((e) => _SessionCard(session: e, isPast: false)),
+                      if (past.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: () => setState(() => _showPast = !_showPast),
+                          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _showPast
+                                      ? Icons.keyboard_arrow_up
+                                      : Icons.keyboard_arrow_down,
                                   size: 18,
+                                  color: AppThemeTokens.textSecondary(context),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Past sessions (${past.length})',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppThemeTokens.textSecondary(context),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      );
-                    },
+                        if (_showPast)
+                          ...past.map((e) => _SessionCard(session: e, isPast: true)),
+                      ],
+                    ],
                   ),
-            // Create event FAB for admins/moderators
-            if (isModerator)
+            if (widget.isModerator)
               Positioned(
                 bottom: 16,
                 right: 16,
                 child: FloatingActionButton(
                   onPressed: () =>
-                      context.push('/groups/$groupId/sessions/new'),
-                  tooltip: 'Create event',
+                      context.push('/groups/${widget.groupId}/sessions/new'),
+                  tooltip: 'Create session',
                   child: const Icon(Icons.add),
                 ),
               ),
-            // Request event button for regular members
-            if (isMember && !isModerator)
+            if (widget.isMember && !widget.isModerator)
               Positioned(
                 bottom: 16,
                 right: 16,
                 child: FloatingActionButton.extended(
                   onPressed: () =>
-                      context.push('/groups/$groupId/session-requests'),
+                      context.push('/groups/${widget.groupId}/session-requests'),
                   icon: const Icon(Icons.event_available_outlined),
                   label: const Text('Request Session'),
                 ),
@@ -1653,6 +1558,141 @@ class _EventsTab extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _SessionCard extends StatelessWidget {
+  const _SessionCard({required this.session, required this.isPast});
+  final SessionModel session;
+  final bool isPast;
+
+  @override
+  Widget build(BuildContext context) {
+    final local = session.startTime.toLocal();
+    return GestureDetector(
+      onTap: () => context.push('/sessions/${session.id}'),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: AppThemeTokens.card(context),
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+          border: Border.all(color: AppThemeTokens.border(context)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 60,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              decoration: BoxDecoration(
+                color: isPast
+                    ? AppThemeTokens.cardElevated(context)
+                    : AppThemeTokens.primaryGlow,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(AppThemeTokens.radiusMd),
+                  bottomLeft: Radius.circular(AppThemeTokens.radiusMd),
+                ),
+                border: Border(
+                  right: BorderSide(color: AppThemeTokens.border(context)),
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    DateFormat('MMM').format(local).toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                      color: isPast
+                          ? AppThemeTokens.textMuted(context)
+                          : AppThemeTokens.primary400,
+                    ),
+                  ),
+                  Text(
+                    DateFormat('d').format(local),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                      color: isPast
+                          ? AppThemeTokens.textSecondary(context)
+                          : AppThemeTokens.primary400,
+                    ),
+                  ),
+                  Text(
+                    DateFormat('EEE').format(local).toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 8,
+                      letterSpacing: 0.3,
+                      color: isPast
+                          ? AppThemeTokens.textMuted(context)
+                          : AppThemeTokens.textSecondary(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      session.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: AppThemeTokens.text(context),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      DateFormat('EEE, MMM d · h:mm a').format(local),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppThemeTokens.textSecondary(context),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        if (session.sessionType != null)
+                          _EventBadge(label: session.sessionType!),
+                        _EventBadge(
+                          label: session.isPublic ? 'Public' : 'Private',
+                          icon: session.isPublic
+                              ? Icons.public_outlined
+                              : Icons.lock_outline,
+                        ),
+                        _EventBadge(
+                          label: session.maxPlayers != null
+                              ? '${session.participantCount}/${session.maxPlayers}'
+                              : '${session.participantCount} joined',
+                          icon: Icons.people_outline,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Icon(
+                Icons.chevron_right,
+                color: AppThemeTokens.textMuted(context),
+                size: 18,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

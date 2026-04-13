@@ -16,9 +16,9 @@ import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../data/session_repository_impl.dart';
+import '../../../features/dashboard/state/dashboard_notifier.dart';
 import '../state/sessions_notifier.dart';
 import 'attendance_page.dart';
-import 'session_form_page.dart';
 import 'session_invite_analytics_page.dart';
 import 'participants_page.dart';
 
@@ -64,7 +64,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(archived ? 'Event unarchived' : 'Event archived')),
+              content: Text(archived ? 'Session unarchived' : 'Session archived')),
         );
       }
     } on Exception catch (e) {
@@ -134,10 +134,11 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
       await ref.read(sessionRepositoryProvider).joinEvent(widget.eventId);
       ref.invalidate(eventDetailProvider(widget.eventId));
       ref.read(sessionsNotifierProvider.notifier).reload();
+      ref.invalidate(dashboardNotifierProvider);
       if (groupId != null) ref.invalidate(groupEventsProvider(groupId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Joined event!')),
+          const SnackBar(content: Text('Joined session!')),
         );
       }
     } on Exception catch (e) {
@@ -162,10 +163,11 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
       await ref.read(sessionRepositoryProvider).leaveEvent(widget.eventId);
       ref.invalidate(eventDetailProvider(widget.eventId));
       ref.read(sessionsNotifierProvider.notifier).reload();
+      ref.invalidate(dashboardNotifierProvider);
       if (groupId != null) ref.invalidate(groupEventsProvider(groupId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Left event.')),
+          const SnackBar(content: Text('Left session.')),
         );
       }
     } on Exception catch (e) {
@@ -188,7 +190,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete event'),
+        title: const Text('Delete session'),
         content: Text('Delete "$title"? This cannot be undone.'),
         actions: [
           TextButton(
@@ -215,7 +217,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
       if (groupId != null) ref.invalidate(groupEventsProvider(groupId));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Event deleted.')),
+          const SnackBar(content: Text('Session deleted.')),
         );
         context.go('/sessions');
       }
@@ -242,7 +244,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
       appBar: AppBar(
         title: eventAsync.maybeWhen(
           data: (e) => Text(e.title),
-          orElse: () => const Text('Event'),
+          orElse: () => const Text('Session'),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
@@ -263,11 +265,6 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
               return PopupMenuButton<String>(
                 onSelected: (action) {
                   switch (action) {
-                    case 'edit':
-                      Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => SessionFormPage(existingEvent: event),
-                      ));
-                      break;
                     case 'delete':
                       _deleteEvent(event.title);
                       break;
@@ -322,14 +319,6 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
                   ),
                   if (isCreator) ...[
                     const PopupMenuItem(
-                      value: 'edit',
-                      child: ListTile(
-                        leading: Icon(Icons.edit_outlined),
-                        title: Text('Edit Event'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                    const PopupMenuItem(
                       value: 'analytics',
                       child: ListTile(
                         leading: Icon(Icons.analytics_outlined),
@@ -358,7 +347,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
                           color: AppThemeTokens.error,
                         ),
                         title: Text(
-                          'Delete Event',
+                          'Delete Session',
                           style: TextStyle(color: AppThemeTokens.error),
                         ),
                         contentPadding: EdgeInsets.zero,
@@ -610,7 +599,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
                     OutlinedButton.icon(
                       onPressed: _leave,
                       icon: const Icon(Icons.exit_to_app, size: 18),
-                      label: const Text('Leave Event'),
+                      label: const Text('Leave Session'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppThemeTokens.error,
                         side: BorderSide(
@@ -624,7 +613,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
                     )
                   else
                     UiPrimaryButton(
-                      text: event.isFull ? 'Event Full' : 'Join Event',
+                      text: event.isFull ? 'Session Full' : 'Join Session',
                       icon: Icons.add,
                       onPressed: event.isFull ? null : _join,
                     ),

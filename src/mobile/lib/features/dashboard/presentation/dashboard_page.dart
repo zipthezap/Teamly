@@ -122,11 +122,11 @@ class _DashboardContent extends StatelessWidget {
           ),
         ),
 
-        // ── Upcoming events ──────────────────────────────────────────────
+        // ── Upcoming sessions ──────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
           child: UiSectionTitle(
-            'Upcoming Events',
+            'Upcoming Sessions',
             trailingLabel: 'See all',
             onTrailingTap: () => context.go('/sessions'),
           ),
@@ -194,7 +194,7 @@ class _DashboardContent extends StatelessWidget {
                   Expanded(
                     child: _ActionTile(
                       icon: Icons.add_circle_rounded,
-                      label: 'New Event',
+                      label: 'New Session',
                       color: AppThemeTokens.primary500,
                       onTap: () => context.push('/sessions/new'),
                     ),
@@ -631,7 +631,7 @@ class _NoEventsCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'No upcoming events',
+                  'No upcoming sessions',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
@@ -640,7 +640,7 @@ class _NoEventsCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Create one to get started!',
+                  'Create a session to get started!',
                   style: TextStyle(
                     fontSize: 12,
                     color: isDark
