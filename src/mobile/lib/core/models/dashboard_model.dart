@@ -95,6 +95,11 @@ class DashboardModel extends Equatable {
     final sessions = (rawUpcoming as List<dynamic>? ?? [])
         .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
         .toList();
+    sessions.sort((a, b) {
+      final byStart = a.startTime.compareTo(b.startTime);
+      if (byStart != 0) return byStart;
+      return a.id.compareTo(b.id);
+    });
 
     final groups = (json['recentGroups'] as List<dynamic>? ?? [])
         .map((e) => DashboardGroupModel.fromJson(e as Map<String, dynamic>))

@@ -456,7 +456,11 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
         if (ok == true) {
           try {
             await ref.read(groupRepositoryProvider).deleteGroup(widget.groupId);
-            ref.read(groupsNotifierProvider.notifier).reload();
+            await Future.wait([
+              ref.read(groupsNotifierProvider.notifier).reload(),
+              ref.read(sessionsNotifierProvider.notifier).reload(),
+              ref.read(dashboardNotifierProvider.notifier).reload(),
+            ]);
             if (mounted) context.pop();
           } on Exception catch (e) {
             if (mounted) {
@@ -505,9 +509,11 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
 
     try {
       await ref.read(groupRepositoryProvider).leaveGroup(widget.groupId);
-      ref.read(groupsNotifierProvider.notifier).reload();
-      ref.read(dashboardNotifierProvider.notifier).reload();
-      ref.read(sessionsNotifierProvider.notifier).reload();
+      await Future.wait([
+        ref.read(groupsNotifierProvider.notifier).reload(),
+        ref.read(dashboardNotifierProvider.notifier).reload(),
+        ref.read(sessionsNotifierProvider.notifier).reload(),
+      ]);
       ref.invalidate(myJoinRequestsProvider);
       ref.invalidate(groupDetailProvider(widget.groupId));
       if (mounted) {
@@ -872,6 +878,7 @@ class _OverviewTab extends ConsumerWidget {
                     onPressed: () =>
                         context.push('/groups/${group.id}/sessions/new'),
                   ),
+                ),
               if (canInvite) ...[
                 if (isAdmin) const SizedBox(width: 10),
                 Expanded(
@@ -1490,10 +1497,11 @@ class _EventsTabState extends ConsumerState<_EventsTab> {
                     child: UiEmptyState(
                       icon: Icons.event_busy_outlined,
                       message: 'This group has no sessions yet.',
-                      action: isAdmin
-                          ? () => context.push('/groups/$groupId/sessions/new')
+                      action: widget.isAdmin
+                          ? () => context
+                              .push('/groups/${widget.groupId}/sessions/new')
                           : null,
-                      actionLabel: isAdmin ? 'Create session' : null,
+                      actionLabel: widget.isAdmin ? 'Create session' : null,
                     ),
                   )
                 : ListView(
@@ -1513,14 +1521,17 @@ class _EventsTabState extends ConsumerState<_EventsTab> {
                           ),
                         )
                       else
-                        ...upcoming.map((e) => _SessionCard(session: e, isPast: false)),
+                        ...upcoming.map(
+                            (e) => _SessionCard(session: e, isPast: false)),
                       if (past.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         InkWell(
                           onTap: () => setState(() => _showPast = !_showPast),
-                          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+                          borderRadius:
+                              BorderRadius.circular(AppThemeTokens.radiusMd),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 10, horizontal: 4),
                             child: Row(
                               children: [
                                 Icon(
@@ -1536,7 +1547,8 @@ class _EventsTabState extends ConsumerState<_EventsTab> {
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: AppThemeTokens.textSecondary(context),
+                                    color:
+                                        AppThemeTokens.textSecondary(context),
                                   ),
                                 ),
                               ],
@@ -1544,30 +1556,31 @@ class _EventsTabState extends ConsumerState<_EventsTab> {
                           ),
                         ),
                         if (_showPast)
-                          ...past.map((e) => _SessionCard(session: e, isPast: true)),
+                          ...past.map(
+                              (e) => _SessionCard(session: e, isPast: true)),
                       ],
                     ],
                   ),
             // Create session FAB for admins only
-            if (isAdmin)
+            if (widget.isAdmin)
               Positioned(
                 bottom: 16,
                 right: 16,
                 child: FloatingActionButton(
                   onPressed: () =>
-                      context.push('/groups/$groupId/sessions/new'),
+                      context.push('/groups/${widget.groupId}/sessions/new'),
                   tooltip: 'Create session',
                   child: const Icon(Icons.add),
                 ),
               ),
             // Request session button for regular members
-            if (isMember && !isAdmin)
+            if (widget.isMember && !widget.isAdmin)
               Positioned(
                 bottom: 16,
                 right: 16,
                 child: FloatingActionButton.extended(
-                  onPressed: () =>
-                      context.push('/groups/$groupId/session-requests'),
+                  onPressed: () => context
+                      .push('/groups/${widget.groupId}/session-requests'),
                   icon: const Icon(Icons.event_available_outlined),
                   label: const Text('Request Session'),
                 ),
@@ -1652,7 +1665,8 @@ class _SessionCard extends StatelessWidget {
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

@@ -154,6 +154,14 @@ class _SessionsPageState extends ConsumerState<SessionsPage>
             return haystack.contains(query);
           }).toList();
 
+          filteredEvents.sort((a, b) {
+            final byTime = _filter == _EventFilter.past
+                ? b.startTime.compareTo(a.startTime)
+                : a.startTime.compareTo(b.startTime);
+            if (byTime != 0) return byTime;
+            return a.id.compareTo(b.id);
+          });
+
           final upcomingCount =
               events.where((e) => e.startTime.isAfter(now)).length;
           final hostingCount = events

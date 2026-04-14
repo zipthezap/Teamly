@@ -21,17 +21,22 @@ export const getDashboard = async (req: Request, res: Response): Promise<void> =
   const now = new Date();
 
   const [upcomingSessions, groups, notificationStats] = await Promise.all([
-    // Top 5 upcoming sessions the user is a confirmed participant of
+    // Top 5 upcoming sessions the user is hosting or participating in.
     prisma.session.findMany({
       where: {
         archived: false,
         startTime: { gte: now },
-        participants: {
-          some: {
-            userId,
-            status: 'confirmed',
+        OR: [
+          { creatorId: userId },
+          {
+            participants: {
+              some: {
+                userId,
+                status: { not: 'declined' },
+              },
+            },
           },
-        },
+        ],
       },
       include: {
         creator: {

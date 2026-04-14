@@ -13,7 +13,6 @@ import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
 import '../state/tournaments_notifier.dart';
 
-
 const _kAccent = Color(0xFFFF9800);
 
 // ===========================================================================
@@ -31,7 +30,7 @@ class TournamentDetailPage extends ConsumerStatefulWidget {
 }
 
 class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -54,8 +53,8 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
     final currentUserId = authState.user?.id;
 
     return tournamentAsync.when(
-      loading: () => const Scaffold(
-          body: Center(child: CircularProgressIndicator())),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (e, _) => Scaffold(
         appBar: AppBar(title: const Text('Tournament')),
         body: ErrorDisplay(
@@ -69,16 +68,16 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
             t.status == 'active' ||
             t.status == 'completed';
         final isOrganizer = t.creatorId == currentUserId;
-        final isAdmin = isOrganizer ||
-            t.admins.any((a) => a.userId == currentUserId);
+        final isAdmin =
+            isOrganizer || t.admins.any((a) => a.userId == currentUserId);
         TournamentTeamModel? myTeam;
         if (currentUserId != null) {
           try {
             myTeam = t.teams.firstWhere(
               (team) =>
                   team.captainUserId == currentUserId ||
-                  team.players.any(
-                      (p) => (p['userId'] as String?) == currentUserId),
+                  team.players
+                      .any((p) => (p['userId'] as String?) == currentUserId),
             );
           } catch (_) {
             myTeam = null;
@@ -122,7 +121,8 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
                     IconButton(
                       icon: const Icon(Icons.edit_outlined),
                       tooltip: 'Edit tournament',
-                      onPressed: () => context.push('/tournaments/${t.id}/edit', extra: t),
+                      onPressed: () =>
+                          context.push('/tournaments/${t.id}/edit', extra: t),
                     ),
                   if (isAdmin)
                     IconButton(
@@ -208,31 +208,70 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
         padding: const EdgeInsets.all(16),
         children: [
           _InfoCard(children: [
-            _InfoRow(icon: Icons.emoji_events_outlined, label: 'Sport', value: t.sportType),
-            _InfoRow(icon: Icons.account_tree_outlined, label: 'Format', value: _fmtLabel(t.format)),
-            _InfoRow(icon: Icons.info_outline, label: 'Status', value: _statusLabel(t.status)),
+            _InfoRow(
+                icon: Icons.emoji_events_outlined,
+                label: 'Sport',
+                value: t.sportType),
+            _InfoRow(
+                icon: Icons.account_tree_outlined,
+                label: 'Format',
+                value: _fmtLabel(t.format)),
+            _InfoRow(
+                icon: Icons.info_outline,
+                label: 'Status',
+                value: _statusLabel(t.status)),
             if (t.startDate != null)
-              _InfoRow(icon: Icons.play_arrow_outlined, label: 'Start', value: dateFormat.format(t.startDate!.toLocal())),
+              _InfoRow(
+                  icon: Icons.play_arrow_outlined,
+                  label: 'Start',
+                  value: dateFormat.format(t.startDate!.toLocal())),
             if (t.endDate != null)
-              _InfoRow(icon: Icons.flag_outlined, label: 'End', value: dateFormat.format(t.endDate!.toLocal())),
+              _InfoRow(
+                  icon: Icons.flag_outlined,
+                  label: 'End',
+                  value: dateFormat.format(t.endDate!.toLocal())),
             if (t.registrationStartDate != null)
-              _InfoRow(icon: Icons.app_registration_outlined, label: 'Reg. Opens', value: dateFormat.format(t.registrationStartDate!.toLocal())),
+              _InfoRow(
+                  icon: Icons.app_registration_outlined,
+                  label: 'Reg. Opens',
+                  value: dateFormat.format(t.registrationStartDate!.toLocal())),
             if (t.registrationDeadline != null)
-              _InfoRow(icon: Icons.event_busy_outlined, label: 'Reg. Closes', value: dateFormat.format(t.registrationDeadline!.toLocal())),
+              _InfoRow(
+                  icon: Icons.event_busy_outlined,
+                  label: 'Reg. Closes',
+                  value: dateFormat.format(t.registrationDeadline!.toLocal())),
             if (t.locationName != null || t.location != null)
-              _InfoRow(icon: Icons.location_on_outlined, label: 'Location', value: t.locationName ?? t.location ?? ''),
+              _InfoRow(
+                  icon: Icons.location_on_outlined,
+                  label: 'Location',
+                  value: t.locationName ?? t.location ?? ''),
           ]),
           if (t.description != null) ...[
             const SizedBox(height: 12),
-            _SectionCard(title: 'About', child: Text(t.description!, style: TextStyle(color: AppThemeTokens.textSecondary(context), fontSize: 14))),
+            _SectionCard(
+                title: 'About',
+                child: Text(t.description!,
+                    style: TextStyle(
+                        color: AppThemeTokens.textSecondary(context),
+                        fontSize: 14))),
           ],
           if (t.rulesDescription != null) ...[
             const SizedBox(height: 12),
-            _SectionCard(title: 'Rules', child: Text(t.rulesDescription!, style: TextStyle(color: AppThemeTokens.textSecondary(context), fontSize: 14))),
+            _SectionCard(
+                title: 'Rules',
+                child: Text(t.rulesDescription!,
+                    style: TextStyle(
+                        color: AppThemeTokens.textSecondary(context),
+                        fontSize: 14))),
           ],
           if (t.prizesDescription != null) ...[
             const SizedBox(height: 12),
-            _SectionCard(title: 'Prizes', child: Text(t.prizesDescription!, style: TextStyle(color: AppThemeTokens.textSecondary(context), fontSize: 14))),
+            _SectionCard(
+                title: 'Prizes',
+                child: Text(t.prizesDescription!,
+                    style: TextStyle(
+                        color: AppThemeTokens.textSecondary(context),
+                        fontSize: 14))),
           ],
           if (canRegister) ...[
             const SizedBox(height: 16),
@@ -240,7 +279,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               text: 'Register My Team',
               icon: Icons.add_circle_outline,
               onPressed: () async {
-                final ok = await context.push<bool>('/tournaments/${t.id}/register');
+                final ok =
+                    await context.push<bool>('/tournaments/${t.id}/register');
                 if (ok == true) onRefresh();
               },
             ),
@@ -252,12 +292,15 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${myTeam!.wins}W / ${myTeam!.losses}L — ${myTeam!.points} pts', style: const TextStyle(fontWeight: FontWeight.w500)),
+                  Text(
+                      '${myTeam!.wins}W / ${myTeam!.losses}L — ${myTeam!.points} pts',
+                      style: const TextStyle(fontWeight: FontWeight.w500)),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.group_outlined, size: 16),
                     label: const Text('Manage Roster'),
-                    onPressed: () => context.push('/tournaments/${t.id}/teams/${myTeam!.id}/roster'),
+                    onPressed: () => context.push(
+                        '/tournaments/${t.id}/teams/${myTeam!.id}/roster'),
                   ),
                 ],
               ),
@@ -276,7 +319,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
             UiSectionTitle('Teams'),
             const SizedBox(height: 8),
             if (t.teams.isEmpty)
-              const UiEmptyState(icon: Icons.people_outline, message: 'No teams registered yet.')
+              const UiEmptyState(
+                  icon: Icons.people_outline,
+                  message: 'No teams registered yet.')
             else
               for (final team in t.teams)
                 _TeamRow(team: team, tournamentId: t.id),
@@ -296,7 +341,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               OutlinedButton.icon(
                 icon: const Icon(Icons.category_outlined, size: 16),
                 label: const Text('Categories'),
-                onPressed: () => context.push('/tournaments/${t.id}/categories'),
+                onPressed: () =>
+                    context.push('/tournaments/${t.id}/categories'),
               ),
               OutlinedButton.icon(
                 icon: const Icon(Icons.supervisor_account_outlined, size: 16),
@@ -306,7 +352,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               OutlinedButton.icon(
                 icon: const Icon(Icons.sports_outlined, size: 16),
                 label: const Text('Matches'),
-                onPressed: () => context.push('/tournaments/${t.id}/matches', extra: t),
+                onPressed: () =>
+                    context.push('/tournaments/${t.id}/matches', extra: t),
               ),
               OutlinedButton.icon(
                 icon: const Icon(Icons.pending_actions_outlined, size: 16),
@@ -321,7 +368,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     );
   }
 
-  void _showStatusDialog(BuildContext context, TournamentModel t, VoidCallback onRefresh) {
+  void _showStatusDialog(
+      BuildContext context, TournamentModel t, VoidCallback onRefresh) {
     final Map<String, List<String>> transitions = {
       'draft': ['registration', 'cancelled'],
       'registration': ['in_progress', 'cancelled'],
@@ -332,7 +380,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     final allowed = transitions[t.status] ?? [];
     if (allowed.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Tournament is ${t.status} — no further transitions available')),
+        SnackBar(
+            content: Text(
+                'Tournament is ${t.status} — no further transitions available')),
       );
       return;
     }
@@ -350,17 +400,24 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               ),
           ],
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel'))],
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel'))
+        ],
       ),
     ).then((newStatus) async {
       if (newStatus == null) return;
       try {
-        await ref.read(tournamentRepositoryProvider).updateTournamentStatus(t.id, newStatus);
+        await ref
+            .read(tournamentRepositoryProvider)
+            .updateTournamentStatus(t.id, newStatus);
         onRefresh();
       } on Exception catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(extractErrorMessage(e)), backgroundColor: Theme.of(context).colorScheme.error),
+            SnackBar(
+                content: Text(extractErrorMessage(e)),
+                backgroundColor: Theme.of(context).colorScheme.error),
           );
         }
       }
@@ -393,7 +450,10 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
 }
 
 class _CategorySection extends StatelessWidget {
-  const _CategorySection({required this.category, required this.isAdmin, required this.tournament});
+  const _CategorySection(
+      {required this.category,
+      required this.isAdmin,
+      required this.tournament});
 
   final TournamentCategoryModel category;
   final bool isAdmin;
@@ -408,13 +468,18 @@ class _CategorySection extends StatelessWidget {
         if (category.description != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
-            child: Text(category.description!, style: TextStyle(color: AppThemeTokens.textSecondary(context), fontSize: 13)),
+            child: Text(category.description!,
+                style: TextStyle(
+                    color: AppThemeTokens.textSecondary(context),
+                    fontSize: 13)),
           ),
         const SizedBox(height: 6),
         if (category.pools.isEmpty)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: Text('No pools in this category.', style: TextStyle(color: AppThemeTokens.textMuted(context), fontSize: 13)),
+            child: Text('No pools in this category.',
+                style: TextStyle(
+                    color: AppThemeTokens.textMuted(context), fontSize: 13)),
           )
         else
           for (final pool in category.pools)
@@ -426,7 +491,8 @@ class _CategorySection extends StatelessWidget {
 }
 
 class _PoolCard extends StatelessWidget {
-  const _PoolCard({required this.pool, required this.isAdmin, required this.tournament});
+  const _PoolCard(
+      {required this.pool, required this.isAdmin, required this.tournament});
 
   final TournamentPoolModel pool;
   final bool isAdmin;
@@ -449,16 +515,25 @@ class _PoolCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
             child: Row(
               children: [
-                Expanded(child: Text(pool.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14))),
+                Expanded(
+                    child: Text(pool.name,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 14))),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: isFull ? Colors.red.withValues(alpha: 0.15) : Colors.green.withValues(alpha: 0.15),
+                    color: isFull
+                        ? Colors.red.withValues(alpha: 0.15)
+                        : Colors.green.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     '${pool.teams.length}/${pool.maxTeams}',
-                    style: TextStyle(color: isFull ? Colors.red : Colors.green, fontSize: 12, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                        color: isFull ? Colors.red : Colors.green,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
@@ -472,12 +547,18 @@ class _PoolCard extends StatelessWidget {
           if (pool.waitlist.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 6, 12, 2),
-              child: Text('Waitlist (${pool.waitlist.length})', style: TextStyle(color: AppThemeTokens.textMuted(context), fontSize: 12)),
+              child: Text('Waitlist (${pool.waitlist.length})',
+                  style: TextStyle(
+                      color: AppThemeTokens.textMuted(context), fontSize: 12)),
             ),
             for (final w in pool.waitlist)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                child: Text('${w.position + 1}. ${w.teamName}', style: TextStyle(color: AppThemeTokens.textSecondary(context), fontSize: 13)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                child: Text('${w.position + 1}. ${w.teamName}',
+                    style: TextStyle(
+                        color: AppThemeTokens.textSecondary(context),
+                        fontSize: 13)),
               ),
           ],
           const SizedBox(height: 8),
@@ -496,16 +577,21 @@ class _TeamRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () => context.push('/tournaments/$tournamentId/teams/${team.id}/roster'),
+      onTap: () =>
+          context.push('/tournaments/$tournamentId/teams/${team.id}/roster'),
       borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
           children: [
-            Icon(Icons.shield_outlined, size: 16, color: AppThemeTokens.textMuted(context)),
+            Icon(Icons.shield_outlined,
+                size: 16, color: AppThemeTokens.textMuted(context)),
             const SizedBox(width: 6),
-            Expanded(child: Text(team.name, style: const TextStyle(fontSize: 13))),
-            Text('${team.wins}W ${team.losses}L', style: TextStyle(color: AppThemeTokens.textMuted(context), fontSize: 12)),
+            Expanded(
+                child: Text(team.name, style: const TextStyle(fontSize: 13))),
+            Text('${team.wins}W ${team.losses}L',
+                style: TextStyle(
+                    color: AppThemeTokens.textMuted(context), fontSize: 12)),
           ],
         ),
       ),
@@ -539,11 +625,17 @@ class _StandingRow {
   int? get gd => gf != null && ga != null ? gf! - ga! : null;
   int get played => wins + losses + draws;
 
-  factory _StandingRow.fromStanding(TournamentStandingModel s) =>
-      _StandingRow(name: s.teamName, wins: s.wins, losses: s.losses, draws: s.draws, points: s.points, gf: s.goalsFor, ga: s.goalsAgainst);
+  factory _StandingRow.fromStanding(TournamentStandingModel s) => _StandingRow(
+      name: s.teamName,
+      wins: s.wins,
+      losses: s.losses,
+      draws: s.draws,
+      points: s.points,
+      gf: s.goalsFor,
+      ga: s.goalsAgainst);
 
-  factory _StandingRow.fromTeam(TournamentTeamModel t) =>
-      _StandingRow(name: t.name, wins: t.wins, losses: t.losses, draws: 0, points: t.points);
+  factory _StandingRow.fromTeam(TournamentTeamModel t) => _StandingRow(
+      name: t.name, wins: t.wins, losses: t.losses, draws: 0, points: t.points);
 }
 
 class _ScoresTab extends StatelessWidget {
@@ -564,7 +656,9 @@ class _ScoresTab extends StatelessWidget {
       if (hasStandings) {
         final filtered = poolId == null
             ? t.standings
-            : t.standings.where((s) => teamPoolMap[s.teamId] == poolId).toList();
+            : t.standings
+                .where((s) => teamPoolMap[s.teamId] == poolId)
+                .toList();
         if (filtered.isEmpty && poolId != null) {
           // Fallback to teams if standings not yet populated for this pool
           final poolTeams = t.teams.where((tm) => tm.poolId == poolId).toList();
@@ -580,10 +674,12 @@ class _ScoresTab extends StatelessWidget {
     }
 
     if (t.teams.isEmpty && !hasStandings) {
-      return const UiEmptyState(icon: Icons.leaderboard_outlined, message: 'No scores yet.');
+      return const UiEmptyState(
+          icon: Icons.leaderboard_outlined, message: 'No scores yet.');
     }
 
-    final showGF = hasStandings && t.standings.any((s) => s.goalsFor > 0 || s.goalsAgainst > 0);
+    final showGF = hasStandings &&
+        t.standings.any((s) => s.goalsFor > 0 || s.goalsAgainst > 0);
 
     Widget buildSection(String title, String? poolId) {
       final rows = rowsForPool(poolId);
@@ -608,15 +704,21 @@ class _ScoresTab extends StatelessWidget {
         children.add(Padding(
           padding: const EdgeInsets.only(bottom: 2),
           child: Text(cat.name.toUpperCase(),
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1.2, color: AppThemeTokens.textMuted(context))),
+              style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 11,
+                  letterSpacing: 1.2,
+                  color: AppThemeTokens.textMuted(context))),
         ));
         for (final pool in cat.pools) {
           children.add(buildSection(pool.name, pool.id));
         }
       }
       // Uncategorised pools
-      final catPoolIds = t.categories.expand((c) => c.pools.map((p) => p.id)).toSet();
-      final uncatPools = t.pools.where((p) => !catPoolIds.contains(p.id)).toList();
+      final catPoolIds =
+          t.categories.expand((c) => c.pools.map((p) => p.id)).toSet();
+      final uncatPools =
+          t.pools.where((p) => !catPoolIds.contains(p.id)).toList();
       for (final pool in uncatPools) {
         children.add(buildSection(pool.name, pool.id));
       }
@@ -625,11 +727,16 @@ class _ScoresTab extends StatelessWidget {
         children.add(buildSection(pool.name, pool.id));
       }
       // Teams not in any pool
-      final poolTeamIds = t.pools.expand((p) => p.teams.map((tm) => tm.id)).toSet();
-      final unassigned = t.teams.where((tm) => !poolTeamIds.contains(tm.id)).toList();
+      final poolTeamIds =
+          t.pools.expand((p) => p.teams.map((tm) => tm.id)).toSet();
+      final unassigned =
+          t.teams.where((tm) => !poolTeamIds.contains(tm.id)).toList();
       if (unassigned.isNotEmpty) {
         final rows = hasStandings
-            ? t.standings.where((s) => !poolTeamIds.contains(s.teamId)).map(_StandingRow.fromStanding).toList()
+            ? t.standings
+                .where((s) => !poolTeamIds.contains(s.teamId))
+                .map(_StandingRow.fromStanding)
+                .toList()
             : unassigned.map(_StandingRow.fromTeam).toList();
         if (rows.isNotEmpty) {
           children.add(UiSectionTitle('Other'));
@@ -640,13 +747,16 @@ class _ScoresTab extends StatelessWidget {
       }
     } else {
       final rows = rowsForPool(null);
-      if (rows.isEmpty) return const UiEmptyState(icon: Icons.leaderboard_outlined, message: 'No scores yet.');
+      if (rows.isEmpty)
+        return const UiEmptyState(
+            icon: Icons.leaderboard_outlined, message: 'No scores yet.');
       children.add(_ScoreTable(rows: rows, showGoals: showGF));
       children.add(const SizedBox(height: 16));
     }
 
     if (children.isEmpty) {
-      return const UiEmptyState(icon: Icons.leaderboard_outlined, message: 'No scores yet.');
+      return const UiEmptyState(
+          icon: Icons.leaderboard_outlined, message: 'No scores yet.');
     }
     return ListView(padding: const EdgeInsets.all(16), children: children);
   }
@@ -680,49 +790,144 @@ class _ScoreTable extends StatelessWidget {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: ConstrainedBox(
-          constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 32),
+          constraints:
+              BoxConstraints(minWidth: MediaQuery.of(context).size.width - 32),
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Row(children: [
                   const SizedBox(width: 24),
-                  const SizedBox(width: 160, child: Text('Team', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
-                  const SizedBox(width: 32, child: Text('P', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
-                  const SizedBox(width: 32, child: Text('W', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                  const SizedBox(
+                      width: 160,
+                      child: Text('Team',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 12))),
+                  const SizedBox(
+                      width: 32,
+                      child: Text('P',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 12))),
+                  const SizedBox(
+                      width: 32,
+                      child: Text('W',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 12))),
                   if (rows.any((r) => r.draws > 0))
-                    const SizedBox(width: 32, child: Text('D', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
-                  const SizedBox(width: 32, child: Text('L', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                    const SizedBox(
+                        width: 32,
+                        child: Text('D',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 12))),
+                  const SizedBox(
+                      width: 32,
+                      child: Text('L',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 12))),
                   if (showGoals) ...[
-                    const SizedBox(width: 36, child: Text('GF', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
-                    const SizedBox(width: 36, child: Text('GA', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
-                    const SizedBox(width: 36, child: Text('GD', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                    const SizedBox(
+                        width: 36,
+                        child: Text('GF',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 12))),
+                    const SizedBox(
+                        width: 36,
+                        child: Text('GA',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 12))),
+                    const SizedBox(
+                        width: 36,
+                        child: Text('GD',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 12))),
                   ],
-                  const SizedBox(width: 40, child: Text('Pts', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                  const SizedBox(
+                      width: 40,
+                      child: Text('Pts',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 12))),
                 ]),
               ),
               const Divider(height: 1),
               for (int i = 0; i < sorted.length; i++) ...[
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: Row(children: [
-                    SizedBox(width: 24, child: Text('${i + 1}', style: TextStyle(color: AppThemeTokens.textMuted(context), fontSize: 13))),
-                    SizedBox(width: 160, child: Text(sorted[i].name, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
-                    SizedBox(width: 32, child: Text('${sorted[i].played}', textAlign: TextAlign.center, style: TextStyle(color: AppThemeTokens.textSecondary(context), fontSize: 13))),
-                    SizedBox(width: 32, child: Text('${sorted[i].wins}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13))),
+                    SizedBox(
+                        width: 24,
+                        child: Text('${i + 1}',
+                            style: TextStyle(
+                                color: AppThemeTokens.textMuted(context),
+                                fontSize: 13))),
+                    SizedBox(
+                        width: 160,
+                        child: Text(sorted[i].name,
+                            style: const TextStyle(fontSize: 13),
+                            overflow: TextOverflow.ellipsis)),
+                    SizedBox(
+                        width: 32,
+                        child: Text('${sorted[i].played}',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: AppThemeTokens.textSecondary(context),
+                                fontSize: 13))),
+                    SizedBox(
+                        width: 32,
+                        child: Text('${sorted[i].wins}',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 13))),
                     if (rows.any((r) => r.draws > 0))
-                      SizedBox(width: 32, child: Text('${sorted[i].draws}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13))),
-                    SizedBox(width: 32, child: Text('${sorted[i].losses}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13))),
+                      SizedBox(
+                          width: 32,
+                          child: Text('${sorted[i].draws}',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 13))),
+                    SizedBox(
+                        width: 32,
+                        child: Text('${sorted[i].losses}',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 13))),
                     if (showGoals) ...[
-                      SizedBox(width: 36, child: Text('${sorted[i].gf ?? 0}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13))),
-                      SizedBox(width: 36, child: Text('${sorted[i].ga ?? 0}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13))),
-                      SizedBox(width: 36, child: Text(
-                        '${(sorted[i].gd ?? 0) >= 0 ? '+' : ''}${sorted[i].gd ?? 0}',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 13, color: (sorted[i].gd ?? 0) >= 0 ? Colors.green : Colors.red),
-                      )),
+                      SizedBox(
+                          width: 36,
+                          child: Text('${sorted[i].gf ?? 0}',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 13))),
+                      SizedBox(
+                          width: 36,
+                          child: Text('${sorted[i].ga ?? 0}',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 13))),
+                      SizedBox(
+                          width: 36,
+                          child: Text(
+                            '${(sorted[i].gd ?? 0) >= 0 ? '+' : ''}${sorted[i].gd ?? 0}',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: (sorted[i].gd ?? 0) >= 0
+                                    ? Colors.green
+                                    : Colors.red),
+                          )),
                     ],
-                    SizedBox(width: 40, child: Text('${sorted[i].points}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppThemeTokens.primary500))),
+                    SizedBox(
+                        width: 40,
+                        child: Text('${sorted[i].points}',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: AppThemeTokens.primary500))),
                   ]),
                 ),
                 if (i < sorted.length - 1) const Divider(height: 1),
@@ -740,7 +945,11 @@ class _ScoreTable extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _MyScheduleTab extends StatelessWidget {
-  const _MyScheduleTab({required this.tournament, required this.myTeam, required this.currentUserId, required this.onRefresh});
+  const _MyScheduleTab(
+      {required this.tournament,
+      required this.myTeam,
+      required this.currentUserId,
+      required this.onRefresh});
 
   final TournamentModel tournament;
   final TournamentTeamModel myTeam;
@@ -749,9 +958,13 @@ class _MyScheduleTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final myMatches = tournament.matches.where((m) => m.teamAId == myTeam.id || m.teamBId == myTeam.id).toList();
+    final myMatches = tournament.matches
+        .where((m) => m.teamAId == myTeam.id || m.teamBId == myTeam.id)
+        .toList();
     if (myMatches.isEmpty) {
-      return const UiEmptyState(icon: Icons.calendar_today_outlined, message: 'No matches scheduled yet.');
+      return const UiEmptyState(
+          icon: Icons.calendar_today_outlined,
+          message: 'No matches scheduled yet.');
     }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -769,7 +982,12 @@ class _MyScheduleTab extends StatelessWidget {
 }
 
 class _ScheduleMatchTile extends ConsumerStatefulWidget {
-  const _ScheduleMatchTile({required this.match, required this.myTeamId, required this.tournament, required this.currentUserId, required this.onScoreSubmitted});
+  const _ScheduleMatchTile(
+      {required this.match,
+      required this.myTeamId,
+      required this.tournament,
+      required this.currentUserId,
+      required this.onScoreSubmitted});
 
   final TournamentMatchModel match;
   final String myTeamId;
@@ -798,15 +1016,20 @@ class _ScheduleMatchTileState extends ConsumerState<_ScheduleMatchTile> {
     setState(() => _submitting = true);
     try {
       await ref.read(tournamentRepositoryProvider).submitScore(
-        widget.tournament.id, widget.match.id,
-        homeScore: result['home']!, awayScore: result['away']!,
-      );
+            widget.tournament.id,
+            widget.match.id,
+            homeScore: result['home']!,
+            awayScore: result['away']!,
+          );
       if (mounted) {
         widget.onScoreSubmitted();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Score submitted!')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Score submitted!')));
       }
     } on Exception catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -820,10 +1043,15 @@ class _ScheduleMatchTileState extends ConsumerState<_ScheduleMatchTile> {
     final opponent = isMyHome ? m.teamBName : m.teamAName;
     final myScore = isMyHome ? m.scoreA : m.scoreB;
     final oppScore = isMyHome ? m.scoreB : m.scoreA;
-    final canSubmit = m.status == 'in_progress' || m.status == 'scheduled' || m.status == 'completed';
+    final canSubmit = m.status == 'in_progress' ||
+        m.status == 'scheduled' ||
+        m.status == 'completed';
 
     return Container(
-      decoration: BoxDecoration(color: AppThemeTokens.card(context), borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd), border: Border.all(color: AppThemeTokens.border(context))),
+      decoration: BoxDecoration(
+          color: AppThemeTokens.card(context),
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+          border: Border.all(color: AppThemeTokens.border(context))),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -831,23 +1059,36 @@ class _ScheduleMatchTileState extends ConsumerState<_ScheduleMatchTile> {
           children: [
             Row(
               children: [
-                Expanded(child: Text('vs ${opponent ?? "TBD"}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15))),
+                Expanded(
+                    child: Text('vs ${opponent ?? "TBD"}',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 15))),
                 _StatusChip(m.status),
               ],
             ),
             if (m.scheduledAt != null) ...[
               const SizedBox(height: 4),
-              Text(DateFormat('EEE, MMM d • HH:mm').format(m.scheduledAt!.toLocal()), style: TextStyle(color: AppThemeTokens.textMuted(context), fontSize: 12)),
+              Text(
+                  DateFormat('EEE, MMM d • HH:mm')
+                      .format(m.scheduledAt!.toLocal()),
+                  style: TextStyle(
+                      color: AppThemeTokens.textMuted(context), fontSize: 12)),
             ],
-            if (m.location != null) Text(m.location!, style: TextStyle(color: AppThemeTokens.textMuted(context), fontSize: 12)),
+            if (m.location != null)
+              Text(m.location!,
+                  style: TextStyle(
+                      color: AppThemeTokens.textMuted(context), fontSize: 12)),
             if (hasScore)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
                 child: Row(
                   children: [
-                    Icon(Icons.sports_score_outlined, size: 14, color: AppThemeTokens.textMuted(context)),
+                    Icon(Icons.sports_score_outlined,
+                        size: 14, color: AppThemeTokens.textMuted(context)),
                     const SizedBox(width: 4),
-                    Text('Score: $myScore – $oppScore', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+                    Text('Score: $myScore – $oppScore',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w500, fontSize: 13)),
                   ],
                 ),
               ),
@@ -856,8 +1097,14 @@ class _ScheduleMatchTileState extends ConsumerState<_ScheduleMatchTile> {
               SizedBox(
                 height: 32,
                 child: OutlinedButton.icon(
-                  icon: _submitting ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.edit_outlined, size: 14),
-                  label: Text(hasScore ? 'Update Score' : 'Submit Score', style: const TextStyle(fontSize: 12)),
+                  icon: _submitting
+                      ? const SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.edit_outlined, size: 14),
+                  label: Text(hasScore ? 'Update Score' : 'Submit Score',
+                      style: const TextStyle(fontSize: 12)),
                   onPressed: _submitting ? null : _showScoreDialog,
                 ),
               ),
@@ -883,9 +1130,13 @@ class _BracketsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final matches = tournament.matches;
     if (matches.isEmpty) {
-      return const UiEmptyState(icon: Icons.account_tree_outlined, message: 'Brackets not generated yet.');
+      return const UiEmptyState(
+          icon: Icons.account_tree_outlined,
+          message: 'Brackets not generated yet.');
     }
-    final isPool = tournament.format == 'round_robin' || tournament.format == 'groups_knockout' || tournament.format == 'pool';
+    final isPool = tournament.format == 'round_robin' ||
+        tournament.format == 'groups_knockout' ||
+        tournament.format == 'pool';
     final Map<String, List<TournamentMatchModel>> byRound = {};
     for (final m in matches) {
       byRound.putIfAbsent(m.round, () => []).add(m);
@@ -921,12 +1172,17 @@ class _BracketsTab extends StatelessWidget {
                     children: [
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold, color: AppThemeTokens.primary400, fontSize: 13)),
+                        child: Text(entry.key,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppThemeTokens.primary400,
+                                fontSize: 13)),
                       ),
                       for (final match in entry.value)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8),
-                          child: SizedBox(width: 180, child: _MatchTile(match: match)),
+                          child: SizedBox(
+                              width: 180, child: _MatchTile(match: match)),
                         ),
                     ],
                   ),
@@ -952,16 +1208,24 @@ class _MatchTile extends StatelessWidget {
     final bWins = hasScore && m.scoreB! > m.scoreA!;
 
     return Container(
-      decoration: BoxDecoration(color: AppThemeTokens.card(context), borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd), border: Border.all(color: AppThemeTokens.border(context))),
+      decoration: BoxDecoration(
+          color: AppThemeTokens.card(context),
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+          border: Border.all(color: AppThemeTokens.border(context))),
       child: Column(
         children: [
-          _TeamScoreRow(name: m.teamAName ?? 'TBD', score: m.scoreA, isWinner: aWins),
+          _TeamScoreRow(
+              name: m.teamAName ?? 'TBD', score: m.scoreA, isWinner: aWins),
           Divider(height: 1, color: AppThemeTokens.border(context)),
-          _TeamScoreRow(name: m.teamBName ?? 'TBD', score: m.scoreB, isWinner: bWins),
+          _TeamScoreRow(
+              name: m.teamBName ?? 'TBD', score: m.scoreB, isWinner: bWins),
           if (m.scheduledAt != null)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Text(DateFormat('MMM d, HH:mm').format(m.scheduledAt!.toLocal()), style: TextStyle(color: AppThemeTokens.textMuted(context), fontSize: 10)),
+              child: Text(
+                  DateFormat('MMM d, HH:mm').format(m.scheduledAt!.toLocal()),
+                  style: TextStyle(
+                      color: AppThemeTokens.textMuted(context), fontSize: 10)),
             ),
         ],
       ),
@@ -982,13 +1246,29 @@ class _TeamScoreRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       child: Row(
         children: [
-          if (isWinner) const Icon(Icons.star, size: 12, color: _kAccent) else const SizedBox(width: 12),
-          const SizedBox(width: 4),
-          Expanded(child: Text(name, style: TextStyle(fontSize: 13, fontWeight: isWinner ? FontWeight.bold : FontWeight.normal))),
-          if (score != null)
-            Text('$score', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: isWinner ? AppThemeTokens.primary400 : AppThemeTokens.textSecondary(context)))
+          if (isWinner)
+            const Icon(Icons.star, size: 12, color: _kAccent)
           else
-            Text('–', style: TextStyle(color: AppThemeTokens.textMuted(context), fontSize: 13)),
+            const SizedBox(width: 12),
+          const SizedBox(width: 4),
+          Expanded(
+              child: Text(name,
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight:
+                          isWinner ? FontWeight.bold : FontWeight.normal))),
+          if (score != null)
+            Text('$score',
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: isWinner
+                        ? AppThemeTokens.primary400
+                        : AppThemeTokens.textSecondary(context)))
+          else
+            Text('–',
+                style: TextStyle(
+                    color: AppThemeTokens.textMuted(context), fontSize: 13)),
         ],
       ),
     );
@@ -1000,7 +1280,12 @@ class _TeamScoreRow extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class ScoreDialog extends StatefulWidget {
-  const ScoreDialog({super.key, required this.homeTeamName, required this.awayTeamName, this.initialHomeScore, this.initialAwayScore});
+  const ScoreDialog(
+      {super.key,
+      required this.homeTeamName,
+      required this.awayTeamName,
+      this.initialHomeScore,
+      this.initialAwayScore});
 
   final String homeTeamName;
   final String awayTeamName;
@@ -1018,8 +1303,10 @@ class _ScoreDialogState extends State<ScoreDialog> {
   @override
   void initState() {
     super.initState();
-    _homeCtrl = TextEditingController(text: widget.initialHomeScore?.toString() ?? '');
-    _awayCtrl = TextEditingController(text: widget.initialAwayScore?.toString() ?? '');
+    _homeCtrl =
+        TextEditingController(text: widget.initialHomeScore?.toString() ?? '');
+    _awayCtrl =
+        TextEditingController(text: widget.initialAwayScore?.toString() ?? '');
   }
 
   @override
@@ -1043,13 +1330,37 @@ class _ScoreDialogState extends State<ScoreDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(children: [Expanded(child: Text(widget.homeTeamName, style: const TextStyle(fontWeight: FontWeight.w500))), SizedBox(width: 70, child: TextField(controller: _homeCtrl, keyboardType: TextInputType.number, textAlign: TextAlign.center, decoration: const InputDecoration(isDense: true)))]),
+          Row(children: [
+            Expanded(
+                child: Text(widget.homeTeamName,
+                    style: const TextStyle(fontWeight: FontWeight.w500))),
+            SizedBox(
+                width: 70,
+                child: TextField(
+                    controller: _homeCtrl,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    decoration: const InputDecoration(isDense: true)))
+          ]),
           const SizedBox(height: 12),
-          Row(children: [Expanded(child: Text(widget.awayTeamName, style: const TextStyle(fontWeight: FontWeight.w500))), SizedBox(width: 70, child: TextField(controller: _awayCtrl, keyboardType: TextInputType.number, textAlign: TextAlign.center, decoration: const InputDecoration(isDense: true)))]),
+          Row(children: [
+            Expanded(
+                child: Text(widget.awayTeamName,
+                    style: const TextStyle(fontWeight: FontWeight.w500))),
+            SizedBox(
+                width: 70,
+                child: TextField(
+                    controller: _awayCtrl,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    decoration: const InputDecoration(isDense: true)))
+          ]),
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel')),
         FilledButton(onPressed: _submit, child: const Text('Submit')),
       ],
     );
@@ -1067,10 +1378,14 @@ class _StatusChip extends StatelessWidget {
 
   Color _color() {
     switch (status) {
-      case 'completed': return Colors.grey;
-      case 'in_progress': return Colors.blue;
-      case 'cancelled': return Colors.red;
-      default: return Colors.orange;
+      case 'completed':
+        return Colors.grey;
+      case 'in_progress':
+        return Colors.blue;
+      case 'cancelled':
+        return Colors.red;
+      default:
+        return Colors.orange;
     }
   }
 
@@ -1078,8 +1393,12 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(color: _color().withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-      child: Text(status.replaceAll('_', ' '), style: TextStyle(color: _color(), fontSize: 11, fontWeight: FontWeight.w600)),
+      decoration: BoxDecoration(
+          color: _color().withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12)),
+      child: Text(status.replaceAll('_', ' '),
+          style: TextStyle(
+              color: _color(), fontSize: 11, fontWeight: FontWeight.w600)),
     );
   }
 }
@@ -1096,14 +1415,19 @@ class _InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(color: AppThemeTokens.card(context), borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd), border: Border.all(color: AppThemeTokens.border(context))),
-      child: Padding(padding: const EdgeInsets.all(12), child: Column(children: children)),
+      decoration: BoxDecoration(
+          color: AppThemeTokens.card(context),
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+          border: Border.all(color: AppThemeTokens.border(context))),
+      child: Padding(
+          padding: const EdgeInsets.all(12), child: Column(children: children)),
     );
   }
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.icon, required this.label, required this.value});
+  const _InfoRow(
+      {required this.icon, required this.label, required this.value});
 
   final IconData icon;
   final String label;
@@ -1117,8 +1441,13 @@ class _InfoRow extends StatelessWidget {
         children: [
           Icon(icon, size: 15, color: AppThemeTokens.textMuted(context)),
           const SizedBox(width: 8),
-          Text('$label: ', style: TextStyle(color: AppThemeTokens.textSecondary(context), fontSize: 13)),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
+          Text('$label: ',
+              style: TextStyle(
+                  color: AppThemeTokens.textSecondary(context), fontSize: 13)),
+          Expanded(
+              child: Text(value,
+                  style: const TextStyle(fontSize: 13),
+                  overflow: TextOverflow.ellipsis)),
         ],
       ),
     );
@@ -1135,11 +1464,16 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(color: AppThemeTokens.card(context), borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd), border: Border.all(color: AppThemeTokens.border(context))),
+      decoration: BoxDecoration(
+          color: AppThemeTokens.card(context),
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+          border: Border.all(color: AppThemeTokens.border(context))),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          Text(title,
+              style:
+                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
           const SizedBox(height: 6),
           child,
         ]),
@@ -1151,4 +1485,3 @@ class _SectionCard extends StatelessWidget {
 // ===========================================================================
 // Register Team Page
 // ===========================================================================
-

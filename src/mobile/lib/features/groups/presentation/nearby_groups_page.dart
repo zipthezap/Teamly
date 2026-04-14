@@ -11,6 +11,8 @@ import '../../../core/utils/geocoding_utils.dart';
 import '../../../shared/widgets/location_search_form.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../../../shared/widgets/user_avatar.dart';
+import '../../dashboard/state/dashboard_notifier.dart';
+import '../../sessions/state/sessions_notifier.dart';
 import '../data/group_repository_impl.dart';
 import '../state/groups_notifier.dart';
 
@@ -175,7 +177,9 @@ class _NearbyGroupsPageState extends ConsumerState<NearbyGroupsPage> {
     setState(() => _joining = true);
     try {
       await ref.read(groupRepositoryProvider).requestJoinGroup(group.id);
-      ref.read(groupsNotifierProvider.notifier).reload();
+      await ref.read(groupsNotifierProvider.notifier).reload();
+      await ref.read(sessionsNotifierProvider.notifier).reload();
+      await ref.read(dashboardNotifierProvider.notifier).reload();
       ref.invalidate(myJoinRequestsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

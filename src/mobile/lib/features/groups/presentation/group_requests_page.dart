@@ -8,6 +8,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../../../shared/widgets/user_avatar.dart';
+import '../../dashboard/state/dashboard_notifier.dart';
+import '../../sessions/state/sessions_notifier.dart';
 import '../data/group_repository_impl.dart';
 import '../state/groups_notifier.dart';
 
@@ -84,7 +86,9 @@ class _InvitationsTabState extends ConsumerState<_InvitationsTab> {
           .respondToInvitation(inv.groupId, inv.id, action);
       ref.invalidate(userInvitationsProvider);
       if (action == 'accept') {
-        ref.read(groupsNotifierProvider.notifier).reload();
+        await ref.read(groupsNotifierProvider.notifier).reload();
+        await ref.read(sessionsNotifierProvider.notifier).reload();
+        await ref.read(dashboardNotifierProvider.notifier).reload();
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
