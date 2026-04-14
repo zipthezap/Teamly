@@ -75,15 +75,22 @@ class TournamentRepositoryImpl implements TournamentRepository {
     String tournamentId,
     String teamName, {
     String? poolId,
+    String? categoryId,
   }) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/tournaments/$tournamentId/teams/self-register',
       data: {
         'name': teamName,
         if (poolId != null) 'poolId': poolId,
+        if (categoryId != null) 'categoryId': categoryId,
       },
     );
     return response.data!;
+  }
+
+  @override
+  Future<void> selfUnregisterTeam(String tournamentId) async {
+    await _dio.delete<void>('/tournaments/$tournamentId/teams/self-register');
   }
 
   // ---------------------------------------------------------------------------
@@ -94,7 +101,7 @@ class TournamentRepositoryImpl implements TournamentRepository {
   Future<List<TournamentPoolModel>> getPools(String tournamentId) async {
     final response =
         await _dio.get<dynamic>('/tournaments/$tournamentId/pools');
-    final items = _extractList(response.data);
+    final items = _extractList(response.data, ['data']);
     return items
         .map((e) =>
             TournamentPoolModel.fromJson(e as Map<String, dynamic>))
@@ -155,7 +162,7 @@ class TournamentRepositoryImpl implements TournamentRepository {
       String tournamentId) async {
     final response =
         await _dio.get<dynamic>('/tournaments/$tournamentId/categories');
-    final items = _extractList(response.data);
+    final items = _extractList(response.data, ['data']);
     return items
         .map((e) =>
             TournamentCategoryModel.fromJson(e as Map<String, dynamic>))
@@ -350,6 +357,16 @@ class TournamentRepositoryImpl implements TournamentRepository {
   @override
   Future<void> deleteMatch(String tournamentId, String matchId) async {
     await _dio.delete('/tournaments/$tournamentId/matches/$matchId');
+  }
+
+  @override
+  Future<Map<String, dynamic>> generateBrackets(
+      String tournamentId, {int? numberOfGroups}) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/tournaments/$tournamentId/generate-brackets',
+      data: numberOfGroups != null ? {'numberOfGroups': numberOfGroups} : {},
+    );
+    return response.data!;
   }
 }
 

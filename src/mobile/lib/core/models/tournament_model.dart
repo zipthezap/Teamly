@@ -236,6 +236,7 @@ class TournamentTeamModel extends Equatable {
     this.losses = 0,
     this.points = 0,
     this.poolId,
+    this.poolName,
     this.captainUserId,
     this.players = const [],
   });
@@ -247,6 +248,7 @@ class TournamentTeamModel extends Equatable {
   final int losses;
   final int points;
   final String? poolId;
+  final String? poolName;
   final String? captainUserId;
   final List<Map<String, dynamic>> players;
 
@@ -263,6 +265,7 @@ class TournamentTeamModel extends Equatable {
       losses: (json['losses'] as num?)?.toInt() ?? 0,
       points: (json['points'] as num?)?.toInt() ?? 0,
       poolId: json['poolId'] as String?,
+      poolName: json['poolName'] as String?,
       captainUserId: json['captainUserId'] as String?,
       players: playersList,
     );
@@ -361,6 +364,8 @@ class TournamentModel extends Equatable {
     required this.status,
     required this.createdAt,
     required this.creatorId,
+    this.organizerName,
+    this.organizerEmail,
     this.description,
     this.startDate,
     this.endDate,
@@ -394,6 +399,8 @@ class TournamentModel extends Equatable {
   final String status; // draft, registration, active, completed
   final DateTime createdAt;
   final String creatorId;
+  final String? organizerName;
+  final String? organizerEmail;
   final String? description;
   final DateTime? startDate;
   final DateTime? endDate;
@@ -461,6 +468,8 @@ class TournamentModel extends Equatable {
           json['organizerId'] as String? ??
           json['creatorId'] as String? ??
           '',
+      organizerName: organizer?['name'] as String?,
+      organizerEmail: organizer?['email'] as String?,
       description: json['description'] as String?,
       startDate: json['startDate'] != null
           ? DateTime.tryParse(json['startDate'] as String)
@@ -498,4 +507,3 @@ class TournamentModel extends Equatable {
   @override
   List<Object?> get props => [id, name, sportType, format, status, createdAt];
 }
-

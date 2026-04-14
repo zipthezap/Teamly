@@ -776,6 +776,11 @@ model EmailQueue {
   @@index([recipient])
 }
 
+enum TeamUpRequestType {
+  need_players
+  looking_for_play
+}
+
 enum TeamUpRequestStatus {
   open
   filled
@@ -795,13 +800,14 @@ model TeamUpRequest {
   title       String
   description String?
   sportType   String   // e.g., "football", "basketball", "tennis", etc.
+  requestType TeamUpRequestType @default(need_players) // need_players or looking_for_play
   location    String?
   latitude    Float?
   longitude   Float?
   locationName String?
   city        String?
   country     String?
-  dateTime    DateTime // When the sub/replacement is needed
+  dateTime    DateTime // When the session is / the user is available from
   playersNeeded Int    @default(1) // Number of players needed
   skillLevel  String?  // beginner, intermediate, advanced, any
   createdAt   DateTime @default(now())
@@ -820,9 +826,11 @@ model TeamUpRequest {
   @@index([dateTime])
   @@index([status])
   @@index([sportType])
+  @@index([requestType])
   @@index([city, country])
   @@index([status, dateTime]) // For finding open requests by date
   @@index([sportType, status, dateTime]) // Composite for sport type filtering with status and date (scalability)
+  @@index([requestType, status, dateTime]) // Composite for request type filtering with status (scalability)
   @@index([city, country, status, dateTime]) // Composite for location-based queries with status (scalability)
   @@index([creatorId, status]) // Composite for user's requests by status (scalability)
 }

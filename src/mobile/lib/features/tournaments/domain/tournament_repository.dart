@@ -16,7 +16,8 @@ abstract class TeamRegistrationRepository {
 
   Future<Map<String, dynamic>> selfRegisterTeam(
       String tournamentId, String teamName,
-      {String? poolId});
+      {String? poolId, String? categoryId});
+  Future<void> selfUnregisterTeam(String tournamentId);
   Future<List<Map<String, dynamic>>> getPlayers(
       String tournamentId, String teamId);
   Future<void> removePlayer(
@@ -74,6 +75,9 @@ abstract class MatchRepository {
   Future<void> createMatch(String tournamentId, Map<String, dynamic> data);
   Future<void> updateMatch(String tournamentId, String matchId, Map<String, dynamic> data);
   Future<void> deleteMatch(String tournamentId, String matchId);
+
+  // Bracket generation
+  Future<Map<String, dynamic>> generateBrackets(String tournamentId, {int? numberOfGroups});
 }
 
 abstract class TournamentRepository

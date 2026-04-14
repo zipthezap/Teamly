@@ -64,7 +64,10 @@ class DashboardStats extends Equatable {
   factory DashboardStats.fromJson(Map<String, dynamic> json) {
     return DashboardStats(
       totalSessions: (json['totalSessions'] as num?)?.toInt() ?? 0,
-      upcomingCount: (json['upcomingCount'] as num?)?.toInt() ?? 0,
+      upcomingCount: (json['upcomingCount'] as num?)?.toInt() ??
+          (json['upcomingSessions'] as num?)?.toInt() ??
+          (json['upcomingEvents'] as num?)?.toInt() ??
+          0,
       groupCount: (json['groupCount'] as num?)?.toInt() ?? 0,
     );
   }
@@ -88,7 +91,8 @@ class DashboardModel extends Equatable {
   final DashboardStats stats;
 
   factory DashboardModel.fromJson(Map<String, dynamic> json) {
-    final sessions = (json['upcomingSessions'] as List<dynamic>? ?? [])
+    final rawUpcoming = json['upcomingSessions'] ?? json['upcomingEvents'];
+    final sessions = (rawUpcoming as List<dynamic>? ?? [])
         .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
         .toList();
 

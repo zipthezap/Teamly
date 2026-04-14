@@ -158,7 +158,7 @@ class _SessionFormPageState extends ConsumerState<SessionFormPage> {
   Future<void> _submit() async {
     if (_selectedGroupId.isEmpty && !_isEditing) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a group for this event')),
+        const SnackBar(content: Text('Please select a group for this session')),
       );
       return;
     }
@@ -206,7 +206,7 @@ class _SessionFormPageState extends ConsumerState<SessionFormPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_isEditing ? 'Event updated!' : 'Event created!'),
+            content: Text(_isEditing ? 'Session updated!' : 'Session created!'),
           ),
         );
         Navigator.of(context).pop(true);
@@ -230,7 +230,7 @@ class _SessionFormPageState extends ConsumerState<SessionFormPage> {
     final df = DateFormat('EEE, MMM d, y – h:mm a');
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Event' : 'Create Event'),
+              title: Text(_isEditing ? 'Edit Session' : 'Create Session'),
         actions: [
           TextButton(
             onPressed: _saving ? null : _submit,
@@ -275,7 +275,7 @@ class _SessionFormPageState extends ConsumerState<SessionFormPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _isEditing ? 'Edit Event' : 'New Event',
+                          _isEditing ? 'Edit Session' : 'New Session',
                           style: TextStyle(
                             color: AppThemeTokens.text(context),
                             fontSize: 16,
@@ -284,8 +284,8 @@ class _SessionFormPageState extends ConsumerState<SessionFormPage> {
                         ),
                         Text(
                           _isEditing
-                              ? 'Update event details below'
-                              : 'Fill in the details to create your event',
+                              ? 'Update session details below'
+                              : 'Fill in the details to create your session',
                           style: TextStyle(
                             color: AppThemeTokens.textSecondary(context),
                             fontSize: 12,
@@ -482,8 +482,8 @@ class _SessionFormPageState extends ConsumerState<SessionFormPage> {
 
             // Public toggle
             _EventSwitchRow(
-              title: 'Public event',
-              subtitle: 'Anyone can see and join this event',
+              title: 'Public session',
+              subtitle: 'Anyone can see and join this session',
               value: _isPublic,
               onChanged: (v) => setState(() => _isPublic = v),
             ),
@@ -491,7 +491,7 @@ class _SessionFormPageState extends ConsumerState<SessionFormPage> {
             const SizedBox(height: 28),
 
             UiPrimaryButton(
-              text: _isEditing ? 'Update Event' : 'Create Event',
+              text: _isEditing ? 'Update Session' : 'Create Session',
               onPressed: _saving ? null : _submit,
               loading: _saving,
             ),

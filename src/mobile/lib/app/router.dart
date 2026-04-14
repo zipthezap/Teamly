@@ -12,7 +12,8 @@ import '../features/discover/presentation/discover_page.dart';
 import '../features/sessions/presentation/session_detail_page.dart';
 import '../features/sessions/presentation/session_form_page.dart';
 import '../features/sessions/presentation/session_statistics_page.dart';
-import '../features/sessions/presentation/sessions_page.dart' as sessions_presentation;
+import '../features/sessions/presentation/sessions_page.dart'
+    as sessions_presentation;
 import '../features/sessions/data/session_repository_impl.dart';
 import '../features/sessions/presentation/nearby_sessions_page.dart';
 import '../features/groups/data/group_repository_impl.dart';
@@ -40,6 +41,7 @@ import '../features/profile/presentation/email_preferences_page.dart';
 import '../features/profile/presentation/email_verify_page.dart';
 import '../features/session_requests/presentation/session_requests_page.dart';
 import '../core/error/app_exception.dart';
+import '../core/models/tournament_model.dart';
 
 final _routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -48,8 +50,8 @@ final _routerProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authNotifierProvider);
       final path = state.uri.path;
       final isAuthRoute = state.matchedLocation == '/auth';
-      final isPublicSessionInviteRoute =
-          path.startsWith('/events/invite/') || path.startsWith('/events/join/');
+      final isPublicSessionInviteRoute = path.startsWith('/events/invite/') ||
+          path.startsWith('/events/join/');
       final isEmailVerifyRoute = path.startsWith('/email/verify/');
       final isPasswordResetRoute = path.startsWith('/reset-password/');
       final isTournamentInviteRoute = path.startsWith('/tournaments/invite/');
@@ -110,8 +112,8 @@ final _routerProvider = Provider<GoRouter>((ref) {
               ),
               GoRoute(
                 path: 'session-requests',
-                builder: (context, state) => SessionRequestsPage(
-                    groupId: state.pathParameters['id']!),
+                builder: (context, state) =>
+                    SessionRequestsPage(groupId: state.pathParameters['id']!),
               ),
             ],
           ),
@@ -207,13 +209,13 @@ final _routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: ':id',
-            builder: (context, state) => TournamentDetailPage(
-                tournamentId: state.pathParameters['id']!),
+            builder: (context, state) =>
+                TournamentDetailPage(tournamentId: state.pathParameters['id']!),
             routes: [
               GoRoute(
                 path: 'register',
-                builder: (context, state) => RegisterTeamPage(
-                    tournamentId: state.pathParameters['id']!),
+                builder: (context, state) =>
+                    RegisterTeamPage(tournamentId: state.pathParameters['id']!),
               ),
               GoRoute(
                 path: 'admins',
@@ -414,8 +416,7 @@ class _GroupInviteLandingPageState
                     ])
                   : Column(mainAxisSize: MainAxisSize.min, children: [
                       Icon(Icons.error_outline,
-                          color: Theme.of(context).colorScheme.error,
-                          size: 64),
+                          color: Theme.of(context).colorScheme.error, size: 64),
                       const SizedBox(height: 16),
                       Text(_error ?? 'An error occurred'),
                       const SizedBox(height: 16),
@@ -529,7 +530,7 @@ class _SessionInviteLandingPageState extends State<_SessionInviteLandingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Join Event')),
+      appBar: AppBar(title: const Text('Join Session')),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -537,14 +538,14 @@ class _SessionInviteLandingPageState extends State<_SessionInviteLandingPage> {
               ? const Column(mainAxisSize: MainAxisSize.min, children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
-                  Text('Joining event…'),
+                  Text('Joining session…'),
                 ])
               : _done
                   ? Column(mainAxisSize: MainAxisSize.min, children: [
                       Icon(Icons.check_circle_outline,
                           color: AppThemeTokens.success, size: 64),
                       const SizedBox(height: 16),
-                      const Text('You joined the event!'),
+                      const Text('You joined the session!'),
                       const SizedBox(height: 16),
                       FilledButton(
                         onPressed: () {
@@ -559,12 +560,12 @@ class _SessionInviteLandingPageState extends State<_SessionInviteLandingPage> {
                           }
                           context.go('/sessions');
                         },
-                        child: Text(_joinedAsGuest ? 'Sign In' : 'View Event'),
+                        child: Text(_joinedAsGuest ? 'Sign In' : 'View Session'),
                       ),
                     ])
                   : _needsGuestName
                       ? Column(mainAxisSize: MainAxisSize.min, children: [
-                          const Text('Enter your name to join this event'),
+                          const Text('Enter your name to join this session'),
                           const SizedBox(height: 12),
                           if (_error != null)
                             Padding(
@@ -572,8 +573,7 @@ class _SessionInviteLandingPageState extends State<_SessionInviteLandingPage> {
                               child: Text(
                                 _error!,
                                 style: TextStyle(
-                                    color:
-                                        Theme.of(context).colorScheme.error),
+                                    color: Theme.of(context).colorScheme.error),
                                 textAlign: TextAlign.center,
                               ),
                             ),
@@ -600,18 +600,19 @@ class _SessionInviteLandingPageState extends State<_SessionInviteLandingPage> {
                             ),
                           ),
                         ])
-                  : Column(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.error_outline,
-                          color: Theme.of(context).colorScheme.error, size: 64),
-                      const SizedBox(height: 16),
-                      Text(_error ?? 'Unable to join event',
-                          textAlign: TextAlign.center),
-                      const SizedBox(height: 16),
-                      FilledButton(
-                        onPressed: _resolveAndJoin,
-                        child: const Text('Try Again'),
-                      ),
-                    ]),
+                      : Column(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.error_outline,
+                              color: Theme.of(context).colorScheme.error,
+                              size: 64),
+                          const SizedBox(height: 16),
+                          Text(_error ?? 'Unable to join session',
+                              textAlign: TextAlign.center),
+                          const SizedBox(height: 16),
+                          FilledButton(
+                            onPressed: _resolveAndJoin,
+                            child: const Text('Try Again'),
+                          ),
+                        ]),
         ),
       ),
     );
@@ -639,7 +640,9 @@ class _PushNavigationObserver extends NavigatorObserver {
   void _consume(Route<dynamic>? route) {
     final context = route?.navigator?.context;
     if (context == null) return;
-    ref.read(pushNotificationsControllerProvider).consumePendingRouteAndNavigate(context);
+    ref
+        .read(pushNotificationsControllerProvider)
+        .consumePendingRouteAndNavigate(context);
   }
 
   @override

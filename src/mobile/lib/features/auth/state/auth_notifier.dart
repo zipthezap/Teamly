@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/services.dart' show MissingPluginException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
@@ -11,6 +12,7 @@ import '../../../core/config/app_config.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/network/session_expired_notifier.dart';
+import '../../notifications/state/notifications_notifier.dart';
 import '../../push_notifications/state/push_notifications_controller.dart';
 import '../data/auth_repository_impl.dart';
 import '../domain/auth_repository.dart';
@@ -114,6 +116,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final user = await _repo.login(email: email, password: password);
       state = AuthState(status: AuthStatus.authenticated, user: user);
+      _invalidateNotificationState();
       await _registerPushTokenSafely();
     } on Exception catch (e) {
       state = state.copyWith(
@@ -131,8 +134,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final user = await _repo.register(email: email, password: password, name: name);
+      final user =
+          await _repo.register(email: email, password: password, name: name);
       state = AuthState(status: AuthStatus.authenticated, user: user);
+      _invalidateNotificationState();
       await _registerPushTokenSafely();
     } on Exception catch (e) {
       state = state.copyWith(
@@ -155,6 +160,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (_) {}
     await _repo.logout();
     state = const AuthState.unauthenticated();
+    _invalidateNotificationState();
   }
 
   // -------------------------------------------------------------------------
@@ -182,6 +188,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         credentials: {'idToken': idToken},
       );
       state = AuthState(status: AuthStatus.authenticated, user: user);
+      _invalidateNotificationState();
       await _registerPushTokenSafely();
     } on MissingPluginException {
       state = state.copyWith(
@@ -227,6 +234,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         },
       );
       state = AuthState(status: AuthStatus.authenticated, user: user);
+      _invalidateNotificationState();
       await _registerPushTokenSafely();
     } on SignInWithAppleAuthorizationException catch (e) {
       if (e.code == AuthorizationErrorCode.canceled) {
@@ -237,7 +245,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
         isLoading: false,
-        error: e.localizedDescription ?? 'Apple sign-in failed.',
+        error: 'Apple sign-in failed (${e.code.name}).',
       );
     } on MissingPluginException {
       state = state.copyWith(
@@ -274,6 +282,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         credentials: {'accessToken': result.accessToken!.tokenString},
       );
       state = AuthState(status: AuthStatus.authenticated, user: user);
+      _invalidateNotificationState();
       await _registerPushTokenSafely();
     } on MissingPluginException {
       state = state.copyWith(
@@ -310,6 +319,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       } catch (_) {}
       await _repo.deleteAccount();
       state = const AuthState.unauthenticated();
+      _invalidateNotificationState();
     } on Exception catch (e) {
       state = state.copyWith(
         isLoading: false,
@@ -328,11 +338,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// Called by the token-refresh interceptor when no refresh is possible.
   void forceLogout() {
     state = const AuthState.unauthenticated();
+    _invalidateNotificationState();
+  }
+
+  void _invalidateNotificationState() {
+    _ref.invalidate(unreadCountProvider);
+    _ref.invalidate(notificationsNotifierProvider);
   }
 
   Future<void> _registerPushTokenSafely() async {
     try {
-      await _ref.read(pushNotificationsControllerProvider).registerCurrentToken();
+      await _ref
+          .read(pushNotificationsControllerProvider)
+          .registerCurrentToken();
       await _ref.read(pushNotificationsControllerProvider).syncBadgeCount();
     } catch (_) {
       // no-op
@@ -341,7 +359,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> _disablePushTokenSafely() async {
     try {
-      await _ref.read(pushNotificationsControllerProvider).disableCurrentToken();
+      await _ref
+          .read(pushNotificationsControllerProvider)
+          .disableCurrentToken();
     } catch (_) {
       // no-op
     }
@@ -361,7 +381,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 }
 
-final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+final authNotifierProvider =
+    StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final repo = ref.watch(authRepositoryProvider);
   final notifier = AuthNotifier(repo, ref);
 

@@ -138,10 +138,36 @@ describe('TeamUpController', () => {
       const res = await request(app).get('/api/teamup');
       expect(res.status).toBe(200);
     });
+
+    it('filters by requestType=need_players', async () => {
+      vi.mocked(prisma.teamUpRequest.findMany).mockResolvedValueOnce([mockTeamUpRequest] as any);
+
+      const res = await request(app).get('/api/teamup?requestType=need_players');
+      expect(res.status).toBe(200);
+    });
+
+    it('filters by requestType=looking_for_play', async () => {
+      vi.mocked(prisma.teamUpRequest.findMany).mockResolvedValueOnce([{
+        ...mockTeamUpRequest,
+        requestType: 'looking_for_play',
+      }] as any);
+
+      const res = await request(app).get('/api/teamup?requestType=looking_for_play');
+      expect(res.status).toBe(200);
+    });
+
+    it('applies date range filter with fromDate and toDate', async () => {
+      vi.mocked(prisma.teamUpRequest.findMany).mockResolvedValueOnce([mockTeamUpRequest] as any);
+      const from = new Date(Date.now() + 3600000).toISOString();
+      const to = new Date(Date.now() + 86400000).toISOString();
+
+      const res = await request(app).get(`/api/teamup?fromDate=${from}&toDate=${to}`);
+      expect(res.status).toBe(200);
+    });
   });
 
   describe('POST /api/teamup', () => {
-    it('returns 201 when created successfully', async () => {
+    it('returns 201 when created successfully (need_players)', async () => {
       vi.mocked(prisma.teamUpRequest.create).mockResolvedValueOnce(mockTeamUpRequest as any);
 
       const res = await request(app)
@@ -149,11 +175,43 @@ describe('TeamUpController', () => {
         .send({
           title: 'Need players for football',
           sportType: 'football',
+          requestType: 'need_players',
           dateTime: new Date(Date.now() + 3600000).toISOString(),
           playersNeeded: 5,
         });
 
       expect(res.status).toBe(201);
+    });
+
+    it('returns 201 for looking_for_play without dateTime (defaults to 30 days)', async () => {
+      vi.mocked(prisma.teamUpRequest.create).mockResolvedValueOnce({
+        ...mockTeamUpRequest,
+        requestType: 'looking_for_play',
+      } as any);
+
+      const res = await request(app)
+        .post('/api/teamup')
+        .send({
+          title: 'Looking for a basketball team',
+          sportType: 'basketball',
+          requestType: 'looking_for_play',
+          city: 'New York',
+        });
+
+      expect(res.status).toBe(201);
+    });
+
+    it('returns 400 when need_players is missing dateTime', async () => {
+      const res = await request(app)
+        .post('/api/teamup')
+        .send({
+          title: 'Need players',
+          sportType: 'football',
+          requestType: 'need_players',
+          // dateTime intentionally omitted
+        });
+
+      expect(res.status).toBe(400);
     });
 
     it('returns 400 when required fields are missing', async () => {
@@ -269,6 +327,69 @@ describe('TeamUpController', () => {
         .send({ message: 'I want to join' });
 
       expect(res.status).toBeLessThan(500);
+    });
+  });
+
+  describe('PUT /api/teamup/:id requestType update', () => {
+    it('allows updating requestType to looking_for_play', async () => {
+      vi.mocked(prisma.teamUpRequest.findUnique).mockResolvedValueOnce({
+        ...mockTeamUpRequest,
+        creatorId: 'test-user-id',
+      } as any);
+      vi.mocked(prisma.teamUpRequest.update).mockResolvedValueOnce({
+        ...mockTeamUpRequest,
+        requestType: 'looking_for_play',
+      } as any);
+
+      const res = await request(app)
+        .put('/api/teamup/teamup-1')
+        .send({ requestType: 'looking_for_play' });
+
+      expect([200, 403, 404]).toContain(res.status);
+    });
+
+    it('rejects invalid requestType values', async () => {
+      vi.mocked(prisma.teamUpRequest.findUnique).mockResolvedValueOnce({
+        ...mockTeamUpRequest,
+        creatorId: 'test-user-id',
+      } as any);
+
+      const res = await request(app)
+        .put('/api/teamup/teamup-1')
+        .send({ requestType: 'invalid_type' });
+
+      // Should return 400 (bad request) or 403/404 from permission check
+      expect([400, 403, 404]).toContain(res.status);
+    });
+  });
+
+  describe('GET /api/teamup/my-applications', () => {
+    it('returns 200 with applications submitted by the current user', async () => {
+      vi.mocked(prisma.teamUpResponse.findMany).mockResolvedValueOnce([
+        {
+          id: 'resp-1',
+          teamUpRequestId: 'teamup-1',
+          userId: 'test-user-id',
+          message: 'I want to join',
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+          user: { id: 'test-user-id', name: 'Test User', email: 'test@example.com', profilePicture: null },
+          teamUpRequest: {
+            id: 'teamup-1',
+            title: 'Need players',
+            sportType: 'football',
+            requestType: 'need_players',
+            dateTime: new Date(Date.now() + 3600000).toISOString(),
+            city: 'New York',
+            location: 'Central Park',
+            status: 'open',
+            creator: { id: 'creator-id', name: 'Creator', profilePicture: null },
+          },
+        },
+      ] as any);
+
+      const res = await request(app).get('/api/teamup/my-applications');
+      expect(res.status).toBe(200);
     });
   });
 });

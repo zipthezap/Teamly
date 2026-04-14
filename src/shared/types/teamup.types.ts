@@ -5,6 +5,11 @@
 import { PublicUser } from './user.types';
 
 // Enums for type safety
+export enum TeamUpRequestType {
+  need_players = 'need_players',
+  looking_for_play = 'looking_for_play',
+}
+
 export enum TeamUpRequestStatus {
   open = 'open',
   filled = 'filled',
@@ -24,6 +29,7 @@ export interface TeamUpRequest {
   title: string;
   description?: string | null;
   sportType: string;
+  requestType: 'need_players' | 'looking_for_play';
   location?: string | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -64,6 +70,7 @@ export interface TeamUpResponse {
     id: string;
     title: string;
     sportType: string;
+    requestType: 'need_players' | 'looking_for_play';
     dateTime: Date | string;
   };
 }
@@ -84,14 +91,15 @@ export interface CreateTeamUpRequestData {
   title: string;
   description?: string;
   sportType: string;
+  requestType: 'need_players' | 'looking_for_play';
   location?: string;
   latitude?: number;
   longitude?: number;
   locationName?: string;
   city?: string;
   country?: string;
-  dateTime: Date | string;
-  playersNeeded: number;
+  dateTime?: Date | string;
+  playersNeeded?: number;
   skillLevel?: string;
 }
 
@@ -100,6 +108,7 @@ export interface UpdateTeamUpRequestData {
   title?: string;
   description?: string;
   sportType?: string;
+  requestType?: 'need_players' | 'looking_for_play';
   location?: string;
   latitude?: number;
   longitude?: number;
@@ -115,10 +124,13 @@ export interface UpdateTeamUpRequestData {
 // TeamUp Request filters
 export interface TeamUpRequestFilters {
   sportType?: string;
+  requestType?: 'need_players' | 'looking_for_play';
   city?: string;
   country?: string;
   skillLevel?: string;
   status?: string;
+  fromDate?: string;
+  toDate?: string;
   limit?: number;
   offset?: number;
 }

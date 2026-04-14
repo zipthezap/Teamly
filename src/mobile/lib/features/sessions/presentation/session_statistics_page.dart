@@ -16,7 +16,7 @@ class SessionStatisticsPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Event Statistics'),
+        title: const Text('My Session Statistics'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -43,7 +43,7 @@ class SessionStatisticsPage extends ConsumerWidget {
                   Expanded(
                     child: _StatCard(
                       icon: Icons.event_available,
-                      label: 'Events Joined',
+                      label: 'Sessions Joined',
                       value: '${stats.totalSessionsJoined}',
                       color: theme.colorScheme.primary,
                     ),
@@ -52,7 +52,7 @@ class SessionStatisticsPage extends ConsumerWidget {
                   Expanded(
                     child: _StatCard(
                       icon: Icons.add_circle_outline,
-                      label: 'Events Created',
+                      label: 'Sessions Created',
                       value: '${stats.totalSessionsCreated}',
                       color: AppThemeTokens.success,
                     ),
@@ -86,7 +86,7 @@ class SessionStatisticsPage extends ConsumerWidget {
 
               // Created events stats
               if (stats.totalSessionsCreated > 0) ...[
-                Text('Events You Organized',
+                Text('Sessions You Organized',
                     style: theme.textTheme.titleMedium),
                 const SizedBox(height: 12),
                 Card(
@@ -96,7 +96,7 @@ class SessionStatisticsPage extends ConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         _SmallStat(
-                            label: 'Total Events',
+                            label: 'Total Sessions',
                             value: '${stats.createdSessionsStats.total}'),
                         _SmallStat(
                             label: 'Total Players',

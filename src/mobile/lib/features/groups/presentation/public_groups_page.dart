@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/error/error_utils.dart';
 import '../../../core/models/group_model.dart';
 import '../../../features/auth/state/auth_notifier.dart';
+import '../../../features/dashboard/state/dashboard_notifier.dart';
+import '../../../features/sessions/state/sessions_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../../../shared/widgets/user_avatar.dart';
@@ -115,11 +117,19 @@ class _PublicGroupsPageState extends ConsumerState<PublicGroupsPage> {
     try {
       await ref.read(groupRepositoryProvider).requestJoinGroup(group.id);
       ref.invalidate(myJoinRequestsProvider);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Join request sent to "${group.name}"')),
-        );
-      }
+      ref.invalidate(groupDetailProvider(group.id));
+      await ref.read(groupsNotifierProvider.notifier).reload();
+      await ref.read(sessionsNotifierProvider.notifier).reload();
+      await ref.read(dashboardNotifierProvider.notifier).reload();
+      await _loadInitial();
+
+      if (!mounted) return;
+      final message = group.autoApproveJoinRequests
+          ? 'You joined "${group.name}"!'
+          : 'Join request sent to "${group.name}"';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -516,7 +526,9 @@ class _PublicGroupCard extends StatelessWidget {
                       : hasPendingRequest
                           ? _SmallPendingButton()
                           : _SmallFilledButton(
-                              label: 'Apply',
+                              label: group.autoApproveJoinRequests
+                                  ? 'Join'
+                                  : 'Apply',
                               color: AppThemeTokens.primary500,
                               onPressed: onApply,
                             ),

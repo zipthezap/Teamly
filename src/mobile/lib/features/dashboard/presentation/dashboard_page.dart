@@ -122,11 +122,11 @@ class _DashboardContent extends StatelessWidget {
           ),
         ),
 
-        // ── Upcoming events ──────────────────────────────────────────────
+        // ── Upcoming sessions ──────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
           child: UiSectionTitle(
-            'Upcoming Events',
+            'Upcoming Sessions',
             trailingLabel: 'See all',
             onTrailingTap: () => context.go('/sessions'),
           ),
@@ -177,6 +177,13 @@ class _DashboardContent extends StatelessWidget {
                 );
               },
             ),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _NoGroupsCard(
+              onDiscoverTap: () => context.push('/discover/public-groups'),
+            ),
           ),
 
         const SizedBox(height: 24),
@@ -194,7 +201,7 @@ class _DashboardContent extends StatelessWidget {
                   Expanded(
                     child: _ActionTile(
                       icon: Icons.add_circle_rounded,
-                      label: 'New Event',
+                      label: 'New Session',
                       color: AppThemeTokens.primary500,
                       onTap: () => context.push('/sessions/new'),
                     ),
@@ -595,7 +602,7 @@ class _EventCard extends StatelessWidget {
   }
 }
 
-// ── No events placeholder ─────────────────────────────────────────────────────
+// ── No sessions placeholder ───────────────────────────────────────────────────
 
 class _NoEventsCard extends StatelessWidget {
   const _NoEventsCard({required this.onCreateTap});
@@ -631,7 +638,7 @@ class _NoEventsCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'No upcoming events',
+                  'No upcoming sessions',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
@@ -640,7 +647,7 @@ class _NoEventsCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Create one to get started!',
+                  'Create a session to get started!',
                   style: TextStyle(
                     fontSize: 12,
                     color: isDark
@@ -654,6 +661,70 @@ class _NoEventsCard extends StatelessWidget {
           TextButton(
             onPressed: onCreateTap,
             child: const Text('Create', style: TextStyle(fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NoGroupsCard extends StatelessWidget {
+  const _NoGroupsCard({required this.onDiscoverTap});
+  final VoidCallback onDiscoverTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark
+            ? AppThemeTokens.darkCard.withValues(alpha: 0.92)
+            : AppThemeTokens.lightCard.withValues(alpha: 0.98),
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        border: Border.all(
+          color: isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppThemeTokens.primary500.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+            ),
+            child: const Icon(Icons.groups_outlined, size: 22, color: AppThemeTokens.primary400),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'No groups yet',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Discover groups and join your first one.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark
+                        ? AppThemeTokens.darkTextSecondary
+                        : AppThemeTokens.lightTextSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: onDiscoverTap,
+            child: const Text('Discover', style: TextStyle(fontSize: 13)),
           ),
         ],
       ),
