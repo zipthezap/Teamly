@@ -11,6 +11,7 @@
  */
 
 import { Request, Response } from 'express';
+import type { TournamentStatus as PrismaTournamentStatus } from '@prisma/client';
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import * as tournamentService from '../services/tournamentService';
@@ -254,11 +255,11 @@ export const getTournaments = async (req: Request, res: Response) => {
   ]);
 
   // Auto-advance statuses based on tournament dates (fire-and-forget)
-  const statusUpdates: { id: string; status: string }[] = [];
+  const statusUpdates: { id: string; status: PrismaTournamentStatus }[] = [];
   for (const t of tournaments) {
     const autoStatus = tournamentService.computeAutoStatus(t);
     if (autoStatus) {
-      statusUpdates.push({ id: t.id, status: autoStatus });
+      statusUpdates.push({ id: t.id, status: autoStatus as PrismaTournamentStatus });
       (t as Record<string, unknown>).status = autoStatus;
     }
   }
@@ -376,7 +377,7 @@ export const getTournament = async (req: Request, res: Response) => {
   // Auto-advance status based on tournament dates
   const autoStatus = tournamentService.computeAutoStatus(tournament!);
   if (autoStatus) {
-    prisma.tournament.update({ where: { id }, data: { status: autoStatus } }).catch(
+    prisma.tournament.update({ where: { id }, data: { status: autoStatus as PrismaTournamentStatus } }).catch(
       (err: unknown) => logger.warn('Auto-status update failed', 'TournamentController', { tournamentId: id, error: err })
     );
     (tournament as Record<string, unknown>).status = autoStatus;
@@ -2916,11 +2917,11 @@ export const getPublicTournaments = async (req: Request, res: Response) => {
   ]);
 
   // Auto-advance statuses based on tournament dates (fire-and-forget)
-  const publicStatusUpdates: { id: string; status: string }[] = [];
+  const publicStatusUpdates: { id: string; status: PrismaTournamentStatus }[] = [];
   for (const t of tournaments) {
     const autoStatus = tournamentService.computeAutoStatus(t);
     if (autoStatus) {
-      publicStatusUpdates.push({ id: t.id, status: autoStatus });
+      publicStatusUpdates.push({ id: t.id, status: autoStatus as PrismaTournamentStatus });
       (t as Record<string, unknown>).status = autoStatus;
     }
   }
