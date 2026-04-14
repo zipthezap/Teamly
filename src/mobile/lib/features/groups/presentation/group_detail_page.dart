@@ -751,7 +751,7 @@ class _OverviewTab extends ConsumerWidget {
                             icon: Icons.people_outline,
                             label: memberLabel,
                           ),
-                          if (admin)
+                          if (isAdmin)
                           Stack(
                             children: [
                               _HeroPill(
