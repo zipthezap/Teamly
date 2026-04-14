@@ -3,11 +3,31 @@ import { Prisma } from '@prisma/client';
 import { 
   MatchStatus, 
   BracketStage,
+  TournamentFormat,
   VolleyballConfig,
   SportScoringConfig,
   DetailedScore
 } from '../../shared/types/tournament.types';
 import { BadRequestError } from '../utils/errors';
+import { sanitizeString } from '../utils/validation';
+
+const ALLOWED_SPORT_TYPES = [
+  'football',
+  'basketball',
+  'tennis',
+  'volleyball',
+  'running',
+  'cycling',
+  'swimming',
+  'cricket',
+  'americanFootball',
+  'iceHockey',
+  'baseball',
+  'rugby',
+  'handball',
+  'fieldHockey',
+  'other',
+] as const;
 
 /**
  * Calculate winner for volleyball based on sets
@@ -80,13 +100,100 @@ export const sanitizeTournamentData = (data: {
   rulesDescription?: string;
 }) => {
   return {
-    name: data.name?.trim() || '',
-    description: data.description?.trim() || '',
-    location: data.location?.trim() || '',
-    locationName: data.locationName?.trim() || '',
-    prizesDescription: data.prizesDescription?.trim() || '',
-    rulesDescription: data.rulesDescription?.trim() || ''
+    name: data.name ? sanitizeString(data.name) : '',
+    description: data.description ? sanitizeString(data.description) : '',
+    location: data.location ? sanitizeString(data.location) : '',
+    locationName: data.locationName ? sanitizeString(data.locationName) : '',
+    prizesDescription: data.prizesDescription ? sanitizeString(data.prizesDescription) : '',
+    rulesDescription: data.rulesDescription ? sanitizeString(data.rulesDescription) : ''
   };
+};
+
+export const validateTournamentEnums = (payload: {
+  sportType?: string;
+  format?: string;
+}) => {
+  if (payload.sportType !== undefined && !ALLOWED_SPORT_TYPES.includes(payload.sportType as (typeof ALLOWED_SPORT_TYPES)[number])) {
+    throw new BadRequestError(`Invalid sportType. Must be one of: ${ALLOWED_SPORT_TYPES.join(', ')}`);
+  }
+
+  if (payload.format !== undefined && !Object.values(TournamentFormat).includes(payload.format as TournamentFormat)) {
+    throw new BadRequestError(`Invalid format. Must be one of: ${Object.values(TournamentFormat).join(', ')}`);
+  }
+};
+
+const parseDateOrThrow = (value: Date | string, fieldName: string): Date => {
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new BadRequestError(`${fieldName} must be a valid date`);
+  }
+  return parsed;
+};
+
+export const validateTournamentBusinessRules = (payload: {
+  startDate: Date | string;
+  endDate?: Date | string | null;
+  registrationStartDate?: Date | string | null;
+  registrationDeadline?: Date | string | null;
+  maxTeams?: number | null;
+}) => {
+  const startDate = parseDateOrThrow(payload.startDate, 'Start date');
+  const endDate = payload.endDate != null ? parseDateOrThrow(payload.endDate, 'End date') : null;
+  const registrationStartDate =
+    payload.registrationStartDate != null
+      ? parseDateOrThrow(payload.registrationStartDate, 'Registration start date')
+      : null;
+  const registrationDeadline =
+    payload.registrationDeadline != null
+      ? parseDateOrThrow(payload.registrationDeadline, 'Registration deadline')
+      : null;
+
+  if (endDate && endDate <= startDate) {
+    throw new BadRequestError('End date must be after start date');
+  }
+
+  if (registrationStartDate && registrationStartDate >= startDate) {
+    throw new BadRequestError('Registration start date must be before tournament start date');
+  }
+
+  if (registrationDeadline && registrationDeadline >= startDate) {
+    throw new BadRequestError('Registration deadline must be before tournament start date');
+  }
+
+  if (registrationStartDate && registrationDeadline && registrationDeadline <= registrationStartDate) {
+    throw new BadRequestError('Registration deadline must be after registration start date');
+  }
+
+  if (payload.maxTeams !== undefined && payload.maxTeams !== null && payload.maxTeams < 2) {
+    throw new BadRequestError('Max teams must be at least 2');
+  }
+};
+
+export const validateRegistrationEligibility = (tournament: {
+  status: string;
+  startDate: Date;
+  registrationStartDate?: Date | null;
+  registrationDeadline?: Date | null;
+  allowLateRegistration?: boolean;
+}) => {
+  if (tournament.status !== 'draft' && tournament.status !== 'registration') {
+    throw new BadRequestError('Tournament registration is closed');
+  }
+
+  const now = new Date();
+
+  if (tournament.registrationStartDate && now < tournament.registrationStartDate) {
+    throw new BadRequestError('Registration has not opened yet');
+  }
+
+  if (!tournament.allowLateRegistration) {
+    if (tournament.registrationDeadline && now > tournament.registrationDeadline) {
+      throw new BadRequestError('Registration deadline has passed');
+    }
+    if (now >= tournament.startDate) {
+      throw new BadRequestError('Tournament registration is closed');
+    }
+  }
 };
 
 /**

@@ -11,7 +11,6 @@
  */
 
 import { Request, Response } from 'express';
-import type { TournamentStatus as PrismaTournamentStatus } from '@prisma/client';
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import * as tournamentService from '../services/tournamentService';
@@ -90,6 +89,8 @@ export const createTournament = async (req: Request, res: Response) => {
   isRequired(format, 'Format');
   isRequired(startDate, 'Start date');
 
+  tournamentService.validateTournamentEnums({ sportType, format });
+
   // Sanitize inputs
   const sanitized = tournamentService.sanitizeTournamentData({
     name,
@@ -120,15 +121,13 @@ export const createTournament = async (req: Request, res: Response) => {
   if (!dateValidation.valid) {
     throw new BadRequestError(dateValidation.error!);
   }
-
-  // Validate registration deadline if provided
-  if (registrationDeadline) {
-    const regDate = new Date(registrationDeadline);
-    const startDateObj = new Date(startDate);
-    if (regDate > startDateObj) {
-      throw new BadRequestError('Registration deadline must be before the start date');
-    }
-  }
+  tournamentService.validateTournamentBusinessRules({
+    startDate,
+    endDate,
+    registrationStartDate,
+    registrationDeadline,
+    maxTeams,
+  });
 
   // Validate coordinates if provided
   if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
@@ -254,25 +253,6 @@ export const getTournaments = async (req: Request, res: Response) => {
     prisma.tournament.count({ where }),
   ]);
 
-  // Auto-advance statuses based on tournament dates (fire-and-forget)
-  const statusUpdates: { id: string; status: PrismaTournamentStatus }[] = [];
-  for (const t of tournaments) {
-    const autoStatus = tournamentService.computeAutoStatus(t);
-    if (autoStatus) {
-      statusUpdates.push({ id: t.id, status: autoStatus as PrismaTournamentStatus });
-      (t as Record<string, unknown>).status = autoStatus;
-    }
-  }
-  if (statusUpdates.length > 0) {
-    Promise.all(
-      statusUpdates.map(({ id, status }) =>
-        prisma.tournament.update({ where: { id }, data: { status } })
-      )
-    ).catch((err: unknown) =>
-      logger.warn('Auto-status batch update failed', 'TournamentController', { error: err })
-    );
-  }
-
   res.json({
     data: tournaments,
     pagination: {
@@ -374,15 +354,6 @@ export const getTournament = async (req: Request, res: Response) => {
 
   ensureResourceExists(tournament, 'Tournament');
 
-  // Auto-advance status based on tournament dates
-  const autoStatus = tournamentService.computeAutoStatus(tournament!);
-  if (autoStatus) {
-    prisma.tournament.update({ where: { id }, data: { status: autoStatus as PrismaTournamentStatus } }).catch(
-      (err: unknown) => logger.warn('Auto-status update failed', 'TournamentController', { tournamentId: id, error: err })
-    );
-    (tournament as Record<string, unknown>).status = autoStatus;
-  }
-
   res.json(tournament);
 };
 
@@ -393,7 +364,7 @@ export const updateTournament = async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = req.user!.id;
   const { 
-    name, description, status, startDate, endDate, maxTeams, 
+    name, description, status, startDate, endDate, maxTeams, sportType, format,
     location, locationName, city, country, latitude, longitude,
     // Admin controls
     registrationDeadline, registrationStartDate, isPublic, allowLateRegistration,
@@ -412,6 +383,12 @@ export const updateTournament = async (req: Request, res: Response) => {
   if (!isOrgOrAdmin) {
     throw new ForbiddenError('Only the organizer or a co-organizer can update the tournament');
   }
+
+  if (status !== undefined) {
+    throw new BadRequestError('Tournament status cannot be updated via this endpoint. Use PUT /tournaments/:id/status');
+  }
+
+  tournamentService.validateTournamentEnums({ sportType, format });
 
   const updateData: Record<string, unknown> = {};
 
@@ -434,10 +411,6 @@ export const updateTournament = async (req: Request, res: Response) => {
     updateData.description = sanitized.description || null;
   }
 
-  if (status !== undefined) {
-    updateData.status = status;
-  }
-
   if (startDate !== undefined) {
     updateData.startDate = new Date(startDate);
   }
@@ -451,6 +424,12 @@ export const updateTournament = async (req: Request, res: Response) => {
       throw new BadRequestError(`Max teams cannot exceed ${MAX_TEAMS_UPPER_BOUND}`);
     }
     updateData.maxTeams = maxTeams;
+  }
+  if (sportType !== undefined) {
+    updateData.sportType = sportType;
+  }
+  if (format !== undefined) {
+    updateData.format = format;
   }
 
   if (location !== undefined) {
@@ -505,6 +484,26 @@ export const updateTournament = async (req: Request, res: Response) => {
   if (sportConfig !== undefined) {
     updateData.sportConfig = sportConfig || null;
   }
+
+  tournamentService.validateTournamentBusinessRules({
+    startDate: (updateData.startDate as Date | undefined) ?? tournament!.startDate,
+    endDate:
+      (updateData.endDate as Date | null | undefined) !== undefined
+        ? (updateData.endDate as Date | null)
+        : tournament!.endDate,
+    registrationStartDate:
+      (updateData.registrationStartDate as Date | null | undefined) !== undefined
+        ? (updateData.registrationStartDate as Date | null)
+        : tournament!.registrationStartDate,
+    registrationDeadline:
+      (updateData.registrationDeadline as Date | null | undefined) !== undefined
+        ? (updateData.registrationDeadline as Date | null)
+        : tournament!.registrationDeadline,
+    maxTeams:
+      (updateData.maxTeams as number | undefined) !== undefined
+        ? (updateData.maxTeams as number)
+        : tournament!.maxTeams,
+  });
 
   const updatedTournament = await prisma.tournament.update({
     where: { id },
@@ -578,10 +577,7 @@ export const addTeam = async (req: Request, res: Response) => {
 
   ensureResourceExists(tournament, 'Tournament');
 
-  // Check if tournament is still in registration or draft status
-  if (tournament!.status !== TournamentStatus.DRAFT && tournament!.status !== TournamentStatus.REGISTRATION) {
-    throw new BadRequestError('Cannot add teams once tournament has started');
-  }
+  tournamentService.validateRegistrationEligibility(tournament!);
 
   // Check max teams limit
   if (tournament!.maxTeams && tournament!.teams.length >= tournament!.maxTeams) {
@@ -1719,7 +1715,7 @@ export const deletePool = async (req: Request, res: Response) => {
     'Pool'
   );
 
-  const teamCount = (pool as any)._count.teams as number;
+  const teamCount = pool._count.teams;
   if (teamCount > 0) {
     throw new BadRequestError(`Cannot delete pool with ${teamCount} registered team(s). Remove all teams first.`);
   }
@@ -1742,10 +1738,7 @@ export const registerTeamToPool = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  // Check if tournament is in registration status
-  if (tournament.status !== 'draft' && tournament.status !== 'registration') {
-    throw new BadRequestError('Tournament registration is closed');
-  }
+  tournamentService.validateRegistrationEligibility(tournament);
 
   const team = ensureResourceExists(
     await prisma.tournamentTeam.findFirst({
@@ -2664,8 +2657,15 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
   const tournament = await prisma.tournament.findUnique({ where: { id } });
   ensureResourceExists(tournament, 'Tournament');
 
-  if (tournament!.status !== 'registration' && tournament!.status !== 'draft') {
-    throw new BadRequestError('Tournament is not open for registration');
+  tournamentService.validateRegistrationEligibility(tournament!);
+
+  if (tournament!.maxTeams) {
+    const teamCount = await prisma.tournamentTeam.count({
+      where: { tournamentId: id },
+    });
+    if (teamCount >= tournament!.maxTeams) {
+      throw new BadRequestError('Tournament has reached maximum number of teams');
+    }
   }
 
   if (poolId && categoryId) {
@@ -2768,9 +2768,7 @@ export const selfUnregisterTeam = async (req: Request, res: Response) => {
   const tournament = await prisma.tournament.findUnique({ where: { id } });
   ensureResourceExists(tournament, 'Tournament');
 
-  if (tournament!.status !== TournamentStatus.REGISTRATION && tournament!.status !== TournamentStatus.DRAFT) {
-    throw new BadRequestError('Tournament registration is closed');
-  }
+  tournamentService.validateRegistrationEligibility(tournament!);
 
   const existingTeams = await prisma.tournamentTeam.findMany({
     where: { tournamentId: id, captainUserId: userId },
@@ -2919,25 +2917,6 @@ export const getPublicTournaments = async (req: Request, res: Response) => {
     }),
     prisma.tournament.count({ where }),
   ]);
-
-  // Auto-advance statuses based on tournament dates (fire-and-forget)
-  const publicStatusUpdates: { id: string; status: PrismaTournamentStatus }[] = [];
-  for (const t of tournaments) {
-    const autoStatus = tournamentService.computeAutoStatus(t);
-    if (autoStatus) {
-      publicStatusUpdates.push({ id: t.id, status: autoStatus as PrismaTournamentStatus });
-      (t as Record<string, unknown>).status = autoStatus;
-    }
-  }
-  if (publicStatusUpdates.length > 0) {
-    Promise.all(
-      publicStatusUpdates.map(({ id, status }) =>
-        prisma.tournament.update({ where: { id }, data: { status } })
-      )
-    ).catch((err: unknown) =>
-      logger.warn('Auto-status batch update failed (public)', 'TournamentController', { error: err })
-    );
-  }
 
   res.json({
     data: tournaments,
