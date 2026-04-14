@@ -3456,6 +3456,13 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialog) {
+          final dialogSize = MediaQuery.of(ctx).size;
+          final dialogWidth = dialogSize.width > 1200
+              ? 980.0
+              : (dialogSize.width * 0.92).clamp(320.0, 980.0);
+          final dialogHeight = dialogSize.height > 900
+              ? 620.0
+              : (dialogSize.height * 0.85).clamp(420.0, 620.0);
           final visiblePools = selectedCategoryId == null
               ? dialogPools
               : dialogPools
@@ -3463,8 +3470,8 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                   .toList();
           return Dialog(
             child: SizedBox(
-              width: 980,
-              height: 620,
+              width: dialogWidth,
+              height: dialogHeight,
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -3657,6 +3664,19 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                                         details.data.team.id);
                                                 await refreshDialog(setDialog);
                                               } on Exception catch (e) {
+                                                if (fromPoolId != null) {
+                                                  try {
+                                                    await ref
+                                                        .read(
+                                                            tournamentRepositoryProvider)
+                                                        .registerTeamToPool(
+                                                            widget.tournamentId,
+                                                            fromPoolId,
+                                                            details.data.team.id);
+                                                  } on Exception {
+                                                    // Best-effort rollback.
+                                                  }
+                                                }
                                                 if (!context.mounted) return;
                                                 ScaffoldMessenger.of(context)
                                                     .showSnackBar(SnackBar(
@@ -3792,7 +3812,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
     final teamCountLabel =
         pool.teams.length == 1 ? '1 team' : '${pool.teams.length} teams';
     final capacitySuffix = pool.maxTeams > 0
-        ? '$teamCountLabel / ${pool.maxTeams} max'
+        ? '$teamCountLabel / ${pool.maxTeams} maximum'
         : '$teamCountLabel, no limit';
     return '${pool.name} ($capacitySuffix)';
   }
