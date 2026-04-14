@@ -420,11 +420,6 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                   if (context.mounted) onRefresh();
                 },
               ),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.pending_actions_outlined, size: 16),
-                label: const Text('Update Status'),
-                onPressed: () => _showStatusDialog(context, t, onRefresh),
-              ),
             ]),
           ],
           const SizedBox(height: 32),
@@ -485,62 +480,6 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     }
   }
 
-  void _showStatusDialog(
-      BuildContext context, TournamentModel t, VoidCallback onRefresh) {
-    final Map<String, List<String>> transitions = {
-      'draft': ['registration', 'cancelled'],
-      'registration': ['in_progress', 'cancelled'],
-      'in_progress': ['completed', 'cancelled'],
-      'completed': [],
-      'cancelled': [],
-    };
-    final allowed = transitions[t.status] ?? [];
-    if (allowed.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                'Tournament is ${t.status} — no further transitions available')),
-      );
-      return;
-    }
-    showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Update Status'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final s in allowed)
-              ListTile(
-                title: Text(_statusLabel(s)),
-                onTap: () => Navigator.pop(ctx, s),
-              ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel'))
-        ],
-      ),
-    ).then((newStatus) async {
-      if (newStatus == null) return;
-      try {
-        await ref
-            .read(tournamentRepositoryProvider)
-            .updateTournamentStatus(t.id, newStatus);
-        onRefresh();
-      } on Exception catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text(extractErrorMessage(e)),
-                backgroundColor: Theme.of(context).colorScheme.error),
-          );
-        }
-      }
-    });
-  }
-
   String _fmtLabel(String f) {
     const m = {
       'single_elimination': 'Single Elimination',
@@ -553,17 +492,6 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     return m[f] ?? f;
   }
 
-  String _statusLabel(String s) {
-    const m = {
-      'draft': 'Draft',
-      'registration': 'Registration Open',
-      'in_progress': 'In Progress',
-      'active': 'Active',
-      'completed': 'Completed',
-      'cancelled': 'Cancelled',
-    };
-    return m[s] ?? s;
-  }
 }
 
 class _CategorySection extends ConsumerStatefulWidget {
