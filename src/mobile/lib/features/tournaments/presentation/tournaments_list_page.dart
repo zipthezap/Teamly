@@ -3,17 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/constants/app_constants.dart';
 import '../../../core/error/error_utils.dart';
 import '../../../core/models/tournament_model.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../features/auth/state/auth_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
-import '../data/tournament_repository_impl.dart';
 import '../state/tournaments_notifier.dart';
-
-const _kAccent = Color(0xFFFF9800);
 
 // ===========================================================================
 // Tournaments List Page
@@ -108,9 +103,13 @@ class _TournamentsPageState extends ConsumerState<TournamentsPage> {
               ),
               data: (all) {
                 final tournaments = all.where((t) {
-                  if (_statusFilter != null && t.status != _statusFilter) return false;
+                  if (_statusFilter != null && t.status != _statusFilter) {
+                    return false;
+                  }
                   if (_searchQuery.isNotEmpty &&
-                      !t.name.toLowerCase().contains(_searchQuery.toLowerCase())) return false;
+                      !t.name.toLowerCase().contains(_searchQuery.toLowerCase())) {
+                    return false;
+                  }
                   return true;
                 }).toList();
                 if (tournaments.isEmpty) {
@@ -176,31 +175,65 @@ class _TournamentCard extends StatelessWidget {
     return m[s] ?? s;
   }
 
-  Color _statusColor(String s) {
+  IconData _statusIcon(String s) {
     switch (s) {
       case 'registration':
-        return Colors.green;
+        return Icons.app_registration_outlined;
       case 'in_progress':
       case 'active':
-        return Colors.blue;
+        return Icons.play_circle_outline;
       case 'completed':
-        return Colors.grey;
+        return Icons.check_circle_outline;
       case 'cancelled':
-        return Colors.red;
+        return Icons.cancel_outlined;
       default:
-        return _kAccent;
+        return Icons.edit_note_outlined;
+    }
+  }
+
+  Color _statusColor(String s) {
+    switch (s) {
+      case 'completed':
+        return AppThemeTokens.success;
+      case 'in_progress':
+      case 'active':
+        return AppThemeTokens.info;
+      case 'cancelled':
+        return AppThemeTokens.error;
+      case 'registration':
+        return AppThemeTokens.warning;
+      default:
+        return AppThemeTokens.primary500;
+    }
+  }
+
+  Color _statusBgColor(String s) {
+    switch (s) {
+      case 'completed':
+        return AppThemeTokens.successBg;
+      case 'in_progress':
+      case 'active':
+        return AppThemeTokens.infoBg;
+      case 'cancelled':
+        return AppThemeTokens.errorBg;
+      case 'registration':
+        return AppThemeTokens.warningBg;
+      default:
+        return AppThemeTokens.primaryGlow;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final t = tournament;
+    final statusColor = _statusColor(t.status);
+    final statusBgColor = _statusBgColor(t.status);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: AppThemeTokens.card(context),
+          color: AppThemeTokens.cardElevated(context),
           borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
           border: Border.all(color: AppThemeTokens.border(context)),
         ),
@@ -222,15 +255,28 @@ class _TournamentCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: _statusColor(t.status).withValues(alpha: 0.15),
+                      color: statusBgColor,
                       borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: statusColor.withValues(alpha: 0.3)),
                     ),
-                    child: Text(
-                      _formatStatus(t.status),
-                      style: TextStyle(
-                          color: _statusColor(t.status),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _statusIcon(t.status),
+                          size: 12,
+                          color: statusColor,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _formatStatus(t.status),
+                          style: TextStyle(
+                            color: statusColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

@@ -297,26 +297,6 @@ class _NearbyGroupCard extends StatelessWidget {
   final VoidCallback onView;
   final VoidCallback onJoin;
 
-  Color _sportColor() {
-    switch (group.sportType?.toLowerCase()) {
-      case 'football':
-      case 'soccer':
-        return const Color(0xFF4CAF50);
-      case 'basketball':
-        return const Color(0xFFFF9800);
-      case 'tennis':
-        return const Color(0xFFFFEB3B);
-      case 'running':
-        return const Color(0xFF00BCD4);
-      case 'cycling':
-        return const Color(0xFF2196F3);
-      case 'volleyball':
-        return const Color(0xFF9C27B0);
-      default:
-        return AppThemeTokens.primary500;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -324,7 +304,6 @@ class _NearbyGroupCard extends StatelessWidget {
     final borderColor = isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder;
     final titleColor = isDark ? AppThemeTokens.darkText : AppThemeTokens.lightText;
     final secondaryColor = isDark ? AppThemeTokens.darkTextSecondary : AppThemeTokens.lightTextSecondary;
-    final sportColor = _sportColor();
 
     return Material(
       color: Colors.transparent,
@@ -341,12 +320,11 @@ class _NearbyGroupCard extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-              // Avatar with sport-color ring
+              // Neutral avatar ring keeps semantics in text/icons, not color.
               Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(
-                      color: sportColor.withValues(alpha: 0.45), width: 2),
+                  border: Border.all(color: borderColor, width: 2),
                 ),
                 child: UserAvatar(
                   name: group.name,
@@ -358,40 +336,15 @@ class _NearbyGroupCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Name + sport pill
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            group.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              color: titleColor,
-                            ),
-                          ),
-                        ),
-                        if (group.sportType != null)
-                          Container(
-                            margin: const EdgeInsets.only(left: 6),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: sportColor.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(100),
-                            ),
-                            child: Text(
-                              group.sportType!,
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: sportColor,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                      ],
+                    Text(
+                      group.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: titleColor,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     // Distance + member count
@@ -401,22 +354,22 @@ class _NearbyGroupCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppThemeTokens.primary500
-                                .withValues(alpha: 0.12),
+                            color: cardColor,
+                            border: Border.all(color: borderColor),
                             borderRadius: BorderRadius.circular(100),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.place_outlined,
+                              Icon(Icons.place_outlined,
                                   size: 10,
-                                  color: AppThemeTokens.primary400),
+                                  color: secondaryColor),
                               const SizedBox(width: 3),
                               Text(
                                 '${group.distance.toStringAsFixed(1)} km',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 10,
-                                  color: AppThemeTokens.primary400,
+                                  color: secondaryColor,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),

@@ -529,7 +529,7 @@ class _EventListCard extends StatelessWidget {
                               if (event.sessionType != null)
                                 _MiniTag(
                                   label: sportTypeLabel(event.sessionType as String?),
-                                  color: accent,
+                                  icon: Icons.sports_soccer_rounded,
                                 ),
                               _MiniTag(
                                 label: (event.isPublic as bool? ?? true)
@@ -540,9 +540,22 @@ class _EventListCard extends StatelessWidget {
                                     : Icons.lock_rounded,
                               ),
                               if (isHosting)
-                                const _MiniTag(
-                                  label: 'Hosting',
-                                  icon: Icons.verified_user_rounded,
+                                Stack(
+                                  children: [
+                                    const _MiniTag(
+                                      label: 'Hosting',
+                                      icon: Icons.verified_user_rounded,
+                                    ),
+                                    Positioned(
+                                      top: -6,
+                                      right: -4,
+                                      child: Icon(
+                                        Icons.star,
+                                        size: 12,
+                                        color: AppThemeTokens.warning,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               if (event.maxPlayers != null)
                                 _MiniTag(
@@ -579,21 +592,20 @@ class _EventListCard extends StatelessWidget {
 // ── Mini tag chip ─────────────────────────────────────────────────────────────
 
 class _MiniTag extends StatelessWidget {
-  const _MiniTag({required this.label, this.icon, this.color});
+  const _MiniTag({required this.label, this.icon});
 
   final String label;
   final IconData? icon;
-  final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    final fg = color ?? AppThemeTokens.textSecondary(context);
+    final fg = AppThemeTokens.textSecondary(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: fg.withValues(alpha: 0.1),
+        color: AppThemeTokens.cardElevated(context),
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: fg.withValues(alpha: 0.25)),
+        border: Border.all(color: AppThemeTokens.border(context)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

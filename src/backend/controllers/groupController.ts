@@ -1889,6 +1889,29 @@ export const leaveGroup = async (req: Request, res: Response) => {
       }
     });
 
+    // Automatically leave all sessions belonging to this group.
+    // This keeps dashboard/session feeds in sync after leaving a group.
+    const groupSessions = await tx.session.findMany({
+      where: { groupId: id },
+      select: { id: true },
+    });
+    const groupSessionIds = groupSessions.map((s) => s.id);
+    if (groupSessionIds.length > 0) {
+      await tx.sessionParticipant.deleteMany({
+        where: {
+          userId,
+          sessionId: { in: groupSessionIds },
+        },
+      });
+
+      await tx.sessionAttendance.deleteMany({
+        where: {
+          userId,
+          sessionId: { in: groupSessionIds },
+        },
+      });
+    }
+
     return { groupDeleted: false, members: [] };
   });
 

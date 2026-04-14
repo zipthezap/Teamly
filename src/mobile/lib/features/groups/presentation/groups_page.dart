@@ -356,29 +356,8 @@ class _GroupCard extends StatelessWidget {
   final dynamic group;
   final bool isOwner;
 
-  Color _sportColor() {
-    switch ((group.sportType as String?)?.toLowerCase()) {
-      case 'football':
-      case 'soccer':
-        return const Color(0xFF4CAF50);
-      case 'basketball':
-        return const Color(0xFFFF9800);
-      case 'tennis':
-        return const Color(0xFFFFEB3B);
-      case 'running':
-        return const Color(0xFF00BCD4);
-      case 'cycling':
-        return const Color(0xFF2196F3);
-      case 'volleyball':
-        return const Color(0xFF9C27B0);
-      default:
-        return AppThemeTokens.primary500;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final sportColor = _sportColor();
     final memberCount = group.memberCount as int? ?? 0;
 
     final meta = [
@@ -407,12 +386,12 @@ class _GroupCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
             child: Row(
               children: [
-                // Avatar with sport color ring
+                // Neutral avatar ring to avoid encoding meaning in color.
                 Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: sportColor.withValues(alpha: 0.4),
+                      color: AppThemeTokens.border(context),
                       width: 2,
                     ),
                   ),
@@ -427,39 +406,15 @@ class _GroupCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              group.name as String,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15,
-                                color: AppThemeTokens.text(context),
-                              ),
-                            ),
-                          ),
-                          if ((group.sportType as String?) != null)
-                            Container(
-                              margin: const EdgeInsets.only(left: 6),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 7, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: sportColor.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(100),
-                              ),
-                              child: Text(
-                                group.sportType as String,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: sportColor,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                        ],
+                      Text(
+                        group.name as String,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: AppThemeTokens.text(context),
+                        ),
                       ),
                       if (meta.isNotEmpty) ...[
                         const SizedBox(height: 3),
@@ -495,7 +450,6 @@ class _GroupCard extends StatelessWidget {
                             const _GroupTag(
                               label: 'Owner',
                               icon: Icons.star_rounded,
-                              color: Color(0xFFFF9800),
                             ),
                           _GroupTag(
                             label: (group.isPublic as bool? ?? true)
@@ -504,9 +458,6 @@ class _GroupCard extends StatelessWidget {
                             icon: (group.isPublic as bool? ?? true)
                                 ? Icons.public_rounded
                                 : Icons.lock_rounded,
-                            color: (group.isPublic as bool? ?? true)
-                                ? const Color(0xFF4CAF50)
-                                : const Color(0xFF7C4DFF),
                           ),
                           if ((group.maxMembers as int?) != null)
                             _GroupTag(
@@ -553,21 +504,20 @@ class _GroupCard extends StatelessWidget {
 // ── Group tag chip ────────────────────────────────────────────────────────────
 
 class _GroupTag extends StatelessWidget {
-  const _GroupTag({required this.label, this.icon, this.color});
+  const _GroupTag({required this.label, this.icon});
 
   final String label;
   final IconData? icon;
-  final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    final fg = color ?? AppThemeTokens.textSecondary(context);
+    final fg = AppThemeTokens.textSecondary(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: fg.withValues(alpha: 0.1),
+        color: AppThemeTokens.cardElevated(context),
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: fg.withValues(alpha: 0.25)),
+        border: Border.all(color: AppThemeTokens.border(context)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

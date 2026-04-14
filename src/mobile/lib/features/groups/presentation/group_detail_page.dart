@@ -738,22 +738,36 @@ class _OverviewTab extends ConsumerWidget {
                         children: [
                           if (group.sportType != null)
                             _HeroPill(
+                              icon: Icons.sports_soccer_outlined,
                               label: group.sportType!,
-                              color: AppThemeTokens.primary500,
                             ),
                           _HeroPill(
                             icon: group.isPublic
                                 ? Icons.public
                                 : Icons.lock_outline,
                             label: group.isPublic ? 'Public' : 'Private',
-                            color: group.isPublic
-                                ? AppThemeTokens.success
-                                : AppThemeTokens.warning,
                           ),
                           _HeroPill(
                             icon: Icons.people_outline,
                             label: memberLabel,
-                            color: AppThemeTokens.info,
+                          ),
+                          if (admin)
+                          Stack(
+                            children: [
+                              _HeroPill(
+                                label: 'Admin',
+                                icon: Icons.shield_outlined,
+                              ),
+                              Positioned(
+                                top: -4,
+                                right: -4,
+                                child: Icon(
+                                  Icons.star,
+                                  size: 10,
+                                  color: AppThemeTokens.warning,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -2049,10 +2063,9 @@ class _MetricTile extends StatelessWidget {
 }
 
 class _HeroPill extends StatelessWidget {
-  const _HeroPill({required this.label, required this.color, this.icon});
+  const _HeroPill({required this.label, this.icon});
 
   final String label;
-  final Color color;
   final IconData? icon;
 
   @override
@@ -2060,15 +2073,15 @@ class _HeroPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
+        color: AppThemeTokens.cardElevated(context),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        border: Border.all(color: AppThemeTokens.border(context)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 12, color: color),
+            Icon(icon, size: 12, color: AppThemeTokens.textSecondary(context)),
             const SizedBox(width: 4),
           ],
           Text(
@@ -2076,7 +2089,7 @@ class _HeroPill extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: color,
+              color: AppThemeTokens.textSecondary(context),
             ),
           ),
         ],

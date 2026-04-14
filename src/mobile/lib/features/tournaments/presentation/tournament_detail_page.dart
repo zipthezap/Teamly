@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/constants/app_constants.dart';
 import '../../../core/error/error_utils.dart';
 import '../../../core/models/tournament_model.dart';
 import '../../../core/theme/app_theme.dart';
@@ -155,7 +154,7 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
                 if (hasMyTeam)
                   _MyScheduleTab(
                     tournament: t,
-                    myTeam: myTeam!,
+                    myTeam: myTeam,
                     currentUserId: currentUserId ?? '',
                     onRefresh: refresh,
                   ),
@@ -335,12 +334,12 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 onRefresh: onRefresh,
               )
           else if (t.pools.isNotEmpty) ...[
-            UiSectionTitle('Pools'),
+            const UiSectionTitle('Pools'),
             const SizedBox(height: 8),
             for (final pool in t.pools)
               _PoolCard(pool: pool, isAdmin: isAdmin, tournament: t),
           ] else ...[
-            UiSectionTitle('Teams'),
+            const UiSectionTitle('Teams'),
             const SizedBox(height: 8),
             if (t.teams.isEmpty)
               const UiEmptyState(
@@ -354,7 +353,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
             const SizedBox(height: 16),
             const Divider(),
             const SizedBox(height: 8),
-            UiSectionTitle('Admin Controls'),
+            const UiSectionTitle('Admin Controls'),
             const SizedBox(height: 8),
             Wrap(spacing: 8, runSpacing: 8, children: [
               OutlinedButton.icon(
@@ -551,12 +550,6 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
 
   TournamentCategoryModel get category => widget.category;
   TournamentModel get tournament => widget.tournament;
-
-  bool get _myTeamInCategory {
-    if (widget.myTeam == null) return false;
-    return category.pools
-        .any((p) => p.teams.any((t) => t.id == widget.myTeam!.id));
-  }
 
   Future<void> _registerToCategory() async {
     final nameCtrl = TextEditingController();
@@ -908,7 +901,7 @@ class _ScoresTab extends StatelessWidget {
                 .toList()
             : unassigned.map(_StandingRow.fromTeam).toList();
         if (rows.isNotEmpty) {
-          children.add(UiSectionTitle('Other'));
+          children.add(const UiSectionTitle('Other'));
           children.add(const SizedBox(height: 6));
           children.add(_ScoreTable(rows: rows, showGoals: showGF));
           children.add(const SizedBox(height: 16));
@@ -916,9 +909,10 @@ class _ScoresTab extends StatelessWidget {
       }
     } else {
       final rows = rowsForPool(null);
-      if (rows.isEmpty)
+      if (rows.isEmpty) {
         return const UiEmptyState(
             icon: Icons.leaderboard_outlined, message: 'No scores yet.');
+      }
       children.add(_ScoreTable(rows: rows, showGoals: showGF));
       children.add(const SizedBox(height: 16));
     }
@@ -1196,9 +1190,10 @@ class _ScheduleMatchTileState extends ConsumerState<_ScheduleMatchTile> {
             .showSnackBar(const SnackBar(content: Text('Score submitted!')));
       }
     } on Exception catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
+      }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -1545,29 +1540,75 @@ class _StatusChip extends StatelessWidget {
 
   final String status;
 
-  Color _color() {
+  IconData _icon() {
     switch (status) {
       case 'completed':
-        return Colors.grey;
+        return Icons.check_circle_outline;
       case 'in_progress':
-        return Colors.blue;
+        return Icons.play_circle_outline;
       case 'cancelled':
-        return Colors.red;
+        return Icons.cancel_outlined;
+      case 'registration':
+        return Icons.app_registration_outlined;
       default:
-        return Colors.orange;
+        return Icons.edit_note_outlined;
+    }
+  }
+
+  Color _statusColor() {
+    switch (status) {
+      case 'completed':
+        return AppThemeTokens.success;
+      case 'in_progress':
+      case 'active':
+        return AppThemeTokens.info;
+      case 'cancelled':
+        return AppThemeTokens.error;
+      case 'registration':
+        return AppThemeTokens.warning;
+      default:
+        return AppThemeTokens.primary500;
+    }
+  }
+
+  Color _statusBgColor() {
+    switch (status) {
+      case 'completed':
+        return AppThemeTokens.successBg;
+      case 'in_progress':
+      case 'active':
+        return AppThemeTokens.infoBg;
+      case 'cancelled':
+        return AppThemeTokens.errorBg;
+      case 'registration':
+        return AppThemeTokens.warningBg;
+      default:
+        return AppThemeTokens.primaryGlow;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final statusColor = _statusColor();
+    final bgColor = _statusBgColor();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-          color: _color().withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(12)),
-      child: Text(status.replaceAll('_', ' '),
-          style: TextStyle(
-              color: _color(), fontSize: 11, fontWeight: FontWeight.w600)),
+          color: bgColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: statusColor.withValues(alpha: 0.3))),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_icon(), size: 12, color: statusColor),
+          const SizedBox(width: 4),
+          Text(status.replaceAll('_', ' '),
+              style: TextStyle(
+                  color: statusColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 }

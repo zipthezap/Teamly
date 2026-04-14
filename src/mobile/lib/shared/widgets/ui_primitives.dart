@@ -358,7 +358,7 @@ class UiInfoRow extends StatelessWidget {
           ),
           if (onTap != null) ...[
             const SizedBox(width: 4),
-            Icon(Icons.open_in_new,
+            const Icon(Icons.open_in_new,
                 size: 13, color: AppThemeTokens.primary400),
           ],
         ],
@@ -385,12 +385,16 @@ class UiStatusBadge extends StatelessWidget {
     this.status = UiStatusType.defaultStatus,
     this.customColor,
     this.dot = false,
+    this.icon,
+    this.neutral = false,
   });
 
   final String label;
   final UiStatusType status;
   final Color? customColor;
   final bool dot;
+  final IconData? icon;
+  final bool neutral;
 
   static UiStatusType fromString(String s) {
     switch (s.toLowerCase()) {
@@ -427,7 +431,12 @@ class UiStatusBadge extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final Color fg;
     final Color bg;
-    if (customColor != null) {
+    if (neutral) {
+      fg = isDark
+          ? AppThemeTokens.darkTextSecondary
+          : AppThemeTokens.lightTextSecondary;
+      bg = AppThemeTokens.cardElevated(context);
+    } else if (customColor != null) {
       fg = customColor!;
       bg = customColor!.withValues(alpha: 0.15);
     } else {
@@ -459,11 +468,20 @@ class UiStatusBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: fg.withValues(alpha: 0.25), width: 1),
+        border: Border.all(
+          color: neutral
+              ? AppThemeTokens.border(context)
+              : fg.withValues(alpha: 0.25),
+          width: 1,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: fg),
+            const SizedBox(width: 5),
+          ],
           if (dot) ...[
             Container(
               width: 6,

@@ -3,7 +3,6 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 
@@ -449,31 +448,33 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
                                   if (event.sessionType != null)
                                     UiStatusBadge(
                                       label: sportTypeLabel(event.sessionType),
-                                      status: UiStatusType.info,
-                                      dot: true,
+                                      icon: Icons.sports_soccer_outlined,
+                                      neutral: true,
                                     ),
                                   UiStatusBadge(
                                     label: event.isPublic ? 'Public' : 'Private',
-                                    status: UiStatusType.info,
-                                    dot: true,
+                                    icon: event.isPublic
+                                        ? Icons.public_outlined
+                                        : Icons.lock_outline,
+                                    neutral: true,
                                   ),
                                   if (event.archived == true)
                                     const UiStatusBadge(
                                       label: 'Archived',
-                                      status: UiStatusType.warning,
-                                      dot: true,
+                                      icon: Icons.archive_outlined,
+                                      neutral: true,
                                     ),
                                   if (isPast)
                                     const UiStatusBadge(
                                       label: 'Past',
-                                      status: UiStatusType.defaultStatus,
-                                      dot: true,
+                                      icon: Icons.history,
+                                      neutral: true,
                                     ),
                                   if (event.isFull)
                                     const UiStatusBadge(
                                       label: 'Full',
-                                      status: UiStatusType.error,
-                                      dot: true,
+                                      icon: Icons.groups_rounded,
+                                      neutral: true,
                                     ),
                                 ],
                               ),
@@ -842,7 +843,7 @@ class _SessionDetailPageState extends ConsumerState<SessionDetailPage> {
                           : Switch.adaptive(
                               value: _isMarkedLate,
                               onChanged: _markLate,
-                              activeColor: AppThemeTokens.warning,
+                              activeThumbColor: AppThemeTokens.warning,
                             ),
                     ),
                   ),
