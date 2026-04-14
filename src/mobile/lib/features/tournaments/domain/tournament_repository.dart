@@ -1,17 +1,29 @@
 import '../../../core/models/tournament_model.dart';
 
-abstract class TournamentRepository {
+abstract class TournamentReadRepository {
   Future<List<TournamentModel>> getTournaments({String? status, String? sportType, String? search});
   Future<TournamentModel> getTournament(String id);
+}
+
+abstract class TournamentWriteRepository {
   Future<TournamentModel> createTournament(Map<String, dynamic> data);
+  Future<TournamentModel> updateTournament(String id, Map<String, dynamic> data);
+  Future<TournamentModel> updateTournamentStatus(String id, String status);
+}
+
+abstract class TeamRegistrationRepository {
   Future<void> addTeam(String tournamentId, Map<String, dynamic> data);
 
-  // Captain self-registration
   Future<Map<String, dynamic>> selfRegisterTeam(
       String tournamentId, String teamName,
       {String? poolId});
+  Future<List<Map<String, dynamic>>> getPlayers(
+      String tournamentId, String teamId);
+  Future<void> removePlayer(
+      String tournamentId, String teamId, String playerId);
+}
 
-  // Pool management
+abstract class PoolRepository {
   Future<List<TournamentPoolModel>> getPools(String tournamentId);
   Future<TournamentPoolModel> createPool(
       String tournamentId, Map<String, dynamic> data);
@@ -24,8 +36,9 @@ abstract class TournamentRepository {
       String tournamentId, String poolId, String teamId);
   Future<void> removeTeamFromWaitlist(
       String tournamentId, String poolId, String teamId);
+}
 
-  // Category management
+abstract class CategoryRepository {
   Future<List<TournamentCategoryModel>> getCategories(String tournamentId);
   Future<TournamentCategoryModel> createCategory(
       String tournamentId, Map<String, dynamic> data);
@@ -34,18 +47,16 @@ abstract class TournamentRepository {
   Future<void> deleteCategory(String tournamentId, String categoryId);
   Future<void> assignPoolToCategory(
       String tournamentId, String poolId, String? categoryId);
+}
 
-  // Admin delegation
+abstract class AdminRepository {
   Future<List<TournamentAdminModel>> getAdmins(String tournamentId);
   Future<TournamentAdminModel> addAdmin(
       String tournamentId, Map<String, dynamic> data);
   Future<void> removeAdmin(String tournamentId, String adminUserId);
+}
 
-  // Score submission
-  Future<void> submitScore(String tournamentId, String matchId,
-      {required int homeScore, required int awayScore});
-
-  // Player management / invitations
+abstract class InvitationRepository {
   Future<void> sendInvitation(
       String tournamentId, String teamId, Map<String, dynamic> data);
   Future<List<Map<String, dynamic>>> getTeamInvitations(
@@ -55,19 +66,23 @@ abstract class TournamentRepository {
   Future<void> declineInvitation(String inviteToken);
   Future<void> cancelInvitation(
       String tournamentId, String teamId, String invitationId);
+}
 
-  // Players on a team
-  Future<List<Map<String, dynamic>>> getPlayers(
-      String tournamentId, String teamId);
-  Future<void> removePlayer(
-      String tournamentId, String teamId, String playerId);
-
-  // Tournament update
-  Future<TournamentModel> updateTournament(String id, Map<String, dynamic> data);
-  Future<TournamentModel> updateTournamentStatus(String id, String status);
-
-  // Match management
+abstract class MatchRepository {
+  Future<void> submitScore(String tournamentId, String matchId,
+      {required int homeScore, required int awayScore});
   Future<void> createMatch(String tournamentId, Map<String, dynamic> data);
   Future<void> updateMatch(String tournamentId, String matchId, Map<String, dynamic> data);
   Future<void> deleteMatch(String tournamentId, String matchId);
 }
+
+abstract class TournamentRepository
+    implements
+        TournamentReadRepository,
+        TournamentWriteRepository,
+        TeamRegistrationRepository,
+        PoolRepository,
+        CategoryRepository,
+        AdminRepository,
+        InvitationRepository,
+        MatchRepository {}

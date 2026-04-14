@@ -356,3 +356,38 @@ class TournamentRepositoryImpl implements TournamentRepository {
 final tournamentRepositoryProvider = Provider<TournamentRepository>((ref) {
   return TournamentRepositoryImpl(ref.watch(dioProvider));
 });
+
+final tournamentReadRepositoryProvider =
+    Provider<TournamentReadRepository>((ref) {
+  return ref.watch(tournamentRepositoryProvider);
+});
+
+final tournamentWriteRepositoryProvider =
+    Provider<TournamentWriteRepository>((ref) {
+  return ref.watch(tournamentRepositoryProvider);
+});
+
+final teamRegistrationRepositoryProvider =
+    Provider<TeamRegistrationRepository>((ref) {
+  return ref.watch(tournamentRepositoryProvider);
+});
+
+final poolRepositoryProvider = Provider<PoolRepository>((ref) {
+  return ref.watch(tournamentRepositoryProvider);
+});
+
+final categoryRepositoryProvider = Provider<CategoryRepository>((ref) {
+  return ref.watch(tournamentRepositoryProvider);
+});
+
+final adminRepositoryProvider = Provider<AdminRepository>((ref) {
+  return ref.watch(tournamentRepositoryProvider);
+});
+
+final invitationRepositoryProvider = Provider<InvitationRepository>((ref) {
+  return ref.watch(tournamentRepositoryProvider);
+});
+
+final matchRepositoryProvider = Provider<MatchRepository>((ref) {
+  return ref.watch(tournamentRepositoryProvider);
+});
