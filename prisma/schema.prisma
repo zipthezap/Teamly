@@ -1005,6 +1005,7 @@ model TournamentTeam {
   invitations  TournamentTeamInvitation[]
   
   @@unique([tournamentId, name])
+  @@unique([tournamentId, captainUserId])
   @@index([tournamentId])
   @@index([captainUserId])
   @@index([poolNumber])

@@ -52,6 +52,7 @@ vi.mock('../../config/database', () => ({
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      deleteMany: vi.fn(),
     },
     tournamentMatch: {
       findUnique: vi.fn(),
@@ -336,6 +337,7 @@ beforeEach(() => {
   vi.mocked(prisma.tournamentTeam.create).mockResolvedValue(mockTeam as any);
   vi.mocked(prisma.tournamentTeam.update).mockResolvedValue(mockTeam as any);
   vi.mocked(prisma.tournamentTeam.delete).mockResolvedValue(mockTeam as any);
+  vi.mocked(prisma.tournamentTeam.deleteMany).mockResolvedValue({ count: 1 } as any);
 
   vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue(null);
   vi.mocked(prisma.tournamentMatch.findFirst).mockResolvedValue(null);
@@ -1787,24 +1789,46 @@ describe('DELETE /api/tournaments/:id/teams/self-register (selfUnregisterTeam)',
   it('returns 200 on successful unregister', async () => {
     const registeredTournament = { ...mockTournament, status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
-    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(mockTeam as any);
-    vi.mocked(prisma.tournamentTeam.delete).mockResolvedValue(mockTeam as any);
+    vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValue([mockTeam] as any);
+    vi.mocked(prisma.tournamentTeam.deleteMany).mockResolvedValue({ count: 1 } as any);
 
     const res = await request(app)
       .delete('/api/tournaments/tournament-1/teams/self-register');
 
     expect(res.status).toBe(200);
+    expect(prisma.tournamentTeam.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: [mockTeam.id] } }
+    });
   });
 
   it('returns 400 when user has no registered team', async () => {
     const registeredTournament = { ...mockTournament, status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
-    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValue([] as any);
 
     const res = await request(app)
       .delete('/api/tournaments/tournament-1/teams/self-register');
 
     expect(res.status).toBe(400);
+  });
+
+  it('removes all legacy duplicate captain teams in one unregister call', async () => {
+    const registeredTournament = { ...mockTournament, status: 'registration' };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
+    vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValue([
+      { ...mockTeam, id: 'team-1' },
+      { ...mockTeam, id: 'team-2' },
+    ] as any);
+    vi.mocked(prisma.tournamentTeam.deleteMany).mockResolvedValue({ count: 2 } as any);
+
+    const res = await request(app)
+      .delete('/api/tournaments/tournament-1/teams/self-register');
+
+    expect(res.status).toBe(200);
+    expect(res.body.removedTeamCount).toBe(2);
+    expect(prisma.tournamentTeam.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ['team-1', 'team-2'] } }
+    });
   });
 });
 

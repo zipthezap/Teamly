@@ -2668,14 +2668,6 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
     throw new BadRequestError('Tournament is not open for registration');
   }
 
-  // Prevent the same captain from registering multiple teams in one tournament
-  const existingTeam = await prisma.tournamentTeam.findFirst({
-    where: { tournamentId: id, captainUserId: userId }
-  });
-  if (existingTeam) {
-    throw new BadRequestError('You already have a registered team in this tournament');
-  }
-
   if (poolId && categoryId) {
     throw new BadRequestError('Select either a category or a pool, not both');
   }
@@ -2693,16 +2685,26 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
   }
 
   try {
-    const team = await prisma.tournamentTeam.create({
-      data: {
-        name: name.trim(),
-        tournamentId: id,
-        captainUserId: userId,
-        ...(selectedCategoryName != null ? { poolName: selectedCategoryName } : {})
-      },
-      include: {
-        captainUser: { select: { id: true, name: true, email: true } }
+    const team = await prisma.$transaction(async (tx) => {
+      const existingTeam = await tx.tournamentTeam.findFirst({
+        where: { tournamentId: id, captainUserId: userId },
+        select: { id: true }
+      });
+      if (existingTeam) {
+        throw new BadRequestError('You already have a registered team in this tournament');
       }
+
+      return tx.tournamentTeam.create({
+        data: {
+          name: name.trim(),
+          tournamentId: id,
+          captainUserId: userId,
+          ...(selectedCategoryName != null ? { poolName: selectedCategoryName } : {})
+        },
+        include: {
+          captainUser: { select: { id: true, name: true, email: true } }
+        }
+      });
     });
 
     logger.info('Team self-registered', 'TournamentController', { tournamentId: id, teamId: team.id, captainUserId: userId });
@@ -2770,26 +2772,28 @@ export const selfUnregisterTeam = async (req: Request, res: Response) => {
     throw new BadRequestError('Tournament registration is closed');
   }
 
-  const existingTeam = await prisma.tournamentTeam.findFirst({
+  const existingTeams = await prisma.tournamentTeam.findMany({
     where: { tournamentId: id, captainUserId: userId },
     select: { id: true, name: true }
   });
 
-  if (!existingTeam) {
+  if (existingTeams.length === 0) {
     throw new BadRequestError('You do not have a registered team to unregister');
   }
 
-  await prisma.tournamentTeam.delete({
-    where: { id: existingTeam.id }
+  const teamIds = existingTeams.map(team => team.id);
+  await prisma.tournamentTeam.deleteMany({
+    where: { id: { in: teamIds } }
   });
 
   logger.info('Team self-unregistered', 'TournamentController', {
     tournamentId: id,
-    teamId: existingTeam.id,
-    captainUserId: userId
+    teamIds,
+    removedTeamCount: existingTeams.length,
+    captainUserId: userId,
   });
 
-  res.json({ message: 'Team unregistered successfully' });
+  res.json({ message: 'Team unregistered successfully', removedTeamCount: existingTeams.length });
 };
 
 // ==================== STATUS MANAGEMENT ====================
