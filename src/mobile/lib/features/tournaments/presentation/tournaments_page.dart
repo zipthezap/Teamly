@@ -3408,7 +3408,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
     if (!tournament.useManualBrackets) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text(
-              'Pools are auto-generated for this tournament because manual setup is disabled.')));
+              'Manual pool setup is disabled for this tournament. Pools will be auto-generated.')));
       return;
     }
     if (_pools.isEmpty) {
@@ -3427,7 +3427,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     String? selectedCategoryId =
         _categories.isNotEmpty ? _categories.first.id : null;
-    var busyTeamId = '';
+    var updatingTeamId = '';
 
     Future<void> refreshDialog(StateSetter setDialog) async {
       final latest = await ref
@@ -3502,11 +3502,11 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                   onWillAcceptWithDetails: (details) =>
                                       details.data.fromPoolId != null,
                                   onAcceptWithDetails: (details) async {
-                                    if (busyTeamId.isNotEmpty) return;
+                                    if (updatingTeamId.isNotEmpty) return;
                                     final fromPoolId = details.data.fromPoolId;
                                     if (fromPoolId == null) return;
                                     setDialog(
-                                        () => busyTeamId = details.data.team.id);
+                                        () => updatingTeamId = details.data.team.id);
                                     try {
                                       await ref
                                           .read(tournamentRepositoryProvider)
@@ -3526,7 +3526,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                       );
                                     } finally {
                                       if (context.mounted) {
-                                        setDialog(() => busyTeamId = '');
+                                        setDialog(() => updatingTeamId = '');
                                       }
                                     }
                                   },
@@ -3559,7 +3559,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                           teamPoolId(team.id, dialogPools);
                                       final currentPoolName =
                                           teamPoolName(team.id, dialogPools);
-                                      final locked = busyTeamId == team.id;
+                                      final locked = updatingTeamId == team.id;
                                       return Padding(
                                         padding:
                                             const EdgeInsets.only(bottom: 6),
@@ -3627,13 +3627,16 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                             onWillAcceptWithDetails: (details) =>
                                                 details.data.fromPoolId !=
                                                     pool.id &&
-                                                busyTeamId.isEmpty,
+                                                updatingTeamId.isEmpty &&
+                                                (pool.maxTeams <= 0 ||
+                                                    pool.teams.length <
+                                                        pool.maxTeams),
                                             onAcceptWithDetails:
                                                 (details) async {
-                                              if (busyTeamId.isNotEmpty) return;
+                                              if (updatingTeamId.isNotEmpty) return;
                                               final fromPoolId =
                                                   details.data.fromPoolId;
-                                              setDialog(() => busyTeamId =
+                                              setDialog(() => updatingTeamId =
                                                   details.data.team.id);
                                               try {
                                                 if (fromPoolId != null) {
@@ -3666,7 +3669,8 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                                 ));
                                               } finally {
                                                 if (context.mounted) {
-                                                  setDialog(() => busyTeamId = '');
+                                                  setDialog(
+                                                      () => updatingTeamId = '');
                                                 }
                                               }
                                             },
@@ -3690,7 +3694,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                                     CrossAxisAlignment.start,
                                                 children: [
                                                   Text(
-                                                    '${pool.name} (${pool.teams.length}/${pool.maxTeams})',
+                                                    '${pool.name} (${pool.teams.length}/${pool.maxTeams > 0 ? pool.maxTeams : '∞'})',
                                                     style: const TextStyle(
                                                         fontWeight:
                                                             FontWeight.w600),
