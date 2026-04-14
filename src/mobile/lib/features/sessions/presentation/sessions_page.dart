@@ -91,19 +91,19 @@ class _SessionsPageState extends ConsumerState<SessionsPage>
     final query = _searchCtrl.text.trim().toLowerCase();
 
     return MobileShell(
-      title: 'Events',
+      title: 'Sessions',
       currentIndex: 2,
       actions: [
         IconButton(
           icon: const Icon(Icons.ios_share_outlined),
-          tooltip: 'Export events',
+          tooltip: 'Export sessions',
           onPressed: () {
             showDialog(
               context: context,
               builder: (ctx) => AlertDialog(
-                title: const Text('Export Events'),
+                title: const Text('Export Sessions'),
                 content: const Text(
-                  'To export your events as CSV, please use the web app in your browser.',
+                  'To export your sessions as CSV, please use the web app in your browser.',
                 ),
                 actions: [
                   TextButton(
@@ -118,7 +118,7 @@ class _SessionsPageState extends ConsumerState<SessionsPage>
       ],
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/sessions/new'),
-        tooltip: 'New Event',
+        tooltip: 'New Session',
         child: const Icon(Icons.add_rounded),
       ),
       child: eventsAsync.when(
@@ -163,8 +163,8 @@ class _SessionsPageState extends ConsumerState<SessionsPage>
           if (events.isEmpty) {
             return const UiEmptyState(
               icon: Icons.event_outlined,
-              title: 'No events yet',
-              message: 'Create your first event\nto get started!',
+              title: 'No sessions yet',
+              message: 'Create your first session\nto get started!',
             );
           }
 
@@ -227,7 +227,7 @@ class _SessionsPageState extends ConsumerState<SessionsPage>
                           controller: _searchCtrl,
                           onChanged: (_) => setState(() {}),
                           decoration: InputDecoration(
-                            hintText: 'Search events, groups, places…',
+                            hintText: 'Search sessions, groups, places…',
                             prefixIcon: const Icon(Icons.search_rounded),
                             suffixIcon: query.isEmpty
                                 ? null
@@ -270,7 +270,7 @@ class _SessionsPageState extends ConsumerState<SessionsPage>
                             child: UiEmptyState(
                               icon: Icons.search_off_rounded,
                               message:
-                                  'No events match the current filters.',
+                                  'No sessions match the current filters.',
                               action: () {
                                 _searchCtrl.clear();
                                 setState(() => _filter = _EventFilter.all);

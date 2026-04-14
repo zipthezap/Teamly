@@ -530,7 +530,7 @@ class _SessionInviteLandingPageState extends State<_SessionInviteLandingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Join Event')),
+      appBar: AppBar(title: const Text('Join Session')),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -538,14 +538,14 @@ class _SessionInviteLandingPageState extends State<_SessionInviteLandingPage> {
               ? const Column(mainAxisSize: MainAxisSize.min, children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
-                  Text('Joining event…'),
+                  Text('Joining session…'),
                 ])
               : _done
                   ? Column(mainAxisSize: MainAxisSize.min, children: [
                       Icon(Icons.check_circle_outline,
                           color: AppThemeTokens.success, size: 64),
                       const SizedBox(height: 16),
-                      const Text('You joined the event!'),
+                      const Text('You joined the session!'),
                       const SizedBox(height: 16),
                       FilledButton(
                         onPressed: () {
@@ -560,12 +560,12 @@ class _SessionInviteLandingPageState extends State<_SessionInviteLandingPage> {
                           }
                           context.go('/sessions');
                         },
-                        child: Text(_joinedAsGuest ? 'Sign In' : 'View Event'),
+                        child: Text(_joinedAsGuest ? 'Sign In' : 'View Session'),
                       ),
                     ])
                   : _needsGuestName
                       ? Column(mainAxisSize: MainAxisSize.min, children: [
-                          const Text('Enter your name to join this event'),
+                          const Text('Enter your name to join this session'),
                           const SizedBox(height: 12),
                           if (_error != null)
                             Padding(
@@ -605,7 +605,7 @@ class _SessionInviteLandingPageState extends State<_SessionInviteLandingPage> {
                               color: Theme.of(context).colorScheme.error,
                               size: 64),
                           const SizedBox(height: 16),
-                          Text(_error ?? 'Unable to join event',
+                          Text(_error ?? 'Unable to join session',
                               textAlign: TextAlign.center),
                           const SizedBox(height: 16),
                           FilledButton(

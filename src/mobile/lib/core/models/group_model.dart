@@ -39,7 +39,7 @@ class GroupCountModel extends Equatable {
 
   factory GroupCountModel.fromJson(Map<String, dynamic> json) {
     return GroupCountModel(
-      events: (json['events'] as num?)?.toInt() ?? 0,
+      events: (json['sessions'] as num?)?.toInt() ?? (json['events'] as num?)?.toInt() ?? 0,
       members: (json['members'] as num?)?.toInt() ?? 0,
     );
   }

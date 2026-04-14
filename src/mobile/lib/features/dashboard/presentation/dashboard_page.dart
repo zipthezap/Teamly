@@ -122,7 +122,7 @@ class _DashboardContent extends StatelessWidget {
           ),
         ),
 
-        // ── Upcoming sessions ────────────────────────────────────────────
+        // ── Upcoming sessions ──────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
           child: UiSectionTitle(
@@ -201,7 +201,7 @@ class _DashboardContent extends StatelessWidget {
                   Expanded(
                     child: _ActionTile(
                       icon: Icons.add_circle_rounded,
-                      label: 'New Event',
+                      label: 'New Session',
                       color: AppThemeTokens.primary500,
                       onTap: () => context.push('/sessions/new'),
                     ),
