@@ -544,7 +544,7 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
         Row(
           children: [
             Expanded(child: UiSectionTitle(category.name)),
-            if (widget.canRegister && !_myTeamInCategory)
+            if (widget.canRegister)
               TextButton.icon(
                 icon: _registering
                     ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))

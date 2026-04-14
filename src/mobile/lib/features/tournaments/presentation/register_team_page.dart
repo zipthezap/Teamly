@@ -118,28 +118,40 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String?>(
                           value: _selectedCategoryId,
-                          decoration: const InputDecoration(labelText: 'Category (optional)', prefixIcon: Icon(Icons.category_outlined)),
+                          decoration: InputDecoration(
+                            labelText: 'Category (optional)',
+                            prefixIcon: const Icon(Icons.category_outlined),
+                            helperText: _selectedPoolId != null ? 'Clear pool selection to pick a category' : null,
+                          ),
                           dropdownColor: AppThemeTokens.cardElevated(context),
                           items: [
                             const DropdownMenuItem(value: null, child: Text('No category')),
                             for (final cat in _categories)
                               DropdownMenuItem(value: cat.id, child: Text(cat.name)),
                           ],
-                          onChanged: (v) => setState(() { _selectedCategoryId = v; _selectedPoolId = null; }),
+                          onChanged: _selectedPoolId != null
+                              ? null
+                              : (v) => setState(() { _selectedCategoryId = v; }),
                         ),
                       ],
-                      if (_pools.isNotEmpty && _selectedCategoryId == null) ...[
+                      if (_pools.isNotEmpty) ...[
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String?>(
                           value: _selectedPoolId,
-                          decoration: const InputDecoration(labelText: 'Pool (optional)', prefixIcon: Icon(Icons.layers_outlined)),
+                          decoration: InputDecoration(
+                            labelText: 'Pool (optional)',
+                            prefixIcon: const Icon(Icons.layers_outlined),
+                            helperText: _selectedCategoryId != null ? 'Clear category selection to pick a pool' : null,
+                          ),
                           dropdownColor: AppThemeTokens.cardElevated(context),
                           items: [
                             const DropdownMenuItem(value: null, child: Text('No pool')),
                             for (final pool in _pools)
                               DropdownMenuItem(value: pool.id, child: Text('${pool.name} (${pool.teams.length}/${pool.maxTeams}${pool.isFull ? " – FULL" : ""})'))
                           ],
-                          onChanged: (v) => setState(() => _selectedPoolId = v),
+                          onChanged: _selectedCategoryId != null
+                              ? null
+                              : (v) => setState(() => _selectedPoolId = v),
                         ),
                       ],
                       const SizedBox(height: 24),
