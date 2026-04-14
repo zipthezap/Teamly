@@ -875,22 +875,29 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
             child: InputDecorator(
               decoration: InputDecoration(
                 labelText: _requestType == 'need_players'
-                    ? 'Session date & time *'
+                    ? 'Session date & time * (required)'
                     : 'Available from (optional)',
                 prefixIcon: const Icon(Icons.calendar_today_outlined),
+                helperText: _requestType == 'need_players' && _dateTime == null
+                    ? 'A date and time is required for "Need players"'
+                    : null,
+                helperStyle: TextStyle(
+                    color: Theme.of(context).colorScheme.error, fontSize: 11),
               ),
               child: Text(
                 _dateTime != null
                     ? df.format(_dateTime!.toLocal())
                     : _requestType == 'need_players'
-                        ? 'Tap to pick date and time'
+                        ? 'Tap to pick date and time (required)'
                         : 'Any time (tap to specify)',
                 style: TextStyle(
                   color: _dateTime != null
                       ? null
-                      : isDark
-                          ? AppThemeTokens.darkTextMuted
-                          : AppThemeTokens.lightTextMuted,
+                      : _requestType == 'need_players'
+                          ? Theme.of(context).colorScheme.error
+                          : isDark
+                              ? AppThemeTokens.darkTextMuted
+                              : AppThemeTokens.lightTextMuted,
                   fontSize: 14,
                 ),
               ),

@@ -746,7 +746,7 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
         where: { teamUpRequestId: id, status: 'accepted' }
       });
       if (acceptedCount >= teamUpRequest.playersNeeded) {
-        throw new BadRequestError('All spots have already been filled for this request');
+      throw new BadRequestError('Cannot accept: all available spots are already filled');
       }
     }
 
