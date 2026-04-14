@@ -3664,6 +3664,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                                         details.data.team.id);
                                                 await refreshDialog(setDialog);
                                               } on Exception catch (e) {
+                                                var rollbackFailed = false;
                                                 if (fromPoolId != null) {
                                                   try {
                                                     await ref
@@ -3674,14 +3675,15 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                                             fromPoolId,
                                                             details.data.team.id);
                                                   } on Exception {
-                                                    // Best-effort rollback.
+                                                    rollbackFailed = true;
                                                   }
                                                 }
                                                 if (!context.mounted) return;
                                                 ScaffoldMessenger.of(context)
                                                     .showSnackBar(SnackBar(
-                                                  content: Text(
-                                                      extractErrorMessage(e)),
+                                                  content: Text(rollbackFailed
+                                                      ? '${extractErrorMessage(e)}. Could not restore the previous pool assignment.'
+                                                      : extractErrorMessage(e)),
                                                   backgroundColor:
                                                       Theme.of(context)
                                                           .colorScheme
@@ -3811,10 +3813,10 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
   String _poolCapacityLabel(TournamentPoolModel pool) {
     final teamCountLabel =
         pool.teams.length == 1 ? '1 team' : '${pool.teams.length} teams';
-    final capacitySuffix = pool.maxTeams > 0
+    final capacityText = pool.maxTeams > 0
         ? '$teamCountLabel / ${pool.maxTeams} maximum'
         : '$teamCountLabel, no limit';
-    return '${pool.name} ($capacitySuffix)';
+    return '${pool.name} ($capacityText)';
   }
 
   bool _poolHasCapacity(TournamentPoolModel pool) {
