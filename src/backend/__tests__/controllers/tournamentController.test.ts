@@ -1652,7 +1652,7 @@ describe('PUT /api/tournaments/:id/pools/:poolId (updatePool)', () => {
 
   it('returns 403 when non-organizer', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
-    vi.mocked(tournamentService.isOrganizer).mockReturnValue(false);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
 
     const res = await request(app)
       .put('/api/tournaments/tournament-1/pools/pool-1')
@@ -1703,7 +1703,7 @@ describe('DELETE /api/tournaments/:id/pools/:poolId (deletePool)', () => {
 
   it('returns 403 when non-organizer', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
-    vi.mocked(tournamentService.isOrganizer).mockReturnValue(false);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
 
     const res = await request(app).delete('/api/tournaments/tournament-1/pools/pool-1');
 

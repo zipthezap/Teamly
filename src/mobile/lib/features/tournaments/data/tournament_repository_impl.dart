@@ -358,6 +358,16 @@ class TournamentRepositoryImpl implements TournamentRepository {
   Future<void> deleteMatch(String tournamentId, String matchId) async {
     await _dio.delete('/tournaments/$tournamentId/matches/$matchId');
   }
+
+  @override
+  Future<Map<String, dynamic>> generateBrackets(
+      String tournamentId, {int? numberOfGroups}) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/tournaments/$tournamentId/generate-brackets',
+      data: numberOfGroups != null ? {'numberOfGroups': numberOfGroups} : {},
+    );
+    return response.data!;
+  }
 }
 
 final tournamentRepositoryProvider = Provider<TournamentRepository>((ref) {

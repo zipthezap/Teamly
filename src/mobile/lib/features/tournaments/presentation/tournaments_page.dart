@@ -482,6 +482,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
   String? get currentUserId => widget.currentUserId;
   VoidCallback get onRefresh => widget.onRefresh;
 
+  bool _generatingBrackets = false;
+
   @override
   Widget build(BuildContext context) {
     final canRegister =
@@ -715,6 +717,20 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 onPressed: () =>
                     context.push('/tournaments/${t.id}/matches', extra: t),
               ),
+              if (t.status == 'registration' || t.status == 'draft')
+                OutlinedButton.icon(
+                  icon: _generatingBrackets
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.account_tree_outlined, size: 16),
+                  label: const Text('Generate Brackets'),
+                  onPressed: _generatingBrackets
+                      ? null
+                      : () => _generateBrackets(context),
+                ),
               OutlinedButton.icon(
                 icon: const Icon(Icons.pending_actions_outlined, size: 16),
                 label: const Text('Update Status'),
@@ -726,6 +742,78 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
         ],
       ),
     );
+  }
+
+  Future<void> _generateBrackets(BuildContext context) async {
+    // For groups_knockout format, ask how many groups
+    int? numberOfGroups;
+    if (t.format == 'groups_knockout') {
+      final ctrl = TextEditingController(text: '4');
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Number of Groups'),
+          content: TextField(
+            controller: ctrl,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Groups'),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('OK')),
+          ],
+        ),
+      );
+      if (ok != true) return;
+      numberOfGroups = int.tryParse(ctrl.text.trim()) ?? 4;
+    }
+
+    // Confirm — this will transition the tournament to in_progress
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Generate Brackets'),
+        content: const Text(
+          'This will generate the match schedule and move the tournament to "In Progress". '
+          'Brackets cannot be regenerated once created. Continue?',
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Generate')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _generatingBrackets = true);
+    try {
+      await ref
+          .read(tournamentRepositoryProvider)
+          .generateBrackets(t.id, numberOfGroups: numberOfGroups);
+      onRefresh();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Brackets generated successfully')),
+        );
+      }
+    } on Exception catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _generatingBrackets = false);
+    }
   }
 
   void _showStatusDialog(

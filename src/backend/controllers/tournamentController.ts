@@ -717,8 +717,8 @@ export const deleteTeam = async (req: Request, res: Response) => {
 
   ensureResourceExists(tournament, 'Tournament');
 
-  if (!tournamentService.isOrganizer(tournament!, userId)) {
-    throw new ForbiddenError('Only the organizer can delete teams');
+  if (!await tournamentService.isOrganizerOrAdmin(tournament!, userId)) {
+    throw new ForbiddenError('Only organizers and admins can delete teams');
   }
 
   // Check if tournament has started
@@ -754,8 +754,8 @@ export const generateBrackets = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (!tournamentService.isOrganizer(tournament, userId)) {
-    throw new ForbiddenError('Only the organizer can generate brackets');
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can generate brackets');
   }
 
   // Check if brackets already exist
@@ -966,8 +966,8 @@ export const createMatch = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (!tournamentService.isOrganizer(tournament, userId)) {
-    throw new ForbiddenError('Only the organizer can create matches');
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can create matches');
   }
 
   // Verify teams exist and belong to this tournament
@@ -1048,8 +1048,8 @@ export const updateMatch = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (!tournamentService.isOrganizer(tournament, userId)) {
-    throw new ForbiddenError('Only the organizer can update matches');
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can update matches');
   }
 
   const match = ensureResourceExists(
@@ -1127,8 +1127,8 @@ export const deleteMatch = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (!tournamentService.isOrganizer(tournament, userId)) {
-    throw new ForbiddenError('Only the organizer can delete matches');
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can delete matches');
   }
 
   const match = ensureResourceExists(
@@ -1167,8 +1167,8 @@ export const assignReferee = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (!tournamentService.isOrganizer(tournament, userId)) {
-    throw new ForbiddenError('Only the organizer can assign referees');
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can assign referees');
   }
 
   const match = ensureResourceExists(
@@ -1602,8 +1602,8 @@ export const createPool = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (!tournamentService.isOrganizer(tournament, userId)) {
-    throw new ForbiddenError('Only the organizer can create pools');
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can create pools');
   }
 
   let pool;
@@ -1645,8 +1645,8 @@ export const updatePool = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (!tournamentService.isOrganizer(tournament, userId)) {
-    throw new ForbiddenError('Only the organizer can update pools');
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can update pools');
   }
 
   ensureResourceExists(
@@ -1706,8 +1706,8 @@ export const deletePool = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (!tournamentService.isOrganizer(tournament, userId)) {
-    throw new ForbiddenError('Only the organizer can delete pools');
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can delete pools');
   }
 
   const pool = ensureResourceExists(
