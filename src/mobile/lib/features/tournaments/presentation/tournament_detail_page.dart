@@ -830,7 +830,7 @@ class _StandingRow {
     final lost = ga ?? 0;
     if (lost == 0) {
       if (won == 0) return '0.00';
-      return '∞';
+      return 'INF';
     }
     return (won / lost).toStringAsFixed(2);
   }
