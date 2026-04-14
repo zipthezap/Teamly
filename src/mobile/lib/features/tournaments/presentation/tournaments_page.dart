@@ -3424,7 +3424,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
 
     var dialogPools = List<TournamentPoolModel>.from(_pools);
     final allTeams = List<TournamentTeamModel>.from(tournament.teams)
-      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      ..sort(_compareTeamsByName);
     String? selectedCategoryId =
         _categories.isNotEmpty ? _categories.first.id : null;
     String? updatingTeamId;
@@ -3500,7 +3500,8 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                 const SizedBox(height: 8),
                                 DragTarget<_PoolFormationDragData>(
                                   onWillAcceptWithDetails: (details) =>
-                                      details.data.fromPoolId != null,
+                                      details.data.fromPoolId != null &&
+                                      updatingTeamId == null,
                                   onAcceptWithDetails: (details) async {
                                     if (updatingTeamId != null) return;
                                     final fromPoolId = details.data.fromPoolId;
@@ -3695,7 +3696,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                                     CrossAxisAlignment.start,
                                                 children: [
                                                   Text(
-                                                    '${pool.name} (${pool.teams.length} teams${pool.maxTeams > 0 ? ' / ${pool.maxTeams} max' : ', no limit'})',
+                                                    _poolCapacityLabel(pool),
                                                     style: const TextStyle(
                                                         fontWeight:
                                                             FontWeight.w600),
@@ -3783,6 +3784,17 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
         ],
       ),
     );
+  }
+
+  int _compareTeamsByName(TournamentTeamModel a, TournamentTeamModel b) {
+    return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+  }
+
+  String _poolCapacityLabel(TournamentPoolModel pool) {
+    final capacitySuffix = pool.maxTeams > 0
+        ? '${pool.teams.length} teams / ${pool.maxTeams} max'
+        : '${pool.teams.length} teams, no limit';
+    return '${pool.name} ($capacitySuffix)';
   }
 
   Future<void> _createPool() async {
