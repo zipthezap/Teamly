@@ -10,13 +10,13 @@ import '../data/tournament_repository_impl.dart';
 class TournamentsNotifier extends AsyncNotifier<List<TournamentModel>> {
   @override
   Future<List<TournamentModel>> build() {
-    return ref.watch(tournamentRepositoryProvider).getTournaments();
+    return ref.watch(tournamentReadRepositoryProvider).getTournaments();
   }
 
   Future<void> reload() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(
-      () => ref.read(tournamentRepositoryProvider).getTournaments(),
+      () => ref.read(tournamentReadRepositoryProvider).getTournaments(),
     );
   }
 }
@@ -31,5 +31,5 @@ final tournamentsNotifierProvider =
 
 final tournamentDetailProvider =
     FutureProvider.family<TournamentModel, String>((ref, id) async {
-  return ref.watch(tournamentRepositoryProvider).getTournament(id);
+  return ref.watch(tournamentReadRepositoryProvider).getTournament(id);
 });
