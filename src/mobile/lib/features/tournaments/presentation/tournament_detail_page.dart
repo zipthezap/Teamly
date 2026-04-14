@@ -1042,20 +1042,20 @@ class _ScoreTable extends StatelessWidget {
                               fontWeight: FontWeight.w600, fontSize: 12))),
                     if (showGoals) ...[
                       const SizedBox(
-                          width: 36,
-                          child: Text('PW',
+                          width: 64,
+                          child: Text('Pts Won',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                   fontWeight: FontWeight.w600, fontSize: 12))),
                       const SizedBox(
-                          width: 36,
-                          child: Text('PL',
+                          width: 64,
+                          child: Text('Pts Lost',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                   fontWeight: FontWeight.w600, fontSize: 12))),
                       const SizedBox(
-                          width: 44,
-                          child: Text('R',
+                          width: 56,
+                          child: Text('Ratio',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                   fontWeight: FontWeight.w600, fontSize: 12))),
@@ -1110,17 +1110,17 @@ class _ScoreTable extends StatelessWidget {
                             style: const TextStyle(fontSize: 13))),
                     if (showGoals) ...[
                       SizedBox(
-                          width: 36,
+                          width: 64,
                           child: Text('${sorted[i].gf ?? 0}',
                               textAlign: TextAlign.center,
                               style: const TextStyle(fontSize: 13))),
                       SizedBox(
-                          width: 36,
+                          width: 64,
                           child: Text('${sorted[i].ga ?? 0}',
                               textAlign: TextAlign.center,
                               style: const TextStyle(fontSize: 13))),
                       SizedBox(
-                          width: 44,
+                          width: 56,
                           child: Text(sorted[i].ratioLabel,
                               textAlign: TextAlign.center,
                               style: const TextStyle(fontSize: 13))),
