@@ -3695,7 +3695,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                                     CrossAxisAlignment.start,
                                                 children: [
                                                   Text(
-                                                    '${pool.name} (${pool.teams.length}/${pool.maxTeams > 0 ? pool.maxTeams : 'no limit'})',
+                                                    '${pool.name} (${pool.teams.length} teams${pool.maxTeams > 0 ? ' / ${pool.maxTeams} max' : ', no limit'})',
                                                     style: const TextStyle(
                                                         fontWeight:
                                                             FontWeight.w600),
@@ -3777,7 +3777,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
         children: [
           Text(team.name, style: const TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 2),
-          Text('Current: $subtitle',
+          Text('Pool: $subtitle',
               style: TextStyle(
                   fontSize: 12, color: AppThemeTokens.textSecondary(context))),
         ],
