@@ -107,9 +107,10 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
         'useManualBrackets': _useManualBrackets,
       });
       ref.read(tournamentsNotifierProvider.notifier).reload();
+      ref.invalidate(tournamentDetailProvider(widget.tournamentId));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tournament updated!')));
-      context.pop();
+      context.pop(true);
     } on Exception catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -246,4 +247,3 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
 // ===========================================================================
 // Matches Management Page
 // ===========================================================================
-
