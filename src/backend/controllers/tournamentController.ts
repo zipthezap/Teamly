@@ -253,6 +253,25 @@ export const getTournaments = async (req: Request, res: Response) => {
     prisma.tournament.count({ where }),
   ]);
 
+  // Auto-advance statuses based on tournament dates (fire-and-forget)
+  const statusUpdates: { id: string; status: string }[] = [];
+  for (const t of tournaments) {
+    const autoStatus = tournamentService.computeAutoStatus(t);
+    if (autoStatus) {
+      statusUpdates.push({ id: t.id, status: autoStatus });
+      (t as Record<string, unknown>).status = autoStatus;
+    }
+  }
+  if (statusUpdates.length > 0) {
+    Promise.all(
+      statusUpdates.map(({ id, status }) =>
+        prisma.tournament.update({ where: { id }, data: { status } })
+      )
+    ).catch((err: unknown) =>
+      logger.warn('Auto-status batch update failed', 'TournamentController', { error: err })
+    );
+  }
+
   res.json({
     data: tournaments,
     pagination: {
@@ -353,6 +372,15 @@ export const getTournament = async (req: Request, res: Response) => {
   });
 
   ensureResourceExists(tournament, 'Tournament');
+
+  // Auto-advance status based on tournament dates
+  const autoStatus = tournamentService.computeAutoStatus(tournament!);
+  if (autoStatus) {
+    prisma.tournament.update({ where: { id }, data: { status: autoStatus } }).catch(
+      (err: unknown) => logger.warn('Auto-status update failed', 'TournamentController', { tournamentId: id, error: err })
+    );
+    (tournament as Record<string, unknown>).status = autoStatus;
+  }
 
   res.json(tournament);
 };
@@ -689,8 +717,8 @@ export const deleteTeam = async (req: Request, res: Response) => {
 
   ensureResourceExists(tournament, 'Tournament');
 
-  if (!tournamentService.isOrganizer(tournament!, userId)) {
-    throw new ForbiddenError('Only the organizer can delete teams');
+  if (!await tournamentService.isOrganizerOrAdmin(tournament!, userId)) {
+    throw new ForbiddenError('Only organizers and admins can delete teams');
   }
 
   // Check if tournament has started
@@ -726,8 +754,8 @@ export const generateBrackets = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (!tournamentService.isOrganizer(tournament, userId)) {
-    throw new ForbiddenError('Only the organizer can generate brackets');
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can generate brackets');
   }
 
   // Check if brackets already exist
@@ -938,8 +966,8 @@ export const createMatch = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (!tournamentService.isOrganizer(tournament, userId)) {
-    throw new ForbiddenError('Only the organizer can create matches');
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can create matches');
   }
 
   // Verify teams exist and belong to this tournament
@@ -1020,8 +1048,8 @@ export const updateMatch = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (!tournamentService.isOrganizer(tournament, userId)) {
-    throw new ForbiddenError('Only the organizer can update matches');
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can update matches');
   }
 
   const match = ensureResourceExists(
@@ -1099,8 +1127,8 @@ export const deleteMatch = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (!tournamentService.isOrganizer(tournament, userId)) {
-    throw new ForbiddenError('Only the organizer can delete matches');
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can delete matches');
   }
 
   const match = ensureResourceExists(
@@ -1139,8 +1167,8 @@ export const assignReferee = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (!tournamentService.isOrganizer(tournament, userId)) {
-    throw new ForbiddenError('Only the organizer can assign referees');
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can assign referees');
   }
 
   const match = ensureResourceExists(
@@ -1574,8 +1602,8 @@ export const createPool = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (!tournamentService.isOrganizer(tournament, userId)) {
-    throw new ForbiddenError('Only the organizer can create pools');
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can create pools');
   }
 
   let pool;
@@ -1617,8 +1645,8 @@ export const updatePool = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (!tournamentService.isOrganizer(tournament, userId)) {
-    throw new ForbiddenError('Only the organizer can update pools');
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can update pools');
   }
 
   ensureResourceExists(
@@ -1678,8 +1706,8 @@ export const deletePool = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (!tournamentService.isOrganizer(tournament, userId)) {
-    throw new ForbiddenError('Only the organizer can delete pools');
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can delete pools');
   }
 
   const pool = ensureResourceExists(
@@ -2496,8 +2524,9 @@ export const getAdmins = async (req: Request, res: Response) => {
   const tournament = await prisma.tournament.findUnique({ where: { id } });
   ensureResourceExists(tournament, 'Tournament');
 
-  if (!tournamentService.isOrganizer(tournament!, userId)) {
-    throw new ForbiddenError('Only the organizer can view admin roles');
+  const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament!, userId);
+  if (!isOrgOrAdmin) {
+    throw new ForbiddenError('Only the organizer or a co-organizer can view admin roles');
   }
 
   const admins = await prisma.tournamentAdminRole.findMany({
@@ -2800,14 +2829,6 @@ export const updateTournamentStatus = async (req: Request, res: Response) => {
   }
 
   // Enforce pre-conditions for each transition
-  if (status === 'registration') {
-    // draft → registration: require at least one pool
-    const poolCount = await prisma.tournamentPool.count({ where: { tournamentId: id } });
-    if (poolCount === 0) {
-      throw new BadRequestError('Cannot open registration: tournament must have at least one pool');
-    }
-  }
-
   if (status === 'in_progress') {
     // registration → in_progress: require at least 2 registered teams
     const teamCount = await prisma.tournamentTeam.count({ where: { tournamentId: id } });
@@ -2893,6 +2914,25 @@ export const getPublicTournaments = async (req: Request, res: Response) => {
     }),
     prisma.tournament.count({ where }),
   ]);
+
+  // Auto-advance statuses based on tournament dates (fire-and-forget)
+  const publicStatusUpdates: { id: string; status: string }[] = [];
+  for (const t of tournaments) {
+    const autoStatus = tournamentService.computeAutoStatus(t);
+    if (autoStatus) {
+      publicStatusUpdates.push({ id: t.id, status: autoStatus });
+      (t as Record<string, unknown>).status = autoStatus;
+    }
+  }
+  if (publicStatusUpdates.length > 0) {
+    Promise.all(
+      publicStatusUpdates.map(({ id, status }) =>
+        prisma.tournament.update({ where: { id }, data: { status } })
+      )
+    ).catch((err: unknown) =>
+      logger.warn('Auto-status batch update failed (public)', 'TournamentController', { error: err })
+    );
+  }
 
   res.json({
     data: tournaments,

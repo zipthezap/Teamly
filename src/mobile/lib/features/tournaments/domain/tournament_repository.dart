@@ -71,4 +71,7 @@ abstract class TournamentRepository {
   Future<void> createMatch(String tournamentId, Map<String, dynamic> data);
   Future<void> updateMatch(String tournamentId, String matchId, Map<String, dynamic> data);
   Future<void> deleteMatch(String tournamentId, String matchId);
+
+  // Bracket generation
+  Future<Map<String, dynamic>> generateBrackets(String tournamentId, {int? numberOfGroups});
 }

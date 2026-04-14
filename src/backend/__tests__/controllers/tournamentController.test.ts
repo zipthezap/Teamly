@@ -139,6 +139,7 @@ vi.mock('../../services/tournamentService', () => ({
   isTeamCaptain: vi.fn().mockResolvedValue(false),
   canSubmitScore: vi.fn().mockResolvedValue(true),
   canManageTeamInvitations: vi.fn().mockResolvedValue(true),
+  computeAutoStatus: vi.fn(() => null),
   generateSingleEliminationBrackets: vi.fn().mockResolvedValue({ count: 4 }),
   generateRoundRobinBrackets: vi.fn().mockResolvedValue({ count: 6 }),
   generateGroupsKnockoutBrackets: vi.fn().mockResolvedValue({ count: 8 }),
@@ -301,6 +302,7 @@ beforeEach(() => {
   vi.mocked(tournamentService.isTeamCaptain).mockResolvedValue(false);
   vi.mocked(tournamentService.canSubmitScore).mockResolvedValue(true);
   vi.mocked(tournamentService.canManageTeamInvitations).mockResolvedValue(true);
+  vi.mocked(tournamentService.computeAutoStatus).mockReturnValue(null);
   vi.mocked(tournamentService.generateSingleEliminationBrackets).mockResolvedValue({ count: 4 });
   vi.mocked(tournamentService.generateRoundRobinBrackets).mockResolvedValue({ count: 6 });
   vi.mocked(tournamentService.generateGroupsKnockoutBrackets).mockResolvedValue({ count: 8 });
@@ -1520,17 +1522,16 @@ describe('PUT /api/tournaments/:id/status (updateTournamentStatus)', () => {
     expect(res.status).toBe(200);
   });
 
-  it('returns 400 when transitioning draft → registration without pools', async () => {
+  it('returns 200 when transitioning draft → registration without pools', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournament.update).mockResolvedValue({ ...mockTournament, status: 'registration' } as any);
     vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
-    vi.mocked(prisma.tournamentPool.count).mockResolvedValue(0);
 
     const res = await request(app)
       .put('/api/tournaments/tournament-1/status')
       .send({ status: 'registration' });
 
-    expect(res.status).toBe(400);
-    expect(res.body.error).toContain('at least one pool');
+    expect(res.status).toBe(200);
   });
 
   it('returns 200 on valid transition (registration → in_progress)', async () => {
@@ -1651,7 +1652,7 @@ describe('PUT /api/tournaments/:id/pools/:poolId (updatePool)', () => {
 
   it('returns 403 when non-organizer', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
-    vi.mocked(tournamentService.isOrganizer).mockReturnValue(false);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
 
     const res = await request(app)
       .put('/api/tournaments/tournament-1/pools/pool-1')
@@ -1702,7 +1703,7 @@ describe('DELETE /api/tournaments/:id/pools/:poolId (deletePool)', () => {
 
   it('returns 403 when non-organizer', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
-    vi.mocked(tournamentService.isOrganizer).mockReturnValue(false);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
 
     const res = await request(app).delete('/api/tournaments/tournament-1/pools/pool-1');
 
@@ -1994,7 +1995,7 @@ const mockVerifiedUser = {
 describe('GET /api/tournaments/:id/admins (getAdmins)', () => {
   it('returns 200 with admins list', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
-    vi.mocked(tournamentService.isOrganizer).mockReturnValue(true);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
     vi.mocked(prisma.tournamentAdminRole.findMany).mockResolvedValue([mockAdminRole] as any);
 
     const res = await request(app).get('/api/tournaments/tournament-1/admins');
@@ -2004,9 +2005,9 @@ describe('GET /api/tournaments/:id/admins (getAdmins)', () => {
     expect(res.body[0]).toMatchObject({ id: 'admin-role-1' });
   });
 
-  it('returns 403 when not organizer', async () => {
+  it('returns 403 when not organizer or co-organizer', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
-    vi.mocked(tournamentService.isOrganizer).mockReturnValue(false);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
 
     const res = await request(app).get('/api/tournaments/tournament-1/admins');
 

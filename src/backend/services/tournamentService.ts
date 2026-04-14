@@ -90,6 +90,49 @@ export const sanitizeTournamentData = (data: {
 };
 
 /**
+ * Compute the expected automatic tournament status based on tournament dates.
+ * Returns the new status string if the status should change, or null if no change is needed.
+ *
+ * Rules (in priority order):
+ *  1. Cancelled tournaments are never auto-changed.
+ *  2. If endDate has passed → 'completed'.
+ *  3. If startDate has arrived (and not already in_progress/completed) → 'in_progress'.
+ *  4. If registrationStartDate has arrived and registration deadline hasn't passed → 'registration'.
+ */
+export const computeAutoStatus = (tournament: {
+  status: string;
+  startDate: Date;
+  endDate?: Date | null;
+  registrationStartDate?: Date | null;
+  registrationDeadline?: Date | null;
+}): string | null => {
+  if (tournament.status === 'cancelled') return null;
+
+  const now = new Date();
+
+  if (tournament.endDate && now > tournament.endDate) {
+    return tournament.status !== 'completed' ? 'completed' : null;
+  }
+
+  if (now >= tournament.startDate) {
+    if (tournament.status !== 'in_progress' && tournament.status !== 'completed') {
+      return 'in_progress';
+    }
+    return null;
+  }
+
+  if (tournament.registrationStartDate && now >= tournament.registrationStartDate) {
+    const deadlinePassed =
+      tournament.registrationDeadline != null && now > tournament.registrationDeadline;
+    if (!deadlinePassed && tournament.status === 'draft') {
+      return 'registration';
+    }
+  }
+
+  return null;
+};
+
+/**
  * Validate tournament dates
  */
 export const validateTournamentDates = (startDate: Date | string, endDate?: Date | string) => {
