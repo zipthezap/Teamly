@@ -7,6 +7,10 @@ import * as teamUpNotificationService from '../services/teamUpNotificationServic
 import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors';
 import { parseCoordinates, parseFloatStrict } from '../utils/validation';
 
+// Valid request types
+const VALID_REQUEST_TYPES = ['need_players', 'looking_for_play'] as const;
+type TeamUpRequestType = (typeof VALID_REQUEST_TYPES)[number];
+
 // Create a TeamUp request
 export const createTeamUpRequest = async (req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -14,6 +18,7 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
     title,
     description,
     sportType,
+    requestType,
     location,
     latitude,
     longitude,
@@ -25,8 +30,19 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
     skillLevel
   } = req.body;
 
-  if (!title || !sportType || !dateTime) {
-    throw new BadRequestError('title, sportType, and dateTime are required');
+  if (!title || !sportType) {
+    throw new BadRequestError('title and sportType are required');
+  }
+
+  // Validate requestType
+  const resolvedRequestType: TeamUpRequestType =
+    requestType && VALID_REQUEST_TYPES.includes(requestType as TeamUpRequestType)
+      ? (requestType as TeamUpRequestType)
+      : 'need_players';
+
+  // For need_players, dateTime is required (you have a specific session to fill)
+  if (resolvedRequestType === 'need_players' && !dateTime) {
+    throw new BadRequestError('dateTime is required for need_players requests');
   }
 
   // Sanitize text inputs
@@ -46,15 +62,19 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
     throw new BadRequestError('Title and sport type cannot be empty or whitespace-only');
   }
 
-  // Validate dateTime
-  const eventDate = new Date(dateTime);
-  if (isNaN(eventDate.getTime())) {
-    throw new BadRequestError('Invalid dateTime format');
-  }
-
-  // Check if dateTime is in the future
-  if (eventDate <= new Date()) {
-    throw new BadRequestError('dateTime must be in the future');
+  // Resolve dateTime: required for need_players, defaults to 30 days from now for looking_for_play
+  let eventDate: Date;
+  if (dateTime) {
+    eventDate = new Date(dateTime);
+    if (isNaN(eventDate.getTime())) {
+      throw new BadRequestError('Invalid dateTime format');
+    }
+    if (eventDate <= new Date()) {
+      throw new BadRequestError('dateTime must be in the future');
+    }
+  } else {
+    // looking_for_play without explicit date: default availability window is 30 days
+    eventDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   }
 
   // Validate playersNeeded if provided
@@ -63,7 +83,7 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
     throw new BadRequestError('playersNeeded must be at least 1');
   }
 
-  // Set expiration to 1 hour after the session time
+  // Set expiration to 1 hour after the session time (or 30 days for availability windows)
   const expiresAt = new Date(eventDate.getTime() + 60 * 60 * 1000);
 
   // Parse coordinates once if provided
@@ -75,6 +95,7 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
       title: sanitized.title!,
       description: sanitized.description,
       sportType: sanitized.sportType!,
+      requestType: resolvedRequestType,
       location: sanitized.location,
       latitude: coordinates?.lat ?? null,
       longitude: coordinates?.lon ?? null,
@@ -99,7 +120,7 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
         }
       },
       _count: {
-        select: { responses: true }
+        select: { responses: true, comments: true }
       }
     }
   });
@@ -129,10 +150,13 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
 export const getTeamUpRequests = async (req: Request, res: Response) => {
   const {
     sportType,
+    requestType,
     city,
     country,
     skillLevel,
     status = 'open',
+    fromDate,
+    toDate,
     limit = '50',
     offset = '0',
     cursor
@@ -155,6 +179,11 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
     where.sportType = sportType as string;
   }
 
+  // Filter by request type (need_players or looking_for_play)
+  if (requestType && VALID_REQUEST_TYPES.includes(requestType as TeamUpRequestType)) {
+    where.requestType = requestType as string;
+  }
+
   if (city) {
     where.city = city as string;
   }
@@ -167,10 +196,21 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
     where.skillLevel = skillLevel as string;
   }
 
-  // Only show future events - second part of composite index [status, dateTime]
-  where.dateTime = {
-    gte: new Date()
-  };
+  // Date range filtering
+  const dateFilter: Record<string, Date> = {};
+  if (fromDate) {
+    const parsed = new Date(fromDate as string);
+    if (!isNaN(parsed.getTime())) dateFilter.gte = parsed;
+  }
+  if (toDate) {
+    const parsed = new Date(toDate as string);
+    if (!isNaN(parsed.getTime())) dateFilter.lte = parsed;
+  }
+  // Default: only show requests in the present or future
+  if (!dateFilter.gte) {
+    dateFilter.gte = new Date();
+  }
+  where.dateTime = dateFilter;
 
   // Add cursor-based pagination if cursor is provided
   if (cursor) {
@@ -297,10 +337,11 @@ export const getMyTeamUpRequests = async (req: Request, res: Response) => {
               profilePicture: true
             }
           }
-        }
+        },
+        orderBy: { createdAt: 'asc' }
       },
       _count: {
-        select: { responses: true }
+        select: { responses: true, comments: true }
       }
     },
     orderBy: { dateTime: 'asc' }
@@ -381,6 +422,7 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
     title,
     description,
     sportType,
+    requestType,
     location,
     latitude,
     longitude,
@@ -434,6 +476,14 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
   if (sanitized.country !== undefined) updateData.country = sanitized.country;
   if (sanitized.skillLevel !== undefined) updateData.skillLevel = sanitized.skillLevel;
   if (status !== undefined) updateData.status = status;
+
+  // Validate and set requestType if provided
+  if (requestType !== undefined) {
+    if (!VALID_REQUEST_TYPES.includes(requestType as TeamUpRequestType)) {
+      throw new BadRequestError('requestType must be need_players or looking_for_play');
+    }
+    updateData.requestType = requestType;
+  }
 
   if (dateTime !== undefined) {
     const eventDate = new Date(dateTime);
@@ -635,6 +685,7 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
 };
 
 // Accept or decline a response (creator only)
+// Uses a database transaction to prevent over-accepting (race condition safety)
 export const handleTeamUpResponse = async (req: Request, res: Response) => {
   const { id, responseId } = req.params;
   const { action } = req.body;
@@ -643,6 +694,7 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
     throw new BadRequestError('Action must be "accept" or "decline"');
   }
 
+  // Verify the creator owns this request (outside transaction for early exit)
   const teamUpRequest = await prisma.teamUpRequest.findUnique({
     where: { id },
     select: { 
@@ -663,7 +715,7 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the creator can manage responses');
   }
 
-  const response = await prisma.teamUpResponse.findUnique({
+  const existingResponse = await prisma.teamUpResponse.findUnique({
     where: { id: responseId },
     include: {
       user: {
@@ -677,34 +729,65 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
     }
   });
 
-  if (!response) {
+  if (!existingResponse) {
     throw new NotFoundError('Response not found');
   }
 
-  if (response.teamUpRequestId !== id) {
+  if (existingResponse.teamUpRequestId !== id) {
     throw new BadRequestError('Response does not belong to this TeamUp request');
   }
 
-  const updated = await prisma.teamUpResponse.update({
-    where: { id: responseId },
-    data: { status: action === 'accept' ? 'accepted' : 'declined' },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          profilePicture: true
-        }
+  // Use a transaction to atomically update the response status and conditionally
+  // mark the request as filled, preventing concurrent accepts from over-booking.
+  const { updated, requestFilled } = await prisma.$transaction(async (tx) => {
+    // When accepting, verify we haven't already filled all spots
+    if (action === 'accept') {
+      const acceptedCount = await tx.teamUpResponse.count({
+        where: { teamUpRequestId: id, status: 'accepted' }
+      });
+      if (acceptedCount >= teamUpRequest.playersNeeded) {
+        throw new BadRequestError('All spots have already been filled for this request');
       }
     }
+
+    const updated = await tx.teamUpResponse.update({
+      where: { id: responseId },
+      data: { status: action === 'accept' ? 'accepted' : 'declined' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            profilePicture: true
+          }
+        }
+      }
+    });
+
+    // Auto-fill: recount after update and mark request filled if needed
+    let requestFilled = false;
+    if (action === 'accept') {
+      const newAcceptedCount = await tx.teamUpResponse.count({
+        where: { teamUpRequestId: id, status: 'accepted' }
+      });
+      if (newAcceptedCount >= teamUpRequest.playersNeeded) {
+        await tx.teamUpRequest.update({
+          where: { id },
+          data: { status: 'filled' }
+        });
+        requestFilled = true;
+      }
+    }
+
+    return { updated, requestFilled };
   });
 
-  // Create notification for the responder
+  // Send notifications outside the transaction (non-blocking)
   try {
     await prisma.teamUpNotification.create({
       data: {
-        userId: response.userId,
+        userId: existingResponse.userId,
         teamUpRequestId: id,
         type: action === 'accept' ? 'teamup_accepted' : 'teamup_declined',
         params: {
@@ -724,7 +807,7 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
     const emailHtml = action === 'accept' 
       ? `
         <h2>Your Response Was Accepted! 🎉</h2>
-        <p>Hi ${response.user.name},</p>
+        <p>Hi ${existingResponse.user.name},</p>
         <p>Great news! Your response to the following TeamUp request has been accepted:</p>
         <div style="background: #f0f9ff; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #3b82f6;">
           <h3 style="margin-top: 0; color: #1e40af;">${teamUpRequest.title}</h3>
@@ -736,7 +819,7 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
       `
       : `
         <h2>Response Status Update</h2>
-        <p>Hi ${response.user.name},</p>
+        <p>Hi ${existingResponse.user.name},</p>
         <p>Thank you for your interest. Unfortunately, your response to the following TeamUp request was not accepted:</p>
         <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0;">
           <h3 style="margin-top: 0;">${teamUpRequest.title}</h3>
@@ -748,7 +831,7 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
 
     await prisma.emailQueue.create({
       data: {
-        recipient: response.user.email,
+        recipient: existingResponse.user.email,
         subject: action === 'accept' 
           ? `You're In! Response Accepted for "${teamUpRequest.title}"`
           : `Response Update for "${teamUpRequest.title}"`,
@@ -763,28 +846,10 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
     // Don't fail the response if notification fails
   }
 
-  // Check if request should be auto-filled
-  if (action === 'accept') {
-    const acceptedCount = await prisma.teamUpResponse.count({
-      where: {
-        teamUpRequestId: id,
-        status: 'accepted'
-      }
-    });
-
-    // Auto-update status to 'filled' if enough players have been accepted
-    if (acceptedCount >= teamUpRequest.playersNeeded) {
-      await prisma.teamUpRequest.update({
-        where: { id },
-        data: { status: 'filled' }
-      });
-    }
-  }
-
-  res.json({ message: `Response ${action}ed`, response: updated });
+  res.json({ message: `Response ${action}ed`, response: updated, requestFilled });
 };
 
-// Get responses for user's TeamUp requests
+// Get responses for user's TeamUp requests (creator view: responses others submitted to MY requests)
 export const getMyTeamUpResponses = async (req: Request, res: Response) => {
   const responses = await prisma.teamUpResponse.findMany({
     where: {
@@ -806,7 +871,49 @@ export const getMyTeamUpResponses = async (req: Request, res: Response) => {
           id: true,
           title: true,
           sportType: true,
+          requestType: true,
           dateTime: true
+        }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  res.json(responses);
+};
+
+// Get applications I submitted (responder view: responses I submitted to others' requests)
+export const getMyTeamUpApplications = async (req: Request, res: Response) => {
+  const responses = await prisma.teamUpResponse.findMany({
+    where: {
+      userId: req.user!.id
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          profilePicture: true
+        }
+      },
+      teamUpRequest: {
+        select: {
+          id: true,
+          title: true,
+          sportType: true,
+          requestType: true,
+          dateTime: true,
+          city: true,
+          location: true,
+          status: true,
+          creator: {
+            select: {
+              id: true,
+              name: true,
+              profilePicture: true
+            }
+          }
         }
       }
     },

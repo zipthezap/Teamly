@@ -25,6 +25,9 @@ router.get('/nearby', cacheControl(300, { private: true, staleWhileRevalidate: 6
 // Get user's own TeamUp requests - cache for 2 minutes
 router.get('/my-requests', cacheControl(120, { private: true, staleWhileRevalidate: 30 }), asyncHandler(teamUpController.getMyTeamUpRequests));
 
+// Get applications I submitted (responder view: responses I submitted to others' requests)
+router.get('/my-applications', cacheControl(60, { private: true }), asyncHandler(teamUpController.getMyTeamUpApplications));
+
 // Get responses for user's TeamUp requests - cache for 1 minute
 router.get('/my-responses', cacheControl(60, { private: true }), asyncHandler(teamUpController.getMyTeamUpResponses));
 
