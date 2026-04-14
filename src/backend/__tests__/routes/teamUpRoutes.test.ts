@@ -48,7 +48,8 @@ vi.mock('../../controllers/teamUpController', () => ({
   handleTeamUpResponse: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getTeamUpComments: vi.fn((req: any, res: any) => res.json({ ok: true })),
   addTeamUpComment: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  deleteTeamUpComment: vi.fn((req: any, res: any) => res.json({ ok: true }))
+  deleteTeamUpComment: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getMyTeamUpApplications: vi.fn((req: any, res: any) => res.json({ ok: true }))
 }));
 
 describe('TeamUp Routes', () => {
@@ -91,6 +92,11 @@ describe('TeamUp Routes', () => {
 
   it('POST /api/:id/respond → 200', async () => {
     const res = await request(app).post('/api/teamup-1/respond').send({});
+    expect(res.status).toBe(200);
+  });
+
+  it('GET /api/my-applications → 200', async () => {
+    const res = await request(app).get('/api/my-applications');
     expect(res.status).toBe(200);
   });
 

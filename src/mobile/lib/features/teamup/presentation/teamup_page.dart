@@ -46,7 +46,7 @@ class _TeamUpPageState extends ConsumerState<TeamUpPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -90,13 +90,14 @@ class _TeamUpPageState extends ConsumerState<TeamUpPage>
                     ? AppThemeTokens.darkTextSecondary
                     : AppThemeTokens.lightTextSecondary,
                 labelStyle:
-                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 unselectedLabelStyle:
-                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                 tabs: const [
                   Tab(text: 'Browse'),
-                  Tab(text: 'My Requests'),
-                  Tab(text: 'Submit'),
+                  Tab(text: 'My Posts'),
+                  Tab(text: 'Applied'),
+                  Tab(text: 'Post'),
                 ],
               ),
             ),
@@ -108,6 +109,7 @@ class _TeamUpPageState extends ConsumerState<TeamUpPage>
         children: const [
           _BrowseTab(),
           _MyRequestsTab(),
+          _MyApplicationsTab(),
           _SubmitRequestTab(),
         ],
       ),
@@ -129,6 +131,7 @@ class _BrowseTab extends ConsumerStatefulWidget {
 class _BrowseTabState extends ConsumerState<_BrowseTab> {
   String _sportFilter = '';
   String _typeFilter = '';
+  String _skillFilter = '';
 
   @override
   Widget build(BuildContext context) {
@@ -162,9 +165,11 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
                       .toList(),
                   onSelected: (value) {
                     setState(() => _sportFilter = value);
-                    ref
-                        .read(teamUpNotifierProvider.notifier)
-                        .load(sportType: value, requestType: _typeFilter);
+                    ref.read(teamUpNotifierProvider.notifier).load(
+                          sportType: value,
+                          requestType: _typeFilter,
+                          skillLevel: _skillFilter,
+                        );
                   },
                 ),
                 const SizedBox(width: 8),
@@ -177,9 +182,30 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
                   ],
                   onSelected: (value) {
                     setState(() => _typeFilter = value);
-                    ref
-                        .read(teamUpNotifierProvider.notifier)
-                        .load(sportType: _sportFilter, requestType: value);
+                    ref.read(teamUpNotifierProvider.notifier).load(
+                          sportType: _sportFilter,
+                          requestType: value,
+                          skillLevel: _skillFilter,
+                        );
+                  },
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: 'Skill',
+                  value: _skillFilter,
+                  options: const [
+                    MapEntry('beginner', 'Beginner'),
+                    MapEntry('intermediate', 'Intermediate'),
+                    MapEntry('advanced', 'Advanced'),
+                    MapEntry('any', 'Any level'),
+                  ],
+                  onSelected: (value) {
+                    setState(() => _skillFilter = value);
+                    ref.read(teamUpNotifierProvider.notifier).load(
+                          sportType: _sportFilter,
+                          requestType: _typeFilter,
+                          skillLevel: value,
+                        );
                   },
                 ),
               ],
@@ -226,15 +252,45 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
 }
 
 // ---------------------------------------------------------------------------
-// My requests tab
+// My requests tab – with accept/decline controls per request
 // ---------------------------------------------------------------------------
 
-class _MyRequestsTab extends ConsumerWidget {
+class _MyRequestsTab extends ConsumerStatefulWidget {
   const _MyRequestsTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_MyRequestsTab> createState() => _MyRequestsTabState();
+}
+
+class _MyRequestsTabState extends ConsumerState<_MyRequestsTab> {
+  final Set<String> _expanded = {};
+  final Map<String, bool> _loading = {};
+
+  Future<void> _handleResponse(
+      String requestId, String responseId, String action) async {
+    final key = '$requestId:$responseId';
+    setState(() => _loading[key] = true);
+    try {
+      await ref
+          .read(teamUpRepositoryProvider)
+          .handleResponse(requestId, responseId, action);
+      ref.invalidate(myTeamUpRequestsProvider);
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _loading.remove(key));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final myAsync = ref.watch(myTeamUpRequestsProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return myAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => ErrorDisplay(
@@ -246,7 +302,7 @@ class _MyRequestsTab extends ConsumerWidget {
           return const UiEmptyState(
             icon: Icons.inbox_outlined,
             title: 'No requests yet',
-            message: "You haven't made any TeamUp requests yet.",
+            message: "You haven't posted any TeamUp requests yet.",
           );
         }
         return RefreshIndicator(
@@ -254,7 +310,402 @@ class _MyRequestsTab extends ConsumerWidget {
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             itemCount: requests.length,
-            itemBuilder: (context, i) => _RequestTile(request: requests[i]),
+            itemBuilder: (context, i) {
+              final request = requests[i];
+              final isExpanded = _expanded.contains(request.id);
+              final responses = request.responses ?? [];
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _RequestTile(
+                    request: request,
+                    trailing: IconButton(
+                      icon: Icon(
+                        isExpanded
+                            ? Icons.expand_less
+                            : Icons.expand_more,
+                        size: 20,
+                      ),
+                      onPressed: () => setState(() {
+                        if (isExpanded) {
+                          _expanded.remove(request.id);
+                        } else {
+                          _expanded.add(request.id);
+                        }
+                      }),
+                    ),
+                  ),
+                  if (isExpanded) ...[
+                    Padding(
+                      padding:
+                          const EdgeInsets.only(left: 4, right: 4, bottom: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${request.responseCount} response${request.responseCount == 1 ? '' : 's'}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isDark
+                                  ? AppThemeTokens.darkTextSecondary
+                                  : AppThemeTokens.lightTextSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          if (responses.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Text(
+                                'No responses yet.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark
+                                      ? AppThemeTokens.darkTextMuted
+                                      : AppThemeTokens.lightTextMuted,
+                                ),
+                              ),
+                            ),
+                          ...responses.map((resp) {
+                            final key = '${request.id}:${resp.id}';
+                            final busy = _loading[key] ?? false;
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 6),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? AppThemeTokens.darkCardElevated
+                                    : AppThemeTokens.lightCardElevated,
+                                borderRadius: BorderRadius.circular(
+                                    AppThemeTokens.radiusMd),
+                                border: Border.all(
+                                    color: isDark
+                                        ? AppThemeTokens.darkBorder
+                                        : AppThemeTokens.lightBorder),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  UserAvatar(
+                                    name: resp.responderName,
+                                    imageUrl: resp.responderPicture,
+                                    radius: 14,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                resp.responderName,
+                                                style: const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight:
+                                                        FontWeight.w600),
+                                              ),
+                                            ),
+                                            UiStatusBadge(
+                                              label: resp.status,
+                                              status:
+                                                  UiStatusBadge.fromString(
+                                                      resp.status),
+                                            ),
+                                          ],
+                                        ),
+                                        if (resp.message.isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            resp.message,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: isDark
+                                                  ? AppThemeTokens
+                                                      .darkTextSecondary
+                                                  : AppThemeTokens
+                                                      .lightTextSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                        // Accept / Decline buttons (only for pending)
+                                        if (resp.status == 'pending') ...[
+                                          const SizedBox(height: 8),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: OutlinedButton(
+                                                  style:
+                                                      OutlinedButton.styleFrom(
+                                                    foregroundColor:
+                                                        Theme.of(context)
+                                                            .colorScheme
+                                                            .error,
+                                                    side: BorderSide(
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .error),
+                                                    padding: const EdgeInsets
+                                                        .symmetric(vertical: 4),
+                                                    textStyle: const TextStyle(
+                                                        fontSize: 12),
+                                                  ),
+                                                  onPressed: busy
+                                                      ? null
+                                                      : () => _handleResponse(
+                                                          request.id,
+                                                          resp.id,
+                                                          'decline'),
+                                                  child: busy
+                                                      ? const SizedBox(
+                                                          width: 14,
+                                                          height: 14,
+                                                          child:
+                                                              CircularProgressIndicator(
+                                                                  strokeWidth:
+                                                                      2))
+                                                      : const Text('Decline'),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: ElevatedButton(
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                    backgroundColor:
+                                                        AppThemeTokens
+                                                            .primary500,
+                                                    foregroundColor:
+                                                        Colors.white,
+                                                    padding: const EdgeInsets
+                                                        .symmetric(vertical: 4),
+                                                    textStyle: const TextStyle(
+                                                        fontSize: 12),
+                                                  ),
+                                                  onPressed: busy
+                                                      ? null
+                                                      : () => _handleResponse(
+                                                          request.id,
+                                                          resp.id,
+                                                          'accept'),
+                                                  child: busy
+                                                      ? const SizedBox(
+                                                          width: 14,
+                                                          height: 14,
+                                                          child:
+                                                              CircularProgressIndicator(
+                                                                  strokeWidth:
+                                                                      2,
+                                                                  color: Colors
+                                                                      .white))
+                                                      : const Text('Accept'),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// My applications tab – responses I submitted to others' requests
+// ---------------------------------------------------------------------------
+
+class _MyApplicationsTab extends ConsumerWidget {
+  const _MyApplicationsTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final appsAsync = ref.watch(myTeamUpApplicationsProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final df = DateFormat('MMM d');
+
+    return appsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => ErrorDisplay(
+        message: extractErrorMessage(e),
+        onRetry: () => ref.invalidate(myTeamUpApplicationsProvider),
+      ),
+      data: (applications) {
+        if (applications.isEmpty) {
+          return const UiEmptyState(
+            icon: Icons.send_outlined,
+            title: 'No applications yet',
+            message:
+                "Browse requests and send a response to start applying.",
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(myTeamUpApplicationsProvider),
+          child: ListView.builder(
+            padding:
+                const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            itemCount: applications.length,
+            itemBuilder: (context, i) {
+              final app = applications[i];
+              final accent = _sportAccentColor(app.requestSportType);
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppThemeTokens.darkCard.withValues(alpha: 0.92)
+                      : AppThemeTokens.lightCard.withValues(alpha: 0.98),
+                  borderRadius:
+                      BorderRadius.circular(AppThemeTokens.radiusMd),
+                  border: Border.all(
+                    color: isDark
+                        ? AppThemeTokens.darkBorder
+                        : AppThemeTokens.lightBorder,
+                  ),
+                ),
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        width: 4,
+                        decoration: BoxDecoration(
+                          color: accent,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(AppThemeTokens.radiusMd),
+                            bottomLeft:
+                                Radius.circular(AppThemeTokens.radiusMd),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      app.requestTitle,
+                                      style: TextStyle(
+                                        color: isDark
+                                            ? AppThemeTokens.darkText
+                                            : AppThemeTokens.lightText,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  UiStatusBadge(
+                                    label: app.status,
+                                    status: UiStatusBadge.fromString(app.status),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 4,
+                                children: [
+                                  _MetaChip(
+                                    icon: Icons.sports_outlined,
+                                    label: sportTypeLabel(app.requestSportType),
+                                    color: accent,
+                                  ),
+                                  _MetaChip(
+                                    icon: app.requestType == 'need_players'
+                                        ? Icons.group_add_outlined
+                                        : Icons.person_search_outlined,
+                                    label: app.requestType == 'need_players'
+                                        ? 'Need players'
+                                        : 'Looking to play',
+                                    color: AppThemeTokens.primary400,
+                                  ),
+                                  if (app.requestCity != null)
+                                    _MetaChip(
+                                      icon: Icons.place_outlined,
+                                      label: app.requestCity!,
+                                      color: isDark
+                                          ? AppThemeTokens.darkTextSecondary
+                                          : AppThemeTokens.lightTextSecondary,
+                                    ),
+                                  if (app.requestDateTime != null)
+                                    _MetaChip(
+                                      icon: Icons.calendar_today_outlined,
+                                      label: df.format(
+                                          app.requestDateTime!.toLocal()),
+                                      color: isDark
+                                          ? AppThemeTokens.darkTextSecondary
+                                          : AppThemeTokens.lightTextSecondary,
+                                    ),
+                                ],
+                              ),
+                              if (app.message.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  '"${app.message}"',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontStyle: FontStyle.italic,
+                                    color: isDark
+                                        ? AppThemeTokens.darkTextSecondary
+                                        : AppThemeTokens.lightTextSecondary,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                              if (app.requestCreatorName != null) ...[
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    UserAvatar(
+                                      name: app.requestCreatorName!,
+                                      imageUrl: app.requestCreatorPicture,
+                                      radius: 10,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      app.requestCreatorName!,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: isDark
+                                            ? AppThemeTokens.darkTextMuted
+                                            : AppThemeTokens.lightTextMuted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         );
       },
@@ -283,6 +734,8 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
 
   String _sportType = '';
   String _requestType = 'looking_for_play';
+  String _skillLevel = '';
+  DateTime? _dateTime;
   bool _submitting = false;
 
   @override
@@ -295,8 +748,36 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
     super.dispose();
   }
 
+  Future<void> _pickDateTime() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _dateTime ?? DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(
+          _dateTime ?? DateTime.now().add(const Duration(hours: 1))),
+    );
+    if (time == null || !mounted) return;
+    setState(() {
+      _dateTime = DateTime(
+          date.year, date.month, date.day, time.hour, time.minute);
+    });
+  }
+
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    // Validate: need_players requires a dateTime
+    if (_requestType == 'need_players' && _dateTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Please select a session date and time.')),
+      );
+      return;
+    }
     setState(() => _submitting = true);
     try {
       await ref.read(teamUpRepositoryProvider).createRequest({
@@ -305,6 +786,8 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
           'description': _descCtrl.text.trim(),
         'requestType': _requestType,
         if (_sportType.isNotEmpty) 'sportType': _sportType,
+        if (_skillLevel.isNotEmpty) 'skillLevel': _skillLevel,
+        if (_dateTime != null) 'dateTime': _dateTime!.toUtc().toIso8601String(),
         if (_locationCtrl.text.trim().isNotEmpty)
           'location': _locationCtrl.text.trim(),
         if (_cityCtrl.text.trim().isNotEmpty) 'city': _cityCtrl.text.trim(),
@@ -325,6 +808,8 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
         setState(() {
           _sportType = '';
           _requestType = 'looking_for_play';
+          _skillLevel = '';
+          _dateTime = null;
         });
       }
     } on Exception catch (e) {
@@ -344,6 +829,7 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final df = DateFormat('MMM d, yyyy · HH:mm');
     return Form(
       key: _formKey,
       child: ListView(
@@ -382,6 +868,43 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
           ),
           const SizedBox(height: 16),
 
+          // Date & time picker (required for need_players)
+          InkWell(
+            onTap: _pickDateTime,
+            borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+            child: InputDecorator(
+              decoration: InputDecoration(
+                labelText: _requestType == 'need_players'
+                    ? 'Session date & time * (required)'
+                    : 'Available from (optional)',
+                prefixIcon: const Icon(Icons.calendar_today_outlined),
+                helperText: _requestType == 'need_players' && _dateTime == null
+                    ? 'A date and time is required for "Need players"'
+                    : null,
+                helperStyle: TextStyle(
+                    color: Theme.of(context).colorScheme.error, fontSize: 11),
+              ),
+              child: Text(
+                _dateTime != null
+                    ? df.format(_dateTime!.toLocal())
+                    : _requestType == 'need_players'
+                        ? 'Tap to pick date and time (required)'
+                        : 'Any time (tap to specify)',
+                style: TextStyle(
+                  color: _dateTime != null
+                      ? null
+                      : _requestType == 'need_players'
+                          ? Theme.of(context).colorScheme.error
+                          : isDark
+                              ? AppThemeTokens.darkTextMuted
+                              : AppThemeTokens.lightTextMuted,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // Sport type
           DropdownButtonFormField<String>(
             initialValue: _sportType,
@@ -401,6 +924,27 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
                 )
                 .toList(),
             onChanged: (v) => setState(() => _sportType = v ?? ''),
+          ),
+          const SizedBox(height: 16),
+
+          // Skill level
+          DropdownButtonFormField<String>(
+            value: _skillLevel.isEmpty ? null : _skillLevel,
+            decoration: const InputDecoration(
+              labelText: 'Skill level (optional)',
+              prefixIcon: Icon(Icons.emoji_events_outlined),
+            ),
+            dropdownColor: isDark
+                ? AppThemeTokens.darkCardElevated
+                : AppThemeTokens.lightCardElevated,
+            items: const [
+              DropdownMenuItem(value: 'any', child: Text('Any level')),
+              DropdownMenuItem(value: 'beginner', child: Text('Beginner')),
+              DropdownMenuItem(
+                  value: 'intermediate', child: Text('Intermediate')),
+              DropdownMenuItem(value: 'advanced', child: Text('Advanced')),
+            ],
+            onChanged: (v) => setState(() => _skillLevel = v ?? ''),
           ),
           const SizedBox(height: 16),
 
@@ -464,15 +1008,20 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
 // ---------------------------------------------------------------------------
 
 class _RequestTile extends StatelessWidget {
-  const _RequestTile({required this.request});
+  const _RequestTile({required this.request, this.trailing});
 
   final TeamUpRequestModel request;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     final df = DateFormat('MMM d');
     final accent = _sportAccentColor(request.sportType);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Urgency: session within 24 hours
+    final isUrgent = request.dateTime != null &&
+        request.dateTime!.difference(DateTime.now()).inHours < 24 &&
+        request.status == 'open';
 
     return GestureDetector(
       onTap: () => _showDetail(context, request),
@@ -484,8 +1033,11 @@ class _RequestTile extends StatelessWidget {
               : AppThemeTokens.lightCard.withValues(alpha: 0.98),
           borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
           border: Border.all(
-            color:
-                isDark ? AppThemeTokens.darkBorder : AppThemeTokens.lightBorder,
+            color: isUrgent
+                ? AppThemeTokens.warning.withValues(alpha: 0.6)
+                : isDark
+                    ? AppThemeTokens.darkBorder
+                    : AppThemeTokens.lightBorder,
           ),
         ),
         child: IntrinsicHeight(
@@ -509,7 +1061,7 @@ class _RequestTile extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Top row: avatar + name + status badge
+                      // Top row: avatar + name + status badge + optional trailing
                       Row(
                         children: [
                           UserAvatar(
@@ -533,13 +1085,42 @@ class _RequestTile extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          if (isUrgent)
+                            Container(
+                              margin: const EdgeInsets.only(right: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppThemeTokens.warning
+                                    .withValues(alpha: 0.15),
+                                borderRadius:
+                                    BorderRadius.circular(AppThemeTokens.radiusSm),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.bolt,
+                                      size: 10, color: AppThemeTokens.warning),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    'Urgent',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppThemeTokens.warning,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           UiStatusBadge(
-                            label: request.status == 'open' ? 'Open' : 'Closed',
+                            label: request.status == 'open' ? 'Open' : request.status,
                             status: request.status == 'open'
                                 ? UiStatusType.success
                                 : UiStatusType.defaultStatus,
                             dot: true,
                           ),
+                          if (trailing != null) trailing!,
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -577,6 +1158,13 @@ class _RequestTile extends StatelessWidget {
                                 : 'Looking to play',
                             color: AppThemeTokens.primary400,
                           ),
+                          if (request.skillLevel != null &&
+                              request.skillLevel!.isNotEmpty)
+                            _MetaChip(
+                              icon: Icons.emoji_events_outlined,
+                              label: request.skillLevel!,
+                              color: AppThemeTokens.info,
+                            ),
                           if (request.city != null)
                             _MetaChip(
                               icon: Icons.place_outlined,
@@ -585,14 +1173,15 @@ class _RequestTile extends StatelessWidget {
                                   ? AppThemeTokens.darkTextSecondary
                                   : AppThemeTokens.lightTextSecondary,
                             ),
-                          if (request.availableFrom != null)
+                          if (request.dateTime != null)
                             _MetaChip(
                               icon: Icons.calendar_today_outlined,
-                              label:
-                                  df.format(request.availableFrom!.toLocal()),
-                              color: isDark
-                                  ? AppThemeTokens.darkTextSecondary
-                                  : AppThemeTokens.lightTextSecondary,
+                              label: df.format(request.dateTime!.toLocal()),
+                              color: isUrgent
+                                  ? AppThemeTokens.warning
+                                  : isDark
+                                      ? AppThemeTokens.darkTextSecondary
+                                      : AppThemeTokens.lightTextSecondary,
                             ),
                           if (request.responseCount > 0)
                             _MetaChip(
@@ -666,11 +1255,14 @@ class _RequestDetailSheet extends ConsumerStatefulWidget {
 
 class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
   final _msgCtrl = TextEditingController();
+  final _commentCtrl = TextEditingController();
   bool _sending = false;
+  bool _sendingComment = false;
 
   @override
   void dispose() {
     _msgCtrl.dispose();
+    _commentCtrl.dispose();
     super.dispose();
   }
 
@@ -703,10 +1295,40 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
     }
   }
 
+  Future<void> _addComment() async {
+    final text = _commentCtrl.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _sendingComment = true);
+    try {
+      await ref
+          .read(teamUpRepositoryProvider)
+          .addComment(widget.request.id, text);
+      _commentCtrl.clear();
+      ref.invalidate(teamUpCommentsProvider(widget.request.id));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Comment added!')),
+        );
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(extractErrorMessage(e)),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sendingComment = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final r = widget.request;
     final responsesAsync = ref.watch(teamUpRequestResponsesProvider(r.id));
+    final commentsAsync = ref.watch(teamUpCommentsProvider(r.id));
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final accent = _sportAccentColor(r.sportType);
@@ -844,12 +1466,22 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                               label: r.city!,
                               iconColor: AppThemeTokens.warning,
                             ),
-                          if (r.availableFrom != null)
+                          if (r.dateTime != null)
                             UiInfoRow(
                               icon: Icons.calendar_today_outlined,
-                              label: 'Available from',
+                              label: r.requestType == 'need_players'
+                                  ? 'Session date'
+                                  : 'Available from',
                               value: DateFormat.yMMMd()
-                                  .format(r.availableFrom!.toLocal()),
+                                  .add_Hm()
+                                  .format(r.dateTime!.toLocal()),
+                              iconColor: AppThemeTokens.info,
+                            ),
+                          if (r.skillLevel != null && r.skillLevel!.isNotEmpty)
+                            UiInfoRow(
+                              icon: Icons.emoji_events_outlined,
+                              label: 'Skill level',
+                              value: r.skillLevel!,
                               iconColor: AppThemeTokens.info,
                             ),
                           Row(
@@ -1019,7 +1651,7 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Respond form (only if open and not own request)
+                    // Respond form (only if open)
                     if (r.status == 'open') ...[
                       const UiSectionTitle('Send a response'),
                       const SizedBox(height: 10),
@@ -1060,6 +1692,119 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                         ],
                       ),
                     ],
+                    const SizedBox(height: 20),
+
+                    // Comments section
+                    const UiSectionTitle('Comments'),
+                    const SizedBox(height: 10),
+                    commentsAsync.when(
+                      loading: () => const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2)),
+                      error: (e, _) => Text(
+                        'Could not load comments: $e',
+                        style: TextStyle(color: theme.colorScheme.error),
+                      ),
+                      data: (comments) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (comments.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Text(
+                                  'No comments yet. Be the first to comment!',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: isDark
+                                        ? AppThemeTokens.darkTextSecondary
+                                        : AppThemeTokens.lightTextSecondary,
+                                  ),
+                                ),
+                              ),
+                            ...comments.map((c) => Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? AppThemeTokens.darkCardElevated
+                                        : AppThemeTokens.lightCardElevated,
+                                    borderRadius: BorderRadius.circular(
+                                        AppThemeTokens.radiusMd),
+                                    border: Border.all(
+                                        color: isDark
+                                            ? AppThemeTokens.darkBorder
+                                            : AppThemeTokens.lightBorder),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      UserAvatar(
+                                        name: c.authorName,
+                                        imageUrl: c.authorPicture,
+                                        radius: 14,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              c.authorName,
+                                              style: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              c.content,
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: isDark
+                                                    ? AppThemeTokens
+                                                        .darkTextSecondary
+                                                    : AppThemeTokens
+                                                        .lightTextSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )),
+                            // Comment compose box
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _commentCtrl,
+                                    decoration: const InputDecoration(
+                                      hintText: 'Add a comment…',
+                                    ),
+                                    maxLines: 2,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                IconButton(
+                                  onPressed:
+                                      _sendingComment ? null : _addComment,
+                                  icon: _sendingComment
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2))
+                                      : const Icon(Icons.comment_outlined),
+                                ),
+                              ],
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                     const SizedBox(height: 24),
                   ],
                 ),

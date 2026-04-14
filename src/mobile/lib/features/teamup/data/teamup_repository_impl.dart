@@ -14,6 +14,10 @@ class TeamUpRepositoryImpl implements TeamUpRepository {
   Future<List<TeamUpRequestModel>> getRequests({
     String? sportType,
     String? requestType,
+    String? skillLevel,
+    String? city,
+    String? fromDate,
+    String? toDate,
   }) async {
     final response = await _dio.get<dynamic>(
       '/teamup',
@@ -21,10 +25,15 @@ class TeamUpRepositoryImpl implements TeamUpRepository {
         if (sportType != null && sportType.isNotEmpty) 'sportType': sportType,
         if (requestType != null && requestType.isNotEmpty)
           'requestType': requestType,
+        if (skillLevel != null && skillLevel.isNotEmpty)
+          'skillLevel': skillLevel,
+        if (city != null && city.isNotEmpty) 'city': city,
+        if (fromDate != null) 'fromDate': fromDate,
+        if (toDate != null) 'toDate': toDate,
         'limit': '50',
       },
     );
-    return _parseList(response.data, 'requests');
+    return _parseRequestList(response.data);
   }
 
   @override
@@ -36,23 +45,22 @@ class TeamUpRepositoryImpl implements TeamUpRepository {
   @override
   Future<List<TeamUpRequestModel>> getMyRequests() async {
     final response = await _dio.get<dynamic>('/teamup/my-requests');
-    return _parseList(response.data, 'requests');
+    return _parseRequestList(response.data);
   }
 
   @override
   Future<List<TeamUpResponseModel>> getMyResponses() async {
     final response = await _dio.get<dynamic>('/teamup/my-responses');
+    return _parseResponseList(response.data);
+  }
+
+  @override
+  Future<List<TeamUpApplicationModel>> getMyApplications() async {
+    final response = await _dio.get<dynamic>('/teamup/my-applications');
     final data = response.data;
-    final List<dynamic> items;
-    if (data is List) {
-      items = data;
-    } else if (data is Map<String, dynamic>) {
-      items = data['responses'] as List<dynamic>? ?? [];
-    } else {
-      items = [];
-    }
+    final List<dynamic> items = data is List ? data : [];
     return items
-        .map((e) => TeamUpResponseModel.fromJson(e as Map<String, dynamic>))
+        .map((e) => TeamUpApplicationModel.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
@@ -60,6 +68,19 @@ class TeamUpRepositoryImpl implements TeamUpRepository {
   Future<TeamUpRequestModel> createRequest(Map<String, dynamic> data) async {
     final response = await _dio.post<Map<String, dynamic>>('/teamup', data: data);
     return TeamUpRequestModel.fromJson(response.data!);
+  }
+
+  @override
+  Future<TeamUpRequestModel> updateRequest(
+      String id, Map<String, dynamic> data) async {
+    final response =
+        await _dio.put<Map<String, dynamic>>('/teamup/$id', data: data);
+    return TeamUpRequestModel.fromJson(response.data!);
+  }
+
+  @override
+  Future<void> deleteRequest(String id) async {
+    await _dio.delete<void>('/teamup/$id');
   }
 
   @override
@@ -78,7 +99,6 @@ class TeamUpRepositoryImpl implements TeamUpRepository {
 
   @override
   Future<List<TeamUpResponseModel>> getRequestResponses(String id) async {
-    // Responses are embedded in the full request detail
     final response = await _dio.get<Map<String, dynamic>>('/teamup/$id');
     final data = response.data!;
     final items = data['responses'] as List<dynamic>? ?? [];
@@ -87,17 +107,59 @@ class TeamUpRepositoryImpl implements TeamUpRepository {
         .toList();
   }
 
-  List<TeamUpRequestModel> _parseList(dynamic data, String key) {
+  @override
+  Future<List<TeamUpCommentModel>> getComments(String id) async {
+    final response = await _dio.get<dynamic>('/teamup/$id/comments');
+    final data = response.data;
+    final List<dynamic> items = data is List ? data : [];
+    return items
+        .map((e) => TeamUpCommentModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
+  Future<TeamUpCommentModel> addComment(String id, String content) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/teamup/$id/comments',
+      data: {'content': content},
+    );
+    return TeamUpCommentModel.fromJson(response.data!);
+  }
+
+  @override
+  Future<void> deleteComment(String requestId, String commentId) async {
+    await _dio.delete<void>('/teamup/$requestId/comments/$commentId');
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  List<TeamUpRequestModel> _parseRequestList(dynamic data) {
     final List<dynamic> items;
     if (data is List) {
       items = data;
     } else if (data is Map<String, dynamic>) {
-      items = data[key] as List<dynamic>? ?? data['data'] as List<dynamic>? ?? [];
+      items = data['data'] as List<dynamic>? ??
+          data['requests'] as List<dynamic>? ??
+          [];
     } else {
       items = [];
     }
     return items
         .map((e) => TeamUpRequestModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  List<TeamUpResponseModel> _parseResponseList(dynamic data) {
+    final List<dynamic> items;
+    if (data is List) {
+      items = data;
+    } else if (data is Map<String, dynamic>) {
+      items = data['responses'] as List<dynamic>? ?? [];
+    } else {
+      items = [];
+    }
+    return items
+        .map((e) => TeamUpResponseModel.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 }
