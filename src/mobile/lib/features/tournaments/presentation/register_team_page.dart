@@ -27,15 +27,17 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   String? _selectedPoolId;
+  String? _selectedCategoryId;
   bool _loading = false;
-  bool _poolsLoading = true;
+  bool _dataLoading = true;
   List<TournamentPoolModel> _pools = [];
+  List<TournamentCategoryModel> _categories = [];
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadPools();
+    _loadData();
   }
 
   @override
@@ -44,12 +46,21 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
     super.dispose();
   }
 
-  Future<void> _loadPools() async {
+  Future<void> _loadData() async {
     try {
-      final pools = await ref.read(tournamentRepositoryProvider).getPools(widget.tournamentId);
-      if (mounted) setState(() { _pools = pools; _poolsLoading = false; });
+      final results = await Future.wait([
+        ref.read(tournamentRepositoryProvider).getPools(widget.tournamentId),
+        ref.read(tournamentRepositoryProvider).getCategories(widget.tournamentId),
+      ]);
+      if (mounted) {
+        setState(() {
+          _pools = results[0] as List<TournamentPoolModel>;
+          _categories = results[1] as List<TournamentCategoryModel>;
+          _dataLoading = false;
+        });
+      }
     } on Exception catch (e) {
-      if (mounted) setState(() { _error = extractErrorMessage(e); _poolsLoading = false; });
+      if (mounted) setState(() { _error = extractErrorMessage(e); _dataLoading = false; });
     }
   }
 
@@ -57,7 +68,12 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _loading = true);
     try {
-      final result = await ref.read(tournamentRepositoryProvider).selfRegisterTeam(widget.tournamentId, _nameCtrl.text.trim(), poolId: _selectedPoolId);
+      final result = await ref.read(tournamentRepositoryProvider).selfRegisterTeam(
+        widget.tournamentId,
+        _nameCtrl.text.trim(),
+        poolId: _selectedPoolId,
+        categoryId: _selectedCategoryId,
+      );
       if (!mounted) return;
       final onWaitlist = result['onWaitlist'] == true;
       if (onWaitlist) {
@@ -83,10 +99,10 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Register Team')),
-      body: _poolsLoading
+      body: _dataLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? ErrorDisplay(message: _error!, onRetry: _loadPools)
+              ? ErrorDisplay(message: _error!, onRetry: _loadData)
               : Form(
                   key: _formKey,
                   child: ListView(
@@ -98,7 +114,21 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
                         textCapitalization: TextCapitalization.words,
                         validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                       ),
-                      if (_pools.isNotEmpty) ...[
+                      if (_categories.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String?>(
+                          value: _selectedCategoryId,
+                          decoration: const InputDecoration(labelText: 'Category (optional)', prefixIcon: Icon(Icons.category_outlined)),
+                          dropdownColor: AppThemeTokens.cardElevated(context),
+                          items: [
+                            const DropdownMenuItem(value: null, child: Text('No category')),
+                            for (final cat in _categories)
+                              DropdownMenuItem(value: cat.id, child: Text(cat.name)),
+                          ],
+                          onChanged: (v) => setState(() { _selectedCategoryId = v; _selectedPoolId = null; }),
+                        ),
+                      ],
+                      if (_pools.isNotEmpty && _selectedCategoryId == null) ...[
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String?>(
                           value: _selectedPoolId,

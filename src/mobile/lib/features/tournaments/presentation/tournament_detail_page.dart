@@ -105,12 +105,12 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
           body: NestedScrollView(
             headerSliverBuilder: (_, __) => [
               SliverAppBar(
-                expandedHeight: 120,
+                expandedHeight: 80,
                 pinned: true,
+                title: Text(t.name,
+                    style: const TextStyle(fontSize: 16),
+                    overflow: TextOverflow.ellipsis),
                 flexibleSpace: FlexibleSpaceBar(
-                  title: Text(t.name,
-                      style: const TextStyle(fontSize: 16),
-                      overflow: TextOverflow.ellipsis),
                   background: Container(
                     decoration: BoxDecoration(
                       gradient: AppThemeTokens.heroGrad(context),
@@ -221,18 +221,26 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               _InfoRow(icon: Icons.event_busy_outlined, label: 'Reg. Closes', value: dateFormat.format(t.registrationDeadline!.toLocal())),
             if (t.locationName != null || t.location != null)
               _InfoRow(icon: Icons.location_on_outlined, label: 'Location', value: t.locationName ?? t.location ?? ''),
+            if (t.rulesDescription != null || t.prizesDescription != null)
+              const Divider(height: 16),
+            if (t.rulesDescription != null)
+              _InfoRow(
+                icon: Icons.gavel_outlined,
+                label: 'Rules',
+                value: 'Tap to view',
+                onTap: () => _showTextDialog(context, 'Rules', t.rulesDescription!),
+              ),
+            if (t.prizesDescription != null)
+              _InfoRow(
+                icon: Icons.workspace_premium_outlined,
+                label: 'Prizes',
+                value: 'Tap to view',
+                onTap: () => _showTextDialog(context, 'Prizes', t.prizesDescription!),
+              ),
           ]),
           if (t.description != null) ...[
             const SizedBox(height: 12),
             _SectionCard(title: 'About', child: Text(t.description!, style: TextStyle(color: AppThemeTokens.textSecondary(context), fontSize: 14))),
-          ],
-          if (t.rulesDescription != null) ...[
-            const SizedBox(height: 12),
-            _SectionCard(title: 'Rules', child: Text(t.rulesDescription!, style: TextStyle(color: AppThemeTokens.textSecondary(context), fontSize: 14))),
-          ],
-          if (t.prizesDescription != null) ...[
-            const SizedBox(height: 12),
-            _SectionCard(title: 'Prizes', child: Text(t.prizesDescription!, style: TextStyle(color: AppThemeTokens.textSecondary(context), fontSize: 14))),
           ],
           if (canRegister) ...[
             const SizedBox(height: 16),
@@ -254,10 +262,23 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 children: [
                   Text('${myTeam!.wins}W / ${myTeam!.losses}L — ${myTeam!.points} pts', style: const TextStyle(fontWeight: FontWeight.w500)),
                   const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.group_outlined, size: 16),
-                    label: const Text('Manage Roster'),
-                    onPressed: () => context.push('/tournaments/${t.id}/teams/${myTeam!.id}/roster'),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.group_outlined, size: 16),
+                        label: const Text('Manage Roster'),
+                        onPressed: () => context.push('/tournaments/${t.id}/teams/${myTeam!.id}/roster'),
+                      ),
+                      if (t.status == 'registration' || t.status == 'draft')
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.exit_to_app_outlined, size: 16),
+                          label: const Text('Unregister'),
+                          style: OutlinedButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+                          onPressed: () => _confirmUnregister(context, t.id, onRefresh),
+                        ),
+                    ],
                   ),
                 ],
               ),
@@ -266,7 +287,14 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
           const SizedBox(height: 16),
           if (t.categories.isNotEmpty)
             for (final cat in t.categories)
-              _CategorySection(category: cat, isAdmin: isAdmin, tournament: t)
+              _CategorySection(
+                category: cat,
+                isAdmin: isAdmin,
+                tournament: t,
+                canRegister: canRegister,
+                myTeam: myTeam,
+                onRefresh: onRefresh,
+              )
           else if (t.pools.isNotEmpty) ...[
             UiSectionTitle('Pools'),
             const SizedBox(height: 8),
@@ -319,6 +347,46 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
         ],
       ),
     );
+  }
+
+  void _showTextDialog(BuildContext context, String title, String content) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: SingleChildScrollView(child: Text(content)),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+      ),
+    );
+  }
+
+  Future<void> _confirmUnregister(BuildContext context, String tournamentId, VoidCallback onRefresh) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Unregister Team'),
+        content: const Text('Are you sure you want to unregister your team from this tournament?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Unregister'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    try {
+      await ref.read(tournamentRepositoryProvider).selfUnregisterTeam(tournamentId);
+      onRefresh();
+    } on Exception catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(extractErrorMessage(e)), backgroundColor: Theme.of(context).colorScheme.error),
+        );
+      }
+    }
   }
 
   void _showStatusDialog(BuildContext context, TournamentModel t, VoidCallback onRefresh) {
@@ -392,19 +460,100 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
   }
 }
 
-class _CategorySection extends StatelessWidget {
-  const _CategorySection({required this.category, required this.isAdmin, required this.tournament});
+class _CategorySection extends ConsumerStatefulWidget {
+  const _CategorySection({
+    required this.category,
+    required this.isAdmin,
+    required this.tournament,
+    required this.canRegister,
+    this.myTeam,
+    required this.onRefresh,
+  });
 
   final TournamentCategoryModel category;
   final bool isAdmin;
   final TournamentModel tournament;
+  final bool canRegister;
+  final TournamentTeamModel? myTeam;
+  final VoidCallback onRefresh;
+
+  @override
+  ConsumerState<_CategorySection> createState() => _CategorySectionState();
+}
+
+class _CategorySectionState extends ConsumerState<_CategorySection> {
+  bool _registering = false;
+
+  TournamentCategoryModel get category => widget.category;
+  TournamentModel get tournament => widget.tournament;
+
+  bool get _myTeamInCategory {
+    if (widget.myTeam == null) return false;
+    return category.pools.any((p) => p.teams.any((t) => t.id == widget.myTeam!.id));
+  }
+
+  Future<void> _registerToCategory() async {
+    final nameCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Register to ${category.name}'),
+        content: TextField(
+          controller: nameCtrl,
+          decoration: const InputDecoration(labelText: 'Team name *', prefixIcon: Icon(Icons.shield_outlined)),
+          textCapitalization: TextCapitalization.words,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Register')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final name = nameCtrl.text.trim();
+    if (name.isEmpty) return;
+
+    setState(() => _registering = true);
+    try {
+      await ref.read(tournamentRepositoryProvider).selfRegisterTeam(
+        tournament.id, name, categoryId: category.id,
+      );
+      widget.onRefresh();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Team registered to ${category.name}!')),
+        );
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(extractErrorMessage(e)), backgroundColor: Theme.of(context).colorScheme.error),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _registering = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        UiSectionTitle(category.name),
+        Row(
+          children: [
+            Expanded(child: UiSectionTitle(category.name)),
+            if (widget.canRegister && !_myTeamInCategory)
+              TextButton.icon(
+                icon: _registering
+                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.add_circle_outline, size: 16),
+                label: const Text('Register'),
+                onPressed: _registering ? null : _registerToCategory,
+              ),
+          ],
+        ),
         if (category.description != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
@@ -418,7 +567,7 @@ class _CategorySection extends StatelessWidget {
           )
         else
           for (final pool in category.pools)
-            _PoolCard(pool: pool, isAdmin: isAdmin, tournament: tournament),
+            _PoolCard(pool: pool, isAdmin: widget.isAdmin, tournament: tournament),
         const SizedBox(height: 8),
       ],
     );
@@ -1103,15 +1252,16 @@ class _InfoCard extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.icon, required this.label, required this.value});
+  const _InfoRow({required this.icon, required this.label, required this.value, this.onTap});
 
   final IconData icon;
   final String label;
   final String value;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         children: [
@@ -1119,9 +1269,14 @@ class _InfoRow extends StatelessWidget {
           const SizedBox(width: 8),
           Text('$label: ', style: TextStyle(color: AppThemeTokens.textSecondary(context), fontSize: 13)),
           Expanded(child: Text(value, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
+          if (onTap != null) Icon(Icons.chevron_right, size: 16, color: AppThemeTokens.textMuted(context)),
         ],
       ),
     );
+    if (onTap != null) {
+      return InkWell(onTap: onTap, borderRadius: BorderRadius.circular(4), child: row);
+    }
+    return row;
   }
 }
 
