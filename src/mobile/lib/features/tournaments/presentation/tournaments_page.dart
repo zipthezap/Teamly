@@ -3630,9 +3630,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                                 details.data.fromPoolId !=
                                                     pool.id &&
                                                 updatingTeamId == null &&
-                                                (pool.maxTeams <= 0 ||
-                                                    pool.teams.length <
-                                                        pool.maxTeams),
+                                                _poolHasCapacity(pool),
                                             onAcceptWithDetails:
                                                 (details) async {
                                               if (updatingTeamId != null) return;
@@ -3791,10 +3789,17 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
   }
 
   String _poolCapacityLabel(TournamentPoolModel pool) {
+    final teamCountLabel =
+        pool.teams.length == 1 ? '1 team' : '${pool.teams.length} teams';
     final capacitySuffix = pool.maxTeams > 0
-        ? '${pool.teams.length} teams / ${pool.maxTeams} max'
-        : '${pool.teams.length} teams, no limit';
+        ? '$teamCountLabel / ${pool.maxTeams} max'
+        : '$teamCountLabel, no limit';
     return '${pool.name} ($capacitySuffix)';
+  }
+
+  bool _poolHasCapacity(TournamentPoolModel pool) {
+    if (pool.maxTeams <= 0) return true;
+    return pool.teams.length < pool.maxTeams;
   }
 
   Future<void> _createPool() async {
