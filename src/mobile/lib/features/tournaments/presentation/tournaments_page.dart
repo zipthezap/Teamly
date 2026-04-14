@@ -3427,7 +3427,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     String? selectedCategoryId =
         _categories.isNotEmpty ? _categories.first.id : null;
-    var updatingTeamId = '';
+    String? updatingTeamId;
 
     Future<void> refreshDialog(StateSetter setDialog) async {
       final latest = await ref
@@ -3502,7 +3502,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                   onWillAcceptWithDetails: (details) =>
                                       details.data.fromPoolId != null,
                                   onAcceptWithDetails: (details) async {
-                                    if (updatingTeamId.isNotEmpty) return;
+                                    if (updatingTeamId != null) return;
                                     final fromPoolId = details.data.fromPoolId;
                                     if (fromPoolId == null) return;
                                     setDialog(
@@ -3526,7 +3526,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                       );
                                     } finally {
                                       if (context.mounted) {
-                                        setDialog(() => updatingTeamId = '');
+                                        setDialog(() => updatingTeamId = null);
                                       }
                                     }
                                   },
@@ -3559,7 +3559,8 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                           teamPoolId(team.id, dialogPools);
                                       final currentPoolName =
                                           teamPoolName(team.id, dialogPools);
-                                      final locked = updatingTeamId == team.id;
+                                      final isUpdating =
+                                          updatingTeamId == team.id;
                                       return Padding(
                                         padding:
                                             const EdgeInsets.only(bottom: 6),
@@ -3587,10 +3588,10 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                           child: _poolFormationTeamTile(
                                             context,
                                             team: team,
-                                            subtitle: locked
+                                            subtitle: isUpdating
                                                 ? 'Updating assignment...'
                                                 : currentPoolName,
-                                            disabled: locked,
+                                            disabled: isUpdating,
                                           ),
                                         ),
                                       );
@@ -3627,13 +3628,13 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                             onWillAcceptWithDetails: (details) =>
                                                 details.data.fromPoolId !=
                                                     pool.id &&
-                                                updatingTeamId.isEmpty &&
+                                                updatingTeamId == null &&
                                                 (pool.maxTeams <= 0 ||
                                                     pool.teams.length <
                                                         pool.maxTeams),
                                             onAcceptWithDetails:
                                                 (details) async {
-                                              if (updatingTeamId.isNotEmpty) return;
+                                              if (updatingTeamId != null) return;
                                               final fromPoolId =
                                                   details.data.fromPoolId;
                                               setDialog(() => updatingTeamId =
@@ -3670,7 +3671,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                               } finally {
                                                 if (context.mounted) {
                                                   setDialog(
-                                                      () => updatingTeamId = '');
+                                                      () => updatingTeamId = null);
                                                 }
                                               }
                                             },
@@ -3694,7 +3695,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                                     CrossAxisAlignment.start,
                                                 children: [
                                                   Text(
-                                                    '${pool.name} (${pool.teams.length}/${pool.maxTeams > 0 ? pool.maxTeams : '∞'})',
+                                                    '${pool.name} (${pool.teams.length}/${pool.maxTeams > 0 ? pool.maxTeams : 'no limit'})',
                                                     style: const TextStyle(
                                                         fontWeight:
                                                             FontWeight.w600),
