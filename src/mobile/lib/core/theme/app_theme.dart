@@ -291,13 +291,15 @@ ThemeData buildDarkTheme() {
         return AppThemeTokens.darkCardHover;
       }),
     ),
-    floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: AppThemeTokens.primary500,
-      foregroundColor: Colors.white,
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-      ),
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: AppThemeTokens.darkCardElevated,
+      foregroundColor: AppThemeTokens.primary400,
+      elevation: 0,
+      focusElevation: 0,
+      hoverElevation: 0,
+      highlightElevation: 0,
+      disabledElevation: 0,
+      shape: StadiumBorder(),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
@@ -541,13 +543,15 @@ ThemeData buildLightTheme() {
         return AppThemeTokens.lightCardHover;
       }),
     ),
-    floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: AppThemeTokens.primary500,
-      foregroundColor: Colors.white,
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-      ),
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: AppThemeTokens.lightCard,
+      foregroundColor: AppThemeTokens.primary600,
+      elevation: 0,
+      focusElevation: 0,
+      hoverElevation: 0,
+      highlightElevation: 0,
+      disabledElevation: 0,
+      shape: StadiumBorder(),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(

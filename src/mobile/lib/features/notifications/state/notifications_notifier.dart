@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/notification_model.dart';
+import '../../auth/state/auth_notifier.dart';
 import '../data/notification_repository_impl.dart';
 import '../../push_notifications/state/push_notifications_controller.dart';
 
@@ -8,15 +9,20 @@ import '../../push_notifications/state/push_notifications_controller.dart';
 // Notifications list
 // ---------------------------------------------------------------------------
 
-class NotificationsNotifier
-    extends AsyncNotifier<List<NotificationModel>> {
-
+class NotificationsNotifier extends AsyncNotifier<List<NotificationModel>> {
   String? _nextCursor;
   bool _hasMore = true;
   bool _includeRead = false;
 
   @override
   Future<List<NotificationModel>> build() async {
+    final userId =
+        ref.watch(authNotifierProvider.select((state) => state.user?.id));
+    if (userId == null || userId.isEmpty) {
+      _nextCursor = null;
+      _hasMore = false;
+      return [];
+    }
     _nextCursor = null;
     _hasMore = true;
     final (notifications, nextCursor) = await ref
@@ -126,5 +132,10 @@ final notificationsNotifierProvider =
 // ---------------------------------------------------------------------------
 
 final unreadCountProvider = FutureProvider<int>((ref) async {
+  final userId =
+      ref.watch(authNotifierProvider.select((state) => state.user?.id));
+  if (userId == null || userId.isEmpty) {
+    return 0;
+  }
   return ref.watch(notificationRepositoryProvider).getUnreadCount();
 });

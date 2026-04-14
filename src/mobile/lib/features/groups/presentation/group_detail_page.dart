@@ -142,13 +142,13 @@ class GroupDetailPage extends ConsumerStatefulWidget {
 }
 
 class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late TabController _tabCtrl;
 
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 4, vsync: this);
+    _tabCtrl = TabController(length: 1, vsync: this);
   }
 
   @override
@@ -177,6 +177,26 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
   Widget build(BuildContext context) {
     final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
     final currentUserId = ref.watch(authNotifierProvider).user?.id;
+
+    final tabs = groupAsync.maybeWhen(
+      data: (group) {
+        final member = _isMember(group, currentUserId);
+        return <Tab>[
+          const Tab(text: 'Overview'),
+          if (member) ...const [
+            Tab(text: 'Members'),
+            Tab(text: 'Sessions'),
+            Tab(text: 'Chat'),
+          ],
+        ];
+      },
+      orElse: () => const <Tab>[Tab(text: 'Overview')],
+    );
+
+    if (_tabCtrl.length != tabs.length) {
+      _tabCtrl.dispose();
+      _tabCtrl = TabController(length: tabs.length, vsync: this);
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -318,12 +338,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
             children: [
               TabBar(
                 controller: _tabCtrl,
-                tabs: const [
-                  Tab(text: 'Overview'),
-                  Tab(text: 'Members'),
-                  Tab(text: 'Sessions'),
-                  Tab(text: 'Chat'),
-                ],
+                tabs: tabs,
               ),
               Divider(height: 1, color: AppThemeTokens.border(context)),
             ],
@@ -341,33 +356,35 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage>
           final moderator = _isModerator(group, currentUserId);
           final member = _isMember(group, currentUserId);
           final canInvite = admin || (member && group.allowMemberInvites);
-          final canCopyLink = group.isPublic &&
-              (admin || (member && group.allowMemberCopyLink));
-          return TabBarView(
-            controller: _tabCtrl,
-            children: [
-              _OverviewTab(
-                group: group,
-                isAdmin: admin,
-                isModerator: moderator,
-                isMember: member,
-                canInvite: canInvite,
-                groupId: widget.groupId,
-              ),
+          final tabViews = <Widget>[
+            _OverviewTab(
+              group: group,
+              isAdmin: admin,
+              isModerator: moderator,
+              isMember: member,
+              canInvite: canInvite,
+              groupId: widget.groupId,
+            ),
+            if (member)
               _MembersTab(
                 group: group,
                 isAdmin: admin,
                 isModerator: moderator,
                 currentUserId: currentUserId,
               ),
+            if (member)
               _EventsTab(
                 groupId: group.id,
                 isAdmin: admin,
                 isModerator: moderator,
                 isMember: member,
               ),
+            if (member)
               _ChatTab(groupId: group.id, currentUserId: currentUserId ?? ''),
-            ],
+          ];
+          return TabBarView(
+            controller: _tabCtrl,
+            children: tabViews,
           );
         },
       ),
@@ -820,41 +837,43 @@ class _OverviewTab extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        const UiSectionTitle('Access & Rules'),
-        const SizedBox(height: 10),
-        UiCard(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Column(
-            children: [
-              for (int i = 0; i < accessRows.length; i++) ...[
-                accessRows[i],
-                if (i < accessRows.length - 1)
-                  Divider(
-                    height: 1,
-                    color: AppThemeTokens.borderSubtle(context),
-                  ),
+        if (isAdmin) ...[
+          const SizedBox(height: 16),
+          const UiSectionTitle('Access & Rules'),
+          const SizedBox(height: 10),
+          UiCard(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Column(
+              children: [
+                for (int i = 0; i < accessRows.length; i++) ...[
+                  accessRows[i],
+                  if (i < accessRows.length - 1)
+                    Divider(
+                      height: 1,
+                      color: AppThemeTokens.borderSubtle(context),
+                    ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-        if (isMember) ...[
+        ],
+        if (isMember && (isAdmin || canInvite)) ...[
           const SizedBox(height: 16),
           const UiSectionTitle('Actions'),
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(
-                child: _ActionButton(
-                  icon: Icons.add_circle_outline,
-                  label: 'Create Session',
-                  primary: true,
-                  onPressed: () =>
-                      context.push('/groups/${group.id}/sessions/new'),
-                ),
-              ),
+              if (isAdmin)
+                Expanded(
+                  child: _ActionButton(
+                    icon: Icons.add_circle_outline,
+                    label: 'Create Session',
+                    primary: true,
+                    onPressed: () =>
+                        context.push('/groups/${group.id}/sessions/new'),
+                  ),
               if (canInvite) ...[
-                const SizedBox(width: 10),
+                if (isAdmin) const SizedBox(width: 10),
                 Expanded(
                   child: _ActionButton(
                     icon: Icons.person_add_outlined,
@@ -869,16 +888,6 @@ class _OverviewTab extends ConsumerWidget {
               ],
             ],
           ),
-          if (!canInvite) ...[
-            const SizedBox(height: 10),
-            Text(
-              'This group currently restricts member invites.',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppThemeTokens.textMuted(context),
-              ),
-            ),
-          ],
         ],
         if (!isMember && group.isPublic) ...[
           const SizedBox(height: 16),
@@ -914,12 +923,18 @@ class _JoinCtaState extends ConsumerState<_JoinCta> {
       await ref.read(groupRepositoryProvider).requestJoinGroup(widget.groupId);
       ref.invalidate(myJoinRequestsProvider);
       ref.invalidate(groupDetailProvider(widget.groupId));
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Join request sent to "${widget.group.name}"')),
-        );
-      }
+      ref.invalidate(groupEventsProvider(widget.groupId));
+      await ref.read(groupsNotifierProvider.notifier).reload();
+      await ref.read(sessionsNotifierProvider.notifier).reload();
+      await ref.read(dashboardNotifierProvider.notifier).reload();
+
+      if (!mounted) return;
+      final message = widget.group.autoApproveJoinRequests
+          ? 'You joined "${widget.group.name}"!'
+          : 'Join request sent to "${widget.group.name}"';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1475,10 +1490,10 @@ class _EventsTabState extends ConsumerState<_EventsTab> {
                     child: UiEmptyState(
                       icon: Icons.event_busy_outlined,
                       message: 'This group has no sessions yet.',
-                      action: widget.isModerator
-                          ? () => context.push('/groups/${widget.groupId}/sessions/new')
+                      action: isAdmin
+                          ? () => context.push('/groups/$groupId/sessions/new')
                           : null,
-                      actionLabel: widget.isModerator ? 'Create session' : null,
+                      actionLabel: isAdmin ? 'Create session' : null,
                     ),
                   )
                 : ListView(
@@ -1533,24 +1548,26 @@ class _EventsTabState extends ConsumerState<_EventsTab> {
                       ],
                     ],
                   ),
-            if (widget.isModerator)
+            // Create session FAB for admins only
+            if (isAdmin)
               Positioned(
                 bottom: 16,
                 right: 16,
                 child: FloatingActionButton(
                   onPressed: () =>
-                      context.push('/groups/${widget.groupId}/sessions/new'),
+                      context.push('/groups/$groupId/sessions/new'),
                   tooltip: 'Create session',
                   child: const Icon(Icons.add),
                 ),
               ),
-            if (widget.isMember && !widget.isModerator)
+            // Request session button for regular members
+            if (isMember && !isAdmin)
               Positioned(
                 bottom: 16,
                 right: 16,
                 child: FloatingActionButton.extended(
                   onPressed: () =>
-                      context.push('/groups/${widget.groupId}/session-requests'),
+                      context.push('/groups/$groupId/session-requests'),
                   icon: const Icon(Icons.event_available_outlined),
                   label: const Text('Request Session'),
                 ),

@@ -50,11 +50,14 @@ class MobileShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final unreadAsync = ref.watch(unreadCountProvider);
     final unreadCount = unreadAsync.maybeWhen(data: (c) => c, orElse: () => 0);
+    final currentPath = GoRouterState.of(context).uri.path;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final navBarColor = isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
+    final navBarColor =
+        isDark ? AppThemeTokens.darkCard : AppThemeTokens.lightCard;
 
     SystemChrome.setSystemUIOverlayStyle(
-      (isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark).copyWith(
+      (isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
+          .copyWith(
         statusBarColor: Colors.transparent,
         systemNavigationBarColor: navBarColor,
       ),
@@ -86,7 +89,12 @@ class MobileShell extends ConsumerWidget {
                   )
                 : Text(title)),
         actions: [
-          _NotificationIconButton(unreadCount: unreadCount, onTap: () => context.push('/notifications')),
+          _NotificationIconButton(
+            unreadCount: unreadCount,
+            onTap: currentPath == '/notifications'
+                ? null
+                : () => context.push('/notifications'),
+          ),
           if (actions != null) ...actions!,
           const SizedBox(width: 4),
         ],
@@ -240,7 +248,7 @@ class _NotificationIconButton extends StatelessWidget {
   });
 
   final int unreadCount;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
