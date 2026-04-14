@@ -113,7 +113,10 @@ export const validateTournamentEnums = (payload: {
   sportType?: string;
   format?: string;
 }) => {
-  if (payload.sportType !== undefined && !ALLOWED_SPORT_TYPES.includes(payload.sportType as (typeof ALLOWED_SPORT_TYPES)[number])) {
+  const isAllowedSportType = (value: string): value is (typeof ALLOWED_SPORT_TYPES)[number] =>
+    ALLOWED_SPORT_TYPES.includes(value as (typeof ALLOWED_SPORT_TYPES)[number]);
+
+  if (payload.sportType !== undefined && !isAllowedSportType(payload.sportType)) {
     throw new BadRequestError(`Invalid sportType. Must be one of: ${ALLOWED_SPORT_TYPES.join(', ')}`);
   }
 
