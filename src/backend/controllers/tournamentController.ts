@@ -39,6 +39,27 @@ const MAX_POOL_NAME_LENGTH = 100;
 const MAX_PLAYER_NAME_LENGTH = 100;
 const MAX_TEAMS_UPPER_BOUND = 1000;
 
+const syncTournamentAutoStatus = async <T extends {
+  id: string;
+  status: string;
+  startDate: Date;
+  endDate?: Date | null;
+  registrationStartDate?: Date | null;
+  registrationDeadline?: Date | null;
+}>(tournament: T): Promise<T> => {
+  const nextStatus = tournamentService.computeAutoStatus(tournament);
+  if (!nextStatus || nextStatus === tournament.status) {
+    return tournament;
+  }
+
+  await prisma.tournament.update({
+    where: { id: tournament.id },
+    data: { status: nextStatus as TournamentStatus },
+  });
+
+  return { ...tournament, status: nextStatus };
+};
+
 // Re-export for use in tests
 export { INVITATION_EXPIRY_DAYS };
 
@@ -253,8 +274,12 @@ export const getTournaments = async (req: Request, res: Response) => {
     prisma.tournament.count({ where }),
   ]);
 
+  const syncedTournaments = await Promise.all(
+    tournaments.map((tournament) => syncTournamentAutoStatus(tournament))
+  );
+
   res.json({
-    data: tournaments,
+    data: syncedTournaments,
     pagination: {
       page: parsedPage,
       limit: parsedLimit,
@@ -354,7 +379,9 @@ export const getTournament = async (req: Request, res: Response) => {
 
   ensureResourceExists(tournament, 'Tournament');
 
-  res.json(tournament);
+  const syncedTournament = await syncTournamentAutoStatus(tournament!);
+
+  res.json(syncedTournament);
 };
 
 /**
@@ -373,15 +400,21 @@ export const updateTournament = async (req: Request, res: Response) => {
     sportConfig
   } = req.body;
 
-  const tournament = await prisma.tournament.findUnique({
+  let tournament = await prisma.tournament.findUnique({
     where: { id }
   });
 
   ensureResourceExists(tournament, 'Tournament');
 
+  tournament = await syncTournamentAutoStatus(tournament!);
+
   const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament!, userId);
   if (!isOrgOrAdmin) {
     throw new ForbiddenError('Only the organizer or a co-organizer can update the tournament');
+  }
+
+  if (tournament!.status === TournamentStatus.COMPLETED) {
+    throw new BadRequestError('Completed tournaments cannot be edited');
   }
 
   if (status !== undefined) {
@@ -2918,8 +2951,12 @@ export const getPublicTournaments = async (req: Request, res: Response) => {
     prisma.tournament.count({ where }),
   ]);
 
+  const syncedTournaments = await Promise.all(
+    tournaments.map((tournament) => syncTournamentAutoStatus(tournament))
+  );
+
   res.json({
-    data: tournaments,
+    data: syncedTournaments,
     pagination: {
       page: parsedPage,
       limit: parsedLimit,

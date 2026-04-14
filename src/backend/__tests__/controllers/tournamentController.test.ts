@@ -547,6 +547,27 @@ describe('GET /api/tournaments (getTournaments)', () => {
     expect(res.body.data).toEqual([]);
     expect(res.body.pagination.total).toBe(0);
   });
+
+  it('auto-updates tournament status when computeAutoStatus returns a new status', async () => {
+    vi.mocked(prisma.tournament.findMany).mockResolvedValue([mockTournament] as any);
+    vi.mocked(prisma.tournament.count).mockResolvedValue(1);
+    vi.mocked(tournamentService.computeAutoStatus).mockReturnValue('registration');
+    vi.mocked(prisma.tournament.update).mockResolvedValue({
+      ...mockTournament,
+      status: 'registration',
+    } as any);
+
+    const res = await request(app).get('/api/tournaments');
+
+    expect(res.status).toBe(200);
+    expect(vi.mocked(prisma.tournament.update)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'tournament-1' },
+        data: { status: 'registration' },
+      })
+    );
+    expect(res.body.data[0].status).toBe('registration');
+  });
 });
 
 describe('GET /api/tournaments/:id (getTournament)', () => {
@@ -565,6 +586,26 @@ describe('GET /api/tournaments/:id (getTournament)', () => {
     const res = await request(app).get('/api/tournaments/nonexistent');
 
     expect(res.status).toBe(404);
+  });
+
+  it('auto-updates tournament status for single tournament when needed', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.computeAutoStatus).mockReturnValue('registration');
+    vi.mocked(prisma.tournament.update).mockResolvedValue({
+      ...mockTournament,
+      status: 'registration',
+    } as any);
+
+    const res = await request(app).get('/api/tournaments/tournament-1');
+
+    expect(res.status).toBe(200);
+    expect(vi.mocked(prisma.tournament.update)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'tournament-1' },
+        data: { status: 'registration' },
+      })
+    );
+    expect(res.body.status).toBe('registration');
   });
 });
 
@@ -606,6 +647,22 @@ describe('PUT /api/tournaments/:id (updateTournament)', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error).toContain('/status');
+  });
+
+  it('returns 400 when trying to edit a completed tournament', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'completed',
+    } as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1')
+      .send({ name: 'Updated' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('cannot be edited');
+    expect(vi.mocked(prisma.tournament.update)).not.toHaveBeenCalled();
   });
 });
 

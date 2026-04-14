@@ -14,6 +14,38 @@ import '../state/tournaments_notifier.dart';
 
 const _kAccent = Color(0xFFFF9800);
 
+bool _isTournamentStarted(TournamentModel tournament) {
+  return tournament.status == 'in_progress' ||
+      tournament.status == 'active' ||
+      tournament.status == 'completed';
+}
+
+String _statusStageLabel(TournamentModel tournament) {
+  if (tournament.status == 'completed') return 'Done';
+
+  if (tournament.status == 'in_progress' || tournament.status == 'active') {
+    final hasMatches = tournament.matches.isNotEmpty;
+    return hasMatches ? 'In Progress' : 'Forming Brackets';
+  }
+
+  if (tournament.status == 'registration') return 'Registration Open';
+
+  final now = DateTime.now();
+  final hasRegDates =
+      tournament.registrationStartDate != null || tournament.registrationDeadline != null;
+  if (hasRegDates) {
+    final hasOpened = tournament.registrationStartDate == null ||
+        !now.isBefore(tournament.registrationStartDate!);
+    final isClosed = tournament.registrationDeadline != null &&
+        now.isAfter(tournament.registrationDeadline!);
+    if (hasOpened && isClosed) {
+      return 'Registration Closed';
+    }
+  }
+
+  return 'Draft';
+}
+
 // ===========================================================================
 // Tournament Detail Page
 // ===========================================================================
@@ -63,9 +95,7 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
         ),
       ),
       data: (t) {
-        final isStarted = t.status == 'in_progress' ||
-            t.status == 'active' ||
-            t.status == 'completed';
+        final isStarted = _isTournamentStarted(t);
         final isOrganizer = t.creatorId == currentUserId;
         final isAdmin =
             isOrganizer || t.admins.any((a) => a.userId == currentUserId);
@@ -96,8 +126,10 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
           _tabController = TabController(length: tabs.length, vsync: this);
         }
 
-        void refresh() =>
-            ref.invalidate(tournamentDetailProvider(widget.tournamentId));
+        void refresh() {
+          ref.invalidate(tournamentDetailProvider(widget.tournamentId));
+          ref.invalidate(tournamentsNotifierProvider);
+        }
 
         return Scaffold(
           body: NestedScrollView(
@@ -116,19 +148,23 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
                   ),
                 ),
                 actions: [
-                  if (isAdmin)
+                  if (isAdmin && t.status != 'completed')
                     IconButton(
                       icon: const Icon(Icons.edit_outlined),
                       tooltip: 'Edit tournament',
-                      onPressed: () =>
-                          context.push('/tournaments/${t.id}/edit', extra: t),
+                      onPressed: () async {
+                        await context.push('/tournaments/${t.id}/edit', extra: t);
+                        if (mounted) refresh();
+                      },
                     ),
                   if (isAdmin)
                     IconButton(
                       icon: const Icon(Icons.admin_panel_settings_outlined),
                       tooltip: 'Admin panel',
-                      onPressed: () =>
-                          context.push('/tournaments/${t.id}/admins'),
+                      onPressed: () async {
+                        await context.push('/tournaments/${t.id}/admins');
+                        if (mounted) refresh();
+                      },
                     ),
                 ],
                 bottom: TabBar(
@@ -218,7 +254,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
             _InfoRow(
                 icon: Icons.info_outline,
                 label: 'Status',
-                value: _statusLabel(t.status)),
+                value: _statusStageLabel(t)),
             if (t.startDate != null)
               _InfoRow(
                   icon: Icons.play_arrow_outlined,
@@ -291,10 +327,6 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                      '${myTeam!.wins}W / ${myTeam!.losses}L — ${myTeam!.points} pts',
-                      style: const TextStyle(fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -359,24 +391,34 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               OutlinedButton.icon(
                 icon: const Icon(Icons.layers_outlined, size: 16),
                 label: const Text('Manage Pools'),
-                onPressed: () => context.push('/tournaments/${t.id}/pools'),
+                onPressed: () async {
+                  await context.push('/tournaments/${t.id}/pools');
+                  if (context.mounted) onRefresh();
+                },
               ),
               OutlinedButton.icon(
                 icon: const Icon(Icons.category_outlined, size: 16),
                 label: const Text('Categories'),
-                onPressed: () =>
-                    context.push('/tournaments/${t.id}/categories'),
+                onPressed: () async {
+                  await context.push('/tournaments/${t.id}/categories');
+                  if (context.mounted) onRefresh();
+                },
               ),
               OutlinedButton.icon(
                 icon: const Icon(Icons.supervisor_account_outlined, size: 16),
                 label: const Text('Admins'),
-                onPressed: () => context.push('/tournaments/${t.id}/admins'),
+                onPressed: () async {
+                  await context.push('/tournaments/${t.id}/admins');
+                  if (context.mounted) onRefresh();
+                },
               ),
               OutlinedButton.icon(
                 icon: const Icon(Icons.sports_outlined, size: 16),
                 label: const Text('Matches'),
-                onPressed: () =>
-                    context.push('/tournaments/${t.id}/matches', extra: t),
+                onPressed: () async {
+                  await context.push('/tournaments/${t.id}/matches', extra: t);
+                  if (context.mounted) onRefresh();
+                },
               ),
               OutlinedButton.icon(
                 icon: const Icon(Icons.pending_actions_outlined, size: 16),
@@ -751,9 +793,6 @@ class _TeamRow extends StatelessWidget {
             const SizedBox(width: 6),
             Expanded(
                 child: Text(team.name, style: const TextStyle(fontSize: 13))),
-            Text('${team.wins}W ${team.losses}L',
-                style: TextStyle(
-                    color: AppThemeTokens.textMuted(context), fontSize: 12)),
           ],
         ),
       ),
@@ -786,6 +825,15 @@ class _StandingRow {
   final int? ga; // goals / points conceded
   int? get gd => gf != null && ga != null ? gf! - ga! : null;
   int get played => wins + losses + draws;
+  String get ratioLabel {
+    final won = gf ?? 0;
+    final lost = ga ?? 0;
+    if (lost == 0) {
+      if (won == 0) return '0.00';
+      return '∞';
+    }
+    return (won / lost).toStringAsFixed(2);
+  }
 
   factory _StandingRow.fromStanding(TournamentStandingModel s) => _StandingRow(
       name: s.teamName,
@@ -992,25 +1040,25 @@ class _ScoreTable extends StatelessWidget {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                               fontWeight: FontWeight.w600, fontSize: 12))),
-                  if (showGoals) ...[
-                    const SizedBox(
-                        width: 36,
-                        child: Text('GF',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 12))),
-                    const SizedBox(
-                        width: 36,
-                        child: Text('GA',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 12))),
-                    const SizedBox(
-                        width: 36,
-                        child: Text('GD',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 12))),
+                    if (showGoals) ...[
+                      const SizedBox(
+                          width: 36,
+                          child: Text('PW',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 12))),
+                      const SizedBox(
+                          width: 36,
+                          child: Text('PL',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 12))),
+                      const SizedBox(
+                          width: 44,
+                          child: Text('R',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 12))),
                   ],
                   const SizedBox(
                       width: 40,
@@ -1072,16 +1120,10 @@ class _ScoreTable extends StatelessWidget {
                               textAlign: TextAlign.center,
                               style: const TextStyle(fontSize: 13))),
                       SizedBox(
-                          width: 36,
-                          child: Text(
-                            '${(sorted[i].gd ?? 0) >= 0 ? '+' : ''}${sorted[i].gd ?? 0}',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: 13,
-                                color: (sorted[i].gd ?? 0) >= 0
-                                    ? Colors.green
-                                    : Colors.red),
-                          )),
+                          width: 44,
+                          child: Text(sorted[i].ratioLabel,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 13))),
                     ],
                     SizedBox(
                         width: 40,

@@ -163,16 +163,20 @@ class _TournamentCard extends StatelessWidget {
   final TournamentModel tournament;
   final VoidCallback onTap;
 
-  String _formatStatus(String s) {
-    const m = {
-      'draft': 'Draft',
-      'registration': 'Registration',
-      'active': 'Active',
-      'in_progress': 'In Progress',
-      'completed': 'Completed',
-      'cancelled': 'Cancelled',
-    };
-    return m[s] ?? s;
+  String _formatStatus(TournamentModel t) {
+    if (t.status == 'completed') return 'Done';
+    if (t.status == 'in_progress' || t.status == 'active') {
+      return t.matches.isNotEmpty ? 'In Progress' : 'Forming Brackets';
+    }
+    if (t.status == 'registration') return 'Registration Open';
+    final now = DateTime.now();
+    final hasOpened = t.registrationStartDate == null ||
+        !now.isBefore(t.registrationStartDate!);
+    final isClosed =
+        t.registrationDeadline != null && now.isAfter(t.registrationDeadline!);
+    if (hasOpened && isClosed) return 'Registration Closed';
+    if (t.status == 'cancelled') return 'Cancelled';
+    return 'Draft';
   }
 
   IconData _statusIcon(String s) {
@@ -269,7 +273,7 @@ class _TournamentCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          _formatStatus(t.status),
+                          _formatStatus(t),
                           style: TextStyle(
                             color: statusColor,
                             fontSize: 11,
@@ -337,4 +341,3 @@ class _TournamentCard extends StatelessWidget {
     );
   }
 }
-
