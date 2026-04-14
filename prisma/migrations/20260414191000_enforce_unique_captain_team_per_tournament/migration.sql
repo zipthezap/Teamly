@@ -1,5 +1,7 @@
 -- Deduplicate legacy rows before adding uniqueness constraint.
 -- Keep the most recent team registration per (tournamentId, captainUserId).
+-- Related data is handled by existing FK rules on TournamentTeam relations
+-- (CASCADE for dependent rows and SET NULL where configured).
 WITH ranked_teams AS (
   SELECT
     "id",

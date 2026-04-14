@@ -1825,7 +1825,7 @@ describe('DELETE /api/tournaments/:id/teams/self-register (selfUnregisterTeam)',
       .delete('/api/tournaments/tournament-1/teams/self-register');
 
     expect(res.status).toBe(200);
-    expect(res.body.removedTeamCount).toBe(2);
+    expect(res.body.message).toContain('unregistered');
     expect(prisma.tournamentTeam.deleteMany).toHaveBeenCalledWith({
       where: { id: { in: ['team-1', 'team-2'] } }
     });

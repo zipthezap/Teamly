@@ -2793,7 +2793,7 @@ export const selfUnregisterTeam = async (req: Request, res: Response) => {
     captainUserId: userId,
   });
 
-  res.json({ message: 'Team unregistered successfully', removedTeamCount: existingTeams.length });
+  res.json({ message: 'Team unregistered successfully' });
 };
 
 // ==================== STATUS MANAGEMENT ====================
