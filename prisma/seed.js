@@ -285,7 +285,7 @@ async function main() {
     {
       title: 'Weekend Football Match',
       description: 'Join us for a friendly football match this weekend!',
-      eventType: 'football',
+      sessionType: 'football',
       location: 'Central Park Field 3',
       city: 'New York',
       country: 'USA',
@@ -309,7 +309,7 @@ async function main() {
       {
         title: 'Spring Soccer Kickoff',
         description: 'Start the season with a friendly soccer match!',
-        eventType: 'football',
+        sessionType: 'football',
         location: 'East Meadow Field',
         city: 'New York',
         country: 'USA',
@@ -331,7 +331,7 @@ async function main() {
       {
         title: 'Ultimate Frisbee Challenge',
         description: 'Join us for a fast-paced frisbee game!',
-        eventType: 'other',
+        sessionType: 'other',
         location: 'Great Lawn',
         city: 'New York',
         country: 'USA',
@@ -353,7 +353,7 @@ async function main() {
       {
         title: 'Volleyball Night',
         description: 'Evening volleyball games for all skill levels.',
-        eventType: 'volleyball',
+        sessionType: 'volleyball',
         location: 'Pier 25 Volleyball Courts',
         city: 'New York',
         country: 'USA',
@@ -376,7 +376,7 @@ async function main() {
       {
         title: 'Winter Indoor Soccer',
         description: 'Indoor soccer to keep warm during winter!',
-        eventType: 'football',
+        sessionType: 'football',
         location: 'Chelsea Piers',
         city: 'New York',
         country: 'USA',
@@ -398,7 +398,7 @@ async function main() {
       {
         title: 'Autumn Running Meetup',
         description: 'Group run through Central Park to enjoy the fall colors.',
-        eventType: 'running',
+        sessionType: 'running',
         location: 'Central Park',
         city: 'New York',
         country: 'USA',
@@ -420,7 +420,7 @@ async function main() {
     {
       title: 'Morning Yoga Session',
       description: 'Relaxing morning yoga session at the park',
-      eventType: 'other',
+      sessionType: 'other',
       location: 'Central Park Great Lawn',
       city: 'New York',
       country: 'USA',
@@ -444,7 +444,7 @@ async function main() {
     {
       title: 'Basketball Pickup Game',
       description: 'Join us for a casual basketball game!',
-      eventType: 'basketball',
+      sessionType: 'basketball',
       location: 'Downtown Gym',
       city: 'Los Angeles',
       country: 'USA',
@@ -467,7 +467,7 @@ async function main() {
     {
       title: 'Championship Game',
       description: 'Final championship game of the season!',
-      eventType: 'basketball',
+      sessionType: 'basketball',
       location: 'Staples Center',
       city: 'Los Angeles',
       country: 'USA',
@@ -490,7 +490,7 @@ async function main() {
     {
       title: 'Private Tennis Clinic',
       description: 'Members-only tennis coaching session',
-      eventType: 'tennis',
+      sessionType: 'tennis',
       location: 'Lincoln Park Tennis Courts',
       city: 'Chicago',
       country: 'USA',
@@ -513,7 +513,7 @@ async function main() {
 
   const createdEvents = [];
   for (const eventData of events) {
-    const event = await prisma.event.create({
+    const event = await prisma.session.create({
       data: {
         ...eventData,
         participants: {
@@ -535,33 +535,33 @@ async function main() {
   }
 
   // Seed newer event participant states introduced after the original seed set.
-  await prisma.eventParticipant.upsert({
+  await prisma.sessionParticipant.upsert({
     where: {
-      eventId_userId: {
-        eventId: weekendFootballEvent.id,
+      sessionId_userId: {
+        sessionId: weekendFootballEvent.id,
         userId: user4.id,
       }
     },
     update: { status: 'waitlisted' },
     create: {
       id: 'seed-event-participant-waitlisted-1',
-      eventId: weekendFootballEvent.id,
+      sessionId: weekendFootballEvent.id,
       userId: user4.id,
       status: 'waitlisted'
     }
   });
 
-  await prisma.eventParticipant.upsert({
+  await prisma.sessionParticipant.upsert({
     where: {
-      eventId_userId: {
-        eventId: springSoccerEvent.id,
+      sessionId_userId: {
+        sessionId: springSoccerEvent.id,
         userId: user3.id,
       }
     },
     update: { status: 'co_organizer' },
     create: {
       id: 'seed-event-participant-coorganizer-1',
-      eventId: springSoccerEvent.id,
+      sessionId: springSoccerEvent.id,
       userId: user3.id,
       status: 'co_organizer'
     }
@@ -576,7 +576,7 @@ async function main() {
     }
   });
 
-  await prisma.event.update({
+  await prisma.session.update({
     where: { id: weekendFootballEvent.id },
     data: {
       inviteToken: 'seed-event-invite-token-1',
@@ -631,12 +631,12 @@ async function main() {
 
   // Create event notifications
   console.log('\nSeeding event notifications...');
-  await prisma.eventNotification.upsert({
+  await prisma.sessionNotification.upsert({
     where: { id: 'seed-event-notif-1' },
     update: {},
     create: {
       id: 'seed-event-notif-1',
-      eventId: createdEvents[0].id,
+      sessionId: createdEvents[0].id,
       userId: user1.id,
       type: 'join',
       params: { userName: 'Bob', eventTitle: createdEvents[0].title },
@@ -646,12 +646,12 @@ async function main() {
     }
   });
 
-  await prisma.eventNotification.upsert({
+  await prisma.sessionNotification.upsert({
     where: { id: 'seed-event-notif-2' },
     update: {},
     create: {
       id: 'seed-event-notif-2',
-      eventId: createdEvents[0].id,
+      sessionId: createdEvents[0].id,
       userId: user2.id,
       type: 'confirmed',
       params: { userName: 'Charlie', eventTitle: createdEvents[0].title },
@@ -661,12 +661,12 @@ async function main() {
     }
   });
 
-  await prisma.eventNotification.upsert({
+  await prisma.sessionNotification.upsert({
     where: { id: 'seed-event-notif-3' },
     update: {},
     create: {
       id: 'seed-event-notif-3',
-      eventId: createdEvents[1].id,
+      sessionId: createdEvents[1].id,
       userId: user3.id,
       type: 'late',
       params: { userName: 'Bob', eventTitle: createdEvents[1].title },
@@ -676,12 +676,12 @@ async function main() {
     }
   });
 
-  await prisma.eventNotification.upsert({
+  await prisma.sessionNotification.upsert({
     where: { id: 'seed-event-notif-4' },
     update: {},
     create: {
       id: 'seed-event-notif-4',
-      eventId: createdEvents[3].id,
+      sessionId: createdEvents[3].id,
       userId: user1.id,
       type: 'status_change',
       params: { eventTitle: createdEvents[3].title, newStatus: 'confirmed' },
@@ -691,7 +691,7 @@ async function main() {
     }
   });
 
-  await prisma.eventNotification.upsert({
+  await prisma.sessionNotification.upsert({
     where: { id: 'seed-event-notif-5' },
     update: {
       type: 'session_updated',
@@ -701,7 +701,7 @@ async function main() {
     },
     create: {
       id: 'seed-event-notif-5',
-      eventId: weekendFootballEvent.id,
+      sessionId: weekendFootballEvent.id,
       userId: user3.id,
       type: 'session_updated',
       params: { userName: user3.name, eventTitle: weekendFootballEvent.title },
@@ -711,7 +711,7 @@ async function main() {
     }
   });
 
-  await prisma.eventNotification.upsert({
+  await prisma.sessionNotification.upsert({
     where: { id: 'seed-event-notif-6' },
     update: {
       type: 'session_cancelled',
@@ -721,7 +721,7 @@ async function main() {
     },
     create: {
       id: 'seed-event-notif-6',
-      eventId: morningYogaEvent.id,
+      sessionId: morningYogaEvent.id,
       userId: user1.id,
       type: 'session_cancelled',
       params: { userName: user1.name, eventTitle: morningYogaEvent.title },
@@ -844,14 +844,14 @@ async function main() {
   });
 
   console.log('\nSeeding event requests...');
-  const eventRequest1 = await prisma.eventRequest.upsert({
+  const eventRequest1 = await prisma.sessionRequest.upsert({
     where: { id: 'seed-event-request-1' },
     update: {},
     create: {
       id: 'seed-event-request-1',
       title: 'Saturday Skills Clinic',
       description: 'Requesting a coached clinic before the next football match for positioning and passing drills.',
-      eventType: 'football',
+      sessionType: 'football',
       location: 'Central Park Training Zone',
       startTime: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000),
       endTime: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000 + 90 * 60 * 1000),
@@ -864,14 +864,14 @@ async function main() {
     }
   });
 
-  const eventRequest2 = await prisma.eventRequest.upsert({
+  const eventRequest2 = await prisma.sessionRequest.upsert({
     where: { id: 'seed-event-request-2' },
     update: {},
     create: {
       id: 'seed-event-request-2',
       title: 'Sunrise Recovery Run',
       description: 'A low-intensity group recovery run after the autumn meetup series.',
-      eventType: 'running',
+      sessionType: 'running',
       location: 'Reservoir Loop',
       startTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000),
       endTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000 + 75 * 60 * 1000),
@@ -881,18 +881,18 @@ async function main() {
       voteThreshold: 0.5,
       creatorId: user3.id,
       groupId: group1.id,
-      finalizedEventId: springSoccerEvent.id,
+      finalizedSessionId: springSoccerEvent.id,
     }
   });
 
-  const eventRequest3 = await prisma.eventRequest.upsert({
+  const eventRequest3 = await prisma.sessionRequest.upsert({
     where: { id: 'seed-event-request-3' },
     update: {},
     create: {
       id: 'seed-event-request-3',
       title: 'Late Night Half-Court Shootout',
       description: 'Short-format half-court games with music and scorekeeping.',
-      eventType: 'basketball',
+      sessionType: 'basketball',
       location: 'Downtown Gym Annex',
       startTime: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
       endTime: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
@@ -905,14 +905,14 @@ async function main() {
     }
   });
 
-  const eventRequest4 = await prisma.eventRequest.upsert({
+  const eventRequest4 = await prisma.sessionRequest.upsert({
     where: { id: 'seed-event-request-4' },
     update: {},
     create: {
       id: 'seed-event-request-4',
       title: 'Montreal Mixed-Sports Social',
       description: 'A social event with rotating mini-games for new members to meet each other.',
-      eventType: 'other',
+      sessionType: 'other',
       location: 'Parc du Mont-Royal',
       startTime: new Date(Date.now() + 18 * 24 * 60 * 60 * 1000),
       endTime: new Date(Date.now() + 18 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000),
@@ -925,106 +925,106 @@ async function main() {
     }
   });
 
-  await prisma.eventVote.upsert({
+  await prisma.sessionVote.upsert({
     where: {
-      eventRequestId_userId: {
-        eventRequestId: eventRequest1.id,
+      sessionRequestId_userId: {
+        sessionRequestId: eventRequest1.id,
         userId: user1.id,
       }
     },
     update: { vote: 'yes' },
     create: {
-      eventRequestId: eventRequest1.id,
+      sessionRequestId: eventRequest1.id,
       userId: user1.id,
       vote: 'yes'
     }
   });
 
-  await prisma.eventVote.upsert({
+  await prisma.sessionVote.upsert({
     where: {
-      eventRequestId_userId: {
-        eventRequestId: eventRequest1.id,
+      sessionRequestId_userId: {
+        sessionRequestId: eventRequest1.id,
         userId: user3.id,
       }
     },
     update: { vote: 'yes' },
     create: {
-      eventRequestId: eventRequest1.id,
+      sessionRequestId: eventRequest1.id,
       userId: user3.id,
       vote: 'yes'
     }
   });
 
-  await prisma.eventVote.upsert({
+  await prisma.sessionVote.upsert({
     where: {
-      eventRequestId_userId: {
-        eventRequestId: eventRequest2.id,
+      sessionRequestId_userId: {
+        sessionRequestId: eventRequest2.id,
         userId: user1.id,
       }
     },
     update: { vote: 'yes' },
     create: {
-      eventRequestId: eventRequest2.id,
+      sessionRequestId: eventRequest2.id,
       userId: user1.id,
       vote: 'yes'
     }
   });
 
-  await prisma.eventVote.upsert({
+  await prisma.sessionVote.upsert({
     where: {
-      eventRequestId_userId: {
-        eventRequestId: eventRequest2.id,
+      sessionRequestId_userId: {
+        sessionRequestId: eventRequest2.id,
         userId: user2.id,
       }
     },
     update: { vote: 'yes' },
     create: {
-      eventRequestId: eventRequest2.id,
+      sessionRequestId: eventRequest2.id,
       userId: user2.id,
       vote: 'yes'
     }
   });
 
-  await prisma.eventVote.upsert({
+  await prisma.sessionVote.upsert({
     where: {
-      eventRequestId_userId: {
-        eventRequestId: eventRequest3.id,
+      sessionRequestId_userId: {
+        sessionRequestId: eventRequest3.id,
         userId: user2.id,
       }
     },
     update: { vote: 'yes' },
     create: {
-      eventRequestId: eventRequest3.id,
+      sessionRequestId: eventRequest3.id,
       userId: user2.id,
       vote: 'yes'
     }
   });
 
-  await prisma.eventVote.upsert({
+  await prisma.sessionVote.upsert({
     where: {
-      eventRequestId_userId: {
-        eventRequestId: eventRequest3.id,
+      sessionRequestId_userId: {
+        sessionRequestId: eventRequest3.id,
         userId: user1.id,
       }
     },
     update: { vote: 'no' },
     create: {
-      eventRequestId: eventRequest3.id,
+      sessionRequestId: eventRequest3.id,
       userId: user1.id,
       vote: 'no'
     }
   });
 
-  await prisma.eventVote.upsert({
+  await prisma.sessionVote.upsert({
     where: {
-      eventRequestId_userId: {
-        eventRequestId: eventRequest4.id,
+      sessionRequestId_userId: {
+        sessionRequestId: eventRequest4.id,
         userId: user3.id,
       }
     },
     update: { vote: 'yes' },
     create: {
-      eventRequestId: eventRequest4.id,
+      sessionRequestId: eventRequest4.id,
       userId: user3.id,
       vote: 'yes'
     }
@@ -1032,49 +1032,49 @@ async function main() {
 
   console.log('Seeded 4 event requests and 7 event votes');
 
-  await prisma.eventAttendance.upsert({
+  await prisma.sessionAttendance.upsert({
     where: {
-      eventId_userId: {
-        eventId: autumnRunningEvent.id,
+      sessionId_userId: {
+        sessionId: autumnRunningEvent.id,
         userId: user1.id,
       }
     },
     update: { status: 'on_time' },
     create: {
       id: 'seed-attendance-1',
-      eventId: autumnRunningEvent.id,
+      sessionId: autumnRunningEvent.id,
       userId: user1.id,
       status: 'on_time'
     }
   });
 
-  await prisma.eventAttendance.upsert({
+  await prisma.sessionAttendance.upsert({
     where: {
-      eventId_userId: {
-        eventId: autumnRunningEvent.id,
+      sessionId_userId: {
+        sessionId: autumnRunningEvent.id,
         userId: user3.id,
       }
     },
     update: { status: 'late' },
     create: {
       id: 'seed-attendance-2',
-      eventId: autumnRunningEvent.id,
+      sessionId: autumnRunningEvent.id,
       userId: user3.id,
       status: 'late'
     }
   });
 
-  await prisma.eventAttendance.upsert({
+  await prisma.sessionAttendance.upsert({
     where: {
-      eventId_userId: {
-        eventId: morningYogaEvent.id,
+      sessionId_userId: {
+        sessionId: morningYogaEvent.id,
         userId: user2.id,
       }
     },
     update: { status: 'on_time' },
     create: {
       id: 'seed-attendance-3',
-      eventId: morningYogaEvent.id,
+      sessionId: morningYogaEvent.id,
       userId: user2.id,
       status: 'on_time'
     }
@@ -1091,6 +1091,7 @@ async function main() {
       title: 'Need 2 players for football match',
       description: 'Looking for 2 substitute players for our football match this Saturday',
       sportType: 'football',
+      requestType: 'need_players',
       location: 'Central Park Field 5',
       city: 'New York',
       country: 'USA',
@@ -1114,6 +1115,7 @@ async function main() {
       title: 'Basketball sub needed urgently',
       description: 'One of our players got injured, need 1 replacement for tonight',
       sportType: 'basketball',
+      requestType: 'need_players',
       location: 'Downtown Gym',
       city: 'Los Angeles',
       country: 'USA',
@@ -1137,6 +1139,7 @@ async function main() {
       title: 'Tennis doubles partner needed',
       description: 'Looking for an advanced player for doubles tournament',
       sportType: 'tennis',
+      requestType: 'need_players',
       location: 'Lincoln Park Tennis Courts',
       city: 'Chicago',
       country: 'USA',
@@ -1151,7 +1154,55 @@ async function main() {
       creatorId: user3.id,
     }
   });
-  console.log('Seeded 3 TeamUp requests');
+
+  // TeamUp request with looking_for_play type (user is looking for a game to join)
+  const teamUp4 = await prisma.teamUpRequest.upsert({
+    where: { id: 'seed-teamup-4' },
+    update: {},
+    create: {
+      id: 'seed-teamup-4',
+      title: 'Looking for a volleyball game this weekend',
+      description: 'Experienced volleyball player available this weekend, looking to join a game or team',
+      sportType: 'volleyball',
+      requestType: 'looking_for_play',
+      city: 'New York',
+      country: 'USA',
+      latitude: 40.7128,
+      longitude: -74.0060,
+      locationName: 'New York City',
+      dateTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
+      playersNeeded: 1,
+      skillLevel: 'intermediate',
+      status: 'open',
+      expiresAt: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000), // 6 days from now
+      creatorId: user4.id,
+    }
+  });
+
+  // Another looking_for_play request
+  const teamUp5 = await prisma.teamUpRequest.upsert({
+    where: { id: 'seed-teamup-5' },
+    update: {},
+    create: {
+      id: 'seed-teamup-5',
+      title: 'Available for hockey games – intermediate skater',
+      description: 'Looking for a pickup hockey game or team that needs a forward. Available weekday evenings.',
+      sportType: 'iceHockey',
+      requestType: 'looking_for_play',
+      city: 'Montreal',
+      country: 'Canada',
+      latitude: 45.5017,
+      longitude: -73.5673,
+      locationName: 'Montreal, QC',
+      dateTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
+      playersNeeded: 1,
+      skillLevel: 'intermediate',
+      status: 'open',
+      expiresAt: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000), // 10 days from now
+      creatorId: user2.id,
+    }
+  });
+  console.log('Seeded 5 TeamUp requests (3 need_players, 2 looking_for_play)');
 
   // Create TeamUp responses
   console.log('\nSeeding TeamUp responses...');
@@ -1288,36 +1339,36 @@ async function main() {
 
   // Create event reminders
   console.log('\nSeeding event reminders...');
-  await prisma.eventReminder.upsert({
+  await prisma.sessionReminder.upsert({
     where: { id: 'seed-reminder-1' },
     update: {},
     create: {
       id: 'seed-reminder-1',
-      eventId: createdEvents[0].id,
+      sessionId: createdEvents[0].id,
       userId: user1.id,
       remindAt: new Date(createdEvents[0].startTime.getTime() - 24 * 60 * 60 * 1000), // 24 hours before
       sent: false
     }
   });
 
-  await prisma.eventReminder.upsert({
+  await prisma.sessionReminder.upsert({
     where: { id: 'seed-reminder-2' },
     update: {},
     create: {
       id: 'seed-reminder-2',
-      eventId: createdEvents[0].id,
+      sessionId: createdEvents[0].id,
       userId: user2.id,
       remindAt: new Date(createdEvents[0].startTime.getTime() - 2 * 60 * 60 * 1000), // 2 hours before
       sent: false
     }
   });
 
-  await prisma.eventReminder.upsert({
+  await prisma.sessionReminder.upsert({
     where: { id: 'seed-reminder-3' },
     update: {},
     create: {
       id: 'seed-reminder-3',
-      eventId: createdEvents[2].id, // Past event
+      sessionId: createdEvents[2].id, // Past event
       userId: user1.id,
       remindAt: new Date(createdEvents[2].startTime.getTime() - 1 * 60 * 60 * 1000), // 1 hour before
       sent: true
@@ -1332,7 +1383,7 @@ async function main() {
     update: {},
     create: {
       id: 'seed-comment-1',
-      eventId: createdEvents[0].id,
+      sessionId: createdEvents[0].id,
       userId: user2.id,
       content: 'Looking forward to this match! Should we bring extra balls?',
       createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) // 2 days ago
@@ -1344,7 +1395,7 @@ async function main() {
     update: {},
     create: {
       id: 'seed-comment-2',
-      eventId: createdEvents[0].id,
+      sessionId: createdEvents[0].id,
       userId: user1.id,
       content: 'Good idea! I will bring two extra balls.',
       createdAt: new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000), // 1.5 days ago
@@ -1357,7 +1408,7 @@ async function main() {
     update: {},
     create: {
       id: 'seed-comment-3',
-      eventId: createdEvents[3].id,
+      sessionId: createdEvents[3].id,
       userId: user4.id,
       content: 'What time should we arrive? 30 minutes early for warmup?',
       createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000) // 12 hours ago
@@ -1369,7 +1420,7 @@ async function main() {
     update: {},
     create: {
       id: 'seed-comment-4',
-      eventId: createdEvents[3].id,
+      sessionId: createdEvents[3].id,
       userId: user2.id,
       content: 'Yes, 30 minutes early would be perfect for warmup!',
       createdAt: new Date(Date.now() - 10 * 60 * 60 * 1000), // 10 hours ago
@@ -1385,7 +1436,7 @@ async function main() {
     update: {},
     create: {
       id: 'seed-guest-1',
-      eventId: createdEvents[0].id,
+      sessionId: createdEvents[0].id,
       name: 'John Doe',
       status: 'confirmed',
       joinedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) // 3 days ago
@@ -1397,7 +1448,7 @@ async function main() {
     update: {},
     create: {
       id: 'seed-guest-2',
-      eventId: createdEvents[0].id,
+      sessionId: createdEvents[0].id,
       name: 'Jane Smith',
       status: 'confirmed',
       joinedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) // 2 days ago
@@ -1409,7 +1460,7 @@ async function main() {
     update: {},
     create: {
       id: 'seed-guest-3',
-      eventId: createdEvents[3].id,
+      sessionId: createdEvents[3].id,
       name: 'Mike Johnson',
       status: 'confirmed',
       joinedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000) // 1 day ago
@@ -1421,7 +1472,7 @@ async function main() {
     update: {},
     create: {
       id: 'seed-guest-4',
-      eventId: springSoccerEvent.id,
+      sessionId: springSoccerEvent.id,
       name: 'Sophie Turner',
       status: 'confirmed',
       joinedAt: new Date(Date.now() - 36 * 60 * 60 * 1000)
@@ -1433,7 +1484,7 @@ async function main() {
     update: {},
     create: {
       id: 'seed-guest-5',
-      eventId: springSoccerEvent.id,
+      sessionId: springSoccerEvent.id,
       name: 'Liam Carter',
       status: 'confirmed',
       joinedAt: new Date(Date.now() - 30 * 60 * 60 * 1000)
@@ -1445,7 +1496,7 @@ async function main() {
     update: {},
     create: {
       id: 'seed-guest-6',
-      eventId: weekendFootballEvent.id,
+      sessionId: weekendFootballEvent.id,
       name: 'Emma Brooks',
       status: 'declined',
       joinedAt: new Date(Date.now() - 18 * 60 * 60 * 1000)
@@ -1457,7 +1508,7 @@ async function main() {
     update: {},
     create: {
       id: 'seed-guest-7',
-      eventId: createdEvents[7].id,
+      sessionId: createdEvents[7].id,
       name: 'Noah Ramirez',
       status: 'confirmed',
       joinedAt: new Date(Date.now() - 20 * 60 * 60 * 1000)
@@ -1469,7 +1520,7 @@ async function main() {
     update: {},
     create: {
       id: 'seed-guest-8',
-      eventId: createdEvents[9].id,
+      sessionId: createdEvents[9].id,
       name: 'Olivia Martin',
       status: 'confirmed',
       joinedAt: new Date(Date.now() - 8 * 60 * 60 * 1000)
@@ -1493,6 +1544,7 @@ async function main() {
       status: 'registration',
       startDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
       endDate: new Date(Date.now() + 32 * 24 * 60 * 60 * 1000), // 32 days from now
+      registrationStartDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago (already open)
       registrationDeadline: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000), // 25 days from now
       maxTeams: 24,
       location: 'Central Sports Complex',
@@ -1511,7 +1563,57 @@ async function main() {
     }
   });
 
-  // Create pools for tournament 1
+  // Create categories for tournament 1
+  const cat1Beginners = await prisma.tournamentCategory.upsert({
+    where: { tournamentId_name: { tournamentId: tournament1.id, name: 'Beginners' } },
+    update: {},
+    create: {
+      id: 'seed-cat-1-beginners',
+      name: 'Beginners',
+      description: 'Open to teams new to competitive play',
+      sortOrder: 0,
+      tournamentId: tournament1.id
+    }
+  });
+
+  const cat1Intermediate = await prisma.tournamentCategory.upsert({
+    where: { tournamentId_name: { tournamentId: tournament1.id, name: 'Intermediate' } },
+    update: {},
+    create: {
+      id: 'seed-cat-1-intermediate',
+      name: 'Intermediate',
+      description: 'For teams with some competitive experience',
+      sortOrder: 1,
+      tournamentId: tournament1.id
+    }
+  });
+
+  const cat1Advanced = await prisma.tournamentCategory.upsert({
+    where: { tournamentId_name: { tournamentId: tournament1.id, name: 'Advanced' } },
+    update: {},
+    create: {
+      id: 'seed-cat-1-advanced',
+      name: 'Advanced',
+      description: 'For experienced competitive teams',
+      sortOrder: 2,
+      tournamentId: tournament1.id
+    }
+  });
+
+  // Grant co_organizer role for tournament 1 to user2 (granted by user1/organizer)
+  await prisma.tournamentAdminRole.upsert({
+    where: { tournamentId_userId: { tournamentId: tournament1.id, userId: user2.id } },
+    update: {},
+    create: {
+      id: 'seed-admin-role-1',
+      tournamentId: tournament1.id,
+      userId: user2.id,
+      role: 'co_organizer',
+      grantedById: user1.id
+    }
+  });
+
+  // Create pools for tournament 1 (assigned to categories)
   const pool1A = await prisma.tournamentPool.upsert({
     where: { id: 'seed-pool-1a' },
     update: {},
@@ -1520,7 +1622,8 @@ async function main() {
       name: 'Pool A - Beginners',
       description: 'For teams new to competitive football',
       maxTeams: 8,
-      tournamentId: tournament1.id
+      tournamentId: tournament1.id,
+      categoryId: cat1Beginners.id
     }
   });
 
@@ -1532,7 +1635,8 @@ async function main() {
       name: 'Pool B - Intermediate',
       description: 'For teams with some competitive experience',
       maxTeams: 10,
-      tournamentId: tournament1.id
+      tournamentId: tournament1.id,
+      categoryId: cat1Intermediate.id
     }
   });
 
@@ -1544,11 +1648,12 @@ async function main() {
       name: 'Pool C - Advanced',
       description: 'For experienced competitive teams',
       maxTeams: 6,
-      tournamentId: tournament1.id
+      tournamentId: tournament1.id,
+      categoryId: cat1Advanced.id
     }
   });
 
-  console.log('Created tournament 1 with 3 pools');
+  console.log('Created tournament 1 with 3 pools and 3 categories');
 
   // Create teams for Pool A (7 teams registered, 1 spot left)
   const teamNamesPoolA = [
@@ -1723,6 +1828,7 @@ async function main() {
       status: 'registration',
       startDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000), // 45 days from now
       endDate: new Date(Date.now() + 47 * 24 * 60 * 60 * 1000), // 47 days from now
+      registrationStartDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago (open)
       registrationDeadline: new Date(Date.now() + 40 * 24 * 60 * 60 * 1000), // 40 days from now
       maxTeams: 16,
       location: 'Downtown Basketball Arena',
@@ -1741,7 +1847,45 @@ async function main() {
     }
   });
 
-  // Create pools for tournament 2
+  // Create categories for tournament 2
+  const cat2East = await prisma.tournamentCategory.upsert({
+    where: { tournamentId_name: { tournamentId: tournament2.id, name: 'Eastern Division' } },
+    update: {},
+    create: {
+      id: 'seed-cat-2-east',
+      name: 'Eastern Division',
+      description: 'Teams from the Eastern conference',
+      sortOrder: 0,
+      tournamentId: tournament2.id
+    }
+  });
+
+  const cat2West = await prisma.tournamentCategory.upsert({
+    where: { tournamentId_name: { tournamentId: tournament2.id, name: 'Western Division' } },
+    update: {},
+    create: {
+      id: 'seed-cat-2-west',
+      name: 'Western Division',
+      description: 'Teams from the Western conference',
+      sortOrder: 1,
+      tournamentId: tournament2.id
+    }
+  });
+
+  // Grant co_organizer role for tournament 2 to user3 (granted by user2/organizer)
+  await prisma.tournamentAdminRole.upsert({
+    where: { tournamentId_userId: { tournamentId: tournament2.id, userId: user3.id } },
+    update: {},
+    create: {
+      id: 'seed-admin-role-2',
+      tournamentId: tournament2.id,
+      userId: user3.id,
+      role: 'co_organizer',
+      grantedById: user2.id
+    }
+  });
+
+  // Create pools for tournament 2 (assigned to categories)
   const pool2A = await prisma.tournamentPool.upsert({
     where: { id: 'seed-pool-2a' },
     update: {},
@@ -1750,7 +1894,8 @@ async function main() {
       name: 'Division A',
       description: 'Eastern division teams',
       maxTeams: 8,
-      tournamentId: tournament2.id
+      tournamentId: tournament2.id,
+      categoryId: cat2East.id
     }
   });
 
@@ -1762,11 +1907,12 @@ async function main() {
       name: 'Division B',
       description: 'Western division teams',
       maxTeams: 8,
-      tournamentId: tournament2.id
+      tournamentId: tournament2.id,
+      categoryId: cat2West.id
     }
   });
 
-  console.log('Created tournament 2 with 2 pools');
+  console.log('Created tournament 2 with 2 pools and 2 categories');
 
   // Create teams for Pool 2A (5 teams registered)
   const teamNamesPool2A = [
@@ -1848,7 +1994,45 @@ async function main() {
     }
   });
 
-  // Create pools for tournament 3 (different sizes)
+  // Create categories for tournament 3
+  const cat3Singles = await prisma.tournamentCategory.upsert({
+    where: { tournamentId_name: { tournamentId: tournament3.id, name: 'Singles' } },
+    update: {},
+    create: {
+      id: 'seed-cat-3-singles',
+      name: 'Singles',
+      description: 'Individual singles competitions',
+      sortOrder: 0,
+      tournamentId: tournament3.id
+    }
+  });
+
+  const cat3Doubles = await prisma.tournamentCategory.upsert({
+    where: { tournamentId_name: { tournamentId: tournament3.id, name: 'Doubles' } },
+    update: {},
+    create: {
+      id: 'seed-cat-3-doubles',
+      name: 'Doubles',
+      description: 'Doubles and youth competitions',
+      sortOrder: 1,
+      tournamentId: tournament3.id
+    }
+  });
+
+  // Grant co_organizer role for tournament 3 to user4 (granted by user3/organizer)
+  await prisma.tournamentAdminRole.upsert({
+    where: { tournamentId_userId: { tournamentId: tournament3.id, userId: user4.id } },
+    update: {},
+    create: {
+      id: 'seed-admin-role-3',
+      tournamentId: tournament3.id,
+      userId: user4.id,
+      role: 'co_organizer',
+      grantedById: user3.id
+    }
+  });
+
+  // Create pools for tournament 3 (different sizes, assigned to categories)
   const pool3A = await prisma.tournamentPool.upsert({
     where: { id: 'seed-pool-3a' },
     update: {},
@@ -1857,7 +2041,8 @@ async function main() {
       name: 'Singles - Men',
       description: 'Men singles competition',
       maxTeams: 8,
-      tournamentId: tournament3.id
+      tournamentId: tournament3.id,
+      categoryId: cat3Singles.id
     }
   });
 
@@ -1869,7 +2054,8 @@ async function main() {
       name: 'Singles - Women',
       description: 'Women singles competition',
       maxTeams: 6,
-      tournamentId: tournament3.id
+      tournamentId: tournament3.id,
+      categoryId: cat3Singles.id
     }
   });
 
@@ -1881,7 +2067,8 @@ async function main() {
       name: 'Doubles - Mixed',
       description: 'Mixed doubles competition',
       maxTeams: 4,
-      tournamentId: tournament3.id
+      tournamentId: tournament3.id,
+      categoryId: cat3Doubles.id
     }
   });
 
@@ -1893,11 +2080,12 @@ async function main() {
       name: 'Youth Category',
       description: 'For players under 18',
       maxTeams: 2,
-      tournamentId: tournament3.id
+      tournamentId: tournament3.id,
+      categoryId: cat3Doubles.id
     }
   });
 
-  console.log('Created tournament 3 with 4 pools of different sizes');
+  console.log('Created tournament 3 with 4 pools and 2 categories');
 
   // Create some teams for tournament 3
   await prisma.tournamentTeam.upsert({
@@ -2076,7 +2264,45 @@ async function main() {
     }
   });
 
-  // Create pools for Montreal tournament
+  // Create categories for tournament 4 (Montreal Hockey)
+  const cat4Elite = await prisma.tournamentCategory.upsert({
+    where: { tournamentId_name: { tournamentId: tournament4.id, name: 'Elite' } },
+    update: {},
+    create: {
+      id: 'seed-cat-4-elite',
+      name: 'Elite',
+      description: 'Top tier competitive division',
+      sortOrder: 0,
+      tournamentId: tournament4.id
+    }
+  });
+
+  const cat4Recreational = await prisma.tournamentCategory.upsert({
+    where: { tournamentId_name: { tournamentId: tournament4.id, name: 'Recreational' } },
+    update: {},
+    create: {
+      id: 'seed-cat-4-recreational',
+      name: 'Recreational',
+      description: 'Recreational and youth divisions',
+      sortOrder: 1,
+      tournamentId: tournament4.id
+    }
+  });
+
+  // Grant co_organizer role for tournament 4 to user1 (granted by user3/organizer)
+  await prisma.tournamentAdminRole.upsert({
+    where: { tournamentId_userId: { tournamentId: tournament4.id, userId: user1.id } },
+    update: {},
+    create: {
+      id: 'seed-admin-role-4',
+      tournamentId: tournament4.id,
+      userId: user1.id,
+      role: 'co_organizer',
+      grantedById: user3.id
+    }
+  });
+
+  // Create pools for Montreal tournament (assigned to categories)
   const pool4A = await prisma.tournamentPool.upsert({
     where: { id: 'seed-pool-4a' },
     update: {},
@@ -2085,7 +2311,8 @@ async function main() {
       name: 'Pool A - Elite Division',
       description: 'Top tier teams with advanced players',
       maxTeams: 4,
-      tournamentId: tournament4.id
+      tournamentId: tournament4.id,
+      categoryId: cat4Elite.id
     }
   });
 
@@ -2097,7 +2324,8 @@ async function main() {
       name: 'Pool B - Championship Division',
       description: 'Competitive teams with intermediate to advanced skills',
       maxTeams: 4,
-      tournamentId: tournament4.id
+      tournamentId: tournament4.id,
+      categoryId: cat4Elite.id
     }
   });
 
@@ -2109,7 +2337,8 @@ async function main() {
       name: 'Pool C - Recreational Division',
       description: 'Fun and friendly competitive teams',
       maxTeams: 4,
-      tournamentId: tournament4.id
+      tournamentId: tournament4.id,
+      categoryId: cat4Recreational.id
     }
   });
 
@@ -2121,11 +2350,12 @@ async function main() {
       name: 'Pool D - Youth Division',
       description: 'Teams for players under 18',
       maxTeams: 4,
-      tournamentId: tournament4.id
+      tournamentId: tournament4.id,
+      categoryId: cat4Recreational.id
     }
   });
 
-  console.log('Created Montreal tournament with 4 pools');
+  console.log('Created Montreal tournament with 4 pools and 2 categories');
 
   // Create teams for Pool A (Elite Division) - 4 teams (FULL)
   const teamNamesPool4A = [
@@ -2575,26 +2805,28 @@ async function main() {
   console.log('- Groups: 6 (5 public, 1 private)');
   console.log('  - 2 groups in Sherbrooke, QC (Alice is NOT a member)');
   console.log('  - 1 group in Montreal, QC (Charlie as admin)');
-  console.log('- Events: 10 (across all groups)');
+  console.log('- Sessions: 10 (across all groups)');
   console.log('- Group Notifications: 3');
-  console.log('- Event Notifications: 6');
-  console.log('- Event Requests: 4');
-  console.log('- Event Votes: 7');
+  console.log('- Session Notifications: 6');
+  console.log('- Session Requests: 4');
+  console.log('- Session Votes: 7');
   console.log('- Group Join Requests: 2');
   console.log('- Invite Logs: 2');
-  console.log('- Event Attendance Records: 3');
+  console.log('- Session Attendance Records: 3');
   console.log('- Group Bans: 1');
   console.log('- Audit Logs: 3');
-  console.log('- TeamUp Requests: 3');
+  console.log('- TeamUp Requests: 5 (3 need_players, 2 looking_for_play)');
   console.log('- TeamUp Responses: 4');
   console.log('- TeamUp Notifications: 5');
-  console.log('- Event Reminders: 3');
-  console.log('- Event Comments: 4');
+  console.log('- Session Reminders: 3');
+  console.log('- Session Comments: 4');
   console.log('- Guest Participants: 8');
   console.log('- Tournament Team Invitations: 1');
-  console.log('- Tournaments: 4 (3 upcoming, 1 in progress)');
+  console.log('- Tournaments: 4 (3 upcoming/draft, 1 in progress)');
   console.log('  - Montreal Winter Hockey Championship (in_progress) with 4 pools and scheduled matches');
-  console.log('- Tournament Pools: 13 (with varying team capacities)');
+  console.log('- Tournament Categories: 11 (across all 4 tournaments)');
+  console.log('- Tournament Admin Roles: 4 (1 co_organizer per tournament)');
+  console.log('- Tournament Pools: 13 (with categories assigned and varying team capacities)');
   console.log('- Tournament Teams: 46+');
   console.log('- Tournament Matches: 9+ (with different timestamps and referee assignments)');
   console.log('- Waitlist Entries: 5 (across multiple pools)');
