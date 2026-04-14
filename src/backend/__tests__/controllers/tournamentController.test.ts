@@ -135,6 +135,13 @@ vi.mock('../../config/database', () => ({
 vi.mock('../../services/tournamentService', () => ({
   sanitizeTournamentData: vi.fn((d: any) => d),
   validateTournamentDates: vi.fn(() => ({ valid: true })),
+  validateTournamentEnums: vi.fn(),
+  validateTournamentBusinessRules: vi.fn(),
+  validateRegistrationEligibility: vi.fn((tournament: any) => {
+    if (tournament?.status !== 'draft' && tournament?.status !== 'registration') {
+      throw new BadRequestError('Tournament registration is closed');
+    }
+  }),
   isOrganizer: vi.fn(() => true),
   isOrganizerOrAdmin: vi.fn().mockResolvedValue(true),
   isTeamCaptain: vi.fn().mockResolvedValue(false),
@@ -173,6 +180,7 @@ vi.mock('../../utils/emailService', () => ({
 import prisma from '../../config/database';
 import tournamentRoutes from '../../routes/tournamentRoutes';
 import * as tournamentService from '../../services/tournamentService';
+import { BadRequestError } from '../../utils/errors';
 
 // ─── Test app ─────────────────────────────────────────────────────────────────
 
@@ -184,7 +192,7 @@ const mockTournament = {
   id: 'tournament-1',
   name: 'Test Tournament',
   description: 'A test tournament',
-  sportType: 'soccer',
+  sportType: 'football',
   format: 'single_elimination',
   status: 'draft',
   startDate: new Date('2025-12-01T10:00:00Z'),
@@ -298,6 +306,13 @@ beforeEach(() => {
 
   vi.mocked(tournamentService.sanitizeTournamentData).mockImplementation((d: any) => d);
   vi.mocked(tournamentService.validateTournamentDates).mockReturnValue({ valid: true });
+  vi.mocked(tournamentService.validateTournamentEnums).mockImplementation(() => undefined);
+  vi.mocked(tournamentService.validateTournamentBusinessRules).mockImplementation(() => undefined);
+  vi.mocked(tournamentService.validateRegistrationEligibility).mockImplementation((tournament: any) => {
+    if (tournament?.status !== 'draft' && tournament?.status !== 'registration') {
+      throw new BadRequestError('Tournament registration is closed');
+    }
+  });
   vi.mocked(tournamentService.isOrganizer).mockReturnValue(true);
   vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
   vi.mocked(tournamentService.isTeamCaptain).mockResolvedValue(false);
@@ -408,7 +423,7 @@ beforeEach(() => {
 describe('POST /api/tournaments (createTournament)', () => {
   const validBody = {
     name: 'Summer Cup',
-    sportType: 'soccer',
+    sportType: 'football',
     format: 'single_elimination',
     startDate: '2025-12-01T10:00:00Z',
   };
@@ -424,7 +439,7 @@ describe('POST /api/tournaments (createTournament)', () => {
 
   it('returns 400 when name is missing', async () => {
     const res = await request(app).post('/api/tournaments').send({
-      sportType: 'soccer',
+      sportType: 'football',
       format: 'single_elimination',
       startDate: '2025-12-01T10:00:00Z',
     });
@@ -456,6 +471,20 @@ describe('POST /api/tournaments (createTournament)', () => {
     });
 
     expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when enum validation fails', async () => {
+    vi.mocked(tournamentService.validateTournamentEnums).mockImplementationOnce(() => {
+      throw new BadRequestError('Invalid format');
+    });
+
+    const res = await request(app).post('/api/tournaments').send({
+      ...validBody,
+      format: 'not_a_real_format',
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Invalid format');
   });
 
   it('returns 403 when groupId is provided but user is not group admin', async () => {
@@ -565,6 +594,18 @@ describe('PUT /api/tournaments/:id (updateTournament)', () => {
     const res = await request(app).put('/api/tournaments/nonexistent').send({ name: 'Updated' });
 
     expect(res.status).toBe(404);
+  });
+
+  it('returns 400 when trying to update status via generic update endpoint', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1')
+      .send({ status: 'registration' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('/status');
   });
 });
 
@@ -1772,6 +1813,19 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
       .send({ name: 'New Team' });
 
     expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when tournament has reached max teams', async () => {
+    const registeredTournament = { ...mockTournament, status: 'registration', maxTeams: 1 };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
+    vi.mocked(prisma.tournamentTeam.count).mockResolvedValue(1);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/teams/self-register')
+      .send({ name: 'New Team' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('maximum number of teams');
   });
 
   it('returns 404 when tournament not found', async () => {
