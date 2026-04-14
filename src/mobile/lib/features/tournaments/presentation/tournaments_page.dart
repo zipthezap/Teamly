@@ -3102,32 +3102,8 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
       });
       ref.read(tournamentsNotifierProvider.notifier).reload();
       if (!mounted) return;
-
-      // Prompt to set up pools/categories immediately after creation
-      final setup = await showDialog<String>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Tournament Created! 🎉'),
-          content: const Text(
-              'Would you like to set up pools or categories now to organise your teams?'),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, 'skip'),
-                child: const Text('Skip')),
-            OutlinedButton(
-                onPressed: () => Navigator.pop(ctx, 'categories'),
-                child: const Text('Categories')),
-            FilledButton(
-                onPressed: () => Navigator.pop(ctx, 'pools'),
-                child: const Text('Pools')),
-          ],
-        ),
-      );
-      if (!mounted) return;
-      if (setup == 'pools') {
+      if (_useManualBrackets) {
         context.go('/tournaments/${tournament.id}/pools');
-      } else if (setup == 'categories') {
-        context.go('/tournaments/${tournament.id}/categories');
       } else {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('Tournament created!')));
@@ -3352,8 +3328,11 @@ class PoolsManagementPage extends ConsumerStatefulWidget {
 
 class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
   List<TournamentPoolModel> _pools = [];
+  List<TournamentCategoryModel> _categories = [];
+  TournamentModel? _tournament;
   bool _loading = true;
   String? _error;
+  bool _manualPoolPromptShown = false;
 
   @override
   void initState() {
@@ -3367,14 +3346,20 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
       _error = null;
     });
     try {
-      final pools = await ref
-          .read(tournamentRepositoryProvider)
-          .getPools(widget.tournamentId);
-      if (mounted)
+      final results = await Future.wait([
+        ref.read(tournamentRepositoryProvider).getPools(widget.tournamentId),
+        ref.read(tournamentRepositoryProvider).getCategories(widget.tournamentId),
+        ref.read(tournamentRepositoryProvider).getTournament(widget.tournamentId),
+      ]);
+      if (mounted) {
         setState(() {
-          _pools = pools;
+          _pools = results[0] as List<TournamentPoolModel>;
+          _categories = results[1] as List<TournamentCategoryModel>;
+          _tournament = results[2] as TournamentModel;
           _loading = false;
         });
+        _maybePromptManualPoolFormation();
+      }
     } on Exception catch (e) {
       if (mounted)
         setState(() {
@@ -3382,6 +3367,417 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
           _loading = false;
         });
     }
+  }
+
+  void _maybePromptManualPoolFormation() {
+    final tournament = _tournament;
+    if (_manualPoolPromptShown ||
+        tournament == null ||
+        !tournament.useManualBrackets ||
+        !mounted) {
+      return;
+    }
+    _manualPoolPromptShown = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final open = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Manual Pool Formation'),
+          content: const Text(
+              'You selected manual pool management. Open the pool formation window now?'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Later')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Open')),
+          ],
+        ),
+      );
+      if (open == true && mounted) {
+        await _showPoolFormationWindow();
+      }
+    });
+  }
+
+  Future<void> _showPoolFormationWindow() async {
+    final tournament = _tournament;
+    if (tournament == null) return;
+    if (!tournament.useManualBrackets) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              'Pools are auto-generated for this tournament because manual setup is disabled.')));
+      return;
+    }
+    if (_pools.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Create at least one pool before forming pools.')));
+      return;
+    }
+    if (tournament.teams.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('No teams available to assign yet.')));
+      return;
+    }
+
+    var dialogPools = List<TournamentPoolModel>.from(_pools);
+    final allTeams = List<TournamentTeamModel>.from(tournament.teams)
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    String? selectedCategoryId =
+        _categories.isNotEmpty ? _categories.first.id : null;
+    var busyTeamId = '';
+
+    Future<void> refreshDialog(StateSetter setDialog) async {
+      final latest = await ref
+          .read(tournamentRepositoryProvider)
+          .getPools(widget.tournamentId);
+      if (!mounted) return;
+      setState(() => _pools = latest);
+      setDialog(() => dialogPools = latest);
+    }
+
+    String? teamPoolId(String teamId, List<TournamentPoolModel> pools) {
+      for (final pool in pools) {
+        if (pool.teams.any((team) => team.id == teamId)) return pool.id;
+      }
+      return null;
+    }
+
+    String teamPoolName(String teamId, List<TournamentPoolModel> pools) {
+      for (final pool in pools) {
+        if (pool.teams.any((team) => team.id == teamId)) return pool.name;
+      }
+      return 'Unassigned';
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) {
+          final visiblePools = selectedCategoryId == null
+              ? dialogPools
+              : dialogPools
+                  .where((pool) => pool.categoryId == selectedCategoryId)
+                  .toList();
+          return Dialog(
+            child: SizedBox(
+              width: 980,
+              height: 620,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Pool Formation',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String?>(
+                      value: selectedCategoryId,
+                      decoration:
+                          const InputDecoration(labelText: 'Category view'),
+                      items: [
+                        const DropdownMenuItem(
+                            value: null, child: Text('All categories')),
+                        for (final category in _categories)
+                          DropdownMenuItem(
+                              value: category.id, child: Text(category.name)),
+                      ],
+                      onChanged: (value) =>
+                          setDialog(() => selectedCategoryId = value),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('All Teams'),
+                                const SizedBox(height: 8),
+                                DragTarget<_PoolFormationDragData>(
+                                  onWillAcceptWithDetails: (details) =>
+                                      details.data.fromPoolId != null,
+                                  onAcceptWithDetails: (details) async {
+                                    if (busyTeamId.isNotEmpty) return;
+                                    final fromPoolId = details.data.fromPoolId;
+                                    if (fromPoolId == null) return;
+                                    setDialog(
+                                        () => busyTeamId = details.data.team.id);
+                                    try {
+                                      await ref
+                                          .read(tournamentRepositoryProvider)
+                                          .removeTeamFromPool(
+                                              widget.tournamentId,
+                                              fromPoolId,
+                                              details.data.team.id);
+                                      await refreshDialog(setDialog);
+                                    } on Exception catch (e) {
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(extractErrorMessage(e)),
+                                          backgroundColor:
+                                              Theme.of(context).colorScheme.error,
+                                        ),
+                                      );
+                                    } finally {
+                                      if (context.mounted) {
+                                        setDialog(() => busyTeamId = '');
+                                      }
+                                    }
+                                  },
+                                  builder: (context, _, __) => Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                          color:
+                                              AppThemeTokens.borderSubtle(context)),
+                                      borderRadius: BorderRadius.circular(
+                                          AppThemeTokens.radiusMd),
+                                    ),
+                                    child: Text(
+                                      'Drop here to unassign a team from its pool.',
+                                      style: TextStyle(
+                                        color:
+                                            AppThemeTokens.textSecondary(context),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Expanded(
+                                  child: ListView.builder(
+                                    itemCount: allTeams.length,
+                                    itemBuilder: (_, index) {
+                                      final team = allTeams[index];
+                                      final currentPoolId =
+                                          teamPoolId(team.id, dialogPools);
+                                      final currentPoolName =
+                                          teamPoolName(team.id, dialogPools);
+                                      final locked = busyTeamId == team.id;
+                                      return Padding(
+                                        padding:
+                                            const EdgeInsets.only(bottom: 6),
+                                        child: Draggable<_PoolFormationDragData>(
+                                          data: _PoolFormationDragData(
+                                            team: team,
+                                            fromPoolId: currentPoolId,
+                                          ),
+                                          feedback: Material(
+                                            child: _poolFormationTeamTile(
+                                              context,
+                                              team: team,
+                                              subtitle: currentPoolName,
+                                            ),
+                                          ),
+                                          childWhenDragging: Opacity(
+                                            opacity: 0.4,
+                                            child: _poolFormationTeamTile(
+                                              context,
+                                              team: team,
+                                              subtitle: currentPoolName,
+                                              disabled: true,
+                                            ),
+                                          ),
+                                          child: _poolFormationTeamTile(
+                                            context,
+                                            team: team,
+                                            subtitle: locked
+                                                ? 'Updating assignment...'
+                                                : currentPoolName,
+                                            disabled: locked,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Formed Pools'),
+                                const SizedBox(height: 8),
+                                if (visiblePools.isEmpty)
+                                  const UiEmptyState(
+                                    icon: Icons.layers_outlined,
+                                    message:
+                                        'No pools in this category. Create pools first.',
+                                  )
+                                else
+                                  Expanded(
+                                    child: ListView.builder(
+                                      itemCount: visiblePools.length,
+                                      itemBuilder: (_, index) {
+                                        final pool = visiblePools[index];
+                                        return Padding(
+                                          padding:
+                                              const EdgeInsets.only(bottom: 8),
+                                          child:
+                                              DragTarget<_PoolFormationDragData>(
+                                            onWillAcceptWithDetails: (details) =>
+                                                details.data.fromPoolId !=
+                                                    pool.id &&
+                                                busyTeamId.isEmpty,
+                                            onAcceptWithDetails:
+                                                (details) async {
+                                              if (busyTeamId.isNotEmpty) return;
+                                              final fromPoolId =
+                                                  details.data.fromPoolId;
+                                              setDialog(() => busyTeamId =
+                                                  details.data.team.id);
+                                              try {
+                                                if (fromPoolId != null) {
+                                                  await ref
+                                                      .read(
+                                                          tournamentRepositoryProvider)
+                                                      .removeTeamFromPool(
+                                                          widget.tournamentId,
+                                                          fromPoolId,
+                                                          details.data.team.id);
+                                                }
+                                                await ref
+                                                    .read(
+                                                        tournamentRepositoryProvider)
+                                                    .registerTeamToPool(
+                                                        widget.tournamentId,
+                                                        pool.id,
+                                                        details.data.team.id);
+                                                await refreshDialog(setDialog);
+                                              } on Exception catch (e) {
+                                                if (!context.mounted) return;
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(SnackBar(
+                                                  content: Text(
+                                                      extractErrorMessage(e)),
+                                                  backgroundColor:
+                                                      Theme.of(context)
+                                                          .colorScheme
+                                                          .error,
+                                                ));
+                                              } finally {
+                                                if (context.mounted) {
+                                                  setDialog(() => busyTeamId = '');
+                                                }
+                                              }
+                                            },
+                                            builder: (context, _, __) =>
+                                                Container(
+                                              padding:
+                                                  const EdgeInsets.all(12),
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    AppThemeTokens.card(context),
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                        AppThemeTokens
+                                                            .radiusMd),
+                                                border: Border.all(
+                                                    color: AppThemeTokens
+                                                        .border(context)),
+                                              ),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    '${pool.name} (${pool.teams.length}/${pool.maxTeams})',
+                                                    style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w600),
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  if (pool.teams.isEmpty)
+                                                    Text(
+                                                      'Drop teams here',
+                                                      style: TextStyle(
+                                                        color: AppThemeTokens
+                                                            .textSecondary(
+                                                                context),
+                                                        fontSize: 12,
+                                                      ),
+                                                    )
+                                                  else
+                                                    for (final team
+                                                        in pool.teams)
+                                                      Padding(
+                                                        padding:
+                                                            const EdgeInsets.only(
+                                                                bottom: 4),
+                                                        child: Text(
+                                                          '• ${team.name}',
+                                                          style:
+                                                              const TextStyle(
+                                                                  fontSize: 12),
+                                                        ),
+                                                      ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Close'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _poolFormationTeamTile(
+    BuildContext context, {
+    required TournamentTeamModel team,
+    required String subtitle,
+    bool disabled = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: disabled
+            ? AppThemeTokens.cardElevated(context)
+            : AppThemeTokens.card(context),
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        border: Border.all(color: AppThemeTokens.border(context)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(team.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 2),
+          Text('Current: $subtitle',
+              style: TextStyle(
+                  fontSize: 12, color: AppThemeTokens.textSecondary(context))),
+        ],
+      ),
+    );
   }
 
   Future<void> _createPool() async {
@@ -3558,7 +3954,17 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Manage Pools')),
+      appBar: AppBar(
+        title: const Text('Manage Pools'),
+        actions: [
+          if ((_tournament?.useManualBrackets ?? false))
+            IconButton(
+              icon: const Icon(Icons.open_with_outlined),
+              tooltip: 'Pool formation window',
+              onPressed: _showPoolFormationWindow,
+            ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _createPool,
         tooltip: 'Create pool',
@@ -3672,6 +4078,13 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                 ),
     );
   }
+}
+
+class _PoolFormationDragData {
+  const _PoolFormationDragData({required this.team, this.fromPoolId});
+
+  final TournamentTeamModel team;
+  final String? fromPoolId;
 }
 
 // ===========================================================================
