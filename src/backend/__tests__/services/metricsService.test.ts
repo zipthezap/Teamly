@@ -37,6 +37,8 @@ import {
   authAttempts,
   activeUsers,
   rateLimitExceeded,
+  tournamentLifecycleTransitions,
+  tournamentLifecycleTransitionFailures,
   metricsMiddleware,
   getMetrics,
   resetMetrics,
@@ -47,6 +49,8 @@ import {
   updateActiveUsers,
   recordRateLimitExceeded,
   recordEventCreated,
+  recordTournamentLifecycleTransition,
+  recordTournamentLifecycleTransitionFailure,
   recordGroupCreated,
   recordEmailSent,
   recordSearchQuery,
@@ -103,6 +107,11 @@ describe('MetricsService', () => {
 
     it('exports rateLimitExceeded counter', () => {
       expect(rateLimitExceeded).toBeDefined();
+    });
+
+    it('exports tournament lifecycle transition counters', () => {
+      expect(tournamentLifecycleTransitions).toBeDefined();
+      expect(tournamentLifecycleTransitionFailures).toBeDefined();
     });
   });
 
@@ -234,6 +243,24 @@ describe('MetricsService', () => {
     it('recordGroupCreated calls counter inc', () => {
       recordGroupCreated(true);
       expect(expect(vi.fn).toBeDefined);
+    });
+
+    it('recordTournamentLifecycleTransition calls counter inc', () => {
+      recordTournamentLifecycleTransition('registration', 'in_progress', 'generate_brackets');
+      expect(tournamentLifecycleTransitions.labels).toHaveBeenCalledWith(
+        'registration',
+        'in_progress',
+        'generate_brackets'
+      );
+    });
+
+    it('recordTournamentLifecycleTransitionFailure calls counter inc', () => {
+      recordTournamentLifecycleTransitionFailure('in_progress', 'completed', 'submit_score');
+      expect(tournamentLifecycleTransitionFailures.labels).toHaveBeenCalledWith(
+        'in_progress',
+        'completed',
+        'submit_score'
+      );
     });
 
     it('recordEmailSent calls counter inc', () => {

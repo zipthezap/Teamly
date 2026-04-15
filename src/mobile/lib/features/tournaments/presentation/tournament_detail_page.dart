@@ -10,6 +10,7 @@ import '../../../features/auth/state/auth_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
+import 'tournament_ui_rules.dart';
 import '../state/tournaments_notifier.dart';
 
 const _kAccent = Color(0xFFFF9800);
@@ -148,7 +149,7 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
                   ),
                 ),
                 actions: [
-                  if (isAdmin && t.status != 'completed' && t.status != 'cancelled')
+                  if (isAdmin && canEditTournament(t.status))
                     IconButton(
                       icon: const Icon(Icons.edit_outlined),
                       tooltip: 'Edit tournament',
@@ -234,9 +235,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
 
   @override
   Widget build(BuildContext context) {
-    final canRegister = t.status == 'registration' && myTeam == null;
-    final canManageTournament =
-        t.status != 'completed' && t.status != 'cancelled';
+    final canRegister = canRegisterTeam(t.status, hasMyTeam: myTeam != null);
+    final canManageTournament = canManageTournamentAdminActions(t.status);
     final dateFormat = DateFormat.yMMMd();
 
     return RefreshIndicator(

@@ -14,6 +14,10 @@ import { Request, Response } from 'express';
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import * as tournamentService from '../services/tournamentService';
+import {
+  recordTournamentLifecycleTransition,
+  recordTournamentLifecycleTransitionFailure,
+} from '../services/metricsService';
 import { 
   TournamentFormat, 
   TournamentStatus, 
@@ -22,10 +26,10 @@ import {
   SportScoringConfig,
   VolleyballConfig
 } from '../../shared/types/tournament.types';
-import { BadRequestError, ForbiddenError, NotFoundError } from '../utils/errors';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../utils/errors';
 import { isRequired, parseCoordinates } from '../utils/validation';
 import { ensureResourceExists } from '../utils/controllerHelpers';
-import { isPrismaUniqueError } from '../utils/typeGuards';
+import { isPrismaNotFoundError, isPrismaUniqueError } from '../utils/typeGuards';
 
 // ==================== CONSTANTS ====================
 
@@ -38,14 +42,61 @@ const MAX_POOL_NAME_LENGTH = 100;
 const MAX_PLAYER_NAME_LENGTH = 100;
 const MAX_TEAMS_UPPER_BOUND = 1000;
 
+const sendTournamentCompletionNotifications = async (
+  tournamentId: string,
+  tournamentName: string
+): Promise<void> => {
+  const transitionKey = `auto_completed:${tournamentId}`;
+  const existing = await prisma.tournamentNotification.findFirst({
+    where: {
+      tournamentId,
+      type: 'tournament_updated',
+      metadata: {
+        path: ['transitionKey'],
+        equals: transitionKey,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (existing) {
+    return;
+  }
+
+  const teams = await prisma.tournamentTeam.findMany({
+    where: { tournamentId, captainUserId: { not: null } },
+    select: { captainUserId: true },
+  });
+
+  if (teams.length === 0) {
+    return;
+  }
+
+  await prisma.tournamentNotification.createMany({
+    data: teams.map((team) => ({
+      userId: team.captainUserId!,
+      tournamentId,
+      type: 'tournament_updated',
+      params: {
+        tournamentName,
+        lifecycleStatus: 'completed',
+      },
+      metadata: {
+        transitionKey,
+      },
+    })),
+  });
+};
+
 const syncTournamentAutoStatus = async <T extends {
   id: string;
   status: string;
+  name?: string;
   startDate: Date;
   endDate?: Date | null;
   registrationStartDate?: Date | null;
   registrationDeadline?: Date | null;
-}>(tournament: T): Promise<T> => {
+}>(tournament: T, trigger: string = 'read_sync'): Promise<T> => {
   const [matchCount, incompleteMatchCount] = await Promise.all([
     prisma.tournamentMatch.count({ where: { tournamentId: tournament.id } }),
     prisma.tournamentMatch.count({
@@ -68,26 +119,44 @@ const syncTournamentAutoStatus = async <T extends {
     return tournament;
   }
 
-  await prisma.tournament.update({
-    where: { id: tournament.id },
-    data: { status: nextStatus as TournamentStatus },
-  });
+  try {
+    await prisma.tournament.update({
+      where: { id: tournament.id },
+      data: { status: nextStatus as TournamentStatus },
+    });
+    recordTournamentLifecycleTransition(tournament.status, nextStatus, trigger);
+
+    if (nextStatus === TournamentStatus.COMPLETED) {
+      await sendTournamentCompletionNotifications(
+        tournament.id,
+        tournament.name ?? 'Tournament'
+      );
+    }
+  } catch (error) {
+    recordTournamentLifecycleTransitionFailure(tournament.status, nextStatus, trigger);
+    throw error;
+  }
 
   logger.info('Tournament lifecycle status auto-updated', 'TournamentController', {
     tournamentId: tournament.id,
     from: tournament.status,
     to: nextStatus,
+    trigger,
   });
 
   return { ...tournament, status: nextStatus };
 };
 
-const reconcileTournamentLifecycleStatus = async (tournamentId: string): Promise<void> => {
+const reconcileTournamentLifecycleStatus = async (
+  tournamentId: string,
+  trigger: string
+): Promise<void> => {
   const tournament = await prisma.tournament.findUnique({
     where: { id: tournamentId },
     select: {
       id: true,
       status: true,
+      name: true,
       startDate: true,
       endDate: true,
       registrationStartDate: true,
@@ -99,7 +168,7 @@ const reconcileTournamentLifecycleStatus = async (tournamentId: string): Promise
     return;
   }
 
-  await syncTournamentAutoStatus(tournament);
+  await syncTournamentAutoStatus(tournament, trigger);
 };
 
 // Re-export for use in tests
@@ -317,7 +386,7 @@ export const getTournaments = async (req: Request, res: Response) => {
   ]);
 
   const syncedTournaments = await Promise.all(
-    tournaments.map((tournament) => syncTournamentAutoStatus(tournament))
+    tournaments.map((tournament) => syncTournamentAutoStatus(tournament, 'list_read'))
   );
 
   res.json({
@@ -421,7 +490,7 @@ export const getTournament = async (req: Request, res: Response) => {
 
   ensureResourceExists(tournament, 'Tournament');
 
-  const syncedTournament = await syncTournamentAutoStatus(tournament!);
+  const syncedTournament = await syncTournamentAutoStatus(tournament!, 'detail_read');
 
   res.json(syncedTournament);
 };
@@ -448,7 +517,7 @@ export const updateTournament = async (req: Request, res: Response) => {
 
   ensureResourceExists(tournament, 'Tournament');
 
-  tournament = await syncTournamentAutoStatus(tournament!);
+  tournament = await syncTournamentAutoStatus(tournament!, 'update_precheck');
 
   const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament!, userId);
   if (!isOrgOrAdmin) {
@@ -593,7 +662,7 @@ export const updateTournament = async (req: Request, res: Response) => {
     }
   });
 
-  const syncedTournament = await syncTournamentAutoStatus(updatedTournament);
+  const syncedTournament = await syncTournamentAutoStatus(updatedTournament, 'update_tournament');
 
   logger.info('Tournament updated', 'TournamentController', {
     tournamentId: id,
@@ -867,7 +936,7 @@ export const generateBrackets = async (req: Request, res: Response) => {
       throw new BadRequestError('Invalid tournament format');
   }
 
-  await reconcileTournamentLifecycleStatus(id);
+  await reconcileTournamentLifecycleStatus(id, 'generate_brackets');
 
   logger.info('Brackets generated', 'TournamentController', {
     tournamentId: id,
@@ -956,39 +1025,56 @@ export const submitScore = async (req: Request, res: Response) => {
   }
 
   // Use a transaction to ensure atomic update of match and standings
-  const updatedMatch = await prisma.$transaction(async (tx) => {
-    // Update match with score - the WHERE clause will prevent concurrent updates
-    const match = await tx.tournamentMatch.update({
-      where: { 
-        id: matchId,
-        // Ensure we only update if status is not already COMPLETED
-        status: { not: MatchStatus.COMPLETED }
-      },
-      data: {
-        homeScore,
-        awayScore,
-        detailedScore: detailedScore || undefined,
-        status: MatchStatus.COMPLETED,
-        completedAt: new Date()
-      },
-      include: {
-        homeTeam: true,
-        awayTeam: true
+  let updatedMatch;
+  try {
+    updatedMatch = await prisma.$transaction(async (tx) => {
+      const updateResult = await tx.tournamentMatch.updateMany({
+        where: {
+          id: matchId,
+          status: { not: MatchStatus.COMPLETED },
+        },
+        data: {
+          homeScore,
+          awayScore,
+          detailedScore: detailedScore || undefined,
+          status: MatchStatus.COMPLETED,
+          completedAt: new Date(),
+        },
+      });
+
+      if (updateResult.count === 0) {
+        throw new ConflictError('Match score has already been submitted');
       }
+
+      const finalizedMatch = ensureResourceExists(
+        await tx.tournamentMatch.findUnique({
+          where: { id: matchId },
+          include: {
+            homeTeam: true,
+            awayTeam: true,
+          },
+        }),
+        'Match'
+      );
+
+      // Update standings within the same transaction
+      await tournamentService.updateStandings(matchId, tournament, tx);
+
+      return finalizedMatch;
     });
-
-    // Update standings within the same transaction
-    await tournamentService.updateStandings(matchId, tournament, tx);
-
-    return match;
-  });
+  } catch (error) {
+    if (error instanceof ConflictError || isPrismaNotFoundError(error)) {
+      throw new ConflictError('Match score has already been submitted');
+    }
+    throw error;
+  }
 
   // If this is a knockout stage match, check if we should advance winners
   if (match.stage && match.stage !== BracketStage.FINALS) {
     await tournamentService.advanceWinners(id, match.stage as BracketStage);
   }
 
-  await reconcileTournamentLifecycleStatus(id);
+  await reconcileTournamentLifecycleStatus(id, 'submit_score');
 
   logger.info('Match score submitted', 'TournamentController', {
     tournamentId: id,
@@ -1116,7 +1202,7 @@ export const createMatch = async (req: Request, res: Response) => {
     userId
   });
 
-  await reconcileTournamentLifecycleStatus(id);
+  await reconcileTournamentLifecycleStatus(id, 'create_match');
 
   res.status(201).json(match);
 };
@@ -1226,7 +1312,7 @@ export const updateMatch = async (req: Request, res: Response) => {
     userId
   });
 
-  await reconcileTournamentLifecycleStatus(id);
+  await reconcileTournamentLifecycleStatus(id, 'update_match');
 
   res.json(updatedMatch);
 };
@@ -1281,7 +1367,7 @@ export const deleteMatch = async (req: Request, res: Response) => {
     userId
   });
 
-  await reconcileTournamentLifecycleStatus(id);
+  await reconcileTournamentLifecycleStatus(id, 'delete_match');
 
   res.json({ message: 'Match deleted successfully' });
 };
@@ -2985,7 +3071,7 @@ export const getPublicTournaments = async (req: Request, res: Response) => {
   ]);
 
   const syncedTournaments = await Promise.all(
-    tournaments.map((tournament) => syncTournamentAutoStatus(tournament))
+    tournaments.map((tournament) => syncTournamentAutoStatus(tournament, 'public_list_read'))
   );
 
   res.json({

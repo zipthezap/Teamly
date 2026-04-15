@@ -59,6 +59,7 @@ vi.mock('../../config/database', () => ({
       findFirst: vi.fn(),
       findMany: vi.fn(),
       create: vi.fn(),
+      updateMany: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
       count: vi.fn(),
@@ -101,6 +102,8 @@ vi.mock('../../config/database', () => ({
     },
     tournamentNotification: {
       create: vi.fn(),
+      createMany: vi.fn(),
+      findFirst: vi.fn(),
       findMany: vi.fn(),
       count: vi.fn(),
     },
@@ -169,6 +172,11 @@ vi.mock('../../services/tournamentService', () => ({
     team: { id: 'team-1', name: 'Team Alpha' },
   }),
   cancelTeamInvitation: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../services/metricsService', () => ({
+  recordTournamentLifecycleTransition: vi.fn(),
+  recordTournamentLifecycleTransitionFailure: vi.fn(),
 }));
 
 vi.mock('../../utils/emailService', () => ({
@@ -358,6 +366,7 @@ beforeEach(() => {
   vi.mocked(prisma.tournamentMatch.findFirst).mockResolvedValue(null);
   vi.mocked(prisma.tournamentMatch.count).mockResolvedValue(0);
   vi.mocked(prisma.tournamentMatch.create).mockResolvedValue(mockMatch as any);
+  vi.mocked(prisma.tournamentMatch.updateMany).mockResolvedValue({ count: 1 } as any);
   vi.mocked(prisma.tournamentMatch.update).mockResolvedValue(mockMatch as any);
   vi.mocked(prisma.tournamentMatch.delete).mockResolvedValue(mockMatch as any);
 
@@ -393,6 +402,8 @@ beforeEach(() => {
   vi.mocked(prisma.tournamentTeamInvitation.delete).mockResolvedValue(mockInvitation as any);
 
   vi.mocked(prisma.tournamentNotification.create).mockResolvedValue({} as any);
+  vi.mocked(prisma.tournamentNotification.createMany).mockResolvedValue({ count: 0 } as any);
+  vi.mocked(prisma.tournamentNotification.findFirst).mockResolvedValue(null);
   vi.mocked(prisma.tournamentNotification.findMany).mockResolvedValue([]);
   vi.mocked(prisma.tournamentNotification.count).mockResolvedValue(0);
 
@@ -1090,16 +1101,18 @@ describe('DELETE /api/tournaments/:id/matches/:matchId (deleteMatch)', () => {
 describe('POST /api/tournaments/:id/matches/:matchId/score (submitScore)', () => {
   it('returns 200 on successful score submission', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
-    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue(mockMatch as any);
+    vi.mocked(prisma.tournamentMatch.findUnique)
+      .mockResolvedValueOnce(mockMatch as any)
+      .mockResolvedValueOnce({
+        ...mockMatch,
+        homeScore: 2,
+        awayScore: 1,
+        status: 'completed',
+      } as any);
     vi.mocked(prisma.$transaction).mockImplementation(async (fn: any) =>
       typeof fn === 'function' ? fn(prisma) : Promise.all(fn)
     );
-    vi.mocked(prisma.tournamentMatch.update).mockResolvedValue({
-      ...mockMatch,
-      homeScore: 2,
-      awayScore: 1,
-      status: 'completed',
-    } as any);
+    vi.mocked(prisma.tournamentMatch.updateMany).mockResolvedValue({ count: 1 } as any);
 
     const res = await request(app)
       .post('/api/tournaments/tournament-1/matches/match-1/score')
@@ -1137,16 +1150,18 @@ describe('POST /api/tournaments/:id/matches/:matchId/score (submitScore)', () =>
       ...mockTournament,
       status: 'in_progress',
     } as any);
-    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue(mockMatch as any);
+    vi.mocked(prisma.tournamentMatch.findUnique)
+      .mockResolvedValueOnce(mockMatch as any)
+      .mockResolvedValueOnce({
+        ...mockMatch,
+        homeScore: 3,
+        awayScore: 1,
+        status: 'completed',
+      } as any);
     vi.mocked(prisma.$transaction).mockImplementation(async (fn: any) =>
       typeof fn === 'function' ? fn(prisma) : Promise.all(fn)
     );
-    vi.mocked(prisma.tournamentMatch.update).mockResolvedValue({
-      ...mockMatch,
-      homeScore: 3,
-      awayScore: 1,
-      status: 'completed',
-    } as any);
+    vi.mocked(prisma.tournamentMatch.updateMany).mockResolvedValue({ count: 1 } as any);
     vi.mocked(prisma.tournamentMatch.count)
       .mockResolvedValueOnce(1)
       .mockResolvedValueOnce(0);
@@ -1167,6 +1182,22 @@ describe('POST /api/tournaments/:id/matches/:matchId/score (submitScore)', () =>
         data: { status: 'completed' },
       })
     );
+  });
+
+  it('returns 409 when concurrent submission already completed the match', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue(mockMatch as any);
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: any) =>
+      typeof fn === 'function' ? fn(prisma) : Promise.all(fn)
+    );
+    vi.mocked(prisma.tournamentMatch.updateMany).mockResolvedValue({ count: 0 } as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 2, awayScore: 1 });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toContain('already been submitted');
   });
 });
 
