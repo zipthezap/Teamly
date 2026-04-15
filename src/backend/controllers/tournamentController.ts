@@ -282,8 +282,14 @@ export const createTournament = async (req: Request, res: Response) => {
     }
   }
 
-  // Parse coordinates once if provided
-  const coordinates = latitude && longitude ? parseCoordinates(latitude, longitude) : null;
+  // Parse coordinates once if both are provided (0 is a valid coordinate)
+  const coordinates =
+    latitude !== undefined &&
+    longitude !== undefined &&
+    latitude !== null &&
+    longitude !== null
+      ? parseCoordinates(latitude, longitude)
+      : null;
 
   const tournament = await prisma.tournament.create({
     data: {
@@ -917,9 +923,10 @@ export const generateBrackets = async (req: Request, res: Response) => {
   let result;
   switch (String(tournament.format)) {
     case TournamentFormat.SINGLE_ELIMINATION:
-    case TournamentFormat.DOUBLE_ELIMINATION:
       result = await tournamentService.generateSingleEliminationBrackets(id);
       break;
+    case TournamentFormat.DOUBLE_ELIMINATION:
+      throw new BadRequestError('Double elimination bracket generation is not supported yet');
     case TournamentFormat.ROUND_ROBIN:
       result = await tournamentService.generateRoundRobinBrackets(id);
       break;
@@ -988,6 +995,14 @@ export const submitScore = async (req: Request, res: Response) => {
       userId,
     });
     throw new NotFoundError('Match not found');
+  }
+
+  const isEliminationFormat =
+    tournament.format === TournamentFormat.SINGLE_ELIMINATION ||
+    tournament.format === TournamentFormat.DOUBLE_ELIMINATION;
+  const isKnockoutStage = match.stage != null && match.stage !== BracketStage.GROUP_STAGE;
+  if ((isEliminationFormat || isKnockoutStage) && homeScore === awayScore) {
+    throw new BadRequestError('Draws are not allowed in elimination matches');
   }
 
   // Prevent duplicate score submission for already completed matches
@@ -2927,16 +2942,25 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
     throw new BadRequestError('Select either a category or a pool, not both');
   }
 
-  let selectedCategoryName: string | null = null;
+  let selectedCategory: { id: string; name: string } | null = null;
   if (categoryId) {
-    const category = await prisma.tournamentCategory.findFirst({
+    selectedCategory = await prisma.tournamentCategory.findFirst({
       where: { id: categoryId, tournamentId: id },
       select: { id: true, name: true }
     });
-    if (!category) {
+    if (!selectedCategory) {
       throw new NotFoundError('Category not found');
     }
-    selectedCategoryName = category.name;
+  }
+
+  if (poolId) {
+    const pool = await prisma.tournamentPool.findFirst({
+      where: { id: poolId, tournamentId: id },
+      select: { id: true },
+    });
+    if (!pool) {
+      throw new NotFoundError('Pool not found');
+    }
   }
 
   try {
@@ -2954,7 +2978,6 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
           name: name.trim(),
           tournamentId: id,
           captainUserId: userId,
-          ...(selectedCategoryName != null ? { poolName: selectedCategoryName } : {})
         },
         include: {
           captainUser: { select: { id: true, name: true, email: true } }
@@ -2974,7 +2997,9 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
           }
         });
 
-        if (!pool) return null;
+        if (!pool) {
+          throw new NotFoundError('Pool not found');
+        }
 
         if (pool.teams.length < pool.maxTeams) {
           await tx.tournamentTeam.update({
@@ -2994,15 +3019,13 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
         }
       });
 
-      if (poolResult) {
-        return res.status(201).json({ team, pool: poolResult.pool, onWaitlist: poolResult.onWaitlist, ...(poolResult.waitlistEntry ? { waitlistEntry: poolResult.waitlistEntry } : {}) });
-      }
+      return res.status(201).json({ team, pool: poolResult.pool, onWaitlist: poolResult.onWaitlist, ...(poolResult.waitlistEntry ? { waitlistEntry: poolResult.waitlistEntry } : {}) });
     }
 
     res.status(201).json({
       team,
       onWaitlist: false,
-      ...(categoryId ? { categoryId, categoryName: selectedCategoryName } : {})
+      ...(selectedCategory ? { categoryId: selectedCategory.id, categoryName: selectedCategory.name } : {})
     });
   } catch (error: unknown) {
     if (isPrismaUniqueError(error)) {
