@@ -818,6 +818,7 @@ model TeamUpRequest {
   creatorId   String
   creator     User     @relation("TeamUpRequestCreator", fields: [creatorId], references: [id])
   
+  positions      TeamUpRequestPosition[]
   responses      TeamUpResponse[]
   notifications  TeamUpNotification[]
   comments       TeamUpComment[]
@@ -835,20 +836,43 @@ model TeamUpRequest {
   @@index([creatorId, status]) // Composite for user's requests by status (scalability)
 }
 
+// Position/role requirements for TeamUp requests (e.g. goalkeeper, striker)
+model TeamUpRequestPosition {
+  id        String   @id @default(uuid())
+  name      String
+  slotsNeeded Int    @default(1)
+  skillLevelRequired String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teamUpRequestId String
+  teamUpRequest   TeamUpRequest @relation(fields: [teamUpRequestId], references: [id], onDelete: Cascade)
+
+  responses TeamUpResponse[]
+
+  @@index([teamUpRequestId])
+  @@index([teamUpRequestId, name])
+  @@index([teamUpRequestId, slotsNeeded])
+}
+
 // Responses to TeamUp requests (people interested in filling the spots)
 model TeamUpResponse {
   id        String   @id @default(uuid())
   message   String?  // Optional message from the responder
+  applicantSkillLevel String?
   status    TeamUpResponseStatus   @default(pending)
   createdAt DateTime @default(now())
   
   teamUpRequestId String
   teamUpRequest   TeamUpRequest @relation(fields: [teamUpRequestId], references: [id], onDelete: Cascade)
+  requestPositionId String?
+  requestPosition   TeamUpRequestPosition? @relation(fields: [requestPositionId], references: [id], onDelete: SetNull)
   userId          String
   user            User          @relation(fields: [userId], references: [id])
   
   @@unique([teamUpRequestId, userId])
   @@index([teamUpRequestId])
+  @@index([requestPositionId])
   @@index([userId])
   @@index([status])
   @@index([userId, teamUpRequestId]) // Composite index for permission checks (scalability)

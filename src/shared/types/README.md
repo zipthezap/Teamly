@@ -33,6 +33,7 @@ The types are organized by domain into separate files:
 
 - **`teamup.types.ts`** - TeamUp request and response types
   - `TeamUpRequest`, `TeamUpRequestWithDetails`
+  - `TeamUpRequestPosition`
   - `TeamUpResponse`
   - `CreateTeamUpRequestData`, `UpdateTeamUpRequestData`, `TeamUpRequestFilters`
 

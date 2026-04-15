@@ -84,8 +84,22 @@ class TeamUpRepositoryImpl implements TeamUpRepository {
   }
 
   @override
-  Future<void> respondToRequest(String id, String message) async {
-    await _dio.post<void>('/teamup/$id/respond', data: {'message': message});
+  Future<void> respondToRequest(
+    String id,
+    String message, {
+    String? requestPositionId,
+    String? applicantSkillLevel,
+  }) async {
+    await _dio.post<void>(
+      '/teamup/$id/respond',
+      data: {
+        'message': message,
+        if (requestPositionId != null && requestPositionId.isNotEmpty)
+          'requestPositionId': requestPositionId,
+        if (applicantSkillLevel != null && applicantSkillLevel.isNotEmpty)
+          'applicantSkillLevel': applicantSkillLevel,
+      },
+    );
   }
 
   @override
