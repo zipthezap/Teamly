@@ -727,11 +727,11 @@ describe('Tournament Service', () => {
         .mockResolvedValueOnce(0) // no next stage yet
         .mockResolvedValueOnce(0); // no previous stage matches
       vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce([
-        { id: 'team-1' },
-        { id: 'team-2' },
-        { id: 'team-3' },
-        { id: 'team-4' },
-        { id: 'team-5' },
+        { id: 'team-1', createdAt: new Date('2025-01-01') },
+        { id: 'team-2', createdAt: new Date('2025-01-02') },
+        { id: 'team-3', createdAt: new Date('2025-01-03') },
+        { id: 'team-4', createdAt: new Date('2025-01-04') },
+        { id: 'team-5', createdAt: new Date('2025-01-05') },
       ] as unknown);
       vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 2 } as unknown);
 

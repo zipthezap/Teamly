@@ -383,12 +383,12 @@ export const generateSingleEliminationBrackets = async (tournamentId: string) =>
   
   const nearestLowerPowerOfTwo = 2 ** Math.floor(Math.log2(numTeams));
   const preliminaryMatchCount = numTeams - nearestLowerPowerOfTwo;
-  const byeCount =
+  const byeTeamCount =
     preliminaryMatchCount > 0
       ? Math.max(0, numTeams - preliminaryMatchCount * 2)
       : 0;
 
-  const teamsForMatches = preliminaryMatchCount > 0 ? teams.slice(byeCount) : teams;
+  const teamsForMatches = preliminaryMatchCount > 0 ? teams.slice(byeTeamCount) : teams;
 
   // Create first round matches (deterministic order; top teams may receive byes)
   const matches = [];

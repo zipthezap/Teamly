@@ -2051,6 +2051,7 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
     );
     expect(res.body.categoryId).toBe('cat-1');
     expect(res.body.categoryName).toBe('Category B');
+    expect(res.body.team.poolName).not.toBe('Category B');
   });
 
   it('returns 404 when poolId is provided but pool does not exist', async () => {
