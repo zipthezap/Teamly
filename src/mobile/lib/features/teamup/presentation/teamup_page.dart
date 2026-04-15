@@ -1502,12 +1502,7 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
   Future<void> _respond() async {
     final msg = _msgCtrl.text.trim();
     if (msg.isEmpty) return;
-    final positions = widget.request.positions ?? const <TeamUpRequestPositionModel>[];
-    final openPositions = positions
-        .where((position) =>
-            (position.isOpen ?? true) &&
-            ((position.slotsAvailable ?? position.slotsNeeded) > 0))
-        .toList();
+    final openPositions = _openPositions(widget.request);
     if (openPositions.isNotEmpty && _selectedPositionId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Select a position before applying.')),
@@ -1572,6 +1567,12 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
     } finally {
       if (mounted) setState(() => _sendingComment = false);
     }
+  }
+
+  List<TeamUpRequestPositionModel> _openPositions(
+      TeamUpRequestModel request) {
+    final positions = request.positions ?? const <TeamUpRequestPositionModel>[];
+    return positions.where((position) => position.hasAvailability).toList();
   }
 
   @override
@@ -1939,12 +1940,9 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                     if (r.status == 'open') ...[
                       Builder(
                         builder: (context) {
-                          final positions = r.positions ?? const <TeamUpRequestPositionModel>[];
-                          final openPositions = positions
-                              .where((position) =>
-                                  (position.isOpen ?? true) &&
-                                  ((position.slotsAvailable ?? position.slotsNeeded) > 0))
-                              .toList();
+                          final positions =
+                              r.positions ?? const <TeamUpRequestPositionModel>[];
+                          final openPositions = _openPositions(r);
                           final noOpenPositions =
                               positions.isNotEmpty && openPositions.isEmpty;
                           if (noOpenPositions) {
@@ -1971,7 +1969,7 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                                         (position) => DropdownMenuItem(
                                           value: position.id,
                                           child: Text(
-                                              '${position.name} (${position.slotsAvailable ?? (position.slotsNeeded - position.acceptedCount)} spots left)'),
+                                              '${position.name} (${position.effectiveSlotsAvailable} spots left)'),
                                         ),
                                       )
                                       .toList(),
@@ -2031,13 +2029,7 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                                   : () {
                                       final positions = r.positions ??
                                           const <TeamUpRequestPositionModel>[];
-                                      final openPositions = positions
-                                          .where((position) =>
-                                              (position.isOpen ?? true) &&
-                                              ((position.slotsAvailable ??
-                                                      position.slotsNeeded) >
-                                                  0))
-                                          .toList();
+                                      final openPositions = _openPositions(r);
                                       if (openPositions.isNotEmpty &&
                                           _selectedPositionId == null) {
                                         ScaffoldMessenger.of(context).showSnackBar(

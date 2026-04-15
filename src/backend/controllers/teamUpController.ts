@@ -18,6 +18,11 @@ type TeamUpPositionInput = {
   skillLevelRequired?: unknown;
 };
 
+type TeamUpRequestWithPositionData = {
+  positions?: Array<{ id: string; slotsNeeded: number }>;
+  responses?: Array<{ status: string; requestPositionId?: string | null }>;
+};
+
 const parseTeamUpPositions = (positionsInput: unknown) => {
   if (positionsInput === undefined || positionsInput === null) return [];
   if (!Array.isArray(positionsInput)) {
@@ -41,7 +46,12 @@ const parseTeamUpPositions = (positionsInput: unknown) => {
       typeof position.skillLevelRequired === 'string'
         ? sanitizeString(position.skillLevelRequired).toLowerCase()
         : '';
-    if (skillLevelRequiredRaw && !VALID_SKILL_LEVELS.includes(skillLevelRequiredRaw as (typeof VALID_SKILL_LEVELS)[number])) {
+    if (
+      skillLevelRequiredRaw &&
+      !VALID_SKILL_LEVELS.includes(
+        skillLevelRequiredRaw as (typeof VALID_SKILL_LEVELS)[number]
+      )
+    ) {
       throw new BadRequestError(
         `positions[${index}].skillLevelRequired must be one of: ${VALID_SKILL_LEVELS.join(', ')}`
       );
@@ -55,7 +65,12 @@ const parseTeamUpPositions = (positionsInput: unknown) => {
   });
 
   const normalizedNames = parsed.map((position) => position.name.toLowerCase());
-  const duplicateNames = normalizedNames.filter((name, idx) => normalizedNames.indexOf(name) !== idx);
+  const seenNames = new Set<string>();
+  const duplicateNames = normalizedNames.filter((name) => {
+    if (seenNames.has(name)) return true;
+    seenNames.add(name);
+    return false;
+  });
   if (duplicateNames.length > 0) {
     throw new BadRequestError('positions cannot contain duplicate names');
   }
@@ -75,7 +90,7 @@ const deriveRequestLevelFieldsFromPositions = (
   return { derivedPlayersNeeded, derivedSkillLevel };
 };
 
-const withPositionAvailability = <T extends { positions?: Array<{ id: string; slotsNeeded: number }>; responses?: Array<{ status: string; requestPositionId?: string | null }> }>(request: T) => {
+const withPositionAvailability = <T extends TeamUpRequestWithPositionData>(request: T) => {
   const acceptedByPosition = new Map<string, number>();
   (request.responses ?? [])
     .filter((response) => response.status === 'accepted' && response.requestPositionId)
@@ -1021,7 +1036,9 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
         select: { id: true },
       });
       if (acceptedRoleForSameUser) {
-        throw new BadRequestError('This user already fills a role for this TeamUp request');
+        throw new BadRequestError(
+          'This user already has an accepted application for this TeamUp request'
+        );
       }
 
       if (hasPositionRequirements) {

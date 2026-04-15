@@ -109,6 +109,10 @@ class TeamUpRequestPositionModel extends Equatable {
   final int? slotsAvailable;
   final bool? isOpen;
 
+  int get effectiveSlotsAvailable =>
+      slotsAvailable ?? (slotsNeeded - acceptedCount);
+  bool get hasAvailability => (isOpen ?? true) && effectiveSlotsAvailable > 0;
+
   factory TeamUpRequestPositionModel.fromJson(Map<String, dynamic> json) {
     return TeamUpRequestPositionModel(
       id: json['id'] as String,
