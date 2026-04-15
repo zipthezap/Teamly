@@ -1043,7 +1043,9 @@ export const submitScore = async (req: Request, res: Response) => {
       });
 
       if (updateResult.count === 0) {
-        throw new ConflictError('Match score has already been submitted');
+        throw new ConflictError(
+          'Match score has already been submitted. Please refresh to see the latest match details.'
+        );
       }
 
       const finalizedMatch = ensureResourceExists(
@@ -1064,7 +1066,9 @@ export const submitScore = async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof ConflictError || isPrismaNotFoundError(error)) {
-      throw new ConflictError('Match score has already been submitted');
+      throw new ConflictError(
+        'Match score has already been submitted. Please refresh to see the latest match details.'
+      );
     }
     throw error;
   }
@@ -1293,7 +1297,9 @@ export const updateMatch = async (req: Request, res: Response) => {
   if (status !== undefined) updateData.status = status;
 
   if (status === MatchStatus.COMPLETED && match.status !== MatchStatus.COMPLETED) {
-    throw new BadRequestError('Use score submission to complete matches and update standings');
+    throw new BadRequestError(
+      'Use the score submission endpoint to complete matches and update standings'
+    );
   }
 
   const updatedMatch = await prisma.tournamentMatch.update({

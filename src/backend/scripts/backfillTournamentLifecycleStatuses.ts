@@ -20,6 +20,9 @@ const run = async (): Promise<void> => {
 
   let updatedCount = 0;
   for (const tournament of tournaments) {
+    const safeTournamentName = tournament.name
+      .replace(/[\r\n\t]/g, ' ')
+      .slice(0, 80);
     const [matchCount, incompleteMatchCount] = await Promise.all([
       prisma.tournamentMatch.count({ where: { tournamentId: tournament.id } }),
       prisma.tournamentMatch.count({
@@ -54,7 +57,7 @@ const run = async (): Promise<void> => {
     updatedCount += 1;
     // eslint-disable-next-line no-console
     console.log(
-      `[${hasDryRunFlag ? 'DRY-RUN' : 'UPDATED'}] ${tournament.id} (${tournament.name}): ${tournament.status} -> ${nextStatus}`
+      `[${hasDryRunFlag ? 'DRY-RUN' : 'UPDATED'}] ${tournament.id} (${safeTournamentName}): ${tournament.status} -> ${nextStatus}`
     );
   }
 

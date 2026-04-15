@@ -97,7 +97,7 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
     }
     if (_endDate != null && !_endDate!.isAfter(_startDate!)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tournament end date must be after the start date')),
+        const SnackBar(content: Text('Tournament end date must be after start date')),
       );
       return;
     }
