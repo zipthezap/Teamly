@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/constants/app_constants.dart';
 import '../../../core/error/error_utils.dart';
 import '../../../core/models/tournament_model.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../features/auth/state/auth_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
@@ -18,11 +15,9 @@ class MatchesManagementPage extends ConsumerStatefulWidget {
   const MatchesManagementPage({
     super.key,
     required this.tournamentId,
-    required this.tournament,
   });
 
   final String tournamentId;
-  final TournamentModel? tournament;
 
   @override
   ConsumerState<MatchesManagementPage> createState() => _MatchesManagementPageState();
@@ -31,21 +26,21 @@ class MatchesManagementPage extends ConsumerStatefulWidget {
 class _MatchesManagementPageState extends ConsumerState<MatchesManagementPage> {
   bool _loading = false;
 
-  List<TournamentMatchModel> get _matches =>
-      widget.tournament?.matches ?? [];
-
-  Map<String, List<TournamentMatchModel>> get _matchesByRound {
+  Map<String, List<TournamentMatchModel>> _matchesByRound(List<TournamentMatchModel> matches) {
     final grouped = <String, List<TournamentMatchModel>>{};
-    for (final m in _matches) {
+    for (final m in matches) {
       grouped.putIfAbsent(m.round, () => []).add(m);
     }
     return grouped;
   }
 
-  void _refresh() => ref.invalidate(tournamentDetailProvider(widget.tournamentId));
+  void _refresh() {
+    ref.invalidate(tournamentDetailProvider(widget.tournamentId));
+    ref.invalidate(tournamentsNotifierProvider);
+  }
 
-  Future<void> _showMatchDialog({TournamentMatchModel? match}) async {
-    final teams = widget.tournament?.teams ?? [];
+  Future<void> _showMatchDialog(TournamentModel tournament, {TournamentMatchModel? match}) async {
+    final teams = tournament.teams;
     String? homeTeamId = match?.teamAId;
     String? awayTeamId = match?.teamBId;
     String? refereeTeamId;
@@ -171,58 +166,72 @@ class _MatchesManagementPageState extends ConsumerState<MatchesManagementPage> {
 
   @override
   Widget build(BuildContext context) {
-    final byRound = _matchesByRound;
+    final tournamentAsync = ref.watch(tournamentDetailProvider(widget.tournamentId));
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Matches')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _loading ? null : () => _showMatchDialog(),
-        tooltip: 'Add match',
-        child: const Icon(Icons.add),
+    return tournamentAsync.when(
+      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (error, _) => Scaffold(
+        appBar: AppBar(title: const Text('Matches')),
+        body: ErrorDisplay(
+          message: extractErrorMessage(error),
+          onRetry: _refresh,
+        ),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _matches.isEmpty
-              ? const UiEmptyState(icon: Icons.sports_outlined, message: 'No matches yet. Tap + to create one.')
-              : ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    for (final entry in byRound.entries) ...[
-                      UiSectionTitle(entry.key.isEmpty ? 'Unassigned' : entry.key),
-                      const SizedBox(height: 8),
-                      for (final m in entry.value)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                            color: AppThemeTokens.card(context),
-                            borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-                            border: Border.all(color: AppThemeTokens.border(context)),
-                          ),
-                          child: ListTile(
-                            title: Text(
-                              '${m.teamAName ?? m.teamAId ?? '?'} vs ${m.teamBName ?? m.teamBId ?? '?'}',
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                            ),
-                            subtitle: m.scheduledAt != null
-                                ? Text(DateFormat.yMMMd().add_jm().format(m.scheduledAt!.toLocal()), style: const TextStyle(fontSize: 12))
-                                : null,
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(icon: const Icon(Icons.edit_outlined, size: 18), onPressed: () => _showMatchDialog(match: m)),
-                                IconButton(
-                                  icon: Icon(Icons.delete_outline, size: 18, color: Theme.of(context).colorScheme.error),
-                                  onPressed: () => _deleteMatch(m),
+      data: (tournament) {
+        final matches = tournament.matches;
+        final byRound = _matchesByRound(matches);
+        return Scaffold(
+          appBar: AppBar(title: const Text('Matches')),
+          floatingActionButton: FloatingActionButton(
+            onPressed: _loading ? null : () => _showMatchDialog(tournament),
+            tooltip: 'Add match',
+            child: const Icon(Icons.add),
+          ),
+          body: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : matches.isEmpty
+                  ? const UiEmptyState(icon: Icons.sports_outlined, message: 'No matches yet. Tap + to create one.')
+                  : ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        for (final entry in byRound.entries) ...[
+                          UiSectionTitle(entry.key.isEmpty ? 'Unassigned' : entry.key),
+                          const SizedBox(height: 8),
+                          for (final m in entry.value)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              decoration: BoxDecoration(
+                                color: AppThemeTokens.card(context),
+                                borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+                                border: Border.all(color: AppThemeTokens.border(context)),
+                              ),
+                              child: ListTile(
+                                title: Text(
+                                  '${m.teamAName ?? m.teamAId ?? '?'} vs ${m.teamBName ?? m.teamBId ?? '?'}',
+                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                                 ),
-                              ],
+                                subtitle: m.scheduledAt != null
+                                    ? Text(DateFormat.yMMMd().add_jm().format(m.scheduledAt!.toLocal()), style: const TextStyle(fontSize: 12))
+                                    : null,
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(icon: const Icon(Icons.edit_outlined, size: 18), onPressed: () => _showMatchDialog(tournament, match: m)),
+                                    IconButton(
+                                      icon: Icon(Icons.delete_outline, size: 18, color: Theme.of(context).colorScheme.error),
+                                      onPressed: () => _deleteMatch(m),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                      const SizedBox(height: 8),
-                    ],
-                    const SizedBox(height: 80),
-                  ],
-                ),
+                          const SizedBox(height: 8),
+                        ],
+                        const SizedBox(height: 80),
+                      ],
+                    ),
+        );
+      },
     );
   }
 }

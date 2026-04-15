@@ -5,11 +5,116 @@ import * as teamUpService from '../services/teamUpService';
 import * as locationService from '../services/locationService';
 import * as teamUpNotificationService from '../services/teamUpNotificationService';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors';
-import { parseCoordinates, parseFloatStrict } from '../utils/validation';
+import { parseCoordinates, parseFloatStrict, sanitizeString } from '../utils/validation';
 
 // Valid request types
 const VALID_REQUEST_TYPES = ['need_players', 'looking_for_play'] as const;
 type TeamUpRequestType = (typeof VALID_REQUEST_TYPES)[number];
+const VALID_SKILL_LEVELS = ['any', 'beginner', 'intermediate', 'advanced'] as const;
+
+type TeamUpPositionInput = {
+  name?: unknown;
+  slotsNeeded?: unknown;
+  skillLevelRequired?: unknown;
+};
+
+type TeamUpRequestWithPositionData = {
+  positions?: Array<{ id: string; slotsNeeded: number }>;
+  responses?: Array<{ status: string; requestPositionId?: string | null }>;
+};
+
+const parseTeamUpPositions = (positionsInput: unknown) => {
+  if (positionsInput === undefined || positionsInput === null) return [];
+  if (!Array.isArray(positionsInput)) {
+    throw new BadRequestError('positions must be an array');
+  }
+
+  const parsed = positionsInput.map((raw, index) => {
+    const position = raw as TeamUpPositionInput;
+    const sanitizedName =
+      typeof position.name === 'string' ? sanitizeString(position.name) : '';
+    if (!sanitizedName) {
+      throw new BadRequestError(`positions[${index}].name is required`);
+    }
+
+    const slotsNeeded = Number.parseInt(String(position.slotsNeeded ?? 1), 10);
+    if (!Number.isFinite(slotsNeeded) || slotsNeeded < 1) {
+      throw new BadRequestError(`positions[${index}].slotsNeeded must be at least 1`);
+    }
+
+    const skillLevelRequiredRaw =
+      typeof position.skillLevelRequired === 'string'
+        ? sanitizeString(position.skillLevelRequired).toLowerCase()
+        : '';
+    if (
+      skillLevelRequiredRaw &&
+      !VALID_SKILL_LEVELS.includes(
+        skillLevelRequiredRaw as (typeof VALID_SKILL_LEVELS)[number]
+      )
+    ) {
+      throw new BadRequestError(
+        `positions[${index}].skillLevelRequired must be one of: ${VALID_SKILL_LEVELS.join(', ')}`
+      );
+    }
+
+    return {
+      name: sanitizedName,
+      slotsNeeded,
+      skillLevelRequired: skillLevelRequiredRaw || null,
+    };
+  });
+
+  const normalizedNames = parsed.map((position) => position.name.toLowerCase());
+  const seenNames = new Set<string>();
+  const duplicateNames = normalizedNames.filter((name) => {
+    if (seenNames.has(name)) return true;
+    seenNames.add(name);
+    return false;
+  });
+  if (duplicateNames.length > 0) {
+    throw new BadRequestError('positions cannot contain duplicate names');
+  }
+
+  return parsed;
+};
+
+const deriveRequestLevelFieldsFromPositions = (
+  parsedPositions: Array<{ slotsNeeded: number; skillLevelRequired: string | null }>
+) => {
+  const derivedPlayersNeeded = parsedPositions.reduce((sum, position) => sum + position.slotsNeeded, 0);
+  const presentSkillLevels = parsedPositions
+    .map((position) => position.skillLevelRequired)
+    .filter((skill): skill is string => Boolean(skill));
+  const uniqueSkillLevels = [...new Set(presentSkillLevels)];
+  const derivedSkillLevel = uniqueSkillLevels.length === 1 ? uniqueSkillLevels[0] : null;
+  return { derivedPlayersNeeded, derivedSkillLevel };
+};
+
+const withPositionAvailability = <T extends TeamUpRequestWithPositionData>(request: T) => {
+  const acceptedByPosition = new Map<string, number>();
+  (request.responses ?? [])
+    .filter((response) => response.status === 'accepted' && response.requestPositionId)
+    .forEach((response) => {
+      const positionId = response.requestPositionId as string;
+      acceptedByPosition.set(positionId, (acceptedByPosition.get(positionId) ?? 0) + 1);
+    });
+
+  const positionsWithAvailability = (request.positions ?? []).map((position) => {
+    const acceptedCount = acceptedByPosition.get(position.id) ?? 0;
+    const slotsAvailable = Math.max(position.slotsNeeded - acceptedCount, 0);
+    return {
+      ...position,
+      acceptedCount,
+      slotsAvailable,
+      isOpen: slotsAvailable > 0,
+    };
+  });
+
+  return {
+    ...request,
+    positions: positionsWithAvailability,
+  };
+};
 
 // Create a TeamUp request
 export const createTeamUpRequest = async (req: Request, res: Response) => {
@@ -27,7 +132,8 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
     country,
     dateTime,
     playersNeeded,
-    skillLevel
+    skillLevel,
+    positions: positionsInput,
   } = req.body;
 
   if (!title || !sportType) {
@@ -62,6 +168,12 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
     throw new BadRequestError('Title and sport type cannot be empty or whitespace-only');
   }
 
+  // Parse requested positions (optional; positions-first for need_players)
+  const parsedPositions = parseTeamUpPositions(positionsInput);
+  if (resolvedRequestType === 'need_players' && positionsInput !== undefined && parsedPositions.length === 0) {
+    throw new BadRequestError('positions must contain at least one position when provided');
+  }
+
   // Resolve dateTime: required for need_players, defaults to 30 days from now for looking_for_play
   let eventDate: Date;
   if (dateTime) {
@@ -77,8 +189,14 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
     eventDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   }
 
-  // Validate playersNeeded if provided
-  const players = playersNeeded ? parseInt(playersNeeded) : 1;
+  // Validate playersNeeded if provided (or derive from positions)
+  const { derivedPlayersNeeded, derivedSkillLevel } =
+    parsedPositions.length > 0
+      ? deriveRequestLevelFieldsFromPositions(parsedPositions)
+      : { derivedPlayersNeeded: null, derivedSkillLevel: null };
+  const players =
+    derivedPlayersNeeded ??
+    (playersNeeded !== undefined && playersNeeded !== null ? parseInt(playersNeeded, 10) : 1);
   if (players < 1) {
     throw new BadRequestError('playersNeeded must be at least 1');
   }
@@ -104,9 +222,20 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
       country: sanitized.country,
       dateTime: eventDate,
       playersNeeded: players,
-      skillLevel: sanitized.skillLevel,
+      skillLevel: derivedSkillLevel ?? sanitized.skillLevel ?? null,
       status: 'open',
-      expiresAt
+      expiresAt,
+      ...(parsedPositions.length > 0
+        ? {
+            positions: {
+              create: parsedPositions.map((position) => ({
+                name: position.name,
+                slotsNeeded: position.slotsNeeded,
+                skillLevelRequired: position.skillLevelRequired,
+              })),
+            },
+          }
+        : {}),
     },
     include: {
       creator: {
@@ -121,11 +250,16 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
       },
       _count: {
         select: { responses: true, comments: true }
-      }
+      },
+      positions: {
+        orderBy: { createdAt: 'asc' },
+      },
     }
   });
 
-  const enrichedRequest = locationService.enrichWithLocationInfo(teamUpRequest);
+  const enrichedRequest = locationService.enrichWithLocationInfo(
+    withPositionAvailability(teamUpRequest)
+  );
 
   // Notify users about the new TeamUp request in their area (async, don't wait)
   teamUpNotificationService.notifyUsersAboutNewTeamUp({
@@ -236,7 +370,10 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
           responses: true,
           comments: true
         }
-      }
+      },
+      positions: {
+        orderBy: { createdAt: 'asc' },
+      },
     },
     orderBy: [
       { dateTime: 'asc' },
@@ -260,7 +397,15 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
           name: true,
           profilePicture: true
         }
-      }
+      },
+      requestPosition: {
+        select: {
+          id: true,
+          name: true,
+          slotsNeeded: true,
+          skillLevelRequired: true,
+        },
+      },
     }
   });
 
@@ -274,10 +419,12 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
   });
 
   // Attach responses to requests
-  const requestsWithResponses = teamUpRequests.map(request => ({
-    ...request,
-    responses: responsesByRequest.get(request.id) || []
-  }));
+  const requestsWithResponses = teamUpRequests.map((request) =>
+    withPositionAvailability({
+      ...request,
+      responses: responsesByRequest.get(request.id) || [],
+    })
+  );
 
   // Enrich with location info
   const enrichedRequests = requestsWithResponses.map(request => 
@@ -336,9 +483,20 @@ export const getMyTeamUpRequests = async (req: Request, res: Response) => {
               email: true,
               profilePicture: true
             }
-          }
+          },
+          requestPosition: {
+            select: {
+              id: true,
+              name: true,
+              slotsNeeded: true,
+              skillLevelRequired: true,
+            },
+          },
         },
         orderBy: { createdAt: 'asc' }
+      },
+      positions: {
+        orderBy: { createdAt: 'asc' },
       },
       _count: {
         select: { responses: true, comments: true }
@@ -349,7 +507,7 @@ export const getMyTeamUpRequests = async (req: Request, res: Response) => {
 
   // Enrich with location info
   const enrichedRequests = teamUpRequests.map(request => 
-    locationService.enrichWithLocationInfo(request)
+    locationService.enrichWithLocationInfo(withPositionAvailability(request))
   );
 
   res.json(enrichedRequests);
@@ -381,8 +539,19 @@ export const getTeamUpRequest = async (req: Request, res: Response) => {
               email: true,
               profilePicture: true
             }
-          }
+          },
+          requestPosition: {
+            select: {
+              id: true,
+              name: true,
+              slotsNeeded: true,
+              skillLevelRequired: true,
+            },
+          },
         }
+      },
+      positions: {
+        orderBy: { createdAt: 'asc' },
       },
       comments: {
         include: {
@@ -410,7 +579,9 @@ export const getTeamUpRequest = async (req: Request, res: Response) => {
     throw new NotFoundError('TeamUp request not found');
   }
 
-  const enrichedRequest = locationService.enrichWithLocationInfo(teamUpRequest);
+  const enrichedRequest = locationService.enrichWithLocationInfo(
+    withPositionAvailability(teamUpRequest)
+  );
 
   res.json(enrichedRequest);
 };
@@ -432,12 +603,13 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
     dateTime,
     playersNeeded,
     skillLevel,
-    status
+    status,
+    positions: positionsInput,
   } = req.body;
 
   const teamUpRequest = await prisma.teamUpRequest.findUnique({
     where: { id },
-    select: { creatorId: true }
+    select: { creatorId: true, requestType: true }
   });
 
   if (!teamUpRequest) {
@@ -461,6 +633,7 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
   });
 
   const updateData: Record<string, unknown> = {};
+  const parsedPositions = parseTeamUpPositions(positionsInput);
 
   if (sanitized.title !== undefined) updateData.title = sanitized.title;
   if (sanitized.description !== undefined) updateData.description = sanitized.description;
@@ -485,6 +658,14 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
     updateData.requestType = requestType;
   }
 
+  const effectiveRequestType = (requestType as TeamUpRequestType | undefined) ?? teamUpRequest.requestType;
+  if (positionsInput !== undefined && effectiveRequestType !== 'need_players') {
+    throw new BadRequestError('positions can only be set for need_players requests');
+  }
+  if (positionsInput !== undefined && parsedPositions.length === 0) {
+    throw new BadRequestError('positions must contain at least one position');
+  }
+
   if (dateTime !== undefined) {
     const eventDate = new Date(dateTime);
     if (isNaN(eventDate.getTime())) {
@@ -503,6 +684,24 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
       throw new BadRequestError('playersNeeded must be at least 1');
     }
     updateData.playersNeeded = players;
+  }
+
+  if (positionsInput !== undefined) {
+    const { derivedPlayersNeeded, derivedSkillLevel } =
+      deriveRequestLevelFieldsFromPositions(parsedPositions);
+    updateData.playersNeeded = derivedPlayersNeeded;
+    // Keep explicit request skill when sent; otherwise derive from positions.
+    if (sanitized.skillLevel === undefined) {
+      updateData.skillLevel = derivedSkillLevel;
+    }
+    updateData.positions = {
+      deleteMany: {},
+      create: parsedPositions.map((position) => ({
+        name: position.name,
+        slotsNeeded: position.slotsNeeded,
+        skillLevelRequired: position.skillLevelRequired,
+      })),
+    };
   }
 
   const updated = await prisma.teamUpRequest.update({
@@ -528,8 +727,19 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
               email: true,
               profilePicture: true
             }
-          }
+          },
+          requestPosition: {
+            select: {
+              id: true,
+              name: true,
+              slotsNeeded: true,
+              skillLevelRequired: true,
+            },
+          },
         }
+      },
+      positions: {
+        orderBy: { createdAt: 'asc' },
       },
       _count: {
         select: { responses: true }
@@ -537,7 +747,7 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
     }
   });
 
-  res.json(updated);
+  res.json(withPositionAvailability(updated));
 };
 
 // Delete a TeamUp request
@@ -567,10 +777,24 @@ export const deleteTeamUpRequest = async (req: Request, res: Response) => {
 // Respond to a TeamUp request
 export const respondToTeamUpRequest = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { message } = req.body;
+  const { message, requestPositionId, applicantSkillLevel } = req.body;
 
   // Sanitize the message
   const sanitized = teamUpService.sanitizeTeamUpData({ message });
+  const sanitizedApplicantSkillLevel =
+    typeof applicantSkillLevel === 'string'
+      ? sanitizeString(applicantSkillLevel).toLowerCase()
+      : undefined;
+  if (
+    sanitizedApplicantSkillLevel &&
+    !VALID_SKILL_LEVELS.includes(
+      sanitizedApplicantSkillLevel as (typeof VALID_SKILL_LEVELS)[number]
+    )
+  ) {
+    throw new BadRequestError(
+      `applicantSkillLevel must be one of: ${VALID_SKILL_LEVELS.join(', ')}`
+    );
+  }
 
   const teamUpRequest = await prisma.teamUpRequest.findUnique({
     where: { id },
@@ -580,6 +804,13 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
       title: true,
       sportType: true,
       dateTime: true,
+      positions: {
+        select: {
+          id: true,
+          name: true,
+          slotsNeeded: true,
+        },
+      },
       creator: {
         select: {
           email: true,
@@ -613,12 +844,39 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
     throw new BadRequestError('You have already responded to this request');
   }
 
+  const hasPositionRequirements = teamUpRequest.positions.length > 0;
+  if (hasPositionRequirements && !requestPositionId) {
+    throw new BadRequestError('requestPositionId is required for this TeamUp request');
+  }
+
+  let selectedPositionId: string | null = null;
+  if (requestPositionId) {
+    const selectedPosition = teamUpRequest.positions.find((position) => position.id === requestPositionId);
+    if (!selectedPosition) {
+      throw new BadRequestError('Invalid requestPositionId for this TeamUp request');
+    }
+
+    const acceptedForPosition = await prisma.teamUpResponse.count({
+      where: {
+        teamUpRequestId: id,
+        requestPositionId,
+        status: 'accepted',
+      },
+    });
+    if (acceptedForPosition >= selectedPosition.slotsNeeded) {
+      throw new BadRequestError('Selected position is already filled');
+    }
+    selectedPositionId = selectedPosition.id;
+  }
+
   const response = await prisma.teamUpResponse.create({
     data: {
       teamUpRequestId: id,
       userId: req.user!.id,
       message: sanitized.message,
-      status: 'pending'
+      status: 'pending',
+      requestPositionId: selectedPositionId,
+      applicantSkillLevel: sanitizedApplicantSkillLevel ?? null,
     },
     include: {
       user: {
@@ -628,7 +886,15 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
           email: true,
           profilePicture: true
         }
-      }
+      },
+      requestPosition: {
+        select: {
+          id: true,
+          name: true,
+          slotsNeeded: true,
+          skillLevelRequired: true,
+        },
+      },
     }
   });
 
@@ -697,13 +963,21 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
   // Verify the creator owns this request (outside transaction for early exit)
   const teamUpRequest = await prisma.teamUpRequest.findUnique({
     where: { id },
-    select: { 
-      creatorId: true, 
-      playersNeeded: true, 
+    select: {
+      creatorId: true,
+      playersNeeded: true,
       title: true,
       sportType: true,
       dateTime: true,
-      location: true
+      location: true,
+      positions: {
+        select: {
+          id: true,
+          name: true,
+          slotsNeeded: true,
+          skillLevelRequired: true,
+        },
+      },
     }
   });
 
@@ -725,7 +999,15 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
           email: true,
           profilePicture: true
         }
-      }
+      },
+      requestPosition: {
+        select: {
+          id: true,
+          name: true,
+          slotsNeeded: true,
+          skillLevelRequired: true,
+        },
+      },
     }
   });
 
@@ -740,13 +1022,54 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
   // Use a transaction to atomically update the response status and conditionally
   // mark the request as filled, preventing concurrent accepts from over-booking.
   const { updated, requestFilled } = await prisma.$transaction(async (tx) => {
+    const hasPositionRequirements = teamUpRequest.positions.length > 0;
+
     // When accepting, verify we haven't already filled all spots
     if (action === 'accept') {
-      const acceptedCount = await tx.teamUpResponse.count({
-        where: { teamUpRequestId: id, status: 'accepted' }
+      const acceptedRoleForSameUser = await tx.teamUpResponse.findFirst({
+        where: {
+          teamUpRequestId: id,
+          userId: existingResponse.userId,
+          status: 'accepted',
+          id: { not: responseId },
+        },
+        select: { id: true },
       });
-      if (acceptedCount >= teamUpRequest.playersNeeded) {
-      throw new BadRequestError('Cannot accept: all available spots are already filled');
+      if (acceptedRoleForSameUser) {
+        throw new BadRequestError(
+          'This user already has an accepted application for this TeamUp request'
+        );
+      }
+
+      if (hasPositionRequirements) {
+        if (!existingResponse.requestPositionId) {
+          throw new BadRequestError('Response is missing requestPositionId');
+        }
+        const selectedPosition = teamUpRequest.positions.find(
+          (position) => position.id === existingResponse.requestPositionId
+        );
+        if (!selectedPosition) {
+          throw new BadRequestError('Selected position is no longer available');
+        }
+
+        const acceptedForPosition = await tx.teamUpResponse.count({
+          where: {
+            teamUpRequestId: id,
+            requestPositionId: existingResponse.requestPositionId,
+            status: 'accepted',
+            id: { not: responseId },
+          },
+        });
+        if (acceptedForPosition >= selectedPosition.slotsNeeded) {
+          throw new BadRequestError('Cannot accept: selected position is already filled');
+        }
+      } else {
+        const acceptedCount = await tx.teamUpResponse.count({
+          where: { teamUpRequestId: id, status: 'accepted', id: { not: responseId } },
+        });
+        if (acceptedCount >= teamUpRequest.playersNeeded) {
+          throw new BadRequestError('Cannot accept: all available spots are already filled');
+        }
       }
     }
 
@@ -761,22 +1084,54 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
             email: true,
             profilePicture: true
           }
-        }
+        },
+        requestPosition: {
+          select: {
+            id: true,
+            name: true,
+            slotsNeeded: true,
+            skillLevelRequired: true,
+          },
+        },
       }
     });
 
     // Auto-fill: recount after update and mark request filled if needed
     let requestFilled = false;
     if (action === 'accept') {
-      const newAcceptedCount = await tx.teamUpResponse.count({
-        where: { teamUpRequestId: id, status: 'accepted' }
-      });
-      if (newAcceptedCount >= teamUpRequest.playersNeeded) {
+      if (teamUpRequest.positions.length > 0) {
+        const acceptedResponses = await tx.teamUpResponse.findMany({
+          where: {
+            teamUpRequestId: id,
+            status: 'accepted',
+            requestPositionId: { not: null },
+          },
+          select: { requestPositionId: true },
+        });
+        const acceptedByPosition = new Map<string, number>();
+        acceptedResponses.forEach((response) => {
+          if (!response.requestPositionId) return;
+          acceptedByPosition.set(
+            response.requestPositionId,
+            (acceptedByPosition.get(response.requestPositionId) ?? 0) + 1
+          );
+        });
+        requestFilled = teamUpRequest.positions.every((position) => {
+          const acceptedCount = acceptedByPosition.get(position.id) ?? 0;
+          return acceptedCount >= position.slotsNeeded;
+        });
+      } else {
+        const newAcceptedCount = await tx.teamUpResponse.count({
+          where: { teamUpRequestId: id, status: 'accepted' },
+        });
+        requestFilled = newAcceptedCount >= teamUpRequest.playersNeeded;
+      }
+
+      if (requestFilled) {
         await tx.teamUpRequest.update({
           where: { id },
           data: { status: 'filled' }
         });
-        requestFilled = true;
       }
     }
 
@@ -866,13 +1221,29 @@ export const getMyTeamUpResponses = async (req: Request, res: Response) => {
           profilePicture: true
         }
       },
+      requestPosition: {
+        select: {
+          id: true,
+          name: true,
+          slotsNeeded: true,
+          skillLevelRequired: true,
+        },
+      },
       teamUpRequest: {
         select: {
           id: true,
           title: true,
           sportType: true,
           requestType: true,
-          dateTime: true
+          dateTime: true,
+          positions: {
+            select: {
+              id: true,
+              name: true,
+              slotsNeeded: true,
+              skillLevelRequired: true,
+            },
+          },
         }
       }
     },
@@ -897,6 +1268,14 @@ export const getMyTeamUpApplications = async (req: Request, res: Response) => {
           profilePicture: true
         }
       },
+      requestPosition: {
+        select: {
+          id: true,
+          name: true,
+          slotsNeeded: true,
+          skillLevelRequired: true,
+        },
+      },
       teamUpRequest: {
         select: {
           id: true,
@@ -907,6 +1286,15 @@ export const getMyTeamUpApplications = async (req: Request, res: Response) => {
           city: true,
           location: true,
           status: true,
+          positions: {
+            select: {
+              id: true,
+              name: true,
+              slotsNeeded: true,
+              skillLevelRequired: true,
+            },
+            orderBy: { createdAt: 'asc' },
+          },
           creator: {
             select: {
               id: true,
@@ -971,8 +1359,19 @@ export const getNearbyTeamUpRequests = async (req: Request, res: Response) => {
               name: true,
               profilePicture: true
             }
-          }
+          },
+          requestPosition: {
+            select: {
+              id: true,
+              name: true,
+              slotsNeeded: true,
+              skillLevelRequired: true,
+            },
+          },
         }
+      },
+      positions: {
+        orderBy: { createdAt: 'asc' },
       },
       _count: {
         select: { responses: true }
@@ -992,7 +1391,7 @@ export const getNearbyTeamUpRequests = async (req: Request, res: Response) => {
 
   // Enrich with location info
   const enrichedRequests = nearbyRequests.map(request => 
-    locationService.enrichWithLocationInfo(request)
+    locationService.enrichWithLocationInfo(withPositionAvailability(request))
   );
 
   res.json({

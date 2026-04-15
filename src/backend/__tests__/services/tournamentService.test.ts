@@ -16,6 +16,7 @@ import {
   generateSingleEliminationBrackets,
   generateRoundRobinBrackets,
   generateGroupsKnockoutBrackets,
+  advanceWinners,
 } from '../../services/tournamentService';
 import prisma from '../../config/database';
 import { VolleyballConfig, BracketStage, MatchStatus } from '../../../shared/types/tournament.types';
@@ -32,6 +33,8 @@ vi.mock('../../config/database', () => ({
     },
     tournamentMatch: {
       createMany: vi.fn(),
+      findMany: vi.fn(),
+      count: vi.fn(),
     },
     tournamentAdminRole: {
       findFirst: vi.fn(),
@@ -498,6 +501,32 @@ describe('Tournament Service', () => {
         ]),
       });
     });
+
+    it('should generate preliminary round with deterministic bye handling for odd team count', async () => {
+      const teams = Array.from({ length: 5 }, (_, i) => ({
+        id: `team-${i + 1}`,
+        name: `Team ${i + 1}`,
+        createdAt: new Date(`2025-01-0${i + 1}`),
+      }));
+
+      vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce(teams as unknown);
+      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 1 } as unknown);
+
+      const result = await generateSingleEliminationBrackets('tournament-1');
+
+      expect(prisma.tournamentMatch.createMany).toHaveBeenCalledWith({
+        data: [
+          expect.objectContaining({
+            tournamentId: 'tournament-1',
+            homeTeamId: 'team-4',
+            awayTeamId: 'team-5',
+            stage: BracketStage.QUARTER_FINALS,
+            status: MatchStatus.SCHEDULED,
+          }),
+        ],
+      });
+      expect(result.count).toBe(1);
+    });
   });
 
   describe('generateRoundRobinBrackets', () => {
@@ -603,6 +632,125 @@ describe('Tournament Service', () => {
       await generateGroupsKnockoutBrackets('tournament-1');
 
       expect(prisma.tournamentTeam.findMany).toHaveBeenCalled();
+    });
+  });
+
+  describe('advanceWinners', () => {
+    it('does nothing when not all matches in current stage are completed', async () => {
+      vi.mocked(prisma.tournamentMatch.findMany).mockResolvedValueOnce([
+        {
+          id: 'm1',
+          tournamentId: 'tournament-1',
+          stage: BracketStage.QUARTER_FINALS,
+          status: MatchStatus.COMPLETED,
+          homeTeamId: 'team-1',
+          awayTeamId: 'team-2',
+          homeScore: 2,
+          awayScore: 1,
+          roundNumber: 1,
+          matchOrder: 1,
+          createdAt: new Date(),
+        },
+        {
+          id: 'm2',
+          tournamentId: 'tournament-1',
+          stage: BracketStage.QUARTER_FINALS,
+          status: MatchStatus.SCHEDULED,
+          homeTeamId: 'team-3',
+          awayTeamId: 'team-4',
+          homeScore: null,
+          awayScore: null,
+          roundNumber: 1,
+          matchOrder: 2,
+          createdAt: new Date(),
+        },
+      ] as unknown);
+
+      await advanceWinners('tournament-1', BracketStage.QUARTER_FINALS);
+
+      expect(prisma.tournamentMatch.createMany).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when next-stage matches already exist', async () => {
+      vi.mocked(prisma.tournamentMatch.findMany).mockResolvedValueOnce([
+        {
+          id: 'm1',
+          tournamentId: 'tournament-1',
+          stage: BracketStage.QUARTER_FINALS,
+          status: MatchStatus.COMPLETED,
+          homeTeamId: 'team-1',
+          awayTeamId: 'team-2',
+          homeScore: 2,
+          awayScore: 1,
+          roundNumber: 1,
+          matchOrder: 1,
+          createdAt: new Date(),
+        },
+        {
+          id: 'm2',
+          tournamentId: 'tournament-1',
+          stage: BracketStage.QUARTER_FINALS,
+          status: MatchStatus.COMPLETED,
+          homeTeamId: 'team-3',
+          awayTeamId: 'team-4',
+          homeScore: 0,
+          awayScore: 1,
+          roundNumber: 1,
+          matchOrder: 2,
+          createdAt: new Date(),
+        },
+      ] as unknown);
+      vi.mocked(prisma.tournamentMatch.count).mockResolvedValueOnce(1);
+
+      await advanceWinners('tournament-1', BracketStage.QUARTER_FINALS);
+
+      expect(prisma.tournamentMatch.createMany).not.toHaveBeenCalled();
+    });
+
+    it('includes first-stage bye teams when advancing winners', async () => {
+      vi.mocked(prisma.tournamentMatch.findMany).mockResolvedValueOnce([
+        {
+          id: 'm1',
+          tournamentId: 'tournament-1',
+          stage: BracketStage.QUARTER_FINALS,
+          status: MatchStatus.COMPLETED,
+          homeTeamId: 'team-4',
+          awayTeamId: 'team-5',
+          homeScore: 1,
+          awayScore: 0,
+          roundNumber: 1,
+          matchOrder: 1,
+          createdAt: new Date('2025-01-10'),
+        },
+      ] as unknown);
+      vi.mocked(prisma.tournamentMatch.count)
+        .mockResolvedValueOnce(0) // no next stage yet
+        .mockResolvedValueOnce(0); // no previous stage matches
+      vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce([
+        { id: 'team-1', createdAt: new Date('2025-01-01') },
+        { id: 'team-2', createdAt: new Date('2025-01-02') },
+        { id: 'team-3', createdAt: new Date('2025-01-03') },
+        { id: 'team-4', createdAt: new Date('2025-01-04') },
+        { id: 'team-5', createdAt: new Date('2025-01-05') },
+      ] as unknown);
+      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 2 } as unknown);
+
+      await advanceWinners('tournament-1', BracketStage.QUARTER_FINALS);
+
+      expect(prisma.tournamentMatch.createMany).toHaveBeenCalledWith({
+        data: [
+          expect.objectContaining({
+            stage: BracketStage.SEMI_FINALS,
+            homeTeamId: 'team-1',
+            awayTeamId: 'team-2',
+          }),
+          expect.objectContaining({
+            stage: BracketStage.SEMI_FINALS,
+            homeTeamId: 'team-3',
+            awayTeamId: 'team-4',
+          }),
+        ],
+      });
     });
   });
 });

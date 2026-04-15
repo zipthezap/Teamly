@@ -89,6 +89,39 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_startDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a tournament start date')),
+      );
+      return;
+    }
+    if (_endDate != null && !_endDate!.isAfter(_startDate!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tournament end date must be after start date')),
+      );
+      return;
+    }
+    if (_registrationStartDate != null && !_registrationStartDate!.isBefore(_startDate!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registration open date must be before the tournament start date')),
+      );
+      return;
+    }
+    if (_registrationDeadline != null && !_registrationDeadline!.isBefore(_startDate!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registration deadline must be before the tournament start date')),
+      );
+      return;
+    }
+    if (_registrationStartDate != null &&
+        _registrationDeadline != null &&
+        !_registrationDeadline!.isAfter(_registrationStartDate!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registration deadline must be after the registration open date')),
+      );
+      return;
+    }
+
     setState(() => _saving = true);
     try {
       await ref.read(tournamentRepositoryProvider).updateTournament(widget.tournamentId, {
@@ -107,9 +140,10 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
         'useManualBrackets': _useManualBrackets,
       });
       ref.read(tournamentsNotifierProvider.notifier).reload();
+      ref.invalidate(tournamentDetailProvider(widget.tournamentId));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tournament updated!')));
-      context.pop();
+      context.pop(true);
     } on Exception catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -246,4 +280,3 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
 // ===========================================================================
 // Matches Management Page
 // ===========================================================================
-

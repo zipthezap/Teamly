@@ -251,13 +251,9 @@ final _routerProvider = Provider<GoRouter>((ref) {
               ),
               GoRoute(
                 path: 'matches',
-                builder: (context, state) {
-                  final extra = state.extra as TournamentModel?;
-                  return MatchesManagementPage(
-                    tournamentId: state.pathParameters['id']!,
-                    tournament: extra,
-                  );
-                },
+                builder: (context, state) => MatchesManagementPage(
+                  tournamentId: state.pathParameters['id']!,
+                ),
               ),
             ],
           ),

@@ -134,6 +134,20 @@ export const tournamentsCreated = new Counter({
   registers: [register],
 });
 
+export const tournamentLifecycleTransitions = new Counter({
+  name: 'tournament_lifecycle_transitions_total',
+  help: 'Total number of tournament lifecycle status transitions',
+  labelNames: ['from_status', 'to_status', 'trigger'],
+  registers: [register],
+});
+
+export const tournamentLifecycleTransitionFailures = new Counter({
+  name: 'tournament_lifecycle_transition_failures_total',
+  help: 'Total number of tournament lifecycle transition failures',
+  labelNames: ['from_status', 'to_status', 'trigger'],
+  registers: [register],
+});
+
 export const userRegistrations = new Counter({
   name: 'user_registrations_total',
   help: 'Total number of user registrations',
@@ -261,6 +275,22 @@ export const recordGroupCreated = (isPublic: boolean = false): void => {
 
 export const recordTournamentCreated = (format?: string): void => {
   tournamentsCreated.labels(format || 'unknown').inc();
+};
+
+export const recordTournamentLifecycleTransition = (
+  fromStatus: string,
+  toStatus: string,
+  trigger: string = 'unknown'
+): void => {
+  tournamentLifecycleTransitions.labels(fromStatus, toStatus, trigger).inc();
+};
+
+export const recordTournamentLifecycleTransitionFailure = (
+  fromStatus: string,
+  toStatus: string,
+  trigger: string = 'unknown'
+): void => {
+  tournamentLifecycleTransitionFailures.labels(fromStatus, toStatus, trigger).inc();
 };
 
 export const recordUserRegistration = (method: string = 'email'): void => {

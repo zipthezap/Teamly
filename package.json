@@ -12,6 +12,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
+    "teamup:backfill-positions": "ts-node src/backend/scripts/backfillTeamUpPositions.ts",
+    "tournaments:backfill-lifecycle-statuses": "ts-node src/backend/scripts/backfillTournamentLifecycleStatuses.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

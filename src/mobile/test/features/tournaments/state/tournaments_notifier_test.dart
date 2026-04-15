@@ -105,4 +105,42 @@ void main() {
     expect(result, tournament);
     expect(fakeRepo.getTournamentCalls, 1);
   });
+
+  test('tournament detail provider refreshes after invalidation', () async {
+    final initialTournament = _tournament('t9', 'Spring Cup');
+    final updatedTournament = TournamentModel(
+      id: initialTournament.id,
+      name: 'Spring Cup Updated',
+      sportType: initialTournament.sportType,
+      format: initialTournament.format,
+      status: initialTournament.status,
+      createdAt: initialTournament.createdAt,
+      creatorId: initialTournament.creatorId,
+    );
+
+    final fakeRepo = _FakeTournamentReadRepository(
+      tournamentsResponses: [
+        [initialTournament],
+      ],
+      tournamentById: {'t9': initialTournament},
+    );
+
+    final container = ProviderContainer(
+      overrides: [
+        tournamentReadRepositoryProvider.overrideWithValue(fakeRepo),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final first = await container.read(tournamentDetailProvider('t9').future);
+    expect(first.name, 'Spring Cup');
+    expect(fakeRepo.getTournamentCalls, 1);
+
+    fakeRepo.tournamentById['t9'] = updatedTournament;
+    container.invalidate(tournamentDetailProvider('t9'));
+
+    final refreshed = await container.read(tournamentDetailProvider('t9').future);
+    expect(refreshed.name, 'Spring Cup Updated');
+    expect(fakeRepo.getTournamentCalls, 2);
+  });
 }

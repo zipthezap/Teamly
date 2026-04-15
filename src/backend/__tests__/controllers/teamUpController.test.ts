@@ -49,7 +49,9 @@ vi.mock('../../config/database', () => ({
       create: vi.fn(),
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       update: vi.fn(),
+      count: vi.fn(),
     },
     teamUpComment: {
       create: vi.fn(),
@@ -113,6 +115,7 @@ const mockTeamUpRequest = {
   creator: { id: 'test-user-id', name: 'Test User', email: 'test@example.com', city: null, country: null, profilePicture: null },
   responses: [],
   _count: { responses: 0, comments: 0 },
+  positions: [],
 };
 
 describe('TeamUpController', () => {
@@ -120,6 +123,7 @@ describe('TeamUpController', () => {
     vi.clearAllMocks();
     // Default mocks for frequently called prisma methods
     vi.mocked(prisma.teamUpResponse.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.teamUpResponse.count).mockResolvedValue(0);
   });
 
   describe('GET /api/teamup', () => {
@@ -233,6 +237,7 @@ describe('TeamUpController', () => {
 
       expect(res.status).toBe(400);
     });
+
   });
 
   describe('GET /api/teamup/nearby', () => {
@@ -319,7 +324,7 @@ describe('TeamUpController', () => {
         status: 'open',
         dateTime: new Date(Date.now() + 3600000),
       } as any);
-      vi.mocked(prisma.teamUpResponse.findUnique).mockResolvedValueOnce(null);
+      vi.mocked(prisma.teamUpResponse.findFirst).mockResolvedValueOnce(null);
       vi.mocked(prisma.teamUpResponse.create).mockResolvedValueOnce(mockResponse as any);
 
       const res = await request(app)
@@ -328,6 +333,25 @@ describe('TeamUpController', () => {
 
       expect(res.status).toBeLessThan(500);
     });
+
+    it('returns 400 when request has positions and no requestPositionId is provided', async () => {
+      vi.mocked(prisma.teamUpRequest.findUnique).mockResolvedValueOnce({
+        ...mockTeamUpRequest,
+        status: 'open',
+        dateTime: new Date(Date.now() + 3600000),
+        positions: [
+          { id: 'pos-1', name: 'Goalkeeper', slotsNeeded: 1 },
+        ],
+      } as any);
+      vi.mocked(prisma.teamUpResponse.findFirst).mockResolvedValueOnce(null);
+
+      const res = await request(app)
+        .post('/api/teamup/teamup-1/respond')
+        .send({ message: 'I want to join' });
+
+      expect(res.status).toBe(400);
+    });
+
   });
 
   describe('PUT /api/teamup/:id requestType update', () => {

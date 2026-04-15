@@ -215,6 +215,8 @@ export const computeAutoStatus = (tournament: {
   endDate?: Date | null;
   registrationStartDate?: Date | null;
   registrationDeadline?: Date | null;
+  hasMatches?: boolean;
+  hasIncompleteMatches?: boolean;
 }): string | null => {
   if (tournament.status === 'cancelled') return null;
 
@@ -225,6 +227,10 @@ export const computeAutoStatus = (tournament: {
   }
 
   if (now >= tournament.startDate) {
+    if (tournament.hasMatches === true && tournament.hasIncompleteMatches === false) {
+      return tournament.status !== 'completed' ? 'completed' : null;
+    }
+
     if (tournament.status !== 'in_progress' && tournament.status !== 'completed') {
       return 'in_progress';
     }
@@ -375,14 +381,23 @@ export const generateSingleEliminationBrackets = async (tournamentId: string) =>
   else if (numTeams > 4) stage = BracketStage.QUARTER_FINALS;
   else if (numTeams > 2) stage = BracketStage.SEMI_FINALS;
   
-  // Create first round matches
+  const nearestLowerPowerOfTwo = 2 ** Math.floor(Math.log2(numTeams));
+  const preliminaryMatchCount = numTeams - nearestLowerPowerOfTwo;
+  const byeTeamCount =
+    preliminaryMatchCount > 0
+      ? Math.max(0, numTeams - preliminaryMatchCount * 2)
+      : 0;
+
+  const teamsForMatches = preliminaryMatchCount > 0 ? teams.slice(byeTeamCount) : teams;
+
+  // Create first round matches (deterministic order; top teams may receive byes)
   const matches = [];
-  for (let i = 0; i < teams.length; i += 2) {
-    if (i + 1 < teams.length) {
+  for (let i = 0; i < teamsForMatches.length; i += 2) {
+    if (i + 1 < teamsForMatches.length) {
       matches.push({
         tournamentId,
-        homeTeamId: teams[i].id,
-        awayTeamId: teams[i + 1].id,
+        homeTeamId: teamsForMatches[i].id,
+        awayTeamId: teamsForMatches[i + 1].id,
         stage,
         status: MatchStatus.SCHEDULED
       });
@@ -602,19 +617,29 @@ export const updateStandings = async (
  * Advance winners to next round in knockout tournament
  */
 export const advanceWinners = async (tournamentId: string, currentStage: BracketStage) => {
-  // Get completed matches from current stage
-  const matches = await prisma.tournamentMatch.findMany({
+  const allStageMatches = await prisma.tournamentMatch.findMany({
     where: {
       tournamentId,
-      stage: currentStage,
-      status: MatchStatus.COMPLETED
-    }
+      stage: currentStage
+    },
+    orderBy: [
+      { roundNumber: 'asc' },
+      { matchOrder: 'asc' },
+      { createdAt: 'asc' },
+    ],
   });
-  
-  if (matches.length === 0) {
+
+  if (allStageMatches.length === 0) {
     return;
   }
-  
+
+  const matches = allStageMatches.filter((match) => match.status === MatchStatus.COMPLETED);
+
+  // Do not advance until all matches in this stage are complete
+  if (matches.length !== allStageMatches.length) {
+    return;
+  }
+
   // Determine next stage
   const stageOrder = [
     BracketStage.ROUND_OF_32,
@@ -623,22 +648,65 @@ export const advanceWinners = async (tournamentId: string, currentStage: Bracket
     BracketStage.SEMI_FINALS,
     BracketStage.FINALS
   ];
-  
+
   const currentIndex = stageOrder.indexOf(currentStage);
   if (currentIndex === -1 || currentIndex === stageOrder.length - 1) {
     return; // Already at finals or invalid stage
   }
-  
+
   const nextStage = stageOrder[currentIndex + 1];
-  
-  // Get winners from each match
-  const winners = matches.map(match => {
+
+  // Idempotency guard: never create duplicate next-stage matches
+  const existingNextStageMatches = await prisma.tournamentMatch.count({
+    where: {
+      tournamentId,
+      stage: nextStage,
+    },
+  });
+  if (existingNextStageMatches > 0) {
+    return;
+  }
+
+  // Get winners from each completed match
+  const winnersFromPlayedMatches = matches.map(match => {
     if (match.homeScore! > match.awayScore!) {
       return match.homeTeamId;
     } else {
       return match.awayTeamId;
     }
   });
+
+  const previousStages = stageOrder.slice(0, currentIndex);
+  const previousStageMatchCount = previousStages.length
+    ? await prisma.tournamentMatch.count({
+        where: {
+          tournamentId,
+          stage: { in: previousStages },
+        },
+      })
+    : 0;
+
+  // First elimination stage may have byes (teams not represented in current stage matches)
+  let byeTeamIds: string[] = [];
+  if (previousStageMatchCount === 0) {
+    const participatingTeamIds = new Set<string>();
+    for (const stageMatch of allStageMatches) {
+      participatingTeamIds.add(stageMatch.homeTeamId);
+      participatingTeamIds.add(stageMatch.awayTeamId);
+    }
+
+    const allTeams = await prisma.tournamentTeam.findMany({
+      where: { tournamentId },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+
+    byeTeamIds = allTeams
+      .map((team) => team.id)
+      .filter((teamId) => !participatingTeamIds.has(teamId));
+  }
+
+  const winners = [...byeTeamIds, ...winnersFromPlayedMatches];
   
   // Create next round matches
   const nextMatches = [];

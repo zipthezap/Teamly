@@ -16,7 +16,12 @@ abstract class TeamUpRepository {
   Future<TeamUpRequestModel> createRequest(Map<String, dynamic> data);
   Future<TeamUpRequestModel> updateRequest(String id, Map<String, dynamic> data);
   Future<void> deleteRequest(String id);
-  Future<void> respondToRequest(String id, String message);
+  Future<void> respondToRequest(
+    String id,
+    String message, {
+    String? requestPositionId,
+    String? applicantSkillLevel,
+  });
   Future<void> handleResponse(String requestId, String responseId, String action);
   Future<List<TeamUpResponseModel>> getRequestResponses(String id);
   Future<List<TeamUpCommentModel>> getComments(String id);

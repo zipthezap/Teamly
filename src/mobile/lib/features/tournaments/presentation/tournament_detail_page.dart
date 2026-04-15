@@ -10,9 +10,42 @@ import '../../../features/auth/state/auth_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
+import 'tournament_ui_rules.dart';
 import '../state/tournaments_notifier.dart';
 
 const _kAccent = Color(0xFFFF9800);
+
+bool _isTournamentStarted(TournamentModel tournament) {
+  return tournament.status == 'in_progress' ||
+      tournament.status == 'active' ||
+      tournament.status == 'completed';
+}
+
+String _statusStageLabel(TournamentModel tournament) {
+  if (tournament.status == 'completed') return 'Done';
+
+  if (tournament.status == 'in_progress' || tournament.status == 'active') {
+    final hasMatches = tournament.matches.isNotEmpty;
+    return hasMatches ? 'In Progress' : 'Forming Brackets';
+  }
+
+  if (tournament.status == 'registration') return 'Registration Open';
+
+  final now = DateTime.now();
+  final hasRegDates =
+      tournament.registrationStartDate != null || tournament.registrationDeadline != null;
+  if (hasRegDates) {
+    final hasOpened = tournament.registrationStartDate == null ||
+        !now.isBefore(tournament.registrationStartDate!);
+    final isClosed = tournament.registrationDeadline != null &&
+        now.isAfter(tournament.registrationDeadline!);
+    if (hasOpened && isClosed) {
+      return 'Registration Closed';
+    }
+  }
+
+  return 'Draft';
+}
 
 // ===========================================================================
 // Tournament Detail Page
@@ -63,9 +96,7 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
         ),
       ),
       data: (t) {
-        final isStarted = t.status == 'in_progress' ||
-            t.status == 'active' ||
-            t.status == 'completed';
+        final isStarted = _isTournamentStarted(t);
         final isOrganizer = t.creatorId == currentUserId;
         final isAdmin =
             isOrganizer || t.admins.any((a) => a.userId == currentUserId);
@@ -96,8 +127,10 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
           _tabController = TabController(length: tabs.length, vsync: this);
         }
 
-        void refresh() =>
-            ref.invalidate(tournamentDetailProvider(widget.tournamentId));
+        void refresh() {
+          ref.invalidate(tournamentDetailProvider(widget.tournamentId));
+          ref.invalidate(tournamentsNotifierProvider);
+        }
 
         return Scaffold(
           body: NestedScrollView(
@@ -116,19 +149,23 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
                   ),
                 ),
                 actions: [
-                  if (isAdmin)
+                  if (isAdmin && canEditTournament(t.status))
                     IconButton(
                       icon: const Icon(Icons.edit_outlined),
                       tooltip: 'Edit tournament',
-                      onPressed: () =>
-                          context.push('/tournaments/${t.id}/edit', extra: t),
+                      onPressed: () async {
+                        await context.push('/tournaments/${t.id}/edit', extra: t);
+                        if (mounted) refresh();
+                      },
                     ),
                   if (isAdmin)
                     IconButton(
                       icon: const Icon(Icons.admin_panel_settings_outlined),
                       tooltip: 'Admin panel',
-                      onPressed: () =>
-                          context.push('/tournaments/${t.id}/admins'),
+                      onPressed: () async {
+                        await context.push('/tournaments/${t.id}/admins');
+                        if (mounted) refresh();
+                      },
                     ),
                 ],
                 bottom: TabBar(
@@ -198,7 +235,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
 
   @override
   Widget build(BuildContext context) {
-    final canRegister = t.status == 'registration' && myTeam == null;
+    final canRegister = canRegisterTeam(t.status, hasMyTeam: myTeam != null);
+    final canManageTournament = canManageTournamentAdminActions(t.status);
     final dateFormat = DateFormat.yMMMd();
     final organizerNames = <String>[];
 
@@ -232,7 +270,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
             _InfoRow(
                 icon: Icons.info_outline,
                 label: 'Status',
-                value: _statusLabel(t.status)),
+                value: _statusStageLabel(t)),
             if (t.startDate != null)
               _InfoRow(
                   icon: Icons.play_arrow_outlined,
@@ -316,10 +354,6 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                      '${myTeam!.wins}W / ${myTeam!.losses}L — ${myTeam!.points} pts',
-                      style: const TextStyle(fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -384,34 +418,40 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               OutlinedButton.icon(
                 icon: const Icon(Icons.layers_outlined, size: 16),
                 label: const Text('Manage Pools'),
-                onPressed: () async {
+                onPressed: canManageTournament
+                    ? () async {
                   await context.push('/tournaments/${t.id}/pools');
-                  onRefresh();
-                },
+                  if (context.mounted) onRefresh();
+                }
+                    : null,
               ),
               OutlinedButton.icon(
                 icon: const Icon(Icons.category_outlined, size: 16),
                 label: const Text('Categories'),
-                onPressed: () async {
+                onPressed: canManageTournament
+                    ? () async {
                   await context.push('/tournaments/${t.id}/categories');
-                  onRefresh();
-                },
+                  if (context.mounted) onRefresh();
+                }
+                    : null,
               ),
               OutlinedButton.icon(
                 icon: const Icon(Icons.supervisor_account_outlined, size: 16),
                 label: const Text('Admins'),
-                onPressed: () => context.push('/tournaments/${t.id}/admins'),
+                onPressed: () async {
+                  await context.push('/tournaments/${t.id}/admins');
+                  if (context.mounted) onRefresh();
+                },
               ),
               OutlinedButton.icon(
                 icon: const Icon(Icons.sports_outlined, size: 16),
                 label: const Text('Matches'),
-                onPressed: () =>
-                    context.push('/tournaments/${t.id}/matches', extra: t),
-              ),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.pending_actions_outlined, size: 16),
-                label: const Text('Update Status'),
-                onPressed: () => _showStatusDialog(context, t, onRefresh),
+                onPressed: canManageTournament
+                    ? () async {
+                  await context.push('/tournaments/${t.id}/matches');
+                  if (context.mounted) onRefresh();
+                }
+                    : null,
               ),
             ]),
           ],
@@ -473,62 +513,6 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     }
   }
 
-  void _showStatusDialog(
-      BuildContext context, TournamentModel t, VoidCallback onRefresh) {
-    final Map<String, List<String>> transitions = {
-      'draft': ['registration', 'cancelled'],
-      'registration': ['in_progress', 'cancelled'],
-      'in_progress': ['completed', 'cancelled'],
-      'completed': [],
-      'cancelled': [],
-    };
-    final allowed = transitions[t.status] ?? [];
-    if (allowed.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                'Tournament is ${t.status} — no further transitions available')),
-      );
-      return;
-    }
-    showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Update Status'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final s in allowed)
-              ListTile(
-                title: Text(_statusLabel(s)),
-                onTap: () => Navigator.pop(ctx, s),
-              ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel'))
-        ],
-      ),
-    ).then((newStatus) async {
-      if (newStatus == null) return;
-      try {
-        await ref
-            .read(tournamentRepositoryProvider)
-            .updateTournamentStatus(t.id, newStatus);
-        onRefresh();
-      } on Exception catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text(extractErrorMessage(e)),
-                backgroundColor: Theme.of(context).colorScheme.error),
-          );
-        }
-      }
-    });
-  }
-
   String _fmtLabel(String f) {
     const m = {
       'single_elimination': 'Single Elimination',
@@ -541,17 +525,6 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     return m[f] ?? f;
   }
 
-  String _statusLabel(String s) {
-    const m = {
-      'draft': 'Draft',
-      'registration': 'Registration Open',
-      'in_progress': 'In Progress',
-      'active': 'Active',
-      'completed': 'Completed',
-      'cancelled': 'Cancelled',
-    };
-    return m[s] ?? s;
-  }
 }
 
 class _CategorySection extends ConsumerStatefulWidget {
@@ -829,9 +802,6 @@ class _TeamRow extends StatelessWidget {
             const SizedBox(width: 6),
             Expanded(
                 child: Text(team.name, style: const TextStyle(fontSize: 13))),
-            Text('${team.wins}W ${team.losses}L',
-                style: TextStyle(
-                    color: AppThemeTokens.textMuted(context), fontSize: 12)),
           ],
         ),
       ),
@@ -864,6 +834,15 @@ class _StandingRow {
   final int? ga; // goals / points conceded
   int? get gd => gf != null && ga != null ? gf! - ga! : null;
   int get played => wins + losses + draws;
+  String get ratioLabel {
+    final won = gf ?? 0;
+    final lost = ga ?? 0;
+    if (lost == 0) {
+      if (won == 0) return '0.00';
+      return 'INF';
+    }
+    return (won / lost).toStringAsFixed(2);
+  }
 
   factory _StandingRow.fromStanding(TournamentStandingModel s) => _StandingRow(
       name: s.teamName,
@@ -1070,25 +1049,25 @@ class _ScoreTable extends StatelessWidget {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                               fontWeight: FontWeight.w600, fontSize: 12))),
-                  if (showGoals) ...[
-                    const SizedBox(
-                        width: 36,
-                        child: Text('GF',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 12))),
-                    const SizedBox(
-                        width: 36,
-                        child: Text('GA',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 12))),
-                    const SizedBox(
-                        width: 36,
-                        child: Text('GD',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 12))),
+                    if (showGoals) ...[
+                      const SizedBox(
+                          width: 64,
+                          child: Text('Pts Won',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 12))),
+                      const SizedBox(
+                          width: 64,
+                          child: Text('Pts Lost',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 12))),
+                      const SizedBox(
+                          width: 56,
+                          child: Text('Ratio',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 12))),
                   ],
                   const SizedBox(
                       width: 40,
@@ -1140,26 +1119,20 @@ class _ScoreTable extends StatelessWidget {
                             style: const TextStyle(fontSize: 13))),
                     if (showGoals) ...[
                       SizedBox(
-                          width: 36,
+                          width: 64,
                           child: Text('${sorted[i].gf ?? 0}',
                               textAlign: TextAlign.center,
                               style: const TextStyle(fontSize: 13))),
                       SizedBox(
-                          width: 36,
+                          width: 64,
                           child: Text('${sorted[i].ga ?? 0}',
                               textAlign: TextAlign.center,
                               style: const TextStyle(fontSize: 13))),
                       SizedBox(
-                          width: 36,
-                          child: Text(
-                            '${(sorted[i].gd ?? 0) >= 0 ? '+' : ''}${sorted[i].gd ?? 0}',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: 13,
-                                color: (sorted[i].gd ?? 0) >= 0
-                                    ? Colors.green
-                                    : Colors.red),
-                          )),
+                          width: 56,
+                          child: Text(sorted[i].ratioLabel,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 13))),
                     ],
                     SizedBox(
                         width: 40,
