@@ -912,6 +912,12 @@ export const submitScore = async (req: Request, res: Response) => {
   );
 
   if (match.tournamentId !== id) {
+    logger.warn('Match tournament mismatch on score submission', 'TournamentController', {
+      tournamentId: id,
+      matchId,
+      matchTournamentId: match.tournamentId,
+      userId,
+    });
     throw new NotFoundError('Match not found');
   }
 
@@ -1148,6 +1154,12 @@ export const updateMatch = async (req: Request, res: Response) => {
   );
 
   if (match.tournamentId !== id) {
+    logger.warn('Match tournament mismatch on match update', 'TournamentController', {
+      tournamentId: id,
+      matchId,
+      matchTournamentId: match.tournamentId,
+      userId,
+    });
     throw new NotFoundError('Match not found');
   }
 
@@ -1194,11 +1206,8 @@ export const updateMatch = async (req: Request, res: Response) => {
   if (matchOrder !== undefined) updateData.matchOrder = matchOrder;
   if (status !== undefined) updateData.status = status;
 
-  const nextStatus = (updateData.status as MatchStatus | undefined) ?? match.status;
-  const nextHomeScore = (updateData.homeScore as number | null | undefined) ?? match.homeScore;
-  const nextAwayScore = (updateData.awayScore as number | null | undefined) ?? match.awayScore;
-  if (nextStatus === MatchStatus.COMPLETED && (nextHomeScore === null || nextAwayScore === null)) {
-    throw new BadRequestError('Completed matches must include both home and away scores');
+  if (status === MatchStatus.COMPLETED && match.status !== MatchStatus.COMPLETED) {
+    throw new BadRequestError('Use score submission to complete matches and update standings');
   }
 
   const updatedMatch = await prisma.tournamentMatch.update({
@@ -1244,6 +1253,12 @@ export const deleteMatch = async (req: Request, res: Response) => {
   );
 
   if (match.tournamentId !== id) {
+    logger.warn('Match tournament mismatch on match delete', 'TournamentController', {
+      tournamentId: id,
+      matchId,
+      matchTournamentId: match.tournamentId,
+      userId,
+    });
     throw new NotFoundError('Match not found');
   }
 
