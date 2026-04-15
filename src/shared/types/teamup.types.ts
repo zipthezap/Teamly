@@ -39,6 +39,7 @@ export interface TeamUpRequest {
   dateTime: Date | string;
   playersNeeded: number;
   skillLevel?: string | null;
+  positions?: TeamUpRequestPosition[];
   createdAt: Date | string;
   updatedAt: Date | string;
   status: 'open' | 'filled' | 'cancelled' | 'expired';
@@ -57,13 +58,29 @@ export interface TeamUpRequestWithDetails extends TeamUpRequest {
   };
 }
 
+export interface TeamUpRequestPosition {
+  id: string;
+  teamUpRequestId: string;
+  name: string;
+  slotsNeeded: number;
+  skillLevelRequired?: string | null;
+  acceptedCount?: number;
+  slotsAvailable?: number;
+  isOpen?: boolean;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
 // TeamUp Response
 export interface TeamUpResponse {
   id: string;
   message?: string | null;
+  applicantSkillLevel?: string | null;
   status: 'pending' | 'accepted' | 'declined';
   createdAt: Date | string;
   teamUpRequestId: string;
+  requestPositionId?: string | null;
+  requestPosition?: TeamUpRequestPosition | null;
   userId: string;
   user?: PublicUser;
   teamUpRequest?: {
@@ -101,6 +118,11 @@ export interface CreateTeamUpRequestData {
   dateTime?: Date | string;
   playersNeeded?: number;
   skillLevel?: string;
+  positions?: Array<{
+    name: string;
+    slotsNeeded?: number;
+    skillLevelRequired?: string;
+  }>;
 }
 
 // Update TeamUp Request data
@@ -118,6 +140,11 @@ export interface UpdateTeamUpRequestData {
   dateTime?: Date | string;
   playersNeeded?: number;
   skillLevel?: string;
+  positions?: Array<{
+    name: string;
+    slotsNeeded?: number;
+    skillLevelRequired?: string;
+  }>;
   status?: 'open' | 'filled' | 'cancelled' | 'expired';
 }
 

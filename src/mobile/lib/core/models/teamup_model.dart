@@ -21,6 +21,7 @@ class TeamUpRequestModel extends Equatable {
     this.acceptedCount = 0,
     this.commentCount = 0,
     this.responses,
+    this.positions,
   });
 
   final String id;
@@ -44,6 +45,7 @@ class TeamUpRequestModel extends Equatable {
   final int commentCount;
   /// Responses embedded in My Requests view (only populated on /my-requests)
   final List<TeamUpResponseModel>? responses;
+  final List<TeamUpRequestPositionModel>? positions;
 
   /// Convenience getter – kept for UI code that still references availableFrom.
   DateTime? get availableFrom => dateTime;
@@ -77,11 +79,51 @@ class TeamUpRequestModel extends Equatable {
           ?.map((e) =>
               TeamUpResponseModel.fromJson(e as Map<String, dynamic>))
           .toList(),
+      positions: (json['positions'] as List<dynamic>?)
+          ?.map((e) =>
+              TeamUpRequestPositionModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 
   @override
   List<Object?> get props => [id, title, sportType, requestType, status, createdAt, creatorId];
+}
+
+class TeamUpRequestPositionModel extends Equatable {
+  const TeamUpRequestPositionModel({
+    required this.id,
+    required this.name,
+    required this.slotsNeeded,
+    this.skillLevelRequired,
+    this.acceptedCount = 0,
+    this.slotsAvailable,
+    this.isOpen,
+  });
+
+  final String id;
+  final String name;
+  final int slotsNeeded;
+  final String? skillLevelRequired;
+  final int acceptedCount;
+  final int? slotsAvailable;
+  final bool? isOpen;
+
+  factory TeamUpRequestPositionModel.fromJson(Map<String, dynamic> json) {
+    return TeamUpRequestPositionModel(
+      id: json['id'] as String,
+      name: json['name'] as String? ?? 'Player',
+      slotsNeeded: (json['slotsNeeded'] as num?)?.toInt() ?? 1,
+      skillLevelRequired: json['skillLevelRequired'] as String?,
+      acceptedCount: (json['acceptedCount'] as num?)?.toInt() ?? 0,
+      slotsAvailable: (json['slotsAvailable'] as num?)?.toInt(),
+      isOpen: json['isOpen'] as bool?,
+    );
+  }
+
+  @override
+  List<Object?> get props =>
+      [id, name, slotsNeeded, skillLevelRequired, acceptedCount, slotsAvailable, isOpen];
 }
 
 class TeamUpResponseModel extends Equatable {
@@ -94,6 +136,9 @@ class TeamUpResponseModel extends Equatable {
     required this.responderId,
     required this.responderName,
     this.responderPicture,
+    this.requestPositionId,
+    this.requestPositionName,
+    this.applicantSkillLevel,
   });
 
   final String id;
@@ -104,10 +149,14 @@ class TeamUpResponseModel extends Equatable {
   final String responderId;
   final String responderName;
   final String? responderPicture;
+  final String? requestPositionId;
+  final String? requestPositionName;
+  final String? applicantSkillLevel;
 
   factory TeamUpResponseModel.fromJson(Map<String, dynamic> json) {
     // Backend returns the responder under 'user' key (was 'responder' – bug fix)
     final user = json['user'] as Map<String, dynamic>?;
+    final requestPosition = json['requestPosition'] as Map<String, dynamic>?;
     return TeamUpResponseModel(
       id: json['id'] as String,
       requestId: json['teamUpRequestId'] as String? ?? '',
@@ -117,6 +166,9 @@ class TeamUpResponseModel extends Equatable {
       responderId: user?['id'] as String? ?? json['userId'] as String? ?? '',
       responderName: user?['name'] as String? ?? 'Unknown',
       responderPicture: user?['profilePicture'] as String?,
+      requestPositionId: json['requestPositionId'] as String?,
+      requestPositionName: requestPosition?['name'] as String?,
+      applicantSkillLevel: json['applicantSkillLevel'] as String?,
     );
   }
 
@@ -142,6 +194,9 @@ class TeamUpApplicationModel extends Equatable {
     this.requestLocation,
     this.requestCreatorName,
     this.requestCreatorPicture,
+    this.requestPositionId,
+    this.requestPositionName,
+    this.applicantSkillLevel,
   });
 
   final String id;
@@ -158,10 +213,14 @@ class TeamUpApplicationModel extends Equatable {
   final String? requestLocation;
   final String? requestCreatorName;
   final String? requestCreatorPicture;
+  final String? requestPositionId;
+  final String? requestPositionName;
+  final String? applicantSkillLevel;
 
   factory TeamUpApplicationModel.fromJson(Map<String, dynamic> json) {
     final req = json['teamUpRequest'] as Map<String, dynamic>?;
     final creator = req?['creator'] as Map<String, dynamic>?;
+    final requestPosition = json['requestPosition'] as Map<String, dynamic>?;
     return TeamUpApplicationModel(
       id: json['id'] as String,
       requestId: json['teamUpRequestId'] as String? ?? req?['id'] as String? ?? '',
@@ -179,6 +238,9 @@ class TeamUpApplicationModel extends Equatable {
       requestLocation: req?['location'] as String?,
       requestCreatorName: creator?['name'] as String?,
       requestCreatorPicture: creator?['profilePicture'] as String?,
+      requestPositionId: json['requestPositionId'] as String?,
+      requestPositionName: requestPosition?['name'] as String?,
+      applicantSkillLevel: json['applicantSkillLevel'] as String?,
     );
   }
 

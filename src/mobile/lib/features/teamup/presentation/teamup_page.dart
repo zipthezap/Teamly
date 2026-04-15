@@ -314,6 +314,14 @@ class _MyRequestsTabState extends ConsumerState<_MyRequestsTab> {
               final request = requests[i];
               final isExpanded = _expanded.contains(request.id);
               final responses = request.responses ?? [];
+              final groupedResponses = <String, List<TeamUpResponseModel>>{};
+              for (final response in responses) {
+                final group = (response.requestPositionName == null ||
+                        response.requestPositionName!.isEmpty)
+                    ? 'General'
+                    : response.requestPositionName!;
+                groupedResponses.putIfAbsent(group, () => []).add(response);
+              }
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -366,10 +374,27 @@ class _MyRequestsTabState extends ConsumerState<_MyRequestsTab> {
                                 ),
                               ),
                             ),
-                          ...responses.map((resp) {
+                          ...groupedResponses.entries.expand((entry) sync* {
+                            if (groupedResponses.length > 1) {
+                              yield Padding(
+                                padding:
+                                    const EdgeInsets.only(top: 2, bottom: 6),
+                                child: Text(
+                                  entry.key,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark
+                                        ? AppThemeTokens.darkTextSecondary
+                                        : AppThemeTokens.lightTextSecondary,
+                                  ),
+                                ),
+                              );
+                            }
+                            for (final resp in entry.value) {
                             final key = '${request.id}:${resp.id}';
                             final busy = _loading[key] ?? false;
-                            return Container(
+                            yield Container(
                               margin: const EdgeInsets.only(bottom: 6),
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
@@ -416,10 +441,10 @@ class _MyRequestsTabState extends ConsumerState<_MyRequestsTab> {
                                             ),
                                           ],
                                         ),
-                                        if (resp.message.isNotEmpty) ...[
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            resp.message,
+                                         if (resp.message.isNotEmpty) ...[
+                                           const SizedBox(height: 4),
+                                           Text(
+                                             resp.message,
                                             style: TextStyle(
                                               fontSize: 12,
                                               color: isDark
@@ -427,10 +452,19 @@ class _MyRequestsTabState extends ConsumerState<_MyRequestsTab> {
                                                       .darkTextSecondary
                                                   : AppThemeTokens
                                                       .lightTextSecondary,
-                                            ),
-                                          ),
-                                        ],
-                                        // Accept / Decline buttons (only for pending)
+                                             ),
+                                           ),
+                                         ],
+                                         if (resp.requestPositionName != null &&
+                                             resp.requestPositionName!.isNotEmpty) ...[
+                                           const SizedBox(height: 4),
+                                           _MetaChip(
+                                             icon: Icons.sports_kabaddi_outlined,
+                                             label: resp.requestPositionName!,
+                                             color: AppThemeTokens.info,
+                                           ),
+                                         ],
+                                         // Accept / Decline buttons (only for pending)
                                         if (resp.status == 'pending') ...[
                                           const SizedBox(height: 8),
                                           Row(
@@ -512,6 +546,7 @@ class _MyRequestsTabState extends ConsumerState<_MyRequestsTab> {
                                 ],
                               ),
                             );
+                            }
                           }),
                         ],
                       ),
@@ -658,6 +693,13 @@ class _MyApplicationsTab extends ConsumerWidget {
                                           ? AppThemeTokens.darkTextSecondary
                                           : AppThemeTokens.lightTextSecondary,
                                     ),
+                                  if (app.requestPositionName != null &&
+                                      app.requestPositionName!.isNotEmpty)
+                                    _MetaChip(
+                                      icon: Icons.sports_kabaddi_outlined,
+                                      label: app.requestPositionName!,
+                                      color: AppThemeTokens.info,
+                                    ),
                                 ],
                               ),
                               if (app.message.isNotEmpty) ...[
@@ -673,6 +715,19 @@ class _MyApplicationsTab extends ConsumerWidget {
                                   ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                              if (app.applicantSkillLevel != null &&
+                                  app.applicantSkillLevel!.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Your skill: ${app.applicantSkillLevel}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark
+                                        ? AppThemeTokens.darkTextMuted
+                                        : AppThemeTokens.lightTextMuted,
+                                  ),
                                 ),
                               ],
                               if (app.requestCreatorName != null) ...[
@@ -717,6 +772,25 @@ class _MyApplicationsTab extends ConsumerWidget {
 // Submit request tab
 // ---------------------------------------------------------------------------
 
+class _PositionDraft {
+  _PositionDraft({
+    String name = '',
+    String slots = '1',
+    String skillLevel = '',
+  })  : nameCtrl = TextEditingController(text: name),
+        slotsCtrl = TextEditingController(text: slots),
+        skillLevel = skillLevel;
+
+  final TextEditingController nameCtrl;
+  final TextEditingController slotsCtrl;
+  String skillLevel;
+
+  void dispose() {
+    nameCtrl.dispose();
+    slotsCtrl.dispose();
+  }
+}
+
 class _SubmitRequestTab extends ConsumerStatefulWidget {
   const _SubmitRequestTab();
 
@@ -731,6 +805,7 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
   final _locationCtrl = TextEditingController();
   final _cityCtrl = TextEditingController();
   final _playersCtrl = TextEditingController();
+  final List<_PositionDraft> _positions = [_PositionDraft()];
 
   String _sportType = '';
   String _requestType = 'looking_for_play';
@@ -745,6 +820,9 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
     _locationCtrl.dispose();
     _cityCtrl.dispose();
     _playersCtrl.dispose();
+    for (final position in _positions) {
+      position.dispose();
+    }
     super.dispose();
   }
 
@@ -778,6 +856,43 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
       );
       return;
     }
+
+    final positionPayload = _positions
+        .map((position) => {
+              'name': position.nameCtrl.text.trim(),
+              'slotsNeeded':
+                  int.tryParse(position.slotsCtrl.text.trim().isEmpty
+                      ? '1'
+                      : position.slotsCtrl.text.trim()) ??
+                      1,
+              if (position.skillLevel.isNotEmpty)
+                'skillLevelRequired': position.skillLevel,
+            })
+        .where((position) => (position['name'] as String).isNotEmpty)
+        .toList();
+
+    if (_requestType == 'need_players') {
+      if (positionPayload.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Add at least one required position.')),
+        );
+        return;
+      }
+      final normalizedNames = positionPayload
+          .map((position) => (position['name'] as String).toLowerCase())
+          .toList();
+      final hasDuplicateNames =
+          normalizedNames.toSet().length != normalizedNames.length;
+      if (hasDuplicateNames) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content:
+                  Text('Each position name must be unique for this request.')),
+        );
+        return;
+      }
+    }
+
     setState(() => _submitting = true);
     try {
       await ref.read(teamUpRepositoryProvider).createRequest({
@@ -791,7 +906,8 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
         if (_locationCtrl.text.trim().isNotEmpty)
           'location': _locationCtrl.text.trim(),
         if (_cityCtrl.text.trim().isNotEmpty) 'city': _cityCtrl.text.trim(),
-        if (_playersCtrl.text.trim().isNotEmpty)
+        if (_requestType == 'need_players') 'positions': positionPayload,
+        if (_requestType != 'need_players' && _playersCtrl.text.trim().isNotEmpty)
           'playersNeeded': int.tryParse(_playersCtrl.text.trim()),
       });
       ref.invalidate(myTeamUpRequestsProvider);
@@ -810,6 +926,12 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
           _requestType = 'looking_for_play';
           _skillLevel = '';
           _dateTime = null;
+          for (final position in _positions) {
+            position.dispose();
+          }
+          _positions
+            ..clear()
+            ..add(_PositionDraft());
         });
       }
     } on Exception catch (e) {
@@ -824,6 +946,18 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  void _addPosition() {
+    setState(() => _positions.add(_PositionDraft()));
+  }
+
+  void _removePosition(int index) {
+    if (_positions.length <= 1) return;
+    setState(() {
+      final removed = _positions.removeAt(index);
+      removed.dispose();
+    });
   }
 
   @override
@@ -960,16 +1094,106 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
           ),
           const SizedBox(height: 16),
 
-          // Players needed
-          TextFormField(
-            controller: _playersCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Players needed (optional)',
-              prefixIcon: Icon(Icons.group_outlined),
+          if (_requestType == 'need_players') ...[
+            Row(
+              children: [
+                const Icon(Icons.sports_kabaddi_outlined, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Positions needed',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: _addPosition,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add'),
+                ),
+              ],
             ),
-            keyboardType: TextInputType.number,
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            ...List.generate(_positions.length, (index) {
+              final position = _positions[index];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+                  border: Border.all(
+                    color: isDark
+                        ? AppThemeTokens.darkBorder
+                        : AppThemeTokens.lightBorder,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Position ${index + 1}',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed:
+                              _positions.length > 1 ? () => _removePosition(index) : null,
+                          icon: const Icon(Icons.close),
+                          tooltip: 'Remove position',
+                        ),
+                      ],
+                    ),
+                    TextFormField(
+                      controller: position.nameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Position name *',
+                        prefixIcon: Icon(Icons.badge_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: position.slotsCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Slots needed',
+                        prefixIcon: Icon(Icons.group_outlined),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: position.skillLevel.isEmpty ? null : position.skillLevel,
+                      decoration: const InputDecoration(
+                        labelText: 'Required skill level (optional)',
+                        prefixIcon: Icon(Icons.emoji_events_outlined),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'any', child: Text('Any level')),
+                        DropdownMenuItem(value: 'beginner', child: Text('Beginner')),
+                        DropdownMenuItem(
+                            value: 'intermediate', child: Text('Intermediate')),
+                        DropdownMenuItem(value: 'advanced', child: Text('Advanced')),
+                      ],
+                      onChanged: (value) => setState(() {
+                        position.skillLevel = value ?? '';
+                      }),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 6),
+          ] else ...[
+            // Players needed (legacy/non-position requests)
+            TextFormField(
+              controller: _playersCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Players needed (optional)',
+                prefixIcon: Icon(Icons.group_outlined),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 16),
+          ],
 
           // City
           TextFormField(
@@ -1165,6 +1389,13 @@ class _RequestTile extends StatelessWidget {
                               label: request.skillLevel!,
                               color: AppThemeTokens.info,
                             ),
+                          if ((request.positions?.isNotEmpty ?? false))
+                            _MetaChip(
+                              icon: Icons.sports_kabaddi_outlined,
+                              label:
+                                  '${request.positions!.length} position${request.positions!.length == 1 ? '' : 's'}',
+                              color: AppThemeTokens.info,
+                            ),
                           if (request.city != null)
                             _MetaChip(
                               icon: Icons.place_outlined,
@@ -1256,6 +1487,8 @@ class _RequestDetailSheet extends ConsumerStatefulWidget {
 class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
   final _msgCtrl = TextEditingController();
   final _commentCtrl = TextEditingController();
+  String? _selectedPositionId;
+  String? _applicantSkillLevel;
   bool _sending = false;
   bool _sendingComment = false;
 
@@ -1269,11 +1502,28 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
   Future<void> _respond() async {
     final msg = _msgCtrl.text.trim();
     if (msg.isEmpty) return;
+    final positions = widget.request.positions ?? const <TeamUpRequestPositionModel>[];
+    final openPositions = positions
+        .where((position) =>
+            (position.isOpen ?? true) &&
+            ((position.slotsAvailable ?? position.slotsNeeded) > 0))
+        .toList();
+    if (openPositions.isNotEmpty && _selectedPositionId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a position before applying.')),
+      );
+      return;
+    }
     setState(() => _sending = true);
     try {
       await ref
           .read(teamUpRepositoryProvider)
-          .respondToRequest(widget.request.id, msg);
+          .respondToRequest(
+            widget.request.id,
+            msg,
+            requestPositionId: _selectedPositionId,
+            applicantSkillLevel: _applicantSkillLevel,
+          );
       _msgCtrl.clear();
       ref.invalidate(teamUpRequestResponsesProvider(widget.request.id));
       if (mounted) {
@@ -1519,6 +1769,31 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                         ],
                       ),
                     ),
+                    if (r.positions != null && r.positions!.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      UiCard(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const UiSectionTitle('Needed positions'),
+                            const SizedBox(height: 8),
+                            ...r.positions!.map(
+                              (position) => Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: UiInfoRow(
+                                  icon: Icons.sports_kabaddi_outlined,
+                                  label: position.name,
+                                  value:
+                                      '${position.acceptedCount}/${position.slotsNeeded} filled${position.skillLevelRequired != null && position.skillLevelRequired!.isNotEmpty ? ' · ${position.skillLevelRequired}' : ''}',
+                                  iconColor: AppThemeTokens.info,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 20),
 
                     // Responses section
@@ -1638,6 +1913,15 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                                                 height: 1.4,
                                               ),
                                             ),
+                                            if (resp.requestPositionName != null &&
+                                                resp.requestPositionName!.isNotEmpty) ...[
+                                              const SizedBox(height: 4),
+                                              _MetaChip(
+                                                icon: Icons.sports_kabaddi_outlined,
+                                                label: resp.requestPositionName!,
+                                                color: AppThemeTokens.info,
+                                              ),
+                                            ],
                                           ],
                                         ),
                                       ),
@@ -1653,6 +1937,73 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
 
                     // Respond form (only if open)
                     if (r.status == 'open') ...[
+                      Builder(
+                        builder: (context) {
+                          final positions = r.positions ?? const <TeamUpRequestPositionModel>[];
+                          final openPositions = positions
+                              .where((position) =>
+                                  (position.isOpen ?? true) &&
+                                  ((position.slotsAvailable ?? position.slotsNeeded) > 0))
+                              .toList();
+                          final noOpenPositions =
+                              positions.isNotEmpty && openPositions.isEmpty;
+                          if (noOpenPositions) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Text(
+                                'All positions are currently filled for this request.',
+                                style: TextStyle(color: theme.colorScheme.error),
+                              ),
+                            );
+                          }
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (openPositions.isNotEmpty) ...[
+                                DropdownButtonFormField<String>(
+                                  value: _selectedPositionId,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Apply for position *',
+                                    prefixIcon: Icon(Icons.sports_kabaddi_outlined),
+                                  ),
+                                  items: openPositions
+                                      .map(
+                                        (position) => DropdownMenuItem(
+                                          value: position.id,
+                                          child: Text(
+                                              '${position.name} (${position.slotsAvailable ?? (position.slotsNeeded - position.acceptedCount)} spots left)'),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (value) =>
+                                      setState(() => _selectedPositionId = value),
+                                ),
+                                const SizedBox(height: 10),
+                                DropdownButtonFormField<String>(
+                                  value: _applicantSkillLevel,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Your skill level (optional)',
+                                    prefixIcon: Icon(Icons.emoji_events_outlined),
+                                  ),
+                                  items: const [
+                                    DropdownMenuItem(value: 'any', child: Text('Any')),
+                                    DropdownMenuItem(
+                                        value: 'beginner', child: Text('Beginner')),
+                                    DropdownMenuItem(
+                                        value: 'intermediate',
+                                        child: Text('Intermediate')),
+                                    DropdownMenuItem(
+                                        value: 'advanced', child: Text('Advanced')),
+                                  ],
+                                  onChanged: (value) =>
+                                      setState(() => _applicantSkillLevel = value),
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                            ],
+                          );
+                        },
+                      ),
                       const UiSectionTitle('Send a response'),
                       const SizedBox(height: 10),
                       Row(
@@ -1675,7 +2026,33 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                                   AppThemeTokens.radiusMd),
                             ),
                             child: IconButton(
-                              onPressed: _sending ? null : _respond,
+                              onPressed: _sending
+                                  ? null
+                                  : () {
+                                      final positions = r.positions ??
+                                          const <TeamUpRequestPositionModel>[];
+                                      final openPositions = positions
+                                          .where((position) =>
+                                              (position.isOpen ?? true) &&
+                                              ((position.slotsAvailable ??
+                                                      position.slotsNeeded) >
+                                                  0))
+                                          .toList();
+                                      if (openPositions.isNotEmpty &&
+                                          _selectedPositionId == null) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                              content: Text(
+                                                  'Select a position before applying.')),
+                                        );
+                                        return;
+                                      }
+                                      if (positions.isNotEmpty &&
+                                          openPositions.isEmpty) {
+                                        return;
+                                      }
+                                      _respond();
+                                    },
                               icon: _sending
                                   ? const SizedBox(
                                       width: 18,
