@@ -331,15 +331,6 @@ class TournamentRepositoryImpl implements TournamentRepository {
     return TournamentModel.fromJson(response.data!);
   }
 
-  @override
-  Future<TournamentModel> updateTournamentStatus(String id, String status) async {
-    final response = await _dio.put<Map<String, dynamic>>(
-      '/tournaments/$id/status',
-      data: {'status': status},
-    );
-    return TournamentModel.fromJson(response.data!);
-  }
-
   // ---------------------------------------------------------------------------
   // Match management
   // ---------------------------------------------------------------------------

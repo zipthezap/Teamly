@@ -83,7 +83,6 @@ vi.mock('../../controllers/tournamentController', () => ({
   getAdmins: vi.fn((req: any, res: any) => res.json({ ok: true })),
   addAdmin: vi.fn((req: any, res: any) => res.json({ ok: true })),
   removeAdmin: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  updateTournamentStatus: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getPublicTournaments: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getTournamentNotifications: vi.fn((req: any, res: any) => res.json({ ok: true }))
 }));
@@ -124,6 +123,11 @@ describe('Tournament Routes', () => {
   it('DELETE /api/:id/teams/self-register → 200', async () => {
     const res = await request(app).delete('/api/tournament-1/teams/self-register');
     expect(res.status).toBe(200);
+  });
+
+  it('PUT /api/:id/status → 404 (removed endpoint)', async () => {
+    const res = await request(app).put('/api/tournament-1/status').send({ status: 'registration' });
+    expect(res.status).toBe(404);
   });
 
   it('POST /api/:id/generate-brackets → 200', async () => {

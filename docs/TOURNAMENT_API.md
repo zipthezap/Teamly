@@ -337,6 +337,16 @@ Retrieve tournament standings/leaderboard.
 4. **completed** - All matches finished
 5. **cancelled** - Tournament cancelled
 
+### Lifecycle Contract (System-Managed)
+
+- Tournament status is **not manually writable** through API or mobile app.
+- `PUT /api/tournaments/:id/status` is removed.
+- `PUT /api/tournaments/:id` rejects `status` in request body.
+- Status transitions are computed automatically from:
+  - date windows (`draft` → `registration` → `in_progress`)
+  - match completion state (`in_progress` → `completed` when all matches are completed)
+  - lifecycle-changing actions (bracket generation, score submission, match create/update/delete, registration window updates)
+
 ## Match Status
 
 - **scheduled** - Match scheduled but not started
@@ -533,4 +543,3 @@ Invitations can have one of the following statuses:
 - `declined` - Invitee has declined the invitation
 - `expired` - Invitation expired after 7 days
 - `cancelled` - Captain/organizer cancelled the invitation
-

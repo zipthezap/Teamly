@@ -14,6 +14,10 @@ import { Request, Response } from 'express';
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import * as tournamentService from '../services/tournamentService';
+import {
+  recordTournamentLifecycleTransition,
+  recordTournamentLifecycleTransitionFailure,
+} from '../services/metricsService';
 import { 
   TournamentFormat, 
   TournamentStatus, 
@@ -22,14 +26,13 @@ import {
   SportScoringConfig,
   VolleyballConfig
 } from '../../shared/types/tournament.types';
-import { BadRequestError, ForbiddenError, NotFoundError } from '../utils/errors';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../utils/errors';
 import { isRequired, parseCoordinates } from '../utils/validation';
 import { ensureResourceExists } from '../utils/controllerHelpers';
-import { isPrismaUniqueError } from '../utils/typeGuards';
+import { isPrismaNotFoundError, isPrismaUniqueError } from '../utils/typeGuards';
 
 // ==================== CONSTANTS ====================
 
-const TOURNAMENT_VALID_STATUSES = ['draft', 'registration', 'in_progress', 'completed', 'cancelled'] as const;
 const INVITATION_EXPIRY_DAYS = 7;
 const MAX_PAGE_SIZE = 100;
 const DEFAULT_PAGE_SIZE = 50;
@@ -39,25 +42,133 @@ const MAX_POOL_NAME_LENGTH = 100;
 const MAX_PLAYER_NAME_LENGTH = 100;
 const MAX_TEAMS_UPPER_BOUND = 1000;
 
+const sendTournamentCompletionNotifications = async (
+  tournamentId: string,
+  tournamentName: string
+): Promise<void> => {
+  const transitionKey = `auto_completed:${tournamentId}`;
+  const existing = await prisma.tournamentNotification.findFirst({
+    where: {
+      tournamentId,
+      type: 'tournament_updated',
+      metadata: {
+        path: ['transitionKey'],
+        equals: transitionKey,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (existing) {
+    return;
+  }
+
+  const teams = await prisma.tournamentTeam.findMany({
+    where: { tournamentId, captainUserId: { not: null } },
+    select: { captainUserId: true },
+  });
+
+  if (teams.length === 0) {
+    return;
+  }
+
+  await prisma.tournamentNotification.createMany({
+    data: teams.map((team) => ({
+      userId: team.captainUserId!,
+      tournamentId,
+      type: 'tournament_updated',
+      params: {
+        tournamentName,
+        lifecycleStatus: 'completed',
+      },
+      metadata: {
+        transitionKey,
+      },
+    })),
+  });
+};
+
 const syncTournamentAutoStatus = async <T extends {
   id: string;
   status: string;
+  name?: string;
   startDate: Date;
   endDate?: Date | null;
   registrationStartDate?: Date | null;
   registrationDeadline?: Date | null;
-}>(tournament: T): Promise<T> => {
-  const nextStatus = tournamentService.computeAutoStatus(tournament);
+}>(tournament: T, trigger: string = 'read_sync'): Promise<T> => {
+  const [matchCount, incompleteMatchCount] = await Promise.all([
+    prisma.tournamentMatch.count({ where: { tournamentId: tournament.id } }),
+    prisma.tournamentMatch.count({
+      where: {
+        tournamentId: tournament.id,
+        OR: [
+          { status: { not: MatchStatus.COMPLETED } },
+          { homeScore: null },
+          { awayScore: null },
+        ],
+      },
+    }),
+  ]);
+  const nextStatus = tournamentService.computeAutoStatus({
+    ...tournament,
+    hasMatches: matchCount > 0,
+    hasIncompleteMatches: incompleteMatchCount > 0,
+  });
   if (!nextStatus || nextStatus === tournament.status) {
     return tournament;
   }
 
-  await prisma.tournament.update({
-    where: { id: tournament.id },
-    data: { status: nextStatus as TournamentStatus },
+  try {
+    await prisma.tournament.update({
+      where: { id: tournament.id },
+      data: { status: nextStatus as TournamentStatus },
+    });
+    recordTournamentLifecycleTransition(tournament.status, nextStatus, trigger);
+
+    if (nextStatus === TournamentStatus.COMPLETED) {
+      await sendTournamentCompletionNotifications(
+        tournament.id,
+        tournament.name ?? 'Tournament'
+      );
+    }
+  } catch (error) {
+    recordTournamentLifecycleTransitionFailure(tournament.status, nextStatus, trigger);
+    throw error;
+  }
+
+  logger.info('Tournament lifecycle status auto-updated', 'TournamentController', {
+    tournamentId: tournament.id,
+    from: tournament.status,
+    to: nextStatus,
+    trigger,
   });
 
   return { ...tournament, status: nextStatus };
+};
+
+const reconcileTournamentLifecycleStatus = async (
+  tournamentId: string,
+  trigger: string
+): Promise<void> => {
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: tournamentId },
+    select: {
+      id: true,
+      status: true,
+      name: true,
+      startDate: true,
+      endDate: true,
+      registrationStartDate: true,
+      registrationDeadline: true,
+    },
+  });
+
+  if (!tournament) {
+    return;
+  }
+
+  await syncTournamentAutoStatus(tournament, trigger);
 };
 
 // Re-export for use in tests
@@ -275,7 +386,7 @@ export const getTournaments = async (req: Request, res: Response) => {
   ]);
 
   const syncedTournaments = await Promise.all(
-    tournaments.map((tournament) => syncTournamentAutoStatus(tournament))
+    tournaments.map((tournament) => syncTournamentAutoStatus(tournament, 'list_read'))
   );
 
   res.json({
@@ -379,7 +490,7 @@ export const getTournament = async (req: Request, res: Response) => {
 
   ensureResourceExists(tournament, 'Tournament');
 
-  const syncedTournament = await syncTournamentAutoStatus(tournament!);
+  const syncedTournament = await syncTournamentAutoStatus(tournament!, 'detail_read');
 
   res.json(syncedTournament);
 };
@@ -406,19 +517,19 @@ export const updateTournament = async (req: Request, res: Response) => {
 
   ensureResourceExists(tournament, 'Tournament');
 
-  tournament = await syncTournamentAutoStatus(tournament!);
+  tournament = await syncTournamentAutoStatus(tournament!, 'update_precheck');
 
   const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament!, userId);
   if (!isOrgOrAdmin) {
     throw new ForbiddenError('Only the organizer or a co-organizer can update the tournament');
   }
 
-  if (tournament!.status === TournamentStatus.COMPLETED) {
-    throw new BadRequestError('Completed tournaments cannot be edited');
+  if (tournament!.status === TournamentStatus.COMPLETED || tournament!.status === TournamentStatus.CANCELLED) {
+    throw new BadRequestError('Completed or cancelled tournaments cannot be edited');
   }
 
   if (status !== undefined) {
-    throw new BadRequestError('Tournament status cannot be updated via this endpoint. Use PUT /tournaments/:id/status');
+    throw new BadRequestError('Tournament status is system-managed and cannot be set manually');
   }
 
   tournamentService.validateTournamentEnums({ sportType, format });
@@ -551,12 +662,14 @@ export const updateTournament = async (req: Request, res: Response) => {
     }
   });
 
+  const syncedTournament = await syncTournamentAutoStatus(updatedTournament, 'update_tournament');
+
   logger.info('Tournament updated', 'TournamentController', {
     tournamentId: id,
     userId
   });
 
-  res.json(updatedTournament);
+  res.json(syncedTournament);
 };
 
 /**
@@ -788,6 +901,10 @@ export const generateBrackets = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only organizers and admins can generate brackets');
   }
 
+  if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
+    throw new BadRequestError('Brackets cannot be generated for cancelled or completed tournaments');
+  }
+
   // Check if brackets already exist
   const existingMatches = await prisma.tournamentMatch.count({
     where: { tournamentId: id }
@@ -819,11 +936,7 @@ export const generateBrackets = async (req: Request, res: Response) => {
       throw new BadRequestError('Invalid tournament format');
   }
 
-  // Update tournament status to in_progress
-  await prisma.tournament.update({
-    where: { id },
-    data: { status: TournamentStatus.IN_PROGRESS }
-  });
+  await reconcileTournamentLifecycleStatus(id, 'generate_brackets');
 
   logger.info('Brackets generated', 'TournamentController', {
     tournamentId: id,
@@ -858,10 +971,24 @@ export const submitScore = async (req: Request, res: Response) => {
     'Tournament'
   );
 
+  if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
+    throw new BadRequestError('Scores cannot be submitted for cancelled or completed tournaments');
+  }
+
   const match = ensureResourceExists(
     await prisma.tournamentMatch.findUnique({ where: { id: matchId } }),
     'Match'
   );
+
+  if (match.tournamentId !== id) {
+    logger.warn('Match tournament mismatch on score submission', 'TournamentController', {
+      tournamentId: id,
+      matchId,
+      matchTournamentId: match.tournamentId,
+      userId,
+    });
+    throw new NotFoundError('Match not found');
+  }
 
   // Prevent duplicate score submission for already completed matches
   if (match.status === MatchStatus.COMPLETED && match.homeScore !== null && match.awayScore !== null) {
@@ -898,37 +1025,60 @@ export const submitScore = async (req: Request, res: Response) => {
   }
 
   // Use a transaction to ensure atomic update of match and standings
-  const updatedMatch = await prisma.$transaction(async (tx) => {
-    // Update match with score - the WHERE clause will prevent concurrent updates
-    const match = await tx.tournamentMatch.update({
-      where: { 
-        id: matchId,
-        // Ensure we only update if status is not already COMPLETED
-        status: { not: MatchStatus.COMPLETED }
-      },
-      data: {
-        homeScore,
-        awayScore,
-        detailedScore: detailedScore || undefined,
-        status: MatchStatus.COMPLETED,
-        completedAt: new Date()
-      },
-      include: {
-        homeTeam: true,
-        awayTeam: true
+  let updatedMatch;
+  try {
+    updatedMatch = await prisma.$transaction(async (tx) => {
+      const updateResult = await tx.tournamentMatch.updateMany({
+        where: {
+          id: matchId,
+          status: { not: MatchStatus.COMPLETED },
+        },
+        data: {
+          homeScore,
+          awayScore,
+          detailedScore: detailedScore || undefined,
+          status: MatchStatus.COMPLETED,
+          completedAt: new Date(),
+        },
+      });
+
+      if (updateResult.count === 0) {
+        throw new ConflictError(
+          'Match score has already been submitted. Please refresh to see the latest match details.'
+        );
       }
+
+      const finalizedMatch = ensureResourceExists(
+        await tx.tournamentMatch.findUnique({
+          where: { id: matchId },
+          include: {
+            homeTeam: true,
+            awayTeam: true,
+          },
+        }),
+        'Match'
+      );
+
+      // Update standings within the same transaction
+      await tournamentService.updateStandings(matchId, tournament, tx);
+
+      return finalizedMatch;
     });
-
-    // Update standings within the same transaction
-    await tournamentService.updateStandings(matchId, tournament, tx);
-
-    return match;
-  });
+  } catch (error) {
+    if (error instanceof ConflictError || isPrismaNotFoundError(error)) {
+      throw new ConflictError(
+        'Match score has already been submitted. Please refresh to see the latest match details.'
+      );
+    }
+    throw error;
+  }
 
   // If this is a knockout stage match, check if we should advance winners
   if (match.stage && match.stage !== BracketStage.FINALS) {
     await tournamentService.advanceWinners(id, match.stage as BracketStage);
   }
+
+  await reconcileTournamentLifecycleStatus(id, 'submit_score');
 
   logger.info('Match score submitted', 'TournamentController', {
     tournamentId: id,
@@ -1000,6 +1150,10 @@ export const createMatch = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only organizers and admins can create matches');
   }
 
+  if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
+    throw new BadRequestError('Matches cannot be created for cancelled or completed tournaments');
+  }
+
   // Verify teams exist and belong to this tournament
   const homeTeam = await prisma.tournamentTeam.findFirst({
     where: { id: homeTeamId, tournamentId: id }
@@ -1052,6 +1206,8 @@ export const createMatch = async (req: Request, res: Response) => {
     userId
   });
 
+  await reconcileTournamentLifecycleStatus(id, 'create_match');
+
   res.status(201).json(match);
 };
 
@@ -1086,6 +1242,20 @@ export const updateMatch = async (req: Request, res: Response) => {
     await prisma.tournamentMatch.findUnique({ where: { id: matchId } }),
     'Match'
   );
+
+  if (match.tournamentId !== id) {
+    logger.warn('Match tournament mismatch on match update', 'TournamentController', {
+      tournamentId: id,
+      matchId,
+      matchTournamentId: match.tournamentId,
+      userId,
+    });
+    throw new NotFoundError('Match not found');
+  }
+
+  if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
+    throw new BadRequestError('Matches cannot be updated for cancelled or completed tournaments');
+  }
 
   // Validate new team IDs if provided
   if (homeTeamId || awayTeamId) {
@@ -1126,6 +1296,12 @@ export const updateMatch = async (req: Request, res: Response) => {
   if (matchOrder !== undefined) updateData.matchOrder = matchOrder;
   if (status !== undefined) updateData.status = status;
 
+  if (status === MatchStatus.COMPLETED && match.status !== MatchStatus.COMPLETED) {
+    throw new BadRequestError(
+      'Use the score submission endpoint to complete matches and update standings'
+    );
+  }
+
   const updatedMatch = await prisma.tournamentMatch.update({
     where: { id: matchId },
     data: updateData,
@@ -1141,6 +1317,8 @@ export const updateMatch = async (req: Request, res: Response) => {
     matchId,
     userId
   });
+
+  await reconcileTournamentLifecycleStatus(id, 'update_match');
 
   res.json(updatedMatch);
 };
@@ -1166,6 +1344,20 @@ export const deleteMatch = async (req: Request, res: Response) => {
     'Match'
   );
 
+  if (match.tournamentId !== id) {
+    logger.warn('Match tournament mismatch on match delete', 'TournamentController', {
+      tournamentId: id,
+      matchId,
+      matchTournamentId: match.tournamentId,
+      userId,
+    });
+    throw new NotFoundError('Match not found');
+  }
+
+  if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
+    throw new BadRequestError('Matches cannot be deleted for cancelled or completed tournaments');
+  }
+
   // Don't allow deleting completed matches with scores
   if (match.status === MatchStatus.COMPLETED && (match.homeScore !== null || match.awayScore !== null)) {
     throw new BadRequestError('Cannot delete completed matches with scores. Please remove scores first.');
@@ -1180,6 +1372,8 @@ export const deleteMatch = async (req: Request, res: Response) => {
     matchId,
     userId
   });
+
+  await reconcileTournamentLifecycleStatus(id, 'delete_match');
 
   res.json({ message: 'Match deleted successfully' });
 };
@@ -1636,6 +1830,10 @@ export const createPool = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only organizers and admins can create pools');
   }
 
+  if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
+    throw new BadRequestError('Pools cannot be managed for cancelled or completed tournaments');
+  }
+
   let pool;
   try {
     pool = await prisma.tournamentPool.create({
@@ -1677,6 +1875,10 @@ export const updatePool = async (req: Request, res: Response) => {
 
   if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
     throw new ForbiddenError('Only organizers and admins can update pools');
+  }
+
+  if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
+    throw new BadRequestError('Pools cannot be managed for cancelled or completed tournaments');
   }
 
   ensureResourceExists(
@@ -1738,6 +1940,10 @@ export const deletePool = async (req: Request, res: Response) => {
 
   if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
     throw new ForbiddenError('Only organizers and admins can delete pools');
+  }
+
+  if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
+    throw new BadRequestError('Pools cannot be managed for cancelled or completed tournaments');
   }
 
   const pool = ensureResourceExists(
@@ -2413,6 +2619,10 @@ export const createCategory = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the organizer or a co-organizer can manage categories');
   }
 
+  if (tournament!.status === TournamentStatus.CANCELLED || tournament!.status === TournamentStatus.COMPLETED) {
+    throw new BadRequestError('Categories cannot be managed for cancelled or completed tournaments');
+  }
+
   try {
     const category = await prisma.tournamentCategory.create({
       data: {
@@ -2447,6 +2657,10 @@ export const updateCategory = async (req: Request, res: Response) => {
   const isOrganizerOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament!, userId);
   if (!isOrganizerOrAdmin) {
     throw new ForbiddenError('Only the organizer or a co-organizer can manage categories');
+  }
+
+  if (tournament!.status === TournamentStatus.CANCELLED || tournament!.status === TournamentStatus.COMPLETED) {
+    throw new BadRequestError('Categories cannot be managed for cancelled or completed tournaments');
   }
 
   const category = await prisma.tournamentCategory.findFirst({
@@ -2489,6 +2703,10 @@ export const deleteCategory = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the organizer or a co-organizer can manage categories');
   }
 
+  if (tournament!.status === TournamentStatus.CANCELLED || tournament!.status === TournamentStatus.COMPLETED) {
+    throw new BadRequestError('Categories cannot be managed for cancelled or completed tournaments');
+  }
+
   const category = await prisma.tournamentCategory.findFirst({
     where: { id: categoryId, tournamentId: id }
   });
@@ -2514,6 +2732,10 @@ export const assignPoolToCategory = async (req: Request, res: Response) => {
   const isOrganizerOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament!, userId);
   if (!isOrganizerOrAdmin) {
     throw new ForbiddenError('Only the organizer or a co-organizer can assign pools to categories');
+  }
+
+  if (tournament!.status === TournamentStatus.CANCELLED || tournament!.status === TournamentStatus.COMPLETED) {
+    throw new BadRequestError('Categories cannot be managed for cancelled or completed tournaments');
   }
 
   const pool = await prisma.tournamentPool.findFirst({
@@ -2827,103 +3049,6 @@ export const selfUnregisterTeam = async (req: Request, res: Response) => {
   res.json({ message: 'Team unregistered successfully' });
 };
 
-// ==================== STATUS MANAGEMENT ====================
-
-export const updateTournamentStatus = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const userId = req.user!.id;
-  const { status } = req.body;
-
-  if (!status || !TOURNAMENT_VALID_STATUSES.includes(status as typeof TOURNAMENT_VALID_STATUSES[number])) {
-    throw new BadRequestError(`Invalid status. Must be one of: ${TOURNAMENT_VALID_STATUSES.join(', ')}`);
-  }
-
-  const tournament = ensureResourceExists(
-    await prisma.tournament.findUnique({ where: { id } }),
-    'Tournament'
-  );
-
-  const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
-  if (!isOrgOrAdmin) {
-    throw new ForbiddenError('Only the organizer or a co-organizer can change tournament status');
-  }
-
-  const transitions: Record<string, string[]> = {
-    draft: ['registration', 'cancelled'],
-    registration: ['in_progress', 'cancelled'],
-    in_progress: ['completed', 'cancelled'],
-    completed: [],
-    cancelled: [],
-  };
-
-  const current = tournament.status;
-  const allowed = transitions[current] ?? [];
-  if (!allowed.includes(status)) {
-    throw new BadRequestError(
-      `Cannot transition from '${current}' to '${status}'. Allowed: ${allowed.length ? allowed.join(', ') : 'none'}`
-    );
-  }
-
-  // Enforce pre-conditions for each transition
-  if (status === 'in_progress') {
-    // registration → in_progress: require at least 2 registered teams
-    const teamCount = await prisma.tournamentTeam.count({ where: { tournamentId: id } });
-    if (teamCount < 2) {
-      throw new BadRequestError('Cannot start tournament: at least 2 teams must be registered');
-    }
-  }
-
-  const updated = await prisma.tournament.update({
-    where: { id },
-    data: { status },
-    include: {
-      organizer: { select: { id: true, name: true, email: true } },
-      group: { select: { id: true, name: true } },
-    },
-  });
-
-  // On cancellation, notify all registered teams via tournament notifications
-  if (status === 'cancelled') {
-    try {
-      const teams = await prisma.tournamentTeam.findMany({
-        where: { tournamentId: id },
-        include: { captainUser: { select: { id: true } } }
-      });
-
-      await Promise.all(
-        teams
-          .filter(team => team.captainUserId)
-          .map(team =>
-            prisma.tournamentNotification.create({
-              data: {
-                userId: team.captainUserId!,
-                tournamentId: id,
-                type: 'tournament_cancelled',
-                params: { tournamentName: tournament.name },
-                metadata: { cancelledBy: userId }
-              }
-            })
-          )
-      );
-    } catch (notifError) {
-      logger.error('Failed to send cancellation notifications', 'TournamentController', {
-        tournamentId: id,
-        error: notifError
-      });
-      // Non-fatal: status update already succeeded
-    }
-  }
-
-  logger.info('Tournament status updated', 'TournamentController', {
-    tournamentId: id,
-    from: current,
-    to: status,
-    userId,
-  });
-
-  res.json(updated);
-};
-
 // ==================== PUBLIC DISCOVERY ====================
 
 export const getPublicTournaments = async (req: Request, res: Response) => {
@@ -2952,7 +3077,7 @@ export const getPublicTournaments = async (req: Request, res: Response) => {
   ]);
 
   const syncedTournaments = await Promise.all(
-    tournaments.map((tournament) => syncTournamentAutoStatus(tournament))
+    tournaments.map((tournament) => syncTournamentAutoStatus(tournament, 'public_list_read'))
   );
 
   res.json({

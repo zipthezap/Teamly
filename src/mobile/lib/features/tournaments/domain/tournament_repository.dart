@@ -8,7 +8,6 @@ abstract class TournamentReadRepository {
 abstract class TournamentWriteRepository {
   Future<TournamentModel> createTournament(Map<String, dynamic> data);
   Future<TournamentModel> updateTournament(String id, Map<String, dynamic> data);
-  Future<TournamentModel> updateTournamentStatus(String id, String status);
 }
 
 abstract class TeamRegistrationRepository {
