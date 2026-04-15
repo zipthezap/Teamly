@@ -148,7 +148,7 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
                   ),
                 ),
                 actions: [
-                  if (isAdmin && t.status != 'completed')
+                  if (isAdmin && t.status != 'completed' && t.status != 'cancelled')
                     IconButton(
                       icon: const Icon(Icons.edit_outlined),
                       tooltip: 'Edit tournament',
@@ -235,6 +235,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
   @override
   Widget build(BuildContext context) {
     final canRegister = t.status == 'registration' && myTeam == null;
+    final canManageTournament =
+        t.status != 'completed' && t.status != 'cancelled';
     final dateFormat = DateFormat.yMMMd();
 
     return RefreshIndicator(
@@ -391,18 +393,22 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               OutlinedButton.icon(
                 icon: const Icon(Icons.layers_outlined, size: 16),
                 label: const Text('Manage Pools'),
-                onPressed: () async {
+                onPressed: canManageTournament
+                    ? () async {
                   await context.push('/tournaments/${t.id}/pools');
                   if (context.mounted) onRefresh();
-                },
+                }
+                    : null,
               ),
               OutlinedButton.icon(
                 icon: const Icon(Icons.category_outlined, size: 16),
                 label: const Text('Categories'),
-                onPressed: () async {
+                onPressed: canManageTournament
+                    ? () async {
                   await context.push('/tournaments/${t.id}/categories');
                   if (context.mounted) onRefresh();
-                },
+                }
+                    : null,
               ),
               OutlinedButton.icon(
                 icon: const Icon(Icons.supervisor_account_outlined, size: 16),
@@ -415,10 +421,12 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               OutlinedButton.icon(
                 icon: const Icon(Icons.sports_outlined, size: 16),
                 label: const Text('Matches'),
-                onPressed: () async {
-                  await context.push('/tournaments/${t.id}/matches', extra: t);
+                onPressed: canManageTournament
+                    ? () async {
+                  await context.push('/tournaments/${t.id}/matches');
                   if (context.mounted) onRefresh();
-                },
+                }
+                    : null,
               ),
             ]),
           ],

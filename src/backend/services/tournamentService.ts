@@ -215,6 +215,8 @@ export const computeAutoStatus = (tournament: {
   endDate?: Date | null;
   registrationStartDate?: Date | null;
   registrationDeadline?: Date | null;
+  hasMatches?: boolean;
+  hasIncompleteMatches?: boolean;
 }): string | null => {
   if (tournament.status === 'cancelled') return null;
 
@@ -225,6 +227,10 @@ export const computeAutoStatus = (tournament: {
   }
 
   if (now >= tournament.startDate) {
+    if (tournament.hasMatches === true && tournament.hasIncompleteMatches === false) {
+      return tournament.status !== 'completed' ? 'completed' : null;
+    }
+
     if (tournament.status !== 'in_progress' && tournament.status !== 'completed') {
       return 'in_progress';
     }

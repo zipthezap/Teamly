@@ -29,12 +29,6 @@ router.put(
   requireTournamentPermission(Permission.TOURNAMENT_UPDATE),
   asyncHandler(tournamentController.updateTournament)
 );
-router.put(
-  '/:id/status',
-  noCache,
-  requireTournamentPermission(Permission.TOURNAMENT_UPDATE),
-  asyncHandler(tournamentController.updateTournamentStatus)
-);
 router.delete(
   '/:id',
   noCache,
