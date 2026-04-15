@@ -524,6 +524,49 @@ describe('POST /api/tournaments (createTournament)', () => {
 
     expect(res.status).toBe(201);
   });
+
+  it('accepts zero coordinates (0,0)', async () => {
+    vi.mocked(prisma.tournament.create).mockResolvedValue({
+      ...mockTournament,
+      latitude: 0,
+      longitude: 0,
+    } as any);
+
+    const res = await request(app).post('/api/tournaments').send({
+      ...validBody,
+      latitude: 0,
+      longitude: 0,
+    });
+
+    expect(res.status).toBe(201);
+    expect(prisma.tournament.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          latitude: 0,
+          longitude: 0,
+        }),
+      })
+    );
+  });
+
+  it('ignores partial coordinates when only latitude is provided', async () => {
+    vi.mocked(prisma.tournament.create).mockResolvedValue(mockTournament as any);
+
+    const res = await request(app).post('/api/tournaments').send({
+      ...validBody,
+      latitude: 10,
+    });
+
+    expect(res.status).toBe(201);
+    expect(prisma.tournament.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          latitude: undefined,
+          longitude: undefined,
+        }),
+      })
+    );
+  });
 });
 
 describe('GET /api/tournaments (getTournaments)', () => {
@@ -864,6 +907,20 @@ describe('POST /api/tournaments/:id/generate-brackets (generateBrackets)', () =>
     expect(res.status).toBe(400);
   });
 
+  it('returns 400 for double_elimination until explicitly supported', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      format: 'double_elimination',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.count).mockResolvedValue(0);
+
+    const res = await request(app).post('/api/tournaments/tournament-1/generate-brackets').send({});
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Double elimination');
+    expect(tournamentService.generateSingleEliminationBrackets).not.toHaveBeenCalled();
+  });
+
   it('returns 404 when tournament not found', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(null);
 
@@ -1143,6 +1200,50 @@ describe('POST /api/tournaments/:id/matches/:matchId/score (submitScore)', () =>
       .send({ homeScore: 1 });
 
     expect(res.status).toBe(400);
+  });
+
+  it('returns 400 for draw score in elimination format', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      format: 'single_elimination',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
+      ...mockMatch,
+      stage: 'semi_finals',
+    } as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 1, awayScore: 1 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Draws are not allowed');
+  });
+
+  it('allows draw score in round robin format', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      format: 'round_robin',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.findUnique)
+      .mockResolvedValueOnce({ ...mockMatch, stage: null } as any)
+      .mockResolvedValueOnce({
+        ...mockMatch,
+        stage: null,
+        homeScore: 1,
+        awayScore: 1,
+        status: 'completed',
+      } as any);
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: any) =>
+      typeof fn === 'function' ? fn(prisma) : Promise.all(fn)
+    );
+    vi.mocked(prisma.tournamentMatch.updateMany).mockResolvedValue({ count: 1 } as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 1, awayScore: 1 });
+
+    expect(res.status).toBe(200);
   });
 
   it('reconciles lifecycle status after score submission', async () => {
@@ -1943,11 +2044,28 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
     expect(res.status).toBe(201);
     expect(prisma.tournamentTeam.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({
-          poolName: 'Category B',
+        data: expect.not.objectContaining({
+          poolName: expect.anything(),
         }),
       })
     );
+    expect(res.body.categoryId).toBe('cat-1');
+    expect(res.body.categoryName).toBe('Category B');
+    expect(res.body.team.poolName).not.toBe('Category B');
+  });
+
+  it('returns 404 when poolId is provided but pool does not exist', async () => {
+    const registeredTournament = { ...mockTournament, status: 'registration' };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.tournamentPool.findFirst).mockResolvedValue(null);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/teams/self-register')
+      .send({ name: 'New Team', poolId: 'missing-pool' });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toContain('Pool not found');
   });
 
   it('returns 400 when both pool and category are provided', async () => {
