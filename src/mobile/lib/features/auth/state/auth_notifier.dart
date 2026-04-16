@@ -338,6 +338,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _repo.deleteAccount();
       deleteSucceeded = true;
     } on Exception catch (e) {
+      final statusCode =
+          e is DioException ? e.response?.statusCode : null;
+      final shouldForceLocalSignOut =
+          statusCode == 401 || statusCode == 403 || statusCode == 404;
+      if (shouldForceLocalSignOut) {
+        await _repo.logout();
+        state = const AuthState.unauthenticated();
+        _invalidateNotificationState();
+        return;
+      }
       state = state.copyWith(
         isLoading: false,
         error: _extractMessage(e),
