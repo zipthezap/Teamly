@@ -337,9 +337,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       await _repo.deleteAccount();
       deleteSucceeded = true;
-    } on Exception catch (e) {
-      final statusCode =
-          e is DioException ? e.response?.statusCode : null;
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
       final shouldForceLocalSignOut =
           statusCode == 401 || statusCode == 403 || statusCode == 404;
       if (shouldForceLocalSignOut) {
@@ -348,6 +347,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
         _invalidateNotificationState();
         return;
       }
+      state = state.copyWith(
+        isLoading: false,
+        error: _extractMessage(e),
+      );
+    } on Exception catch (e) {
       state = state.copyWith(
         isLoading: false,
         error: _extractMessage(e),

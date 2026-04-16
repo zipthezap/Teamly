@@ -110,7 +110,10 @@ class _TokenRefreshInterceptor extends Interceptor {
         handler.resolve(retryResponse);
       } on DioException catch (refreshErr) {
         await _expire(handler, refreshErr);
-      } catch (_) {
+      } catch (e) {
+        // Keep a debug breadcrumb for unexpected non-Dio refresh failures.
+        // ignore: avoid_print
+        print('Token refresh failed with unexpected error: $e');
         await _expire(handler, err);
       } finally {
         _inFlightRefresh = null;
