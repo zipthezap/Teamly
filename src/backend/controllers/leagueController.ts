@@ -9,7 +9,7 @@ export const createLeague = asyncHandler(async (req: Request, res: Response) => 
 });
 
 export const getLeagues = asyncHandler(async (req: Request, res: Response) => {
-  const result = await leagueService.getLeagues(req.query as any);
+  const result = await leagueService.getLeagues(req.query as { groupId?: string; status?: string; page?: string; limit?: string });
   res.json(result);
 });
 

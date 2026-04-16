@@ -1,4 +1,5 @@
 import prisma from '../config/database';
+import { LeagueStatus, Prisma, SportType } from '@prisma/client';
 import { NotFoundError, ForbiddenError } from '../utils/errors';
 
 export interface CreateLeagueData {
@@ -45,7 +46,7 @@ export class LeagueService {
     return prisma.league.create({
       data: {
         ...rest,
-        sport: sport as any,
+        sport: sport as SportType,
         startDate: new Date(startDate),
         endDate: endDate ? new Date(endDate) : undefined,
         creatorId: userId,
@@ -64,9 +65,9 @@ export class LeagueService {
     const limit = normalizePositiveInt(params.limit, DEFAULT_LEAGUE_LIMIT, {
       max: MAX_LEAGUE_LIMIT,
     });
-    const where: any = {};
+    const where: Prisma.LeagueWhereInput = {};
     if (groupId) where.groupId = groupId;
-    if (status) where.status = status;
+    if (status) where.status = status as LeagueStatus;
     const [leagues, total] = await Promise.all([
       prisma.league.findMany({
         where,
@@ -102,15 +103,15 @@ export class LeagueService {
     const league = await prisma.league.findUnique({ where: { id } });
     if (!league) throw new NotFoundError('League not found');
     if (league.creatorId !== userId) throw new ForbiddenError('Forbidden');
-    const { sport, startDate, endDate, groupId, ...rest } = data;
+    const { sport, startDate, endDate, groupId: _groupId, status, ...rest } = data;
     return prisma.league.update({
       where: { id },
       data: {
         ...rest,
-        ...(sport ? { sport: sport as any } : {}),
+        ...(sport ? { sport: sport as SportType } : {}),
         ...(startDate ? { startDate: new Date(startDate) } : {}),
         ...(endDate ? { endDate: new Date(endDate) } : {}),
-        ...(data.status ? { status: data.status as any } : {}),
+        ...(status ? { status: status as LeagueStatus } : {}),
       },
     });
   }
@@ -173,7 +174,7 @@ export class LeagueService {
       data: {
         homeScore: result.homeScore,
         awayScore: result.awayScore,
-        status: (result.status ?? 'completed') as any,
+        status: result.status ?? 'completed',
         playedAt: new Date(),
       },
     });
