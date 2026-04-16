@@ -19,6 +19,9 @@ vi.mock('../../config/database', () => ({
     tournament: {
       findUnique: vi.fn(),
     },
+    tournamentAdminRole: {
+      findFirst: vi.fn(),
+    },
     tournamentTeam: {
       findFirst: vi.fn(),
     },
@@ -53,6 +56,7 @@ vi.mock('../../services/cacheService', () => ({
 const db = prisma as unknown as {
   groupMember: { findUnique: ReturnType<typeof vi.fn> };
   tournament: { findUnique: ReturnType<typeof vi.fn> };
+  tournamentAdminRole: { findFirst: ReturnType<typeof vi.fn> };
   tournamentTeam: { findFirst: ReturnType<typeof vi.fn> };
   tournamentPlayer: { findFirst: ReturnType<typeof vi.fn> };
   tournamentMatch: { findFirst: ReturnType<typeof vi.fn> };

@@ -47,6 +47,12 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
   }
 
   Future<void> _loadData() async {
+    if (mounted) {
+      setState(() {
+        _dataLoading = true;
+        _error = null;
+      });
+    }
     try {
       final results = await Future.wait([
         ref.read(tournamentRepositoryProvider).getPools(widget.tournamentId),
@@ -166,4 +172,3 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
 // ===========================================================================
 // Team Roster Page
 // ===========================================================================
-

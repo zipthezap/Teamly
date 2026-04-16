@@ -1,5 +1,12 @@
 import 'package:equatable/equatable.dart';
 
+String? _readString(dynamic value) {
+  if (value is! String) return null;
+  final text = value.trim();
+  if (text.isEmpty || text.toLowerCase() == 'null') return null;
+  return text;
+}
+
 class GroupMemberModel extends Equatable {
   const GroupMemberModel({
     required this.id,
@@ -18,12 +25,19 @@ class GroupMemberModel extends Equatable {
   factory GroupMemberModel.fromJson(Map<String, dynamic> json) {
     final user = json['user'] as Map<String, dynamic>?;
     return GroupMemberModel(
-      id: (json['id'] ?? json['userId'] ?? user?['id'] ?? '').toString(),
-      name: (json['name'] ?? user?['name'] ?? 'Unknown').toString(),
-      email: (json['email'] ?? user?['email'] ?? '').toString(),
-      role: (json['role'] ?? 'member').toString(),
+      id: _readString(json['id']) ??
+          _readString(json['userId']) ??
+          _readString(user?['id']) ??
+          '',
+      name: _readString(json['name']) ??
+          _readString(user?['name']) ??
+          'Unknown',
+      email: _readString(json['email']) ??
+          _readString(user?['email']) ??
+          '',
+      role: _readString(json['role']) ?? 'member',
       profilePicture:
-          (json['profilePicture'] ?? user?['profilePicture'])?.toString(),
+          _readString(json['profilePicture']) ?? _readString(user?['profilePicture']),
     );
   }
 

@@ -12,7 +12,7 @@ export default [
       ecmaVersion: 2020,
       sourceType: 'module',
       parserOptions: {
-        project: './tsconfig.json',
+        project: './tsconfig.eslint.json',
       },
     },
     rules: {
@@ -27,6 +27,13 @@ export default [
       'no-console': 'off',
       '@typescript-eslint/no-var-requires': 'warn',
       '@typescript-eslint/ban-ts-comment': 'warn',
+    },
+  },
+  // Test files: relax strict rules that are impractical in test helpers/mocks
+  {
+    files: ['src/backend/__tests__/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
   {

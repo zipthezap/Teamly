@@ -45,6 +45,9 @@ vi.mock('../../config/database', () => ({
     user: { findUnique: vi.fn(), findMany: vi.fn() },
     groupBan: { findUnique: vi.fn(), upsert: vi.fn() },
     auditLog: { create: vi.fn() },
+    session: { findMany: vi.fn(), findUnique: vi.fn() },
+    sessionParticipant: { deleteMany: vi.fn() },
+    sessionAttendance: { deleteMany: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
@@ -540,6 +543,7 @@ describe('Group Controller', () => {
       } as any);
       vi.mocked(prisma.groupMember.delete).mockResolvedValue({} as any);
       vi.mocked(prisma.groupJoinRequest.deleteMany).mockResolvedValue({ count: 0 } as any);
+      vi.mocked(prisma.session.findMany).mockResolvedValue([]);
 
       const res = await request(app).delete('/api/groups/group-1/leave');
 

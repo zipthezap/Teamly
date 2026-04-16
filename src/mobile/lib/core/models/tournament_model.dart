@@ -1,5 +1,23 @@
 import 'package:equatable/equatable.dart';
 
+DateTime _requireParsedTournamentDate(String? raw, String fieldName) {
+  final parsed = raw != null ? DateTime.tryParse(raw) : null;
+  if (parsed == null) {
+    throw FormatException('Invalid $fieldName timestamp');
+  }
+  return parsed;
+}
+
+String _requireTournamentIdentifier(List<dynamic> candidates, String fieldName) {
+  for (final candidate in candidates) {
+    final value = candidate?.toString().trim();
+    if (value != null && value.isNotEmpty && value.toLowerCase() != 'null') {
+      return value;
+    }
+  }
+  throw FormatException('Missing $fieldName');
+}
+
 // ---------------------------------------------------------------------------
 // Standing model (from TournamentStanding table)
 // ---------------------------------------------------------------------------
@@ -463,11 +481,14 @@ class TournamentModel extends Equatable {
       sportType: json['sportType'] as String? ?? 'other',
       format: json['format'] as String? ?? 'bracket',
       status: json['status'] as String? ?? 'draft',
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      creatorId: organizer?['id'] as String? ??
-          json['organizerId'] as String? ??
-          json['creatorId'] as String? ??
-          '',
+      createdAt: _requireParsedTournamentDate(
+        json['createdAt'] as String?,
+        'tournament createdAt',
+      ),
+      creatorId: _requireTournamentIdentifier(
+        [organizer?['id'], json['organizerId'], json['creatorId']],
+        'tournament creatorId',
+      ),
       organizerName: organizer?['name'] as String?,
       organizerEmail: organizer?['email'] as String?,
       description: json['description'] as String?,
