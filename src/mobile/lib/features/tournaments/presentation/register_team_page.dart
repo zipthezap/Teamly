@@ -47,6 +47,12 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
   }
 
   Future<void> _loadData() async {
+    if (mounted) {
+      setState(() {
+        _dataLoading = true;
+        _error = null;
+      });
+    }
     try {
       final results = await Future.wait([
         ref.read(tournamentRepositoryProvider).getPools(widget.tournamentId),
@@ -56,6 +62,7 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
         setState(() {
           _pools = results[0] as List<TournamentPoolModel>;
           _categories = results[1] as List<TournamentCategoryModel>;
+          _error = null;
           _dataLoading = false;
         });
       }
@@ -166,4 +173,3 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
 // ===========================================================================
 // Team Roster Page
 // ===========================================================================
-

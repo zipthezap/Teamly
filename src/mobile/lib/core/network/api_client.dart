@@ -62,8 +62,8 @@ class _TokenRefreshInterceptor extends Interceptor {
   final String baseUrl;
   final void Function() onSessionExpired;
 
-  // Guard against concurrent refresh attempts.
-  bool _refreshing = false;
+  // Shared in-flight refresh call so concurrent 401s wait for one refresh.
+  Future<String>? _inFlightRefresh;
 
   @override
   Future<void> onError(
@@ -76,41 +76,18 @@ class _TokenRefreshInterceptor extends Interceptor {
     final isRefreshCall =
         err.requestOptions.path.contains('/auth/refresh-token');
 
-    if (statusCode == 401 && !isRefreshCall && !_refreshing) {
-      _refreshing = true;
+    final alreadyRetried =
+        err.requestOptions.extra['retriedAfterRefresh'] == true;
+
+    if (statusCode == 401 && !isRefreshCall && !alreadyRetried) {
       try {
-        final refreshToken = await tokenStore.getRefreshToken();
-        if (refreshToken == null || refreshToken.isEmpty) {
-          await _expire(handler, err);
-          return;
-        }
-
-        // Use a minimal Dio instance so we don't recurse into this interceptor.
-        final refreshDio = Dio(
-          BaseOptions(
-            baseUrl: baseUrl,
-            connectTimeout: const Duration(seconds: 15),
-            receiveTimeout: const Duration(seconds: 15),
-            headers: const {'Content-Type': 'application/json'},
-          ),
-        );
-
-        final refreshResponse = await refreshDio.post<Map<String, dynamic>>(
-          '/auth/refresh-token',
-          data: {'refreshToken': refreshToken},
-        );
-
-        final newToken = refreshResponse.data?['accessToken']?.toString();
-        if (newToken == null || newToken.isEmpty) {
-          await _expire(handler, err);
-          return;
-        }
-
-        await tokenStore.saveToken(newToken);
+        _inFlightRefresh ??= _refreshAccessToken();
+        final newToken = await _inFlightRefresh!;
 
         // Retry the original request with the new token.
         final retryOptions = err.requestOptions;
         retryOptions.headers['Authorization'] = 'Bearer $newToken';
+        retryOptions.extra['retriedAfterRefresh'] = true;
 
         final retryDio = Dio(
           BaseOptions(
@@ -124,12 +101,44 @@ class _TokenRefreshInterceptor extends Interceptor {
         handler.resolve(retryResponse);
       } on DioException catch (refreshErr) {
         await _expire(handler, refreshErr);
+      } catch (_) {
+        await _expire(handler, err);
       } finally {
-        _refreshing = false;
+        _inFlightRefresh = null;
       }
     } else {
       handler.next(err);
     }
+  }
+
+  Future<String> _refreshAccessToken() async {
+    final refreshToken = await tokenStore.getRefreshToken();
+    if (refreshToken == null || refreshToken.isEmpty) {
+      throw const FormatException('Missing refresh token');
+    }
+
+    // Use a minimal Dio instance so we don't recurse into this interceptor.
+    final refreshDio = Dio(
+      BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 15),
+        headers: const {'Content-Type': 'application/json'},
+      ),
+    );
+
+    final refreshResponse = await refreshDio.post<Map<String, dynamic>>(
+      '/auth/refresh-token',
+      data: {'refreshToken': refreshToken},
+    );
+
+    final newToken = refreshResponse.data?['accessToken']?.toString();
+    if (newToken == null || newToken.isEmpty) {
+      throw const FormatException('Missing access token in refresh response');
+    }
+
+    await tokenStore.saveToken(newToken);
+    return newToken;
   }
 
   Future<void> _expire(

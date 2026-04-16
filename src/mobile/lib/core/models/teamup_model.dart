@@ -49,6 +49,7 @@ class TeamUpRequestModel extends Equatable {
 
   /// Convenience getter – kept for UI code that still references availableFrom.
   DateTime? get availableFrom => dateTime;
+  DateTime? get scheduledAt => dateTime;
 
   factory TeamUpRequestModel.fromJson(Map<String, dynamic> json) {
     final creator = json['creator'] as Map<String, dynamic>?;
@@ -59,8 +60,11 @@ class TeamUpRequestModel extends Equatable {
       sportType: json['sportType'] as String? ?? 'other',
       requestType: json['requestType'] as String? ?? 'need_players',
       status: json['status'] as String? ?? 'open',
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      creatorId: creator?['id'] as String? ?? json['creatorId'] as String? ?? '',
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      creatorId: creator?['id'] as String? ??
+          json['creatorId'] as String? ??
+          'unknown',
       creatorName: creator?['name'] as String? ?? 'Unknown',
       description: json['description'] as String?,
       playersNeeded: (json['playersNeeded'] as num?)?.toInt(),
@@ -166,7 +170,8 @@ class TeamUpResponseModel extends Equatable {
       requestId: json['teamUpRequestId'] as String? ?? '',
       message: json['message'] as String? ?? '',
       status: json['status'] as String? ?? 'pending',
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
       responderId: user?['id'] as String? ?? json['userId'] as String? ?? '',
       responderName: user?['name'] as String? ?? 'Unknown',
       responderPicture: user?['profilePicture'] as String?,
@@ -230,7 +235,8 @@ class TeamUpApplicationModel extends Equatable {
       requestId: json['teamUpRequestId'] as String? ?? req?['id'] as String? ?? '',
       message: json['message'] as String? ?? '',
       status: json['status'] as String? ?? 'pending',
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
       requestTitle: req?['title'] as String? ?? 'Unknown request',
       requestSportType: req?['sportType'] as String? ?? 'other',
       requestType: req?['requestType'] as String? ?? 'need_players',
@@ -277,7 +283,8 @@ class TeamUpCommentModel extends Equatable {
       id: json['id'] as String,
       requestId: json['teamUpRequestId'] as String? ?? '',
       content: json['content'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
       authorId: user?['id'] as String? ?? json['userId'] as String? ?? '',
       authorName: user?['name'] as String? ?? 'Unknown',
       authorPicture: user?['profilePicture'] as String?,

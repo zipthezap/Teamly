@@ -102,7 +102,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final token = await _repo.getToken();
       if (token != null && token.isNotEmpty) {
         final user = await _repo.getProfile();
-        state = AuthState(status: AuthStatus.authenticated, user: user);
+        state = AuthState(
+          status: AuthStatus.authenticated,
+          user: user,
+          isLoading: false,
+        );
       } else {
         state = const AuthState.unauthenticated();
       }
@@ -115,7 +119,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final user = await _repo.login(email: email, password: password);
-      state = AuthState(status: AuthStatus.authenticated, user: user);
+      state = AuthState(
+        status: AuthStatus.authenticated,
+        user: user,
+        isLoading: false,
+      );
       _invalidateNotificationState();
       await _registerPushTokenSafely();
     } on Exception catch (e) {
@@ -136,7 +144,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final user =
           await _repo.register(email: email, password: password, name: name);
-      state = AuthState(status: AuthStatus.authenticated, user: user);
+      state = AuthState(
+        status: AuthStatus.authenticated,
+        user: user,
+        isLoading: false,
+      );
       _invalidateNotificationState();
       await _registerPushTokenSafely();
     } on Exception catch (e) {
@@ -187,7 +199,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
         provider: 'google',
         credentials: {'idToken': idToken},
       );
-      state = AuthState(status: AuthStatus.authenticated, user: user);
+      state = AuthState(
+        status: AuthStatus.authenticated,
+        user: user,
+        isLoading: false,
+      );
       _invalidateNotificationState();
       await _registerPushTokenSafely();
     } on MissingPluginException {
@@ -233,7 +249,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
           if (credential.email != null) 'email': credential.email!,
         },
       );
-      state = AuthState(status: AuthStatus.authenticated, user: user);
+      state = AuthState(
+        status: AuthStatus.authenticated,
+        user: user,
+        isLoading: false,
+      );
       _invalidateNotificationState();
       await _registerPushTokenSafely();
     } on SignInWithAppleAuthorizationException catch (e) {
@@ -281,7 +301,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
         provider: 'facebook',
         credentials: {'accessToken': result.accessToken!.tokenString},
       );
-      state = AuthState(status: AuthStatus.authenticated, user: user);
+      state = AuthState(
+        status: AuthStatus.authenticated,
+        user: user,
+        isLoading: false,
+      );
       _invalidateNotificationState();
       await _registerPushTokenSafely();
     } on MissingPluginException {
@@ -310,6 +334,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> deleteAccount() async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
+      await _repo.deleteAccount();
       await _disablePushTokenSafely();
       try {
         await _googleSignIn?.signOut();
@@ -317,7 +342,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
       try {
         if (!kIsWeb) await FacebookAuth.instance.logOut();
       } catch (_) {}
-      await _repo.deleteAccount();
       state = const AuthState.unauthenticated();
       _invalidateNotificationState();
     } on Exception catch (e) {
@@ -352,8 +376,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
           .read(pushNotificationsControllerProvider)
           .registerCurrentToken();
       await _ref.read(pushNotificationsControllerProvider).syncBadgeCount();
-    } catch (_) {
-      // no-op
+    } catch (e) {
+      debugPrint('Push token registration failed: $e');
     }
   }
 

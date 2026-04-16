@@ -463,11 +463,12 @@ class TournamentModel extends Equatable {
       sportType: json['sportType'] as String? ?? 'other',
       format: json['format'] as String? ?? 'bracket',
       status: json['status'] as String? ?? 'draft',
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
       creatorId: organizer?['id'] as String? ??
           json['organizerId'] as String? ??
           json['creatorId'] as String? ??
-          '',
+          'unknown',
       organizerName: organizer?['name'] as String?,
       organizerEmail: organizer?['email'] as String?,
       description: json['description'] as String?,

@@ -24,6 +24,17 @@ class TournamentRepositoryImpl implements TournamentRepository {
     return [];
   }
 
+  Map<String, dynamic> _requireMapData(
+    Response<Map<String, dynamic>> response,
+    String operation,
+  ) {
+    final data = response.data;
+    if (data == null) {
+      throw FormatException('Empty response payload for $operation');
+    }
+    return data;
+  }
+
   // ---------------------------------------------------------------------------
   // Tournament CRUD
   // ---------------------------------------------------------------------------
@@ -33,6 +44,9 @@ class TournamentRepositoryImpl implements TournamentRepository {
     final queryParams = <String, dynamic>{};
     if (status != null) queryParams['status'] = status;
     if (sportType != null) queryParams['sportType'] = sportType;
+    if (search != null && search.trim().isNotEmpty) {
+      queryParams['search'] = search.trim();
+    }
     final response = await _dio.get<dynamic>(
       '/tournaments',
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
@@ -51,14 +65,14 @@ class TournamentRepositoryImpl implements TournamentRepository {
   @override
   Future<TournamentModel> getTournament(String id) async {
     final response = await _dio.get<Map<String, dynamic>>('/tournaments/$id');
-    return TournamentModel.fromJson(response.data!);
+    return TournamentModel.fromJson(_requireMapData(response, 'get tournament'));
   }
 
   @override
   Future<TournamentModel> createTournament(Map<String, dynamic> data) async {
     final response =
         await _dio.post<Map<String, dynamic>>('/tournaments', data: data);
-    return TournamentModel.fromJson(response.data!);
+    return TournamentModel.fromJson(_requireMapData(response, 'create tournament'));
   }
 
   @override
@@ -85,7 +99,7 @@ class TournamentRepositoryImpl implements TournamentRepository {
         if (categoryId != null) 'categoryId': categoryId,
       },
     );
-    return response.data!;
+    return _requireMapData(response, 'self register team');
   }
 
   @override
@@ -114,7 +128,7 @@ class TournamentRepositoryImpl implements TournamentRepository {
     final response = await _dio.post<Map<String, dynamic>>(
         '/tournaments/$tournamentId/pools',
         data: data);
-    return TournamentPoolModel.fromJson(response.data!);
+    return TournamentPoolModel.fromJson(_requireMapData(response, 'create pool'));
   }
 
   @override
@@ -123,7 +137,7 @@ class TournamentRepositoryImpl implements TournamentRepository {
     final response = await _dio.put<Map<String, dynamic>>(
         '/tournaments/$tournamentId/pools/$poolId',
         data: data);
-    return TournamentPoolModel.fromJson(response.data!);
+    return TournamentPoolModel.fromJson(_requireMapData(response, 'update pool'));
   }
 
   @override
@@ -136,7 +150,7 @@ class TournamentRepositoryImpl implements TournamentRepository {
       String tournamentId, String poolId, String teamId) async {
     final response = await _dio.post<Map<String, dynamic>>(
         '/tournaments/$tournamentId/pools/$poolId/teams/$teamId');
-    return response.data!;
+    return _requireMapData(response, 'register team to pool');
   }
 
   @override
@@ -175,7 +189,9 @@ class TournamentRepositoryImpl implements TournamentRepository {
     final response = await _dio.post<Map<String, dynamic>>(
         '/tournaments/$tournamentId/categories',
         data: data);
-    return TournamentCategoryModel.fromJson(response.data!);
+    return TournamentCategoryModel.fromJson(
+      _requireMapData(response, 'create category'),
+    );
   }
 
   @override
@@ -184,7 +200,9 @@ class TournamentRepositoryImpl implements TournamentRepository {
     final response = await _dio.put<Map<String, dynamic>>(
         '/tournaments/$tournamentId/categories/$categoryId',
         data: data);
-    return TournamentCategoryModel.fromJson(response.data!);
+    return TournamentCategoryModel.fromJson(
+      _requireMapData(response, 'update category'),
+    );
   }
 
   @override
@@ -224,7 +242,7 @@ class TournamentRepositoryImpl implements TournamentRepository {
     final response = await _dio.post<Map<String, dynamic>>(
         '/tournaments/$tournamentId/admins',
         data: data);
-    return TournamentAdminModel.fromJson(response.data!);
+    return TournamentAdminModel.fromJson(_requireMapData(response, 'add admin'));
   }
 
   @override
@@ -328,7 +346,7 @@ class TournamentRepositoryImpl implements TournamentRepository {
   @override
   Future<TournamentModel> updateTournament(String id, Map<String, dynamic> data) async {
     final response = await _dio.put<Map<String, dynamic>>('/tournaments/$id', data: data);
-    return TournamentModel.fromJson(response.data!);
+    return TournamentModel.fromJson(_requireMapData(response, 'update tournament'));
   }
 
   // ---------------------------------------------------------------------------
@@ -357,7 +375,7 @@ class TournamentRepositoryImpl implements TournamentRepository {
       '/tournaments/$tournamentId/generate-brackets',
       data: numberOfGroups != null ? {'numberOfGroups': numberOfGroups} : {},
     );
-    return response.data!;
+    return _requireMapData(response, 'generate brackets');
   }
 }
 
