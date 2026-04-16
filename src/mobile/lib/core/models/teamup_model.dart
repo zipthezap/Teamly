@@ -8,6 +8,16 @@ DateTime _requireParsedDate(String? raw, String fieldName) {
   return parsed;
 }
 
+String _requireIdentifier(List<dynamic> candidates, String fieldName) {
+  for (final candidate in candidates) {
+    final value = candidate?.toString().trim();
+    if (value != null && value.isNotEmpty && value.toLowerCase() != 'null') {
+      return value;
+    }
+  }
+  throw FormatException('Missing $fieldName');
+}
+
 class TeamUpRequestModel extends Equatable {
   const TeamUpRequestModel({
     required this.id,
@@ -71,9 +81,10 @@ class TeamUpRequestModel extends Equatable {
         json['createdAt'] as String?,
         'teamup request createdAt',
       ),
-      creatorId: creator?['id'] as String? ??
-          json['creatorId'] as String? ??
-          'unknown',
+      creatorId: _requireIdentifier(
+        [creator?['id'], json['creatorId']],
+        'teamup request creatorId',
+      ),
       creatorName: creator?['name'] as String? ?? 'Unknown',
       description: json['description'] as String?,
       playersNeeded: (json['playersNeeded'] as num?)?.toInt(),

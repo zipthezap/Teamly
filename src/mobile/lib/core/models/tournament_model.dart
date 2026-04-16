@@ -8,6 +8,16 @@ DateTime _requireParsedTournamentDate(String? raw, String fieldName) {
   return parsed;
 }
 
+String _requireTournamentIdentifier(List<dynamic> candidates, String fieldName) {
+  for (final candidate in candidates) {
+    final value = candidate?.toString().trim();
+    if (value != null && value.isNotEmpty && value.toLowerCase() != 'null') {
+      return value;
+    }
+  }
+  throw FormatException('Missing $fieldName');
+}
+
 // ---------------------------------------------------------------------------
 // Standing model (from TournamentStanding table)
 // ---------------------------------------------------------------------------
@@ -475,10 +485,10 @@ class TournamentModel extends Equatable {
         json['createdAt'] as String?,
         'tournament createdAt',
       ),
-      creatorId: organizer?['id'] as String? ??
-          json['organizerId'] as String? ??
-          json['creatorId'] as String? ??
-          'unknown',
+      creatorId: _requireTournamentIdentifier(
+        [organizer?['id'], json['organizerId'], json['creatorId']],
+        'tournament creatorId',
+      ),
       organizerName: organizer?['name'] as String?,
       organizerEmail: organizer?['email'] as String?,
       description: json['description'] as String?,
