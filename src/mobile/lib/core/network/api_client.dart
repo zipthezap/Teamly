@@ -85,10 +85,14 @@ class _TokenRefreshInterceptor extends Interceptor {
         final newToken = await _inFlightRefresh!;
 
         // Retry the original request with the new token.
-        final retryHeaders = Map<String, dynamic>.from(err.requestOptions.headers)
-          ..['Authorization'] = 'Bearer $newToken';
-        final retryExtra = Map<String, dynamic>.from(err.requestOptions.extra)
-          ..['retriedAfterRefresh'] = true;
+        final retryHeaders = <String, dynamic>{
+          ...err.requestOptions.headers,
+          'Authorization': 'Bearer $newToken',
+        };
+        final retryExtra = <String, dynamic>{
+          ...err.requestOptions.extra,
+          'retriedAfterRefresh': true,
+        };
         final retryOptions = err.requestOptions.copyWith(
           headers: retryHeaders,
           extra: retryExtra,

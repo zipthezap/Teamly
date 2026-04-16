@@ -333,8 +333,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// revoke all active tokens, then clears local session state.
   Future<void> deleteAccount() async {
     state = state.copyWith(isLoading: true, clearError: true);
+    var deleteSucceeded = false;
     try {
       await _repo.deleteAccount();
+      deleteSucceeded = true;
+    } on Exception catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: _extractMessage(e),
+      );
+    } finally {
       await _disablePushTokenSafely();
       try {
         await _googleSignIn?.signOut();
@@ -342,13 +350,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       try {
         if (!kIsWeb) await FacebookAuth.instance.logOut();
       } catch (_) {}
+    }
+    if (deleteSucceeded) {
       state = const AuthState.unauthenticated();
       _invalidateNotificationState();
-    } on Exception catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: _extractMessage(e),
-      );
     }
   }
 

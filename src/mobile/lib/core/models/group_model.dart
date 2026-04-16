@@ -1,13 +1,8 @@
 import 'package:equatable/equatable.dart';
 
 String? _readString(dynamic value) {
-  if (value == null) return null;
-  final text = switch (value) {
-    String v => v.trim(),
-    num v => v.toString(),
-    bool v => v.toString(),
-    _ => value.toString().trim(),
-  };
+  if (value is! String) return null;
+  final text = value.trim();
   if (text.isEmpty || text.toLowerCase() == 'null') return null;
   return text;
 }
