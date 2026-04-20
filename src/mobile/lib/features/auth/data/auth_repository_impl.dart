@@ -12,6 +12,27 @@ class AuthRepositoryImpl implements AuthRepository {
   final Dio _dio;
   final AuthTokenStore _tokenStore;
 
+  Map<String, dynamic> _requireData(
+    Response<Map<String, dynamic>> response,
+    String operation,
+  ) {
+    final data = response.data;
+    if (data == null) {
+      throw FormatException('Empty response payload for $operation');
+    }
+    return data;
+  }
+
+  Map<String, dynamic> _requireUserMap(
+    dynamic raw,
+    String operation,
+  ) {
+    if (raw is! Map<String, dynamic>) {
+      throw FormatException('Invalid user payload for $operation');
+    }
+    return raw;
+  }
+
   @override
   Future<UserModel> login({required String email, required String password}) async {
     final response = await _dio.post<Map<String, dynamic>>(
@@ -19,7 +40,7 @@ class AuthRepositoryImpl implements AuthRepository {
       data: {'email': email, 'password': password},
     );
 
-    final data = response.data!;
+    final data = _requireData(response, 'login');
     final accessToken = data['accessToken']?.toString();
     final refreshToken = data['refreshToken']?.toString();
 
@@ -32,7 +53,7 @@ class AuthRepositoryImpl implements AuthRepository {
       refreshToken: refreshToken ?? '',
     );
 
-    return UserModel.fromJson(data['user'] as Map<String, dynamic>);
+    return UserModel.fromJson(_requireUserMap(data['user'], 'login'));
   }
 
   @override
@@ -46,7 +67,7 @@ class AuthRepositoryImpl implements AuthRepository {
       data: {'email': email, 'password': password, 'name': name},
     );
 
-    final data = response.data!;
+    final data = _requireData(response, 'register');
     final accessToken = data['accessToken']?.toString();
     final refreshToken = data['refreshToken']?.toString();
 
@@ -59,7 +80,7 @@ class AuthRepositoryImpl implements AuthRepository {
       refreshToken: refreshToken ?? '',
     );
 
-    return UserModel.fromJson(data['user'] as Map<String, dynamic>);
+    return UserModel.fromJson(_requireUserMap(data['user'], 'register'));
   }
 
   /// Exchange a native OAuth credential for a server-issued JWT.
@@ -79,7 +100,7 @@ class AuthRepositoryImpl implements AuthRepository {
       data: credentials,
     );
 
-    final data = response.data!;
+    final data = _requireData(response, 'social login');
     final accessToken = data['accessToken']?.toString();
     final refreshToken = data['refreshToken']?.toString();
 
@@ -92,13 +113,14 @@ class AuthRepositoryImpl implements AuthRepository {
       refreshToken: refreshToken ?? '',
     );
 
-    return UserModel.fromJson(data['user'] as Map<String, dynamic>);
+    return UserModel.fromJson(_requireUserMap(data['user'], 'social login'));
   }
 
   @override
   Future<UserModel> getProfile() async {
     final response = await _dio.get<Map<String, dynamic>>('/auth/profile');
-    final user = (response.data!['user'] ?? response.data!) as Map<String, dynamic>;
+    final data = _requireData(response, 'get profile');
+    final user = _requireUserMap(data['user'] ?? data, 'get profile');
     return UserModel.fromJson(user);
   }
 
@@ -113,11 +135,8 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> deleteAccount() async {
-    try {
-      await _dio.delete<void>('/auth/account');
-    } finally {
-      await _tokenStore.clear();
-    }
+    await _dio.delete<void>('/auth/account');
+    await _tokenStore.clear();
   }
 
   @override

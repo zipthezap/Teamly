@@ -102,15 +102,14 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
             isOrganizer || t.admins.any((a) => a.userId == currentUserId);
         TournamentTeamModel? myTeam;
         if (currentUserId != null) {
-          try {
-            myTeam = t.teams.firstWhere(
-              (team) =>
-                  team.captainUserId == currentUserId ||
-                  team.players
-                      .any((p) => (p['userId'] as String?) == currentUserId),
-            );
-          } catch (_) {
-            myTeam = null;
+          for (final team in t.teams) {
+            final isMember = team.captainUserId == currentUserId ||
+                team.players
+                    .any((p) => (p['userId'] as String?) == currentUserId);
+            if (isMember) {
+              myTeam = team;
+              break;
+            }
           }
         }
         final hasMyTeam = myTeam != null;
@@ -123,8 +122,15 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
         if (hasMyTeam) tabs.add(const Tab(text: 'My Schedule'));
 
         if (_tabController.length != tabs.length) {
+          final previousIndex = _tabController.index;
+          final clampedIndex =
+              previousIndex.clamp(0, tabs.length - 1).toInt();
           _tabController.dispose();
-          _tabController = TabController(length: tabs.length, vsync: this);
+          _tabController = TabController(
+            length: tabs.length,
+            initialIndex: clampedIndex,
+            vsync: this,
+          );
         }
 
         void refresh() {
@@ -355,10 +361,10 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               },
             ),
           ],
-          if (myTeam != null) ...[
+          if (myTeam case final team?) ...[
             const SizedBox(height: 16),
             _SectionCard(
-              title: 'My Team — ${myTeam!.name}',
+              title: 'My Team — ${team.name}',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -370,7 +376,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                         icon: const Icon(Icons.group_outlined, size: 16),
                         label: const Text('Manage Roster'),
                         onPressed: () => context.push(
-                            '/tournaments/${t.id}/teams/${myTeam!.id}/roster'),
+                            '/tournaments/${t.id}/teams/${team.id}/roster'),
                       ),
                       if (t.status == 'registration' || t.status == 'draft')
                         OutlinedButton.icon(
