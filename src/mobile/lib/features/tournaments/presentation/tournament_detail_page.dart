@@ -233,6 +233,12 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
   TournamentTeamModel? get myTeam => widget.myTeam;
   VoidCallback get onRefresh => widget.onRefresh;
 
+  Future<void> _refreshTournamentDetail() async {
+    ref.invalidate(tournamentDetailProvider(t.id));
+    await ref.read(tournamentDetailProvider(t.id).future);
+    ref.invalidate(tournamentsNotifierProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final canRegister = canRegisterTeam(t.status, hasMyTeam: myTeam != null);
@@ -254,7 +260,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     }
 
     return RefreshIndicator(
-      onRefresh: () async => onRefresh(),
+      onRefresh: _refreshTournamentDetail,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -343,7 +349,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               onPressed: () async {
                 final ok =
                     await context.push<bool>('/tournaments/${t.id}/register');
-                if (ok == true) onRefresh();
+                if (ok == true && context.mounted) {
+                  await _refreshTournamentDetail();
+                }
               },
             ),
           ],
@@ -501,7 +509,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
       await ref
           .read(tournamentRepositoryProvider)
           .selfUnregisterTeam(tournamentId);
-      onRefresh();
+      await _refreshTournamentDetail();
     } on Exception catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
