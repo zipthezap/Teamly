@@ -8,11 +8,20 @@ import {
   calculateVolleyballWinner,
   sanitizeTournamentData,
   validateTournamentDates,
+  validateTournamentEnums,
+  validateTournamentBusinessRules,
+  validateRegistrationEligibility,
+  computeAutoStatus,
   isOrganizer,
   isOrganizerOrAdmin,
   isTeamCaptain,
   isRegisteredPlayer,
   canSubmitScore,
+  revertStandings,
+  updateStandings,
+  canManageTeamInvitations,
+  acceptTeamInvitation,
+  expireOldInvitations,
   generateSingleEliminationBrackets,
   generateRoundRobinBrackets,
   generateGroupsKnockoutBrackets,
@@ -24,6 +33,9 @@ import { VolleyballConfig, BracketStage, MatchStatus } from '../../../shared/typ
 // Mock dependencies
 vi.mock('../../config/database', () => ({
   default: {
+    tournament: {
+      findUnique: vi.fn(),
+    },
     tournamentTeam: {
       findUnique: vi.fn(),
       findFirst: vi.fn(),
@@ -32,14 +44,29 @@ vi.mock('../../config/database', () => ({
     tournamentPlayer: {
       count: vi.fn(),
       findFirst: vi.fn(),
+      create: vi.fn(),
     },
     tournamentMatch: {
       createMany: vi.fn(),
       findMany: vi.fn(),
+      findUnique: vi.fn(),
       count: vi.fn(),
+    },
+    tournamentStanding: {
+      updateMany: vi.fn(),
+      upsert: vi.fn(),
     },
     tournamentAdminRole: {
       findFirst: vi.fn(),
+    },
+    tournamentTeamInvitation: {
+      findUnique: vi.fn(),
+      updateMany: vi.fn(),
+      update: vi.fn(),
+      create: vi.fn(),
+    },
+    user: {
+      findUnique: vi.fn(),
     },
   },
 }));
@@ -753,6 +780,569 @@ describe('Tournament Service', () => {
           }),
         ],
       });
+    });
+  });
+
+  // ─── computeAutoStatus ────────────────────────────────────────────────────
+
+  describe('computeAutoStatus', () => {
+    const future = new Date(Date.now() + 86_400_000); // +1 day
+    const past = new Date(Date.now() - 86_400_000); // -1 day
+    const farPast = new Date(Date.now() - 2 * 86_400_000); // -2 days
+
+    it('returns null for cancelled tournaments', () => {
+      expect(computeAutoStatus({ status: 'cancelled', startDate: future })).toBeNull();
+    });
+
+    it('returns null when no change needed (draft, start in future)', () => {
+      expect(computeAutoStatus({ status: 'draft', startDate: future })).toBeNull();
+    });
+
+    it('returns "completed" when endDate has passed', () => {
+      const result = computeAutoStatus({ status: 'in_progress', startDate: farPast, endDate: past });
+      expect(result).toBe('completed');
+    });
+
+    it('returns null if already completed and endDate has passed', () => {
+      expect(computeAutoStatus({ status: 'completed', startDate: farPast, endDate: past })).toBeNull();
+    });
+
+    it('returns "in_progress" when startDate has passed and tournament is not yet in_progress', () => {
+      const result = computeAutoStatus({ status: 'registration', startDate: past });
+      expect(result).toBe('in_progress');
+    });
+
+    it('returns null when startDate has passed and already in_progress', () => {
+      expect(computeAutoStatus({ status: 'in_progress', startDate: past })).toBeNull();
+    });
+
+    it('returns "completed" when all matches are done (hasMatches=true, hasIncompleteMatches=false)', () => {
+      const result = computeAutoStatus({
+        status: 'in_progress',
+        startDate: past,
+        hasMatches: true,
+        hasIncompleteMatches: false,
+      });
+      expect(result).toBe('completed');
+    });
+
+    it('returns "in_progress" when startDate passed but there are incomplete matches', () => {
+      const result = computeAutoStatus({
+        status: 'registration',
+        startDate: past,
+        hasMatches: true,
+        hasIncompleteMatches: true,
+      });
+      expect(result).toBe('in_progress');
+    });
+
+    it('returns "registration" when registrationStartDate has arrived and status is draft', () => {
+      const result = computeAutoStatus({
+        status: 'draft',
+        startDate: future,
+        registrationStartDate: past,
+        registrationDeadline: future,
+      });
+      expect(result).toBe('registration');
+    });
+
+    it('returns null when registrationDeadline has passed (no auto-registration change)', () => {
+      const result = computeAutoStatus({
+        status: 'draft',
+        startDate: future,
+        registrationStartDate: farPast,
+        registrationDeadline: past,
+      });
+      expect(result).toBeNull();
+    });
+
+    it('returns null when status is already registration', () => {
+      const result = computeAutoStatus({
+        status: 'registration',
+        startDate: future,
+        registrationStartDate: past,
+        registrationDeadline: future,
+      });
+      expect(result).toBeNull();
+    });
+  });
+
+  // ─── validateTournamentEnums ──────────────────────────────────────────────
+
+  describe('validateTournamentEnums', () => {
+    it('does not throw for valid sportType and format', () => {
+      expect(() => validateTournamentEnums({ sportType: 'football', format: 'single_elimination' })).not.toThrow();
+    });
+
+    it('throws for invalid sportType', () => {
+      expect(() => validateTournamentEnums({ sportType: 'baseball_extreme' })).toThrow('Invalid sportType');
+    });
+
+    it('throws for invalid format', () => {
+      expect(() => validateTournamentEnums({ format: 'free_for_all' })).toThrow('Invalid format');
+    });
+
+    it('does not throw when sportType and format are both undefined', () => {
+      expect(() => validateTournamentEnums({})).not.toThrow();
+    });
+
+    it('throws for invalid format regardless of valid sportType', () => {
+      expect(() => validateTournamentEnums({ sportType: 'basketball', format: 'invalid' })).toThrow('Invalid format');
+    });
+  });
+
+  // ─── validateTournamentBusinessRules ─────────────────────────────────────
+
+  describe('validateTournamentBusinessRules', () => {
+    const future = new Date(Date.now() + 10 * 86_400_000).toISOString();
+    const regStart = new Date(Date.now() + 2 * 86_400_000).toISOString();
+    const regDeadline = new Date(Date.now() + 5 * 86_400_000).toISOString();
+
+    it('does not throw for valid dates', () => {
+      expect(() =>
+        validateTournamentBusinessRules({ startDate: future, endDate: null, maxTeams: 8 })
+      ).not.toThrow();
+    });
+
+    it('throws when endDate is not after startDate', () => {
+      expect(() =>
+        validateTournamentBusinessRules({ startDate: future, endDate: regStart })
+      ).toThrow('End date must be after start date');
+    });
+
+    it('throws when registrationStartDate is not before startDate', () => {
+      expect(() =>
+        validateTournamentBusinessRules({ startDate: regStart, registrationStartDate: future })
+      ).toThrow('Registration start date must be before tournament start date');
+    });
+
+    it('throws when registrationDeadline is not before startDate', () => {
+      expect(() =>
+        validateTournamentBusinessRules({ startDate: regStart, registrationDeadline: future })
+      ).toThrow('Registration deadline must be before tournament start date');
+    });
+
+    it('throws when registrationDeadline is not after registrationStartDate', () => {
+      expect(() =>
+        validateTournamentBusinessRules({
+          startDate: future,
+          registrationStartDate: regDeadline,
+          registrationDeadline: regStart,
+        })
+      ).toThrow('Registration deadline must be after registration start date');
+    });
+
+    it('throws when maxTeams is less than 2', () => {
+      expect(() =>
+        validateTournamentBusinessRules({ startDate: future, maxTeams: 1 })
+      ).toThrow('Max teams must be at least 2');
+    });
+
+    it('does not throw when maxTeams is null', () => {
+      expect(() =>
+        validateTournamentBusinessRules({ startDate: future, maxTeams: null })
+      ).not.toThrow();
+    });
+  });
+
+  // ─── validateRegistrationEligibility ─────────────────────────────────────
+
+  describe('validateRegistrationEligibility', () => {
+    it('does not throw for open draft tournament with no dates', () => {
+      const tournament = {
+        status: 'draft',
+        startDate: new Date(Date.now() + 86_400_000),
+      };
+      expect(() => validateRegistrationEligibility(tournament)).not.toThrow();
+    });
+
+    it('does not throw for open registration-status tournament', () => {
+      const tournament = {
+        status: 'registration',
+        startDate: new Date(Date.now() + 86_400_000),
+      };
+      expect(() => validateRegistrationEligibility(tournament)).not.toThrow();
+    });
+
+    it('throws when tournament is in_progress', () => {
+      const tournament = {
+        status: 'in_progress',
+        startDate: new Date(Date.now() - 86_400_000),
+      };
+      expect(() => validateRegistrationEligibility(tournament)).toThrow('Tournament registration is closed');
+    });
+
+    it('throws when registrationStartDate is in the future', () => {
+      const tournament = {
+        status: 'draft',
+        startDate: new Date(Date.now() + 5 * 86_400_000),
+        registrationStartDate: new Date(Date.now() + 86_400_000),
+      };
+      expect(() => validateRegistrationEligibility(tournament)).toThrow('Registration has not opened yet');
+    });
+
+    it('throws when registrationDeadline has passed (no late registration)', () => {
+      const tournament = {
+        status: 'registration',
+        startDate: new Date(Date.now() + 86_400_000),
+        registrationDeadline: new Date(Date.now() - 1000),
+        allowLateRegistration: false,
+      };
+      expect(() => validateRegistrationEligibility(tournament)).toThrow('Registration deadline has passed');
+    });
+
+    it('does not throw when deadline has passed but allowLateRegistration is true', () => {
+      const tournament = {
+        status: 'registration',
+        startDate: new Date(Date.now() + 86_400_000),
+        registrationDeadline: new Date(Date.now() - 1000),
+        allowLateRegistration: true,
+      };
+      expect(() => validateRegistrationEligibility(tournament)).not.toThrow();
+    });
+
+    it('throws when startDate has already passed (no late registration)', () => {
+      const tournament = {
+        status: 'registration',
+        startDate: new Date(Date.now() - 1000),
+        allowLateRegistration: false,
+      };
+      expect(() => validateRegistrationEligibility(tournament)).toThrow('Tournament registration is closed');
+    });
+  });
+
+  // ─── revertStandings ─────────────────────────────────────────────────────
+
+  describe('revertStandings', () => {
+    it('does nothing when match has no scores', async () => {
+      vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValueOnce({
+        id: 'match-1',
+        homeScore: null,
+        awayScore: null,
+      } as unknown);
+
+      await revertStandings('match-1');
+
+      expect(prisma.tournamentStanding.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when match is not found', async () => {
+      vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValueOnce(null);
+
+      await revertStandings('match-1');
+
+      expect(prisma.tournamentStanding.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('decrements standings when home team won', async () => {
+      vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValueOnce({
+        id: 'match-1',
+        tournamentId: 'tournament-1',
+        homeTeamId: 'team-1',
+        awayTeamId: 'team-2',
+        homeScore: 3,
+        awayScore: 1,
+        groupName: null,
+        tournament: null,
+      } as unknown);
+      vi.mocked(prisma.tournamentStanding.updateMany).mockResolvedValue({ count: 1 } as unknown);
+
+      await revertStandings('match-1');
+
+      expect(prisma.tournamentStanding.updateMany).toHaveBeenCalledTimes(2);
+      // Home team (winner) should have points and wins decremented
+      expect(prisma.tournamentStanding.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { tournamentId: 'tournament-1', teamId: 'team-1', groupName: null },
+          data: expect.objectContaining({
+            points: { decrement: 3 },
+            wins: { decrement: 1 },
+            goalsFor: { decrement: 3 },
+            goalsAgainst: { decrement: 1 },
+          }),
+        })
+      );
+    });
+
+    it('decrements standings correctly when away team won', async () => {
+      vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValueOnce({
+        id: 'match-1',
+        tournamentId: 'tournament-1',
+        homeTeamId: 'team-1',
+        awayTeamId: 'team-2',
+        homeScore: 0,
+        awayScore: 2,
+        groupName: null,
+        tournament: null,
+      } as unknown);
+      vi.mocked(prisma.tournamentStanding.updateMany).mockResolvedValue({ count: 1 } as unknown);
+
+      await revertStandings('match-1');
+
+      expect(prisma.tournamentStanding.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { tournamentId: 'tournament-1', teamId: 'team-2', groupName: null },
+          data: expect.objectContaining({
+            points: { decrement: 3 },
+            wins: { decrement: 1 },
+          }),
+        })
+      );
+    });
+
+    it('decrements standings with groupName when set', async () => {
+      vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValueOnce({
+        id: 'match-1',
+        tournamentId: 'tournament-1',
+        homeTeamId: 'team-1',
+        awayTeamId: 'team-2',
+        homeScore: 1,
+        awayScore: 1,
+        groupName: 'A',
+        tournament: null,
+      } as unknown);
+      vi.mocked(prisma.tournamentStanding.updateMany).mockResolvedValue({ count: 1 } as unknown);
+
+      await revertStandings('match-1');
+
+      expect(prisma.tournamentStanding.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { tournamentId: 'tournament-1', teamId: 'team-1', groupName: 'A' },
+        })
+      );
+    });
+  });
+
+  // ─── updateStandings ─────────────────────────────────────────────────────
+
+  describe('updateStandings', () => {
+    const mockTournamentData = { id: 'tournament-1', organizerId: 'org-1', sportConfig: null };
+
+    it('creates/updates standings after a home win', async () => {
+      vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValueOnce({
+        id: 'match-1',
+        tournamentId: 'tournament-1',
+        homeTeamId: 'team-1',
+        awayTeamId: 'team-2',
+        homeScore: 2,
+        awayScore: 0,
+        groupName: null,
+      } as unknown);
+      vi.mocked(prisma.tournamentStanding.upsert).mockResolvedValue({} as unknown);
+
+      await updateStandings('match-1', mockTournamentData as any);
+
+      expect(prisma.tournamentStanding.upsert).toHaveBeenCalledTimes(2);
+      // Home team wins: should get 3 points, 1 win
+      expect(prisma.tournamentStanding.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({ points: 3, wins: 1, losses: 0 }),
+        })
+      );
+    });
+
+    it('creates/updates standings after a draw', async () => {
+      vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValueOnce({
+        id: 'match-1',
+        tournamentId: 'tournament-1',
+        homeTeamId: 'team-1',
+        awayTeamId: 'team-2',
+        homeScore: 1,
+        awayScore: 1,
+        groupName: null,
+      } as unknown);
+      vi.mocked(prisma.tournamentStanding.upsert).mockResolvedValue({} as unknown);
+
+      await updateStandings('match-1', mockTournamentData as any);
+
+      // Both teams draw: each gets 1 draw point
+      expect(prisma.tournamentStanding.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({ points: 1, draws: 1, wins: 0, losses: 0 }),
+        })
+      );
+    });
+
+    it('returns early when match is not found', async () => {
+      vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValueOnce(null);
+
+      await updateStandings('match-1', mockTournamentData as any);
+
+      expect(prisma.tournamentStanding.upsert).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── canManageTeamInvitations ─────────────────────────────────────────────
+
+  describe('canManageTeamInvitations', () => {
+    it('returns true for tournament organizer', async () => {
+      vi.mocked(prisma.tournament.findUnique).mockResolvedValueOnce({
+        id: 'tournament-1',
+        organizerId: 'user-1',
+      } as unknown);
+
+      const result = await canManageTeamInvitations('team-1', 'tournament-1', 'user-1');
+
+      expect(result).toBe(true);
+    });
+
+    it('returns true for team captain (non-organizer)', async () => {
+      vi.mocked(prisma.tournament.findUnique).mockResolvedValueOnce({
+        id: 'tournament-1',
+        organizerId: 'org-1',
+      } as unknown);
+      vi.mocked(prisma.tournamentTeam.findUnique).mockResolvedValueOnce({
+        id: 'team-1',
+        captainUserId: 'user-1',
+      } as unknown);
+
+      const result = await canManageTeamInvitations('team-1', 'tournament-1', 'user-1');
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false for unrelated user', async () => {
+      vi.mocked(prisma.tournament.findUnique).mockResolvedValueOnce({
+        id: 'tournament-1',
+        organizerId: 'org-1',
+      } as unknown);
+      vi.mocked(prisma.tournamentTeam.findUnique).mockResolvedValueOnce({
+        id: 'team-1',
+        captainUserId: 'captain-1',
+      } as unknown);
+
+      const result = await canManageTeamInvitations('team-1', 'tournament-1', 'user-1');
+
+      expect(result).toBe(false);
+    });
+
+    it('returns false when tournament not found', async () => {
+      vi.mocked(prisma.tournament.findUnique).mockResolvedValueOnce(null);
+
+      const result = await canManageTeamInvitations('team-1', 'tournament-1', 'user-1');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  // ─── acceptTeamInvitation ─────────────────────────────────────────────────
+
+  describe('acceptTeamInvitation', () => {
+    const mockInvitation = {
+      id: 'inv-1',
+      teamId: 'team-1',
+      inviteToken: 'abc123',
+      inviteeEmail: 'player@example.com',
+      status: 'pending',
+      expiresAt: new Date(Date.now() + 86_400_000),
+      team: { id: 'team-1', tournament: { id: 'tournament-1' } },
+    };
+
+    it('throws when invitation is not found', async () => {
+      vi.mocked(prisma.tournamentTeamInvitation.findUnique).mockResolvedValueOnce(null);
+
+      await expect(acceptTeamInvitation('bad-token', 'user-1')).rejects.toThrow('Invalid invitation token');
+    });
+
+    it('throws when invitation is already processed', async () => {
+      vi.mocked(prisma.tournamentTeamInvitation.findUnique).mockResolvedValueOnce({
+        ...mockInvitation,
+        status: 'accepted',
+      } as unknown);
+
+      await expect(acceptTeamInvitation('abc123', 'user-1')).rejects.toThrow('already been processed');
+    });
+
+    it('marks invitation as expired and throws when past expiresAt', async () => {
+      vi.mocked(prisma.tournamentTeamInvitation.findUnique).mockResolvedValueOnce({
+        ...mockInvitation,
+        expiresAt: new Date(Date.now() - 1000),
+      } as unknown);
+      vi.mocked(prisma.tournamentTeamInvitation.update).mockResolvedValueOnce({} as unknown);
+
+      await expect(acceptTeamInvitation('abc123', 'user-1')).rejects.toThrow('expired');
+
+      expect(prisma.tournamentTeamInvitation.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: 'expired' } })
+      );
+    });
+
+    it('throws when user email does not match invitation email', async () => {
+      vi.mocked(prisma.tournamentTeamInvitation.findUnique).mockResolvedValueOnce(mockInvitation as unknown);
+      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
+        id: 'user-1',
+        email: 'different@example.com',
+        name: 'User One',
+      } as unknown);
+
+      await expect(acceptTeamInvitation('abc123', 'user-1')).rejects.toThrow('different email address');
+    });
+
+    it('marks as accepted and throws when user is already on the team', async () => {
+      vi.mocked(prisma.tournamentTeamInvitation.findUnique).mockResolvedValueOnce(mockInvitation as unknown);
+      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
+        id: 'user-1',
+        email: 'player@example.com',
+        name: 'Player',
+      } as unknown);
+      vi.mocked(prisma.tournamentPlayer.findFirst).mockResolvedValueOnce({ id: 'p-1' } as unknown);
+      vi.mocked(prisma.tournamentTeamInvitation.update).mockResolvedValueOnce({} as unknown);
+
+      await expect(acceptTeamInvitation('abc123', 'user-1')).rejects.toThrow('already a member');
+
+      expect(prisma.tournamentTeamInvitation.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: 'accepted', inviteeUserId: 'user-1' } })
+      );
+    });
+
+    it('creates player and marks invitation accepted on success', async () => {
+      vi.mocked(prisma.tournamentTeamInvitation.findUnique).mockResolvedValueOnce(mockInvitation as unknown);
+      vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
+        id: 'user-1',
+        email: 'player@example.com',
+        name: 'Player',
+      } as unknown);
+      vi.mocked(prisma.tournamentPlayer.findFirst).mockResolvedValueOnce(null);
+      vi.mocked(prisma.tournamentPlayer.create).mockResolvedValueOnce({ id: 'p-new' } as unknown);
+      vi.mocked(prisma.tournamentTeamInvitation.update).mockResolvedValueOnce({} as unknown);
+
+      const result = await acceptTeamInvitation('abc123', 'user-1');
+
+      expect(prisma.tournamentPlayer.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ teamId: 'team-1', userId: 'user-1' }),
+        })
+      );
+      expect(prisma.tournamentTeamInvitation.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: 'accepted', inviteeUserId: 'user-1' } })
+      );
+      expect(result).toBe(mockInvitation);
+    });
+  });
+
+  // ─── expireOldInvitations ─────────────────────────────────────────────────
+
+  describe('expireOldInvitations', () => {
+    it('marks all expired pending invitations as expired', async () => {
+      vi.mocked(prisma.tournamentTeamInvitation.updateMany).mockResolvedValueOnce({ count: 3 } as unknown);
+
+      const result = await expireOldInvitations();
+
+      expect(prisma.tournamentTeamInvitation.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ status: 'pending' }),
+          data: { status: 'expired' },
+        })
+      );
+      expect(result).toEqual({ count: 3 });
+    });
+
+    it('returns count 0 when no invitations to expire', async () => {
+      vi.mocked(prisma.tournamentTeamInvitation.updateMany).mockResolvedValueOnce({ count: 0 } as unknown);
+
+      const result = await expireOldInvitations();
+
+      expect(result).toEqual({ count: 0 });
     });
   });
 });

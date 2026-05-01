@@ -424,10 +424,6 @@ export const revertStandings = async (
       },
     }),
   ]);
-
-  // Suppress unused variable warnings from where clauses
-  void homeWhere;
-  void awayWhere;
 };
 
 /**
