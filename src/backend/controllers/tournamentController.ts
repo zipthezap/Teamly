@@ -1950,6 +1950,10 @@ export const createPool = async (req: Request, res: Response) => {
     throw new BadRequestError('Pool name and max teams are required');
   }
 
+  if (typeof name === 'string' && !name.trim()) {
+    throw new BadRequestError('Pool name cannot be empty or whitespace-only');
+  }
+
   const sanitizedName = sanitizeString(name).trim();
   if (!sanitizedName) {
     throw new BadRequestError('Pool name cannot be empty or whitespace-only');
@@ -2036,6 +2040,9 @@ export const updatePool = async (req: Request, res: Response) => {
 
   const updateData: Record<string, unknown> = {};
   if (name !== undefined) {
+    if (typeof name === 'string' && !name.trim()) {
+      throw new BadRequestError('Pool name cannot be empty or whitespace-only');
+    }
     const sanitizedName = sanitizeString(name).trim();
     if (!sanitizedName) {
       throw new BadRequestError('Pool name cannot be empty or whitespace-only');
