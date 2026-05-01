@@ -27,7 +27,7 @@ import {
   VolleyballConfig
 } from '../../shared/types/tournament.types';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../utils/errors';
-import { isRequired, parseCoordinates, sanitizeString } from '../utils/validation';
+import { isRequired, parseCoordinates, sanitizeString, isValidEmail } from '../utils/validation';
 import { ensureResourceExists } from '../utils/controllerHelpers';
 import { isPrismaNotFoundError, isPrismaUniqueError } from '../utils/typeGuards';
 
@@ -263,8 +263,7 @@ export const createTournament = async (req: Request, res: Response) => {
 
   // Validate optional contact email format
   if (contactEmail) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(contactEmail)) {
+    if (!isValidEmail(contactEmail)) {
       throw new BadRequestError('Invalid contact email format');
     }
   }
@@ -642,8 +641,7 @@ export const updateTournament = async (req: Request, res: Response) => {
   }
   if (contactEmail !== undefined) {
     if (contactEmail) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(contactEmail)) {
+      if (!isValidEmail(contactEmail)) {
         throw new BadRequestError('Invalid contact email format');
       }
     }
@@ -1441,7 +1439,7 @@ export const updateMatch = async (req: Request, res: Response) => {
   // Allowing arbitrary status changes here would leave standings in an inconsistent state.
   if (status !== undefined) {
     throw new BadRequestError(
-      'Match status cannot be changed directly. Use the score submission endpoint to complete matches and update standings'
+      'Match status cannot be changed directly. Use the score submission endpoint to complete matches or the admin score override to correct scores'
     );
   }
 
@@ -2650,8 +2648,7 @@ export const sendTeamInvitation = async (req: Request, res: Response) => {
   }
 
   // Validate email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(inviteeEmail)) {
+  if (!isValidEmail(inviteeEmail)) {
     throw new BadRequestError('Invalid email format');
   }
 

@@ -30,7 +30,9 @@ export function isRequired(value: unknown, fieldName: string): void {
  * for more comprehensive RFC 5322 compliance and edge case handling.
  */
 export function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // Bounded quantifiers prevent catastrophic backtracking (ReDoS).
+  // local@domain constraints: local ≤ 64 chars, domain ≤ 253 chars, TLD ≥ 2 chars.
+  const emailRegex = /^[^\s@]{1,64}@[^\s@]{1,253}\.[^\s@]{2,63}$/;
   return emailRegex.test(email);
 }
 
