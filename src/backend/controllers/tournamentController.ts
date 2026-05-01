@@ -38,11 +38,17 @@ import { isPrismaNotFoundError, isPrismaUniqueError } from '../utils/typeGuards'
 const INVITATION_EXPIRY_DAYS = 7;
 const MAX_PAGE_SIZE = 100;
 const DEFAULT_PAGE_SIZE = 50;
+const MAX_LOCATION_FIELD_LENGTH = 100;
 const MAX_NAME_LENGTH = 100;
 const MAX_DESCRIPTION_LENGTH = 2000;
 const MAX_POOL_NAME_LENGTH = 100;
 const MAX_PLAYER_NAME_LENGTH = 100;
 const MAX_TEAMS_UPPER_BOUND = 1000;
+
+// In-memory TTL cache for syncTournamentAutoStatus on list reads (avoids syncing
+// the same tournament on every paginated list call).
+const lastSyncedAt = new Map<string, Date>();
+const SYNC_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 const sendTournamentCompletionNotifications = async (
   tournamentId: string,
@@ -99,6 +105,16 @@ const syncTournamentAutoStatus = async <T extends {
   registrationStartDate?: Date | null;
   registrationDeadline?: Date | null;
 }>(tournament: T, trigger: string = 'read_sync'): Promise<T> => {
+  // For list reads, skip the sync if the tournament was synced within the TTL window.
+  // Detail reads always sync to maintain per-request accuracy.
+  // Disabled in test mode so tests can assert on sync behavior deterministically.
+  if (process.env.NODE_ENV !== 'test' && trigger.endsWith('list_read')) {
+    const lastSync = lastSyncedAt.get(tournament.id);
+    if (lastSync && Date.now() - lastSync.getTime() < SYNC_CACHE_TTL_MS) {
+      return tournament;
+    }
+  }
+
   const [matchCount, incompleteMatchCount] = await Promise.all([
     prisma.tournamentMatch.count({ where: { tournamentId: tournament.id } }),
     prisma.tournamentMatch.count({
@@ -118,6 +134,8 @@ const syncTournamentAutoStatus = async <T extends {
     hasIncompleteMatches: incompleteMatchCount > 0,
   });
   if (!nextStatus || nextStatus === tournament.status) {
+    // Update cache even when no status change needed so we skip this check next time
+    lastSyncedAt.set(tournament.id, new Date());
     return tournament;
   }
 
@@ -138,6 +156,8 @@ const syncTournamentAutoStatus = async <T extends {
     recordTournamentLifecycleTransitionFailure(tournament.status, nextStatus, trigger);
     throw error;
   }
+
+  lastSyncedAt.set(tournament.id, new Date());
 
   logger.info('Tournament lifecycle status auto-updated', 'TournamentController', {
     tournamentId: tournament.id,
@@ -270,6 +290,30 @@ export const createTournament = async (req: Request, res: Response) => {
     }
   }
 
+  // Validate isPublic type
+  if (isPublic !== undefined && typeof isPublic !== 'boolean') {
+    throw new BadRequestError('isPublic must be a boolean');
+  }
+
+  // Validate city and country lengths
+  if (city !== undefined && city !== null && typeof city === 'string' && city.length > MAX_LOCATION_FIELD_LENGTH) {
+    throw new BadRequestError(`City must be at most ${MAX_LOCATION_FIELD_LENGTH} characters`);
+  }
+  if (country !== undefined && country !== null && typeof country === 'string' && country.length > MAX_LOCATION_FIELD_LENGTH) {
+    throw new BadRequestError(`Country must be at most ${MAX_LOCATION_FIELD_LENGTH} characters`);
+  }
+
+  // Validate sportConfig structure when provided
+  if (sportConfig !== undefined && sportConfig !== null) {
+    if (typeof sportConfig !== 'object' || Array.isArray(sportConfig)) {
+      throw new BadRequestError('sportConfig must be an object');
+    }
+    const allowedTypes = ['default', 'volleyball'];
+    if (sportConfig.type !== undefined && !allowedTypes.includes(sportConfig.type)) {
+      throw new BadRequestError(`sportConfig.type must be one of: ${allowedTypes.join(', ')}`);
+    }
+  }
+
   // Validate coordinates if provided
   if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
     parseCoordinates(latitude, longitude);
@@ -313,8 +357,8 @@ export const createTournament = async (req: Request, res: Response) => {
       latitude: coordinates?.lat ?? undefined,
       longitude: coordinates?.lon ?? undefined,
       locationName: sanitized.locationName || undefined,
-      city,
-      country,
+      city: city ? sanitizeString(city) : undefined,
+      country: country ? sanitizeString(country) : undefined,
       organizerId: userId,
       groupId: groupId || undefined,
       // Admin controls
@@ -357,12 +401,22 @@ export const createTournament = async (req: Request, res: Response) => {
  */
 export const getTournaments = async (req: Request, res: Response) => {
   const { groupId, status, sportType, search, page, limit } = req.query;
+  const userId = req.user!.id;
 
   const parsedPage = Math.max(1, parseInt(page as string, 10) || 1);
   const parsedLimit = Math.min(Math.max(1, parseInt(limit as string, 10) || DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
   const skip = (parsedPage - 1) * parsedLimit;
 
-  const where: Record<string, unknown> = {};
+  const where: Record<string, unknown> = {
+    // Authenticated users see public tournaments and any private ones they are associated with
+    OR: [
+      { isPublic: true },
+      { organizerId: userId },
+      { teams: { some: { captainUserId: userId } } },
+      { teams: { some: { players: { some: { userId } } } } },
+      { adminRoles: { some: { userId } } },
+    ],
+  };
 
   if (groupId) {
     where.groupId = groupId as string;
@@ -465,7 +519,6 @@ export const getTournament = async (req: Request, res: Response) => {
         },
         orderBy: [
           { points: 'desc' },
-          { goalsFor: 'desc' }
         ]
       },
       categories: {
@@ -511,7 +564,17 @@ export const getTournament = async (req: Request, res: Response) => {
 
   const syncedTournament = await syncTournamentAutoStatus(tournament!, 'detail_read');
 
-  res.json(syncedTournament);
+  // Apply goal-difference tiebreaker (GD = goalsFor - goalsAgainst) in memory,
+  // consistent with getStandings. Prisma nested orderBy cannot express computed columns.
+  const sortedStandings = [...(syncedTournament.standings ?? [])].sort((a: any, b: any) => {
+    if (b.points !== a.points) return b.points - a.points;
+    const gdA = a.goalsFor - a.goalsAgainst;
+    const gdB = b.goalsFor - b.goalsAgainst;
+    if (gdB !== gdA) return gdB - gdA;
+    return b.goalsFor - a.goalsFor;
+  });
+
+  res.json({ ...syncedTournament, standings: sortedStandings });
 };
 
 /**
@@ -605,8 +668,18 @@ export const updateTournament = async (req: Request, res: Response) => {
     updateData.locationName = sanitized.locationName || null;
   }
 
-  if (city !== undefined) updateData.city = city;
-  if (country !== undefined) updateData.country = country;
+  if (city !== undefined) {
+    if (city !== null && typeof city === 'string' && city.length > MAX_LOCATION_FIELD_LENGTH) {
+      throw new BadRequestError(`City must be at most ${MAX_LOCATION_FIELD_LENGTH} characters`);
+    }
+    updateData.city = city ? sanitizeString(city) : null;
+  }
+  if (country !== undefined) {
+    if (country !== null && typeof country === 'string' && country.length > MAX_LOCATION_FIELD_LENGTH) {
+      throw new BadRequestError(`Country must be at most ${MAX_LOCATION_FIELD_LENGTH} characters`);
+    }
+    updateData.country = country ? sanitizeString(country) : null;
+  }
   
   if (latitude !== undefined && longitude !== undefined) {
     const coords = parseCoordinates(latitude, longitude);
@@ -622,6 +695,9 @@ export const updateTournament = async (req: Request, res: Response) => {
     updateData.registrationStartDate = registrationStartDate ? new Date(registrationStartDate) : null;
   }
   if (isPublic !== undefined) {
+    if (typeof isPublic !== 'boolean') {
+      throw new BadRequestError('isPublic must be a boolean');
+    }
     updateData.isPublic = isPublic;
   }
   if (allowLateRegistration !== undefined) {
@@ -650,6 +726,15 @@ export const updateTournament = async (req: Request, res: Response) => {
     updateData.contactEmail = contactEmail || null;
   }
   if (sportConfig !== undefined) {
+    if (sportConfig !== null) {
+      if (typeof sportConfig !== 'object' || Array.isArray(sportConfig)) {
+        throw new BadRequestError('sportConfig must be an object');
+      }
+      const allowedTypes = ['default', 'volleyball'];
+      if (sportConfig.type !== undefined && !allowedTypes.includes(sportConfig.type)) {
+        throw new BadRequestError(`sportConfig.type must be one of: ${allowedTypes.join(', ')}`);
+      }
+    }
     updateData.sportConfig = sportConfig || null;
   }
 
@@ -724,6 +809,46 @@ export const deleteTournament = async (req: Request, res: Response) => {
   });
 
   res.json({ message: 'Tournament deleted successfully' });
+};
+
+/**
+ * Cancel a tournament (organizer only)
+ */
+export const cancelTournament = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+
+  if (!tournamentService.isOrganizer(tournament, userId)) {
+    throw new ForbiddenError('Only the organizer can cancel the tournament');
+  }
+
+  if (tournament.status === TournamentStatus.CANCELLED) {
+    throw new BadRequestError('Tournament is already cancelled');
+  }
+
+  if (tournament.status === TournamentStatus.COMPLETED) {
+    throw new BadRequestError('Completed tournaments cannot be cancelled');
+  }
+
+  const updated = await prisma.tournament.update({
+    where: { id },
+    data: { status: TournamentStatus.CANCELLED },
+    include: {
+      organizer: { select: { id: true, name: true, email: true } },
+      group: { select: { id: true, name: true } },
+    },
+  });
+
+  // Invalidate TTL cache so subsequent reads reflect the cancellation immediately
+  lastSyncedAt.delete(id);
+
+  logger.info('Tournament cancelled', 'TournamentController', { tournamentId: id, userId });
+  res.json(updated);
 };
 
 // ==================== TEAM MANAGEMENT ====================
@@ -1084,6 +1209,8 @@ export const submitScore = async (req: Request, res: Response) => {
           awayScore,
           detailedScore: detailedScore || undefined,
           status: MatchStatus.COMPLETED,
+          // Populate startedAt if not already set (backfill for matches that skipped the in-progress state)
+          startedAt: match.startedAt ?? new Date(),
           completedAt: new Date(),
         },
       });
@@ -1239,16 +1366,26 @@ export const getStandings = async (req: Request, res: Response) => {
     where.groupName = groupName as string;
   }
 
-  const standings = await prisma.tournamentStanding.findMany({
+  const rawStandings = await prisma.tournamentStanding.findMany({
     where,
     include: {
       team: true
     },
+    // Fetch with primary DB ordering; goal-difference tiebreaker is applied in memory
+    // because Prisma does not support computed column expressions in orderBy.
     orderBy: [
       { points: 'desc' },
-      { goalsFor: 'desc' },
-      { goalsAgainst: 'asc' }
     ]
+  });
+
+  // Sort by: points DESC, goal difference (goalsFor - goalsAgainst) DESC, goalsFor DESC
+  // Use a copy to avoid mutating the array returned by Prisma.
+  const standings = [...rawStandings].sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    const gdA = a.goalsFor - a.goalsAgainst;
+    const gdB = b.goalsFor - b.goalsAgainst;
+    if (gdB !== gdA) return gdB - gdA;
+    return b.goalsFor - a.goalsFor;
   });
 
   res.json(standings);
@@ -1501,13 +1638,12 @@ export const deleteMatch = async (req: Request, res: Response) => {
     throw new BadRequestError('Matches cannot be deleted for cancelled or completed tournaments');
   }
 
-  // Don't allow deleting completed matches with scores
-  if (match.status === MatchStatus.COMPLETED && (match.homeScore !== null || match.awayScore !== null)) {
-    throw new BadRequestError('Cannot delete completed matches with scores. Please remove scores first.');
-  }
-
-  await prisma.tournamentMatch.delete({
-    where: { id: matchId }
+  // If the match has scores, revert standings first then delete atomically
+  await prisma.$transaction(async (tx) => {
+    if (match.status === MatchStatus.COMPLETED && match.homeScore !== null && match.awayScore !== null) {
+      await tournamentService.revertStandings(matchId, tx);
+    }
+    await tx.tournamentMatch.delete({ where: { id: matchId } });
   });
 
   logger.info('Match deleted', 'TournamentController', {
@@ -2210,14 +2346,6 @@ export const registerTeamToPool = async (req: Request, res: Response) => {
     'Team'
   );
 
-  // Check permissions - must be organizer/admin or team captain
-  const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
-  const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
-
-  if (!isOrgOrAdmin && !isCaptain) {
-    throw new ForbiddenError('Only the organizer, admin, or team captain can register teams to pools');
-  }
-
   // Check if team is already registered to a pool
   if (team.poolId) {
     throw new BadRequestError('Team is already registered to a pool');
@@ -2398,19 +2526,11 @@ export const removeTeamFromPool = async (req: Request, res: Response) => {
       where: { id: firstWaitlistEntry.id }
     });
 
-    // Reorder remaining waitlist entries
-    const remainingEntries = await tx.tournamentPoolWaitlist.findMany({
-      where: { poolId, position: { gt: firstWaitlistEntry.position } }
+    // Reorder remaining waitlist entries with a single bulk update
+    await tx.tournamentPoolWaitlist.updateMany({
+      where: { poolId, position: { gt: firstWaitlistEntry.position } },
+      data: { position: { decrement: 1 } }
     });
-
-    await Promise.all(
-      remainingEntries.map(entry =>
-        tx.tournamentPoolWaitlist.update({
-          where: { id: entry.id },
-          data: { position: entry.position - 1 }
-        })
-      )
-    );
 
     return firstWaitlistEntry.team;
   });
@@ -2468,24 +2588,16 @@ export const removeTeamFromWaitlist = async (req: Request, res: Response) => {
     'Team not found in waitlist'
   );
 
-  // Remove from waitlist and reorder remaining entries atomically
+  // Remove from waitlist and reorder remaining entries atomically with a bulk update
   await prisma.$transaction(async (tx) => {
     await tx.tournamentPoolWaitlist.delete({
       where: { id: waitlistEntry.id }
     });
 
-    const remainingEntries = await tx.tournamentPoolWaitlist.findMany({
-      where: { poolId, position: { gt: waitlistEntry.position } }
+    await tx.tournamentPoolWaitlist.updateMany({
+      where: { poolId, position: { gt: waitlistEntry.position } },
+      data: { position: { decrement: 1 } }
     });
-
-    await Promise.all(
-      remainingEntries.map(entry =>
-        tx.tournamentPoolWaitlist.update({
-          where: { id: entry.id },
-          data: { position: entry.position - 1 }
-        })
-      )
-    );
   });
 
   logger.info('Team removed from waitlist', 'TournamentController', {
@@ -2907,7 +3019,7 @@ export const sendTeamInvitation = async (req: Request, res: Response) => {
  */
 export const getTeamInvitations = async (req: Request, res: Response) => {
   const { id, teamId } = req.params;
-  const userId = req.user?.id;
+  const userId = req.user!.id;
 
   await ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
@@ -2921,20 +3033,13 @@ export const getTeamInvitations = async (req: Request, res: Response) => {
     'Team'
   );
 
-  // If the request is authenticated, enforce captain/organizer permissions.
-  if (userId) {
-    const canManage = await tournamentService.canManageTeamInvitations(teamId, id, userId);
-    if (!canManage) {
-      throw new ForbiddenError('Only the organizer or team captain can view invitations');
-    }
-    const invitations = await tournamentService.getTeamInvitations(teamId);
-    return res.json(invitations);
+  // Enforce captain/organizer permissions — invitee emails must never be public
+  const canManage = await tournamentService.canManageTeamInvitations(teamId, id, userId!);
+  if (!canManage) {
+    throw new ForbiddenError('Only the organizer or team captain can view invitations');
   }
-
-  // Unauthenticated requests: return invitations for public display (non-fatal).
-  // Note: this endpoint was explicitly made public; callers expect invitee name/email for UI.
-  const publicInvitations = await tournamentService.getTeamInvitations(teamId);
-  res.json(publicInvitations);
+  const invitations = await tournamentService.getTeamInvitations(teamId);
+  res.json(invitations);
 };
 
 /**
@@ -2958,10 +3063,11 @@ export const getUserInvitations = async (req: Request, res: Response) => {
 };
 
 /**
- * Get invitation details by token (public)
+ * Get invitation details by token (authenticated — invitee or team captain/organizer only)
  */
 export const getInvitationByToken = async (req: Request, res: Response) => {
   const { inviteToken } = req.params;
+  const userId = req.user!.id;
 
   const invitation = await prisma.tournamentTeamInvitation.findUnique({
     where: { inviteToken },
@@ -2974,6 +3080,19 @@ export const getInvitationByToken = async (req: Request, res: Response) => {
 
   if (!invitation) {
     return res.status(404).json({ error: 'Invitation not found' });
+  }
+
+  // Verify caller is the invitee or has team-management rights
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+  const isInvitee = user?.email === invitation.inviteeEmail;
+  const canManage = await tournamentService.canManageTeamInvitations(
+    invitation.teamId,
+    invitation.team.tournamentId,
+    userId
+  );
+
+  if (!isInvitee && !canManage) {
+    throw new ForbiddenError('You do not have permission to view this invitation');
   }
 
   res.json(invitation);
@@ -3495,7 +3614,7 @@ export const removeAdmin = async (req: Request, res: Response) => {
 export const selfRegisterTeam = async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = req.user!.id;
-  const { name, poolId } = req.body;
+  const { name, poolId, categoryId } = req.body;
 
   isRequired(name, 'Team name');
   if (typeof name === 'string' && name.trim().length > MAX_NAME_LENGTH) {
@@ -3664,7 +3783,7 @@ export const selfUnregisterTeam = async (req: Request, res: Response) => {
   const tournament = await prisma.tournament.findUnique({ where: { id } });
   ensureResourceExists(tournament, 'Tournament');
 
-  if (tournament!.status !== 'draft' && tournament!.status !== 'registration') {
+  if (tournament.status !== TournamentStatus.DRAFT && tournament.status !== TournamentStatus.REGISTRATION) {
     throw new BadRequestError('You can only unregister while tournament registration is open');
   }
 

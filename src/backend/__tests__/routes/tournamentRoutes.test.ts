@@ -44,6 +44,7 @@ vi.mock('../../controllers/tournamentController', () => ({
   getTournament: vi.fn((req: any, res: any) => res.json({ ok: true })),
   updateTournament: vi.fn((req: any, res: any) => res.json({ ok: true })),
   deleteTournament: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  cancelTournament: vi.fn((req: any, res: any) => res.json({ ok: true })),
   addTeam: vi.fn((req: any, res: any) => res.json({ ok: true })),
   updateTeam: vi.fn((req: any, res: any) => res.json({ ok: true })),
   deleteTeam: vi.fn((req: any, res: any) => res.json({ ok: true })),

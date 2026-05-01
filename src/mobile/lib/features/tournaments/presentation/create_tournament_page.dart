@@ -188,7 +188,6 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
               dropdownColor: AppThemeTokens.cardElevated(context),
               items: const [
                 DropdownMenuItem(value: 'single_elimination', child: Text('Single Elimination')),
-                DropdownMenuItem(value: 'double_elimination', child: Text('Double Elimination')),
                 DropdownMenuItem(value: 'round_robin', child: Text('Round Robin')),
                 DropdownMenuItem(value: 'groups_knockout', child: Text('Groups + Knockout')),
               ],

@@ -3,6 +3,7 @@ import { cleanupOldEmails } from './emailQueueService';
 import { logger } from '../utils/logger';
 import prisma from '../config/database';
 import { sendEmailWithQueue } from './emailQueueService';
+import { expireOldInvitations } from './tournamentService';
 
 /**
  * Scheduled Jobs Service
@@ -27,6 +28,9 @@ export const runCleanupTasks = async (): Promise<void> => {
 
     // Mark expired group invitations and join requests
     await expireInvitesAndJoinRequests();
+
+    // Expire tournament team invitations past their expiry date
+    await expireTournamentInvitations();
 
     logger.info('Completed scheduled cleanup tasks', 'ScheduledJobs');
   } catch (error) {
@@ -81,6 +85,20 @@ const expireInvitesAndJoinRequests = async (): Promise<void> => {
     });
   } catch (error) {
     logger.error('Error expiring invites/join requests', 'ScheduledJobs', { error });
+  }
+};
+
+/**
+ * Expire tournament team invitations that are past their expiresAt date
+ */
+const expireTournamentInvitations = async (): Promise<void> => {
+  try {
+    const result = await expireOldInvitations();
+    if (result.count > 0) {
+      logger.info(`Expired ${result.count} tournament team invitations`, 'ScheduledJobs');
+    }
+  } catch (error) {
+    logger.error('Error expiring tournament team invitations', 'ScheduledJobs', { error });
   }
 };
 
