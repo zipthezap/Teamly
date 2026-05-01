@@ -27,6 +27,7 @@ import teamUpRoutes from './routes/teamUpRoutes';
 import reminderRoutes from './routes/reminderRoutes';
 import tournamentRoutes from './routes/tournamentRoutes';
 import leagueRoutes from './routes/leagueRoutes';
+import adminRoutes from './routes/adminRoutes';
 import { distributedApiLimiter } from './middleware/distributedRateLimiter';
 import { requestTimeout } from './middleware/requestTimeout';
 import { logger } from './utils/logger';
@@ -277,6 +278,7 @@ app.use('/api/teamup', teamUpRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/tournaments', tournamentRoutes);
 app.use('/api/leagues', leagueRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Metrics endpoint for Prometheus
 // In production, restrict access via network rules or add IP whitelist

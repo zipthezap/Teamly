@@ -293,10 +293,24 @@ export const isOrganizerOrAdmin = async (tournament: { id: string; organizerId: 
 export const isTeamCaptain = async (teamId: string, userId: string): Promise<boolean> => {
   const team = await prisma.tournamentTeam.findUnique({
     where: { id: teamId },
-    select: { captainUserId: true }
+    select: { captainUserId: true, captainEmail: true }
   });
-  
-  return team?.captainUserId === userId;
+
+  if (!team) return false;
+
+  // If a captain user id is set, compare directly
+  if (team.captainUserId) {
+    return team.captainUserId === userId;
+  }
+
+  // If no captainUserId is set, fall back to matching the user's email
+  // against the stored captainEmail (covers seeded teams or invited captains)
+  if (team.captainEmail) {
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    return !!user && user.email === team.captainEmail;
+  }
+
+  return false;
 };
 
 /**
@@ -888,6 +902,28 @@ export const createTeamInvitation = async (
       }
     }
   });
+
+  // Create an InviteLog so we have an audit trail and can surface/resend invites
+  try {
+    await prisma.inviteLog.create({
+      data: {
+        inviterType: 'tournament',
+        entityId: invitation.team.tournamentId,
+        inviterId,
+        inviteeEmail,
+        inviteeId: existingUser?.id ?? undefined,
+        status: 'sent',
+        message,
+        metadata: {
+          teamId
+        }
+      }
+    });
+  } catch (err) {
+    // Non-fatal: log and continue
+    // eslint-disable-next-line no-console
+    console.error('Failed to create InviteLog for tournament invitation', err);
+  }
   
   return invitation;
 };
@@ -897,7 +933,7 @@ export const createTeamInvitation = async (
  */
 export const getTeamInvitations = async (teamId: string) => {
   return await prisma.tournamentTeamInvitation.findMany({
-    where: { teamId },
+    where: { teamId, status: 'pending' },
     include: {
       inviter: {
         select: { id: true, name: true, email: true }
@@ -978,8 +1014,10 @@ export const acceptTeamInvitation = async (inviteToken: string, userId: string) 
   }
   
   // Guard against duplicate player (e.g. manually added after invitation was sent)
+  // Prevent joining if user is already a player in this tournament
   const existingPlayer = await prisma.tournamentPlayer.findFirst({
-    where: { teamId: invitation.teamId, userId }
+    where: { userId: userId, team: { tournamentId: invitation.team.tournamentId } },
+    select: { id: true }
   });
   if (existingPlayer) {
     // Mark as accepted anyway so the invitation is not left in a pending state
@@ -987,7 +1025,7 @@ export const acceptTeamInvitation = async (inviteToken: string, userId: string) 
       where: { id: invitation.id },
       data: { status: 'accepted', inviteeUserId: userId }
     });
-    throw new BadRequestError('You are already a member of this team');
+    throw new BadRequestError('You are already a participant in this tournament');
   }
 
   // Add user as a player to the team
@@ -1001,15 +1039,20 @@ export const acceptTeamInvitation = async (inviteToken: string, userId: string) 
   });
   
   // Mark invitation as accepted
-  await prisma.tournamentTeamInvitation.update({
+  const updated = await prisma.tournamentTeamInvitation.update({
     where: { id: invitation.id },
     data: {
       status: 'accepted',
       inviteeUserId: userId
+    },
+    include: {
+      team: { include: { tournament: true } },
+      inviter: { select: { id: true, name: true, email: true } },
+      inviteeUser: { select: { id: true, name: true, email: true } }
     }
   });
-  
-  return invitation;
+
+  return updated;
 };
 
 /**

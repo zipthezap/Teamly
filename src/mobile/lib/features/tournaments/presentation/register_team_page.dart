@@ -127,7 +127,7 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
                           decoration: InputDecoration(
                             labelText: 'Category (optional)',
                             prefixIcon: const Icon(Icons.category_outlined),
-                            helperText: _selectedPoolId != null ? 'Clear pool selection to pick a category' : null,
+                            helperText: 'Choose a category to filter available pools',
                           ),
                           dropdownColor: AppThemeTokens.cardElevated(context),
                           items: [
@@ -135,9 +135,19 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
                             for (final cat in _categories)
                               DropdownMenuItem(value: cat.id, child: Text(cat.name)),
                           ],
-                          onChanged: _selectedPoolId != null
-                              ? null
-                              : (v) => setState(() { _selectedCategoryId = v; }),
+                          onChanged: (v) {
+                            setState(() {
+                              _selectedCategoryId = v;
+                              // If a pool is selected but no longer belongs to the chosen
+                              // category, clear the pool selection.
+                              if (_selectedPoolId != null) {
+                                final selectedPool = _pools.firstWhere((p) => p.id == _selectedPoolId, orElse: () => null as dynamic);
+                                if (selectedPool == null || selectedPool.categoryId != _selectedCategoryId) {
+                                  _selectedPoolId = null;
+                                }
+                              }
+                            });
+                          },
                         ),
                       ],
                       if (_pools.isNotEmpty) ...[
@@ -147,17 +157,15 @@ class _RegisterTeamPageState extends ConsumerState<RegisterTeamPage> {
                           decoration: InputDecoration(
                             labelText: 'Pool (optional)',
                             prefixIcon: const Icon(Icons.layers_outlined),
-                            helperText: _selectedCategoryId != null ? 'Clear category selection to pick a pool' : null,
+                            helperText: _selectedCategoryId != null ? 'Showing pools for selected category' : null,
                           ),
                           dropdownColor: AppThemeTokens.cardElevated(context),
                           items: [
                             const DropdownMenuItem(value: null, child: Text('No pool')),
-                            for (final pool in _pools)
+                            for (final pool in (_selectedCategoryId == null ? _pools : _pools.where((p) => p.categoryId == _selectedCategoryId)))
                               DropdownMenuItem(value: pool.id, child: Text('${pool.name} (${pool.teams.length}/${pool.maxTeams}${pool.isFull ? " – FULL" : ""})'))
                           ],
-                          onChanged: _selectedCategoryId != null
-                              ? null
-                              : (v) => setState(() => _selectedPoolId = v),
+                          onChanged: (v) => setState(() => _selectedPoolId = v),
                         ),
                       ],
                       const SizedBox(height: 24),

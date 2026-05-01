@@ -14,17 +14,19 @@ import { Request, Response } from 'express';
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import * as tournamentService from '../services/tournamentService';
+import { NotificationFactory } from '../services/notificationFactory';
 import {
   recordTournamentLifecycleTransition,
   recordTournamentLifecycleTransitionFailure,
 } from '../services/metricsService';
-import { 
+import {
   TournamentFormat, 
   TournamentStatus, 
   MatchStatus,
   BracketStage,
   SportScoringConfig,
-  VolleyballConfig
+  VolleyballConfig,
+  TournamentNotificationType,
 } from '../../shared/types/tournament.types';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../utils/errors';
 import { isRequired, parseCoordinates, sanitizeString, isValidEmail } from '../utils/validation';
@@ -1708,9 +1710,9 @@ export const addPlayer = async (req: Request, res: Response) => {
  */
 export const getPlayers = async (req: Request, res: Response) => {
   const { id, teamId } = req.params;
-
   const team = await prisma.tournamentTeam.findFirst({
-    where: { id: teamId, tournamentId: id }
+    where: { id: teamId, tournamentId: id },
+    include: { captainUser: { select: { id: true, name: true, email: true } } }
   });
 
   ensureResourceExists(team, 'Team');
@@ -1724,6 +1726,22 @@ export const getPlayers = async (req: Request, res: Response) => {
     },
     orderBy: { createdAt: 'asc' }
   });
+
+  // Ensure the team captain appears in the members list. When teams are created via
+  // self-registration the captain may not have a tournamentPlayer entry, so prepend
+  // a synthetic player object for display if needed.
+  if (team.captainUser && !players.some((p) => (p.user as any)?.id === team.captainUser!.id)) {
+    const captain = team.captainUser;
+    const synthetic = {
+      id: `captain:${captain.id}`,
+      teamId: team.id,
+      playerName: captain.name ?? null,
+      createdAt: team.createdAt,
+      user: { id: captain.id, name: captain.name, email: captain.email }
+    };
+    // Prepend captain so they show first in the roster
+    return res.json([synthetic, ...players]);
+  }
 
   res.json(players);
 };
@@ -1835,14 +1853,46 @@ export const removePlayer = async (req: Request, res: Response) => {
   // Check permissions
   const isOrg = tournamentService.isOrganizer(tournament, userId);
   const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
+  // Allow removal when:
+  // - requester is organizer/admin
+  // - requester is team captain
+  // - requester is the player themselves (self-leave)
+  const isSelf = !!player.userId && player.userId === userId;
 
-  if (!isOrg && !isCaptain) {
-    throw new ForbiddenError('Only the organizer or team captain can remove players');
+  if (!isOrg && !isCaptain && !isSelf) {
+    throw new ForbiddenError('Only the organizer, team captain, or the player themselves can remove this player');
   }
 
-  await prisma.tournamentPlayer.delete({
-    where: { id: playerId }
+  // If the player being removed is the team captain, enforce delegation when there are other members.
+  const teamWithCount = await prisma.tournamentTeam.findFirst({
+    where: { id: teamId, tournamentId: id },
+    select: { id: true, captainUserId: true, _count: { select: { players: true } } }
   });
+  ensureResourceExists(teamWithCount, 'Team');
+
+  const isRemovingCaptain = !!player.userId && teamWithCount.captainUserId === player.userId;
+
+  if (isRemovingCaptain) {
+    // If captain is sole member (only one player row), removing them should unregister the team.
+    if (teamWithCount._count.players <= 1) {
+      await prisma.tournamentTeam.delete({ where: { id: teamId } });
+
+      logger.info('Captain removed and team unregistered (sole member)', 'TournamentController', {
+        tournamentId: id,
+        teamId,
+        playerId,
+        userId
+      });
+
+      return res.json({ message: 'Team unregistered successfully' });
+    }
+
+    // Otherwise, captain must delegate before leaving
+    throw new BadRequestError('Cannot remove the team captain while the team has other members. Delegate captain role before leaving.');
+  }
+
+  // Normal removal: delete the tournamentPlayer record
+  await prisma.tournamentPlayer.delete({ where: { id: playerId } });
 
   logger.info('Player removed from team', 'TournamentController', {
     tournamentId: id,
@@ -2160,6 +2210,14 @@ export const registerTeamToPool = async (req: Request, res: Response) => {
     'Team'
   );
 
+  // Check permissions - must be organizer/admin or team captain
+  const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
+  const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
+
+  if (!isOrgOrAdmin && !isCaptain) {
+    throw new ForbiddenError('Only the organizer, admin, or team captain can register teams to pools');
+  }
+
   // Check if team is already registered to a pool
   if (team.poolId) {
     throw new BadRequestError('Team is already registered to a pool');
@@ -2284,11 +2342,11 @@ export const removeTeamFromPool = async (req: Request, res: Response) => {
     'Team not found in this pool'
   );
 
-  // Check permissions
-  const isAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
+  // Check permissions (organizer/admin) or team captain
+  const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
   const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
 
-  if (!isAdmin && !isCaptain) {
+  if (!isOrgOrAdmin && !isCaptain) {
     throw new ForbiddenError('Only the organizer, admin, or team captain can remove teams from pools');
   }
 
@@ -2397,11 +2455,11 @@ export const removeTeamFromWaitlist = async (req: Request, res: Response) => {
     'Team'
   );
 
-  // Check permissions
-  const isAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
+  // Check permissions (organizer/admin) or team captain
+  const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
   const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
 
-  if (!isAdmin && !isCaptain) {
+  if (!isOrgOrAdmin && !isCaptain) {
     throw new ForbiddenError('Only the organizer, admin, or team captain can remove teams from waitlist');
   }
 
@@ -2584,6 +2642,74 @@ export const moveTeamToPool = async (req: Request, res: Response) => {
   res.json(result.updatedTeam);
 };
 
+/**
+ * Admin: Move a team from one pool to another within the same tournament
+ */
+export const adminMoveTeamToPool = async (req: Request, res: Response) => {
+  const { id, poolId, teamId, targetPoolId } = req.params;
+  const userId = req.user!.id;
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers or admins can move teams between pools');
+  }
+
+  const team = ensureResourceExists(
+    await prisma.tournamentTeam.findFirst({ where: { id: teamId, tournamentId: id } }),
+    'Team'
+  );
+
+  const targetPool = ensureResourceExists(
+    await prisma.tournamentPool.findFirst({ where: { id: targetPoolId, tournamentId: id }, include: { teams: true } }),
+    'Target pool'
+  );
+
+  if (targetPool.teams.length >= targetPool.maxTeams) {
+    throw new BadRequestError('Target pool is full');
+  }
+
+  // Perform move atomically
+  const updatedTeam = await prisma.$transaction(async (tx) => {
+    // Remove team from source pool ordering if it was registered
+    if (team.poolId) {
+      const source = await tx.tournamentPool.findUnique({ where: { id: team.poolId }, include: { teams: true } });
+      if (source) {
+        const oldOrder = team.registrationOrder ?? null;
+        if (oldOrder !== null) {
+          // decrement registrationOrder for teams after this one
+          const toAdjust = await tx.tournamentTeam.findMany({ where: { poolId: source.id, registrationOrder: { gt: oldOrder } } });
+          await Promise.all(
+            toAdjust.map(t => tx.tournamentTeam.update({ where: { id: t.id }, data: { registrationOrder: (t.registrationOrder || 0) - 1 } }))
+          );
+        }
+      }
+    }
+
+    // Compute new registration order for target pool
+    const registrationOrder = targetPool.teams.length + 1;
+
+    // Update team to new pool
+    const tUpdated = await tx.tournamentTeam.update({
+      where: { id: teamId },
+      data: {
+        poolId: targetPool.id,
+        poolName: targetPool.name,
+        registrationOrder
+      },
+      include: { pool: true }
+    });
+
+    return tUpdated;
+  });
+
+  logger.info('Team moved between pools', 'TournamentController', { tournamentId: id, fromPool: poolId, toPool: targetPoolId, teamId, userId });
+  res.json(updatedTeam);
+};
+
 
 
 // ==================== TEAM INVITATION MANAGEMENT ====================
@@ -2678,18 +2804,19 @@ export const sendTeamInvitation = async (req: Request, res: Response) => {
   }
 
   // Check if user is already a player on this team
+  // Check if the invitee is already a player in any team for this tournament
   const existingPlayer = await prisma.tournamentPlayer.findFirst({
     where: {
-      teamId,
       OR: [
         { playerEmail: inviteeEmail },
         { user: { email: inviteeEmail } }
-      ]
+      ],
+      team: { tournamentId: id }
     }
   });
 
   if (existingPlayer) {
-    throw new BadRequestError('This user is already a player on this team');
+    throw new BadRequestError('This user is already a player in a team for this tournament');
   }
 
   // Check if there's already a pending invitation
@@ -2738,6 +2865,33 @@ export const sendTeamInvitation = async (req: Request, res: Response) => {
     // Continue — the invitation record was created successfully
   }
 
+  // If invitee is a registered user, send an in-app tournament notification (non-fatal)
+  try {
+    const inviteeUser = invitation.inviteeUser || await prisma.user.findUnique({ where: { email: inviteeEmail } });
+    if (inviteeUser) {
+      await NotificationFactory.createTournamentNotifications({
+        tournamentId: id,
+        type: TournamentNotificationType.team_invited,
+        userIds: [inviteeUser.id],
+        params: {
+          teamName: team.name,
+          inviterName: req.user!.name,
+          tournamentName: tournament.name,
+          inviteToken: invitation.inviteToken
+        },
+        metadata: {
+          actionUrl: `${process.env.FRONTEND_URL}/tournaments/${id}/teams/${teamId}/invitations/${invitation.inviteToken}/accept`,
+          actionText: 'View invitation',
+          category: 'tournament'
+        },
+        deduplicateWindow: 1000 * 60 * 5 // avoid duplicates within 5 minutes
+      });
+    }
+  } catch (notifError) {
+    logger.error('Failed to create in-app notification for team invitation', 'TournamentController', { tournamentId: id, teamId, inviteeEmail, error: notifError });
+    // Non-fatal — invitation was created and email attempted
+  }
+
   logger.info('Team invitation sent', 'TournamentController', {
     tournamentId: id,
     teamId,
@@ -2753,7 +2907,7 @@ export const sendTeamInvitation = async (req: Request, res: Response) => {
  */
 export const getTeamInvitations = async (req: Request, res: Response) => {
   const { id, teamId } = req.params;
-  const userId = req.user!.id;
+  const userId = req.user?.id;
 
   await ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
@@ -2767,15 +2921,20 @@ export const getTeamInvitations = async (req: Request, res: Response) => {
     'Team'
   );
 
-  // Check permissions
-  const canManage = await tournamentService.canManageTeamInvitations(teamId, id, userId);
-  if (!canManage) {
-    throw new ForbiddenError('Only the organizer or team captain can view invitations');
+  // If the request is authenticated, enforce captain/organizer permissions.
+  if (userId) {
+    const canManage = await tournamentService.canManageTeamInvitations(teamId, id, userId);
+    if (!canManage) {
+      throw new ForbiddenError('Only the organizer or team captain can view invitations');
+    }
+    const invitations = await tournamentService.getTeamInvitations(teamId);
+    return res.json(invitations);
   }
 
-  const invitations = await tournamentService.getTeamInvitations(teamId);
-
-  res.json(invitations);
+  // Unauthenticated requests: return invitations for public display (non-fatal).
+  // Note: this endpoint was explicitly made public; callers expect invitee name/email for UI.
+  const publicInvitations = await tournamentService.getTeamInvitations(teamId);
+  res.json(publicInvitations);
 };
 
 /**
@@ -2799,6 +2958,28 @@ export const getUserInvitations = async (req: Request, res: Response) => {
 };
 
 /**
+ * Get invitation details by token (public)
+ */
+export const getInvitationByToken = async (req: Request, res: Response) => {
+  const { inviteToken } = req.params;
+
+  const invitation = await prisma.tournamentTeamInvitation.findUnique({
+    where: { inviteToken },
+    include: {
+      team: { include: { tournament: true } },
+      inviter: { select: { id: true, name: true, email: true } },
+      inviteeUser: { select: { id: true, name: true, email: true } }
+    }
+  });
+
+  if (!invitation) {
+    return res.status(404).json({ error: 'Invitation not found' });
+  }
+
+  res.json(invitation);
+};
+
+/**
  * Accept a team invitation
  */
 export const acceptTeamInvitation = async (req: Request, res: Response) => {
@@ -2812,6 +2993,32 @@ export const acceptTeamInvitation = async (req: Request, res: Response) => {
     teamId: invitation.teamId,
     userId
   });
+
+  // Notify the team captain (if present) that a player joined the team
+  try {
+    // `acceptTeamInvitation` now returns the updated invitation including team and inviteeUser
+    const joinedUser = invitation.inviteeUser ?? await prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true } });
+    const teamWithCaptain = invitation.team ? await prisma.tournamentTeam.findUnique({ where: { id: invitation.team.id }, include: { captainUser: { select: { id: true, name: true, email: true } }, tournament: { select: { id: true, name: true } } } }) : null;
+    if (teamWithCaptain && teamWithCaptain.captainUser && joinedUser) {
+      await NotificationFactory.createTournamentNotifications({
+        tournamentId: teamWithCaptain.tournament?.id ?? invitation.team?.tournament?.id ?? invitation.team?.tournamentId ?? '',
+        type: TournamentNotificationType.team_registered,
+        userIds: [teamWithCaptain.captainUser.id],
+        params: {
+          teamName: teamWithCaptain.name,
+          playerName: joinedUser.name,
+          tournamentName: teamWithCaptain.tournament?.name ?? invitation.team?.tournament?.name
+        },
+        metadata: {
+          actionUrl: `${process.env.FRONTEND_URL}/tournaments/${teamWithCaptain.tournament?.id ?? invitation.team?.tournament?.id}/teams/${teamWithCaptain.id}`,
+          actionText: 'View team roster',
+          category: 'tournament'
+        }
+      });
+    }
+  } catch (notifError) {
+    logger.error('Failed to notify captain about accepted invitation', 'TournamentController', { error: notifError, invitationId: invitation.id });
+  }
 
   res.json({
     message: 'Invitation accepted successfully',
@@ -2858,6 +3065,31 @@ export const declineTeamInvitation = async (req: Request, res: Response) => {
     teamId: invitation.teamId,
     userId
   });
+
+  // Notify the team captain that the invitation was declined
+  try {
+    const teamWithCaptain = await prisma.tournamentTeam.findUnique({ where: { id: invitation.teamId }, include: { captainUser: { select: { id: true, name: true, email: true } }, tournament: { select: { id: true, name: true } } } });
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true } });
+    if (teamWithCaptain && teamWithCaptain.captainUser && user) {
+      await NotificationFactory.createTournamentNotifications({
+        tournamentId: teamWithCaptain.tournament?.id ?? '',
+        type: TournamentNotificationType.tournament_updated,
+        userIds: [teamWithCaptain.captainUser.id],
+        params: {
+          teamName: teamWithCaptain.name,
+          playerName: user.name,
+          tournamentName: teamWithCaptain.tournament?.name
+        },
+        metadata: {
+          actionUrl: `${process.env.FRONTEND_URL}/tournaments/${teamWithCaptain.tournament?.id ?? ''}/teams/${teamWithCaptain.id}`,
+          actionText: 'View team roster',
+          category: 'tournament'
+        }
+      });
+    }
+  } catch (notifError) {
+    logger.error('Failed to notify captain about declined invitation', 'TournamentController', { error: notifError, invitationId: invitation.id });
+  }
 
   res.json({ message: 'Invitation declined' });
 };
@@ -3275,14 +3507,42 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
 
   tournamentService.validateRegistrationEligibility(tournament!);
 
-  if (poolId) {
-    const pool = await prisma.tournamentPool.findFirst({
-      where: { id: poolId, tournamentId: id },
-      select: { id: true },
+  if (tournament!.maxTeams) {
+    const teamCount = await prisma.tournamentTeam.count({
+      where: { tournamentId: id },
     });
-    if (!pool) {
+    if (teamCount >= tournament!.maxTeams) {
+      throw new BadRequestError('Tournament has reached maximum number of teams');
+    }
+  }
+
+  // Allow selecting both a category and a specific pool. If both are provided
+  // ensure the selected pool belongs to the selected category.
+
+  let selectedCategory: { id: string; name: string } | null = null;
+  if (categoryId) {
+    selectedCategory = await prisma.tournamentCategory.findFirst({
+      where: { id: categoryId, tournamentId: id },
+      select: { id: true, name: true }
+    });
+    if (!selectedCategory) {
+      throw new NotFoundError('Category not found');
+    }
+  }
+
+  let validatedPool: { id: string; categoryId?: string | null } | null = null;
+  if (poolId) {
+    validatedPool = await prisma.tournamentPool.findFirst({
+      where: { id: poolId, tournamentId: id },
+      select: { id: true, categoryId: true },
+    });
+    if (!validatedPool) {
       throw new NotFoundError('Pool not found');
     }
+  }
+
+  if (selectedCategory && validatedPool && validatedPool.categoryId && validatedPool.categoryId !== selectedCategory.id) {
+    throw new BadRequestError('Selected pool does not belong to selected category');
   }
 
   try {
@@ -3302,6 +3562,15 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
         throw new BadRequestError('You already have a registered team in this tournament');
       }
 
+      // Prevent a user who is already a player in this tournament from self-registering as a captain
+      const existingPlayer = await tx.tournamentPlayer.findFirst({
+        where: { userId: userId, team: { tournamentId: id } },
+        select: { id: true }
+      });
+      if (existingPlayer) {
+        throw new BadRequestError('You are already a participant in this tournament and cannot register another team');
+      }
+
       return tx.tournamentTeam.create({
         data: {
           name: name.trim(),
@@ -3315,6 +3584,20 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
     });
 
     logger.info('Team self-registered', 'TournamentController', { tournamentId: id, teamId: team.id, captainUserId: userId });
+
+    // Persist category info on the team when registering to a category only
+    // (no pool selected). Frontend identifies unpooled category teams via
+    // `poolName` matching the category name, so set that as well as
+    // `categoryId` to ensure the team appears in category listings.
+    let responseTeam = team;
+    if (selectedCategory && !validatedPool) {
+      const updatedTeam: any = await (prisma as any).tournamentTeam.update({
+        where: { id: team.id },
+        data: { categoryId: selectedCategory.id, poolName: selectedCategory.name },
+        include: { captainUser: { select: { id: true, name: true, email: true } } }
+      });
+      responseTeam = updatedTeam;
+    }
 
     // If a poolId was provided, attempt to register the new team to the pool atomically
     if (poolId) {
@@ -3348,10 +3631,20 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
         }
       });
 
-      return res.status(201).json({ team, pool: poolResult.pool, onWaitlist: poolResult.onWaitlist, ...(poolResult.waitlistEntry ? { waitlistEntry: poolResult.waitlistEntry } : {}) });
+      return res.status(201).json({
+        team: responseTeam,
+        pool: poolResult.pool,
+        onWaitlist: poolResult.onWaitlist,
+        ...(poolResult.waitlistEntry ? { waitlistEntry: poolResult.waitlistEntry } : {}),
+        ...(selectedCategory ? { categoryId: selectedCategory.id, categoryName: selectedCategory.name } : {})
+      });
     }
 
-    res.status(201).json({ team, onWaitlist: false });
+    res.status(201).json({
+      team: responseTeam,
+      onWaitlist: false,
+      ...(selectedCategory ? { categoryId: selectedCategory.id, categoryName: selectedCategory.name } : {})
+    });
   } catch (error: unknown) {
     if (isPrismaUniqueError(error)) {
       throw new BadRequestError('A team with this name already exists in the tournament');
@@ -3375,24 +3668,37 @@ export const selfUnregisterTeam = async (req: Request, res: Response) => {
     throw new BadRequestError('You can only unregister while tournament registration is open');
   }
 
-  const existingTeams = await prisma.tournamentTeam.findMany({
-    where: { tournamentId: id, captainUserId: userId },
-    select: { id: true, name: true }
+  // Allow unregister if user is the captain OR the only member of a team
+  const teamsWithUser = await prisma.tournamentTeam.findMany({
+    where: {
+      tournamentId: id,
+      OR: [
+        { players: { some: { userId } } },
+        { captainUserId: userId }
+      ]
+    },
+    select: {
+      id: true,
+      name: true,
+      captainUserId: true,
+      _count: { select: { players: true } }
+    }
   });
 
-  if (existingTeams.length === 0) {
+  // Filter teams the user may unregister: captain OR sole-member
+  const removableTeams = teamsWithUser.filter(t => t.captainUserId === userId || (t._count.players === 1));
+
+  if (removableTeams.length === 0) {
     throw new BadRequestError('You do not have a registered team to unregister');
   }
 
-  const teamIds = existingTeams.map(team => team.id);
-  await prisma.tournamentTeam.deleteMany({
-    where: { id: { in: teamIds } }
-  });
+  const teamIds = removableTeams.map(team => team.id);
+  await prisma.tournamentTeam.deleteMany({ where: { id: { in: teamIds } } });
 
   logger.info('Team self-unregistered', 'TournamentController', {
     tournamentId: id,
     teamIds,
-    removedTeamCount: existingTeams.length,
+    removedTeamCount: removableTeams.length,
     captainUserId: userId,
   });
 
