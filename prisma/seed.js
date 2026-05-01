@@ -732,6 +732,7 @@ async function main() {
   });
   console.log('Seeded 6 event notifications');
 
+
   // Seed newer moderation, invitation, and attendance models.
   await prisma.groupJoinRequest.upsert({
     where: { id: 'seed-group-request-1' },
@@ -1670,6 +1671,7 @@ async function main() {
         captainName: `Captain ${teamNamesPoolA[i]}`,
         captainEmail: `captain.${i}@poolA.com`,
         captainUserId: null,
+        seedNumber: i + 1,
         tournamentId: tournament1.id,
         poolId: pool1A.id,
         poolNumber: 1,
@@ -1695,6 +1697,7 @@ async function main() {
         captainName: `Captain ${teamNamesPoolB[i]}`,
         captainEmail: `captain.${i}@poolB.com`,
         captainUserId: null,
+        seedNumber: i + 1,
         tournamentId: tournament1.id,
         poolId: pool1B.id,
         poolNumber: 2,
@@ -1768,6 +1771,7 @@ async function main() {
         captainName: `Captain ${teamNamesPoolC[i]}`,
         captainEmail: `captain.${i}@poolC.com`,
         captainUserId: null,
+        seedNumber: i + 1,
         tournamentId: tournament1.id,
         poolId: pool1C.id,
         poolNumber: 3,
@@ -1928,6 +1932,7 @@ async function main() {
         captainName: `Captain ${teamNamesPool2A[i]}`,
         captainEmail: `captain.${i}@pool2A.com`,
         captainUserId: null,
+        seedNumber: i + 1,
         tournamentId: tournament2.id,
         poolId: pool2A.id,
         poolNumber: 1,
@@ -1951,6 +1956,7 @@ async function main() {
         captainName: `Captain ${teamNamesPool2B[i]}`,
         captainEmail: `captain.${i}@pool2B.com`,
         captainUserId: null,
+        seedNumber: i + 1,
         tournamentId: tournament2.id,
         poolId: pool2B.id,
         poolNumber: 2,
@@ -2097,6 +2103,7 @@ async function main() {
       captainName: 'Roger Smith',
       captainEmail: 'roger@tennis.com',
       captainUserId: user1.id,
+      seedNumber: 1,
       tournamentId: tournament3.id,
       poolId: pool3A.id,
       poolNumber: 1,
@@ -2114,6 +2121,7 @@ async function main() {
       captainName: 'Venus Williams',
       captainEmail: 'venus@tennis.com',
       captainUserId: user4.id,
+      seedNumber: 1,
       tournamentId: tournament3.id,
       poolId: pool3B.id,
       poolNumber: 2,
@@ -2166,7 +2174,7 @@ async function main() {
       name: 'Junior Hopefuls',
       captainName: 'Junior Captain',
       captainEmail: 'junior@tennis.com',
-      captainUserId: user1.id,
+      captainUserId: null,
       tournamentId: tournament3.id
     }
   });
@@ -2179,7 +2187,7 @@ async function main() {
       name: 'Youth Stars',
       captainName: 'Youth Captain',
       captainEmail: 'youth@tennis.com',
-      captainUserId: user2.id,
+      captainUserId: null,
       tournamentId: tournament3.id
     }
   });
@@ -2192,7 +2200,7 @@ async function main() {
       name: 'Teen Dreams',
       captainName: 'Dream Captain',
       captainEmail: 'dream@tennis.com',
-      captainUserId: user3.id,
+      captainUserId: null,
       tournamentId: tournament3.id
     }
   });
@@ -2796,6 +2804,53 @@ async function main() {
   }
 
   console.log('Created Montreal tournament with teams, matches, and standings');
+
+  // Create tournament notifications (new model) — moved here so tournaments exist
+  console.log('\nSeeding tournament notifications...');
+  await prisma.tournamentNotification.upsert({
+    where: { id: 'seed-tournament-notif-1' },
+    update: {},
+    create: {
+      id: 'seed-tournament-notif-1',
+      tournamentId: tournament1.id,
+      userId: user2.id,
+      type: 'team_registered',
+      params: { tournamentName: tournament1.name, teamName: 'Thunder Strikers' },
+      metadata: { teamId: 'seed-team-1a-0' },
+      read: false,
+      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+    }
+  });
+
+  await prisma.tournamentNotification.upsert({
+    where: { id: 'seed-tournament-notif-2' },
+    update: {},
+    create: {
+      id: 'seed-tournament-notif-2',
+      tournamentId: tournament2.id,
+      userId: user1.id,
+      type: 'tournament_updated',
+      params: { tournamentName: tournament2.name },
+      metadata: { updatedFields: ['registrationDeadline'] },
+      read: false,
+      createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000)
+    }
+  });
+
+  await prisma.tournamentNotification.upsert({
+    where: { id: 'seed-tournament-notif-3' },
+    update: {},
+    create: {
+      id: 'seed-tournament-notif-3',
+      tournamentId: tournament4.id,
+      userId: user3.id,
+      type: 'match_scheduled',
+      params: { tournamentName: tournament4.name, matchId: 'seed-match-4a-1' },
+      metadata: { scheduledAt: new Date() },
+      read: false,
+      createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000)
+    }
+  });
 
   console.log('\n========================================');
   console.log('Seeding completed successfully!');

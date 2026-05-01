@@ -158,6 +158,15 @@ class PushNotificationsController {
     final data = message.data;
     final actionUrl = data['actionUrl']?.toString();
     if (actionUrl != null && actionUrl.startsWith('/')) {
+      // Map known actionUrl patterns to app routes. If the backend provided
+      // a direct invitation accept URL containing an invite token, extract
+      // the token and route to the public tournament invite landing page.
+      // Example backend actionUrl: /tournaments/:id/teams/:teamId/invitations/:token/accept
+      final inviteMatch = RegExp(r"/tournaments/.+/invitations/([^/]+)").firstMatch(actionUrl);
+      if (inviteMatch != null && inviteMatch.groupCount >= 1) {
+        final token = inviteMatch.group(1);
+        if (token != null && token.isNotEmpty) return '/tournaments/invite/$token';
+      }
       return actionUrl;
     }
 

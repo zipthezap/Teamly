@@ -151,14 +151,49 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
       ),
     );
     if (ok != true || !mounted) return;
-    try {
-      await ref.read(tournamentRepositoryProvider).removeTeamFromPool(widget.tournamentId, poolId, team.id);
-      _load();
-    } on Exception catch (e) {
+      try {
+        await ref.read(tournamentRepositoryProvider).removeTeamFromPoolAsAdmin(widget.tournamentId, poolId, team.id);
+        _load();
+      } on Exception catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e)), backgroundColor: Theme.of(context).colorScheme.error));
     }
   }
+
+    Future<void> _moveTeam(String poolId, TournamentTeamModel team) async {
+      final pools = _pools.where((p) => p.id != poolId).toList();
+      if (pools.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No other pools available to move team to')));
+        return;
+      }
+
+      String selectedPoolId = pools.first.id;
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('Move "${team.name}" to...'),
+          content: StatefulBuilder(builder: (ctx, setState) => DropdownButtonFormField<String>(
+            value: selectedPoolId,
+            items: pools.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name))).toList(),
+            onChanged: (v) => setState(() => selectedPoolId = v ?? pools.first.id),
+          )),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Move')),
+          ],
+        ),
+      );
+
+      if (ok != true) return;
+
+      try {
+        await ref.read(tournamentRepositoryProvider).moveTeamToPoolAsAdmin(widget.tournamentId, poolId, team.id, selectedPoolId);
+        _load();
+      } on Exception catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e)), backgroundColor: Theme.of(context).colorScheme.error));
+      }
+    }
 
   @override
   Widget build(BuildContext context) {
@@ -208,10 +243,20 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                         dense: true,
                                         leading: const Icon(Icons.shield_outlined, size: 16),
                                         title: Text(team.name, style: const TextStyle(fontSize: 13)),
-                                        trailing: IconButton(
-                                          icon: const Icon(Icons.person_remove_outlined, size: 16),
-                                          tooltip: 'Remove from pool',
-                                          onPressed: () => _removeTeam(pool.id, team),
+                                        trailing: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.swap_horiz, size: 16),
+                                              tooltip: 'Move to another pool',
+                                              onPressed: () => _moveTeam(pool.id, team),
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.person_remove_outlined, size: 16),
+                                              tooltip: 'Remove from pool',
+                                              onPressed: () => _removeTeam(pool.id, team),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                   ],

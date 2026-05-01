@@ -41,19 +41,32 @@ class _TeamRosterPageState extends ConsumerState<TeamRosterPage> {
     setState(() { _loading = true; _error = null; });
     try {
       final repo = ref.read(tournamentRepositoryProvider);
-      final results = await Future.wait([
-        repo.getPlayers(widget.tournamentId, widget.teamId),
-        repo.getTeamInvitations(widget.tournamentId, widget.teamId),
-        repo.getTournament(widget.tournamentId),
-      ]);
-      final players = results[0] as List<Map<String, dynamic>>;
-      final invitations = results[1] as List<Map<String, dynamic>>;
-      final tournament = results[2] as TournamentModel;
-      final team = tournament.teams.where((t) => t.id == widget.teamId).firstOrNull;
+      // Fetch players (public) and attempt invitations (may be protected).
+      // Invitations request must not break the whole roster view for anonymous users.
+      final players = await repo.getPlayers(widget.tournamentId, widget.teamId) as List<Map<String, dynamic>>;
+      List<Map<String, dynamic>> invitations = [];
+      try {
+        invitations = await repo.getTeamInvitations(widget.tournamentId, widget.teamId) as List<Map<String, dynamic>>;
+      } catch (_e) {
+        // If invitations are protected (403) or fail, ignore and show players only.
+        invitations = [];
+      }
+
+      // Detect synthetic captain entry injected by the backend (id starts with 'captain:')
+      String? captainId;
+      for (final p in players) {
+        final pid = p['id'] as String?;
+        final user = p['user'] as Map<String, dynamic>?;
+        if (pid != null && pid.startsWith('captain:') && user != null) {
+          captainId = user['id'] as String?;
+          break;
+        }
+      }
+
       if (mounted) setState(() {
         _players = players;
         _invitations = invitations;
-        _captainUserId = team?.captainUserId;
+        _captainUserId = captainId;
         _loading = false;
       });
     } on Exception catch (e) {
@@ -64,6 +77,9 @@ class _TeamRosterPageState extends ConsumerState<TeamRosterPage> {
   Future<void> _removePlayer(String playerId) async {
     try {
       await ref.read(tournamentRepositoryProvider).removePlayer(widget.tournamentId, widget.teamId, playerId);
+      // Refresh local roster and invalidate tournament detail so other UI updates
+      ref.invalidate(tournamentDetailProvider(widget.tournamentId));
+      ref.invalidate(tournamentsNotifierProvider);
       _load();
     } on Exception catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
@@ -132,12 +148,84 @@ class _TeamRosterPageState extends ConsumerState<TeamRosterPage> {
                       else
                         for (final p in _players)
                           ListTile(
-                            leading: const CircleAvatar(child: Icon(Icons.person_outline)),
-                            title: Text((p['user'] as Map?)?['name'] as String? ?? p['playerName'] as String? ?? 'Unknown'),
+                            leading: Stack(children: [
+                              const CircleAvatar(child: Icon(Icons.person_outline)),
+                              // Captain badge
+                              if ((p['user'] as Map?)?['id'] != null && (p['user'] as Map?)!['id'] == _captainUserId)
+                                Positioned(
+                                  right: -2,
+                                  bottom: -2,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: BoxDecoration(color: AppThemeTokens.primary500, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1.5)),
+                                    child: const Icon(Icons.star, size: 12, color: Colors.white),
+                                  ),
+                                ),
+                            ]),
+                            title: Row(children: [
+                              Expanded(child: Text((p['user'] as Map?)?['name'] as String? ?? p['playerName'] as String? ?? 'Unknown')),
+                              if ((p['user'] as Map?)?['id'] != null && (p['user'] as Map?)!['id'] == _captainUserId)
+                                Container(
+                                  margin: const EdgeInsets.only(left: 8),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(color: Colors.blueGrey.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
+                                  child: const Text('Captain', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                                ),
+                            ]),
                             subtitle: Text((p['user'] as Map?)?['email'] as String? ?? ''),
-                            trailing: isCaptain
-                                ? IconButton(icon: const Icon(Icons.remove_circle_outline, color: Colors.red), onPressed: () => _removePlayer(p['id'] as String))
-                                : null,
+                            trailing: Builder(builder: (ctx) {
+                              final pid = p['id'] as String?;
+                              final user = p['user'] as Map<String, dynamic>?;
+                              final playerUserId = user?['id'] as String?;
+                              final isPlayerCaptain = playerUserId != null && playerUserId == _captainUserId;
+
+                              // Synthetic captain entry cannot be removed
+                              if (pid != null && pid.startsWith('captain:')) {
+                                return const SizedBox.shrink();
+                              }
+
+                              // If current user is captain, they can remove others but not themselves
+                              if (isCaptain) {
+                                if (playerUserId != null && playerUserId == currentUserId) {
+                                  // Don't allow captain to remove themselves
+                                  return const SizedBox.shrink();
+                                }
+                                return IconButton(icon: const Icon(Icons.remove_circle_outline, color: Colors.red), onPressed: () async {
+                                  final confirm = await showDialog<bool>(context: context, builder: (dCtx) => AlertDialog(
+                                    title: const Text('Remove Player'),
+                                    content: const Text('Remove this player from the team?'),
+                                    actions: [TextButton(onPressed: () => Navigator.pop(dCtx, false), child: const Text('No')), FilledButton(onPressed: () => Navigator.pop(dCtx, true), child: const Text('Yes'))],
+                                  ));
+                                  if (confirm == true) {
+                                    _removePlayer(pid!);
+                                  }
+                                });
+                              }
+
+                              // If this list item represents the current user (and they're not captain), allow them to leave
+                              if (playerUserId != null && playerUserId == currentUserId && !isPlayerCaptain) {
+                                return TextButton.icon(onPressed: () async {
+                                  final confirm = await showDialog<bool>(context: context, builder: (dCtx) => AlertDialog(
+                                    title: const Text('Leave Team'),
+                                    content: const Text('Are you sure you want to leave this team?'),
+                                    actions: [TextButton(onPressed: () => Navigator.pop(dCtx, false), child: const Text('No')), FilledButton(onPressed: () => Navigator.pop(dCtx, true), child: const Text('Leave'))],
+                                  ));
+                                  if (confirm == true) {
+                                    try {
+                                      await ref.read(tournamentRepositoryProvider).removePlayer(widget.tournamentId, widget.teamId, pid!);
+                                      // Refresh and invalidate tournament data so 'My Team' clears
+                                      ref.invalidate(tournamentDetailProvider(widget.tournamentId));
+                                      ref.invalidate(tournamentsNotifierProvider);
+                                      if (mounted) _load();
+                                    } on Exception catch (e) {
+                                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
+                                    }
+                                  }
+                                }, icon: const Icon(Icons.exit_to_app, size: 18), label: const Text('Leave'));
+                              }
+
+                              return const SizedBox.shrink();
+                            }),
                           ),
                       if (_invitations.isNotEmpty) ...[
                         const SizedBox(height: 16),
@@ -148,11 +236,48 @@ class _TeamRosterPageState extends ConsumerState<TeamRosterPage> {
                             leading: const CircleAvatar(child: Icon(Icons.mail_outline)),
                             title: Text(inv['inviteeName'] as String? ?? inv['inviteeEmail'] as String? ?? ''),
                             subtitle: Text(inv['inviteeEmail'] as String? ?? ''),
-                            trailing: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-                              child: const Text('pending', style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.w600)),
-                            ),
+                            trailing: isCaptain
+                                ? Row(mainAxisSize: MainAxisSize.min, children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+                                      child: const Text('pending', style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.w600)),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      icon: const Icon(Icons.cancel_outlined, color: Colors.redAccent),
+                                      tooltip: 'Cancel invite',
+                                      onPressed: () async {
+                                        final confirm = await showDialog<bool>(
+                                          context: context,
+                                          builder: (ctx) => AlertDialog(
+                                            title: const Text('Cancel Invitation'),
+                                            content: const Text('Are you sure you want to cancel this invitation?'),
+                                            actions: [
+                                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+                                              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Yes')),
+                                            ],
+                                          ),
+                                        );
+                                        if (confirm == true) {
+                                          try {
+                                            await ref.read(tournamentRepositoryProvider).cancelInvitation(widget.tournamentId, widget.teamId, inv['id'] as String);
+                                            // Invalidate tournament detail and reload roster
+                                            ref.invalidate(tournamentDetailProvider(widget.tournamentId));
+                                            ref.invalidate(tournamentsNotifierProvider);
+                                            if (mounted) _load();
+                                          } on Exception catch (e) {
+                                            if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
+                                          }
+                                        }
+                                      },
+                                    ),
+                                  ])
+                                : Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+                                    child: const Text('pending', style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.w600)),
+                                  ),
                           ),
                       ],
                     ],

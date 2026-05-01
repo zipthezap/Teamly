@@ -28,6 +28,7 @@ class _TournamentInvitePageState extends ConsumerState<TournamentInvitePage> {
   bool _declineLoading = false;
   String? _result;
   String? _error;
+  Map<String, dynamic>? _invitation;
 
   Future<void> _accept() async {
     setState(() => _acceptLoading = true);
@@ -57,6 +58,14 @@ class _TournamentInvitePageState extends ConsumerState<TournamentInvitePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Attempt to load invitation details when first built
+    if (_invitation == null && _error == null && _result == null) {
+      ref.read(tournamentRepositoryProvider).getInvitation(widget.inviteToken).then((inv) {
+        if (mounted) setState(() => _invitation = inv);
+      }).catchError((e) {
+        if (mounted) setState(() => _error = extractErrorMessage(e));
+      });
+    }
     return Scaffold(
       appBar: AppBar(title: const Text('Team Invitation')),
       body: Center(
@@ -74,6 +83,14 @@ class _TournamentInvitePageState extends ConsumerState<TournamentInvitePage> {
                   const Icon(Icons.mail_outline, size: 64),
                   const SizedBox(height: 16),
                   const Text('You\'ve been invited to join a tournament team!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+                  if (_invitation != null) ...[
+                    const SizedBox(height: 8),
+                    Text('Team: ${_invitation!['team']?['name'] ?? ''}', style: const TextStyle(fontSize: 16)),
+                    const SizedBox(height: 4),
+                    Text('Tournament: ${_invitation!['team']?['tournament']?['name'] ?? ''}', style: const TextStyle(fontSize: 14, color: Colors.black54)),
+                    const SizedBox(height: 4),
+                    Text('Invited by: ${_invitation!['inviter']?['name'] ?? ''}', style: const TextStyle(fontSize: 14, color: Colors.black54)),
+                  ],
                   if (_error != null) ...[
                     const SizedBox(height: 12),
                     Text(_error!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),

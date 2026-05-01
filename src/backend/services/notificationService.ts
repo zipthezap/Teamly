@@ -358,7 +358,8 @@ export const getUserNotifications = async (
       tournamentWhere.read = false;
     }
     if (type) {
-      tournamentWhere.type = type as TournamentNotificationType;
+      // Prisma uses generated enum types; cast here to satisfy types from shared enums
+      tournamentWhere.type = type as any;
     }
     if (startDate || endDate) {
       tournamentWhere.createdAt = {};
@@ -366,7 +367,7 @@ export const getUserNotifications = async (
       if (endDate) tournamentWhere.createdAt.lte = endDate;
     }
     if (matchingTournamentTypes.length > 0) {
-      tournamentWhere.type = { in: matchingTournamentTypes as TournamentNotificationType[] };
+      tournamentWhere.type = { in: matchingTournamentTypes as any };
     }
     const tournamentWhereWithCursor = appendCursorAndClause(tournamentWhere);
 

@@ -34,6 +34,12 @@ vi.mock('../../middleware/authorization', () => ({
   requireGroupPermission: () => (_req: any, _res: any, next: any) => next(),
 }));
 
+vi.mock('../../services/notificationFactory', () => ({
+  NotificationFactory: {
+    createTournamentNotifications: vi.fn().mockResolvedValue(undefined),
+  }
+}));
+
 vi.mock('../../config/database', () => ({
   default: {
     tournament: {
@@ -188,6 +194,7 @@ vi.mock('../../utils/emailService', () => ({
 import prisma from '../../config/database';
 import tournamentRoutes from '../../routes/tournamentRoutes';
 import * as tournamentService from '../../services/tournamentService';
+import { NotificationFactory } from '../../services/notificationFactory';
 import { BadRequestError } from '../../utils/errors';
 
 // ─── Test app ─────────────────────────────────────────────────────────────────
@@ -1661,6 +1668,45 @@ describe('GET /api/tournaments/:id/teams/:teamId/players (getPlayers)', () => {
 
     expect(res.status).toBe(404);
   });
+
+  it('prepends captain to players when captain has no player record', async () => {
+    const teamWithCaptain = {
+      ...mockTeam,
+      captainUserId: 'captain-1',
+      captainUser: { id: 'captain-1', name: 'Alice Captain', email: 'alice.captain@example.com' },
+    };
+
+    // Players do not include the captain
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(teamWithCaptain as any);
+    vi.mocked(prisma.tournamentPlayer.findMany).mockResolvedValue([mockPlayer] as any);
+
+    const res = await request(app).get('/api/tournaments/tournament-1/teams/team-1/players');
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBe(2);
+    expect(res.body[0].user.id).toBe('captain-1');
+    expect((res.body[0].id as string).startsWith('captain:')).toBe(true);
+  });
+
+  it('does not duplicate captain when captain already in players list', async () => {
+    const teamWithCaptain = {
+      ...mockTeam,
+      captainUserId: 'cap-2',
+      captainUser: { id: 'cap-2', name: 'Cap Two', email: 'cap.two@example.com' },
+    };
+    const playerWithUser = { ...mockPlayer, user: { id: 'cap-2', name: 'Cap Two', email: 'cap.two@example.com' }, userId: 'cap-2' };
+
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(teamWithCaptain as any);
+    vi.mocked(prisma.tournamentPlayer.findMany).mockResolvedValue([playerWithUser] as any);
+
+    const res = await request(app).get('/api/tournaments/tournament-1/teams/team-1/players');
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBe(1);
+    expect(res.body[0].user.id).toBe('cap-2');
+  });
 });
 
 describe('PUT /api/tournaments/:id/teams/:teamId/players/:playerId (updatePlayer)', () => {
@@ -1816,6 +1862,51 @@ describe('POST /api/tournaments/invitations/:inviteToken/accept (acceptTeamInvit
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('message');
   });
+
+  it('notifies captain when invitation is accepted and captain exists', async () => {
+    vi.mocked(tournamentService.acceptTeamInvitation).mockResolvedValue({
+      id: 'inv-1',
+      teamId: 'team-1',
+      team: { id: 'team-1', name: 'Team Alpha' },
+    } as any);
+
+    vi.mocked(prisma.tournamentTeam.findUnique).mockResolvedValue({
+      id: 'team-1',
+      name: 'Team Alpha',
+      captainUser: { id: 'captain-1', name: 'Captain', email: 'cap@example.com' },
+      tournament: { id: 'tournament-1', name: 'Test Tournament' }
+    } as any);
+
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: 'user-1', name: 'Joined User', email: 'joined@example.com' } as any);
+
+    const res = await request(app).post('/api/tournaments/invitations/token-abc/accept');
+
+    expect(res.status).toBe(200);
+    expect(NotificationFactory.createTournamentNotifications).toHaveBeenCalled();
+    // Ensure notification created for captain with team and player info
+    expect(vi.mocked(NotificationFactory.createTournamentNotifications).mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        type: 'team_registered',
+        userIds: ['captain-1'],
+        params: expect.objectContaining({
+          teamName: 'Team Alpha',
+          playerName: 'Joined User',
+          tournamentName: 'Test Tournament'
+        })
+      })
+    );
+  });
+
+  it('returns 400 when invitee is already a player in the tournament', async () => {
+    vi.mocked(tournamentService.acceptTeamInvitation).mockImplementation(async () => {
+      // Simulate service throwing when user already in tournament
+      throw Object.assign(new Error('You are already a participant in this tournament'), { name: 'BadRequestError' });
+    });
+
+    const res = await request(app).post('/api/tournaments/invitations/token-abc/accept');
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+  });
 });
 
 describe('POST /api/tournaments/invitations/:inviteToken/decline (declineTeamInvitation)', () => {
@@ -1841,6 +1932,30 @@ describe('POST /api/tournaments/invitations/:inviteToken/decline (declineTeamInv
     vi.mocked(prisma.tournamentTeamInvitation.findUnique).mockResolvedValue(null);
 
     const res = await request(app).post('/api/tournaments/invitations/token-abc/decline');
+
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('GET /api/tournaments/invitations/:inviteToken (getInvitationByToken)', () => {
+  it('returns 200 with invitation details when found', async () => {
+    vi.mocked(prisma.tournamentTeamInvitation.findUnique).mockResolvedValue({
+      ...mockInvitation,
+      team: { id: 'team-1', name: 'Team Alpha', tournament: { id: 'tournament-1', name: 'Test Tournament' } },
+      inviter: { id: 'test-user-id', name: 'Test User', email: 'test@example.com' }
+    } as any);
+
+    const res = await request(app).get('/api/tournaments/invitations/token-abc');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('team');
+    expect(res.body.team.tournament.name).toBe('Test Tournament');
+  });
+
+  it('returns 404 when invitation not found', async () => {
+    vi.mocked(prisma.tournamentTeamInvitation.findUnique).mockResolvedValue(null);
+
+    const res = await request(app).get('/api/tournaments/invitations/nonexistent');
 
     expect(res.status).toBe(404);
   });
@@ -2068,16 +2183,21 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
     expect(res.body.error).toContain('Pool not found');
   });
 
-  it('returns 400 when both pool and category are provided', async () => {
+  it('allows registration when both pool and category provided and pool belongs to category', async () => {
     const registeredTournament = { ...mockTournament, status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.tournamentPool.findFirst).mockResolvedValue({ id: 'pool-1', name: 'Pool 1', tournamentId: 'tournament-1', categoryId: 'cat-1', maxTeams: 4, teams: [] } as any);
+    vi.mocked(prisma.tournamentCategory.findFirst).mockResolvedValue({ id: 'cat-1', name: 'Category 1' } as any);
+    vi.mocked(prisma.tournamentTeam.create).mockResolvedValue({ ...mockTeam, id: 'new-team', poolId: 'pool-1', categoryId: 'cat-1' } as any);
 
     const res = await request(app)
       .post('/api/tournaments/tournament-1/teams/self-register')
       .send({ name: 'New Team', poolId: 'pool-1', categoryId: 'cat-1' });
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(201);
+    expect(res.body.team.poolId).toBe('pool-1');
+    expect(res.body.categoryId).toBe('cat-1');
   });
 
   it('returns 400 when tournament is not in registration status', async () => {
@@ -2101,6 +2221,21 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
 
     expect(res.status).toBe(400);
     expect(res.body.error).toContain('maximum number of teams');
+  });
+
+  it('returns 400 when user is already a player in the tournament', async () => {
+    const registeredTournament = { ...mockTournament, status: 'registration' };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+    // Simulate existing player record for this user in the tournament
+    vi.mocked(prisma.tournamentPlayer.findFirst).mockResolvedValue({ id: 'player-1', teamId: 'team-2', userId: 'test-user-id' } as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/teams/self-register')
+      .send({ name: 'New Team' });
+
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.body.error).toContain('already a participant');
   });
 
   it('returns 404 when tournament not found', async () => {

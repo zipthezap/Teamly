@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../features/notifications/state/notifications_notifier.dart';
+import '../../features/tournaments/state/tournaments_notifier.dart';
 import 'teamly_logo.dart';
 
 class MobileShell extends ConsumerWidget {
@@ -63,6 +64,10 @@ class MobileShell extends ConsumerWidget {
       ),
     );
 
+    // Read pending tournament invitations count to show a secondary badge
+    final invitesAsync = ref.watch(myInvitationsCountProvider);
+    final invitesCount = invitesAsync.maybeWhen(data: (c) => c, orElse: () => 0);
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
@@ -91,6 +96,7 @@ class MobileShell extends ConsumerWidget {
         actions: [
           _NotificationIconButton(
             unreadCount: unreadCount,
+            pendingInvites: invitesCount,
             onTap: currentPath == '/notifications'
                 ? null
                 : () => context.push('/notifications'),
@@ -245,11 +251,12 @@ class _NotificationIconButton extends StatelessWidget {
   const _NotificationIconButton({
     required this.unreadCount,
     required this.onTap,
+    this.pendingInvites = 0,
   });
 
   final int unreadCount;
+  final int pendingInvites;
   final VoidCallback? onTap;
-
   @override
   Widget build(BuildContext context) {
     return IconButton(
@@ -279,6 +286,26 @@ class _NotificationIconButton extends StatelessWidget {
                     color: Colors.white,
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          if (pendingInvites > 0)
+            Positioned(
+              right: 6,
+              top: -4,
+              child: Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFA000),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Theme.of(context).colorScheme.surface, width: 1.5),
+                ),
+                child: Center(
+                  child: Text(
+                    pendingInvites > 9 ? '9+' : '$pendingInvites',
+                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),

@@ -1,0 +1,82 @@
+import { Request, Response } from 'express';
+import prisma from '../config/database';
+import { logger } from '../utils/logger';
+import { NotificationFactory } from '../services/notificationFactory';
+import { TournamentNotificationType } from '../../shared/types/tournament.types';
+
+/**
+ * Admin controller helpers
+ */
+export const resendInviteNotifications = async (req: Request, res: Response) => {
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ error: 'Missing email in request body' });
+
+  try {
+    const logs = await prisma.inviteLog.findMany({ where: { inviteeEmail: email, status: 'sent' } });
+    if (logs.length === 0) return res.json({ resent: 0 });
+
+    let resent = 0;
+
+    for (const log of logs) {
+      // For tournament invites we expect metadata.teamId
+      const metadata: any = log.metadata || {};
+      const teamId = metadata.teamId || metadata.team_id || null;
+      if (!teamId) {
+        logger.warn('InviteLog missing teamId in metadata, skipping', 'AdminController', { inviteLogId: log.id });
+        continue;
+      }
+
+      // Resolve team and tournament
+      const team = await prisma.tournamentTeam.findUnique({ where: { id: teamId }, include: { tournament: true } });
+      if (!team) {
+        logger.warn('Team not found for InviteLog', 'AdminController', { inviteLogId: log.id, teamId });
+        continue;
+      }
+
+      // Ensure we have an invitee user id
+      let inviteeId = log.inviteeId;
+      if (!inviteeId) {
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (user) {
+          inviteeId = user.id;
+          try {
+            await prisma.inviteLog.update({ where: { id: log.id }, data: { inviteeId: user.id } });
+          } catch (e) { /* ignore update errors */ }
+        } else {
+          // Can't create in-app notification for non-registered user
+          continue;
+        }
+      }
+
+      // Create tournament notification for the invitee
+      try {
+        await NotificationFactory.createTournamentNotifications({
+          tournamentId: team.tournament.id,
+          type: TournamentNotificationType.team_invited,
+          userIds: [inviteeId],
+          params: {
+            teamName: team.name,
+            inviterName: (await prisma.user.findUnique({ where: { id: log.inviterId } }))?.name || undefined,
+            tournamentName: team.tournament.name,
+            inviteLogId: log.id
+          },
+          metadata: {
+            actionUrl: `${process.env.FRONTEND_URL}/tournaments/${team.tournament.id}/teams/${team.id}/invitations`,
+            actionText: 'View invitation',
+            category: 'tournament'
+          }
+        });
+        resent++;
+      } catch (e) {
+        logger.error('Failed to resend invite notification', 'AdminController', { error: e, inviteLogId: log.id });
+      }
+    }
+
+    return res.json({ resent });
+  } catch (error) {
+    logger.error('Failed to process invite-resend request', 'AdminController', { error, email });
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export default { resendInviteNotifications };

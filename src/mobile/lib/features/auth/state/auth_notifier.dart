@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart'
-    show kIsWeb, defaultTargetPlatform, TargetPlatform;
+  show kIsWeb, defaultTargetPlatform, TargetPlatform, debugPrint;
 import 'package:flutter/services.dart' show MissingPluginException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
@@ -385,8 +385,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   void _invalidateNotificationState() {
-    _ref.invalidate(unreadCountProvider);
-    _ref.invalidate(notificationsNotifierProvider);
+    // Invalidate notifications-related providers asynchronously to avoid
+    // Riverpod circular dependency errors when called during provider
+    // build/listen cycles (see CircularDependencyError stack traces).
+    Future.microtask(() {
+      try {
+        _ref.invalidate(unreadCountProvider);
+      } catch (_) {}
+      try {
+        _ref.invalidate(notificationsNotifierProvider);
+      } catch (_) {}
+    });
   }
 
   Future<void> _registerPushTokenSafely() async {

@@ -13,6 +13,12 @@ const router = Router();
 // Public endpoint - no auth required
 router.get('/public', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getPublicTournaments));
 
+// Allow anyone to view team players for public discovery (no auth required)
+router.get('/:id/teams/:teamId/players', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getPlayers));
+
+// Allow anyone to view team invitations (public view) — non-sensitive fields only
+router.get('/:id/teams/:teamId/invitations', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getTeamInvitations));
+
 // All tournament routes require authentication
 router.use(authMiddleware);
 router.use(authenticatedLimiter);
@@ -79,7 +85,6 @@ router.post(
   requireTeamPermission(Permission.TEAM_MANAGE_PLAYERS),
   asyncHandler(tournamentController.addPlayer)
 );
-router.get('/:id/teams/:teamId/players', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getPlayers));
 router.put(
   '/:id/teams/:teamId/players/:playerId',
   noCache,
@@ -117,6 +122,7 @@ router.delete(
 router.get('/invitations/my', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getUserInvitations));
 router.post('/invitations/:inviteToken/accept', noCache, asyncHandler(tournamentController.acceptTeamInvitation));
 router.post('/invitations/:inviteToken/decline', noCache, asyncHandler(tournamentController.declineTeamInvitation));
+router.get('/invitations/:inviteToken', noCache, asyncHandler(tournamentController.getInvitationByToken));
 
 // Bracket and match management
 router.post(
@@ -188,16 +194,48 @@ router.post(
   requireTeamPermission(Permission.TEAM_REGISTER_TO_POOL),
   asyncHandler(tournamentController.registerTeamToPool)
 );
+
+// Admin variant: allow tournament admins/organizers to register or move any team to a pool
+router.post(
+  '/:id/pools/:poolId/admin/teams/:teamId',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
+  asyncHandler(tournamentController.registerTeamToPool)
+);
+
+// Admin: move a team from one pool to another
+router.post(
+  '/:id/pools/:poolId/admin/teams/:teamId/move/:targetPoolId',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
+  asyncHandler(tournamentController.adminMoveTeamToPool)
+);
 router.delete(
   '/:id/pools/:poolId/teams/:teamId',
   noCache,
   requireTeamPermission(Permission.TEAM_REGISTER_TO_POOL),
   asyncHandler(tournamentController.removeTeamFromPool)
 );
+
+// Admin variant: allow tournament admins/organizers to remove any team from a pool
+router.delete(
+  '/:id/pools/:poolId/admin/teams/:teamId',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
+  asyncHandler(tournamentController.removeTeamFromPool)
+);
 router.delete(
   '/:id/pools/:poolId/waitlist/:teamId',
   noCache,
   requireTeamPermission(Permission.TEAM_REGISTER_TO_POOL),
+  asyncHandler(tournamentController.removeTeamFromWaitlist)
+);
+
+// Admin variant: allow tournament admins/organizers to remove any team from a waitlist
+router.delete(
+  '/:id/pools/:poolId/waitlist/:teamId/admin',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
   asyncHandler(tournamentController.removeTeamFromWaitlist)
 );
 

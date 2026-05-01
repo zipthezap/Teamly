@@ -43,6 +43,7 @@ enum TeamUpNotificationType {
 
 enum TournamentNotificationType {
   team_registered
+  team_invited
   tournament_updated
   tournament_cancelled
   match_scheduled
