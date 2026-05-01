@@ -1209,7 +1209,7 @@ export const submitScore = async (req: Request, res: Response) => {
           awayScore,
           detailedScore: detailedScore || undefined,
           status: MatchStatus.COMPLETED,
-          // Populate startedAt when transitioning from unplayed → completed
+          // Populate startedAt if not already set (backfill for matches that skipped the in-progress state)
           startedAt: match.startedAt ?? new Date(),
           completedAt: new Date(),
         },
@@ -3783,7 +3783,7 @@ export const selfUnregisterTeam = async (req: Request, res: Response) => {
   const tournament = await prisma.tournament.findUnique({ where: { id } });
   ensureResourceExists(tournament, 'Tournament');
 
-  if (tournament!.status !== TournamentStatus.DRAFT && tournament!.status !== TournamentStatus.REGISTRATION) {
+  if (tournament.status !== TournamentStatus.DRAFT && tournament.status !== TournamentStatus.REGISTRATION) {
     throw new BadRequestError('You can only unregister while tournament registration is open');
   }
 
