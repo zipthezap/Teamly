@@ -45,25 +45,53 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
   DateTime? _registrationDeadline;
   bool _useManualBrackets = false;
   bool _saving = false;
+  bool _pageLoading = false;
 
   @override
   void initState() {
     super.initState();
     final t = widget.tournament;
     if (t != null) {
-      _nameCtrl.text = t.name;
-      _descCtrl.text = t.description ?? '';
-      _maxTeamsCtrl.text = t.maxTeams?.toString() ?? '';
-      _locationCtrl.text = t.location ?? t.locationName ?? '';
-      _rulesCtrl.text = t.rulesDescription ?? '';
-      _prizesCtrl.text = t.prizesDescription ?? '';
-      _sportType = t.sportType;
-      _format = t.format;
-      _startDate = t.startDate;
-      _endDate = t.endDate;
-      _registrationStartDate = t.registrationStartDate;
-      _registrationDeadline = t.registrationDeadline;
-      _useManualBrackets = t.useManualBrackets;
+      _populateFromTournament(t);
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _fetchTournament());
+    }
+  }
+
+  void _populateFromTournament(TournamentModel t) {
+    _nameCtrl.text = t.name;
+    _descCtrl.text = t.description ?? '';
+    _maxTeamsCtrl.text = t.maxTeams?.toString() ?? '';
+    _locationCtrl.text = t.location ?? t.locationName ?? '';
+    _rulesCtrl.text = t.rulesDescription ?? '';
+    _prizesCtrl.text = t.prizesDescription ?? '';
+    _sportType = t.sportType;
+    _format = t.format;
+    _startDate = t.startDate;
+    _endDate = t.endDate;
+    _registrationStartDate = t.registrationStartDate;
+    _registrationDeadline = t.registrationDeadline;
+    _useManualBrackets = t.useManualBrackets;
+  }
+
+  Future<void> _fetchTournament() async {
+    setState(() => _pageLoading = true);
+    try {
+      final t = await ref.read(tournamentRepositoryProvider).getTournament(widget.tournamentId);
+      if (mounted) {
+        setState(() {
+          _populateFromTournament(t);
+          _pageLoading = false;
+        });
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        setState(() => _pageLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
     }
   }
 
@@ -176,7 +204,7 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Edit Tournament')),
-      body: Form(
+      body: _pageLoading ? const Center(child: CircularProgressIndicator()) : Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),

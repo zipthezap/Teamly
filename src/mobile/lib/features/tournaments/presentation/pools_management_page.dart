@@ -24,6 +24,7 @@ class PoolsManagementPage extends ConsumerStatefulWidget {
 
 class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
   List<TournamentPoolModel> _pools = [];
+  List<TournamentTeamModel> _allTeams = [];
   bool _loading = true;
   String? _error;
 
@@ -36,8 +37,15 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
     try {
-      final pools = await ref.read(tournamentRepositoryProvider).getPools(widget.tournamentId);
-      if (mounted) setState(() { _pools = pools; _loading = false; });
+      final results = await Future.wait([
+        ref.read(tournamentRepositoryProvider).getPools(widget.tournamentId),
+        ref.read(tournamentRepositoryProvider).getTournament(widget.tournamentId).then((t) => t.teams),
+      ]);
+      if (mounted) setState(() {
+        _pools = results[0] as List<TournamentPoolModel>;
+        _allTeams = results[1] as List<TournamentTeamModel>;
+        _loading = false;
+      });
     } on Exception catch (e) {
       if (mounted) setState(() { _error = extractErrorMessage(e); _loading = false; });
     }
@@ -160,6 +168,70 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
     }
   }
 
+  Future<void> _removeFromWaitlist(String poolId, TournamentWaitlistEntryModel waitlistEntry) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove from Waitlist'),
+        content: Text('Remove "${waitlistEntry.teamName}" from the waitlist?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error), onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await ref.read(tournamentRepositoryProvider).removeTeamFromWaitlist(widget.tournamentId, poolId, waitlistEntry.teamId);
+      _load();
+    } on Exception catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e)), backgroundColor: Theme.of(context).colorScheme.error));
+    }
+  }
+
+  Future<void> _addTeamToPool(TournamentPoolModel pool) async {
+    final poolTeamIds = pool.teams.map((t) => t.id).toSet();
+    final unassigned = _allTeams.where((t) => !poolTeamIds.contains(t.id)).toList();
+    if (unassigned.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No unassigned teams available')));
+      return;
+    }
+
+    TournamentTeamModel? selected;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: Text('Add Team to ${pool.name}'),
+          content: DropdownButtonFormField<TournamentTeamModel>(
+            value: selected,
+            decoration: const InputDecoration(labelText: 'Select team'),
+            items: unassigned
+                .map((t) => DropdownMenuItem(value: t, child: Text(t.name)))
+                .toList(),
+            onChanged: (v) => setS(() => selected = v),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: selected != null ? () => Navigator.pop(ctx, true) : null,
+              child: const Text('Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok != true || selected == null || !mounted) return;
+    try {
+      await ref.read(tournamentRepositoryProvider).registerTeamToPool(widget.tournamentId, pool.id, selected!.id);
+      _load();
+    } on Exception catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e)), backgroundColor: Theme.of(context).colorScheme.error));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -197,6 +269,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                     title: Text(pool.name, style: const TextStyle(fontWeight: FontWeight.w600)),
                                     subtitle: Text('${pool.teams.length}/${pool.maxTeams} teams${pool.waitlist.isNotEmpty ? ' · ${pool.waitlist.length} waiting' : ''}'),
                                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                                      IconButton(icon: const Icon(Icons.person_add_outlined, size: 18), tooltip: 'Add team', onPressed: () => _addTeamToPool(pool)),
                                       IconButton(icon: const Icon(Icons.edit_outlined, size: 18), tooltip: 'Edit', onPressed: () => _editPool(pool)),
                                       IconButton(icon: const Icon(Icons.delete_outline, size: 18), tooltip: 'Delete', onPressed: () => _deletePool(pool)),
                                     ]),
@@ -223,8 +296,13 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                     for (final w in pool.waitlist)
                                       ListTile(
                                         dense: true,
-                                        leading: Text('${w.position + 1}.', style: TextStyle(color: AppThemeTokens.textMuted(context))),
+                                        leading: Text('${w.position}.', style: TextStyle(color: AppThemeTokens.textMuted(context))),
                                         title: Text(w.teamName, style: TextStyle(color: AppThemeTokens.textSecondary(context), fontSize: 13)),
+                                        trailing: IconButton(
+                                          icon: Icon(Icons.remove_circle_outline, size: 16, color: Theme.of(context).colorScheme.error),
+                                          tooltip: 'Remove from waitlist',
+                                          onPressed: () => _removeFromWaitlist(pool.id, w),
+                                        ),
                                       ),
                                   ],
                                   const SizedBox(height: 4),

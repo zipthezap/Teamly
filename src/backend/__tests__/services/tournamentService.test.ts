@@ -26,10 +26,12 @@ vi.mock('../../config/database', () => ({
   default: {
     tournamentTeam: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       findMany: vi.fn(),
     },
     tournamentPlayer: {
       count: vi.fn(),
+      findFirst: vi.fn(),
     },
     tournamentMatch: {
       createMany: vi.fn(),
@@ -366,8 +368,10 @@ describe('Tournament Service', () => {
     });
 
     it('should allow home team captain to submit score', async () => {
-      vi.mocked(prisma.tournamentTeam.findUnique)
+      vi.mocked(prisma.tournamentTeam.findFirst)
         .mockResolvedValueOnce({ id: 'team-1', captainUserId: 'user-1' } as unknown);
+      vi.mocked(prisma.tournamentPlayer.findFirst)
+        .mockResolvedValueOnce(null);
 
       const result = await canSubmitScore(match, tournament, 'user-1');
 
@@ -375,9 +379,10 @@ describe('Tournament Service', () => {
     });
 
     it('should allow away team captain to submit score', async () => {
-      vi.mocked(prisma.tournamentTeam.findUnique)
-        .mockResolvedValueOnce({ id: 'team-1', captainUserId: 'other-user' } as unknown)
+      vi.mocked(prisma.tournamentTeam.findFirst)
         .mockResolvedValueOnce({ id: 'team-2', captainUserId: 'user-1' } as unknown);
+      vi.mocked(prisma.tournamentPlayer.findFirst)
+        .mockResolvedValueOnce(null);
 
       const result = await canSubmitScore(match, tournament, 'user-1');
 
@@ -385,11 +390,10 @@ describe('Tournament Service', () => {
     });
 
     it('should allow registered player on home team to submit score', async () => {
-      vi.mocked(prisma.tournamentTeam.findUnique)
-        .mockResolvedValueOnce({ id: 'team-1', captainUserId: 'other-user' } as unknown)
-        .mockResolvedValueOnce({ id: 'team-2', captainUserId: 'other-user' } as unknown);
-      vi.mocked(prisma.tournamentPlayer.count)
-        .mockResolvedValueOnce(1); // Home team player
+      vi.mocked(prisma.tournamentTeam.findFirst)
+        .mockResolvedValueOnce(null);
+      vi.mocked(prisma.tournamentPlayer.findFirst)
+        .mockResolvedValueOnce({ id: 'player-1' } as unknown);
 
       const result = await canSubmitScore(match, tournament, 'user-1');
 
@@ -397,10 +401,10 @@ describe('Tournament Service', () => {
     });
 
     it('should deny submission for unrelated user', async () => {
-      vi.mocked(prisma.tournamentTeam.findUnique)
-        .mockResolvedValue({ id: 'team-1', captainUserId: 'other-user' } as unknown);
-      vi.mocked(prisma.tournamentPlayer.count)
-        .mockResolvedValue(0);
+      vi.mocked(prisma.tournamentTeam.findFirst)
+        .mockResolvedValue(null);
+      vi.mocked(prisma.tournamentPlayer.findFirst)
+        .mockResolvedValue(null);
 
       const result = await canSubmitScore(match, tournament, 'user-1');
 
@@ -409,13 +413,11 @@ describe('Tournament Service', () => {
 
     it('should allow referee team member to submit score', async () => {
       const matchWithReferee = { ...match, refereeTeamId: 'ref-team' };
-      
-      vi.mocked(prisma.tournamentTeam.findUnique)
-        .mockResolvedValue({ id: 'team-1', captainUserId: 'other-user' } as unknown);
-      vi.mocked(prisma.tournamentPlayer.count)
-        .mockResolvedValueOnce(0) // Not on home team
-        .mockResolvedValueOnce(0) // Not on away team
-        .mockResolvedValueOnce(1); // On referee team
+
+      vi.mocked(prisma.tournamentTeam.findFirst)
+        .mockResolvedValue(null);
+      vi.mocked(prisma.tournamentPlayer.findFirst)
+        .mockResolvedValueOnce({ id: 'player-1' } as unknown);
 
       const result = await canSubmitScore(matchWithReferee, tournament, 'user-1');
 

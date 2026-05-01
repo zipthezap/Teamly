@@ -347,7 +347,7 @@ export const createTournament = async (req: Request, res: Response) => {
  * Get all tournaments (with optional filters)
  */
 export const getTournaments = async (req: Request, res: Response) => {
-  const { groupId, status, sportType, page, limit } = req.query;
+  const { groupId, status, sportType, search, page, limit } = req.query;
 
   const parsedPage = Math.max(1, parseInt(page as string, 10) || 1);
   const parsedLimit = Math.min(Math.max(1, parseInt(limit as string, 10) || DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
@@ -365,6 +365,10 @@ export const getTournaments = async (req: Request, res: Response) => {
 
   if (sportType) {
     where.sportType = sportType as string;
+  }
+
+  if (search) {
+    where.name = { contains: search as string, mode: 'insensitive' };
   }
 
   const [tournaments, total] = await Promise.all([
@@ -1145,7 +1149,8 @@ export const createMatch = async (req: Request, res: Response) => {
     roundNumber,
     groupName,
     scheduledAt,
-    matchOrder
+    matchOrder,
+    location
   } = req.body;
 
   if (!homeTeamId || !awayTeamId) {
@@ -1205,6 +1210,7 @@ export const createMatch = async (req: Request, res: Response) => {
       groupName,
       scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
       matchOrder,
+      location: location || undefined,
       isManuallyCreated: true,
       status: MatchStatus.SCHEDULED
     },
@@ -1241,7 +1247,8 @@ export const updateMatch = async (req: Request, res: Response) => {
     groupName,
     scheduledAt,
     matchOrder,
-    status
+    status,
+    location
   } = req.body;
 
   const tournament = ensureResourceExists(
@@ -1310,6 +1317,7 @@ export const updateMatch = async (req: Request, res: Response) => {
   if (scheduledAt !== undefined) updateData.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
   if (matchOrder !== undefined) updateData.matchOrder = matchOrder;
   if (status !== undefined) updateData.status = status;
+  if (location !== undefined) updateData.location = location || null;
 
   if (status === MatchStatus.COMPLETED && match.status !== MatchStatus.COMPLETED) {
     throw new BadRequestError(
@@ -2296,6 +2304,60 @@ export const removeTeamFromWaitlist = async (req: Request, res: Response) => {
 // ==================== TEAM INVITATION MANAGEMENT ====================
 
 /**
+ * Get invitation details by token (public — no auth required)
+ * Used by the mobile invite page to show context before accept/decline.
+ */
+export const getInvitationDetails = async (req: Request, res: Response) => {
+  const { inviteToken } = req.params;
+
+  const invitation = await prisma.tournamentTeamInvitation.findUnique({
+    where: { inviteToken },
+    include: {
+      team: {
+        include: {
+          tournament: {
+            select: { id: true, name: true, sportType: true }
+          }
+        }
+      },
+      inviter: {
+        select: { id: true, name: true }
+      }
+    }
+  });
+
+  if (!invitation) {
+    throw new NotFoundError('Invitation not found');
+  }
+
+  if (invitation.status === 'expired' || (invitation.expiresAt && new Date() > new Date(invitation.expiresAt))) {
+    throw new BadRequestError('Invitation has expired');
+  }
+
+  res.json({
+    inviteToken: invitation.inviteToken,
+    status: invitation.status,
+    inviteeName: invitation.inviteeName,
+    inviteeEmail: invitation.inviteeEmail,
+    message: invitation.message,
+    expiresAt: invitation.expiresAt,
+    team: {
+      id: invitation.team.id,
+      name: invitation.team.name,
+    },
+    tournament: {
+      id: invitation.team.tournament.id,
+      name: invitation.team.tournament.name,
+      sportType: invitation.team.tournament.sportType,
+    },
+    inviter: {
+      id: invitation.inviter.id,
+      name: invitation.inviter.name,
+    },
+  });
+};
+
+/**
  * Send a team invitation
  */
 export const sendTeamInvitation = async (req: Request, res: Response) => {
@@ -2370,7 +2432,7 @@ export const sendTeamInvitation = async (req: Request, res: Response) => {
 
   // Send email notification — failure is non-fatal (invitation is already created)
   try {
-    const inviteUrl = `${process.env.FRONTEND_URL}/tournaments/${id}/teams/${teamId}/invitations/${invitation.inviteToken}/accept`;
+    const inviteUrl = `${process.env.FRONTEND_URL}/tournaments/invite/${invitation.inviteToken}`;
     const { sendEmail } = await import('../utils/emailService');
     await sendEmail(
       inviteeEmail,
@@ -3046,7 +3108,9 @@ export const selfUnregisterTeam = async (req: Request, res: Response) => {
   const tournament = await prisma.tournament.findUnique({ where: { id } });
   ensureResourceExists(tournament, 'Tournament');
 
-  tournamentService.validateRegistrationEligibility(tournament!);
+  if (tournament!.status !== 'draft' && tournament!.status !== 'registration') {
+    throw new BadRequestError('You can only unregister while tournament registration is open');
+  }
 
   const existingTeams = await prisma.tournamentTeam.findMany({
     where: { tournamentId: id, captainUserId: userId },

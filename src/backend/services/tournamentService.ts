@@ -326,36 +326,29 @@ export const canSubmitScore = async (
   tournament: { organizerId: string },
   userId: string
 ): Promise<boolean> => {
-  // Check if organizer
+  // Check if organizer (no DB query needed)
   if (tournament.organizerId === userId) {
     return true;
   }
-  
-  // Check if captain of either team
-  const isHomeCaptain = await isTeamCaptain(match.homeTeamId, userId);
-  if (isHomeCaptain) return true;
-  
-  const isAwayCaptain = await isTeamCaptain(match.awayTeamId, userId);
-  if (isAwayCaptain) return true;
-  
-  // Check if registered player on either team
-  const isHomePlayer = await isRegisteredPlayer(match.homeTeamId, userId);
-  if (isHomePlayer) return true;
-  
-  const isAwayPlayer = await isRegisteredPlayer(match.awayTeamId, userId);
-  if (isAwayPlayer) return true;
-  
-  // Check if registered player on referee team
-  if (match.refereeTeamId) {
-    const isRefereePlayer = await isRegisteredPlayer(match.refereeTeamId, userId);
-    if (isRefereePlayer) return true;
-    
-    // Also check if captain of referee team
-    const isRefereeCaptain = await isTeamCaptain(match.refereeTeamId, userId);
-    if (isRefereeCaptain) return true;
-  }
-  
-  return false;
+
+  // Fetch captain status for home, away, and referee teams in parallel
+  const teamIds = [match.homeTeamId, match.awayTeamId];
+  if (match.refereeTeamId) teamIds.push(match.refereeTeamId);
+
+  const [captainTeam, playerEntry] = await Promise.all([
+    // Check if user is captain of any relevant team
+    prisma.tournamentTeam.findFirst({
+      where: { id: { in: teamIds }, captainUserId: userId },
+      select: { id: true }
+    }),
+    // Check if user is a registered player on any relevant team
+    prisma.tournamentPlayer.findFirst({
+      where: { teamId: { in: teamIds }, userId },
+      select: { id: true }
+    }),
+  ]);
+
+  return captainTeam !== null || playerEntry !== null;
 };
 
 /**
@@ -909,6 +902,19 @@ export const acceptTeamInvitation = async (inviteToken: string, userId: string) 
     throw new BadRequestError('This invitation is for a different email address');
   }
   
+  // Guard against duplicate player (e.g. manually added after invitation was sent)
+  const existingPlayer = await prisma.tournamentPlayer.findFirst({
+    where: { teamId: invitation.teamId, userId }
+  });
+  if (existingPlayer) {
+    // Mark as accepted anyway so the invitation is not left in a pending state
+    await prisma.tournamentTeamInvitation.update({
+      where: { id: invitation.id },
+      data: { status: 'accepted', inviteeUserId: userId }
+    });
+    throw new BadRequestError('You are already a member of this team');
+  }
+
   // Add user as a player to the team
   await prisma.tournamentPlayer.create({
     data: {

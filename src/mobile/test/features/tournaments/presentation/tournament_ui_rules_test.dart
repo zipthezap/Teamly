@@ -3,10 +3,11 @@ import 'package:teamly_mobile/features/tournaments/presentation/tournament_ui_ru
 
 void main() {
   group('Tournament UI rules', () {
-    test('register button is only shown during registration and without team', () {
+    test('register button is shown during registration and draft, hidden when already registered', () {
       expect(canRegisterTeam('registration', hasMyTeam: false), isTrue);
       expect(canRegisterTeam('registration', hasMyTeam: true), isFalse);
-      expect(canRegisterTeam('draft', hasMyTeam: false), isFalse);
+      expect(canRegisterTeam('draft', hasMyTeam: false), isTrue);
+      expect(canRegisterTeam('draft', hasMyTeam: true), isFalse);
       expect(canRegisterTeam('in_progress', hasMyTeam: false), isFalse);
     });
 

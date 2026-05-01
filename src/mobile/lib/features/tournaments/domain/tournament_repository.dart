@@ -66,6 +66,7 @@ abstract class InvitationRepository {
   Future<void> declineInvitation(String inviteToken);
   Future<void> cancelInvitation(
       String tournamentId, String teamId, String invitationId);
+  Future<Map<String, dynamic>> getInvitationDetails(String inviteToken);
 }
 
 abstract class MatchRepository {
