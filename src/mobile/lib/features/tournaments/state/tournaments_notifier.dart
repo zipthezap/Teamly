@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/tournament_model.dart';
@@ -43,7 +45,12 @@ final myInvitationsCountProvider =
   try {
     final invites = await ref.watch(tournamentRepositoryProvider).getMyInvitations();
     return invites.where((i) => (i['status'] as String?) == 'pending').length;
-  } catch (_) {
+  } on DioException catch (e) {
+    // Swallow network / server errors so the badge degrades gracefully
+    debugPrint('myInvitationsCountProvider: network error ignored: $e');
     return 0;
+  } catch (e) {
+    // Re-throw unexpected errors (programming bugs, type errors, etc.)
+    rethrow;
   }
 });

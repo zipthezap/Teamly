@@ -87,6 +87,7 @@ vi.mock('../../config/database', () => ({
       findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       delete: vi.fn(),
       count: vi.fn(),
     },
@@ -394,6 +395,7 @@ beforeEach(() => {
   vi.mocked(prisma.tournamentPoolWaitlist.count).mockResolvedValue(0);
   vi.mocked(prisma.tournamentPoolWaitlist.create).mockResolvedValue({} as any);
   vi.mocked(prisma.tournamentPoolWaitlist.update).mockResolvedValue({} as any);
+  vi.mocked(prisma.tournamentPoolWaitlist.updateMany).mockResolvedValue({ count: 0 } as any);
   vi.mocked(prisma.tournamentPoolWaitlist.delete).mockResolvedValue({} as any);
 
   vi.mocked(prisma.tournamentPlayer.findUnique).mockResolvedValue(null);
@@ -2304,19 +2306,20 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
     expect(res.body.team).toBeDefined();
   });
 
-  it('ignores categoryId in request body (categoryId is deprecated in selfRegisterTeam)', async () => {
+  it('uses categoryId in request body when provided', async () => {
     const registeredTournament = { ...mockTournament, status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.tournamentCategory.findFirst).mockResolvedValue({ id: 'cat-1', name: 'Category A' } as any);
     vi.mocked(prisma.tournamentTeam.create).mockResolvedValue({ ...mockTeam, captainUser: null } as any);
 
     const res = await request(app)
       .post('/api/tournaments/tournament-1/teams/self-register')
       .send({ name: 'New Team', categoryId: 'cat-1' });
 
-    // categoryId is silently ignored — the response is a plain 201 registration
+    // categoryId is now supported and passed to team creation
     expect(res.status).toBe(201);
-    expect(res.body.categoryId).toBeUndefined();
+    expect(prisma.tournamentCategory.findFirst).toHaveBeenCalled();
   });
 
   it('returns 404 when poolId is provided but pool does not exist', async () => {
@@ -2418,7 +2421,11 @@ describe('DELETE /api/tournaments/:id/teams/self-register (selfUnregisterTeam)',
   it('returns 200 on successful unregister', async () => {
     const registeredTournament = { ...mockTournament, status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
-    vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValue([mockTeam] as any);
+    vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValue([{
+      ...mockTeam,
+      captainUserId: 'test-user-id',
+      _count: { players: 0 },
+    }] as any);
     vi.mocked(prisma.tournamentTeam.deleteMany).mockResolvedValue({ count: 1 } as any);
 
     const res = await request(app)
@@ -2445,8 +2452,8 @@ describe('DELETE /api/tournaments/:id/teams/self-register (selfUnregisterTeam)',
     const registeredTournament = { ...mockTournament, status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
     vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValue([
-      { ...mockTeam, id: 'team-1' },
-      { ...mockTeam, id: 'team-2' },
+      { ...mockTeam, id: 'team-1', captainUserId: 'test-user-id', _count: { players: 0 } },
+      { ...mockTeam, id: 'team-2', captainUserId: 'test-user-id', _count: { players: 0 } },
     ] as any);
     vi.mocked(prisma.tournamentTeam.deleteMany).mockResolvedValue({ count: 2 } as any);
 
@@ -3355,7 +3362,7 @@ describe('POST /api/tournaments/:id/matches (createMatch) — edge cases', () =>
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('DELETE /api/tournaments/:id/matches/:matchId (deleteMatch) — edge cases', () => {
-  it('returns 400 when trying to delete a completed match with scores', async () => {
+  it('returns 200 and reverts standings when deleting a completed match with scores', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
       ...mockTournament,
       status: 'in_progress',
@@ -3367,11 +3374,13 @@ describe('DELETE /api/tournaments/:id/matches/:matchId (deleteMatch) — edge ca
       homeScore: 2,
       awayScore: 1,
     } as any);
+    vi.mocked(prisma.tournamentMatch.delete).mockResolvedValue(mockMatch as any);
 
     const res = await request(app).delete('/api/tournaments/tournament-1/matches/match-1');
 
-    expect(res.status).toBe(400);
-    expect(res.body.error).toContain('Cannot delete completed matches');
+    expect(res.status).toBe(200);
+    expect(tournamentService.revertStandings).toHaveBeenCalled();
+    expect(res.body.message).toContain('deleted');
   });
 
   it('returns 200 when deleting a scheduled match', async () => {

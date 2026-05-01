@@ -173,6 +173,36 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
                         if (mounted) refresh();
                       },
                     ),
+                  if (isOrganizer)
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert),
+                      onSelected: (value) async {
+                        if (value == 'cancel') {
+                          await _confirmCancelTournament(context, t.id, refresh);
+                        } else if (value == 'delete') {
+                          await _confirmDeleteTournament(context, t.id);
+                        }
+                      },
+                      itemBuilder: (_) => [
+                        if (t.status != 'cancelled' && t.status != 'completed')
+                          const PopupMenuItem(
+                            value: 'cancel',
+                            child: ListTile(
+                              leading: Icon(Icons.cancel_outlined),
+                              title: Text('Cancel Tournament'),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: ListTile(
+                            leading: Icon(Icons.delete_forever_outlined),
+                            title: Text('Delete Tournament'),
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ],
+                    ),
                 ],
                 bottom: TabBar(
                   controller: _tabController,
@@ -207,6 +237,81 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
         );
       },
     );
+  }
+
+  Future<void> _confirmCancelTournament(
+      BuildContext context, String tournamentId, VoidCallback onRefresh) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancel Tournament'),
+        content: const Text(
+            'Are you sure you want to cancel this tournament? This cannot be undone.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Back')),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Cancel Tournament'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    try {
+      await ref.read(tournamentRepositoryProvider).cancelTournament(tournamentId);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Tournament cancelled')));
+        onRefresh();
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to cancel: $e')));
+      }
+    }
+  }
+
+  Future<void> _confirmDeleteTournament(
+      BuildContext context, String tournamentId) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Tournament'),
+        content: const Text(
+            'This will permanently delete the tournament and all associated data. This cannot be undone.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    try {
+      await ref.read(tournamentRepositoryProvider).deleteTournament(tournamentId);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Tournament deleted')));
+        ref.invalidate(tournamentsNotifierProvider);
+        context.pop();
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete: $e')));
+      }
+    }
   }
 }
 

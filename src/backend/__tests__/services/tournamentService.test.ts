@@ -33,6 +33,7 @@ import { VolleyballConfig, BracketStage, MatchStatus } from '../../../shared/typ
 // Mock dependencies
 vi.mock('../../config/database', () => ({
   default: {
+    $transaction: vi.fn(),
     tournament: {
       findUnique: vi.fn(),
     },
@@ -83,6 +84,9 @@ vi.mock('../../utils/errors', () => ({
 describe('Tournament Service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: any) =>
+      typeof fn === 'function' ? fn(prisma) : Promise.all(fn)
+    );
   });
 
   describe('calculateVolleyballWinner', () => {
@@ -1288,7 +1292,7 @@ describe('Tournament Service', () => {
       vi.mocked(prisma.tournamentPlayer.findFirst).mockResolvedValueOnce({ id: 'p-1' } as unknown);
       vi.mocked(prisma.tournamentTeamInvitation.update).mockResolvedValueOnce({} as unknown);
 
-      await expect(acceptTeamInvitation('abc123', 'user-1')).rejects.toThrow('already a member');
+      await expect(acceptTeamInvitation('abc123', 'user-1')).rejects.toThrow('already a participant');
 
       expect(prisma.tournamentTeamInvitation.update).toHaveBeenCalledWith(
         expect.objectContaining({ data: { status: 'accepted', inviteeUserId: 'user-1' } })
@@ -1304,7 +1308,7 @@ describe('Tournament Service', () => {
       } as unknown);
       vi.mocked(prisma.tournamentPlayer.findFirst).mockResolvedValueOnce(null);
       vi.mocked(prisma.tournamentPlayer.create).mockResolvedValueOnce({ id: 'p-new' } as unknown);
-      vi.mocked(prisma.tournamentTeamInvitation.update).mockResolvedValueOnce({} as unknown);
+      vi.mocked(prisma.tournamentTeamInvitation.update).mockResolvedValueOnce(mockInvitation as unknown);
 
       const result = await acceptTeamInvitation('abc123', 'user-1');
 

@@ -411,6 +411,16 @@ class TournamentRepositoryImpl implements TournamentRepository {
     return TournamentModel.fromJson(_requireMapData(response, 'update tournament'));
   }
 
+  @override
+  Future<void> deleteTournament(String id) async {
+    await _dio.delete('/tournaments/$id');
+  }
+
+  @override
+  Future<void> cancelTournament(String id) async {
+    await _dio.post<void>('/tournaments/$id/cancel');
+  }
+
   // ---------------------------------------------------------------------------
   // Match management
   // ---------------------------------------------------------------------------

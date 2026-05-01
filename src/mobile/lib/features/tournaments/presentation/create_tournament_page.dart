@@ -188,14 +188,11 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
               dropdownColor: AppThemeTokens.cardElevated(context),
               items: const [
                 DropdownMenuItem(value: 'single_elimination', child: Text('Single Elimination')),
-                DropdownMenuItem(value: 'double_elimination', child: Text('Double Elimination')),
                 DropdownMenuItem(value: 'round_robin', child: Text('Round Robin')),
                 DropdownMenuItem(value: 'groups_knockout', child: Text('Groups + Knockout')),
               ],
               onChanged: (v) => setState(() => _format = v ?? 'single_elimination'),
             ),
-            const SizedBox(height: 16),
-            TextFormField(controller: _descCtrl, decoration: const InputDecoration(labelText: 'Description', prefixIcon: Icon(Icons.notes_outlined), alignLabelWithHint: true), maxLines: 3),
             const SizedBox(height: 16),
             TextFormField(controller: _maxTeamsCtrl, decoration: const InputDecoration(labelText: 'Max teams', prefixIcon: Icon(Icons.group_outlined)), keyboardType: TextInputType.number,
               validator: (v) {

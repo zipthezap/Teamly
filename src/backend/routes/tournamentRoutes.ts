@@ -19,9 +19,6 @@ router.get('/invitations/preview/:inviteToken', etagMiddleware({ weak: true }), 
 // Allow anyone to view team players for public discovery (no auth required)
 router.get('/:id/teams/:teamId/players', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getPlayers));
 
-// Allow anyone to view team invitations (public view) — non-sensitive fields only
-router.get('/:id/teams/:teamId/invitations', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getTeamInvitations));
-
 // All tournament routes require authentication
 router.use(authMiddleware);
 router.use(authenticatedLimiter);
@@ -43,6 +40,11 @@ router.delete(
   noCache,
   requireTournamentPermission(Permission.TOURNAMENT_DELETE),
   asyncHandler(tournamentController.deleteTournament)
+);
+router.post(
+  '/:id/cancel',
+  noCache,
+  asyncHandler(tournamentController.cancelTournament)
 );
 
 // Team management
@@ -219,12 +221,17 @@ router.post(
   asyncHandler(tournamentController.registerTeamToPool)
 );
 
-// Admin: move a team from one pool to another
+// Admin: move a team from one pool to another (deprecated path — proxied to moveTeamToPool)
+// Prefer PUT /:id/teams/:teamId/pool-move for new clients.
 router.post(
   '/:id/pools/:poolId/admin/teams/:teamId/move/:targetPoolId',
   noCache,
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
-  asyncHandler(tournamentController.adminMoveTeamToPool)
+  asyncHandler(async (req, res) => {
+    // Re-map URL params to the body shape expected by moveTeamToPool
+    req.body = { ...req.body, poolId: req.params.targetPoolId };
+    return tournamentController.moveTeamToPool(req, res);
+  })
 );
 router.delete(
   '/:id/pools/:poolId/teams/:teamId',

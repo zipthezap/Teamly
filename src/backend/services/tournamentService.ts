@@ -1028,28 +1028,29 @@ export const acceptTeamInvitation = async (inviteToken: string, userId: string) 
     throw new BadRequestError('You are already a participant in this tournament');
   }
 
-  // Add user as a player to the team
-  await prisma.tournamentPlayer.create({
-    data: {
-      teamId: invitation.teamId,
-      userId: userId,
-      playerName: user.name,
-      playerEmail: user.email
-    }
-  });
-  
-  // Mark invitation as accepted
-  const updated = await prisma.tournamentTeamInvitation.update({
-    where: { id: invitation.id },
-    data: {
-      status: 'accepted',
-      inviteeUserId: userId
-    },
-    include: {
-      team: { include: { tournament: true } },
-      inviter: { select: { id: true, name: true, email: true } },
-      inviteeUser: { select: { id: true, name: true, email: true } }
-    }
+  // Add user as a player to the team and mark invitation as accepted atomically
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.tournamentPlayer.create({
+      data: {
+        teamId: invitation.teamId,
+        userId: userId,
+        playerName: user.name,
+        playerEmail: user.email
+      }
+    });
+
+    return tx.tournamentTeamInvitation.update({
+      where: { id: invitation.id },
+      data: {
+        status: 'accepted',
+        inviteeUserId: userId
+      },
+      include: {
+        team: { include: { tournament: true } },
+        inviter: { select: { id: true, name: true, email: true } },
+        inviteeUser: { select: { id: true, name: true, email: true } }
+      }
+    });
   });
 
   return updated;
