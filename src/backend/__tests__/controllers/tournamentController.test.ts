@@ -1325,6 +1325,31 @@ describe('POST /api/tournaments/:id/matches/:matchId/score (submitScore)', () =>
     expect(res.status).toBe(409);
     expect(res.body.error).toContain('already been submitted');
   });
+
+  it('sets startedAt when submitting score for a match that was not yet started', async () => {
+    const beforeCall = new Date();
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    // Match has no startedAt (never started)
+    vi.mocked(prisma.tournamentMatch.findUnique)
+      .mockResolvedValueOnce({ ...mockMatch, startedAt: null } as any)
+      .mockResolvedValueOnce({ ...mockMatch, homeScore: 1, awayScore: 0, status: 'completed', startedAt: beforeCall } as any);
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: any) =>
+      typeof fn === 'function' ? fn(prisma) : Promise.all(fn)
+    );
+    vi.mocked(prisma.tournamentMatch.updateMany).mockResolvedValue({ count: 1 } as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 1, awayScore: 0 });
+
+    expect(res.status).toBe(200);
+    // updateMany must include startedAt in the data payload
+    expect(prisma.tournamentMatch.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ startedAt: expect.any(Date) }),
+      })
+    );
+  });
 });
 
 describe('PUT /api/tournaments/:id/matches/:matchId/score (adminUpdateScore)', () => {
@@ -2414,6 +2439,21 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
       .send({ name: 'New Team' });
 
     expect(res.status).toBe(404);
+  });
+
+  it('returns 404 when categoryId does not belong to the tournament', async () => {
+    const registeredTournament = { ...mockTournament, status: 'registration' };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+    // Category not found for this tournament
+    vi.mocked(prisma.tournamentCategory.findFirst).mockResolvedValue(null);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/teams/self-register')
+      .send({ name: 'New Team', categoryId: 'wrong-cat' });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toContain('Category not found');
   });
 });
 
