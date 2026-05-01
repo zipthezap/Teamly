@@ -385,6 +385,19 @@ export class NotificationFactory {
     // Filter muted users if requested (tournaments don't have specific mute preferences yet)
     const targetUserIds = userIds;
 
+    // Lightweight instrumentation for debugging notification flows
+    try {
+      logger.info('createTournamentNotifications called', 'NotificationFactory', {
+        tournamentId,
+        type,
+        requestedUserCount: userIds.length,
+        params: params || {},
+        metadata: metadata || {}
+      });
+    } catch (e) {
+      // swallow logging errors to avoid breaking notification paths
+    }
+
     // Deduplicate if window is specified
     let finalUserIds = targetUserIds;
     if (deduplicateWindow > 0) {
@@ -392,7 +405,8 @@ export class NotificationFactory {
       const existingNotifications = await client.tournamentNotification.findMany({
         where: {
           tournamentId,
-          type,
+          // Prisma expects the generated enum type; cast to any to bridge shared enum
+          type: type as any,
           userId: { in: targetUserIds },
           createdAt: { gte: windowStart }
         },
@@ -412,30 +426,44 @@ export class NotificationFactory {
       const notifications = finalUserIds.map(userId => ({
         tournamentId,
         userId,
-        type,
+        // Cast to any so Prisma accepts the shared enum value
+        type: type as any,
         params: params || {},
         metadata: metadata || {}
       }));
 
       await client.tournamentNotification.createMany({
-        data: notifications,
+        data: notifications as any,
         skipDuplicates: true
       });
 
-      void dispatchPushNotifications({
-        userIds: finalUserIds,
-        notificationKind: 'tournament',
-        notificationType: type,
-        entityId: tournamentId,
-        params,
-        metadata,
-      });
+      try {
+        void dispatchPushNotifications({
+          userIds: finalUserIds,
+          notificationKind: 'tournament',
+          notificationType: type,
+          entityId: tournamentId,
+          params,
+          metadata,
+        });
+      } catch (e) {
+        logger.error('dispatchPushNotifications failed', 'NotificationFactory', { error: e, tournamentId, type });
+      }
 
       logger.debug(`Created ${finalUserIds.length} tournament notifications`, 'NotificationFactory', {
         type,
         tournamentId,
         count: finalUserIds.length
       });
+
+      try {
+        logger.info('createTournamentNotifications completed', 'NotificationFactory', {
+          tournamentId,
+          type,
+          created: finalUserIds.length,
+          skipped: userIds.length - finalUserIds.length
+        });
+      } catch (e) { /* ignore */ }
 
       return { 
         created: finalUserIds.length, 

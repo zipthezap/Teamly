@@ -24,6 +24,7 @@ class _TournamentInvitePageState extends ConsumerState<TournamentInvitePage> {
   String? _result;
   String? _error;
   Map<String, dynamic>? _details;
+  Map<String, dynamic>? _invitation;
 
   @override
   void initState() {
@@ -81,6 +82,14 @@ class _TournamentInvitePageState extends ConsumerState<TournamentInvitePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Attempt to load invitation details when first built
+    if (_invitation == null && _error == null && _result == null) {
+      ref.read(tournamentRepositoryProvider).getInvitation(widget.inviteToken).then((inv) {
+        if (mounted) setState(() => _invitation = inv);
+      }).catchError((e) {
+        if (mounted) setState(() => _error = extractErrorMessage(e));
+      });
+    }
     return Scaffold(
       appBar: AppBar(title: const Text('Team Invitation')),
       body: Center(
@@ -141,12 +150,19 @@ class _TournamentInvitePageState extends ConsumerState<TournamentInvitePage> {
                             ],
                           ),
                         ),
+                      ] else if (_invitation != null) ...[
+                        const SizedBox(height: 8),
+                        Text('Team: ${_invitation!['team']?['name'] ?? ''}', style: const TextStyle(fontSize: 16)),
+                        const SizedBox(height: 4),
+                        Text('Tournament: ${_invitation!['team']?['tournament']?['name'] ?? ''}', style: const TextStyle(fontSize: 14, color: Colors.black54)),
+                        const SizedBox(height: 4),
+                        Text('Invited by: ${_invitation!['inviter']?['name'] ?? ''}', style: const TextStyle(fontSize: 14, color: Colors.black54)),
                       ] else if (_error != null) ...[
                         const SizedBox(height: 12),
                         Text(_error!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
                       ],
                       const SizedBox(height: 32),
-                      if (_error == null || _details != null) ...[
+                      if (_error == null || _details != null || _invitation != null) ...[
                         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                           OutlinedButton.icon(
                             icon: _declineLoading

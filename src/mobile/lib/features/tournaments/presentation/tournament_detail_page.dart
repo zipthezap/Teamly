@@ -239,14 +239,34 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
   TournamentTeamModel? get myTeam => widget.myTeam;
   VoidCallback get onRefresh => widget.onRefresh;
 
+  Future<void> _refreshTournamentDetail() async {
+    ref.invalidate(tournamentDetailProvider(t.id));
+    await ref.read(tournamentDetailProvider(t.id).future);
+    ref.invalidate(tournamentsNotifierProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final canRegister = canRegisterTeam(t.status, hasMyTeam: myTeam != null);
     final canManageTournament = canManageTournamentAdminActions(t.status);
     final dateFormat = DateFormat.yMMMd();
+    final organizerNames = <String>[];
+
+    void addOrganizer(String? name) {
+      final clean = (name ?? '').trim();
+      if (clean.isEmpty) return;
+      final alreadyExists = organizerNames
+          .any((existing) => existing.toLowerCase() == clean.toLowerCase());
+      if (!alreadyExists) organizerNames.add(clean);
+    }
+
+    addOrganizer(t.organizerName);
+    for (final admin in t.admins) {
+      addOrganizer(admin.userName.isNotEmpty ? admin.userName : admin.userEmail);
+    }
 
     return RefreshIndicator(
-      onRefresh: () async => onRefresh(),
+      onRefresh: _refreshTournamentDetail,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -288,6 +308,17 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                   icon: Icons.location_on_outlined,
                   label: 'Location',
                   value: t.locationName ?? t.location ?? ''),
+            if (organizerNames.isNotEmpty)
+              _InfoRow(
+                icon: Icons.groups_outlined,
+                label: organizerNames.length > 1 ? 'Organizers' : 'Organizer',
+                value: organizerNames.join(', '),
+                onTap: () => _showTextDialog(
+                  context,
+                  organizerNames.length > 1 ? 'Organizers' : 'Organizer',
+                  organizerNames.map((name) => '- $name').join('\n'),
+                ),
+              ),
             if (t.rulesDescription != null || t.prizesDescription != null)
               const Divider(height: 16),
             if (t.rulesDescription != null)
@@ -324,7 +355,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               onPressed: () async {
                 final ok =
                     await context.push<bool>('/tournaments/${t.id}/register');
-                if (ok == true) onRefresh();
+                if (ok == true && context.mounted) {
+                  await _refreshTournamentDetail();
+                }
               },
             ),
           ],
@@ -487,7 +520,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
       await ref
           .read(tournamentRepositoryProvider)
           .selfUnregisterTeam(tournamentId);
-      onRefresh();
+      await _refreshTournamentDetail();
     } on Exception catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -598,8 +631,80 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
   TournamentCategoryModel get category => widget.category;
   TournamentModel get tournament => widget.tournament;
 
+  Future<void> _refreshTournamentDetail() async {
+    ref.invalidate(tournamentDetailProvider(tournament.id));
+    await ref.read(tournamentDetailProvider(tournament.id).future);
+  }
+
+  Future<void> _registerToCategory() async {
+    final nameCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Register to ${category.name}'),
+        content: TextField(
+          controller: nameCtrl,
+          decoration: const InputDecoration(
+              labelText: 'Team name *',
+              prefixIcon: Icon(Icons.shield_outlined)),
+          textCapitalization: TextCapitalization.words,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Register')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final name = nameCtrl.text.trim();
+    if (name.isEmpty) return;
+
+    setState(() => _registering = true);
+    try {
+      await ref.read(tournamentRepositoryProvider).selfRegisterTeam(
+            tournament.id,
+            name,
+            categoryId: category.id,
+          );
+      await _refreshTournamentDetail();
+      widget.onRefresh();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Team registered to ${category.name}!')),
+        );
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(extractErrorMessage(e)),
+              backgroundColor: Theme.of(context).colorScheme.error),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _registering = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final categoryName = category.name.trim().toLowerCase();
+    final poolTeamIds = <String>{
+      for (final pool in category.pools)
+        for (final team in pool.teams) team.id,
+    };
+    final unpooledCategoryTeams = tournament.teams.where((team) {
+      final inCategoryByName =
+          (team.poolName ?? '').trim().toLowerCase() == categoryName;
+      final alreadyRenderedInPool = poolTeamIds.contains(team.id);
+      return inCategoryByName && !alreadyRenderedInPool;
+    }).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -613,17 +718,47 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
                     fontSize: 13)),
           ),
         const SizedBox(height: 6),
-        if (category.pools.isEmpty)
+        if (category.pools.isEmpty && unpooledCategoryTeams.isEmpty)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Text('No pools in this category.',
                 style: TextStyle(
                     color: AppThemeTokens.textMuted(context), fontSize: 13)),
           )
-        else
+        else ...[
+          if (category.pools.isNotEmpty)
           for (final pool in category.pools)
             _PoolCard(
                 pool: pool, isAdmin: widget.isAdmin, tournament: tournament),
+          if (unpooledCategoryTeams.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: AppThemeTokens.cardElevated(context),
+                borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+                border: Border.all(color: AppThemeTokens.border(context)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Category Teams',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: AppThemeTokens.textSecondary(context),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    for (final team in unpooledCategoryTeams)
+                      _TeamRow(team: team, tournamentId: tournament.id),
+                  ],
+                ),
+              ),
+            ),
+        ],
         const SizedBox(height: 8),
       ],
     );

@@ -33,3 +33,17 @@ final tournamentDetailProvider =
     FutureProvider.family<TournamentModel, String>((ref, id) async {
   return ref.watch(tournamentReadRepositoryProvider).getTournament(id);
 });
+
+// ---------------------------------------------------------------------------
+// My invitations count
+// ---------------------------------------------------------------------------
+
+final myInvitationsCountProvider =
+    FutureProvider<int>((ref) async {
+  try {
+    final invites = await ref.watch(tournamentRepositoryProvider).getMyInvitations();
+    return invites.where((i) => (i['status'] as String?) == 'pending').length;
+  } catch (_) {
+    return 0;
+  }
+});

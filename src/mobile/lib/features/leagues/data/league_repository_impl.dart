@@ -41,7 +41,19 @@ class LeagueRepositoryImpl implements LeagueRepository {
   Future<LeagueModel> getLeagueById(String leagueId) async {
     final response =
         await _dio.get<Map<String, dynamic>>('/leagues/$leagueId');
-    return LeagueModel.fromJson(response.data!);
+    final data = Map<String, dynamic>.from(response.data ?? {});
+    // Ensure the league object includes the teams list. Some backends may
+    // not include teams in the league detail payload, so fetch them
+    // explicitly and attach when missing.
+    if (data['teams'] == null) {
+      try {
+        final teamsResp = await _dio.get<dynamic>('/leagues/$leagueId/teams');
+        data['teams'] = teamsResp.data as List<dynamic>? ?? [];
+      } catch (_) {
+        data['teams'] = [];
+      }
+    }
+    return LeagueModel.fromJson(data);
   }
 
   @override

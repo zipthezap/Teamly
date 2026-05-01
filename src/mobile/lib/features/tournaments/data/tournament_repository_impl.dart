@@ -150,10 +150,33 @@ class TournamentRepositoryImpl implements TournamentRepository {
   }
 
   @override
+  Future<Map<String, dynamic>> registerTeamToPoolAsAdmin(
+      String tournamentId, String poolId, String teamId) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+        '/tournaments/$tournamentId/pools/$poolId/admin/teams/$teamId');
+    return _requireMapData(response, 'register team to pool (admin)');
+  }
+
+  @override
   Future<void> removeTeamFromPool(
       String tournamentId, String poolId, String teamId) async {
     await _dio.delete<void>(
         '/tournaments/$tournamentId/pools/$poolId/teams/$teamId');
+  }
+
+  @override
+  Future<void> removeTeamFromPoolAsAdmin(
+      String tournamentId, String poolId, String teamId) async {
+    await _dio.delete<void>(
+        '/tournaments/$tournamentId/pools/$poolId/admin/teams/$teamId');
+  }
+
+  @override
+  Future<void> moveTeamToPoolAsAdmin(
+      String tournamentId, String sourcePoolId, String teamId, String targetPoolId) async {
+    await _dio.post<void>(
+      '/tournaments/$tournamentId/pools/$sourcePoolId/admin/teams/$teamId/move/$targetPoolId'
+    );
   }
 
   @override
@@ -171,6 +194,13 @@ class TournamentRepositoryImpl implements TournamentRepository {
       data: {'poolId': poolId},
     );
     return response.data ?? {};
+  }
+
+  @override
+  Future<void> removeTeamFromWaitlistAsAdmin(
+      String tournamentId, String poolId, String teamId) async {
+    await _dio.delete<void>(
+        '/tournaments/$tournamentId/pools/$poolId/waitlist/$teamId/admin');
   }
 
   // ---------------------------------------------------------------------------
@@ -328,6 +358,12 @@ class TournamentRepositoryImpl implements TournamentRepository {
   Future<void> declineInvitation(String inviteToken) async {
     await _dio
         .post<void>('/tournaments/invitations/$inviteToken/decline');
+  }
+
+  @override
+  Future<Map<String, dynamic>> getInvitation(String inviteToken) async {
+    final response = await _dio.get<Map<String, dynamic>>('/tournaments/invitations/$inviteToken');
+    return _requireMapData(response, 'invitation');
   }
 
   @override

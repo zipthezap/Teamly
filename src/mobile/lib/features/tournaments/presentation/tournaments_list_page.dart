@@ -35,15 +35,46 @@ class _TournamentsPageState extends ConsumerState<TournamentsPage> {
   @override
   Widget build(BuildContext context) {
     final tournamentsAsync = ref.watch(tournamentsNotifierProvider);
+    final invitesAsync = ref.watch(myInvitationsCountProvider);
+    final invitesCount = invitesAsync.maybeWhen(data: (c) => c, orElse: () => 0);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tournaments'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.mail_outline),
             tooltip: 'My Invitations',
             onPressed: () => context.push('/tournaments/invitations'),
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.mail_outline),
+                if (invitesCount > 0)
+                  Positioned(
+                    right: -6,
+                    top: -6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFA000),
+                        borderRadius: BorderRadius.circular(100),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.surface,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Text(
+                        invitesCount > 99 ? '99+' : '$invitesCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
       ),

@@ -32,7 +32,13 @@ abstract class PoolRepository {
   Future<void> deletePool(String tournamentId, String poolId);
   Future<Map<String, dynamic>> registerTeamToPool(
       String tournamentId, String poolId, String teamId);
+  Future<Map<String, dynamic>> registerTeamToPoolAsAdmin(
+      String tournamentId, String poolId, String teamId);
+  Future<void> moveTeamToPoolAsAdmin(
+      String tournamentId, String sourcePoolId, String teamId, String targetPoolId);
   Future<void> removeTeamFromPool(
+      String tournamentId, String poolId, String teamId);
+  Future<void> removeTeamFromPoolAsAdmin(
       String tournamentId, String poolId, String teamId);
   Future<void> removeTeamFromWaitlist(
       String tournamentId, String poolId, String teamId);
@@ -40,6 +46,8 @@ abstract class PoolRepository {
   /// the current pool. Returns the raw response map from the backend.
   Future<Map<String, dynamic>> moveTeamToPool(
       String tournamentId, String teamId, String? poolId);
+  Future<void> removeTeamFromWaitlistAsAdmin(
+      String tournamentId, String poolId, String teamId);
 }
 
 abstract class CategoryRepository {
@@ -68,6 +76,7 @@ abstract class InvitationRepository {
   Future<List<Map<String, dynamic>>> getMyInvitations();
   Future<void> acceptInvitation(String inviteToken);
   Future<void> declineInvitation(String inviteToken);
+    Future<Map<String, dynamic>> getInvitation(String inviteToken);
   Future<void> cancelInvitation(
       String tournamentId, String teamId, String invitationId);
   Future<Map<String, dynamic>> getInvitationDetails(String inviteToken);

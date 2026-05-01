@@ -2,6 +2,7 @@
 
 export enum TournamentNotificationType {
   team_registered = 'team_registered',
+  team_invited = 'team_invited',
   tournament_updated = 'tournament_updated',
   tournament_cancelled = 'tournament_cancelled',
   match_scheduled = 'match_scheduled',

@@ -136,7 +136,13 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                         ref.invalidate(unreadCountProvider);
                       }
                       if (!context.mounted) return;
-                      if (n.eventId != null) {
+                      // If notification contains an invite token, deep-link to the
+                      // public tournament invite landing so the user can accept.
+                      final params = n.params as Map<String, dynamic>?;
+                      if (params != null && (params['inviteToken'] as String?) != null) {
+                        final token = (params['inviteToken'] as String?)!;
+                        context.push('/tournaments/invite/$token');
+                      } else if (n.eventId != null) {
                         context.push('/sessions/${n.eventId}');
                       } else if (n.groupId != null) {
                         context.push('/groups/${n.groupId}');
@@ -291,19 +297,34 @@ class _NotificationCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          notification.summary as String,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: isUnread ? FontWeight.w600 : FontWeight.w400,
-                            color: isUnread
-                                ? AppThemeTokens.text(context)
-                                : AppThemeTokens.textSecondary(context),
-                            height: 1.4,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        // Build a richer summary using params when available
+                        Builder(builder: (ctx) {
+                          final params = notification.params as Map<String, dynamic>?;
+                          String summary = notification.summary as String? ?? '';
+                          if (params != null) {
+                            final teamName = params['teamName'] as String?;
+                            final inviter = params['inviterName'] as String?;
+                            if (teamName != null && inviter != null) {
+                              summary = '$inviter invited you to join $teamName';
+                            } else if (teamName != null) {
+                              summary = 'Invite to join $teamName';
+                            }
+                          }
+
+                          return Text(
+                            summary,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: isUnread ? FontWeight.w600 : FontWeight.w400,
+                              color: isUnread
+                                  ? AppThemeTokens.text(context)
+                                  : AppThemeTokens.textSecondary(context),
+                              height: 1.4,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          );
+                        }),
                         const SizedBox(height: 4),
                         Text(
                           timeLabel,
