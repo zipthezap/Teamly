@@ -194,6 +194,8 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
               onChanged: (v) => setState(() => _format = v ?? 'single_elimination'),
             ),
             const SizedBox(height: 16),
+            TextFormField(controller: _descCtrl, decoration: const InputDecoration(labelText: 'Description', prefixIcon: Icon(Icons.notes_outlined), alignLabelWithHint: true), maxLines: 3),
+            const SizedBox(height: 16),
             TextFormField(controller: _maxTeamsCtrl, decoration: const InputDecoration(labelText: 'Max teams', prefixIcon: Icon(Icons.group_outlined)), keyboardType: TextInputType.number,
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return null;
