@@ -155,6 +155,7 @@ vi.mock('../../services/tournamentService', () => ({
   generateRoundRobinBrackets: vi.fn().mockResolvedValue({ count: 6 }),
   generateGroupsKnockoutBrackets: vi.fn().mockResolvedValue({ count: 8 }),
   updateStandings: vi.fn().mockResolvedValue(undefined),
+  revertStandings: vi.fn().mockResolvedValue(undefined),
   advanceWinners: vi.fn().mockResolvedValue(undefined),
   calculateVolleyballWinner: vi.fn(() => ({ isValid: true, homeWins: 2, awayWins: 1 })),
   createTeamInvitation: vi.fn().mockResolvedValue({
@@ -331,6 +332,7 @@ beforeEach(() => {
   vi.mocked(tournamentService.generateRoundRobinBrackets).mockResolvedValue({ count: 6 });
   vi.mocked(tournamentService.generateGroupsKnockoutBrackets).mockResolvedValue({ count: 8 });
   vi.mocked(tournamentService.updateStandings).mockResolvedValue(undefined);
+  vi.mocked(tournamentService.revertStandings).mockResolvedValue(undefined);
   vi.mocked(tournamentService.advanceWinners).mockResolvedValue(undefined);
   vi.mocked(tournamentService.getTeamInvitations).mockResolvedValue([]);
   vi.mocked(tournamentService.getUserPendingInvitations).mockResolvedValue([]);
@@ -1302,6 +1304,98 @@ describe('POST /api/tournaments/:id/matches/:matchId/score (submitScore)', () =>
   });
 });
 
+describe('PUT /api/tournaments/:id/matches/:matchId/score (adminUpdateScore)', () => {
+  it('returns 200 when admin updates score on a scheduled match', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'in_progress',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue(mockMatch as any);
+    vi.mocked(prisma.tournamentMatch.update).mockResolvedValue({
+      ...mockMatch,
+      homeScore: 2,
+      awayScore: 1,
+      status: 'completed',
+    } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 2, awayScore: 1 });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ homeScore: 2, awayScore: 1 });
+  });
+
+  it('reverts standings and re-applies when updating a completed match score', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'in_progress',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
+      ...mockMatch,
+      status: 'completed',
+      homeScore: 2,
+      awayScore: 1,
+      completedAt: new Date('2025-06-01'),
+    } as any);
+    vi.mocked(prisma.tournamentMatch.update).mockResolvedValue({
+      ...mockMatch,
+      homeScore: 3,
+      awayScore: 0,
+      status: 'completed',
+    } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 3, awayScore: 0 });
+
+    expect(res.status).toBe(200);
+    expect(tournamentService.revertStandings).toHaveBeenCalled();
+    expect(tournamentService.updateStandings).toHaveBeenCalled();
+  });
+
+  it('returns 400 when scores are missing', async () => {
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 2 });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 403 when user is not organizer or admin', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 2, awayScore: 1 });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 404 when tournament not found', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(null);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 2, awayScore: 1 });
+
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 404 when match not found', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue(null);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 2, awayScore: 1 });
+
+    expect(res.status).toBe(404);
+  });
+});
+
+
 describe('PUT /api/tournaments/:id/matches/:matchId/referee (assignReferee)', () => {
   it('returns 200 when referee is assigned', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
@@ -1500,17 +1594,38 @@ describe('POST /api/tournaments/:id/pools/:poolId/teams/:teamId (registerTeamToP
     expect(res.body).toHaveProperty('waitlist');
   });
 
-  it('returns 400 when tournament registration is closed', async () => {
+  it('returns 400 when tournament registration is closed for a non-admin team captain', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
       ...mockTournament,
+      organizerId: 'another-user-id',
       status: 'in_progress',
     } as any);
+    // User is NOT an admin
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+    // User IS the team captain
+    vi.mocked(tournamentService.isTeamCaptain).mockResolvedValue(true);
 
     const res = await request(app).post(
       '/api/tournaments/tournament-1/pools/pool-1/teams/team-1'
     );
 
     expect(res.status).toBe(400);
+  });
+
+  it('returns 403 when user is not organizer, admin, or team captain', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      organizerId: 'another-user-id',
+      status: 'registration',
+    } as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+    vi.mocked(tournamentService.isTeamCaptain).mockResolvedValue(false);
+
+    const res = await request(app).post(
+      '/api/tournaments/tournament-1/pools/pool-1/teams/team-1'
+    );
+
+    expect(res.status).toBe(403);
   });
 });
 

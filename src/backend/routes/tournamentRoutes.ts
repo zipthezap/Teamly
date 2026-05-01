@@ -74,6 +74,13 @@ router.put(
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
   asyncHandler(tournamentController.assignTeamToPool)
 );
+// Atomically move a team from one pool to another (admin only)
+router.put(
+  '/:id/teams/:teamId/pool-move',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
+  asyncHandler(tournamentController.moveTeamToPool)
+);
 
 // Player management
 router.post(
@@ -134,6 +141,13 @@ router.post(
   requireTournamentPermission(Permission.TOURNAMENT_SUBMIT_SCORES),
   asyncHandler(tournamentController.submitScore)
 );
+// Admin score override — allows organizers/admins to retroactively set or correct scores
+router.put(
+  '/:id/matches/:matchId/score',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
+  asyncHandler(tournamentController.adminUpdateScore)
+);
 
 // Manual bracket management (admin only)
 router.post(
@@ -188,19 +202,16 @@ router.delete(
 router.post(
   '/:id/pools/:poolId/teams/:teamId',
   noCache,
-  requireTeamPermission(Permission.TEAM_REGISTER_TO_POOL),
   asyncHandler(tournamentController.registerTeamToPool)
 );
 router.delete(
   '/:id/pools/:poolId/teams/:teamId',
   noCache,
-  requireTeamPermission(Permission.TEAM_REGISTER_TO_POOL),
   asyncHandler(tournamentController.removeTeamFromPool)
 );
 router.delete(
   '/:id/pools/:poolId/waitlist/:teamId',
   noCache,
-  requireTeamPermission(Permission.TEAM_REGISTER_TO_POOL),
   asyncHandler(tournamentController.removeTeamFromWaitlist)
 );
 

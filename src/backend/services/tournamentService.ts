@@ -316,14 +316,14 @@ export const isRegisteredPlayer = async (teamId: string, userId: string): Promis
 /**
  * Check if user can submit score for a match
  * User can submit if they are:
- * - The tournament organizer
+ * - The tournament organizer or a delegated admin
  * - Team captain of either team
  * - Registered player on either team
  * - Registered player on the referee team
  */
 export const canSubmitScore = async (
   match: { homeTeamId: string; awayTeamId: string; refereeTeamId?: string | null },
-  tournament: { organizerId: string },
+  tournament: { id: string; organizerId: string },
   userId: string
 ): Promise<boolean> => {
   // Check if organizer (no DB query needed)
@@ -331,11 +331,11 @@ export const canSubmitScore = async (
     return true;
   }
 
-  // Fetch captain status for home, away, and referee teams in parallel
+  // Fetch captain status for home, away, and referee teams AND admin role in parallel
   const teamIds = [match.homeTeamId, match.awayTeamId];
   if (match.refereeTeamId) teamIds.push(match.refereeTeamId);
 
-  const [captainTeam, playerEntry] = await Promise.all([
+  const [captainTeam, playerEntry, adminRole] = await Promise.all([
     // Check if user is captain of any relevant team
     prisma.tournamentTeam.findFirst({
       where: { id: { in: teamIds }, captainUserId: userId },
@@ -346,9 +346,88 @@ export const canSubmitScore = async (
       where: { teamId: { in: teamIds }, userId },
       select: { id: true }
     }),
+    // Check if user is a delegated tournament admin
+    prisma.tournamentAdminRole.findFirst({
+      where: { tournamentId: tournament.id, userId },
+      select: { id: true }
+    }),
   ]);
 
-  return captainTeam !== null || playerEntry !== null;
+  return captainTeam !== null || playerEntry !== null || adminRole !== null;
+};
+
+/**
+ * Revert standings for a completed match (used when correcting scores retroactively).
+ * Decrements the standing deltas that were applied when the match was originally scored.
+ */
+export const revertStandings = async (
+  matchId: string,
+  tx?: Prisma.TransactionClient
+) => {
+  const client = tx || prisma;
+  const match = await client.tournamentMatch.findUnique({
+    where: { id: matchId },
+    include: { tournament: true }
+  });
+
+  if (!match || match.homeScore === null || match.awayScore === null) {
+    return;
+  }
+
+  const { homeTeamId, awayTeamId, homeScore, awayScore, groupName } = match;
+
+  const sportConfig = match.tournament?.sportConfig as unknown as SportScoringConfig | undefined;
+  const defaultWinPoints = sportConfig?.type === 'default' ? sportConfig.winPoints : 3;
+  const defaultDrawPoints = sportConfig?.type === 'default' ? sportConfig.drawPoints : 1;
+  const defaultLossPoints = sportConfig?.type === 'default' ? sportConfig.lossPoints : 0;
+
+  let homeWin = 0, homeDraw = 0, homeLoss = 0;
+  let awayWin = 0, awayDraw = 0, awayLoss = 0;
+  let homePoints = 0, awayPoints = 0;
+
+  if (homeScore > awayScore) {
+    homeWin = 1; awayLoss = 1;
+    homePoints = defaultWinPoints; awayPoints = defaultLossPoints;
+  } else if (homeScore < awayScore) {
+    homeLoss = 1; awayWin = 1;
+    awayPoints = defaultWinPoints; homePoints = defaultLossPoints;
+  } else {
+    homeDraw = 1; awayDraw = 1;
+    homePoints = defaultDrawPoints; awayPoints = defaultDrawPoints;
+  }
+
+  await Promise.all([
+    client.tournamentStanding.updateMany({
+      where: groupName
+        ? { tournamentId: match.tournamentId, teamId: homeTeamId, groupName }
+        : { tournamentId: match.tournamentId, teamId: homeTeamId, groupName: null },
+      data: {
+        points: { decrement: homePoints },
+        wins: { decrement: homeWin },
+        draws: { decrement: homeDraw },
+        losses: { decrement: homeLoss },
+        goalsFor: { decrement: homeScore },
+        goalsAgainst: { decrement: awayScore },
+      },
+    }),
+    client.tournamentStanding.updateMany({
+      where: groupName
+        ? { tournamentId: match.tournamentId, teamId: awayTeamId, groupName }
+        : { tournamentId: match.tournamentId, teamId: awayTeamId, groupName: null },
+      data: {
+        points: { decrement: awayPoints },
+        wins: { decrement: awayWin },
+        draws: { decrement: awayDraw },
+        losses: { decrement: awayLoss },
+        goalsFor: { decrement: awayScore },
+        goalsAgainst: { decrement: homeScore },
+      },
+    }),
+  ]);
+
+  // Suppress unused variable warnings from where clauses
+  void homeWhere;
+  void awayWhere;
 };
 
 /**
