@@ -8,7 +8,7 @@ import {
   SportScoringConfig,
   DetailedScore
 } from '../../shared/types/tournament.types';
-import { BadRequestError } from '../utils/errors';
+import { BadRequestError, NotFoundError } from '../utils/errors';
 import { sanitizeString } from '../utils/validation';
 
 const ALLOWED_SPORT_TYPES = [
@@ -424,10 +424,6 @@ export const revertStandings = async (
       },
     }),
   ]);
-
-  // Suppress unused variable warnings from where clauses
-  void homeWhere;
-  void awayWhere;
 };
 
 /**
@@ -1020,6 +1016,19 @@ export const acceptTeamInvitation = async (inviteToken: string, userId: string) 
  * Cancel a team invitation
  */
 export const cancelTeamInvitation = async (invitationId: string) => {
+  const invitation = await prisma.tournamentTeamInvitation.findUnique({
+    where: { id: invitationId },
+    select: { id: true, status: true }
+  });
+
+  if (!invitation) {
+    throw new NotFoundError('Invitation not found');
+  }
+
+  if (invitation.status !== 'pending') {
+    throw new BadRequestError(`Invitation cannot be cancelled because it has already been ${invitation.status}`);
+  }
+
   return await prisma.tournamentTeamInvitation.update({
     where: { id: invitationId },
     data: { status: 'cancelled' }

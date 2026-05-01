@@ -811,7 +811,7 @@ describe('POST /api/tournaments/:id/teams (addTeam)', () => {
 describe('PUT /api/tournaments/:id/teams/:teamId (updateTeam)', () => {
   it('returns 200 when team is updated by organizer', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
-    vi.mocked(prisma.tournamentTeam.findUnique).mockResolvedValue(mockTeam as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(mockTeam as any);
     vi.mocked(tournamentService.isOrganizer).mockReturnValue(true);
     vi.mocked(prisma.tournamentTeam.update).mockResolvedValue(mockTeam as any);
 
@@ -834,7 +834,7 @@ describe('PUT /api/tournaments/:id/teams/:teamId (updateTeam)', () => {
 
   it('returns 404 when team not found', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
-    vi.mocked(prisma.tournamentTeam.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
 
     const res = await request(app)
       .put('/api/tournaments/tournament-1/teams/team-1')
@@ -850,7 +850,8 @@ describe('DELETE /api/tournaments/:id/teams/:teamId (deleteTeam)', () => {
       ...mockTournament,
       status: 'draft',
     } as any);
-    vi.mocked(tournamentService.isOrganizer).mockReturnValue(true);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(mockTeam as any);
     vi.mocked(prisma.tournamentTeam.delete).mockResolvedValue(mockTeam as any);
 
     const res = await request(app).delete('/api/tournaments/tournament-1/teams/team-1');
@@ -861,6 +862,19 @@ describe('DELETE /api/tournaments/:id/teams/:teamId (deleteTeam)', () => {
 
   it('returns 404 when tournament not found', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(null);
+
+    const res = await request(app).delete('/api/tournaments/tournament-1/teams/team-1');
+
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 404 when team does not belong to this tournament', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'draft',
+    } as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
 
     const res = await request(app).delete('/api/tournaments/tournament-1/teams/team-1');
 
@@ -1426,6 +1440,7 @@ describe('PUT /api/tournaments/:id/matches/:matchId/referee (assignReferee)', ()
 
 describe('GET /api/tournaments/:id/standings (getStandings)', () => {
   it('returns 200 with standings list', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
     vi.mocked(prisma.tournamentStanding.findMany).mockResolvedValue([
       {
         id: 'standing-1',
@@ -1445,12 +1460,21 @@ describe('GET /api/tournaments/:id/standings (getStandings)', () => {
   });
 
   it('returns 200 with empty list when no standings', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
     vi.mocked(prisma.tournamentStanding.findMany).mockResolvedValue([]);
 
     const res = await request(app).get('/api/tournaments/tournament-1/standings');
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual([]);
+  });
+
+  it('returns 404 when tournament not found', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(null);
+
+    const res = await request(app).get('/api/tournaments/tournament-1/standings');
+
+    expect(res.status).toBe(404);
   });
 });
 
@@ -2142,19 +2166,15 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
     expect(res.status).toBe(201);
   });
 
-  it('returns 201 when registering with a category selection', async () => {
+  it('returns 201 when registering without a pool (no category needed)', async () => {
     const registeredTournament = { ...mockTournament, status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
-    vi.mocked(prisma.tournamentCategory.findFirst).mockResolvedValue({
-      id: 'cat-1',
-      name: 'Category B',
-    } as any);
     vi.mocked(prisma.tournamentTeam.create).mockResolvedValue({ ...mockTeam, captainUser: null } as any);
 
     const res = await request(app)
       .post('/api/tournaments/tournament-1/teams/self-register')
-      .send({ name: 'New Team', categoryId: 'cat-1' });
+      .send({ name: 'New Team' });
 
     expect(res.status).toBe(201);
     expect(prisma.tournamentTeam.create).toHaveBeenCalledWith(
@@ -2164,9 +2184,24 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
         }),
       })
     );
-    expect(res.body.categoryId).toBe('cat-1');
-    expect(res.body.categoryName).toBe('Category B');
-    expect(res.body.team.poolName).not.toBe('Category B');
+    // categoryId is no longer part of the response — teams are categorised via pools
+    expect(res.body.categoryId).toBeUndefined();
+    expect(res.body.team).toBeDefined();
+  });
+
+  it('ignores categoryId in request body (categoryId is deprecated in selfRegisterTeam)', async () => {
+    const registeredTournament = { ...mockTournament, status: 'registration' };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.tournamentTeam.create).mockResolvedValue({ ...mockTeam, captainUser: null } as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/teams/self-register')
+      .send({ name: 'New Team', categoryId: 'cat-1' });
+
+    // categoryId is silently ignored — the response is a plain 201 registration
+    expect(res.status).toBe(201);
+    expect(res.body.categoryId).toBeUndefined();
   });
 
   it('returns 404 when poolId is provided but pool does not exist', async () => {
@@ -2183,16 +2218,19 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
     expect(res.body.error).toContain('Pool not found');
   });
 
-  it('returns 400 when both pool and category are provided', async () => {
+  it('categoryId alongside poolId is silently ignored (poolId takes precedence)', async () => {
     const registeredTournament = { ...mockTournament, status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+    // pool not found causes 404 — categoryId is just ignored
+    vi.mocked(prisma.tournamentPool.findFirst).mockResolvedValue(null);
 
     const res = await request(app)
       .post('/api/tournaments/tournament-1/teams/self-register')
       .send({ name: 'New Team', poolId: 'pool-1', categoryId: 'cat-1' });
 
-    expect(res.status).toBe(400);
+    // categoryId is silently ignored; poolId validation still runs
+    expect(res.status).toBe(404);
   });
 
   it('returns 400 when tournament is not in registration status', async () => {
@@ -2722,5 +2760,674 @@ describe('PUT /api/tournaments/:id/pools/:poolId/category (assignPoolToCategory)
       .send({ categoryId: 'cat-1' });
 
     expect(res.status).toBe(403);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MOVE TEAM TO POOL
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('PUT /api/tournaments/:id/teams/:teamId/pool-move (moveTeamToPool)', () => {
+  it('returns 200 when team is moved to a different pool', async () => {
+    const teamInPool = { ...mockTeam, poolId: 'pool-1' };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(teamInPool as any);
+    vi.mocked(prisma.tournamentPool.findFirst).mockResolvedValue(mockPool as any);
+    vi.mocked(prisma.tournamentPool.findUnique).mockResolvedValue({
+      ...mockPool,
+      id: 'pool-2',
+      teams: [],
+    } as any);
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: any) =>
+      fn({
+        ...prisma,
+        tournamentTeam: {
+          ...prisma.tournamentTeam,
+          update: vi.fn().mockResolvedValue({ ...teamInPool, poolId: 'pool-2', captainUser: null }),
+          findFirst: vi.fn().mockResolvedValue(null), // no waitlist entry
+        },
+        tournamentPoolWaitlist: {
+          ...prisma.tournamentPoolWaitlist,
+          findFirst: vi.fn().mockResolvedValue(null),
+        },
+        tournamentPool: {
+          ...prisma.tournamentPool,
+          findUnique: vi.fn().mockResolvedValue({ ...mockPool, id: 'pool-2', teams: [] }),
+        },
+      })
+    );
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1/pool-move')
+      .send({ poolId: 'pool-2' });
+
+    expect(res.status).toBe(200);
+  });
+
+  it('returns 200 with no change when team is already in target pool', async () => {
+    const teamInPool = { ...mockTeam, poolId: 'pool-1' };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(teamInPool as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1/pool-move')
+      .send({ poolId: 'pool-1' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toContain('already in the target pool');
+  });
+
+  it('returns 400 when target pool does not belong to this tournament', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue({ ...mockTeam, poolId: null } as any);
+    vi.mocked(prisma.tournamentPool.findFirst).mockResolvedValue(null);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1/pool-move')
+      .send({ poolId: 'foreign-pool' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('pool not found');
+  });
+
+  it('returns 403 when non-organizer tries to move team', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1/pool-move')
+      .send({ poolId: 'pool-2' });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 404 when tournament not found', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(null);
+
+    const res = await request(app)
+      .put('/api/tournaments/nonexistent/teams/team-1/pool-move')
+      .send({ poolId: 'pool-2' });
+
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 404 when team not found', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/nonexistent/pool-move')
+      .send({ poolId: 'pool-2' });
+
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 400 when tournament is cancelled', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'cancelled',
+    } as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue({ ...mockTeam, poolId: null } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1/pool-move')
+      .send({ poolId: 'pool-2' });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 200 when team is unassigned from pool (null poolId)', async () => {
+    const teamInPool = { ...mockTeam, poolId: 'pool-1' };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(teamInPool as any);
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: any) =>
+      fn({
+        ...prisma,
+        tournamentTeam: {
+          ...prisma.tournamentTeam,
+          update: vi.fn().mockResolvedValue({ ...teamInPool, poolId: null }),
+        },
+        tournamentPoolWaitlist: {
+          ...prisma.tournamentPoolWaitlist,
+          findFirst: vi.fn().mockResolvedValue(null),
+        },
+        tournamentPool: {
+          ...prisma.tournamentPool,
+          findUnique: vi.fn().mockResolvedValue({ ...mockPool, teams: [] }),
+        },
+      })
+    );
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1/pool-move')
+      .send({ poolId: null });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toContain('removed from pool');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INVITATION PREVIEW (public endpoint)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('GET /api/tournaments/invitations/preview/:inviteToken (getInvitationDetails)', () => {
+  const mockDetailedInvitation = {
+    ...mockInvitation,
+    inviteToken: 'token-abc',
+    status: 'pending',
+    message: null,
+    expiresAt: new Date(Date.now() + 7 * 86_400_000), // 7 days from now
+    inviter: { id: 'test-user-id', name: 'Test User' },
+    team: {
+      id: 'team-1',
+      name: 'Team Alpha',
+      tournament: { id: 'tournament-1', name: 'Test Tournament', sportType: 'football' },
+    },
+  };
+
+  it('returns 200 with invitation details for valid token', async () => {
+    vi.mocked(prisma.tournamentTeamInvitation.findUnique).mockResolvedValue(
+      mockDetailedInvitation as any
+    );
+
+    const res = await request(app).get('/api/tournaments/invitations/preview/token-abc');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      inviteToken: 'token-abc',
+      status: 'pending',
+      team: { id: 'team-1', name: 'Team Alpha' },
+      tournament: { id: 'tournament-1', name: 'Test Tournament' },
+      inviter: { id: 'test-user-id', name: 'Test User' },
+    });
+  });
+
+  it('returns 404 when invitation token does not exist', async () => {
+    vi.mocked(prisma.tournamentTeamInvitation.findUnique).mockResolvedValue(null);
+
+    const res = await request(app).get('/api/tournaments/invitations/preview/bad-token');
+
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 400 when invitation has expired (status = expired)', async () => {
+    vi.mocked(prisma.tournamentTeamInvitation.findUnique).mockResolvedValue({
+      ...mockDetailedInvitation,
+      status: 'expired',
+    } as any);
+
+    const res = await request(app).get('/api/tournaments/invitations/preview/token-abc');
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('expired');
+  });
+
+  it('returns 400 when invitation expiresAt is in the past', async () => {
+    vi.mocked(prisma.tournamentTeamInvitation.findUnique).mockResolvedValue({
+      ...mockDetailedInvitation,
+      status: 'pending',
+      expiresAt: new Date(Date.now() - 1000),
+    } as any);
+
+    const res = await request(app).get('/api/tournaments/invitations/preview/token-abc');
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('expired');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SCORE SUBMISSION — EDGE CASES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('POST /api/tournaments/:id/matches/:matchId/score — edge cases', () => {
+  it('returns 400 when homeScore is negative', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: -1, awayScore: 0 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('negative');
+  });
+
+  it('returns 400 when awayScore is negative', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 0, awayScore: -1 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('negative');
+  });
+
+  it('returns 400 for draw in single elimination format', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      format: 'single_elimination',
+      status: 'in_progress',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
+      ...mockMatch,
+      stage: null,
+    } as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 2, awayScore: 2 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Draws are not allowed');
+  });
+
+  it('returns 409 when match score already submitted', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'in_progress',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
+      ...mockMatch,
+      status: 'completed',
+      homeScore: 2,
+      awayScore: 1,
+    } as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 3, awayScore: 1 });
+
+    expect(res.status).toBe(409);
+  });
+
+  it('returns 400 when scores are missing', async () => {
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 1 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('required');
+  });
+
+  it('returns 403 when user cannot submit score', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'in_progress',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue(mockMatch as any);
+    vi.mocked(tournamentService.canSubmitScore).mockResolvedValue(false);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 2, awayScore: 1 });
+
+    expect(res.status).toBe(403);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADMIN SCORE OVERRIDE — EDGE CASES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('PUT /api/tournaments/:id/matches/:matchId/score (adminUpdateScore) — edge cases', () => {
+  it('returns 400 when scores are negative', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'in_progress',
+    } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: -1, awayScore: 0 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('negative');
+  });
+
+  it('returns 400 when tournament is cancelled', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'cancelled',
+    } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 2, awayScore: 1 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('cancelled');
+  });
+
+  it('returns 403 when non-admin tries to override score', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'in_progress',
+    } as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 2, awayScore: 1 });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 400 for draw in elimination format', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      format: 'single_elimination',
+      status: 'in_progress',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
+      ...mockMatch,
+      stage: null,
+    } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 1, awayScore: 1 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Draws are not allowed');
+  });
+
+  it('returns 404 when match not found', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'in_progress',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue(null);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 2, awayScore: 1 });
+
+    expect(res.status).toBe(404);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CREATE MATCH — EDGE CASES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('POST /api/tournaments/:id/matches (createMatch) — edge cases', () => {
+  it('returns 400 when home and away teams are the same', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches')
+      .send({ homeTeamId: 'team-1', awayTeamId: 'team-1' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('different');
+  });
+
+  it('returns 400 when referee team is one of the playing teams', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst)
+      .mockResolvedValueOnce(mockTeam as any)
+      .mockResolvedValueOnce({ ...mockTeam, id: 'team-2' } as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches')
+      .send({ homeTeamId: 'team-1', awayTeamId: 'team-2', refereeTeamId: 'team-1' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Referee team cannot be one of the playing teams');
+  });
+
+  it('returns 400 when tournament is cancelled', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'cancelled',
+    } as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches')
+      .send({ homeTeamId: 'team-1', awayTeamId: 'team-2' });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when home team IDs are missing', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches')
+      .send({ awayTeamId: 'team-2' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Both home and away teams are required');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DELETE MATCH — EDGE CASES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('DELETE /api/tournaments/:id/matches/:matchId (deleteMatch) — edge cases', () => {
+  it('returns 400 when trying to delete a completed match with scores', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'in_progress',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
+      ...mockMatch,
+      tournamentId: 'tournament-1',
+      status: 'completed',
+      homeScore: 2,
+      awayScore: 1,
+    } as any);
+
+    const res = await request(app).delete('/api/tournaments/tournament-1/matches/match-1');
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Cannot delete completed matches');
+  });
+
+  it('returns 200 when deleting a scheduled match', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'in_progress',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
+      ...mockMatch,
+      tournamentId: 'tournament-1',
+      status: 'scheduled',
+      homeScore: null,
+      awayScore: null,
+    } as any);
+    vi.mocked(prisma.tournamentMatch.delete).mockResolvedValue(mockMatch as any);
+
+    const res = await request(app).delete('/api/tournaments/tournament-1/matches/match-1');
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toContain('deleted');
+  });
+
+  it('returns 403 when non-admin tries to delete', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'in_progress',
+    } as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+
+    const res = await request(app).delete('/api/tournaments/tournament-1/matches/match-1');
+
+    expect(res.status).toBe(403);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ASSIGN REFEREE — EDGE CASES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('PUT /api/tournaments/:id/matches/:matchId/referee (assignReferee) — edge cases', () => {
+  it('returns 200 when referee is assigned successfully', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
+      ...mockMatch,
+      tournamentId: 'tournament-1',
+    } as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue({
+      ...mockTeam,
+      id: 'ref-team',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.update).mockResolvedValue({
+      ...mockMatch,
+      refereeTeamId: 'ref-team',
+    } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/referee')
+      .send({ refereeTeamId: 'ref-team' });
+
+    expect(res.status).toBe(200);
+  });
+
+  it('returns 400 when referee team is one of the playing teams', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
+      ...mockMatch,
+      tournamentId: 'tournament-1',
+      homeTeamId: 'team-1',
+      awayTeamId: 'team-2',
+    } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/referee')
+      .send({ refereeTeamId: 'team-1' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Referee team cannot be one of the playing teams');
+  });
+
+  it('returns 400 when referee team does not belong to this tournament', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
+      ...mockMatch,
+      tournamentId: 'tournament-1',
+      homeTeamId: 'team-1',
+      awayTeamId: 'team-2',
+    } as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/referee')
+      .send({ refereeTeamId: 'foreign-team' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('does not belong to this tournament');
+  });
+
+  it('returns 403 when non-admin tries to assign referee', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/referee')
+      .send({ refereeTeamId: 'ref-team' });
+
+    expect(res.status).toBe(403);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UPDATE POOL — EDGE CASES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('PUT /api/tournaments/:id/pools/:poolId (updatePool) — edge cases', () => {
+  it('returns 400 when maxTeams would be reduced below current team count', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentPool.findFirst).mockResolvedValue(mockPool as any);
+    vi.mocked(prisma.tournamentTeam.count).mockResolvedValue(4);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/pools/pool-1')
+      .send({ maxTeams: 2 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('current team count');
+  });
+
+  it('returns 400 when maxTeams is less than 2', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentPool.findFirst).mockResolvedValue(mockPool as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/pools/pool-1')
+      .send({ maxTeams: 1 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('at least 2 teams');
+  });
+
+  it('returns 400 when pool name exceeds max length', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentPool.findFirst).mockResolvedValue(mockPool as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/pools/pool-1')
+      .send({ name: 'A'.repeat(101) });
+
+    expect(res.status).toBe(400);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UPDATE MATCH — EDGE CASES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('PUT /api/tournaments/:id/matches/:matchId (updateMatch) — edge cases', () => {
+  it('returns 400 when trying to set status to completed via update endpoint', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'in_progress',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
+      ...mockMatch,
+      tournamentId: 'tournament-1',
+      status: 'scheduled',
+    } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1')
+      .send({ status: 'completed' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('score submission endpoint');
+  });
+
+  it('returns 403 when non-admin tries to update match', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'in_progress',
+    } as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1')
+      .send({ roundNumber: 2 });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 400 when tournament is completed', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'completed',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
+      ...mockMatch,
+      tournamentId: 'tournament-1',
+    } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1')
+      .send({ roundNumber: 2 });
+
+    expect(res.status).toBe(400);
   });
 });
