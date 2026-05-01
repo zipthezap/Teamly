@@ -2336,15 +2336,22 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.tournamentCategory.findFirst).mockResolvedValue({ id: 'cat-1', name: 'Category A' } as any);
-    vi.mocked(prisma.tournamentTeam.create).mockResolvedValue({ ...mockTeam, captainUser: null } as any);
+    vi.mocked(prisma.tournamentTeam.create).mockResolvedValue({ ...mockTeam, id: 'new-team', captainUser: null } as any);
+    vi.mocked(prisma.tournamentTeam.update).mockResolvedValue({ ...mockTeam, id: 'new-team', categoryId: 'cat-1', captainUser: null } as any);
 
     const res = await request(app)
       .post('/api/tournaments/tournament-1/teams/self-register')
       .send({ name: 'New Team', categoryId: 'cat-1' });
 
-    // categoryId is now supported and passed to team creation
+    // categoryId is validated (category looked up) and applied to the team via update
     expect(res.status).toBe(201);
-    expect(prisma.tournamentCategory.findFirst).toHaveBeenCalled();
+    expect(prisma.tournamentCategory.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: 'cat-1', tournamentId: 'tournament-1' }) })
+    );
+    expect(prisma.tournamentTeam.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ categoryId: 'cat-1' }) })
+    );
+    expect(res.body.categoryId).toBe('cat-1');
   });
 
   it('returns 404 when poolId is provided but pool does not exist', async () => {

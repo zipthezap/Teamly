@@ -519,8 +519,6 @@ export const getTournament = async (req: Request, res: Response) => {
         },
         orderBy: [
           { points: 'desc' },
-          { goalsFor: 'desc' },
-          { goalsAgainst: 'asc' }
         ]
       },
       categories: {
@@ -566,7 +564,17 @@ export const getTournament = async (req: Request, res: Response) => {
 
   const syncedTournament = await syncTournamentAutoStatus(tournament!, 'detail_read');
 
-  res.json(syncedTournament);
+  // Apply goal-difference tiebreaker (GD = goalsFor - goalsAgainst) in memory,
+  // consistent with getStandings. Prisma nested orderBy cannot express computed columns.
+  const sortedStandings = [...(syncedTournament.standings ?? [])].sort((a: any, b: any) => {
+    if (b.points !== a.points) return b.points - a.points;
+    const gdA = a.goalsFor - a.goalsAgainst;
+    const gdB = b.goalsFor - b.goalsAgainst;
+    if (gdB !== gdA) return gdB - gdA;
+    return b.goalsFor - a.goalsFor;
+  });
+
+  res.json({ ...syncedTournament, standings: sortedStandings });
 };
 
 /**
@@ -1371,7 +1379,8 @@ export const getStandings = async (req: Request, res: Response) => {
   });
 
   // Sort by: points DESC, goal difference (goalsFor - goalsAgainst) DESC, goalsFor DESC
-  const standings = rawStandings.sort((a, b) => {
+  // Use a copy to avoid mutating the array returned by Prisma.
+  const standings = [...rawStandings].sort((a, b) => {
     if (b.points !== a.points) return b.points - a.points;
     const gdA = a.goalsFor - a.goalsAgainst;
     const gdB = b.goalsFor - b.goalsAgainst;
