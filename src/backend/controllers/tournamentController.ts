@@ -2500,11 +2500,11 @@ export const moveTeamToPool = async (req: Request, res: Response) => {
 
     if (targetPool.teams.length >= targetPool.maxTeams) {
       const waitlistPosition = await tx.tournamentPoolWaitlist.count({ where: { poolId: targetPoolId } });
-      const waitlistEntry2 = await tx.tournamentPoolWaitlist.create({
+      const newWaitlistEntry = await tx.tournamentPoolWaitlist.create({
         data: { poolId: targetPoolId, teamId, position: waitlistPosition + 1 },
         include: { pool: true, team: { include: { captainUser: { select: { id: true, name: true, email: true } } } } }
       });
-      return { type: 'waitlisted' as const, waitlistEntry: waitlistEntry2, position: waitlistPosition + 1 };
+      return { type: 'waitlisted' as const, waitlistEntry: newWaitlistEntry, position: waitlistPosition + 1 };
     }
 
     const updatedTeam = await tx.tournamentTeam.update({

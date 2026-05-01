@@ -396,14 +396,6 @@ export const revertStandings = async (
     homePoints = defaultDrawPoints; awayPoints = defaultDrawPoints;
   }
 
-  const homeWhere = groupName
-    ? { tournamentId_teamId_groupName: { tournamentId: match.tournamentId, teamId: homeTeamId, groupName } }
-    : { tournamentId_teamId_groupName: { tournamentId: match.tournamentId, teamId: homeTeamId, groupName: null } };
-
-  const awayWhere = groupName
-    ? { tournamentId_teamId_groupName: { tournamentId: match.tournamentId, teamId: awayTeamId, groupName } }
-    : { tournamentId_teamId_groupName: { tournamentId: match.tournamentId, teamId: awayTeamId, groupName: null } };
-
   await Promise.all([
     client.tournamentStanding.updateMany({
       where: groupName
