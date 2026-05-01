@@ -426,6 +426,12 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               ),
             if (t.rulesDescription != null || t.prizesDescription != null)
               const Divider(height: 16),
+            if (t.hasFee)
+              _InfoRow(
+                icon: Icons.attach_money_outlined,
+                label: 'Entry Fee',
+                value: '\$${t.registrationFee!.toStringAsFixed(2)} per team',
+              ),
             if (t.rulesDescription != null)
               _InfoRow(
                 icon: Icons.gavel_outlined,
@@ -454,6 +460,29 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
           ],
           if (canRegister) ...[
             const SizedBox(height: 16),
+            if (t.hasFee) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+                  border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.attach_money_outlined, color: Colors.orange, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Entry fee: \$${t.registrationFee!.toStringAsFixed(2)} per team — payment details will be provided after registration.',
+                        style: const TextStyle(fontSize: 13, color: Colors.orange),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             UiPrimaryButton(
               text: 'Register My Team',
               icon: Icons.add_circle_outline,
@@ -473,6 +502,10 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (t.hasFee) ...[
+                    _PaymentStatusBadge(status: team.paymentStatus),
+                    const SizedBox(height: 8),
+                  ],
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -533,6 +566,14 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
             const SizedBox(height: 8),
             const UiSectionTitle('Admin Controls'),
             const SizedBox(height: 8),
+            // Payment management section (only shown when a fee is set)
+            if (t.hasFee && t.teams.isNotEmpty) ...[
+              _AdminPaymentPanel(
+                tournament: t,
+                onRefresh: onRefresh,
+              ),
+              const SizedBox(height: 12),
+            ],
             Wrap(spacing: 8, runSpacing: 8, children: [
               OutlinedButton.icon(
                 icon: const Icon(Icons.layers_outlined, size: 16),
@@ -573,9 +614,30 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                     : null,
               ),
               OutlinedButton.icon(
-                icon: const Icon(Icons.auto_awesome_outlined, size: 16),
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(Icons.auto_awesome_outlined, size: 16),
+                    if (t.requirePaymentForBrackets && t.unpaidTeamCount > 0)
+                      Positioned(
+                        right: -6,
+                        top: -6,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '${t.unpaidTeamCount}',
+                            style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
                 label: const Text('Generate Brackets'),
-                onPressed: canManageTournament ? () => _generateBrackets(context) : null,
+                onPressed: canManageTournament ? () => _generateBrackets(context, t) : null,
               ),
             ]),
           ],
@@ -637,10 +699,40 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     }
   }
 
-  Future<void> _generateBrackets(BuildContext context) async {
+  Future<void> _generateBrackets(BuildContext context, TournamentModel tournament) async {
     int? numberOfGroups;
+    bool forceGenerate = false;
 
-    if (t.format == 'groups_knockout') {
+    // Payment gate warning
+    if (tournament.requirePaymentForBrackets && tournament.unpaidTeamCount > 0) {
+      final choice = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Unpaid Teams'),
+          content: Text(
+            '${tournament.unpaidTeamCount} team(s) have not completed payment. '
+            'You can wait until all teams pay, or force-generate brackets now.',
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            OutlinedButton(
+              onPressed: () => Navigator.pop(ctx, 'force'),
+              child: const Text('Force Generate'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, 'wait'),
+              child: const Text('View Payments'),
+            ),
+          ],
+        ),
+      );
+      if (!context.mounted) return;
+      if (choice == null) return;
+      if (choice == 'wait') return; // user chose to review payments first
+      if (choice == 'force') forceGenerate = true;
+    }
+
+    if (tournament.format == 'groups_knockout') {
       final ctrl = TextEditingController(text: '4');
       final ok = await showDialog<bool>(
         context: context,
@@ -682,7 +774,11 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     }
 
     try {
-      await ref.read(tournamentRepositoryProvider).generateBrackets(t.id, numberOfGroups: numberOfGroups);
+      await ref.read(tournamentRepositoryProvider).generateBrackets(
+        tournament.id,
+        numberOfGroups: numberOfGroups,
+        forceGenerate: forceGenerate,
+      );
       onRefresh();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Brackets generated!')));
@@ -711,6 +807,201 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
 
 }
 
+// ---------------------------------------------------------------------------
+// Payment Status Badge
+// ---------------------------------------------------------------------------
+
+class _PaymentStatusBadge extends StatelessWidget {
+  const _PaymentStatusBadge({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    Color color;
+    IconData icon;
+    String label;
+    switch (status) {
+      case 'paid':
+        color = Colors.green;
+        icon = Icons.check_circle_outline;
+        label = 'Paid';
+        break;
+      case 'waived':
+        color = Colors.blue;
+        icon = Icons.do_not_disturb_alt_outlined;
+        label = 'Fee Waived';
+        break;
+      case 'pending':
+        color = Colors.orange;
+        icon = Icons.schedule_outlined;
+        label = 'Payment Pending';
+        break;
+      default:
+        color = Colors.red;
+        icon = Icons.money_off_outlined;
+        label = 'Unpaid';
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Admin Payment Panel
+// ---------------------------------------------------------------------------
+
+class _AdminPaymentPanel extends ConsumerStatefulWidget {
+  const _AdminPaymentPanel({
+    required this.tournament,
+    required this.onRefresh,
+  });
+
+  final TournamentModel tournament;
+  final VoidCallback onRefresh;
+
+  @override
+  ConsumerState<_AdminPaymentPanel> createState() => _AdminPaymentPanelState();
+}
+
+class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
+  bool _expanded = false;
+
+  Future<void> _setPayment(TournamentTeamModel team, String status) async {
+    try {
+      await ref.read(tournamentRepositoryProvider).updateTeamPayment(
+        widget.tournament.id, team.id, status,
+      );
+      widget.onRefresh();
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    }
+  }
+
+  Future<void> _showPaymentOptions(TournamentTeamModel team) async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(team.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.check_circle_outline, color: Colors.green),
+              title: const Text('Mark as Paid'),
+              onTap: () => Navigator.pop(ctx, 'paid'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.schedule_outlined, color: Colors.orange),
+              title: const Text('Mark as Pending'),
+              onTap: () => Navigator.pop(ctx, 'pending'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.do_not_disturb_alt_outlined, color: Colors.blue),
+              title: const Text('Waive Fee'),
+              onTap: () => Navigator.pop(ctx, 'waived'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.money_off_outlined, color: Colors.red),
+              title: const Text('Mark as Unpaid'),
+              onTap: () => Navigator.pop(ctx, 'unpaid'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (choice != null) await _setPayment(team, choice);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = widget.tournament;
+    final unpaid = t.teams.where((tm) => !tm.isPaid).length;
+    final paid = t.teams.where((tm) => tm.isPaid).length;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppThemeTokens.card(context),
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        border: Border.all(
+          color: unpaid > 0 ? Colors.orange.withValues(alpha: 0.5) : Colors.green.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(AppThemeTokens.radiusMd)),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.payments_outlined,
+                    size: 18,
+                    color: unpaid > 0 ? Colors.orange : Colors.green,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Payments — $paid/${t.teams.length} paid${unpaid > 0 ? ' ($unpaid unpaid)' : ''}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: unpaid > 0 ? Colors.orange : Colors.green,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    _expanded ? Icons.expand_less : Icons.expand_more,
+                    size: 18,
+                    color: AppThemeTokens.textMuted(context),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_expanded) ...[
+            const Divider(height: 1),
+            for (final team in t.teams)
+              ListTile(
+                dense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                leading: Icon(Icons.shield_outlined, size: 16, color: AppThemeTokens.textMuted(context)),
+                title: Text(team.name, style: const TextStyle(fontSize: 13)),
+                trailing: InkWell(
+                  onTap: () => _showPaymentOptions(team),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    child: _PaymentStatusBadge(status: team.paymentStatus),
+                  ),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _CategorySection extends ConsumerStatefulWidget {
   const _CategorySection({
     required this.category,
@@ -735,6 +1026,8 @@ class _CategorySection extends ConsumerStatefulWidget {
 class _CategorySectionState extends ConsumerState<_CategorySection> {
   TournamentCategoryModel get category => widget.category;
   TournamentModel get tournament => widget.tournament;
+
+  bool _registering = false;
 
   Future<void> _refreshTournamentDetail() async {
     ref.invalidate(tournamentDetailProvider(tournament.id));

@@ -254,6 +254,7 @@ class TournamentTeamModel extends Equatable {
     this.poolName,
     this.captainUserId,
     this.players = const [],
+    this.paymentStatus = 'unpaid',
   });
 
   final String id;
@@ -263,6 +264,9 @@ class TournamentTeamModel extends Equatable {
   final String? poolName;
   final String? captainUserId;
   final List<Map<String, dynamic>> players;
+  final String paymentStatus; // unpaid | pending | paid | waived
+
+  bool get isPaid => paymentStatus == 'paid' || paymentStatus == 'waived';
 
   factory TournamentTeamModel.fromJson(Map<String, dynamic> json) {
     final playersList = (json['players'] as List<dynamic>?)
@@ -277,6 +281,7 @@ class TournamentTeamModel extends Equatable {
       poolName: json['poolName'] as String?,
       captainUserId: json['captainUserId'] as String?,
       players: playersList,
+      paymentStatus: json['paymentStatus'] as String? ?? 'unpaid',
     );
   }
 
@@ -391,6 +396,8 @@ class TournamentModel extends Equatable {
     this.useManualBrackets = false,
     this.autoGenerateBrackets = false,
     this.isPublic = true,
+    this.registrationFee,
+    this.requirePaymentForBrackets = false,
     this.teams = const [],
     this.matches = const [],
     this.pools = const [],
@@ -426,6 +433,8 @@ class TournamentModel extends Equatable {
   final bool useManualBrackets;
   final bool autoGenerateBrackets;
   final bool isPublic;
+  final double? registrationFee;
+  final bool requirePaymentForBrackets;
   final List<TournamentTeamModel> teams;
   final List<TournamentMatchModel> matches;
   final List<TournamentPoolModel> pools;
@@ -434,6 +443,9 @@ class TournamentModel extends Equatable {
   final List<TournamentStandingModel> standings;
   final int teamCount;
   final TournamentTeamModel? myTeam;
+
+  bool get hasFee => registrationFee != null && registrationFee! > 0;
+  int get unpaidTeamCount => teams.where((t) => !t.isPaid).length;
 
   factory TournamentModel.fromJson(Map<String, dynamic> json) {
     final teamsList = (json['teams'] as List<dynamic>?)
@@ -506,6 +518,9 @@ class TournamentModel extends Equatable {
       useManualBrackets: json['useManualBrackets'] as bool? ?? false,
       autoGenerateBrackets: json['autoGenerateBrackets'] as bool? ?? false,
       isPublic: json['isPublic'] as bool? ?? true,
+      registrationFee: (json['registrationFee'] as num?)?.toDouble(),
+      requirePaymentForBrackets:
+          json['requirePaymentForBrackets'] as bool? ?? false,
       teams: teamsList,
       matches: matchesList,
       pools: poolsList,

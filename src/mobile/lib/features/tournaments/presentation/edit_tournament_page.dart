@@ -36,6 +36,7 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
   final _locationCtrl = TextEditingController();
   final _rulesCtrl = TextEditingController();
   final _prizesCtrl = TextEditingController();
+  final _feeCtrl = TextEditingController();
 
   String _sportType = '';
   String _format = 'single_elimination';
@@ -44,6 +45,7 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
   DateTime? _registrationStartDate;
   DateTime? _registrationDeadline;
   bool _useManualBrackets = false;
+  bool _requirePaymentForBrackets = false;
   bool _saving = false;
   bool _pageLoading = false;
 
@@ -72,6 +74,8 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
     _registrationStartDate = t.registrationStartDate;
     _registrationDeadline = t.registrationDeadline;
     _useManualBrackets = t.useManualBrackets;
+    _feeCtrl.text = t.registrationFee != null ? t.registrationFee!.toString() : '';
+    _requirePaymentForBrackets = t.requirePaymentForBrackets;
   }
 
   Future<void> _fetchTournament() async {
@@ -103,6 +107,7 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
     _locationCtrl.dispose();
     _rulesCtrl.dispose();
     _prizesCtrl.dispose();
+    _feeCtrl.dispose();
     super.dispose();
   }
 
@@ -166,6 +171,8 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
         'rulesDescription': _rulesCtrl.text.trim().isNotEmpty ? _rulesCtrl.text.trim() : null,
         'prizesDescription': _prizesCtrl.text.trim().isNotEmpty ? _prizesCtrl.text.trim() : null,
         'useManualBrackets': _useManualBrackets,
+        'registrationFee': _feeCtrl.text.trim().isNotEmpty ? double.tryParse(_feeCtrl.text.trim()) : null,
+        'requirePaymentForBrackets': _requirePaymentForBrackets,
       });
       ref.read(tournamentsNotifierProvider.notifier).reload();
       ref.invalidate(tournamentDetailProvider(widget.tournamentId));
@@ -288,6 +295,32 @@ class _EditTournamentPageState extends ConsumerState<EditTournamentPage> {
               subtitle: const Text('Manually create pools and assign teams instead of auto-generating'),
               value: _useManualBrackets,
               onChanged: (v) => setState(() => _useManualBrackets = v),
+            ),
+            const SizedBox(height: 16),
+            UiSectionTitle('Registration Fee'),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _feeCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Fee per team (optional)',
+                prefixIcon: Icon(Icons.attach_money_outlined),
+                helperText: 'Leave empty for a free tournament',
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return null;
+                final n = double.tryParse(v.trim());
+                if (n == null) return 'Must be a number';
+                if (n < 0) return 'Fee cannot be negative';
+                return null;
+              },
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              title: const Text('Require payment before generating brackets'),
+              subtitle: const Text('All teams must be marked as paid before brackets can be generated'),
+              value: _requirePaymentForBrackets,
+              onChanged: (v) => setState(() => _requirePaymentForBrackets = v),
             ),
             const SizedBox(height: 28),
             UiPrimaryButton(

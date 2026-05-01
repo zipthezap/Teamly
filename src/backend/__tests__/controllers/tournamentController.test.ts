@@ -3634,3 +3634,368 @@ describe('PUT /api/tournaments/:id/matches/:matchId (updateMatch) — edge cases
     expect(res.status).toBe(400);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UPDATE TEAM PAYMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('PUT /api/tournaments/:id/teams/:teamId/payment (updateTeamPayment)', () => {
+  it('returns 200 and updated team when admin marks team as paid', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(mockTeam as any);
+    vi.mocked(prisma.tournamentTeam.update).mockResolvedValue({
+      ...mockTeam,
+      paymentStatus: 'paid',
+    } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1/payment')
+      .send({ paymentStatus: 'paid' });
+
+    expect(res.status).toBe(200);
+    expect(prisma.tournamentTeam.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'team-1' },
+        data: expect.objectContaining({ paymentStatus: 'paid' }),
+      })
+    );
+  });
+
+  it('sets paidAt when marking as paid', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(mockTeam as any);
+    vi.mocked(prisma.tournamentTeam.update).mockResolvedValue({
+      ...mockTeam,
+      paymentStatus: 'paid',
+    } as any);
+
+    await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1/payment')
+      .send({ paymentStatus: 'paid' });
+
+    expect(prisma.tournamentTeam.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          paidAt: expect.any(Date),
+          paidByUserId: 'test-user-id',
+        }),
+      })
+    );
+  });
+
+  it('clears paidAt when marking as unpaid', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue({
+      ...mockTeam,
+      paymentStatus: 'paid',
+    } as any);
+    vi.mocked(prisma.tournamentTeam.update).mockResolvedValue(mockTeam as any);
+
+    await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1/payment')
+      .send({ paymentStatus: 'unpaid' });
+
+    expect(prisma.tournamentTeam.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          paymentStatus: 'unpaid',
+          paidAt: null,
+          paidByUserId: null,
+        }),
+      })
+    );
+  });
+
+  it('returns 200 when marking as waived', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(mockTeam as any);
+    vi.mocked(prisma.tournamentTeam.update).mockResolvedValue({
+      ...mockTeam,
+      paymentStatus: 'waived',
+    } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1/payment')
+      .send({ paymentStatus: 'waived' });
+
+    expect(res.status).toBe(200);
+  });
+
+  it('returns 400 when paymentStatus is invalid', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1/payment')
+      .send({ paymentStatus: 'invalid_status' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('paymentStatus must be one of');
+  });
+
+  it('returns 400 when paymentStatus is missing', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1/payment')
+      .send({});
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('paymentStatus must be one of');
+  });
+
+  it('returns 404 when tournament not found', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(null);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1/payment')
+      .send({ paymentStatus: 'paid' });
+
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 403 when non-organizer tries to update payment', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1/payment')
+      .send({ paymentStatus: 'paid' });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 404 when team not found in tournament', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/nonexistent/payment')
+      .send({ paymentStatus: 'paid' });
+
+    expect(res.status).toBe(404);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GENERATE BRACKETS — PAYMENT GATE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('POST /api/tournaments/:id/generate-brackets — payment gate', () => {
+  it('returns 400 when requirePaymentForBrackets is true and unpaid teams exist', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      format: 'single_elimination',
+      requirePaymentForBrackets: true,
+    } as any);
+    vi.mocked(prisma.tournamentMatch.count).mockResolvedValue(0);
+    vi.mocked(prisma.tournamentTeam.count).mockResolvedValue(3);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/generate-brackets')
+      .send({});
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('payment');
+  });
+
+  it('succeeds when requirePaymentForBrackets is true but forceGenerate bypasses gate', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      format: 'single_elimination',
+      requirePaymentForBrackets: true,
+    } as any);
+    vi.mocked(prisma.tournamentMatch.count).mockResolvedValue(0);
+    vi.mocked(tournamentService.generateSingleEliminationBrackets).mockResolvedValue({ count: 4 });
+    vi.mocked(prisma.tournament.update).mockResolvedValue(mockTournament as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/generate-brackets')
+      .send({ forceGenerate: true });
+
+    expect(res.status).toBe(200);
+  });
+
+  it('succeeds when requirePaymentForBrackets is true and all teams are paid', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      format: 'single_elimination',
+      requirePaymentForBrackets: true,
+    } as any);
+    vi.mocked(prisma.tournamentMatch.count).mockResolvedValue(0);
+    vi.mocked(prisma.tournamentTeam.count).mockResolvedValue(0); // zero unpaid teams
+    vi.mocked(tournamentService.generateSingleEliminationBrackets).mockResolvedValue({ count: 4 });
+    vi.mocked(prisma.tournament.update).mockResolvedValue(mockTournament as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/generate-brackets')
+      .send({});
+
+    expect(res.status).toBe(200);
+  });
+
+  it('skips payment check when requirePaymentForBrackets is false', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      format: 'single_elimination',
+      requirePaymentForBrackets: false,
+    } as any);
+    vi.mocked(prisma.tournamentMatch.count).mockResolvedValue(0);
+    vi.mocked(tournamentService.generateSingleEliminationBrackets).mockResolvedValue({ count: 4 });
+    vi.mocked(prisma.tournament.update).mockResolvedValue(mockTournament as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/generate-brackets')
+      .send({});
+
+    expect(res.status).toBe(200);
+    // team count should not have been queried for payment
+    expect(prisma.tournamentTeam.count).not.toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// REGISTRATION FEE — CREATE / UPDATE TOURNAMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('POST /api/tournaments — registration fee fields', () => {
+  const validBody = {
+    name: 'Paid Cup',
+    sportType: 'football',
+    format: 'single_elimination',
+    startDate: '2025-12-01T10:00:00Z',
+  };
+
+  it('stores registrationFee when provided', async () => {
+    vi.mocked(prisma.tournament.create).mockResolvedValue({
+      ...mockTournament,
+      registrationFee: 25.5,
+      requirePaymentForBrackets: false,
+    } as any);
+
+    const res = await request(app)
+      .post('/api/tournaments')
+      .send({ ...validBody, registrationFee: 25.5 });
+
+    expect(res.status).toBe(201);
+    expect(prisma.tournament.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ registrationFee: 25.5 }),
+      })
+    );
+  });
+
+  it('stores requirePaymentForBrackets when provided', async () => {
+    vi.mocked(prisma.tournament.create).mockResolvedValue({
+      ...mockTournament,
+      registrationFee: 10,
+      requirePaymentForBrackets: true,
+    } as any);
+
+    const res = await request(app)
+      .post('/api/tournaments')
+      .send({ ...validBody, registrationFee: 10, requirePaymentForBrackets: true });
+
+    expect(res.status).toBe(201);
+    expect(prisma.tournament.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ requirePaymentForBrackets: true }),
+      })
+    );
+  });
+});
+
+describe('PUT /api/tournaments/:id — registration fee update', () => {
+  it('updates registrationFee to a new value', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournament.update).mockResolvedValue({
+      ...mockTournament,
+      registrationFee: 50,
+    } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1')
+      .send({ registrationFee: 50 });
+
+    expect(res.status).toBe(200);
+    expect(prisma.tournament.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ registrationFee: 50 }),
+      })
+    );
+  });
+
+  it('clears registrationFee when set to null', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      registrationFee: 25,
+    } as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournament.update).mockResolvedValue({
+      ...mockTournament,
+      registrationFee: null,
+    } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1')
+      .send({ registrationFee: null });
+
+    expect(res.status).toBe(200);
+    expect(prisma.tournament.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ registrationFee: null }),
+      })
+    );
+  });
+
+  it('returns 400 when registrationFee is a negative number', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1')
+      .send({ registrationFee: -5 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('non-negative');
+  });
+
+  it('updates requirePaymentForBrackets to true', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournament.update).mockResolvedValue({
+      ...mockTournament,
+      requirePaymentForBrackets: true,
+    } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1')
+      .send({ requirePaymentForBrackets: true });
+
+    expect(res.status).toBe(200);
+    expect(prisma.tournament.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ requirePaymentForBrackets: true }),
+      })
+    );
+  });
+
+  it('returns 400 when requirePaymentForBrackets is not a boolean', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1')
+      .send({ requirePaymentForBrackets: 'yes' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('boolean');
+  });
+});

@@ -29,6 +29,7 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
   final _locationCtrl = TextEditingController();
   final _rulesCtrl = TextEditingController();
   final _prizesCtrl = TextEditingController();
+  final _feeCtrl = TextEditingController();
 
   String _sportType = '';
   String _format = 'single_elimination';
@@ -37,6 +38,7 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
   DateTime? _registrationStartDate;
   DateTime? _registrationDeadline;
   bool _useManualBrackets = false;
+  bool _requirePaymentForBrackets = false;
   bool _saving = false;
 
   @override
@@ -47,6 +49,7 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
     _locationCtrl.dispose();
     _rulesCtrl.dispose();
     _prizesCtrl.dispose();
+    _feeCtrl.dispose();
     super.dispose();
   }
 
@@ -107,6 +110,8 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
         if (_rulesCtrl.text.trim().isNotEmpty) 'rulesDescription': _rulesCtrl.text.trim(),
         if (_prizesCtrl.text.trim().isNotEmpty) 'prizesDescription': _prizesCtrl.text.trim(),
         'useManualBrackets': _useManualBrackets,
+        if (_feeCtrl.text.trim().isNotEmpty) 'registrationFee': double.tryParse(_feeCtrl.text.trim()),
+        'requirePaymentForBrackets': _requirePaymentForBrackets,
       });
       ref.read(tournamentsNotifierProvider.notifier).reload();
       if (!mounted) return;
@@ -237,6 +242,32 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
               subtitle: const Text('Manually create pools and assign teams instead of auto-generating'),
               value: _useManualBrackets,
               onChanged: (v) => setState(() => _useManualBrackets = v),
+            ),
+            const SizedBox(height: 16),
+            UiSectionTitle('Registration Fee'),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _feeCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Fee per team (optional)',
+                prefixIcon: Icon(Icons.attach_money_outlined),
+                helperText: 'Leave empty for a free tournament',
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return null;
+                final n = double.tryParse(v.trim());
+                if (n == null) return 'Must be a number';
+                if (n < 0) return 'Fee cannot be negative';
+                return null;
+              },
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              title: const Text('Require payment before generating brackets'),
+              subtitle: const Text('All teams must be marked as paid before brackets can be generated'),
+              value: _requirePaymentForBrackets,
+              onChanged: (v) => setState(() => _requirePaymentForBrackets = v),
             ),
             const SizedBox(height: 28),
             UiPrimaryButton(text: 'Create Tournament', icon: Icons.add_circle_outline, onPressed: _saving ? null : _submit, loading: _saving),
