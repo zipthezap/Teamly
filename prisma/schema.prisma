@@ -971,7 +971,11 @@ model Tournament {
   
   // Sport-specific scoring configuration
   sportConfig         Json?    // JSON field for sport-specific scoring rules
-  
+
+  // Registration fee / payment
+  registrationFee           Float?   // Fee per team (in local currency). null = free
+  requirePaymentForBrackets Boolean  @default(false) // Block bracket generation until all teams are marked paid
+
   // Recurring tournament support
   isRecurring         Boolean  @default(false)
   recurrenceRule      String?  // RRule format
@@ -1017,7 +1021,12 @@ model TournamentTeam {
   poolId       String?
   pool         TournamentPool? @relation("PoolTeams", fields: [poolId], references: [id], onDelete: SetNull)
   registrationOrder Int? // Order in which team registered to pool
-  
+
+  // Payment tracking (for tournaments with registrationFee > 0)
+  paymentStatus String   @default("unpaid") // unpaid | pending | paid | waived
+  paidAt        DateTime?
+  paidByUserId  String?  // admin who marked the payment
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   

@@ -76,6 +76,13 @@ router.delete(
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_TEAMS),
   asyncHandler(tournamentController.deleteTeam)
 );
+// Admin: update payment status for a registered team
+router.put(
+  '/:id/teams/:teamId/payment',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_TEAMS),
+  asyncHandler(tournamentController.updateTeamPayment)
+);
 router.put(
   '/:id/teams/:teamId/pool',
   noCache,

@@ -287,6 +287,16 @@ class TournamentRepositoryImpl implements TournamentRepository {
         .delete<void>('/tournaments/$tournamentId/admins/$adminUserId');
   }
 
+  @override
+  Future<Map<String, dynamic>> updateTeamPayment(
+      String tournamentId, String teamId, String paymentStatus) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/tournaments/$tournamentId/teams/$teamId/payment',
+      data: {'paymentStatus': paymentStatus},
+    );
+    return _requireMapData(response, 'update team payment');
+  }
+
   // ---------------------------------------------------------------------------
   // Score submission
   // ---------------------------------------------------------------------------
@@ -442,10 +452,14 @@ class TournamentRepositoryImpl implements TournamentRepository {
 
   @override
   Future<Map<String, dynamic>> generateBrackets(
-      String tournamentId, {int? numberOfGroups}) async {
+      String tournamentId,
+      {int? numberOfGroups, bool forceGenerate = false}) async {
+    final body = <String, dynamic>{};
+    if (numberOfGroups != null) body['numberOfGroups'] = numberOfGroups;
+    if (forceGenerate) body['forceGenerate'] = true;
     final response = await _dio.post<Map<String, dynamic>>(
       '/tournaments/$tournamentId/generate-brackets',
-      data: numberOfGroups != null ? {'numberOfGroups': numberOfGroups} : {},
+      data: body,
     );
     return _requireMapData(response, 'generate brackets');
   }

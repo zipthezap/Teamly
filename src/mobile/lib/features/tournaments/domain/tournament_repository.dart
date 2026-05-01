@@ -68,6 +68,8 @@ abstract class AdminRepository {
   Future<TournamentAdminModel> addAdmin(
       String tournamentId, Map<String, dynamic> data);
   Future<void> removeAdmin(String tournamentId, String adminUserId);
+  Future<Map<String, dynamic>> updateTeamPayment(
+      String tournamentId, String teamId, String paymentStatus);
 }
 
 abstract class InvitationRepository {
@@ -94,7 +96,8 @@ abstract class MatchRepository {
   Future<void> deleteMatch(String tournamentId, String matchId);
 
   // Bracket generation
-  Future<Map<String, dynamic>> generateBrackets(String tournamentId, {int? numberOfGroups});
+  Future<Map<String, dynamic>> generateBrackets(String tournamentId,
+      {int? numberOfGroups, bool forceGenerate = false});
 }
 
 abstract class TournamentRepository

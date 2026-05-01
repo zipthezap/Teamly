@@ -232,7 +232,10 @@ export const createTournament = async (req: Request, res: Response) => {
     sportConfig,
     // Recurring tournament
     isRecurring,
-    recurrenceRule
+    recurrenceRule,
+    // Payment / fee
+    registrationFee,
+    requirePaymentForBrackets,
   } = req.body;
 
   const userId = req.user!.id;
@@ -375,7 +378,10 @@ export const createTournament = async (req: Request, res: Response) => {
       sportConfig: sportConfig || undefined,
       // Recurring tournament
       isRecurring: isRecurring || false,
-      recurrenceRule: recurrenceRule || undefined
+      recurrenceRule: recurrenceRule || undefined,
+      // Payment / fee
+      registrationFee: registrationFee != null ? Number(registrationFee) : undefined,
+      requirePaymentForBrackets: requirePaymentForBrackets || false,
     },
     include: {
       organizer: {
@@ -590,7 +596,9 @@ export const updateTournament = async (req: Request, res: Response) => {
     registrationDeadline, registrationStartDate, isPublic, allowLateRegistration,
     autoGenerateBrackets, useManualBrackets, prizesDescription, rulesDescription, contactEmail,
     // Sport-specific configuration
-    sportConfig
+    sportConfig,
+    // Payment / fee
+    registrationFee, requirePaymentForBrackets,
   } = req.body;
 
   let tournament = await prisma.tournament.findUnique({
@@ -736,6 +744,23 @@ export const updateTournament = async (req: Request, res: Response) => {
       }
     }
     updateData.sportConfig = sportConfig || null;
+  }
+  if (registrationFee !== undefined) {
+    if (registrationFee === null) {
+      updateData.registrationFee = null;
+    } else {
+      const fee = Number(registrationFee);
+      if (isNaN(fee) || fee < 0) {
+        throw new BadRequestError('registrationFee must be a non-negative number');
+      }
+      updateData.registrationFee = fee;
+    }
+  }
+  if (requirePaymentForBrackets !== undefined) {
+    if (typeof requirePaymentForBrackets !== 'boolean') {
+      throw new BadRequestError('requirePaymentForBrackets must be a boolean');
+    }
+    updateData.requirePaymentForBrackets = requirePaymentForBrackets;
   }
 
   tournamentService.validateTournamentBusinessRules({
@@ -1044,6 +1069,55 @@ export const deleteTeam = async (req: Request, res: Response) => {
   res.json({ message: 'Team deleted successfully' });
 };
 
+/**
+ * Update payment status for a team (admin/organizer only)
+ */
+export const updateTeamPayment = async (req: Request, res: Response) => {
+  const { id, teamId } = req.params;
+  const userId = req.user!.id;
+  const { paymentStatus } = req.body;
+
+  const allowedStatuses = ['unpaid', 'pending', 'paid', 'waived'];
+  if (!paymentStatus || !allowedStatuses.includes(paymentStatus)) {
+    throw new BadRequestError(`paymentStatus must be one of: ${allowedStatuses.join(', ')}`);
+  }
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can update team payment status');
+  }
+
+  const team = ensureResourceExists(
+    await prisma.tournamentTeam.findFirst({ where: { id: teamId, tournamentId: id } }),
+    'Team'
+  );
+
+  const updatedTeam = await prisma.tournamentTeam.update({
+    where: { id: team.id },
+    data: {
+      paymentStatus,
+      paidAt: paymentStatus === 'paid' ? new Date() : (paymentStatus === 'unpaid' ? null : undefined),
+      paidByUserId: paymentStatus === 'paid' ? userId : (paymentStatus === 'unpaid' ? null : undefined),
+    },
+    include: {
+      captainUser: { select: { id: true, name: true, email: true } },
+    },
+  });
+
+  logger.info('Team payment status updated', 'TournamentController', {
+    tournamentId: id,
+    teamId,
+    paymentStatus,
+    userId,
+  });
+
+  res.json(updatedTeam);
+};
+
 // ==================== BRACKET & MATCH MANAGEMENT ====================
 
 /**
@@ -1052,7 +1126,7 @@ export const deleteTeam = async (req: Request, res: Response) => {
 export const generateBrackets = async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = req.user!.id;
-  const { numberOfGroups } = req.body;
+  const { numberOfGroups, forceGenerate } = req.body;
 
   const tournament = ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
@@ -1074,6 +1148,18 @@ export const generateBrackets = async (req: Request, res: Response) => {
 
   if (existingMatches > 0) {
     throw new BadRequestError('Brackets have already been generated for this tournament');
+  }
+
+  // Enforce payment gate when required (organizer can force-override via forceGenerate flag)
+  if (tournament.requirePaymentForBrackets && !forceGenerate) {
+    const unpaidCount = await prisma.tournamentTeam.count({
+      where: { tournamentId: id, paymentStatus: { notIn: ['paid', 'waived'] } },
+    });
+    if (unpaidCount > 0) {
+      throw new BadRequestError(
+        `${unpaidCount} team(s) have not completed payment. Mark all teams as paid/waived or use forceGenerate to override.`
+      );
+    }
   }
 
   let result;
@@ -2463,7 +2549,7 @@ export const removeTeamFromPool = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  const team = ensureResourceExists(
+  ensureResourceExists(
     await prisma.tournamentTeam.findFirst({
       where: { id: teamId, tournamentId: id, poolId }
     }),
