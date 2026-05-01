@@ -1109,6 +1109,93 @@ export const submitScore = async (req: Request, res: Response) => {
 };
 
 /**
+ * Admin score override — allows organizers/admins to set or retroactively correct scores.
+ * Unlike submitScore, this works even on already-completed matches (reverts old standings first).
+ */
+export const adminUpdateScore = async (req: Request, res: Response) => {
+  const { id, matchId } = req.params;
+  const userId = req.user!.id;
+  const { homeScore, awayScore } = req.body;
+
+  if (homeScore === undefined || awayScore === undefined) {
+    throw new BadRequestError('Both home and away scores are required');
+  }
+
+  if (homeScore < 0 || awayScore < 0) {
+    throw new BadRequestError('Scores cannot be negative');
+  }
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can override match scores');
+  }
+
+  if (tournament.status === TournamentStatus.CANCELLED) {
+    throw new BadRequestError('Scores cannot be updated for cancelled tournaments');
+  }
+
+  const match = ensureResourceExists(
+    await prisma.tournamentMatch.findUnique({ where: { id: matchId } }),
+    'Match'
+  );
+
+  if (match.tournamentId !== id) {
+    logger.warn('Match tournament mismatch on admin score update', 'TournamentController', {
+      tournamentId: id, matchId, matchTournamentId: match.tournamentId, userId,
+    });
+    throw new NotFoundError('Match not found');
+  }
+
+  const isEliminationFormat =
+    tournament.format === TournamentFormat.SINGLE_ELIMINATION ||
+    tournament.format === TournamentFormat.DOUBLE_ELIMINATION;
+  const isKnockoutStage = match.stage != null && match.stage !== BracketStage.GROUP_STAGE;
+  if ((isEliminationFormat || isKnockoutStage) && homeScore === awayScore) {
+    throw new BadRequestError('Draws are not allowed in elimination matches');
+  }
+
+  // Atomically: revert old standings (if match was already scored), update scores, apply new standings
+  const updatedMatch = await prisma.$transaction(async (tx) => {
+    // Revert old standings only if the match was already completed with scores
+    if (match.status === MatchStatus.COMPLETED && match.homeScore !== null && match.awayScore !== null) {
+      await tournamentService.revertStandings(matchId, tx);
+    }
+
+    const updated = await tx.tournamentMatch.update({
+      where: { id: matchId },
+      data: {
+        homeScore,
+        awayScore,
+        status: MatchStatus.COMPLETED,
+        completedAt: match.completedAt ?? new Date(),
+      },
+      include: { homeTeam: true, awayTeam: true },
+    });
+
+    await tournamentService.updateStandings(matchId, tournament, tx);
+
+    return updated;
+  });
+
+  // If knockout stage, attempt to advance winners (idempotent)
+  if (match.stage && match.stage !== BracketStage.FINALS) {
+    await tournamentService.advanceWinners(id, match.stage as BracketStage);
+  }
+
+  await reconcileTournamentLifecycleStatus(id, 'admin_update_score');
+
+  logger.info('Match score overridden by admin', 'TournamentController', {
+    tournamentId: id, matchId, homeScore, awayScore, userId,
+  });
+
+  res.json(updatedMatch);
+};
+
+/**
  * Get tournament standings
  */
 export const getStandings = async (req: Request, res: Response) => {
@@ -1989,7 +2076,7 @@ export const deletePool = async (req: Request, res: Response) => {
 };
 
 /**
- * Register a team to a pool (team captain only)
+ * Register a team to a pool (team captain or tournament admin)
  */
 export const registerTeamToPool = async (req: Request, res: Response) => {
   const { id, poolId, teamId } = req.params;
@@ -2000,7 +2087,20 @@ export const registerTeamToPool = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  tournamentService.validateRegistrationEligibility(tournament);
+  // Check permissions first — admins bypass registration eligibility
+  const isAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
+  const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
+
+  if (!isAdmin && !isCaptain) {
+    throw new ForbiddenError('Only the organizer, admin, or team captain can register teams to pools');
+  }
+
+  // Non-admins must pass registration eligibility check
+  if (!isAdmin) {
+    tournamentService.validateRegistrationEligibility(tournament);
+  } else if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
+    throw new BadRequestError('Pools cannot be managed for cancelled or completed tournaments');
+  }
 
   const team = ensureResourceExists(
     await prisma.tournamentTeam.findFirst({
@@ -2008,14 +2108,6 @@ export const registerTeamToPool = async (req: Request, res: Response) => {
     }),
     'Team'
   );
-
-  // Check permissions - must be organizer or team captain
-  const isOrg = tournamentService.isOrganizer(tournament, userId);
-  const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
-
-  if (!isOrg && !isCaptain) {
-    throw new ForbiddenError('Only the organizer or team captain can register teams to pools');
-  }
 
   // Check if team is already registered to a pool
   if (team.poolId) {
@@ -2122,7 +2214,7 @@ export const registerTeamToPool = async (req: Request, res: Response) => {
 };
 
 /**
- * Remove a team from a pool (organizer or team captain)
+ * Remove a team from a pool (organizer, admin, or team captain)
  * This will automatically promote the first team from the waitlist
  */
 export const removeTeamFromPool = async (req: Request, res: Response) => {
@@ -2142,11 +2234,11 @@ export const removeTeamFromPool = async (req: Request, res: Response) => {
   );
 
   // Check permissions
-  const isOrg = tournamentService.isOrganizer(tournament, userId);
+  const isAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
   const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
 
-  if (!isOrg && !isCaptain) {
-    throw new ForbiddenError('Only the organizer or team captain can remove teams from pools');
+  if (!isAdmin && !isCaptain) {
+    throw new ForbiddenError('Only the organizer, admin, or team captain can remove teams from pools');
   }
 
   // Remove team from pool and handle waitlist promotion atomically
@@ -2257,11 +2349,11 @@ export const removeTeamFromWaitlist = async (req: Request, res: Response) => {
   );
 
   // Check permissions
-  const isOrg = tournamentService.isOrganizer(tournament, userId);
+  const isAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
   const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
 
-  if (!isOrg && !isCaptain) {
-    throw new ForbiddenError('Only the organizer or team captain can remove teams from waitlist');
+  if (!isAdmin && !isCaptain) {
+    throw new ForbiddenError('Only the organizer, admin, or team captain can remove teams from waitlist');
   }
 
   const waitlistEntry = ensureResourceExists(
@@ -2297,6 +2389,150 @@ export const removeTeamFromWaitlist = async (req: Request, res: Response) => {
   });
 
   res.json({ message: 'Team removed from waitlist successfully' });
+};
+
+/**
+ * Move a team from one pool to another (organizer/admin only).
+ * Handles waitlist promotion on the source pool and respects capacity on the destination pool.
+ * Pass poolId: null to remove the team from its current pool without reassigning.
+ */
+export const moveTeamToPool = async (req: Request, res: Response) => {
+  const { id, teamId } = req.params;
+  const userId = req.user!.id;
+  const { poolId: targetPoolId } = req.body;
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can move teams between pools');
+  }
+
+  if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
+    throw new BadRequestError('Pools cannot be managed for cancelled or completed tournaments');
+  }
+
+  const team = ensureResourceExists(
+    await prisma.tournamentTeam.findFirst({ where: { id: teamId, tournamentId: id } }),
+    'Team'
+  );
+
+  const currentPoolId = team.poolId;
+
+  // Nothing to do if the team is already in the target pool
+  if (currentPoolId === (targetPoolId || null)) {
+    return res.json({ message: 'Team is already in the target pool', team });
+  }
+
+  // Validate target pool belongs to this tournament
+  if (targetPoolId) {
+    const targetPool = await prisma.tournamentPool.findFirst({
+      where: { id: targetPoolId, tournamentId: id }
+    });
+    if (!targetPool) {
+      throw new BadRequestError('Target pool not found in this tournament');
+    }
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    // 1. Remove team from current pool (if any), promote waitlist
+    if (currentPoolId) {
+      await tx.tournamentTeam.update({
+        where: { id: teamId },
+        data: { poolId: null, poolNumber: null, poolName: null, registrationOrder: null }
+      });
+
+      // Promote first waitlist entry for the old pool
+      const firstWaitlistEntry = await tx.tournamentPoolWaitlist.findFirst({
+        where: { poolId: currentPoolId },
+        orderBy: { position: 'asc' },
+        include: { team: true }
+      });
+
+      if (firstWaitlistEntry) {
+        const oldPool = await tx.tournamentPool.findUnique({
+          where: { id: currentPoolId },
+          include: { teams: true }
+        });
+        if (oldPool) {
+          await tx.tournamentTeam.update({
+            where: { id: firstWaitlistEntry.teamId },
+            data: { poolId: currentPoolId, poolName: oldPool.name, registrationOrder: oldPool.teams.length + 1 }
+          });
+          await tx.tournamentPoolWaitlist.delete({ where: { id: firstWaitlistEntry.id } });
+          const remaining = await tx.tournamentPoolWaitlist.findMany({
+            where: { poolId: currentPoolId, position: { gt: firstWaitlistEntry.position } }
+          });
+          await Promise.all(
+            remaining.map(e => tx.tournamentPoolWaitlist.update({ where: { id: e.id }, data: { position: e.position - 1 } }))
+          );
+        }
+      }
+    }
+
+    // Also remove team from any waitlist it may be on
+    const waitlistEntry = await tx.tournamentPoolWaitlist.findFirst({ where: { teamId } });
+    if (waitlistEntry) {
+      await tx.tournamentPoolWaitlist.delete({ where: { id: waitlistEntry.id } });
+      const remaining = await tx.tournamentPoolWaitlist.findMany({
+        where: { poolId: waitlistEntry.poolId, position: { gt: waitlistEntry.position } }
+      });
+      await Promise.all(
+        remaining.map(e => tx.tournamentPoolWaitlist.update({ where: { id: e.id }, data: { position: e.position - 1 } }))
+      );
+    }
+
+    // 2. Add team to target pool (or waitlist if full)
+    if (!targetPoolId) {
+      return { type: 'unassigned' as const };
+    }
+
+    const targetPool = await tx.tournamentPool.findUnique({
+      where: { id: targetPoolId },
+      include: { teams: true }
+    });
+
+    if (!targetPool) {
+      throw new NotFoundError('Target pool not found');
+    }
+
+    if (targetPool.teams.length >= targetPool.maxTeams) {
+      const waitlistPosition = await tx.tournamentPoolWaitlist.count({ where: { poolId: targetPoolId } });
+      const waitlistEntry2 = await tx.tournamentPoolWaitlist.create({
+        data: { poolId: targetPoolId, teamId, position: waitlistPosition + 1 },
+        include: { pool: true, team: { include: { captainUser: { select: { id: true, name: true, email: true } } } } }
+      });
+      return { type: 'waitlisted' as const, waitlistEntry: waitlistEntry2, position: waitlistPosition + 1 };
+    }
+
+    const updatedTeam = await tx.tournamentTeam.update({
+      where: { id: teamId },
+      data: { poolId: targetPoolId, poolName: targetPool.name, registrationOrder: targetPool.teams.length + 1 },
+      include: { pool: true, captainUser: { select: { id: true, name: true, email: true } } }
+    });
+
+    return { type: 'moved' as const, updatedTeam };
+  });
+
+  logger.info('Team moved between pools', 'TournamentController', {
+    tournamentId: id, teamId, fromPoolId: currentPoolId, toPoolId: targetPoolId, userId
+  });
+
+  if (result.type === 'waitlisted') {
+    return res.status(200).json({
+      message: 'Target pool is full. Team added to its waitlist',
+      waitlist: result.waitlistEntry,
+      position: result.position,
+    });
+  }
+
+  if (result.type === 'unassigned') {
+    return res.json({ message: 'Team removed from pool successfully' });
+  }
+
+  res.json(result.updatedTeam);
 };
 
 

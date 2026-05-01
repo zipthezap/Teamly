@@ -36,6 +36,10 @@ abstract class PoolRepository {
       String tournamentId, String poolId, String teamId);
   Future<void> removeTeamFromWaitlist(
       String tournamentId, String poolId, String teamId);
+  /// Move (or unassign) a team to the given pool. Pass null to just remove from
+  /// the current pool. Returns the raw response map from the backend.
+  Future<Map<String, dynamic>> moveTeamToPool(
+      String tournamentId, String teamId, String? poolId);
 }
 
 abstract class CategoryRepository {
@@ -71,6 +75,8 @@ abstract class InvitationRepository {
 
 abstract class MatchRepository {
   Future<void> submitScore(String tournamentId, String matchId,
+      {required int homeScore, required int awayScore});
+  Future<void> adminUpdateScore(String tournamentId, String matchId,
       {required int homeScore, required int awayScore});
   Future<void> createMatch(String tournamentId, Map<String, dynamic> data);
   Future<void> updateMatch(String tournamentId, String matchId, Map<String, dynamic> data);

@@ -9,6 +9,7 @@ import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
 import '../state/tournaments_notifier.dart';
+import 'tournament_detail_page.dart' show ScoreDialog;
 
 
 class MatchesManagementPage extends ConsumerStatefulWidget {
@@ -46,7 +47,12 @@ class _MatchesManagementPageState extends ConsumerState<MatchesManagementPage> {
     String? refereeTeamId;
     final scheduledCtrl = TextEditingController(text: match?.scheduledAt?.toIso8601String().substring(0, 16) ?? '');
     final locationCtrl = TextEditingController(text: match?.location ?? '');
-    final roundCtrl = TextEditingController();
+    // Pre-populate round number if available from the current match's raw round label
+    final roundCtrl = TextEditingController(
+      text: match != null
+          ? (RegExp(r'\d+').firstMatch(match.round)?.group(0) ?? '')
+          : '',
+    );
 
     await showDialog(
       context: context,
@@ -131,6 +137,43 @@ class _MatchesManagementPageState extends ConsumerState<MatchesManagementPage> {
     });
   }
 
+  Future<void> _showScoreDialog(TournamentMatchModel match) async {
+    final result = await showDialog<Map<String, int>>(
+      context: context,
+      builder: (ctx) => ScoreDialog(
+        homeTeamName: match.teamAName ?? 'Home',
+        awayTeamName: match.teamBName ?? 'Away',
+        initialHomeScore: match.scoreA,
+        initialAwayScore: match.scoreB,
+      ),
+    );
+    if (result == null || !mounted) return;
+    setState(() => _loading = true);
+    try {
+      // Admins always use the PUT endpoint which handles both initial and retroactive scores
+      await ref.read(tournamentRepositoryProvider).adminUpdateScore(
+            widget.tournamentId,
+            match.id,
+            homeScore: result['home']!,
+            awayScore: result['away']!,
+          );
+      _refresh();
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Score updated!')));
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   Future<void> _deleteMatch(TournamentMatchModel match) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -197,34 +240,12 @@ class _MatchesManagementPageState extends ConsumerState<MatchesManagementPage> {
                         for (final entry in byRound.entries) ...[
                           UiSectionTitle(entry.key.isEmpty ? 'Unassigned' : entry.key),
                           const SizedBox(height: 8),
-                          for (final m in entry.value)
-                            Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              decoration: BoxDecoration(
-                                color: AppThemeTokens.card(context),
-                                borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-                                border: Border.all(color: AppThemeTokens.border(context)),
-                              ),
-                              child: ListTile(
-                                title: Text(
-                                  '${m.teamAName ?? m.teamAId ?? '?'} vs ${m.teamBName ?? m.teamBId ?? '?'}',
-                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                                ),
-                                subtitle: m.scheduledAt != null
-                                    ? Text(DateFormat.yMMMd().add_jm().format(m.scheduledAt!.toLocal()), style: const TextStyle(fontSize: 12))
-                                    : null,
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(icon: const Icon(Icons.edit_outlined, size: 18), onPressed: () => _showMatchDialog(tournament, match: m)),
-                                    IconButton(
-                                      icon: Icon(Icons.delete_outline, size: 18, color: Theme.of(context).colorScheme.error),
-                                      onPressed: () => _deleteMatch(m),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                          for (final m in entry.value) _MatchManagementTile(
+                            match: m,
+                            onEdit: () => _showMatchDialog(tournament, match: m),
+                            onScore: () => _showScoreDialog(m),
+                            onDelete: () => _deleteMatch(m),
+                          ),
                           const SizedBox(height: 8),
                         ],
                         const SizedBox(height: 80),
@@ -232,6 +253,104 @@ class _MatchesManagementPageState extends ConsumerState<MatchesManagementPage> {
                     ),
         );
       },
+    );
+  }
+}
+
+class _MatchManagementTile extends StatelessWidget {
+  const _MatchManagementTile({
+    required this.match,
+    required this.onEdit,
+    required this.onScore,
+    required this.onDelete,
+  });
+
+  final TournamentMatchModel match;
+  final VoidCallback onEdit;
+  final VoidCallback onScore;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = match;
+    final hasScore = m.scoreA != null && m.scoreB != null;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: AppThemeTokens.card(context),
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        border: Border.all(color: AppThemeTokens.border(context)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${m.teamAName ?? m.teamAId ?? '?'} vs ${m.teamBName ?? m.teamBId ?? '?'}',
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                ),
+                if (hasScore)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppThemeTokens.primaryGlow,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${m.scoreA} – ${m.scoreB}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: AppThemeTokens.primary400,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            if (m.scheduledAt != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                DateFormat.yMMMd().add_jm().format(m.scheduledAt!.toLocal()),
+                style: TextStyle(fontSize: 12, color: AppThemeTokens.textMuted(context)),
+              ),
+            ],
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                OutlinedButton.icon(
+                  icon: Icon(hasScore ? Icons.edit_note : Icons.sports_score_outlined, size: 16),
+                  label: Text(hasScore ? 'Edit Score' : 'Set Score', style: const TextStyle(fontSize: 12)),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  onPressed: onScore,
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  tooltip: 'Edit match',
+                  onPressed: onEdit,
+                  visualDensity: VisualDensity.compact,
+                ),
+                IconButton(
+                  icon: Icon(Icons.delete_outline, size: 18, color: Theme.of(context).colorScheme.error),
+                  tooltip: 'Delete match',
+                  onPressed: onDelete,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

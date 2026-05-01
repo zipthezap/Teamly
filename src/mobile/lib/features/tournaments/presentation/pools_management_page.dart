@@ -191,10 +191,22 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
   }
 
   Future<void> _addTeamToPool(TournamentPoolModel pool) async {
+    // Build a lookup: teamId → pool name (for teams already in another pool)
+    final poolTeamMap = <String, String>{};
+    for (final p in _pools) {
+      for (final t in p.teams) {
+        poolTeamMap[t.id] = p.name;
+      }
+    }
+    // Teams already in THIS pool are excluded (can't add to own pool)
     final poolTeamIds = pool.teams.map((t) => t.id).toSet();
-    final unassigned = _allTeams.where((t) => !poolTeamIds.contains(t.id)).toList();
-    if (unassigned.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No unassigned teams available')));
+    final waitlistTeamIds = pool.waitlist.map((w) => w.teamId).toSet();
+    final available = _allTeams
+        .where((t) => !poolTeamIds.contains(t.id) && !waitlistTeamIds.contains(t.id))
+        .toList();
+
+    if (available.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No eligible teams available')));
       return;
     }
 
@@ -203,20 +215,27 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => AlertDialog(
-          title: Text('Add Team to ${pool.name}'),
+          title: Text('Add/Move Team to ${pool.name}'),
           content: DropdownButtonFormField<TournamentTeamModel>(
             value: selected,
             decoration: const InputDecoration(labelText: 'Select team'),
-            items: unassigned
-                .map((t) => DropdownMenuItem(value: t, child: Text(t.name)))
-                .toList(),
+            items: available.map((t) {
+              final currentPool = poolTeamMap[t.id];
+              return DropdownMenuItem(
+                value: t,
+                child: Text(
+                  currentPool != null ? '${t.name} (from $currentPool)' : t.name,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              );
+            }).toList(),
             onChanged: (v) => setS(() => selected = v),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
             FilledButton(
               onPressed: selected != null ? () => Navigator.pop(ctx, true) : null,
-              child: const Text('Add'),
+              child: const Text('Add / Move'),
             ),
           ],
         ),
@@ -224,7 +243,17 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
     );
     if (ok != true || selected == null || !mounted) return;
     try {
-      await ref.read(tournamentRepositoryProvider).registerTeamToPool(widget.tournamentId, pool.id, selected!.id);
+      final isInAnotherPool = poolTeamMap.containsKey(selected!.id);
+      if (isInAnotherPool) {
+        // Use the atomic move endpoint so the source pool's waitlist is promoted
+        await ref.read(tournamentRepositoryProvider).moveTeamToPool(
+          widget.tournamentId, selected!.id, pool.id,
+        );
+      } else {
+        await ref.read(tournamentRepositoryProvider).registerTeamToPool(
+          widget.tournamentId, pool.id, selected!.id,
+        );
+      }
       _load();
     } on Exception catch (e) {
       if (!mounted) return;

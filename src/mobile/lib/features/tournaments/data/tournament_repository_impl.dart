@@ -163,6 +163,16 @@ class TournamentRepositoryImpl implements TournamentRepository {
         '/tournaments/$tournamentId/pools/$poolId/waitlist/$teamId');
   }
 
+  @override
+  Future<Map<String, dynamic>> moveTeamToPool(
+      String tournamentId, String teamId, String? poolId) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/tournaments/$tournamentId/teams/$teamId/pool-move',
+      data: {'poolId': poolId},
+    );
+    return response.data ?? {};
+  }
+
   // ---------------------------------------------------------------------------
   // Category management
   // ---------------------------------------------------------------------------
@@ -259,6 +269,19 @@ class TournamentRepositoryImpl implements TournamentRepository {
     required int awayScore,
   }) async {
     await _dio.post<void>(
+      '/tournaments/$tournamentId/matches/$matchId/score',
+      data: {'homeScore': homeScore, 'awayScore': awayScore},
+    );
+  }
+
+  @override
+  Future<void> adminUpdateScore(
+    String tournamentId,
+    String matchId, {
+    required int homeScore,
+    required int awayScore,
+  }) async {
+    await _dio.put<void>(
       '/tournaments/$tournamentId/matches/$matchId/score',
       data: {'homeScore': homeScore, 'awayScore': awayScore},
     );
