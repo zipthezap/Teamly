@@ -434,6 +434,11 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 }
                     : null,
               ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.auto_awesome_outlined, size: 16),
+                label: const Text('Generate Brackets'),
+                onPressed: canManageTournament ? () => _generateBrackets(context) : null,
+              ),
             ]),
           ],
           const SizedBox(height: 32),
@@ -494,6 +499,66 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     }
   }
 
+  Future<void> _generateBrackets(BuildContext context) async {
+    int? numberOfGroups;
+
+    if (t.format == 'groups_knockout') {
+      final ctrl = TextEditingController(text: '4');
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Generate Brackets'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('How many groups for the group stage?'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: ctrl,
+                decoration: const InputDecoration(labelText: 'Number of groups'),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Generate')),
+          ],
+        ),
+      );
+      if (ok != true || !context.mounted) return;
+      numberOfGroups = int.tryParse(ctrl.text.trim());
+    } else {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Generate Brackets'),
+          content: const Text('This will automatically create matches for all registered teams. Continue?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Generate')),
+          ],
+        ),
+      );
+      if (ok != true || !context.mounted) return;
+    }
+
+    try {
+      await ref.read(tournamentRepositoryProvider).generateBrackets(t.id, numberOfGroups: numberOfGroups);
+      onRefresh();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Brackets generated!')));
+      }
+    } on Exception catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    }
+  }
+
   String _fmtLabel(String f) {
     const m = {
       'single_elimination': 'Single Elimination',
@@ -530,86 +595,15 @@ class _CategorySection extends ConsumerStatefulWidget {
 }
 
 class _CategorySectionState extends ConsumerState<_CategorySection> {
-  bool _registering = false;
-
   TournamentCategoryModel get category => widget.category;
   TournamentModel get tournament => widget.tournament;
-
-  Future<void> _registerToCategory() async {
-    final nameCtrl = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Register to ${category.name}'),
-        content: TextField(
-          controller: nameCtrl,
-          decoration: const InputDecoration(
-              labelText: 'Team name *',
-              prefixIcon: Icon(Icons.shield_outlined)),
-          textCapitalization: TextCapitalization.words,
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Register')),
-        ],
-      ),
-    );
-    if (ok != true || !mounted) return;
-    final name = nameCtrl.text.trim();
-    if (name.isEmpty) return;
-
-    setState(() => _registering = true);
-    try {
-      await ref.read(tournamentRepositoryProvider).selfRegisterTeam(
-            tournament.id,
-            name,
-            categoryId: category.id,
-          );
-      widget.onRefresh();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Team registered to ${category.name}!')),
-        );
-      }
-    } on Exception catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(extractErrorMessage(e)),
-              backgroundColor: Theme.of(context).colorScheme.error),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _registering = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(child: UiSectionTitle(category.name)),
-            if (widget.canRegister)
-              TextButton.icon(
-                icon: _registering
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.add_circle_outline, size: 16),
-                label: const Text('Register'),
-                onPressed: _registering ? null : _registerToCategory,
-              ),
-          ],
-        ),
+        UiSectionTitle(category.name),
         if (category.description != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
@@ -701,7 +695,7 @@ class _PoolCard extends StatelessWidget {
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                child: Text('${w.position + 1}. ${w.teamName}',
+                child: Text('${w.position}. ${w.teamName}',
                     style: TextStyle(
                         color: AppThemeTokens.textSecondary(context),
                         fontSize: 13)),
@@ -785,9 +779,6 @@ class _StandingRow {
       points: s.points,
       gf: s.goalsFor,
       ga: s.goalsAgainst);
-
-  factory _StandingRow.fromTeam(TournamentTeamModel t) => _StandingRow(
-      name: t.name, wins: t.wins, losses: t.losses, draws: 0, points: t.points);
 }
 
 class _ScoresTab extends StatelessWidget {
@@ -812,16 +803,11 @@ class _ScoresTab extends StatelessWidget {
                 .where((s) => teamPoolMap[s.teamId] == poolId)
                 .toList();
         if (filtered.isEmpty && poolId != null) {
-          // Fallback to teams if standings not yet populated for this pool
-          final poolTeams = t.teams.where((tm) => tm.poolId == poolId).toList();
-          return poolTeams.map(_StandingRow.fromTeam).toList();
+          return [];
         }
         return filtered.map(_StandingRow.fromStanding).toList();
       } else {
-        final poolTeams = poolId == null
-            ? t.teams
-            : t.teams.where((tm) => tm.poolId == poolId).toList();
-        return poolTeams.map(_StandingRow.fromTeam).toList();
+        return [];
       }
     }
 
@@ -889,7 +875,7 @@ class _ScoresTab extends StatelessWidget {
                 .where((s) => !poolTeamIds.contains(s.teamId))
                 .map(_StandingRow.fromStanding)
                 .toList()
-            : unassigned.map(_StandingRow.fromTeam).toList();
+            : <_StandingRow>[];
         if (rows.isNotEmpty) {
           children.add(const UiSectionTitle('Other'));
           children.add(const SizedBox(height: 6));
@@ -1191,9 +1177,7 @@ class _ScheduleMatchTileState extends ConsumerState<_ScheduleMatchTile> {
     final opponent = isMyHome ? m.teamBName : m.teamAName;
     final myScore = isMyHome ? m.scoreA : m.scoreB;
     final oppScore = isMyHome ? m.scoreB : m.scoreA;
-    final canSubmit = m.status == 'in_progress' ||
-        m.status == 'scheduled' ||
-        m.status == 'completed';
+    final canSubmit = m.status == 'in_progress' || m.status == 'scheduled';
 
     return Container(
       decoration: BoxDecoration(

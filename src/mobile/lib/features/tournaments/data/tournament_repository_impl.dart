@@ -52,13 +52,9 @@ class TournamentRepositoryImpl implements TournamentRepository {
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
     );
     final items = _extractList(response.data, ['tournaments', 'data']);
-    var tournaments = items
+    final tournaments = items
         .map((e) => TournamentModel.fromJson(e as Map<String, dynamic>))
         .toList();
-    if (search != null && search.isNotEmpty) {
-      final q = search.toLowerCase();
-      tournaments = tournaments.where((t) => t.name.toLowerCase().contains(q)).toList();
-    }
     return tournaments;
   }
 
@@ -316,6 +312,13 @@ class TournamentRepositoryImpl implements TournamentRepository {
       String tournamentId, String teamId, String invitationId) async {
     await _dio.delete<void>(
         '/tournaments/$tournamentId/teams/$teamId/invitations/$invitationId');
+  }
+
+  @override
+  Future<Map<String, dynamic>> getInvitationDetails(String inviteToken) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+        '/tournaments/invitations/preview/$inviteToken');
+    return _requireMapData(response, 'get invitation details');
   }
 
   // ---------------------------------------------------------------------------

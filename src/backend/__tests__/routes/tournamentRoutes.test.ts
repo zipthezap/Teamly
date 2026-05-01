@@ -84,6 +84,7 @@ vi.mock('../../controllers/tournamentController', () => ({
   addAdmin: vi.fn((req: any, res: any) => res.json({ ok: true })),
   removeAdmin: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getPublicTournaments: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getInvitationDetails: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getTournamentNotifications: vi.fn((req: any, res: any) => res.json({ ok: true }))
 }));
 

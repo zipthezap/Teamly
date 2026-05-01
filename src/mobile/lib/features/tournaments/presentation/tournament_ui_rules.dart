@@ -1,5 +1,5 @@
 bool canRegisterTeam(String status, {required bool hasMyTeam}) {
-  return status == 'registration' && !hasMyTeam;
+  return (status == 'registration' || status == 'draft') && !hasMyTeam;
 }
 
 bool canEditTournament(String status) {

@@ -250,9 +250,6 @@ class TournamentTeamModel extends Equatable {
     required this.id,
     required this.name,
     required this.tournamentId,
-    this.wins = 0,
-    this.losses = 0,
-    this.points = 0,
     this.poolId,
     this.poolName,
     this.captainUserId,
@@ -262,9 +259,6 @@ class TournamentTeamModel extends Equatable {
   final String id;
   final String name;
   final String tournamentId;
-  final int wins;
-  final int losses;
-  final int points;
   final String? poolId;
   final String? poolName;
   final String? captainUserId;
@@ -279,9 +273,6 @@ class TournamentTeamModel extends Equatable {
       id: json['id'] as String,
       name: json['name'] as String,
       tournamentId: json['tournamentId'] as String? ?? '',
-      wins: (json['wins'] as num?)?.toInt() ?? 0,
-      losses: (json['losses'] as num?)?.toInt() ?? 0,
-      points: (json['points'] as num?)?.toInt() ?? 0,
       poolId: json['poolId'] as String?,
       poolName: json['poolName'] as String?,
       captainUserId: json['captainUserId'] as String?,

@@ -13,6 +13,9 @@ const router = Router();
 // Public endpoint - no auth required
 router.get('/public', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getPublicTournaments));
 
+// Public invitation preview — no auth required (used by mobile invite page to show context before login)
+router.get('/invitations/preview/:inviteToken', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getInvitationDetails));
+
 // All tournament routes require authentication
 router.use(authMiddleware);
 router.use(authenticatedLimiter);
