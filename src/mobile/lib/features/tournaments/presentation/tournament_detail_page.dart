@@ -101,7 +101,7 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
         final isAdmin =
             isOrganizer || t.admins.any((a) => a.userId == currentUserId);
         TournamentTeamModel? myTeam;
-        if (currentUserId != null) {
+        if (currentUserId != null && !isOrganizer) {
           for (final team in t.teams) {
             final isMember = team.captainUserId == currentUserId ||
                 team.players
@@ -352,7 +352,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
 
   @override
   Widget build(BuildContext context) {
-    final canRegister = canRegisterTeam(t.status, hasMyTeam: myTeam != null);
+    final isOrganizer = widget.currentUserId != null && t.creatorId == widget.currentUserId;
+    final isCaptain = myTeam?.captainUserId == widget.currentUserId;
+    final canRegister = canRegisterTeam(t.status, hasMyTeam: myTeam != null, isOrganizer: isOrganizer);
     final canManageTournament = canManageTournamentAdminActions(t.status);
     final dateFormat = DateFormat.yMMMd();
     final organizerNames = <String>[];
@@ -506,29 +508,30 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                     _PaymentStatusBadge(status: team.paymentStatus),
                     const SizedBox(height: 8),
                   ],
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.group_outlined, size: 16),
-                        label: const Text('Manage Roster'),
-                        onPressed: () => context.push(
-                            '/tournaments/${t.id}/teams/${team.id}/roster'),
-                      ),
-                      if (t.status == 'registration' || t.status == 'draft')
+                  if (isCaptain)
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
                         OutlinedButton.icon(
-                          icon:
-                              const Icon(Icons.exit_to_app_outlined, size: 16),
-                          label: const Text('Unregister'),
-                          style: OutlinedButton.styleFrom(
-                              foregroundColor:
-                                  Theme.of(context).colorScheme.error),
-                          onPressed: () =>
-                              _confirmUnregister(context, t.id, onRefresh),
+                          icon: const Icon(Icons.group_outlined, size: 16),
+                          label: const Text('Manage Roster'),
+                          onPressed: () => context.push(
+                              '/tournaments/${t.id}/teams/${team.id}/roster'),
                         ),
-                    ],
-                  ),
+                        if (t.status == 'registration' || t.status == 'draft')
+                          OutlinedButton.icon(
+                            icon:
+                                const Icon(Icons.exit_to_app_outlined, size: 16),
+                            label: const Text('Unregister'),
+                            style: OutlinedButton.styleFrom(
+                                foregroundColor:
+                                    Theme.of(context).colorScheme.error),
+                            onPressed: () =>
+                                _confirmUnregister(context, t.id, onRefresh),
+                          ),
+                      ],
+                    ),
                 ],
               ),
             ),
