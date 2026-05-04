@@ -2251,9 +2251,9 @@ async function main() {
       sportType: 'iceHockey',
       format: 'groups_knockout',
       status: 'in_progress',
-      startDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
-      endDate: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000), // 12 days from now
-      registrationDeadline: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago (closed)
+      startDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago (already started)
+      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+      registrationDeadline: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago (closed)
       maxTeams: 16,
       location: 'Bell Centre',
       city: 'Montreal',
@@ -2466,8 +2466,10 @@ async function main() {
   }
 
   // Add players to some teams
-  await prisma.tournamentPlayer.create({
-    data: {
+  await prisma.tournamentPlayer.upsert({
+    where: { id: 'seed-player-4-1' },
+    update: {},
+    create: {
       id: 'seed-player-4-1',
       teamId: pool4ATeams[0].id,
       userId: user1.id,
@@ -2476,8 +2478,10 @@ async function main() {
     }
   });
 
-  await prisma.tournamentPlayer.create({
-    data: {
+  await prisma.tournamentPlayer.upsert({
+    where: { id: 'seed-player-4-2' },
+    update: {},
+    create: {
       id: 'seed-player-4-2',
       teamId: pool4ATeams[0].id,
       playerName: 'Marc Johnson',
@@ -2485,8 +2489,10 @@ async function main() {
     }
   });
 
-  await prisma.tournamentPlayer.create({
-    data: {
+  await prisma.tournamentPlayer.upsert({
+    where: { id: 'seed-player-4-3' },
+    update: {},
+    create: {
       id: 'seed-player-4-3',
       teamId: pool4ATeams[0].id,
       userId: user3.id,
@@ -2495,8 +2501,10 @@ async function main() {
     }
   });
 
-  await prisma.tournamentPlayer.create({
-    data: {
+  await prisma.tournamentPlayer.upsert({
+    where: { id: 'seed-player-4-4' },
+    update: {},
+    create: {
       id: 'seed-player-4-4',
       teamId: pool4BTeams[0].id,
       userId: user2.id,
@@ -2505,8 +2513,10 @@ async function main() {
     }
   });
 
-  await prisma.tournamentPlayer.create({
-    data: {
+  await prisma.tournamentPlayer.upsert({
+    where: { id: 'seed-player-4-5' },
+    update: {},
+    create: {
       id: 'seed-player-4-5',
       teamId: pool4BTeams[1].id,
       userId: user4.id,
@@ -2533,11 +2543,13 @@ async function main() {
   });
 
   // Create matches for Pool A with different timestamps
-  const baseDate = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000); // 5 days from now
+  const baseDate = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000); // yesterday (tournament in progress)
   
   // Pool A Match 1: Day 1, 10:00 AM
-  await prisma.tournamentMatch.create({
-    data: {
+  await prisma.tournamentMatch.upsert({
+    where: { id: 'seed-match-4a-1' },
+    update: {},
+    create: {
       id: 'seed-match-4a-1',
       tournamentId: tournament4.id,
       homeTeamId: pool4ATeams[0].id,
@@ -2552,8 +2564,10 @@ async function main() {
   });
 
   // Pool A Match 2: Day 1, 2:00 PM
-  await prisma.tournamentMatch.create({
-    data: {
+  await prisma.tournamentMatch.upsert({
+    where: { id: 'seed-match-4a-2' },
+    update: {},
+    create: {
       id: 'seed-match-4a-2',
       tournamentId: tournament4.id,
       homeTeamId: pool4ATeams[2].id,
@@ -2568,8 +2582,10 @@ async function main() {
   });
 
   // Pool A Match 3: Day 2, 11:00 AM
-  await prisma.tournamentMatch.create({
-    data: {
+  await prisma.tournamentMatch.upsert({
+    where: { id: 'seed-match-4a-3' },
+    update: {},
+    create: {
       id: 'seed-match-4a-3',
       tournamentId: tournament4.id,
       homeTeamId: pool4ATeams[0].id,
@@ -2585,8 +2601,10 @@ async function main() {
   });
 
   // Pool A Match 4: Day 2, 3:00 PM
-  await prisma.tournamentMatch.create({
-    data: {
+  await prisma.tournamentMatch.upsert({
+    where: { id: 'seed-match-4a-4' },
+    update: {},
+    create: {
       id: 'seed-match-4a-4',
       tournamentId: tournament4.id,
       homeTeamId: pool4ATeams[1].id,
@@ -2602,8 +2620,10 @@ async function main() {
   });
 
   // Pool A Match 5: Day 3, 12:00 PM (with scores - completed)
-  await prisma.tournamentMatch.create({
-    data: {
+  await prisma.tournamentMatch.upsert({
+    where: { id: 'seed-match-4a-5' },
+    update: {},
+    create: {
       id: 'seed-match-4a-5',
       tournamentId: tournament4.id,
       homeTeamId: pool4ATeams[0].id,
@@ -2623,8 +2643,10 @@ async function main() {
   });
 
   // Pool A Match 6: Day 3, 4:00 PM
-  await prisma.tournamentMatch.create({
-    data: {
+  await prisma.tournamentMatch.upsert({
+    where: { id: 'seed-match-4a-6' },
+    update: {},
+    create: {
       id: 'seed-match-4a-6',
       tournamentId: tournament4.id,
       homeTeamId: pool4ATeams[1].id,
@@ -2641,8 +2663,10 @@ async function main() {
 
   // Create matches for Pool B
   // Pool B Match 1: Day 1, 11:30 AM
-  await prisma.tournamentMatch.create({
-    data: {
+  await prisma.tournamentMatch.upsert({
+    where: { id: 'seed-match-4b-1' },
+    update: {},
+    create: {
       id: 'seed-match-4b-1',
       tournamentId: tournament4.id,
       homeTeamId: pool4BTeams[0].id,
@@ -2657,8 +2681,10 @@ async function main() {
   });
 
   // Pool B Match 2: Day 1, 3:30 PM
-  await prisma.tournamentMatch.create({
-    data: {
+  await prisma.tournamentMatch.upsert({
+    where: { id: 'seed-match-4b-2' },
+    update: {},
+    create: {
       id: 'seed-match-4b-2',
       tournamentId: tournament4.id,
       homeTeamId: pool4BTeams[2].id,
@@ -2673,8 +2699,10 @@ async function main() {
   });
 
   // Pool B Match 3: Day 2, 12:30 PM
-  await prisma.tournamentMatch.create({
-    data: {
+  await prisma.tournamentMatch.upsert({
+    where: { id: 'seed-match-4b-3' },
+    update: {},
+    create: {
       id: 'seed-match-4b-3',
       tournamentId: tournament4.id,
       homeTeamId: pool4BTeams[0].id,
@@ -2689,8 +2717,10 @@ async function main() {
   });
 
   // Create standings for Pool A teams
-  await prisma.tournamentStanding.create({
-    data: {
+  await prisma.tournamentStanding.upsert({
+    where: { id: 'seed-standing-4a-1' },
+    update: {},
+    create: {
       id: 'seed-standing-4a-1',
       tournamentId: tournament4.id,
       teamId: pool4ATeams[0].id,
@@ -2704,8 +2734,10 @@ async function main() {
     }
   });
 
-  await prisma.tournamentStanding.create({
-    data: {
+  await prisma.tournamentStanding.upsert({
+    where: { id: 'seed-standing-4a-2' },
+    update: {},
+    create: {
       id: 'seed-standing-4a-2',
       tournamentId: tournament4.id,
       teamId: pool4ATeams[1].id,
@@ -2719,8 +2751,10 @@ async function main() {
     }
   });
 
-  await prisma.tournamentStanding.create({
-    data: {
+  await prisma.tournamentStanding.upsert({
+    where: { id: 'seed-standing-4a-3' },
+    update: {},
+    create: {
       id: 'seed-standing-4a-3',
       tournamentId: tournament4.id,
       teamId: pool4ATeams[2].id,
@@ -2734,8 +2768,10 @@ async function main() {
     }
   });
 
-  await prisma.tournamentStanding.create({
-    data: {
+  await prisma.tournamentStanding.upsert({
+    where: { id: 'seed-standing-4a-4' },
+    update: {},
+    create: {
       id: 'seed-standing-4a-4',
       tournamentId: tournament4.id,
       teamId: pool4ATeams[3].id,
@@ -2751,8 +2787,10 @@ async function main() {
 
   // Create standings for Pool B teams (all zeros - no matches completed yet)
   for (let i = 0; i < pool4BTeams.length; i++) {
-    await prisma.tournamentStanding.create({
-      data: {
+    await prisma.tournamentStanding.upsert({
+      where: { id: `seed-standing-4b-${i + 1}` },
+      update: {},
+      create: {
         id: `seed-standing-4b-${i + 1}`,
         tournamentId: tournament4.id,
         teamId: pool4BTeams[i].id,
@@ -2769,8 +2807,10 @@ async function main() {
 
   // Create standings for Pool C teams
   for (let i = 0; i < pool4CTeams.length; i++) {
-    await prisma.tournamentStanding.create({
-      data: {
+    await prisma.tournamentStanding.upsert({
+      where: { id: `seed-standing-4c-${i + 1}` },
+      update: {},
+      create: {
         id: `seed-standing-4c-${i + 1}`,
         tournamentId: tournament4.id,
         teamId: pool4CTeams[i].id,
@@ -2787,8 +2827,10 @@ async function main() {
 
   // Create standings for Pool D teams
   for (let i = 0; i < pool4DTeams.length; i++) {
-    await prisma.tournamentStanding.create({
-      data: {
+    await prisma.tournamentStanding.upsert({
+      where: { id: `seed-standing-4d-${i + 1}` },
+      update: {},
+      create: {
         id: `seed-standing-4d-${i + 1}`,
         tournamentId: tournament4.id,
         teamId: pool4DTeams[i].id,
