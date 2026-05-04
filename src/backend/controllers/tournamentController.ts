@@ -3600,7 +3600,7 @@ export const addAdmin = async (req: Request, res: Response) => {
   // A team captain in this tournament cannot also be a co-organizer
   const existingCaptainTeam = await prisma.tournamentTeam.findFirst({
     where: { tournamentId: id, captainUserId: resolvedUserId },
-    select: { id: true, name: true }
+    select: { id: true }
   });
   if (existingCaptainTeam) {
     throw new BadRequestError('This user already has a team registered in this tournament and cannot be a co-organizer');
