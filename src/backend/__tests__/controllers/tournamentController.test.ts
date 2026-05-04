@@ -2295,6 +2295,7 @@ describe('DELETE /api/tournaments/:id/pools/:poolId (deletePool)', () => {
 
 describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () => {
   it('returns 201 on successful registration', async () => {
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
     const registeredTournament = { ...mockTournament, organizerId: 'other-user-id', status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
@@ -2309,6 +2310,7 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
   });
 
   it('returns 201 when registering without a pool (no category needed)', async () => {
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
     const registeredTournament = { ...mockTournament, organizerId: 'other-user-id', status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
@@ -2332,6 +2334,7 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
   });
 
   it('uses categoryId in request body when provided', async () => {
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
     const registeredTournament = { ...mockTournament, organizerId: 'other-user-id', status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
@@ -2355,6 +2358,7 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
   });
 
   it('returns 404 when poolId is provided but pool does not exist', async () => {
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
     const registeredTournament = { ...mockTournament, organizerId: 'other-user-id', status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
@@ -2369,6 +2373,7 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
   });
 
   it('categoryId alongside poolId is silently ignored (poolId takes precedence)', async () => {
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
     const registeredTournament = { ...mockTournament, organizerId: 'other-user-id', status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
@@ -2384,6 +2389,7 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
   });
 
   it('allows registration when both pool and category provided and pool belongs to category', async () => {
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
     const registeredTournament = { ...mockTournament, organizerId: 'other-user-id', status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
@@ -2411,6 +2417,7 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
   });
 
   it('returns 400 when tournament has reached max teams', async () => {
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
     const registeredTournament = { ...mockTournament, organizerId: 'other-user-id', status: 'registration', maxTeams: 1 };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
     vi.mocked(prisma.tournamentTeam.count).mockResolvedValue(1);
@@ -2424,6 +2431,7 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
   });
 
   it('returns 400 when user is already a player in the tournament', async () => {
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
     const registeredTournament = { ...mockTournament, organizerId: 'other-user-id', status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
@@ -2449,6 +2457,7 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
   });
 
   it('returns 404 when categoryId does not belong to the tournament', async () => {
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
     const registeredTournament = { ...mockTournament, organizerId: 'other-user-id', status: 'registration' };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
@@ -2474,6 +2483,20 @@ describe('POST /api/tournaments/:id/teams/self-register (selfRegisterTeam)', () 
 
     expect(res.status).toBe(403);
     expect(res.body.error).toContain('organizer');
+  });
+
+  it('returns 403 when a co-organizer attempts to self-register', async () => {
+    const registeredTournament = { ...mockTournament, organizerId: 'other-user-id', status: 'registration' };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(registeredTournament as any);
+    // isOrganizerOrAdmin returns true (user is a co-organizer)
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/teams/self-register')
+      .send({ name: 'Co-Organizer Team' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toContain('co-organizer');
   });
 });
 
