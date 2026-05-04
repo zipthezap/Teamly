@@ -8,7 +8,7 @@ import {
   SportScoringConfig,
   DetailedScore
 } from '../../shared/types/tournament.types';
-import { BadRequestError, NotFoundError } from '../utils/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '../utils/errors';
 import { sanitizeString } from '../utils/validation';
 
 const ALLOWED_SPORT_TYPES = [
@@ -1026,6 +1026,11 @@ export const acceptTeamInvitation = async (inviteToken: string, userId: string) 
       data: { status: 'accepted', inviteeUserId: userId }
     });
     throw new BadRequestError('You are already a participant in this tournament');
+  }
+
+  // Tournament organizers cannot participate as players
+  if (isOrganizer(invitation.team.tournament, userId)) {
+    throw new ForbiddenError('Tournament organizers cannot participate as players');
   }
 
   // Add user as a player to the team and mark invitation as accepted atomically

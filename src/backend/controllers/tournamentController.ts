@@ -1884,13 +1884,16 @@ export const addPlayer = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the organizer or team captain can add players');
   }
 
-  // If userId is provided, verify the user exists
+  // If userId is provided, verify the user exists and is not the tournament organizer
   if (playerId) {
     const user = await prisma.user.findUnique({
       where: { id: playerId }
     });
     if (!user) {
       throw new BadRequestError('User not found');
+    }
+    if (tournament.organizerId === playerId) {
+      throw new ForbiddenError('Tournament organizers cannot participate as players');
     }
   }
 
@@ -3712,6 +3715,10 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
 
   tournamentService.validateRegistrationEligibility(tournament!);
 
+  if (tournament!.organizerId === userId) {
+    throw new ForbiddenError('Tournament organizers cannot register as participants');
+  }
+
   if (tournament!.maxTeams) {
     const teamCount = await prisma.tournamentTeam.count({
       where: { tournamentId: id },
@@ -3890,8 +3897,8 @@ export const selfUnregisterTeam = async (req: Request, res: Response) => {
     }
   });
 
-  // Filter teams the user may unregister: captain OR sole-member
-  const removableTeams = teamsWithUser.filter(t => t.captainUserId === userId || (t._count.players === 1));
+  // Only the team captain can unregister a team
+  const removableTeams = teamsWithUser.filter(t => t.captainUserId === userId);
 
   if (removableTeams.length === 0) {
     throw new BadRequestError('You do not have a registered team to unregister');

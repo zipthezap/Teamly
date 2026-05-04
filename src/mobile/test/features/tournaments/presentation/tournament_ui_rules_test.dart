@@ -11,6 +11,12 @@ void main() {
       expect(canRegisterTeam('in_progress', hasMyTeam: false), isFalse);
     });
 
+    test('register button is hidden for tournament organizer', () {
+      expect(canRegisterTeam('registration', hasMyTeam: false, isOrganizer: true), isFalse);
+      expect(canRegisterTeam('draft', hasMyTeam: false, isOrganizer: true), isFalse);
+      expect(canRegisterTeam('registration', hasMyTeam: false, isOrganizer: false), isTrue);
+    });
+
     test('edit/admin actions are disabled for completed and cancelled tournaments', () {
       expect(canEditTournament('draft'), isTrue);
       expect(canEditTournament('registration'), isTrue);
