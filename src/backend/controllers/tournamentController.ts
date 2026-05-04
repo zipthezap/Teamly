@@ -1884,7 +1884,7 @@ export const addPlayer = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the organizer or team captain can add players');
   }
 
-  // If userId is provided, verify the user exists and is not the tournament organizer
+  // If userId is provided, verify the user exists and cannot be an organizer, co-organizer, or captain of another team
   if (playerId) {
     const user = await prisma.user.findUnique({
       where: { id: playerId }
@@ -1892,8 +1892,15 @@ export const addPlayer = async (req: Request, res: Response) => {
     if (!user) {
       throw new BadRequestError('User not found');
     }
-    if (tournament.organizerId === playerId) {
-      throw new ForbiddenError('Tournament organizers cannot participate as players');
+    if (await tournamentService.isOrganizerOrAdmin(tournament, playerId)) {
+      throw new ForbiddenError('Tournament organizers and co-organizers cannot participate as players');
+    }
+    const existingCaptainTeam = await prisma.tournamentTeam.findFirst({
+      where: { tournamentId: id, captainUserId: playerId, NOT: { id: teamId } },
+      select: { id: true }
+    });
+    if (existingCaptainTeam) {
+      throw new BadRequestError('This user is already a team captain in this tournament');
     }
   }
 
@@ -2950,6 +2957,26 @@ export const sendTeamInvitation = async (req: Request, res: Response) => {
     throw new BadRequestError('This user is already a player in a team for this tournament');
   }
 
+  // Check if the invitee is a registered user who is already a co-organizer
+  // or a team captain in this tournament — they cannot also be a player
+  const inviteeUserRecord = await prisma.user.findFirst({
+    where: { email: inviteeEmail.toLowerCase() },
+    select: { id: true }
+  });
+  if (inviteeUserRecord) {
+    const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament, inviteeUserRecord.id);
+    if (isOrgOrAdmin) {
+      throw new BadRequestError('Tournament organizers and co-organizers cannot be invited as players');
+    }
+    const existingCaptainTeam = await prisma.tournamentTeam.findFirst({
+      where: { tournamentId: id, captainUserId: inviteeUserRecord.id },
+      select: { id: true }
+    });
+    if (existingCaptainTeam) {
+      throw new BadRequestError('This user is already a team captain in this tournament');
+    }
+  }
+
   // Check if there's already a pending invitation
   const existingInvitation = await prisma.tournamentTeamInvitation.findFirst({
     where: {
@@ -3570,6 +3597,15 @@ export const addAdmin = async (req: Request, res: Response) => {
     throw new BadRequestError('Cannot grant admin role to a user with an unverified email address');
   }
 
+  // A team captain in this tournament cannot also be a co-organizer
+  const existingCaptainTeam = await prisma.tournamentTeam.findFirst({
+    where: { tournamentId: id, captainUserId: resolvedUserId },
+    select: { id: true }
+  });
+  if (existingCaptainTeam) {
+    throw new BadRequestError('This user already has a team registered in this tournament and cannot be a co-organizer');
+  }
+
   try {
     const adminRole = await prisma.tournamentAdminRole.create({
       data: {
@@ -3645,8 +3681,8 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
 
   tournamentService.validateRegistrationEligibility(tournament!);
 
-  if (tournament!.organizerId === userId) {
-    throw new ForbiddenError('Tournament organizers cannot register as participants');
+  if (await tournamentService.isOrganizerOrAdmin(tournament!, userId)) {
+    throw new ForbiddenError('Tournament organizers and co-organizers cannot register as participants');
   }
 
   if (tournament!.maxTeams) {

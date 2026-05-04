@@ -1028,9 +1028,18 @@ export const acceptTeamInvitation = async (inviteToken: string, userId: string) 
     throw new BadRequestError('You are already a participant in this tournament');
   }
 
-  // Tournament organizers cannot participate as players
-  if (isOrganizer(invitation.team.tournament, userId)) {
-    throw new ForbiddenError('Tournament organizers cannot participate as players');
+  // Tournament organizers and co-organizers cannot participate as players
+  if (await isOrganizerOrAdmin(invitation.team.tournament, userId)) {
+    throw new ForbiddenError('Tournament organizers and co-organizers cannot participate as players');
+  }
+
+  // A team captain cannot join another team as a player
+  const existingCaptainTeam = await prisma.tournamentTeam.findFirst({
+    where: { tournamentId: invitation.team.tournamentId, captainUserId: userId },
+    select: { id: true }
+  });
+  if (existingCaptainTeam) {
+    throw new BadRequestError('Team captains cannot join another team as a player');
   }
 
   // Add user as a player to the team and mark invitation as accepted atomically

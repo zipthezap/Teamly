@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/error/app_exception.dart';
 import '../../../core/models/tournament_model.dart';
 import '../data/tournament_repository_impl.dart';
 
@@ -48,6 +49,10 @@ final myInvitationsCountProvider =
   } on DioException catch (e) {
     // Swallow network / server errors so the badge degrades gracefully
     debugPrint('myInvitationsCountProvider: network error ignored: $e');
+    return 0;
+  } on AppException catch (e) {
+    // Swallow auth/app-level errors (e.g. 401 User not found on stale session)
+    debugPrint('myInvitationsCountProvider: app error ignored: $e');
     return 0;
   } catch (e) {
     // Re-throw unexpected errors (programming bugs, type errors, etc.)
