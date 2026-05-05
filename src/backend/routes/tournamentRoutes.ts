@@ -322,4 +322,82 @@ router.get(
   asyncHandler(tournamentController.getTournamentNotifications)
 );
 
+// Team check-in (#4)
+router.put(
+  '/:id/teams/:teamId/check-in',
+  noCache,
+  asyncHandler(tournamentController.checkInTeam)
+);
+
+// Registration waitlist (#2)
+router.get('/:id/registration-waitlist', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getRegistrationWaitlist));
+router.post('/:id/registration-waitlist', noCache, asyncHandler(tournamentController.joinRegistrationWaitlist));
+router.delete('/:id/registration-waitlist', noCache, asyncHandler(tournamentController.leaveRegistrationWaitlist));
+router.delete(
+  '/:id/registration-waitlist/:teamId',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_TEAMS),
+  asyncHandler(tournamentController.promoteFromRegistrationWaitlist)
+);
+
+// Score disputes (#3)
+router.post('/:id/matches/:matchId/disputes', noCache, asyncHandler(tournamentController.createScoreDispute));
+router.get(
+  '/:id/matches/:matchId/disputes',
+  etagMiddleware({ weak: true }),
+  asyncHandler(tournamentController.getMatchDisputes)
+);
+router.put(
+  '/:id/disputes/:disputeId',
+  noCache,
+  asyncHandler(tournamentController.resolveScoreDispute)
+);
+
+// Announcements (#7)
+router.get('/:id/announcements', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getAnnouncements));
+router.post(
+  '/:id/announcements',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_UPDATE),
+  asyncHandler(tournamentController.createAnnouncement)
+);
+
+// Registration fields (#9)
+router.get('/:id/registration-fields', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getRegistrationFields));
+router.post(
+  '/:id/registration-fields',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_UPDATE),
+  asyncHandler(tournamentController.createRegistrationField)
+);
+router.put(
+  '/:id/registration-fields/:fieldId',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_UPDATE),
+  asyncHandler(tournamentController.updateRegistrationField)
+);
+router.delete(
+  '/:id/registration-fields/:fieldId',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_UPDATE),
+  asyncHandler(tournamentController.deleteRegistrationField)
+);
+router.post('/:id/teams/:teamId/answers', noCache, asyncHandler(tournamentController.submitTeamAnswers));
+router.get('/:id/teams/:teamId/answers', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getTeamAnswers));
+
+// Player stats (#12)
+router.get('/:id/teams/:teamId/player-stats', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getPlayerStats));
+router.put(
+  '/:id/teams/:teamId/players/:playerId/stats',
+  noCache,
+  asyncHandler(tournamentController.upsertPlayerStat)
+);
+
+// Tournament clone (#14)
+router.post(
+  '/:id/clone',
+  noCache,
+  asyncHandler(tournamentController.cloneTournament)
+);
+
 export default router;

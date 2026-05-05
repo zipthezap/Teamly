@@ -112,6 +112,10 @@ export interface Tournament {
   isRecurring?: boolean;
   recurrenceRule?: string;
   parentTournamentId?: string;
+  // New gap-feature fields
+  rosterLockDate?: Date | string;
+  paymentDeadline?: Date | string;
+  tiebreakerRules?: string[];
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -231,6 +235,10 @@ export interface CreateTournamentDto {
   // Recurring tournament support
   isRecurring?: boolean;
   recurrenceRule?: string;
+  // New gap-feature fields
+  rosterLockDate?: Date | string;
+  paymentDeadline?: Date | string;
+  tiebreakerRules?: string[];
 }
 
 export interface UpdateTournamentDto {
@@ -257,6 +265,10 @@ export interface UpdateTournamentDto {
   contactEmail?: string;
   // Sport-specific configuration
   sportConfig?: SportScoringConfig;
+  // New gap-feature fields
+  rosterLockDate?: Date | string;
+  paymentDeadline?: Date | string;
+  tiebreakerRules?: string[];
 }
 
 export interface CreateTeamDto {
@@ -386,3 +398,60 @@ export interface TeamInviteLink {
   expiresAt: Date | string;
 }
 
+
+// ==================== NEW GAP-FEATURE TYPES ====================
+
+export enum ScoreDisputeStatus {
+  OPEN = 'open',
+  RESOLVED = 'resolved',
+  DISMISSED = 'dismissed',
+}
+
+export enum RegistrationFieldType {
+  TEXT = 'text',
+  NUMBER = 'number',
+  BOOLEAN = 'boolean',
+  SELECT = 'select',
+}
+
+export interface TournamentRegistrationWaitlistEntry {
+  id: string;
+  tournamentId: string;
+  teamId: string;
+  position: number;
+  createdAt: Date | string;
+  team?: { id: string; name: string; captainUserId?: string };
+}
+
+export interface TournamentScoreDisputeDto {
+  reason: string;
+}
+
+export interface ResolveTournamentScoreDisputeDto {
+  status: ScoreDisputeStatus.RESOLVED | ScoreDisputeStatus.DISMISSED;
+  resolution?: string;
+}
+
+export interface TournamentAnnouncementDto {
+  title: string;
+  body: string;
+  isPinned?: boolean;
+}
+
+export interface TournamentRegistrationFieldDto {
+  label: string;
+  fieldType?: RegistrationFieldType;
+  isRequired?: boolean;
+  options?: string[];
+  sortOrder?: number;
+}
+
+export interface TournamentTeamAnswerDto {
+  fieldId: string;
+  value: string;
+}
+
+export interface TournamentPlayerStatDto {
+  statKey: string;
+  value: number;
+}

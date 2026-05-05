@@ -48,6 +48,9 @@ enum TournamentNotificationType {
   tournament_cancelled
   match_scheduled
   score_submitted
+  payment_reminder
+  score_disputed
+  announcement
 }
 
 enum PushDevicePlatform {
@@ -333,6 +336,8 @@ model User {
   sentTeamInvitations     TournamentTeamInvitation[] @relation("SentTeamInvitations")
   tournamentAdminRoles    TournamentAdminRole[] @relation("TournamentAdminRoles")
   grantedAdminRoles       TournamentAdminRole[] @relation("TournamentAdminRolesGranted")
+  disputeResolutions      TournamentScoreDispute[] @relation("DisputeResolver")
+  tournamentAnnouncements TournamentAnnouncement[] @relation("TournamentAnnouncementAuthor")
   groupBans         GroupBan[]
   issuedGroupBans   GroupBan[]       @relation("GroupBanner")
   auditLogs         AuditLog[]
@@ -977,6 +982,11 @@ model Tournament {
   requirePaymentForBrackets Boolean  @default(false) // Block bracket generation until all teams are marked paid
   paymentInfo               String?  // Payment instructions for teams (e.g. how/where to transfer the fee)
 
+  // New gap-feature fields
+  rosterLockDate   DateTime?  // Date after which roster changes are locked (#10)
+  paymentDeadline  DateTime?  // Deadline for team payment (#15)
+  tiebreakerRules  Json?      // Array of tiebreaker rule keys e.g. ["goal_difference","goals_for"] (#6)
+
   // Recurring tournament support
   isRecurring         Boolean  @default(false)
   recurrenceRule      String?  // RRule format
@@ -991,6 +1001,9 @@ model Tournament {
   categories  TournamentCategory[]
   adminRoles  TournamentAdminRole[]
   notifications TournamentNotification[]
+  registrationWaitlist TournamentRegistrationWaitlist[]
+  announcements        TournamentAnnouncement[]
+  registrationFields   TournamentRegistrationField[]
   
   @@index([organizerId])
   @@index([groupId])
@@ -1028,6 +1041,11 @@ model TournamentTeam {
   paidAt        DateTime?
   paidByUserId  String?  // admin who marked the payment
 
+  // New gap-feature fields
+  checkedIn    Boolean  @default(false)  // Day-of check-in (#4)
+  checkedInAt  DateTime?                 // When they checked in (#4)
+  logoUrl      String?                   // Team logo URL (#13)
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   
@@ -1038,6 +1056,10 @@ model TournamentTeam {
   players      TournamentPlayer[]
   waitlistEntries TournamentPoolWaitlist[]
   invitations  TournamentTeamInvitation[]
+  registrationWaitlist TournamentRegistrationWaitlist[]
+  teamAnswers          TournamentTeamAnswer[]
+  playerStats          TournamentPlayerStat[]
+  scoreDisputes        TournamentScoreDispute[]
   
   @@unique([tournamentId, name])
   @@unique([tournamentId, captainUserId])
@@ -1093,6 +1115,7 @@ model TournamentMatch {
   @@index([status])
   @@index([stage])
   @@index([matchOrder])
+  disputes TournamentScoreDispute[]
 }
 
 model TournamentStanding {
@@ -1132,6 +1155,7 @@ model TournamentPlayer {
   
   playerName  String   // Name of the player (required even if userId is set)
   playerEmail String?  // Optional email
+  jerseyNumber Int?     // Jersey number (#11)
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1140,6 +1164,7 @@ model TournamentPlayer {
   @@index([teamId])
   @@index([userId])
   @@index([userId, teamId]) // Composite index for permission checks (scalability)
+  stats TournamentPlayerStat[]
 }
 
 // Tournament pools - separate pools within a tournament with different team capacities
@@ -1186,6 +1211,120 @@ model TournamentPoolWaitlist {
   @@index([poolId])
   @@index([teamId])
   @@index([poolId, position])
+}
+
+// Tournament-level registration waitlist (#2)
+model TournamentRegistrationWaitlist {
+  id           String   @id @default(uuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  teamId       String
+  team         TournamentTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  position     Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  @@unique([tournamentId, teamId])
+  @@index([tournamentId])
+  @@index([teamId])
+  @@index([tournamentId, position])
+}
+
+// Score dispute (#3)
+enum ScoreDisputeStatus {
+  open
+  resolved
+  dismissed
+}
+
+model TournamentScoreDispute {
+  id              String   @id @default(uuid())
+  matchId         String
+  match           TournamentMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  disputingTeamId String
+  disputingTeam   TournamentTeam @relation(fields: [disputingTeamId], references: [id], onDelete: Cascade)
+  reason          String
+  status          ScoreDisputeStatus @default(open)
+  resolution      String?
+  resolvedById    String?
+  resolvedBy      User?    @relation("DisputeResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  @@unique([matchId, disputingTeamId])
+  @@index([matchId])
+  @@index([disputingTeamId])
+  @@index([status])
+}
+
+// Tournament announcement (#7)
+model TournamentAnnouncement {
+  id           String   @id @default(uuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  authorId     String
+  author       User     @relation("TournamentAnnouncementAuthor", fields: [authorId], references: [id])
+  title        String
+  body         String
+  isPinned     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  @@index([tournamentId])
+  @@index([tournamentId, createdAt])
+}
+
+// Custom registration questions (#9)
+enum RegistrationFieldType {
+  text
+  number
+  boolean
+  select
+}
+
+model TournamentRegistrationField {
+  id           String   @id @default(uuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  label        String
+  fieldType    RegistrationFieldType @default(text)
+  isRequired   Boolean  @default(false)
+  options      Json?
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  answers      TournamentTeamAnswer[]
+  @@index([tournamentId])
+  @@index([tournamentId, sortOrder])
+}
+
+model TournamentTeamAnswer {
+  id        String   @id @default(uuid())
+  fieldId   String
+  field     TournamentRegistrationField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  teamId    String
+  team      TournamentTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([fieldId, teamId])
+  @@index([fieldId])
+  @@index([teamId])
+}
+
+// Player stats per tournament (#12)
+model TournamentPlayerStat {
+  id           String   @id @default(uuid())
+  tournamentId String
+  teamId       String
+  team         TournamentTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  playerId     String
+  player       TournamentPlayer @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  statKey      String
+  value        Float    @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  @@unique([playerId, statKey])
+  @@index([tournamentId])
+  @@index([teamId])
+  @@index([playerId])
 }
 
 // Tournament categories - ranking tiers (e.g. "Elite", "Intermediate", "Beginner")
