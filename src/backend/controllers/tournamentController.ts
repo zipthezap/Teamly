@@ -3793,7 +3793,7 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
     // `categoryId` to ensure the team appears in category listings.
     let responseTeam = team;
     if (selectedCategory && !validatedPool) {
-      const updatedTeam: any = await (prisma as any).tournamentTeam.update({
+      const updatedTeam = await prisma.tournamentTeam.update({
         where: { id: team.id },
         data: { categoryId: selectedCategory.id, poolName: selectedCategory.name },
         include: { captainUser: { select: { id: true, name: true, email: true } } }
