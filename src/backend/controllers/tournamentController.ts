@@ -236,6 +236,7 @@ export const createTournament = async (req: Request, res: Response) => {
     // Payment / fee
     registrationFee,
     requirePaymentForBrackets,
+    paymentInfo,
   } = req.body;
 
   const userId = req.user!.id;
@@ -255,7 +256,8 @@ export const createTournament = async (req: Request, res: Response) => {
     location,
     locationName,
     prizesDescription,
-    rulesDescription
+    rulesDescription,
+    paymentInfo
   });
 
   if (!sanitized.name) {
@@ -382,6 +384,7 @@ export const createTournament = async (req: Request, res: Response) => {
       // Payment / fee
       registrationFee: registrationFee != null ? Number(registrationFee) : undefined,
       requirePaymentForBrackets: requirePaymentForBrackets || false,
+      paymentInfo: sanitized.paymentInfo || undefined,
     },
     include: {
       organizer: {
@@ -598,7 +601,7 @@ export const updateTournament = async (req: Request, res: Response) => {
     // Sport-specific configuration
     sportConfig,
     // Payment / fee
-    registrationFee, requirePaymentForBrackets,
+    registrationFee, requirePaymentForBrackets, paymentInfo,
   } = req.body;
 
   let tournament = await prisma.tournament.findUnique({
@@ -761,6 +764,10 @@ export const updateTournament = async (req: Request, res: Response) => {
       throw new BadRequestError('requirePaymentForBrackets must be a boolean');
     }
     updateData.requirePaymentForBrackets = requirePaymentForBrackets;
+  }
+  if (paymentInfo !== undefined) {
+    const sanitized = tournamentService.sanitizeTournamentData({ paymentInfo });
+    updateData.paymentInfo = sanitized.paymentInfo || null;
   }
 
   tournamentService.validateTournamentBusinessRules({

@@ -70,6 +70,7 @@ abstract class AdminRepository {
   Future<void> removeAdmin(String tournamentId, String adminUserId);
   Future<Map<String, dynamic>> updateTeamPayment(
       String tournamentId, String teamId, String paymentStatus);
+  Future<void> deleteTeam(String tournamentId, String teamId);
 }
 
 abstract class InvitationRepository {

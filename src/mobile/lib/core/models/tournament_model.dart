@@ -393,6 +393,7 @@ class TournamentModel extends Equatable {
     this.prizesDescription,
     this.rulesDescription,
     this.contactEmail,
+    this.paymentInfo,
     this.useManualBrackets = false,
     this.autoGenerateBrackets = false,
     this.isPublic = true,
@@ -430,6 +431,7 @@ class TournamentModel extends Equatable {
   final String? prizesDescription;
   final String? rulesDescription;
   final String? contactEmail;
+  final String? paymentInfo;
   final bool useManualBrackets;
   final bool autoGenerateBrackets;
   final bool isPublic;
@@ -515,6 +517,7 @@ class TournamentModel extends Equatable {
       prizesDescription: json['prizesDescription'] as String?,
       rulesDescription: json['rulesDescription'] as String?,
       contactEmail: json['contactEmail'] as String?,
+      paymentInfo: json['paymentInfo'] as String?,
       useManualBrackets: json['useManualBrackets'] as bool? ?? false,
       autoGenerateBrackets: json['autoGenerateBrackets'] as bool? ?? false,
       isPublic: json['isPublic'] as bool? ?? true,

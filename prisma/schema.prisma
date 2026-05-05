@@ -975,6 +975,7 @@ model Tournament {
   // Registration fee / payment
   registrationFee           Float?   // Fee per team (in local currency). null = free
   requirePaymentForBrackets Boolean  @default(false) // Block bracket generation until all teams are marked paid
+  paymentInfo               String?  // Payment instructions for teams (e.g. how/where to transfer the fee)
 
   // Recurring tournament support
   isRecurring         Boolean  @default(false)
