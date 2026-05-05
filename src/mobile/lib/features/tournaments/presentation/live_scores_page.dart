@@ -24,8 +24,8 @@ class _LiveScoresPageState extends ConsumerState<LiveScoresPage> {
   @override
   void initState() {
     super.initState();
-    // Auto-refresh every 30 seconds while page is open
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    // Auto-refresh every 5 seconds while page is open for near-real-time scores
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       ref.invalidate(tournamentDetailProvider(widget.tournamentId));
     });
   }
