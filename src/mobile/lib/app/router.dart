@@ -33,6 +33,10 @@ import '../features/profile/presentation/profile_pictures_page.dart';
 import '../features/reminders/presentation/reminders_page.dart';
 import '../features/teamup/presentation/teamup_page.dart';
 import '../features/tournaments/presentation/tournaments_page.dart';
+import '../features/tournaments/presentation/bracket_visualization_page.dart';
+import '../features/tournaments/presentation/match_schedule_page.dart';
+import '../features/tournaments/presentation/public_tournaments_page.dart';
+import '../features/tournaments/presentation/live_scores_page.dart';
 import '../features/leagues/presentation/leagues_page.dart';
 import '../features/leagues/presentation/league_detail_page.dart';
 import '../features/leagues/presentation/create_league_page.dart';
@@ -255,9 +259,33 @@ final _routerProvider = Provider<GoRouter>((ref) {
                   tournamentId: state.pathParameters['id']!,
                 ),
               ),
+              GoRoute(
+                path: 'bracket',
+                builder: (context, state) => BracketVisualizationPage(
+                  tournamentId: state.pathParameters['id']!,
+                ),
+              ),
+              GoRoute(
+                path: 'schedule',
+                builder: (context, state) => MatchSchedulePage(
+                  tournamentId: state.pathParameters['id']!,
+                ),
+              ),
+              GoRoute(
+                path: 'live-scores',
+                builder: (context, state) => LiveScoresPage(
+                  tournamentId: state.pathParameters['id']!,
+                ),
+              ),
             ],
           ),
         ],
+      ),
+
+      // Discover public tournaments
+      GoRoute(
+        path: '/discover-tournaments',
+        builder: (context, state) => const PublicTournamentsPage(),
       ),
 
       // Tournament invitation deep link (public — accessible without auth)

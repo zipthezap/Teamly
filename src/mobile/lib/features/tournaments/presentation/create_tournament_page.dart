@@ -30,6 +30,7 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
   final _rulesCtrl = TextEditingController();
   final _prizesCtrl = TextEditingController();
   final _feeCtrl = TextEditingController();
+  final _paymentInfoCtrl = TextEditingController();
 
   String _sportType = '';
   String _format = 'single_elimination';
@@ -50,6 +51,7 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
     _rulesCtrl.dispose();
     _prizesCtrl.dispose();
     _feeCtrl.dispose();
+    _paymentInfoCtrl.dispose();
     super.dispose();
   }
 
@@ -112,6 +114,7 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
         'useManualBrackets': _useManualBrackets,
         if (_feeCtrl.text.trim().isNotEmpty) 'registrationFee': double.tryParse(_feeCtrl.text.trim()),
         'requirePaymentForBrackets': _requirePaymentForBrackets,
+        if (_paymentInfoCtrl.text.trim().isNotEmpty) 'paymentInfo': _paymentInfoCtrl.text.trim(),
       });
       ref.read(tournamentsNotifierProvider.notifier).reload();
       if (!mounted) return;
@@ -268,6 +271,17 @@ class _CreateTournamentPageState extends ConsumerState<CreateTournamentPage> {
               subtitle: const Text('All teams must be marked as paid before brackets can be generated'),
               value: _requirePaymentForBrackets,
               onChanged: (v) => setState(() => _requirePaymentForBrackets = v),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _paymentInfoCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Payment instructions (optional)',
+                prefixIcon: Icon(Icons.payment_outlined),
+                alignLabelWithHint: true,
+                helperText: 'Explain how teams should pay (e.g. bank transfer, PayPal)',
+              ),
+              maxLines: 4,
             ),
             const SizedBox(height: 28),
             UiPrimaryButton(text: 'Create Tournament', icon: Icons.add_circle_outline, onPressed: _saving ? null : _submit, loading: _saving),

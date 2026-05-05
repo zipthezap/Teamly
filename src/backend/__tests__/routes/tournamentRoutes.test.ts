@@ -91,7 +91,26 @@ vi.mock('../../controllers/tournamentController', () => ({
   updateTeamPayment: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getPublicTournaments: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getInvitationDetails: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  getTournamentNotifications: vi.fn((req: any, res: any) => res.json({ ok: true }))
+  getTournamentNotifications: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  checkInTeam: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getRegistrationWaitlist: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  joinRegistrationWaitlist: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  leaveRegistrationWaitlist: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  promoteFromRegistrationWaitlist: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  createScoreDispute: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getMatchDisputes: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  resolveScoreDispute: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  createAnnouncement: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getAnnouncements: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getRegistrationFields: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  createRegistrationField: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  updateRegistrationField: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  deleteRegistrationField: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  submitTeamAnswers: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getTeamAnswers: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getPlayerStats: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  upsertPlayerStat: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  cloneTournament: vi.fn((req: any, res: any) => res.json({ ok: true })),
 }));
 
 describe('Tournament Routes', () => {

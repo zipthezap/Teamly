@@ -255,6 +255,8 @@ class TournamentTeamModel extends Equatable {
     this.captainUserId,
     this.players = const [],
     this.paymentStatus = 'unpaid',
+    this.checkedIn = false,
+    this.logoUrl,
   });
 
   final String id;
@@ -265,6 +267,8 @@ class TournamentTeamModel extends Equatable {
   final String? captainUserId;
   final List<Map<String, dynamic>> players;
   final String paymentStatus; // unpaid | pending | paid | waived
+  final bool checkedIn;
+  final String? logoUrl;
 
   bool get isPaid => paymentStatus == 'paid' || paymentStatus == 'waived';
 
@@ -282,6 +286,8 @@ class TournamentTeamModel extends Equatable {
       captainUserId: json['captainUserId'] as String?,
       players: playersList,
       paymentStatus: json['paymentStatus'] as String? ?? 'unpaid',
+      checkedIn: json['checkedIn'] as bool? ?? false,
+      logoUrl: json['logoUrl'] as String?,
     );
   }
 
@@ -393,6 +399,7 @@ class TournamentModel extends Equatable {
     this.prizesDescription,
     this.rulesDescription,
     this.contactEmail,
+    this.paymentInfo,
     this.useManualBrackets = false,
     this.autoGenerateBrackets = false,
     this.isPublic = true,
@@ -406,6 +413,9 @@ class TournamentModel extends Equatable {
     this.standings = const [],
     this.teamCount = 0,
     this.myTeam,
+    this.rosterLockDate,
+    this.paymentDeadline,
+    this.tiebreakerRules,
   });
 
   final String id;
@@ -430,6 +440,7 @@ class TournamentModel extends Equatable {
   final String? prizesDescription;
   final String? rulesDescription;
   final String? contactEmail;
+  final String? paymentInfo;
   final bool useManualBrackets;
   final bool autoGenerateBrackets;
   final bool isPublic;
@@ -443,6 +454,9 @@ class TournamentModel extends Equatable {
   final List<TournamentStandingModel> standings;
   final int teamCount;
   final TournamentTeamModel? myTeam;
+  final DateTime? rosterLockDate;
+  final DateTime? paymentDeadline;
+  final List<String>? tiebreakerRules;
 
   bool get hasFee => registrationFee != null && registrationFee! > 0;
   int get unpaidTeamCount => teams.where((t) => !t.isPaid).length;
@@ -515,6 +529,7 @@ class TournamentModel extends Equatable {
       prizesDescription: json['prizesDescription'] as String?,
       rulesDescription: json['rulesDescription'] as String?,
       contactEmail: json['contactEmail'] as String?,
+      paymentInfo: json['paymentInfo'] as String?,
       useManualBrackets: json['useManualBrackets'] as bool? ?? false,
       autoGenerateBrackets: json['autoGenerateBrackets'] as bool? ?? false,
       isPublic: json['isPublic'] as bool? ?? true,
@@ -528,9 +543,212 @@ class TournamentModel extends Equatable {
       admins: adminsList,
       standings: standingsList,
       teamCount: (count?['teams'] as num?)?.toInt() ?? teamsList.length,
+      rosterLockDate: json['rosterLockDate'] != null
+          ? DateTime.tryParse(json['rosterLockDate'] as String)
+          : null,
+      paymentDeadline: json['paymentDeadline'] != null
+          ? DateTime.tryParse(json['paymentDeadline'] as String)
+          : null,
+      tiebreakerRules: (json['tiebreakerRules'] as List<dynamic>?)
+          ?.map((r) => r.toString())
+          .toList(),
     );
   }
 
   @override
   List<Object?> get props => [id, name, sportType, format, status, createdAt];
+}
+
+// ---------------------------------------------------------------------------
+// Tournament Announcement model (#7)
+// ---------------------------------------------------------------------------
+
+class TournamentAnnouncementModel extends Equatable {
+  const TournamentAnnouncementModel({
+    required this.id,
+    required this.tournamentId,
+    required this.authorId,
+    required this.authorName,
+    required this.title,
+    required this.body,
+    required this.isPinned,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String tournamentId;
+  final String authorId;
+  final String authorName;
+  final String title;
+  final String body;
+  final bool isPinned;
+  final DateTime createdAt;
+
+  factory TournamentAnnouncementModel.fromJson(Map<String, dynamic> json) {
+    final author = json['author'] as Map<String, dynamic>?;
+    return TournamentAnnouncementModel(
+      id: json['id'] as String,
+      tournamentId: json['tournamentId'] as String? ?? '',
+      authorId: author?['id'] as String? ?? json['authorId'] as String? ?? '',
+      authorName: author?['name'] as String? ?? '',
+      title: json['title'] as String,
+      body: json['body'] as String,
+      isPinned: json['isPinned'] as bool? ?? false,
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, tournamentId, authorId];
+}
+
+// ---------------------------------------------------------------------------
+// Score Dispute model (#3)
+// ---------------------------------------------------------------------------
+
+class TournamentScoreDisputeModel extends Equatable {
+  const TournamentScoreDisputeModel({
+    required this.id,
+    required this.matchId,
+    required this.disputingTeamId,
+    required this.disputingTeamName,
+    required this.reason,
+    required this.status,
+    this.resolution,
+  });
+
+  final String id;
+  final String matchId;
+  final String disputingTeamId;
+  final String disputingTeamName;
+  final String reason;
+  final String status; // open | resolved | dismissed
+  final String? resolution;
+
+  factory TournamentScoreDisputeModel.fromJson(Map<String, dynamic> json) {
+    final team = json['disputingTeam'] as Map<String, dynamic>?;
+    return TournamentScoreDisputeModel(
+      id: json['id'] as String,
+      matchId: json['matchId'] as String? ?? '',
+      disputingTeamId: team?['id'] as String? ?? json['disputingTeamId'] as String? ?? '',
+      disputingTeamName: team?['name'] as String? ?? '',
+      reason: json['reason'] as String? ?? '',
+      status: json['status'] as String? ?? 'open',
+      resolution: json['resolution'] as String?,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, matchId, disputingTeamId];
+}
+
+// ---------------------------------------------------------------------------
+// Registration Field model (#9)
+// ---------------------------------------------------------------------------
+
+class TournamentRegistrationFieldModel extends Equatable {
+  const TournamentRegistrationFieldModel({
+    required this.id,
+    required this.tournamentId,
+    required this.label,
+    required this.fieldType,
+    required this.isRequired,
+    this.options = const [],
+    this.sortOrder = 0,
+  });
+
+  final String id;
+  final String tournamentId;
+  final String label;
+  final String fieldType; // text | number | boolean | select
+  final bool isRequired;
+  final List<String> options;
+  final int sortOrder;
+
+  factory TournamentRegistrationFieldModel.fromJson(Map<String, dynamic> json) {
+    final opts = (json['options'] as List<dynamic>?)?.map((o) => o.toString()).toList() ?? [];
+    return TournamentRegistrationFieldModel(
+      id: json['id'] as String,
+      tournamentId: json['tournamentId'] as String? ?? '',
+      label: json['label'] as String,
+      fieldType: json['fieldType'] as String? ?? 'text',
+      isRequired: json['isRequired'] as bool? ?? false,
+      options: opts,
+      sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, tournamentId, label];
+}
+
+// ---------------------------------------------------------------------------
+// Player stat model (#12)
+// ---------------------------------------------------------------------------
+
+class TournamentPlayerStatModel extends Equatable {
+  const TournamentPlayerStatModel({
+    required this.id,
+    required this.playerId,
+    required this.playerName,
+    this.jerseyNumber,
+    required this.statKey,
+    required this.value,
+  });
+
+  final String id;
+  final String playerId;
+  final String playerName;
+  final int? jerseyNumber;
+  final String statKey;
+  final double value;
+
+  factory TournamentPlayerStatModel.fromJson(Map<String, dynamic> json) {
+    final player = json['player'] as Map<String, dynamic>?;
+    return TournamentPlayerStatModel(
+      id: json['id'] as String,
+      playerId: player?['id'] as String? ?? json['playerId'] as String? ?? '',
+      playerName: player?['playerName'] as String? ?? '',
+      jerseyNumber: (player?['jerseyNumber'] as num?)?.toInt(),
+      statKey: json['statKey'] as String? ?? '',
+      value: (json['value'] as num?)?.toDouble() ?? 0,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, playerId, statKey];
+}
+
+// ---------------------------------------------------------------------------
+// Registration waitlist entry model (#2)
+// ---------------------------------------------------------------------------
+
+class TournamentRegistrationWaitlistModel extends Equatable {
+  const TournamentRegistrationWaitlistModel({
+    required this.id,
+    required this.tournamentId,
+    required this.teamId,
+    required this.teamName,
+    required this.position,
+  });
+
+  final String id;
+  final String tournamentId;
+  final String teamId;
+  final String teamName;
+  final int position;
+
+  factory TournamentRegistrationWaitlistModel.fromJson(Map<String, dynamic> json) {
+    final team = json['team'] as Map<String, dynamic>?;
+    return TournamentRegistrationWaitlistModel(
+      id: json['id'] as String,
+      tournamentId: json['tournamentId'] as String? ?? '',
+      teamId: team?['id'] as String? ?? json['teamId'] as String? ?? '',
+      teamName: team?['name'] as String? ?? '',
+      position: (json['position'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, tournamentId, teamId];
 }

@@ -98,6 +98,7 @@ export const sanitizeTournamentData = (data: {
   locationName?: string;
   prizesDescription?: string;
   rulesDescription?: string;
+  paymentInfo?: string;
 }) => {
   return {
     name: data.name ? sanitizeString(data.name) : '',
@@ -105,7 +106,8 @@ export const sanitizeTournamentData = (data: {
     location: data.location ? sanitizeString(data.location) : '',
     locationName: data.locationName ? sanitizeString(data.locationName) : '',
     prizesDescription: data.prizesDescription ? sanitizeString(data.prizesDescription) : '',
-    rulesDescription: data.rulesDescription ? sanitizeString(data.rulesDescription) : ''
+    rulesDescription: data.rulesDescription ? sanitizeString(data.rulesDescription) : '',
+    paymentInfo: data.paymentInfo ? sanitizeString(data.paymentInfo) : ''
   };
 };
 
@@ -1105,5 +1107,45 @@ export const expireOldInvitations = async () => {
       }
     },
     data: { status: 'expired' }
+  });
+};
+
+/**
+ * Sort standings according to tournament tiebreaker rules.
+ * Default: points, goal_difference, goals_for.
+ * Custom rules: "goal_difference" | "goals_for" | "goals_against" | "wins" | "head_to_head"
+ */
+export const sortStandingsByTiebreakerRules = (
+  standings: any[],
+  tiebreakerRules?: string[] | null
+): any[] => {
+  const rules = tiebreakerRules && tiebreakerRules.length > 0
+    ? tiebreakerRules
+    : ['goal_difference', 'goals_for'];
+
+  return [...standings].sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    for (const rule of rules) {
+      switch (rule) {
+        case 'goal_difference': {
+          const gdA = a.goalsFor - a.goalsAgainst;
+          const gdB = b.goalsFor - b.goalsAgainst;
+          if (gdB !== gdA) return gdB - gdA;
+          break;
+        }
+        case 'goals_for':
+          if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
+          break;
+        case 'goals_against':
+          if (a.goalsAgainst !== b.goalsAgainst) return a.goalsAgainst - b.goalsAgainst;
+          break;
+        case 'wins':
+          if (b.wins !== a.wins) return b.wins - a.wins;
+          break;
+        default:
+          break;
+      }
+    }
+    return 0;
   });
 };

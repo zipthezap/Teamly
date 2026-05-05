@@ -180,6 +180,7 @@ vi.mock('../../services/tournamentService', () => ({
     team: { id: 'team-1', name: 'Team Alpha' },
   }),
   cancelTeamInvitation: vi.fn().mockResolvedValue(undefined),
+  sortStandingsByTiebreakerRules: vi.fn((standings: any[], _rules?: string[] | null) => standings),
 }));
 
 vi.mock('../../services/metricsService', () => ({

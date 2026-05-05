@@ -297,6 +297,11 @@ class TournamentRepositoryImpl implements TournamentRepository {
     return _requireMapData(response, 'update team payment');
   }
 
+  @override
+  Future<void> deleteTeam(String tournamentId, String teamId) async {
+    await _dio.delete<void>('/tournaments/$tournamentId/teams/$teamId');
+  }
+
   // ---------------------------------------------------------------------------
   // Score submission
   // ---------------------------------------------------------------------------

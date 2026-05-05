@@ -426,13 +426,21 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                   organizerNames.map((name) => '- $name').join('\n'),
                 ),
               ),
-            if (t.rulesDescription != null || t.prizesDescription != null)
+            if (t.rulesDescription != null || t.prizesDescription != null || (t.hasFee && t.paymentInfo != null))
               const Divider(height: 16),
             if (t.hasFee)
               _InfoRow(
                 icon: Icons.attach_money_outlined,
                 label: 'Entry Fee',
                 value: '\$${t.registrationFee!.toStringAsFixed(2)} per team',
+              ),
+            if (t.hasFee && t.paymentInfo != null)
+              _InfoRow(
+                icon: Icons.payment_outlined,
+                label: 'How to Pay',
+                value: 'Tap to view',
+                onTap: () =>
+                    _showTextDialog(context, 'Payment Instructions', t.paymentInfo!),
               ),
             if (t.rulesDescription != null)
               _InfoRow(
@@ -471,14 +479,30 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                   border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
                 ),
                 child: Row(
+                  crossAxisAlignment: t.paymentInfo != null ? CrossAxisAlignment.start : CrossAxisAlignment.center,
                   children: [
                     const Icon(Icons.attach_money_outlined, color: Colors.orange, size: 18),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        'Entry fee: \$${t.registrationFee!.toStringAsFixed(2)} per team — payment details will be provided after registration.',
-                        style: const TextStyle(fontSize: 13, color: Colors.orange),
-                      ),
+                      child: t.paymentInfo != null
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Entry fee: \$${t.registrationFee!.toStringAsFixed(2)} per team',
+                                  style: const TextStyle(fontSize: 13, color: Colors.orange, fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  t.paymentInfo!,
+                                  style: const TextStyle(fontSize: 13, color: Colors.orange),
+                                ),
+                              ],
+                            )
+                          : Text(
+                              'Entry fee: \$${t.registrationFee!.toStringAsFixed(2)} per team — payment details will be provided after registration.',
+                              style: const TextStyle(fontSize: 13, color: Colors.orange),
+                            ),
                     ),
                   ],
                 ),
@@ -506,6 +530,22 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 children: [
                   if (t.hasFee) ...[
                     _PaymentStatusBadge(status: team.paymentStatus),
+                    if (!team.isPaid && t.paymentInfo != null) ...[
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: () => _showTextDialog(context, 'Payment Instructions', t.paymentInfo!),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.payment_outlined, size: 14, color: Colors.orange),
+                            const SizedBox(width: 4),
+                            Text(
+                              'How to pay — tap to view',
+                              style: const TextStyle(fontSize: 12, color: Colors.orange, decoration: TextDecoration.underline),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                   ],
                   if (isCaptain)
@@ -892,6 +932,38 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
     }
   }
 
+  Future<void> _unregisterTeam(TournamentTeamModel team) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Unregister Team'),
+        content: Text('Remove "${team.name}" from this tournament? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Unregister'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(tournamentRepositoryProvider).deleteTeam(
+        widget.tournament.id, team.id,
+      );
+      widget.onRefresh();
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    }
+  }
+
   Future<void> _showPaymentOptions(TournamentTeamModel team) async {
     final choice = await showModalBottomSheet<String>(
       context: context,
@@ -924,12 +996,22 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
               title: const Text('Mark as Unpaid'),
               onTap: () => Navigator.pop(ctx, 'unpaid'),
             ),
+            const Divider(height: 1),
+            ListTile(
+              leading: Icon(Icons.person_remove_outlined, color: Theme.of(ctx).colorScheme.error),
+              title: Text('Unregister Team', style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
+              onTap: () => Navigator.pop(ctx, 'unregister'),
+            ),
             const SizedBox(height: 8),
           ],
         ),
       ),
     );
-    if (choice != null) await _setPayment(team, choice);
+    if (choice == 'unregister') {
+      await _unregisterTeam(team);
+    } else if (choice != null) {
+      await _setPayment(team, choice);
+    }
   }
 
   @override
