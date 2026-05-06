@@ -4431,7 +4431,9 @@ export const submitTeamAnswers = async (req: Request, res: Response) => {
   }
 
   // Validate that all submitted fieldIds belong to this tournament
-  const submittedFieldIds = answers.filter((a: any) => a.fieldId).map((a: any) => a.fieldId as string);
+  const submittedFieldIds = [...new Set(
+    answers.filter((a: any) => a.fieldId).map((a: any) => a.fieldId as string)
+  )];
   if (submittedFieldIds.length > 0) {
     const validFields = await prisma.tournamentRegistrationField.findMany({
       where: { id: { in: submittedFieldIds }, tournamentId: id },
