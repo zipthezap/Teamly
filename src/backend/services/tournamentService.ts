@@ -4,12 +4,19 @@ import {
   MatchStatus, 
   BracketStage,
   TournamentFormat,
+  TournamentStatus,
+  TournamentNotificationType,
   VolleyballConfig,
   SportScoringConfig,
   DetailedScore
 } from '../../shared/types/tournament.types';
 import { BadRequestError, ForbiddenError, NotFoundError } from '../utils/errors';
 import { sanitizeString } from '../utils/validation';
+import { logger } from '../utils/logger';
+import {
+  recordTournamentLifecycleTransition,
+  recordTournamentLifecycleTransitionFailure,
+} from './metricsService';
 
 const ALLOWED_SPORT_TYPES = [
   'football',
@@ -1148,4 +1155,218 @@ export const sortStandingsByTiebreakerRules = (
     }
     return 0;
   });
+};
+
+// ==================== SPORT-SPECIFIC SCORE VALIDATION ====================
+
+/**
+ * Validate sport-specific scoring rules (e.g. volleyball sets).
+ * Throws BadRequestError when the submitted scores are inconsistent with the
+ * detailed score breakdown or violate the sport configuration.
+ */
+export const validateSportSpecificScore = (
+  sportConfig: SportScoringConfig | undefined | null,
+  detailedScore: DetailedScore | undefined | null,
+  homeScore: number,
+  awayScore: number
+): void => {
+  if (!sportConfig || !detailedScore) return;
+  if (sportConfig.type === 'volleyball') {
+    const result = calculateVolleyballWinner(detailedScore, sportConfig as VolleyballConfig);
+    if (!result.isValid) {
+      throw new BadRequestError(result.error!);
+    }
+    if (homeScore !== result.homeWins || awayScore !== result.awayWins) {
+      throw new BadRequestError(
+        `Score mismatch: Based on sets, score should be ${result.homeWins}-${result.awayWins}`
+      );
+    }
+  }
+};
+
+// ==================== ROSTER HELPERS ====================
+
+/**
+ * Ensure the team captain appears in the roster.  When teams are created via
+ * self-registration the captain may not have a TournamentPlayer row.  This
+ * helper prepends a synthetic entry so callers always see the full roster.
+ */
+export const buildRosterWithCaptain = (
+  team: {
+    id: string;
+    createdAt: Date;
+    captainUser: { id: string; name: string | null; email: string } | null;
+  },
+  players: Array<{ user: { id: string; name?: string | null; email?: string } | null; [key: string]: unknown }>
+): Array<unknown> => {
+  if (team.captainUser && !players.some((p) => p.user?.id === team.captainUser!.id)) {
+    const captain = team.captainUser;
+    const synthetic = {
+      id: `captain:${captain.id}`,
+      teamId: team.id,
+      playerName: captain.name ?? null,
+      createdAt: team.createdAt,
+      user: { id: captain.id, name: captain.name, email: captain.email },
+    };
+    return [synthetic, ...players];
+  }
+  return players;
+};
+
+// ==================== TOURNAMENT LIFECYCLE / AUTO-STATUS ====================
+
+// In-memory TTL cache: skip re-syncing the same tournament on every paginated
+// list call (avoids N extra Prisma round-trips when listing many tournaments).
+const lastSyncedAt = new Map<string, Date>();
+const SYNC_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Fan out tournament_updated notifications to all team captains when a
+ * tournament completes automatically.  Idempotent — checks for an existing
+ * notification before creating new ones.
+ */
+export const sendTournamentCompletionNotifications = async (
+  tournamentId: string,
+  tournamentName: string
+): Promise<void> => {
+  const transitionKey = `auto_completed:${tournamentId}`;
+  const existing = await prisma.tournamentNotification.findFirst({
+    where: {
+      tournamentId,
+      type: TournamentNotificationType.tournament_updated,
+      metadata: { path: ['transitionKey'], equals: transitionKey },
+    },
+    select: { id: true },
+  });
+
+  if (existing) return;
+
+  const teams = await prisma.tournamentTeam.findMany({
+    where: { tournamentId, captainUserId: { not: null } },
+    select: { captainUserId: true },
+  });
+
+  if (teams.length === 0) return;
+
+  await prisma.tournamentNotification.createMany({
+    data: teams.map((team) => ({
+      userId: team.captainUserId!,
+      tournamentId,
+      type: TournamentNotificationType.tournament_updated,
+      params: { tournamentName, lifecycleStatus: 'completed' },
+      metadata: { transitionKey },
+    })),
+  });
+};
+
+/**
+ * Read-and-write-if-stale: compute the expected auto-status for a tournament
+ * and persist a status change when needed.  Returns the tournament with an
+ * up-to-date `status` field.
+ *
+ * For list reads a TTL cache prevents syncing the same tournament on every
+ * paginated request.  Detail reads always sync.  The cache is disabled in
+ * test mode so tests can assert on sync behaviour deterministically.
+ */
+export const syncTournamentAutoStatus = async <T extends {
+  id: string;
+  status: string;
+  name?: string;
+  startDate: Date;
+  endDate?: Date | null;
+  registrationStartDate?: Date | null;
+  registrationDeadline?: Date | null;
+}>(tournament: T, trigger: string = 'read_sync'): Promise<T> => {
+  if (process.env.NODE_ENV !== 'test' && trigger.endsWith('list_read')) {
+    const lastSync = lastSyncedAt.get(tournament.id);
+    if (lastSync && Date.now() - lastSync.getTime() < SYNC_CACHE_TTL_MS) {
+      return tournament;
+    }
+  }
+
+  const [matchCount, incompleteMatchCount] = await Promise.all([
+    prisma.tournamentMatch.count({ where: { tournamentId: tournament.id } }),
+    prisma.tournamentMatch.count({
+      where: {
+        tournamentId: tournament.id,
+        OR: [
+          { status: { not: MatchStatus.COMPLETED } },
+          { homeScore: null },
+          { awayScore: null },
+        ],
+      },
+    }),
+  ]);
+
+  const nextStatus = computeAutoStatus({
+    ...tournament,
+    hasMatches: matchCount > 0,
+    hasIncompleteMatches: incompleteMatchCount > 0,
+  });
+
+  if (!nextStatus || nextStatus === tournament.status) {
+    lastSyncedAt.set(tournament.id, new Date());
+    return tournament;
+  }
+
+  try {
+    await prisma.tournament.update({
+      where: { id: tournament.id },
+      data: { status: nextStatus as TournamentStatus },
+    });
+    recordTournamentLifecycleTransition(tournament.status, nextStatus, trigger);
+
+    if (nextStatus === TournamentStatus.COMPLETED) {
+      await sendTournamentCompletionNotifications(tournament.id, tournament.name ?? 'Tournament');
+    }
+  } catch (error) {
+    recordTournamentLifecycleTransitionFailure(tournament.status, nextStatus, trigger);
+    throw error;
+  }
+
+  lastSyncedAt.set(tournament.id, new Date());
+
+  logger.info('Tournament lifecycle status auto-updated', 'TournamentService', {
+    tournamentId: tournament.id,
+    from: tournament.status,
+    to: nextStatus,
+    trigger,
+  });
+
+  return { ...tournament, status: nextStatus };
+};
+
+/**
+ * After any mutation that could affect lifecycle status (score submission,
+ * bracket generation, etc.) refetch the tournament and reconcile its status.
+ */
+export const reconcileTournamentLifecycleStatus = async (
+  tournamentId: string,
+  trigger: string
+): Promise<void> => {
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: tournamentId },
+    select: {
+      id: true,
+      status: true,
+      name: true,
+      startDate: true,
+      endDate: true,
+      registrationStartDate: true,
+      registrationDeadline: true,
+    },
+  });
+
+  if (!tournament) return;
+
+  await syncTournamentAutoStatus(tournament, trigger);
+};
+
+/**
+ * Invalidate the in-memory lifecycle sync cache for a given tournament.
+ * Call this whenever a status is explicitly mutated (e.g. cancellation) so
+ * subsequent reads reflect the new status immediately without waiting for TTL.
+ */
+export const invalidateSyncCache = (tournamentId: string): void => {
+  lastSyncedAt.delete(tournamentId);
 };
