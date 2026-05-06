@@ -75,7 +75,6 @@ export { INVITATION_EXPIRY_DAYS };
  * Create a new tournament
  */
 export const createTournament = async (req: Request, res: Response) => {
-    res.setHeader('Cache-Control', 'no-store');
   const {
     name,
     description,
@@ -368,6 +367,7 @@ export const getTournaments = async (req: Request, res: Response) => {
  */
 export const getTournament = async (req: Request, res: Response) => {
   const { id } = req.params;
+  const userId = req.user?.id;
 
   const tournament = await prisma.tournament.findUnique({
     where: { id },
@@ -451,6 +451,16 @@ export const getTournament = async (req: Request, res: Response) => {
   });
 
   ensureResourceExists(tournament, 'Tournament');
+
+  // Private tournaments are only visible to organizers, admins, and registered participants.
+  if (userId) {
+    await assertCanViewTournament(
+      { id: tournament!.id, organizerId: tournament!.organizerId, isPublic: tournament!.isPublic },
+      userId
+    );
+  } else if (!tournament!.isPublic) {
+    throw new ForbiddenError('You do not have access to this private tournament');
+  }
 
   const syncedTournament = await syncTournamentAutoStatus(tournament!, 'detail_read');
 
@@ -542,6 +552,14 @@ export const updateTournament = async (req: Request, res: Response) => {
   if (maxTeams !== undefined) {
     if (maxTeams > MAX_TEAMS_UPPER_BOUND) {
       throw new BadRequestError(`Max teams cannot exceed ${MAX_TEAMS_UPPER_BOUND}`);
+    }
+    if (maxTeams !== null) {
+      const currentCount = await prisma.tournamentTeam.count({ where: { tournamentId: id } });
+      if (currentCount > maxTeams) {
+        throw new BadRequestError(
+          `Cannot reduce max teams to ${maxTeams}: ${currentCount} teams are already registered`
+        );
+      }
     }
     updateData.maxTeams = maxTeams;
   }
@@ -803,6 +821,17 @@ export const addTeam = async (req: Request, res: Response) => {
 
   tournamentService.validateRegistrationEligibility(tournament!);
 
+  // If a captainUserId is provided, verify the user exists and is not an organizer or admin
+  if (captainUserId) {
+    const captainUser = await prisma.user.findUnique({ where: { id: captainUserId } });
+    if (!captainUser) {
+      throw new BadRequestError('Captain user not found');
+    }
+    if (await tournamentService.isOrganizerOrAdmin(tournament!, captainUserId)) {
+      throw new ForbiddenError('Tournament organizers and co-organizers cannot be registered as team captains');
+    }
+  }
+
   // Wrap the max-teams check and team creation in a transaction to prevent
   // concurrent registrations from exceeding the limit (TOCTOU race).
   const team = await prisma.$transaction(async (tx) => {
@@ -904,7 +933,12 @@ export const updateTeam = async (req: Request, res: Response) => {
   const updateData: Record<string, unknown> = {};
   if (name !== undefined) updateData.name = name;
   if (captainName !== undefined) updateData.captainName = captainName;
-  if (captainEmail !== undefined) updateData.captainEmail = captainEmail;
+  if (captainEmail !== undefined) {
+    if (captainEmail && !isValidEmail(captainEmail)) {
+      throw new BadRequestError('Invalid captain email format');
+    }
+    updateData.captainEmail = captainEmail || null;
+  }
   if (captainUserId !== undefined) updateData.captainUserId = captainUserId || null;
   if (logoUrl !== undefined) updateData.logoUrl = logoUrl || null;
   // Only organizers and admins can change pool assignments and seeding
@@ -914,15 +948,23 @@ export const updateTeam = async (req: Request, res: Response) => {
     if (seedNumber !== undefined) updateData.seedNumber = seedNumber || null;
   }
 
-  const updatedTeam = await prisma.tournamentTeam.update({
-    where: { id: teamId },
-    data: updateData,
-    include: {
-      captainUser: {
-        select: { id: true, name: true, email: true }
+  let updatedTeam;
+  try {
+    updatedTeam = await prisma.tournamentTeam.update({
+      where: { id: teamId },
+      data: updateData,
+      include: {
+        captainUser: {
+          select: { id: true, name: true, email: true }
+        }
       }
+    });
+  } catch (error: unknown) {
+    if (isPrismaUniqueError(error)) {
+      throw new BadRequestError('A team with this name already exists in the tournament');
     }
-  });
+    throw error;
+  }
 
   logger.info('Team updated', 'TournamentController', {
     tournamentId: id,
@@ -1339,12 +1381,15 @@ export const adminUpdateScore = async (req: Request, res: Response) => {
  */
 export const getStandings = async (req: Request, res: Response) => {
   const { id } = req.params;
+  const userId = req.user!.id;
   const { groupName } = req.query;
 
   const tournament = ensureResourceExists(
-    await prisma.tournament.findUnique({ where: { id }, select: { id: true, tiebreakerRules: true } }),
+    await prisma.tournament.findUnique({ where: { id }, select: { id: true, organizerId: true, isPublic: true, tiebreakerRules: true } }),
     'Tournament'
   );
+
+  await assertCanViewTournament(tournament, userId);
 
   const where: Record<string, unknown> = { tournamentId: id };
   if (groupName) {
@@ -1776,12 +1821,12 @@ export const addPlayer = async (req: Request, res: Response) => {
     'Team'
   );
 
-  // Check permissions - only organizer or team captain can add players
-  const isOrg = tournamentService.isOrganizer(tournament, userId);
+  // Check permissions - only organizer/admin or team captain can add players
+  const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
   const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
 
-  if (!isOrg && !isCaptain) {
-    throw new ForbiddenError('Only the organizer or team captain can add players');
+  if (!isOrgOrAdmin && !isCaptain) {
+    throw new ForbiddenError('Only the organizer, admin, or team captain can add players');
   }
 
   // If userId is provided, verify the user exists and cannot be an organizer, co-organizer, or captain of another team
@@ -1895,11 +1940,16 @@ export const updatePlayer = async (req: Request, res: Response) => {
   }
 
   // Check permissions
-  const isOrg = tournamentService.isOrganizer(tournament, userId);
+  const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
   const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
 
-  if (!isOrg && !isCaptain) {
-    throw new ForbiddenError('Only the organizer or team captain can update players');
+  if (!isOrgOrAdmin && !isCaptain) {
+    throw new ForbiddenError('Only the organizer, admin, or team captain can update players');
+  }
+
+  // Enforce roster lock
+  if (tournament.rosterLockDate && new Date() > new Date(tournament.rosterLockDate)) {
+    throw new BadRequestError('Roster is locked — player changes are no longer allowed');
   }
 
   // If newUserId is provided, verify the user exists
@@ -1977,7 +2027,7 @@ export const removePlayer = async (req: Request, res: Response) => {
   }
 
   // Check permissions
-  const isOrg = tournamentService.isOrganizer(tournament, userId);
+  const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
   const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
   // Allow removal when:
   // - requester is organizer/admin
@@ -1985,8 +2035,8 @@ export const removePlayer = async (req: Request, res: Response) => {
   // - requester is the player themselves (self-leave)
   const isSelf = !!player.userId && player.userId === userId;
 
-  if (!isOrg && !isCaptain && !isSelf) {
-    throw new ForbiddenError('Only the organizer, team captain, or the player themselves can remove this player');
+  if (!isOrgOrAdmin && !isCaptain && !isSelf) {
+    throw new ForbiddenError('Only the organizer, admin, team captain, or the player themselves can remove this player');
   }
 
   // If the player being removed is the team captain, enforce delegation when there are other members.
@@ -2085,6 +2135,14 @@ export const getPools = async (req: Request, res: Response) => {
  */
 export const getPoolDetails = async (req: Request, res: Response) => {
   const { id, poolId } = req.params;
+  const userId = req.user!.id;
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id }, select: { id: true, organizerId: true, isPublic: true } }),
+    'Tournament'
+  );
+
+  await assertCanViewTournament(tournament, userId);
 
   const pool = ensureResourceExists(
     await prisma.tournamentPool.findFirst({
@@ -4135,9 +4193,33 @@ export const getMatchDisputes = async (req: Request, res: Response) => {
     'Tournament'
   );
 
+  const match = ensureResourceExists(
+    await prisma.tournamentMatch.findUnique({ where: { id: matchId } }),
+    'Match'
+  );
+
+  if (match.tournamentId !== id) {
+    throw new NotFoundError('Match not found');
+  }
+
   const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
+
+  // Organizers and admins see all disputes; players/captains of the involved teams
+  // can see disputes for their own matches.
   if (!isOrgOrAdmin) {
-    throw new ForbiddenError('Only organizers and admins can view disputes');
+    const isParticipant = await prisma.tournamentTeam.findFirst({
+      where: {
+        id: { in: [match.homeTeamId, match.awayTeamId] },
+        OR: [
+          { captainUserId: userId },
+          { players: { some: { userId } } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (!isParticipant) {
+      throw new ForbiddenError('Only organizers, admins, or players of the involved teams can view disputes');
+    }
   }
 
   const disputes = await prisma.tournamentScoreDispute.findMany({
@@ -4212,8 +4294,14 @@ export const createAnnouncement = async (req: Request, res: Response) => {
   if (!title || typeof title !== 'string' || !title.trim()) {
     throw new BadRequestError('Announcement title is required');
   }
+  if (title.trim().length > MAX_NAME_LENGTH) {
+    throw new BadRequestError(`Announcement title must be at most ${MAX_NAME_LENGTH} characters`);
+  }
   if (!body || typeof body !== 'string' || !body.trim()) {
     throw new BadRequestError('Announcement body is required');
+  }
+  if (body.trim().length > MAX_DESCRIPTION_LENGTH) {
+    throw new BadRequestError(`Announcement body must be at most ${MAX_DESCRIPTION_LENGTH} characters`);
   }
 
   const tournament = ensureResourceExists(
@@ -4246,7 +4334,7 @@ export const createAnnouncement = async (req: Request, res: Response) => {
       data: teams.map((t) => ({
         userId: t.captainUserId!,
         tournamentId: id,
-        type: TournamentNotificationType.tournament_updated,
+        type: TournamentNotificationType.announcement,
         params: { tournamentName: tournament.name, announcementTitle: title.trim() },
         metadata: { announcementId: announcement.id },
       })),
@@ -4263,16 +4351,19 @@ export const createAnnouncement = async (req: Request, res: Response) => {
 
 export const getAnnouncements = async (req: Request, res: Response) => {
   const { id } = req.params;
+  const userId = req.user!.id;
   const { page, limit } = req.query;
 
   const parsedPage = Math.max(1, parseInt(page as string, 10) || 1);
   const parsedLimit = Math.min(Math.max(1, parseInt(limit as string, 10) || DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
   const skip = (parsedPage - 1) * parsedLimit;
 
-  ensureResourceExists(
-    await prisma.tournament.findUnique({ where: { id }, select: { id: true } }),
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id }, select: { id: true, organizerId: true, isPublic: true } }),
     'Tournament'
   );
+
+  await assertCanViewTournament(tournament, userId);
 
   const [announcements, total] = await Promise.all([
     prisma.tournamentAnnouncement.findMany({
@@ -4300,11 +4391,14 @@ export const getAnnouncements = async (req: Request, res: Response) => {
 
 export const getRegistrationFields = async (req: Request, res: Response) => {
   const { id } = req.params;
+  const userId = req.user!.id;
 
-  ensureResourceExists(
-    await prisma.tournament.findUnique({ where: { id }, select: { id: true } }),
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id }, select: { id: true, organizerId: true, isPublic: true } }),
     'Tournament'
   );
+
+  await assertCanViewTournament(tournament, userId);
 
   const fields = await prisma.tournamentRegistrationField.findMany({
     where: { tournamentId: id },

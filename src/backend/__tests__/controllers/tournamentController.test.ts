@@ -743,6 +743,19 @@ describe('GET /api/tournaments/:id (getTournament)', () => {
     expect(vi.mocked(tournamentService.syncTournamentAutoStatus)).toHaveBeenCalled();
     expect(res.body.status).toBe('registration');
   });
+
+  it('returns 403 when non-participant accesses a private tournament', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      isPublic: false,
+    } as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+
+    const res = await request(app).get('/api/tournaments/tournament-1');
+
+    expect(res.status).toBe(403);
+  });
 });
 
 describe('PUT /api/tournaments/:id (updateTournament)', () => {
@@ -892,7 +905,7 @@ describe('PUT /api/tournaments/:id/teams/:teamId (updateTeam)', () => {
   it('returns 200 when team is updated by organizer', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(mockTeam as any);
-    vi.mocked(tournamentService.isOrganizer).mockReturnValue(true);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
     vi.mocked(prisma.tournamentTeam.update).mockResolvedValue(mockTeam as any);
 
     const res = await request(app)
@@ -900,6 +913,19 @@ describe('PUT /api/tournaments/:id/teams/:teamId (updateTeam)', () => {
       .send({ name: 'Updated Team' });
 
     expect(res.status).toBe(200);
+  });
+
+  it('returns 400 when captainEmail is invalid', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(mockTeam as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/team-1')
+      .send({ captainEmail: 'not-an-email' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('email');
   });
 
   it('returns 404 when tournament not found', async () => {
@@ -1502,6 +1528,7 @@ describe('PUT /api/tournaments/:id/matches/:matchId/referee (assignReferee)', ()
 describe('GET /api/tournaments/:id/standings (getStandings)', () => {
   it('returns 200 with standings list', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
     vi.mocked(prisma.tournamentStanding.findMany).mockResolvedValue([
       {
         id: 'standing-1',
@@ -1522,12 +1549,26 @@ describe('GET /api/tournaments/:id/standings (getStandings)', () => {
 
   it('returns 200 with empty list when no standings', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
     vi.mocked(prisma.tournamentStanding.findMany).mockResolvedValue([]);
 
     const res = await request(app).get('/api/tournaments/tournament-1/standings');
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual([]);
+  });
+
+  it('returns 403 when user cannot view a private tournament standings', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      isPublic: false,
+    } as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+
+    const res = await request(app).get('/api/tournaments/tournament-1/standings');
+
+    expect(res.status).toBe(403);
   });
 
   it('returns 404 when tournament not found', async () => {
@@ -1559,6 +1600,8 @@ describe('GET /api/tournaments/:id/pools (getPools)', () => {
 
 describe('GET /api/tournaments/:id/pools/:poolId (getPoolDetails)', () => {
   it('returns 200 when pool found', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
     vi.mocked(prisma.tournamentPool.findFirst).mockResolvedValue({
       ...mockPool,
       teams: [],
@@ -1572,11 +1615,26 @@ describe('GET /api/tournaments/:id/pools/:poolId (getPoolDetails)', () => {
   });
 
   it('returns 404 when pool not found', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
     vi.mocked(prisma.tournamentPool.findFirst).mockResolvedValue(null);
 
     const res = await request(app).get('/api/tournaments/tournament-1/pools/nonexistent');
 
     expect(res.status).toBe(404);
+  });
+
+  it('returns 403 when user cannot view a private tournament pool', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      isPublic: false,
+    } as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+
+    const res = await request(app).get('/api/tournaments/tournament-1/pools/pool-1');
+
+    expect(res.status).toBe(403);
   });
 });
 
@@ -1813,7 +1871,7 @@ describe('POST /api/tournaments/:id/teams/:teamId/players (addPlayer)', () => {
   it('returns 201 when player is added', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(mockTeam as any);
-    vi.mocked(tournamentService.isOrganizer).mockReturnValue(true);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
     vi.mocked(prisma.tournamentPlayer.create).mockResolvedValue(mockPlayer as any);
 
     const res = await request(app)
@@ -1908,7 +1966,7 @@ describe('PUT /api/tournaments/:id/teams/:teamId/players/:playerId (updatePlayer
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(mockTeam as any);
     vi.mocked(prisma.tournamentPlayer.findUnique).mockResolvedValue(mockPlayer as any);
-    vi.mocked(tournamentService.isOrganizer).mockReturnValue(true);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
     vi.mocked(prisma.tournamentPlayer.update).mockResolvedValue(mockPlayer as any);
 
     const res = await request(app)
@@ -1934,9 +1992,12 @@ describe('PUT /api/tournaments/:id/teams/:teamId/players/:playerId (updatePlayer
 describe('DELETE /api/tournaments/:id/teams/:teamId/players/:playerId (removePlayer)', () => {
   it('returns 200 when player is removed', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
-    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(mockTeam as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue({
+      ...mockTeam,
+      _count: { players: 1 },
+    } as any);
     vi.mocked(prisma.tournamentPlayer.findUnique).mockResolvedValue(mockPlayer as any);
-    vi.mocked(tournamentService.isOrganizer).mockReturnValue(true);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
     vi.mocked(prisma.tournamentPlayer.delete).mockResolvedValue(mockPlayer as any);
 
     const res = await request(app).delete(
@@ -4431,6 +4492,7 @@ describe('POST /api/tournaments/:id/matches/:matchId/disputes (createScoreDisput
 describe('GET /api/tournaments/:id/matches/:matchId/disputes (getMatchDisputes)', () => {
   it('returns 200 with disputes list when organizer requests', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue(mockMatch as any);
     vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
     vi.mocked(prisma.tournamentScoreDispute.findMany).mockResolvedValue([
       { id: 'dispute-1', matchId: 'match-1', reason: 'Wrong score', status: 'open', disputingTeam: mockTeam, resolvedBy: null } as any,
@@ -4444,9 +4506,24 @@ describe('GET /api/tournaments/:id/matches/:matchId/disputes (getMatchDisputes)'
     expect(res.body).toHaveLength(1);
   });
 
-  it('returns 403 when non-organizer requests disputes', async () => {
+  it('returns 200 when a match participant requests disputes', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue(mockMatch as any);
     vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(mockTeam as any);
+    vi.mocked(prisma.tournamentScoreDispute.findMany).mockResolvedValue([]);
+
+    const res = await request(app)
+      .get('/api/tournaments/tournament-1/matches/match-1/disputes');
+
+    expect(res.status).toBe(200);
+  });
+
+  it('returns 403 when non-participant requests disputes', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue(mockMatch as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
 
     const res = await request(app)
       .get('/api/tournaments/tournament-1/matches/match-1/disputes');
@@ -4635,11 +4712,24 @@ describe('POST /api/tournaments/:id/announcements (createAnnouncement)', () => {
 
     expect(res.status).toBe(403);
   });
+
+  it('returns 400 when title exceeds maximum length', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/announcements')
+      .send({ title: 'A'.repeat(201), body: 'Valid body.' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('title');
+  });
 });
 
 describe('GET /api/tournaments/:id/announcements (getAnnouncements)', () => {
   it('returns 200 with paginated announcements', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
     const ann = { id: 'ann-1', title: 'Update', body: 'Info.', isPinned: false, createdAt: new Date(), author: { id: 'test-user-id', name: 'Test User' } };
     vi.mocked(prisma.tournamentAnnouncement.findMany).mockResolvedValue([ann as any]);
     vi.mocked(prisma.tournamentAnnouncement.count).mockResolvedValue(1);
@@ -4652,6 +4742,20 @@ describe('GET /api/tournaments/:id/announcements (getAnnouncements)', () => {
     expect(res.body.data).toHaveLength(1);
     expect(res.body).toHaveProperty('pagination');
     expect(res.body.pagination).toHaveProperty('total', 1);
+  });
+
+  it('returns 403 when non-participant accesses private tournament announcements', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      isPublic: false,
+    } as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+
+    const res = await request(app)
+      .get('/api/tournaments/tournament-1/announcements');
+
+    expect(res.status).toBe(403);
   });
 
   it('returns 404 when tournament not found', async () => {
@@ -4671,6 +4775,7 @@ describe('GET /api/tournaments/:id/announcements (getAnnouncements)', () => {
 describe('GET /api/tournaments/:id/registration-fields (getRegistrationFields)', () => {
   it('returns 200 with fields list', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
     const field = { id: 'field-1', label: 'Jersey Number', fieldType: 'number', isRequired: false, sortOrder: 0 };
     vi.mocked(prisma.tournamentRegistrationField.findMany).mockResolvedValue([field as any]);
 
@@ -4680,6 +4785,20 @@ describe('GET /api/tournaments/:id/registration-fields (getRegistrationFields)',
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body[0]).toHaveProperty('label', 'Jersey Number');
+  });
+
+  it('returns 403 when non-participant accesses private tournament fields', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      isPublic: false,
+    } as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
+
+    const res = await request(app)
+      .get('/api/tournaments/tournament-1/registration-fields');
+
+    expect(res.status).toBe(403);
   });
 
   it('returns 404 when tournament not found', async () => {
