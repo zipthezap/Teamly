@@ -7,6 +7,9 @@ export enum TournamentNotificationType {
   tournament_cancelled = 'tournament_cancelled',
   match_scheduled = 'match_scheduled',
   score_submitted = 'score_submitted',
+  score_disputed = 'score_disputed',
+  payment_reminder = 'payment_reminder',
+  announcement = 'announcement',
 }
 
 export enum TournamentFormat {
