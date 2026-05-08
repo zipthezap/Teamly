@@ -154,9 +154,15 @@ describe('TeamUpController', () => {
     // Default mocks for frequently called prisma methods
     vi.mocked(prisma.teamUpResponse.findMany).mockResolvedValue([]);
     vi.mocked(prisma.teamUpResponse.count).mockResolvedValue(0);
-    vi.mocked(prisma.$transaction).mockImplementation(async (input: any) =>
-      Array.isArray(input) ? Promise.all(input) : input(prisma)
-    );
+    vi.mocked(prisma.$transaction).mockImplementation(async (input: any) => {
+      if (Array.isArray(input)) {
+        return Promise.all(input);
+      }
+      if (typeof input === 'function') {
+        return input(prisma);
+      }
+      return input;
+    });
   });
 
   describe('GET /api/teamup', () => {

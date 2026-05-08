@@ -63,7 +63,12 @@ export const resendInviteNotifications = async (req: Request, res: Response) => 
           inviteeId = user.id;
           try {
             await prisma.inviteLog.update({ where: { id: log.id }, data: { inviteeId: user.id } });
-          } catch { /* ignore update errors */ }
+          } catch (error) {
+            logger.warn('Failed to backfill inviteeId on InviteLog during resend', 'AdminController', {
+              error,
+              inviteLogId: log.id,
+            });
+          }
         } else {
           // Can't create in-app notification for non-registered user
           continue;
