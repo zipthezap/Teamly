@@ -3,11 +3,30 @@ import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import { NotificationFactory } from '../services/notificationFactory';
 import { TournamentNotificationType } from '../../shared/types/tournament.types';
+import { ForbiddenError, NotFoundError, BadRequestError } from '../utils/errors';
+import { auditLog } from '../utils/prismaExtended';
+import { Prisma } from '@prisma/client';
 
 /**
  * Admin controller helpers
  */
+const requireSystemAdmin = (req: Request): void => {
+  const configuredAdmins = (process.env.ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (
+    !req.user?.email ||
+    configuredAdmins.length === 0 ||
+    !configuredAdmins.includes(req.user.email.toLowerCase())
+  ) {
+    throw new ForbiddenError('Admin access required');
+  }
+};
+
 export const resendInviteNotifications = async (req: Request, res: Response) => {
+  requireSystemAdmin(req);
   const { email } = req.body || {};
   if (!email) return res.status(400).json({ error: 'Missing email in request body' });
 
@@ -19,8 +38,12 @@ export const resendInviteNotifications = async (req: Request, res: Response) => 
 
     for (const log of logs) {
       // For tournament invites we expect metadata.teamId
-      const metadata: any = log.metadata || {};
-      const teamId = metadata.teamId || metadata.team_id || null;
+      const metadata = (log.metadata || {}) as Record<string, unknown>;
+      const teamIdCandidate = metadata.teamId ?? metadata.team_id;
+      const teamId =
+        typeof teamIdCandidate === 'string' && teamIdCandidate.trim()
+          ? teamIdCandidate
+          : null;
       if (!teamId) {
         logger.warn('InviteLog missing teamId in metadata, skipping', 'AdminController', { inviteLogId: log.id });
         continue;
@@ -41,7 +64,12 @@ export const resendInviteNotifications = async (req: Request, res: Response) => 
           inviteeId = user.id;
           try {
             await prisma.inviteLog.update({ where: { id: log.id }, data: { inviteeId: user.id } });
-          } catch (e) { /* ignore update errors */ }
+          } catch (error) {
+            logger.warn('Failed to backfill inviteeId on InviteLog during resend', 'AdminController', {
+              error,
+              inviteLogId: log.id,
+            });
+          }
         } else {
           // Can't create in-app notification for non-registered user
           continue;
@@ -79,4 +107,75 @@ export const resendInviteNotifications = async (req: Request, res: Response) => 
   }
 };
 
-export default { resendInviteNotifications };
+export const deleteTeamUpRequestAdmin = async (req: Request, res: Response) => {
+  requireSystemAdmin(req);
+  const { id } = req.params;
+
+  const requestRecord = await prisma.teamUpRequest.findUnique({
+    where: { id },
+    select: { id: true, title: true },
+  });
+
+  if (!requestRecord) {
+    throw new NotFoundError('TeamUp request not found');
+  }
+
+  await prisma.teamUpRequest.delete({ where: { id } });
+  await auditLog(prisma).create({
+    data: {
+      entityType: 'teamup',
+      entityId: id,
+      actorId: req.user!.id,
+      action: 'admin_deleted',
+      metadata: { title: requestRecord.title },
+    },
+  });
+
+  res.json({ message: 'TeamUp request deleted' });
+};
+
+export const updateTeamUpStatusAdmin = async (req: Request, res: Response) => {
+  requireSystemAdmin(req);
+  const { id } = req.params;
+  const { status } = req.body ?? {};
+
+  if (!status || !['cancelled', 'expired'].includes(status)) {
+    throw new BadRequestError('status must be cancelled or expired');
+  }
+
+  const updated = await prisma.teamUpRequest.update({
+    where: { id },
+    data: { status },
+    select: { id: true, status: true, title: true },
+  }).catch((error): null => {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
+      return null;
+    }
+    throw error;
+  });
+
+  if (!updated) {
+    throw new NotFoundError('TeamUp request not found');
+  }
+
+  await auditLog(prisma).create({
+    data: {
+      entityType: 'teamup',
+      entityId: id,
+      actorId: req.user!.id,
+      action: 'admin_status_updated',
+      metadata: { status, title: updated.title },
+    },
+  });
+
+  res.json(updated);
+};
+
+export default {
+  resendInviteNotifications,
+  deleteTeamUpRequestAdmin,
+  updateTeamUpStatusAdmin,
+};

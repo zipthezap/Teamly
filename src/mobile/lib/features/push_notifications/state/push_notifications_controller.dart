@@ -181,7 +181,7 @@ class PushNotificationsController {
       case 'group':
         return '/groups/$entityId';
       case 'teamup':
-        return '/teamup';
+        return '/teamup/$entityId';
       case 'tournament':
         return '/tournaments/$entityId';
       default:

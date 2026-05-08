@@ -4,117 +4,12 @@ import { Request, Response } from 'express';
 import * as teamUpService from '../services/teamUpService';
 import * as locationService from '../services/locationService';
 import * as teamUpNotificationService from '../services/teamUpNotificationService';
+import { dispatchPushNotifications } from '../services/pushNotificationService';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors';
 import { parseCoordinates, parseFloatStrict, sanitizeString } from '../utils/validation';
+import { auditLog } from '../utils/prismaExtended';
 
-// Valid request types
-const VALID_REQUEST_TYPES = ['need_players', 'looking_for_play'] as const;
-type TeamUpRequestType = (typeof VALID_REQUEST_TYPES)[number];
-const VALID_SKILL_LEVELS = ['any', 'beginner', 'intermediate', 'advanced'] as const;
-
-type TeamUpPositionInput = {
-  name?: unknown;
-  slotsNeeded?: unknown;
-  skillLevelRequired?: unknown;
-};
-
-type TeamUpRequestWithPositionData = {
-  positions?: Array<{ id: string; slotsNeeded: number }>;
-  responses?: Array<{ status: string; requestPositionId?: string | null }>;
-};
-
-const parseTeamUpPositions = (positionsInput: unknown) => {
-  if (positionsInput === undefined || positionsInput === null) return [];
-  if (!Array.isArray(positionsInput)) {
-    throw new BadRequestError('positions must be an array');
-  }
-
-  const parsed = positionsInput.map((raw, index) => {
-    const position = raw as TeamUpPositionInput;
-    const sanitizedName =
-      typeof position.name === 'string' ? sanitizeString(position.name) : '';
-    if (!sanitizedName) {
-      throw new BadRequestError(`positions[${index}].name is required`);
-    }
-
-    const slotsNeeded = Number.parseInt(String(position.slotsNeeded ?? 1), 10);
-    if (!Number.isFinite(slotsNeeded) || slotsNeeded < 1) {
-      throw new BadRequestError(`positions[${index}].slotsNeeded must be at least 1`);
-    }
-
-    const skillLevelRequiredRaw =
-      typeof position.skillLevelRequired === 'string'
-        ? sanitizeString(position.skillLevelRequired).toLowerCase()
-        : '';
-    if (
-      skillLevelRequiredRaw &&
-      !VALID_SKILL_LEVELS.includes(
-        skillLevelRequiredRaw as (typeof VALID_SKILL_LEVELS)[number]
-      )
-    ) {
-      throw new BadRequestError(
-        `positions[${index}].skillLevelRequired must be one of: ${VALID_SKILL_LEVELS.join(', ')}`
-      );
-    }
-
-    return {
-      name: sanitizedName,
-      slotsNeeded,
-      skillLevelRequired: skillLevelRequiredRaw || null,
-    };
-  });
-
-  const normalizedNames = parsed.map((position) => position.name.toLowerCase());
-  const seenNames = new Set<string>();
-  const duplicateNames = normalizedNames.filter((name) => {
-    if (seenNames.has(name)) return true;
-    seenNames.add(name);
-    return false;
-  });
-  if (duplicateNames.length > 0) {
-    throw new BadRequestError('positions cannot contain duplicate names');
-  }
-
-  return parsed;
-};
-
-const deriveRequestLevelFieldsFromPositions = (
-  parsedPositions: Array<{ slotsNeeded: number; skillLevelRequired: string | null }>
-) => {
-  const derivedPlayersNeeded = parsedPositions.reduce((sum, position) => sum + position.slotsNeeded, 0);
-  const presentSkillLevels = parsedPositions
-    .map((position) => position.skillLevelRequired)
-    .filter((skill): skill is string => Boolean(skill));
-  const uniqueSkillLevels = [...new Set(presentSkillLevels)];
-  const derivedSkillLevel = uniqueSkillLevels.length === 1 ? uniqueSkillLevels[0] : null;
-  return { derivedPlayersNeeded, derivedSkillLevel };
-};
-
-const withPositionAvailability = <T extends TeamUpRequestWithPositionData>(request: T) => {
-  const acceptedByPosition = new Map<string, number>();
-  (request.responses ?? [])
-    .filter((response) => response.status === 'accepted' && response.requestPositionId)
-    .forEach((response) => {
-      const positionId = response.requestPositionId as string;
-      acceptedByPosition.set(positionId, (acceptedByPosition.get(positionId) ?? 0) + 1);
-    });
-
-  const positionsWithAvailability = (request.positions ?? []).map((position) => {
-    const acceptedCount = acceptedByPosition.get(position.id) ?? 0;
-    const slotsAvailable = Math.max(position.slotsNeeded - acceptedCount, 0);
-    return {
-      ...position,
-      acceptedCount,
-      slotsAvailable,
-      isOpen: slotsAvailable > 0,
-    };
-  });
-
-  return {
-    ...request,
-    positions: positionsWithAvailability,
-  };
-};
+type TeamUpRequestType = teamUpService.TeamUpRequestType;
 
 // Create a TeamUp request
 export const createTeamUpRequest = async (req: Request, res: Response) => {
@@ -142,7 +37,8 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
 
   // Validate requestType
   const resolvedRequestType: TeamUpRequestType =
-    requestType && VALID_REQUEST_TYPES.includes(requestType as TeamUpRequestType)
+    requestType &&
+    teamUpService.VALID_REQUEST_TYPES.includes(requestType as TeamUpRequestType)
       ? (requestType as TeamUpRequestType)
       : 'need_players';
 
@@ -162,6 +58,7 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
     country,
     skillLevel
   });
+  teamUpService.validateTeamUpTextLengths(sanitized);
 
   // Validate sanitized required fields are not empty
   if (!sanitized.title || !sanitized.sportType) {
@@ -169,7 +66,7 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
   }
 
   // Parse requested positions (optional; positions-first for need_players)
-  const parsedPositions = parseTeamUpPositions(positionsInput);
+  const parsedPositions = teamUpService.parseTeamUpPositions(positionsInput);
   if (resolvedRequestType === 'need_players' && positionsInput !== undefined && parsedPositions.length === 0) {
     throw new BadRequestError('positions must contain at least one position when provided');
   }
@@ -192,7 +89,7 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
   // Validate playersNeeded if provided (or derive from positions)
   const { derivedPlayersNeeded, derivedSkillLevel } =
     parsedPositions.length > 0
-      ? deriveRequestLevelFieldsFromPositions(parsedPositions)
+      ? teamUpService.deriveRequestLevelFieldsFromPositions(parsedPositions)
       : { derivedPlayersNeeded: null, derivedSkillLevel: null };
   const players =
     derivedPlayersNeeded ??
@@ -261,7 +158,7 @@ export const createTeamUpRequest = async (req: Request, res: Response) => {
   });
 
   const enrichedRequest = locationService.enrichWithLocationInfo(
-    withPositionAvailability(teamUpRequest)
+    teamUpService.withPositionAvailability(teamUpRequest)
   );
 
   // Notify users about the new TeamUp request in their area (async, don't wait)
@@ -292,6 +189,7 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
     country,
     skillLevel,
     status = 'open',
+    search,
     fromDate,
     toDate,
     limit = '50',
@@ -317,7 +215,10 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
   }
 
   // Filter by request type (need_players or looking_for_play)
-  if (requestType && VALID_REQUEST_TYPES.includes(requestType as TeamUpRequestType)) {
+  if (
+    requestType &&
+    teamUpService.VALID_REQUEST_TYPES.includes(requestType as TeamUpRequestType)
+  ) {
     where.requestType = requestType as string;
   }
 
@@ -331,6 +232,13 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
 
   if (skillLevel) {
     where.skillLevel = skillLevel as string;
+  }
+
+  if (search && typeof search === 'string' && search.trim()) {
+    where.OR = [
+      { title: { contains: search.trim(), mode: 'insensitive' } },
+      { description: { contains: search.trim(), mode: 'insensitive' } },
+    ];
   }
 
   // Date range filtering
@@ -355,8 +263,9 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
   }
 
   // Optimize query - fetch responses separately for large result sets
-  const teamUpRequests: any[] = await prisma.teamUpRequest.findMany({
-    where,
+  const [teamUpRequests, totalCount] = await prisma.$transaction([
+    prisma.teamUpRequest.findMany({
+      where,
     // @ts-ignore
     include: {
       creator: {
@@ -386,7 +295,9 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
     ],
     take: validatedLimit,
     skip: cursor ? 0 : validatedOffset // Skip only for offset pagination
-  });
+    }),
+    prisma.teamUpRequest.count({ where }),
+  ]);
 
   // Get accepted responses for the fetched requests (batch query for efficiency)
   const requestIds = teamUpRequests.map(r => r.id);
@@ -427,7 +338,7 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
 
   // Attach responses to requests
   const requestsWithResponses = teamUpRequests.map((request) =>
-    withPositionAvailability({
+    teamUpService.withPositionAvailability({
       ...request,
       responses: responsesByRequest.get(request.id) || [],
     })
@@ -449,7 +360,7 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
     pagination: {
       limit: validatedLimit,
       offset: validatedOffset,
-      total: enrichedRequests.length,
+      total: totalCount,
       hasMore: teamUpRequests.length === validatedLimit,
       nextCursor
     }
@@ -518,7 +429,7 @@ export const getMyTeamUpRequests = async (req: Request, res: Response) => {
 
   // Enrich with location info
   const enrichedRequests = teamUpRequests.map(request => 
-    locationService.enrichWithLocationInfo(withPositionAvailability(request))
+    locationService.enrichWithLocationInfo(teamUpService.withPositionAvailability(request))
   );
 
   res.json(enrichedRequests);
@@ -596,7 +507,7 @@ export const getTeamUpRequest = async (req: Request, res: Response) => {
   }
 
   const enrichedRequest = locationService.enrichWithLocationInfo(
-    withPositionAvailability(teamUpRequest)
+    teamUpService.withPositionAvailability(teamUpRequest)
   );
 
   res.json(enrichedRequest);
@@ -647,9 +558,10 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
     country,
     skillLevel
   });
+  teamUpService.validateTeamUpTextLengths(sanitized);
 
   const updateData: Record<string, unknown> = {};
-  const parsedPositions = parseTeamUpPositions(positionsInput);
+  const parsedPositions = teamUpService.parseTeamUpPositions(positionsInput);
 
   if (sanitized.title !== undefined) updateData.title = sanitized.title;
   if (sanitized.description !== undefined) updateData.description = sanitized.description;
@@ -668,7 +580,7 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
 
   // Validate and set requestType if provided
   if (requestType !== undefined) {
-    if (!VALID_REQUEST_TYPES.includes(requestType as TeamUpRequestType)) {
+    if (!teamUpService.VALID_REQUEST_TYPES.includes(requestType as TeamUpRequestType)) {
       throw new BadRequestError('requestType must be need_players or looking_for_play');
     }
     updateData.requestType = requestType;
@@ -704,7 +616,7 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
 
   if (positionsInput !== undefined) {
     const { derivedPlayersNeeded, derivedSkillLevel } =
-      deriveRequestLevelFieldsFromPositions(parsedPositions);
+      teamUpService.deriveRequestLevelFieldsFromPositions(parsedPositions);
     updateData.playersNeeded = derivedPlayersNeeded;
     // Keep explicit request skill when sent; otherwise derive from positions.
     if (sanitized.skillLevel === undefined) {
@@ -767,7 +679,7 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
     }
   });
 
-  res.json(withPositionAvailability(updated));
+  res.json(teamUpService.withPositionAvailability(updated));
 };
 
 // Delete a TeamUp request
@@ -801,20 +713,9 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
 
   // Sanitize the message
   const sanitized = teamUpService.sanitizeTeamUpData({ message });
+  teamUpService.validateTeamUpTextLengths({ message: sanitized.message });
   const sanitizedApplicantSkillLevel =
-    typeof applicantSkillLevel === 'string'
-      ? sanitizeString(applicantSkillLevel).toLowerCase()
-      : undefined;
-  if (
-    sanitizedApplicantSkillLevel &&
-    !VALID_SKILL_LEVELS.includes(
-      sanitizedApplicantSkillLevel as (typeof VALID_SKILL_LEVELS)[number]
-    )
-  ) {
-    throw new BadRequestError(
-      `applicantSkillLevel must be one of: ${VALID_SKILL_LEVELS.join(', ')}`
-    );
-  }
+    teamUpService.parseSkillLevel(applicantSkillLevel, 'applicantSkillLevel') ?? undefined;
 
   const teamUpRequest: any = await prisma.teamUpRequest.findUnique({
     where: { id },
@@ -967,6 +868,21 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
         status: 'pending',
         scheduledAt: new Date()
       }
+    });
+
+    await dispatchPushNotifications({
+      userIds: [teamUpRequest.creatorId],
+      notificationKind: 'teamup',
+      notificationType: 'teamup_response',
+      entityId: id,
+      params: {
+        name: req.user!.name,
+        title: teamUpRequest.title,
+        sportType: teamUpRequest.sportType,
+      },
+      metadata: {
+        actionUrl: `/teamup/${id}`,
+      },
     });
   } catch (notifError) {
     logger.error('Failed to create TeamUp response notification:', 'teamUpController', { error: notifError });
@@ -1230,6 +1146,20 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
         scheduledAt: new Date()
       }
     });
+
+    await dispatchPushNotifications({
+      userIds: [existingResponse.userId],
+      notificationKind: 'teamup',
+      notificationType: action === 'accept' ? 'teamup_accepted' : 'teamup_declined',
+      entityId: id,
+      params: {
+        title: teamUpRequest.title,
+        sportType: teamUpRequest.sportType,
+      },
+      metadata: {
+        actionUrl: `/teamup/${id}`,
+      },
+    });
   } catch (notifError) {
     logger.error('Failed to create TeamUp action notification:', 'teamUpController', { error: notifError });
     // Don't fail the response if notification fails
@@ -1361,6 +1291,7 @@ export const getNearbyTeamUpRequests = async (req: Request, res: Response) => {
 
   const { lat, lon } = parseCoordinates(latitude, longitude);
   const radiusKm = parseFloatStrict(radius, 'Radius');
+  const { latDelta, lonDelta } = locationService.calculateBoundingBox(lat, radiusKm);
 
   // Validate radius (max 100km to prevent excessive queries)
   if (radiusKm <= 0 || radiusKm > 100) {
@@ -1370,8 +1301,12 @@ export const getNearbyTeamUpRequests = async (req: Request, res: Response) => {
   // Get all open TeamUp requests with location data
   const requests: any[] = await prisma.teamUpRequest.findMany({
     where: {
-      latitude: { not: null },
-      longitude: { not: null },
+      AND: [
+        { latitude: { not: null } },
+        { longitude: { not: null } },
+        { latitude: { gte: lat - latDelta, lte: lat + latDelta } },
+        { longitude: { gte: lon - lonDelta, lte: lon + lonDelta } },
+      ],
       status: 'open',
       dateTime: {
         gte: new Date() // Only show future requests
@@ -1435,7 +1370,7 @@ export const getNearbyTeamUpRequests = async (req: Request, res: Response) => {
 
   // Enrich with location info
   const enrichedRequests = nearbyRequests.map(request => 
-    locationService.enrichWithLocationInfo(withPositionAvailability(request))
+    locationService.enrichWithLocationInfo(teamUpService.withPositionAvailability(request))
   );
 
   res.json({
@@ -1489,6 +1424,7 @@ export const addTeamUpComment = async (req: Request, res: Response) => {
 
   // Sanitize the content
   const sanitized = teamUpService.sanitizeTeamUpData({ message: content });
+  teamUpService.validateTeamUpTextLengths({ message: sanitized.message });
 
   const teamUpRequest: any = await prisma.teamUpRequest.findUnique({
     where: { id },
@@ -1543,6 +1479,21 @@ export const addTeamUpComment = async (req: Request, res: Response) => {
         }
       }
     });
+
+    await dispatchPushNotifications({
+      userIds: [teamUpRequest.creatorId],
+      notificationKind: 'teamup',
+      notificationType: 'teamup_comment',
+      entityId: id,
+      params: {
+        name: req.user!.name,
+        title: teamUpRequest.title,
+        sportType: teamUpRequest.sportType,
+      },
+      metadata: {
+        actionUrl: `/teamup/${id}`,
+      },
+    });
   }
 
   res.status(201).json(comment);
@@ -1574,4 +1525,77 @@ export const deleteTeamUpComment = async (req: Request, res: Response) => {
   });
 
   res.json({ message: 'Comment deleted' });
+};
+
+export const withdrawTeamUpResponse = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const teamUpRequest = await prisma.teamUpRequest.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+
+  if (!teamUpRequest) {
+    throw new NotFoundError('TeamUp request not found');
+  }
+
+  const existingResponse = await prisma.teamUpResponse.findFirst({
+    where: {
+      teamUpRequestId: id,
+      userId: req.user!.id,
+    },
+    select: { id: true, status: true },
+  });
+
+  if (!existingResponse) {
+    throw new NotFoundError('Response not found');
+  }
+
+  if (existingResponse.status !== 'pending') {
+    throw new BadRequestError('Only pending responses can be withdrawn');
+  }
+
+  await prisma.teamUpResponse.update({
+    where: { id: existingResponse.id },
+    data: { status: 'cancelled' },
+  });
+
+  res.json({ message: 'Response withdrawn' });
+};
+
+export const reportTeamUpRequest = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { reason } = req.body ?? {};
+  const sanitizedReason =
+    typeof reason === 'string' ? sanitizeString(reason).trim() : '';
+
+  if (!sanitizedReason) {
+    throw new BadRequestError('reason is required');
+  }
+
+  teamUpService.assertMaxLength(sanitizedReason, 'reason', teamUpService.TEAMUP_LIMITS.message);
+
+  const requestRecord = await prisma.teamUpRequest.findUnique({
+    where: { id },
+    select: { id: true, creatorId: true },
+  });
+
+  if (!requestRecord) {
+    throw new NotFoundError('TeamUp request not found');
+  }
+
+  await auditLog(prisma).create({
+    data: {
+      entityType: 'teamup',
+      entityId: id,
+      actorId: req.user!.id,
+      action: 'reported',
+      metadata: {
+        reason: sanitizedReason,
+        reportedCreatorId: requestRecord.creatorId,
+      },
+    },
+  });
+
+  res.status(201).json({ message: 'TeamUp request reported' });
 };

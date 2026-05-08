@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import * as teamUpController from '../controllers/teamUpController';
 import authMiddleware from '../middleware/auth';
-import { authenticatedLimiter } from '../middleware/rateLimiter';
+import { authenticatedLimiter, teamUpCommentLimiter } from '../middleware/rateLimiter';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { requireTeamUpPermission } from '../middleware/authorization';
 import { Permission } from '../../shared/types/permissions.types';
@@ -53,6 +53,9 @@ router.delete(
 // Respond to a TeamUp request (authenticated users can respond)
 router.post('/:id/respond', noCache, asyncHandler(teamUpController.respondToTeamUpRequest));
 
+// Withdraw my pending response to a TeamUp request
+router.delete('/:id/respond', noCache, asyncHandler(teamUpController.withdrawTeamUpResponse));
+
 // Accept or decline a response (creator only)
 router.post(
   '/:id/responses/:responseId',
@@ -65,9 +68,12 @@ router.post(
 router.get('/:id/comments', cacheControl(60, { private: true }), asyncHandler(teamUpController.getTeamUpComments));
 
 // Add a comment to a TeamUp request (authenticated users can comment)
-router.post('/:id/comments', noCache, asyncHandler(teamUpController.addTeamUpComment));
+router.post('/:id/comments', noCache, teamUpCommentLimiter, asyncHandler(teamUpController.addTeamUpComment));
 
 // Delete a comment (author only)
 router.delete('/:id/comments/:commentId', noCache, asyncHandler(teamUpController.deleteTeamUpComment));
+
+// Report a TeamUp request
+router.post('/:id/report', noCache, asyncHandler(teamUpController.reportTeamUpRequest));
 
 export default router;

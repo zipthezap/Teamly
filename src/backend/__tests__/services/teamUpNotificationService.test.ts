@@ -32,6 +32,10 @@ vi.mock('../../utils/notificationHelper', () => ({
   filterUnmutedUsers: vi.fn()
 }));
 
+vi.mock('../../services/pushNotificationService', () => ({
+  dispatchPushNotifications: vi.fn().mockResolvedValue(undefined),
+}));
+
 import prisma from '../../config/database';
 import {
   findUsersForTeamUpNotification,

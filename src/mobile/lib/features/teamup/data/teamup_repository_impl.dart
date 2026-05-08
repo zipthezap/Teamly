@@ -16,6 +16,7 @@ class TeamUpRepositoryImpl implements TeamUpRepository {
     String? requestType,
     String? skillLevel,
     String? city,
+    String? search,
     String? fromDate,
     String? toDate,
   }) async {
@@ -28,12 +29,34 @@ class TeamUpRepositoryImpl implements TeamUpRepository {
         if (skillLevel != null && skillLevel.isNotEmpty)
           'skillLevel': skillLevel,
         if (city != null && city.isNotEmpty) 'city': city,
+        if (search != null && search.isNotEmpty) 'search': search,
         if (fromDate != null) 'fromDate': fromDate,
         if (toDate != null) 'toDate': toDate,
         'limit': '50',
       },
     );
     return _parseRequestList(response.data);
+  }
+
+  @override
+  Future<List<TeamUpRequestModel>> getNearbyRequests({
+    required double latitude,
+    required double longitude,
+    double radiusKm = 10,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/teamup/nearby',
+      queryParameters: {
+        'latitude': latitude.toString(),
+        'longitude': longitude.toString(),
+        'radius': radiusKm.toString(),
+        'limit': '50',
+      },
+    );
+    final items = response.data?['results'] as List<dynamic>? ?? const [];
+    return items
+        .map((e) => TeamUpRequestModel.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   @override
@@ -112,6 +135,11 @@ class TeamUpRepositoryImpl implements TeamUpRepository {
   }
 
   @override
+  Future<void> withdrawResponse(String requestId) async {
+    await _dio.delete<void>('/teamup/$requestId/respond');
+  }
+
+  @override
   Future<List<TeamUpResponseModel>> getRequestResponses(String id) async {
     final response = await _dio.get<Map<String, dynamic>>('/teamup/$id');
     final data = response.data!;
@@ -143,6 +171,14 @@ class TeamUpRepositoryImpl implements TeamUpRepository {
   @override
   Future<void> deleteComment(String requestId, String commentId) async {
     await _dio.delete<void>('/teamup/$requestId/comments/$commentId');
+  }
+
+  @override
+  Future<void> reportRequest(String requestId, String reason) async {
+    await _dio.post<void>(
+      '/teamup/$requestId/report',
+      data: {'reason': reason},
+    );
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────

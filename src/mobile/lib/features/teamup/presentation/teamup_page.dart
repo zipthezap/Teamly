@@ -9,6 +9,7 @@ import '../../../core/models/teamup_model.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../../../shared/widgets/user_avatar.dart';
+import '../../auth/state/auth_notifier.dart';
 import '../data/teamup_repository_impl.dart';
 import '../state/teamup_notifier.dart';
 
@@ -32,8 +33,13 @@ Color _sportAccentColor(String sport) {
   return colors[sport] ?? AppThemeTokens.primary500;
 }
 
+final editingTeamUpRequestProvider =
+    StateProvider<TeamUpRequestModel?>((ref) => null);
+
 class TeamUpPage extends ConsumerStatefulWidget {
-  const TeamUpPage({super.key});
+  const TeamUpPage({super.key, this.initialRequestId});
+
+  final String? initialRequestId;
 
   @override
   ConsumerState<TeamUpPage> createState() => _TeamUpPageState();
@@ -42,11 +48,30 @@ class TeamUpPage extends ConsumerStatefulWidget {
 class _TeamUpPageState extends ConsumerState<TeamUpPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _openedInitialRequest = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_openedInitialRequest || widget.initialRequestId == null) return;
+    _openedInitialRequest = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        final request = await ref.read(
+          teamUpRequestDetailProvider(widget.initialRequestId!).future,
+        );
+        if (!mounted) return;
+        _showRequestDetail(request);
+      } catch (_) {
+        // Ignore deep-link bootstrap failures; the user can still browse TeamUps normally.
+      }
+    });
   }
 
   @override
@@ -95,6 +120,7 @@ class _TeamUpPageState extends ConsumerState<TeamUpPage>
                     const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                 tabs: const [
                   Tab(text: 'Browse'),
+                  Tab(text: 'Nearby'),
                   Tab(text: 'My Posts'),
                   Tab(text: 'Applied'),
                   Tab(text: 'Post'),
@@ -106,13 +132,27 @@ class _TeamUpPageState extends ConsumerState<TeamUpPage>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: const [
-          _BrowseTab(),
-          _MyRequestsTab(),
-          _MyApplicationsTab(),
-          _SubmitRequestTab(),
+        children: [
+          const _BrowseTab(),
+          const _NearbyTab(),
+          _MyRequestsTab(
+            onEdit: (request) {
+              ref.read(editingTeamUpRequestProvider.notifier).state = request;
+              _tabController.animateTo(4);
+            },
+          ),
+          const _MyApplicationsTab(),
+          const _SubmitRequestTab(),
         ],
       ),
+    );
+  }
+
+  void _showRequestDetail(TeamUpRequestModel request) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _RequestDetailSheet(request: request),
     );
   }
 }
@@ -132,10 +172,16 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
   String _sportFilter = '';
   String _typeFilter = '';
   String _skillFilter = '';
+  String _cityFilter = '';
 
   @override
   Widget build(BuildContext context) {
     final requestsAsync = ref.watch(teamUpNotifierProvider);
+    final applicationsAsync = ref.watch(myTeamUpApplicationsProvider);
+    final appliedRequestIds = applicationsAsync.valueOrNull
+            ?.map((application) => application.requestId)
+            .toSet() ??
+        <String>{};
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
@@ -169,6 +215,7 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
                           sportType: value,
                           requestType: _typeFilter,
                           skillLevel: _skillFilter,
+                          city: _cityFilter,
                         );
                   },
                 ),
@@ -186,6 +233,7 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
                           sportType: _sportFilter,
                           requestType: value,
                           skillLevel: _skillFilter,
+                          city: _cityFilter,
                         );
                   },
                 ),
@@ -205,6 +253,22 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
                           sportType: _sportFilter,
                           requestType: _typeFilter,
                           skillLevel: value,
+                          city: _cityFilter,
+                        );
+                  },
+                ),
+                const SizedBox(width: 8),
+                _TextFilterChip(
+                  label: 'City',
+                  value: _cityFilter,
+                  hintText: 'Enter city',
+                  onSelected: (value) {
+                    setState(() => _cityFilter = value);
+                    ref.read(teamUpNotifierProvider.notifier).load(
+                          sportType: _sportFilter,
+                          requestType: _typeFilter,
+                          skillLevel: _skillFilter,
+                          city: value,
                         );
                   },
                 ),
@@ -219,8 +283,13 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
               message: extractErrorMessage(error),
               onRetry: () => ref
                   .read(teamUpNotifierProvider.notifier)
-                  .load(sportType: _sportFilter, requestType: _typeFilter),
-            ),
+                  .load(
+                    sportType: _sportFilter,
+                    requestType: _typeFilter,
+                    skillLevel: _skillFilter,
+                    city: _cityFilter,
+                  ),
+             ),
             data: (requests) {
               if (requests.isEmpty) {
                 return const UiEmptyState(
@@ -231,22 +300,65 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
                 );
               }
 
-              return RefreshIndicator(
-                onRefresh: () => ref
-                    .read(teamUpNotifierProvider.notifier)
-                    .load(sportType: _sportFilter, requestType: _typeFilter),
-                child: ListView.builder(
+                return RefreshIndicator(
+                  onRefresh: () => ref
+                      .read(teamUpNotifierProvider.notifier)
+                      .load(
+                        sportType: _sportFilter,
+                        requestType: _typeFilter,
+                        skillLevel: _skillFilter,
+                        city: _cityFilter,
+                      ),
+                  child: ListView.builder(
                   padding:
                       const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  itemCount: requests.length,
-                  itemBuilder: (context, index) =>
-                      _RequestTile(request: requests[index]),
-                ),
-              );
+                    itemCount: requests.length,
+                    itemBuilder: (context, index) =>
+                       _RequestTile(
+                         request: requests[index],
+                         hasApplied:
+                             appliedRequestIds.contains(requests[index].id),
+                       ),
+                 ),
+                );
             },
           ),
         ),
       ],
+    );
+  }
+}
+
+class _NearbyTab extends ConsumerWidget {
+  const _NearbyTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final nearbyAsync = ref.watch(nearbyTeamUpRequestsProvider);
+    return nearbyAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, _) => ErrorDisplay(
+        message: extractErrorMessage(error),
+        onRetry: () => ref.invalidate(nearbyTeamUpRequestsProvider),
+      ),
+      data: (requests) {
+        if (requests.isEmpty) {
+          return const UiEmptyState(
+            icon: Icons.near_me_outlined,
+            title: 'No nearby TeamUps',
+            message: 'Try again later or expand your search area.',
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(nearbyTeamUpRequestsProvider),
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            itemCount: requests.length,
+            itemBuilder: (context, index) =>
+                _RequestTile(request: requests[index]),
+          ),
+        );
+      },
     );
   }
 }
@@ -256,7 +368,9 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
 // ---------------------------------------------------------------------------
 
 class _MyRequestsTab extends ConsumerStatefulWidget {
-  const _MyRequestsTab();
+  const _MyRequestsTab({required this.onEdit});
+
+  final ValueChanged<TeamUpRequestModel> onEdit;
 
   @override
   ConsumerState<_MyRequestsTab> createState() => _MyRequestsTabState();
@@ -284,6 +398,45 @@ class _MyRequestsTabState extends ConsumerState<_MyRequestsTab> {
       }
     } finally {
       if (mounted) setState(() => _loading.remove(key));
+    }
+  }
+
+  Future<void> _deleteRequest(TeamUpRequestModel request) async {
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Delete TeamUp request?'),
+            content: Text('Delete "${request.title}"? This cannot be undone.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed) return;
+    try {
+      await ref.read(teamUpRepositoryProvider).deleteRequest(request.id);
+      ref.invalidate(myTeamUpRequestsProvider);
+      ref.read(teamUpNotifierProvider.notifier).refresh();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('TeamUp request deleted')),
+      );
+    } on Exception catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
     }
   }
 
@@ -326,23 +479,47 @@ class _MyRequestsTabState extends ConsumerState<_MyRequestsTab> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _RequestTile(
-                    request: request,
-                    trailing: IconButton(
-                      icon: Icon(
-                        isExpanded
-                            ? Icons.expand_less
-                            : Icons.expand_more,
-                        size: 20,
-                      ),
-                      onPressed: () => setState(() {
-                        if (isExpanded) {
-                          _expanded.remove(request.id);
-                        } else {
-                          _expanded.add(request.id);
-                        }
-                      }),
-                    ),
-                  ),
+                     request: request,
+                     trailing: Row(
+                       mainAxisSize: MainAxisSize.min,
+                       children: [
+                         PopupMenuButton<String>(
+                           onSelected: (value) {
+                             if (value == 'edit') {
+                               widget.onEdit(request);
+                             } else if (value == 'delete') {
+                               _deleteRequest(request);
+                             }
+                           },
+                           itemBuilder: (context) => const [
+                             PopupMenuItem(
+                               value: 'edit',
+                               child: Text('Edit'),
+                             ),
+                             PopupMenuItem(
+                               value: 'delete',
+                               child: Text('Delete'),
+                             ),
+                           ],
+                         ),
+                         IconButton(
+                           icon: Icon(
+                             isExpanded
+                                 ? Icons.expand_less
+                                 : Icons.expand_more,
+                             size: 20,
+                           ),
+                           onPressed: () => setState(() {
+                             if (isExpanded) {
+                               _expanded.remove(request.id);
+                             } else {
+                               _expanded.add(request.id);
+                             }
+                           }),
+                         ),
+                       ],
+                     ),
+                   ),
                   if (isExpanded) ...[
                     Padding(
                       padding:
@@ -730,8 +907,8 @@ class _MyApplicationsTab extends ConsumerWidget {
                                   ),
                                 ),
                               ],
-                              if (app.requestCreatorName != null) ...[
-                                const SizedBox(height: 6),
+                               if (app.requestCreatorName != null) ...[
+                                 const SizedBox(height: 6),
                                 Row(
                                   children: [
                                     UserAvatar(
@@ -750,11 +927,57 @@ class _MyApplicationsTab extends ConsumerWidget {
                                       ),
                                     ),
                                   ],
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
+                                 ),
+                               ],
+                               if (app.status == 'pending') ...[
+                                 const SizedBox(height: 10),
+                                 Align(
+                                   alignment: Alignment.centerLeft,
+                                   child: OutlinedButton.icon(
+                                     onPressed: () async {
+                                       try {
+                                         await ref
+                                             .read(teamUpRepositoryProvider)
+                                             .withdrawResponse(app.requestId);
+                                         ref.invalidate(
+                                             myTeamUpApplicationsProvider);
+                                         ref.invalidate(
+                                             myTeamUpRequestsProvider);
+                                         ref.read(teamUpNotifierProvider.notifier)
+                                             .refresh();
+                                         if (context.mounted) {
+                                           ScaffoldMessenger.of(context)
+                                               .showSnackBar(
+                                             const SnackBar(
+                                               content: Text(
+                                                   'Application withdrawn'),
+                                             ),
+                                           );
+                                         }
+                                       } on Exception catch (e) {
+                                         if (context.mounted) {
+                                           ScaffoldMessenger.of(context)
+                                               .showSnackBar(
+                                             SnackBar(
+                                               content: Text(
+                                                   extractErrorMessage(e)),
+                                               backgroundColor:
+                                                   Theme.of(context)
+                                                       .colorScheme
+                                                       .error,
+                                             ),
+                                           );
+                                         }
+                                       }
+                                     },
+                                     icon: const Icon(Icons.undo_outlined),
+                                     label: const Text('Withdraw'),
+                                   ),
+                                 ),
+                               ],
+                             ],
+                           ),
+                         ),
                       ),
                     ],
                   ),
@@ -812,6 +1035,7 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
   String _skillLevel = '';
   DateTime? _dateTime;
   bool _submitting = false;
+  String? _editingRequestId;
 
   @override
   void dispose() {
@@ -824,6 +1048,63 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
       position.dispose();
     }
     super.dispose();
+  }
+
+  void _applyRequestToForm(TeamUpRequestModel request) {
+    _titleCtrl.text = request.title;
+    _descCtrl.text = request.description ?? '';
+    _locationCtrl.text = request.location ?? '';
+    _cityCtrl.text = request.city ?? '';
+    _playersCtrl.text = request.playersNeeded?.toString() ?? '';
+    for (final position in _positions) {
+      position.dispose();
+    }
+    _positions
+      ..clear()
+      ..addAll(
+        (request.positions == null || request.positions!.isEmpty)
+            ? [_PositionDraft()]
+            : request.positions!
+                .map(
+                  (position) => _PositionDraft(
+                    name: position.name,
+                    slots: position.slotsNeeded.toString(),
+                    skillLevel: position.skillLevelRequired ?? '',
+                  ),
+                )
+                .toList(),
+      );
+    setState(() {
+      _editingRequestId = request.id;
+      _sportType = request.sportType;
+      _requestType = request.requestType;
+      _skillLevel = request.skillLevel ?? '';
+      _dateTime = request.dateTime;
+    });
+  }
+
+  void _resetForm({bool clearEditing = true}) {
+    _titleCtrl.clear();
+    _descCtrl.clear();
+    _locationCtrl.clear();
+    _cityCtrl.clear();
+    _playersCtrl.clear();
+    for (final position in _positions) {
+      position.dispose();
+    }
+    _positions
+      ..clear()
+      ..add(_PositionDraft());
+    setState(() {
+      _editingRequestId = null;
+      _sportType = '';
+      _requestType = 'looking_for_play';
+      _skillLevel = '';
+      _dateTime = null;
+    });
+    if (clearEditing) {
+      ref.read(editingTeamUpRequestProvider.notifier).state = null;
+    }
   }
 
   Future<void> _pickDateTime() async {
@@ -895,7 +1176,7 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
 
     setState(() => _submitting = true);
     try {
-      await ref.read(teamUpRepositoryProvider).createRequest({
+      final payload = {
         'title': _titleCtrl.text.trim(),
         if (_descCtrl.text.trim().isNotEmpty)
           'description': _descCtrl.text.trim(),
@@ -909,30 +1190,27 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
         if (_requestType == 'need_players') 'positions': positionPayload,
         if (_requestType != 'need_players' && _playersCtrl.text.trim().isNotEmpty)
           'playersNeeded': int.tryParse(_playersCtrl.text.trim()),
-      });
+      };
+      final editingId = _editingRequestId;
+      if (editingId == null) {
+        await ref.read(teamUpRepositoryProvider).createRequest(payload);
+      } else {
+        await ref.read(teamUpRepositoryProvider).updateRequest(editingId, payload);
+      }
       ref.invalidate(myTeamUpRequestsProvider);
+      ref.invalidate(myTeamUpApplicationsProvider);
       ref.read(teamUpNotifierProvider.notifier).refresh();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('TeamUp request posted!')),
+          SnackBar(
+            content: Text(
+              editingId == null
+                  ? 'TeamUp request posted!'
+                  : 'TeamUp request updated!',
+            ),
+          ),
         );
-        _titleCtrl.clear();
-        _descCtrl.clear();
-        _locationCtrl.clear();
-        _cityCtrl.clear();
-        _playersCtrl.clear();
-        setState(() {
-          _sportType = '';
-          _requestType = 'looking_for_play';
-          _skillLevel = '';
-          _dateTime = null;
-          for (final position in _positions) {
-            position.dispose();
-          }
-          _positions
-            ..clear()
-            ..add(_PositionDraft());
-        });
+        _resetForm();
       }
     } on Exception catch (e) {
       if (mounted) {
@@ -962,6 +1240,19 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
 
   @override
   Widget build(BuildContext context) {
+    final editingRequest = ref.watch(editingTeamUpRequestProvider);
+    if (editingRequest?.id != _editingRequestId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (editingRequest == null) {
+          if (_editingRequestId != null) {
+            _resetForm(clearEditing: false);
+          }
+          return;
+        }
+        _applyRequestToForm(editingRequest);
+      });
+    }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final df = DateFormat('MMM d, yyyy · HH:mm');
     return Form(
@@ -969,6 +1260,26 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (editingRequest != null) ...[
+            UiCard(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Editing existing TeamUp request',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => _resetForm(),
+                    child: const Text('Cancel'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           // Title
           TextFormField(
             controller: _titleCtrl,
@@ -1216,8 +1527,9 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
           const SizedBox(height: 28),
 
           UiPrimaryButton(
-            text: 'Post Request',
-            icon: Icons.send_outlined,
+            text: editingRequest == null ? 'Post Request' : 'Save Changes',
+            icon:
+                editingRequest == null ? Icons.send_outlined : Icons.save_outlined,
             onPressed: _submitting ? null : _submit,
             loading: _submitting,
           ),
@@ -1232,10 +1544,15 @@ class _SubmitRequestTabState extends ConsumerState<_SubmitRequestTab> {
 // ---------------------------------------------------------------------------
 
 class _RequestTile extends StatelessWidget {
-  const _RequestTile({required this.request, this.trailing});
+  const _RequestTile({
+    required this.request,
+    this.trailing,
+    this.hasApplied = false,
+  });
 
   final TeamUpRequestModel request;
   final Widget? trailing;
+  final bool hasApplied;
 
   @override
   Widget build(BuildContext context) {
@@ -1337,13 +1654,19 @@ class _RequestTile extends StatelessWidget {
                                 ],
                               ),
                             ),
-                          UiStatusBadge(
-                            label: request.status == 'open' ? 'Open' : request.status,
-                            status: request.status == 'open'
-                                ? UiStatusType.success
-                                : UiStatusType.defaultStatus,
-                            dot: true,
-                          ),
+                           UiStatusBadge(
+                             label: hasApplied
+                                 ? 'Applied'
+                                 : request.status == 'open'
+                                     ? 'Open'
+                                     : request.status,
+                             status: hasApplied
+                                 ? UiStatusType.info
+                                 : request.status == 'open'
+                                     ? UiStatusType.success
+                                     : UiStatusType.defaultStatus,
+                             dot: true,
+                           ),
                           if (trailing != null) trailing!,
                         ],
                       ),
@@ -1420,6 +1743,12 @@ class _RequestTile extends StatelessWidget {
                               label:
                                   '${request.responseCount} response${request.responseCount == 1 ? '' : 's'}',
                               color: AppThemeTokens.info,
+                            ),
+                          if (hasApplied)
+                            _MetaChip(
+                              icon: Icons.check_circle_outline,
+                              label: 'Applied',
+                              color: AppThemeTokens.primary400,
                             ),
                         ],
                       ),
@@ -1521,6 +1850,8 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
           );
       _msgCtrl.clear();
       ref.invalidate(teamUpRequestResponsesProvider(widget.request.id));
+      ref.invalidate(teamUpRequestDetailProvider(widget.request.id));
+      ref.invalidate(myTeamUpApplicationsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Response sent!')),
@@ -1550,6 +1881,7 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
           .addComment(widget.request.id, text);
       _commentCtrl.clear();
       ref.invalidate(teamUpCommentsProvider(widget.request.id));
+      ref.invalidate(teamUpRequestDetailProvider(widget.request.id));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Comment added!')),
@@ -1577,9 +1909,16 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final r = widget.request;
+    final detailAsync = ref.watch(teamUpRequestDetailProvider(widget.request.id));
+    final r = detailAsync.valueOrNull ?? widget.request;
     final responsesAsync = ref.watch(teamUpRequestResponsesProvider(r.id));
     final commentsAsync = ref.watch(teamUpCommentsProvider(r.id));
+    final currentUserId =
+        ref.watch(authNotifierProvider.select((state) => state.user?.id));
+    final applications = ref.watch(myTeamUpApplicationsProvider).valueOrNull ?? const [];
+    final hasApplied =
+        applications.any((application) => application.requestId == r.id);
+    final isOwner = currentUserId != null && currentUserId == r.creatorId;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final accent = _sportAccentColor(r.sportType);
@@ -1647,6 +1986,68 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                                   r.title,
                                   style: theme.textTheme.titleLarge,
                                 ),
+                              ),
+                              PopupMenuButton<String>(
+                                onSelected: (value) async {
+                                  if (value != 'report') return;
+                                  final reason = await showDialog<String>(
+                                    context: context,
+                                    builder: (context) {
+                                      final controller =
+                                          TextEditingController();
+                                      return AlertDialog(
+                                        title: const Text('Report TeamUp'),
+                                        content: TextField(
+                                          controller: controller,
+                                          decoration: const InputDecoration(
+                                            hintText: 'Why are you reporting this?',
+                                          ),
+                                          maxLines: 3,
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.of(context).pop(),
+                                            child: const Text('Cancel'),
+                                          ),
+                                          FilledButton(
+                                            onPressed: () => Navigator.of(context)
+                                                .pop(controller.text.trim()),
+                                            child: const Text('Report'),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                  if (reason == null || reason.isEmpty) return;
+                                  try {
+                                    await ref
+                                        .read(teamUpRepositoryProvider)
+                                        .reportRequest(r.id, reason);
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('TeamUp request reported'),
+                                      ),
+                                    );
+                                  } on Exception catch (e) {
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content:
+                                            Text(extractErrorMessage(e)),
+                                        backgroundColor:
+                                            theme.colorScheme.error,
+                                      ),
+                                    );
+                                  }
+                                },
+                                itemBuilder: (context) => const [
+                                  PopupMenuItem(
+                                    value: 'report',
+                                    child: Text('Report'),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -1937,7 +2338,7 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                     const SizedBox(height: 16),
 
                     // Respond form (only if open)
-                    if (r.status == 'open') ...[
+                    if (r.status == 'open' && !isOwner && !hasApplied) ...[
                       Builder(
                         builder: (context) {
                           final positions =
@@ -2059,6 +2460,14 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                             ),
                           ),
                         ],
+                      ),
+                    ],
+                    if (hasApplied) ...[
+                      UiCard(
+                        padding: const EdgeInsets.all(12),
+                        child: const Text(
+                          'You already applied to this TeamUp request.',
+                        ),
                       ),
                     ],
                     const SizedBox(height: 20),
@@ -2275,6 +2684,110 @@ class _FilterChip extends StatelessWidget {
             const SizedBox(width: 4),
             Icon(
               Icons.keyboard_arrow_down_rounded,
+              size: 16,
+              color: selected
+                  ? AppThemeTokens.primary400
+                  : (isDark
+                      ? AppThemeTokens.darkTextMuted
+                      : AppThemeTokens.lightTextMuted),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TextFilterChip extends StatelessWidget {
+  const _TextFilterChip({
+    required this.label,
+    required this.value,
+    required this.hintText,
+    required this.onSelected,
+  });
+
+  final String label;
+  final String value;
+  final String hintText;
+  final void Function(String) onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final selected = value.isNotEmpty;
+
+    return GestureDetector(
+      onTap: () async {
+        final controller = TextEditingController(text: value);
+        final result = await showDialog<String>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('Filter by $label'),
+            content: TextField(
+              controller: controller,
+              decoration: InputDecoration(hintText: hintText),
+              autofocus: true,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(''),
+                child: const Text('Clear'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+                child: const Text('Apply'),
+              ),
+            ],
+          ),
+        );
+        if (result != null) onSelected(result);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppThemeTokens.primary500.withValues(alpha: 0.15)
+              : (isDark
+                  ? AppThemeTokens.darkCardElevated
+                  : AppThemeTokens.lightCardElevated),
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+          border: Border.all(
+            color: selected
+                ? AppThemeTokens.primary500
+                : (isDark
+                    ? AppThemeTokens.darkBorder
+                    : AppThemeTokens.lightBorder),
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (selected)
+              const Padding(
+                padding: EdgeInsets.only(right: 5),
+                child: Icon(
+                  Icons.check_circle_rounded,
+                  size: 13,
+                  color: AppThemeTokens.primary400,
+                ),
+              ),
+            Text(
+              selected ? value : label,
+              style: TextStyle(
+                color: selected
+                    ? AppThemeTokens.primary400
+                    : (isDark
+                        ? AppThemeTokens.darkTextSecondary
+                        : AppThemeTokens.lightTextSecondary),
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.location_city_outlined,
               size: 16,
               color: selected
                   ? AppThemeTokens.primary400
