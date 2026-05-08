@@ -141,7 +141,7 @@ export const updateTeamUpStatusAdmin = async (req: Request, res: Response) => {
     where: { id },
     data: { status },
     select: { id: true, status: true, title: true },
-  }).catch(() => null);
+  }).catch((): null => null);
 
   if (!updated) {
     throw new NotFoundError('TeamUp request not found');
