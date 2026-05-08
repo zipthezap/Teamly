@@ -798,6 +798,7 @@ enum TeamUpResponseStatus {
   pending
   accepted
   declined
+  cancelled
 }
 
 // TeamUp functionality for finding substitute/replacement players
@@ -822,7 +823,7 @@ model TeamUpRequest {
   expiresAt   DateTime? // Auto-expire after a certain time
   
   creatorId   String
-  creator     User     @relation("TeamUpRequestCreator", fields: [creatorId], references: [id])
+  creator     User     @relation("TeamUpRequestCreator", fields: [creatorId], references: [id], onDelete: Cascade)
   
   positions      TeamUpRequestPosition[]
   responses      TeamUpResponse[]
@@ -835,6 +836,7 @@ model TeamUpRequest {
   @@index([sportType])
   @@index([requestType])
   @@index([city, country])
+  @@index([latitude, longitude])
   @@index([status, dateTime]) // For finding open requests by date
   @@index([sportType, status, dateTime]) // Composite for sport type filtering with status and date (scalability)
   @@index([requestType, status, dateTime]) // Composite for request type filtering with status (scalability)

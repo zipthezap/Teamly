@@ -32,6 +32,9 @@ export const runCleanupTasks = async (): Promise<void> => {
     // Expire tournament team invitations past their expiry date
     await expireTournamentInvitations();
 
+    // Expire stale TeamUp requests past their expiry date
+    await expireTeamUpRequests();
+
     logger.info('Completed scheduled cleanup tasks', 'ScheduledJobs');
   } catch (error) {
     logger.error('Error running cleanup tasks', 'ScheduledJobs', { error });
@@ -99,6 +102,26 @@ const expireTournamentInvitations = async (): Promise<void> => {
     }
   } catch (error) {
     logger.error('Error expiring tournament team invitations', 'ScheduledJobs', { error });
+  }
+};
+
+const expireTeamUpRequests = async (): Promise<void> => {
+  const now = new Date();
+
+  try {
+    const result = await prisma.teamUpRequest.updateMany({
+      where: {
+        status: 'open',
+        expiresAt: { lt: now },
+      },
+      data: { status: 'expired' },
+    });
+
+    if (result.count > 0) {
+      logger.info(`Expired ${result.count} TeamUp requests`, 'ScheduledJobs');
+    }
+  } catch (error) {
+    logger.error('Error expiring TeamUp requests', 'ScheduledJobs', { error });
   }
 };
 

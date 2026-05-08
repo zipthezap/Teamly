@@ -12,6 +12,7 @@ vi.mock('../../middleware/rateLimiter', () => ({
   uploadLimiter: (_: any, __: any, next: any) => next(),
   passwordResetLimiter: (_: any, __: any, next: any) => next(),
   emailVerificationLimiter: (_: any, __: any, next: any) => next(),
+  teamUpCommentLimiter: (_: any, __: any, next: any) => next(),
 }));
 vi.mock('../../middleware/distributedRateLimiter', () => ({
   distributedAuthLimiter: (_: any, __: any, next: any) => next(),
@@ -59,14 +60,36 @@ vi.mock('../../config/database', () => ({
       findUnique: vi.fn(),
       delete: vi.fn(),
     },
+    teamUpNotification: {
+      create: vi.fn(),
+      createMany: vi.fn(),
+    },
+    emailQueue: {
+      create: vi.fn(),
+    },
+    auditLog: {
+      create: vi.fn(),
+    },
     $transaction: vi.fn(),
   },
 }));
 vi.mock('../../services/teamUpService', () => ({
   sanitizeTeamUpData: vi.fn((data: any) => data),
+  validateTeamUpTextLengths: vi.fn(),
+  parseSkillLevel: vi.fn((value: any) => (typeof value === 'string' ? value : null)),
+  VALID_REQUEST_TYPES: ['need_players', 'looking_for_play'],
+  TEAMUP_LIMITS: { message: 500 },
+  parseTeamUpPositions: vi.fn(() => []),
+  deriveRequestLevelFieldsFromPositions: vi.fn(() => ({
+    derivedPlayersNeeded: 1,
+    derivedSkillLevel: null,
+  })),
+  withPositionAvailability: vi.fn((value: any) => value),
+  assertMaxLength: vi.fn(),
 }));
 vi.mock('../../services/locationService', () => ({
   calculateDistance: vi.fn().mockReturnValue(5),
+  calculateBoundingBox: vi.fn(() => ({ latDelta: 0.5, lonDelta: 0.5 })),
   enrichWithLocationInfo: vi.fn((r: any) => r),
 }));
 vi.mock('../../services/teamUpNotificationService', () => ({
@@ -75,12 +98,19 @@ vi.mock('../../services/teamUpNotificationService', () => ({
   notifyResponseHandled: vi.fn().mockResolvedValue(undefined),
   notifyUsersAboutNewTeamUp: vi.fn().mockResolvedValue(undefined),
 }));
+vi.mock('../../services/pushNotificationService', () => ({
+  dispatchPushNotifications: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('../../utils/prismaExtended', () => ({
+  auditLog: vi.fn((client: any) => client.auditLog),
+}));
 vi.mock('../../middleware/asyncHandler', () => ({
   asyncHandler: (fn: any) => fn,
 }));
 vi.mock('../../utils/validation', () => ({
-  parseCoordinates: vi.fn((_lat: any, _lon: any) => null),
+  parseCoordinates: vi.fn((_lat: any, _lon: any) => ({ lat: 40.7, lon: -73.9 })),
   parseFloatStrict: vi.fn((v: any) => parseFloat(v)),
+  sanitizeString: vi.fn((value: string) => value.trim()),
 }));
 
 import prisma from '../../config/database';
@@ -124,6 +154,9 @@ describe('TeamUpController', () => {
     // Default mocks for frequently called prisma methods
     vi.mocked(prisma.teamUpResponse.findMany).mockResolvedValue([]);
     vi.mocked(prisma.teamUpResponse.count).mockResolvedValue(0);
+    vi.mocked(prisma.$transaction).mockImplementation(async (input: any) =>
+      Array.isArray(input) ? Promise.all(input) : input(prisma)
+    );
   });
 
   describe('GET /api/teamup', () => {
@@ -352,6 +385,38 @@ describe('TeamUpController', () => {
       expect(res.status).toBe(400);
     });
 
+  });
+
+  describe('DELETE /api/teamup/:id/respond', () => {
+    it('handles withdraw request', async () => {
+      vi.mocked(prisma.teamUpRequest.findUnique).mockResolvedValue({
+        id: 'teamup-1',
+      } as any);
+      vi.mocked(prisma.teamUpResponse.findFirst).mockResolvedValue({
+        id: 'response-1',
+        status: 'pending',
+      } as any);
+      vi.mocked(prisma.teamUpResponse.update).mockResolvedValue({} as any);
+
+      const res = await request(app).delete('/api/teamup/teamup-1/respond');
+      expect([200, 404]).toContain(res.status);
+    });
+  });
+
+  describe('POST /api/teamup/:id/report', () => {
+    it('reports a teamup request', async () => {
+      vi.mocked(prisma.teamUpRequest.findUnique).mockResolvedValueOnce({
+        id: 'teamup-1',
+        creatorId: 'creator-1',
+      } as any);
+      vi.mocked(prisma.auditLog.create).mockResolvedValueOnce({} as any);
+
+      const res = await request(app)
+        .post('/api/teamup/teamup-1/report')
+        .send({ reason: 'Spam content' });
+
+      expect(res.status).toBe(201);
+    });
   });
 
   describe('PUT /api/teamup/:id requestType update', () => {

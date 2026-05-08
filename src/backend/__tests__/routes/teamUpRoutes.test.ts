@@ -10,7 +10,8 @@ vi.mock('../../middleware/auth', () => ({
 vi.mock('../../middleware/rateLimiter', () => ({
   authenticatedLimiter: (_: any, __: any, next: any) => next(),
   apiLimiter: (_: any, __: any, next: any) => next(),
-  authLimiter: (_: any, __: any, next: any) => next()
+  authLimiter: (_: any, __: any, next: any) => next(),
+  teamUpCommentLimiter: (_: any, __: any, next: any) => next(),
 }));
 vi.mock('../../middleware/distributedRateLimiter', () => ({
   distributedAuthLimiter: (_: any, __: any, next: any) => next(),
@@ -45,11 +46,13 @@ vi.mock('../../controllers/teamUpController', () => ({
   updateTeamUpRequest: vi.fn((req: any, res: any) => res.json({ ok: true })),
   deleteTeamUpRequest: vi.fn((req: any, res: any) => res.json({ ok: true })),
   respondToTeamUpRequest: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  withdrawTeamUpResponse: vi.fn((req: any, res: any) => res.json({ ok: true })),
   handleTeamUpResponse: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getTeamUpComments: vi.fn((req: any, res: any) => res.json({ ok: true })),
   addTeamUpComment: vi.fn((req: any, res: any) => res.json({ ok: true })),
   deleteTeamUpComment: vi.fn((req: any, res: any) => res.json({ ok: true })),
-  getMyTeamUpApplications: vi.fn((req: any, res: any) => res.json({ ok: true }))
+  getMyTeamUpApplications: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  reportTeamUpRequest: vi.fn((req: any, res: any) => res.json({ ok: true })),
 }));
 
 describe('TeamUp Routes', () => {
@@ -95,6 +98,11 @@ describe('TeamUp Routes', () => {
     expect(res.status).toBe(200);
   });
 
+  it('DELETE /api/:id/respond → 200', async () => {
+    const res = await request(app).delete('/api/teamup-1/respond');
+    expect(res.status).toBe(200);
+  });
+
   it('GET /api/my-applications → 200', async () => {
     const res = await request(app).get('/api/my-applications');
     expect(res.status).toBe(200);
@@ -107,6 +115,11 @@ describe('TeamUp Routes', () => {
 
   it('POST /api/:id/comments → 200', async () => {
     const res = await request(app).post('/api/teamup-1/comments').send({});
+    expect(res.status).toBe(200);
+  });
+
+  it('POST /api/:id/report → 200', async () => {
+    const res = await request(app).post('/api/teamup-1/report').send({});
     expect(res.status).toBe(200);
   });
 });

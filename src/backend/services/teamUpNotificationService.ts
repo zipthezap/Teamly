@@ -9,6 +9,8 @@ import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import { shouldSendEmailNotification, filterUnmutedUsers } from '../utils/notificationHelper';
 import { TeamUpNotificationType } from '../../shared/types/event.types';
+import { dispatchPushNotifications } from './pushNotificationService';
+import { normalizeLocationToken } from './teamUpService';
 
 interface TeamUpRequest {
   id: string;
@@ -57,35 +59,41 @@ export async function findUsersForTeamUpNotification(
     // Match users based on location
     // Since users don't have coordinates, we match by city/country
     // In the future, this could be enhanced with geocoding
-    const matchedUsers = users.filter(user => {
-      // Use user's discovery radius if set, otherwise use default (25km)
-      // For city-based matching, we treat same city as "within radius"
-      const userRadius = user.discoveryRadius || DEFAULT_DISCOVERY_RADIUS;
-      
-      if (user.city && teamUpRequest.city) {
-        const cityMatch = user.city.toLowerCase() === teamUpRequest.city.toLowerCase();
-        
-        // If in same city, consider it within radius
-        if (cityMatch) {
-          // Also check country if both are available
-          if (user.country && teamUpRequest.country) {
-            return user.country.toLowerCase() === teamUpRequest.country.toLowerCase();
+      const requestCity = normalizeLocationToken(teamUpRequest.city);
+      const requestCountry = normalizeLocationToken(teamUpRequest.country);
+
+      const matchedUsers = users.filter(user => {
+        // Use user's discovery radius if set, otherwise use default (25km)
+        // For city-based matching, we treat same city as "within radius"
+        const userRadius = user.discoveryRadius || DEFAULT_DISCOVERY_RADIUS;
+
+        const userCity = normalizeLocationToken(user.city);
+        const userCountry = normalizeLocationToken(user.country);
+
+        if (userCity && requestCity) {
+          const cityMatch = userCity === requestCity;
+
+          // If in same city, consider it within radius
+          if (cityMatch) {
+            // Also check country if both are available
+            if (userCountry && requestCountry) {
+              return userCountry === requestCountry;
+            }
+            // If no country specified for one or both, accept city match
+            return true;
           }
-          // If no country specified for one or both, accept city match
+        }
+
+        // If only country matches (different cities), only notify if they have
+        // a large discovery radius (e.g., >= COUNTRY_LEVEL_MIN_RADIUS)
+        if (userCountry && requestCountry &&
+            userCountry === requestCountry &&
+            userRadius >= COUNTRY_LEVEL_MIN_RADIUS) {
           return true;
         }
-      }
-      
-      // If only country matches (different cities), only notify if they have
-      // a large discovery radius (e.g., >= COUNTRY_LEVEL_MIN_RADIUS)
-      if (user.country && teamUpRequest.country && 
-          user.country.toLowerCase() === teamUpRequest.country.toLowerCase() &&
-          userRadius >= COUNTRY_LEVEL_MIN_RADIUS) {
-        return true;
-      }
-      
-      return false;
-    });
+
+        return false;
+      });
 
     return matchedUsers.map(u => u.id);
   } catch (error) {
@@ -166,6 +174,20 @@ export async function notifyUsersAboutNewTeamUp(
     await prisma.teamUpNotification.createMany({
       data: notifications,
       skipDuplicates: true,
+    });
+
+    await dispatchPushNotifications({
+      userIds: unmutedUsers,
+      notificationKind: 'teamup',
+      notificationType: TeamUpNotificationType.teamup_nearby,
+      entityId: teamUpRequest.id,
+      params: {
+        title: teamUpRequest.title,
+        sportType: teamUpRequest.sportType,
+      },
+      metadata: {
+        actionUrl: `/teamup/${teamUpRequest.id}`,
+      },
     });
 
     // Queue email notifications

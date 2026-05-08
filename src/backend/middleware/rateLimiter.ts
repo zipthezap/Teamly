@@ -69,6 +69,17 @@ export const authenticatedLimiter = rateLimit({
   keyGenerator: authAwareKeyGenerator,
 });
 
+// Stricter limiter for TeamUp comments to prevent spam bursts
+export const teamUpCommentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many TeamUp comments, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+  keyGenerator: authAwareKeyGenerator,
+});
+
 // Stricter limiter for file uploads to prevent abuse
 export const uploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour

@@ -10,6 +10,9 @@ vi.mock('../../config/database', () => ({
     inviteLog: {
       updateMany: vi.fn(),
     },
+    teamUpRequest: {
+      updateMany: vi.fn(),
+    },
     sessionReminder: {
       findMany: vi.fn(),
       update: vi.fn(),
@@ -32,6 +35,7 @@ import { cleanupOldEmails, sendEmailWithQueue } from '../../services/emailQueueS
 const db = prisma as unknown as {
   groupJoinRequest: { updateMany: ReturnType<typeof vi.fn> };
   inviteLog: { updateMany: ReturnType<typeof vi.fn> };
+  teamUpRequest: { updateMany: ReturnType<typeof vi.fn> };
   sessionReminder: {
     findMany: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
@@ -48,6 +52,7 @@ describe('scheduledJobs', () => {
     it('calls cleanupExpiredTokens', async () => {
       db.groupJoinRequest.updateMany.mockResolvedValue({ count: 0 });
       db.inviteLog.updateMany.mockResolvedValue({ count: 0 });
+      db.teamUpRequest.updateMany.mockResolvedValue({ count: 0 });
 
       await runCleanupTasks();
 
@@ -57,6 +62,7 @@ describe('scheduledJobs', () => {
     it('calls cleanupOldEmails', async () => {
       db.groupJoinRequest.updateMany.mockResolvedValue({ count: 0 });
       db.inviteLog.updateMany.mockResolvedValue({ count: 0 });
+      db.teamUpRequest.updateMany.mockResolvedValue({ count: 0 });
 
       await runCleanupTasks();
 
@@ -66,12 +72,14 @@ describe('scheduledJobs', () => {
     it('expires group invitations and join requests via expireInvitesAndJoinRequests', async () => {
       db.groupJoinRequest.updateMany.mockResolvedValue({ count: 3 });
       db.inviteLog.updateMany.mockResolvedValue({ count: 2 });
+      db.teamUpRequest.updateMany.mockResolvedValue({ count: 1 });
 
       await runCleanupTasks();
 
       // updateMany called twice: once for INVITE sourced, once for USER sourced
       expect(db.groupJoinRequest.updateMany).toHaveBeenCalledTimes(2);
       expect(db.inviteLog.updateMany).toHaveBeenCalledOnce();
+      expect(db.teamUpRequest.updateMany).toHaveBeenCalledOnce();
     });
 
     it('does not throw when cleanup tasks fail', async () => {

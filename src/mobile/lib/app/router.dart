@@ -196,6 +196,14 @@ final _routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/teamup',
         builder: (context, state) => const TeamUpPage(),
+        routes: [
+          GoRoute(
+            path: ':id',
+            builder: (context, state) => TeamUpPage(
+              initialRequestId: state.pathParameters['id'],
+            ),
+          ),
+        ],
       ),
 
       // Tournaments

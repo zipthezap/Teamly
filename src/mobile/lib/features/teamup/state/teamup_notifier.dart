@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../../../core/models/teamup_model.dart';
 import '../data/teamup_repository_impl.dart';
@@ -12,6 +13,7 @@ class TeamUpNotifier extends AsyncNotifier<List<TeamUpRequestModel>> {
   String? _requestType;
   String? _skillLevel;
   String? _city;
+  String? _search;
   String? _fromDate;
   String? _toDate;
 
@@ -22,6 +24,7 @@ class TeamUpNotifier extends AsyncNotifier<List<TeamUpRequestModel>> {
           requestType: _requestType,
           skillLevel: _skillLevel,
           city: _city,
+          search: _search,
           fromDate: _fromDate,
           toDate: _toDate,
         );
@@ -32,6 +35,7 @@ class TeamUpNotifier extends AsyncNotifier<List<TeamUpRequestModel>> {
     String? requestType,
     String? skillLevel,
     String? city,
+    String? search,
     String? fromDate,
     String? toDate,
   }) async {
@@ -39,6 +43,7 @@ class TeamUpNotifier extends AsyncNotifier<List<TeamUpRequestModel>> {
     _requestType = requestType;
     _skillLevel = skillLevel;
     _city = city;
+    _search = search;
     _fromDate = fromDate;
     _toDate = toDate;
     state = const AsyncLoading();
@@ -48,6 +53,7 @@ class TeamUpNotifier extends AsyncNotifier<List<TeamUpRequestModel>> {
             requestType: _requestType,
             skillLevel: _skillLevel,
             city: _city,
+            search: _search,
             fromDate: _fromDate,
             toDate: _toDate,
           ),
@@ -59,6 +65,7 @@ class TeamUpNotifier extends AsyncNotifier<List<TeamUpRequestModel>> {
         requestType: _requestType,
         skillLevel: _skillLevel,
         city: _city,
+        search: _search,
         fromDate: _fromDate,
         toDate: _toDate,
       );
@@ -67,6 +74,26 @@ class TeamUpNotifier extends AsyncNotifier<List<TeamUpRequestModel>> {
 final teamUpNotifierProvider =
     AsyncNotifierProvider<TeamUpNotifier, List<TeamUpRequestModel>>(
         TeamUpNotifier.new);
+
+final nearbyTeamUpRequestsProvider =
+    FutureProvider<List<TeamUpRequestModel>>((ref) async {
+  final permission = await Geolocator.checkPermission();
+  if (permission == LocationPermission.denied) {
+    final requested = await Geolocator.requestPermission();
+    if (requested == LocationPermission.denied ||
+        requested == LocationPermission.deniedForever) {
+      throw Exception('Location permission is required to browse nearby TeamUps');
+    }
+  } else if (permission == LocationPermission.deniedForever) {
+    throw Exception('Location permission is required to browse nearby TeamUps');
+  }
+
+  final position = await Geolocator.getCurrentPosition();
+  return ref.watch(teamUpRepositoryProvider).getNearbyRequests(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+});
 
 // ---------------------------------------------------------------------------
 // My requests
