@@ -5,6 +5,7 @@ import { NotificationFactory } from '../services/notificationFactory';
 import { TournamentNotificationType } from '../../shared/types/tournament.types';
 import { ForbiddenError, NotFoundError, BadRequestError } from '../utils/errors';
 import { auditLog } from '../utils/prismaExtended';
+import { Prisma } from '@prisma/client';
 
 /**
  * Admin controller helpers
@@ -146,7 +147,15 @@ export const updateTeamUpStatusAdmin = async (req: Request, res: Response) => {
     where: { id },
     data: { status },
     select: { id: true, status: true, title: true },
-  }).catch((): null => null);
+  }).catch((error): null => {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
+      return null;
+    }
+    throw error;
+  });
 
   if (!updated) {
     throw new NotFoundError('TeamUp request not found');

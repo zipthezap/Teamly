@@ -69,7 +69,7 @@ class _TeamUpPageState extends ConsumerState<TeamUpPage>
         if (!mounted) return;
         _showRequestDetail(request);
       } catch (_) {
-        // Ignore deep-link bootstrap failures and leave the TeamUp page visible.
+        // Ignore deep-link bootstrap failures; the user can still browse TeamUps normally.
       }
     });
   }
@@ -2787,7 +2787,7 @@ class _TextFilterChip extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Icon(
-              Icons.edit_location_alt_outlined,
+              Icons.location_city_outlined,
               size: 16,
               color: selected
                   ? AppThemeTokens.primary400
