@@ -9,20 +9,20 @@ const router = Router();
 // Admin utility: resend in-app notifications for pending invites for a given email
 router.post(
   '/invite-resend',
-  authMiddleware,
   authenticatedLimiter,
+  authMiddleware,
   asyncHandler(adminController.resendInviteNotifications)
 );
 router.delete(
   '/teamup/:id',
-  authMiddleware,
   authenticatedLimiter,
+  authMiddleware,
   asyncHandler(adminController.deleteTeamUpRequestAdmin)
 );
 router.put(
   '/teamup/:id/status',
-  authMiddleware,
   authenticatedLimiter,
+  authMiddleware,
   asyncHandler(adminController.updateTeamUpStatusAdmin)
 );
 
