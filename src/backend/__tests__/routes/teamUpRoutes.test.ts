@@ -45,16 +45,28 @@ vi.mock('../../controllers/teamUpController', () => ({
   getNearbyTeamUpRequests: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getMyTeamUpRequests: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getMyTeamUpResponses: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getMyTeamUpAttendanceHistory: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getTeamUpRequest: vi.fn((req: any, res: any) => res.json({ ok: true })),
   updateTeamUpRequest: vi.fn((req: any, res: any) => res.json({ ok: true })),
   deleteTeamUpRequest: vi.fn((req: any, res: any) => res.json({ ok: true })),
   respondToTeamUpRequest: vi.fn((req: any, res: any) => res.json({ ok: true })),
   withdrawTeamUpResponse: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  updateTeamUpRsvp: vi.fn((req: any, res: any) => res.json({ ok: true })),
   handleTeamUpResponse: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  bulkHandleTeamUpResponses: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  markTeamUpAttendance: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  sendTeamUpReminderNudges: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getTeamUpReplacementSuggestions: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getTeamUpComments: vi.fn((req: any, res: any) => res.json({ ok: true })),
   addTeamUpComment: vi.fn((req: any, res: any) => res.json({ ok: true })),
   deleteTeamUpComment: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getMyTeamUpApplications: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  listTeamUpSavedSearches: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  createTeamUpSavedSearch: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  deleteTeamUpSavedSearch: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getTeamUpAnalytics: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  listTeamUpModerationCases: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  updateTeamUpModerationCase: vi.fn((req: any, res: any) => res.json({ ok: true })),
   reportTeamUpRequest: vi.fn((req: any, res: any) => res.json({ ok: true })),
 }));
 
@@ -106,8 +118,33 @@ describe('TeamUp Routes', () => {
     expect(res.status).toBe(200);
   });
 
+  it('PUT /api/:id/respond/rsvp → 200', async () => {
+    const res = await request(app).put('/api/teamup-1/respond/rsvp').send({});
+    expect(res.status).toBe(200);
+  });
+
   it('GET /api/my-applications → 200', async () => {
     const res = await request(app).get('/api/my-applications');
+    expect(res.status).toBe(200);
+  });
+
+  it('GET /api/attendance-history → 200', async () => {
+    const res = await request(app).get('/api/attendance-history');
+    expect(res.status).toBe(200);
+  });
+
+  it('POST /api/saved-searches → 200', async () => {
+    const res = await request(app).post('/api/saved-searches').send({});
+    expect(res.status).toBe(200);
+  });
+
+  it('GET /api/analytics → 200', async () => {
+    const res = await request(app).get('/api/analytics');
+    expect(res.status).toBe(200);
+  });
+
+  it('POST /api/:id/responses/bulk-handle → 200', async () => {
+    const res = await request(app).post('/api/teamup-1/responses/bulk-handle').send({});
     expect(res.status).toBe(200);
   });
 

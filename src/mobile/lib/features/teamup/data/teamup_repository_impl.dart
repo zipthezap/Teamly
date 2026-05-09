@@ -140,6 +140,14 @@ class TeamUpRepositoryImpl implements TeamUpRepository {
   }
 
   @override
+  Future<void> updateRsvp(String requestId, String rsvpStatus) async {
+    await _dio.put<void>(
+      '/teamup/$requestId/respond/rsvp',
+      data: {'rsvpStatus': rsvpStatus},
+    );
+  }
+
+  @override
   Future<List<TeamUpResponseModel>> getRequestResponses(String id) async {
     final response = await _dio.get<Map<String, dynamic>>('/teamup/$id');
     final data = response.data!;
