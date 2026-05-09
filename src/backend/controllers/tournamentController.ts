@@ -765,8 +765,8 @@ export const cancelTournament = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (!tournamentService.isOrganizer(tournament, userId)) {
-    throw new ForbiddenError('Only the organizer can cancel the tournament');
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only the organizer or a co-organizer can cancel the tournament');
   }
 
   if (tournament.status === TournamentStatus.CANCELLED) {

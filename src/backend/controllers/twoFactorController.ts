@@ -29,18 +29,21 @@ export const setup2FA = asyncHandler(async (req: Request, res: Response) => {
     issuer: 'Teamly'
   });
 
-  // Generate backup codes (10 codes)
-  const backupCodes = [];
+  // Generate backup codes (10 codes) – return plain codes to user, store hashed
+  const plainBackupCodes: string[] = [];
   for (let i = 0; i < 10; i++) {
-    backupCodes.push(crypto.randomBytes(4).toString('hex').toUpperCase());
+    plainBackupCodes.push(crypto.randomBytes(4).toString('hex').toUpperCase());
   }
+  const hashedBackupCodes = await Promise.all(
+    plainBackupCodes.map(code => bcrypt.hash(code, 10))
+  );
 
   // Store secret temporarily (not yet enabled)
   await prisma.user.update({
     where: { id: userId },
     data: {
       twoFactorSecret: secret.base32,
-      twoFactorBackupCodes: backupCodes
+      twoFactorBackupCodes: hashedBackupCodes
     }
   });
 
@@ -50,7 +53,7 @@ export const setup2FA = asyncHandler(async (req: Request, res: Response) => {
   res.json({
     secret: secret.base32,
     qrCode: qrCodeUrl,
-    backupCodes: backupCodes
+    backupCodes: plainBackupCodes
   });
 });
 
@@ -112,6 +115,10 @@ export const disable2FA = asyncHandler(async (req: Request, res: Response) => {
     select: { password: true, twoFactorEnabled: true }
   });
 
+  if (!user.password) {
+    throw new BadRequestError('This account uses social login. Use your OAuth provider to manage security settings.');
+  }
+
   const validPassword = await bcrypt.compare(password, user.password);
   if (!validPassword) {
     throw new UnauthorizedError('Invalid password');
@@ -139,24 +146,33 @@ export const validate2FAToken = async (userId: string, token: string): Promise<{
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { twoFactorSecret: true }
+      select: { twoFactorSecret: true, twoFactorBackupCodes: true }
     });
 
     if (!user.twoFactorSecret) {
       return { valid: false, error: '2FA not configured' };
     }
 
-    // Check if it's a backup code using an atomic array-remove so concurrent
-    // requests cannot consume the same code twice.
+    // Check if it's a backup code. Codes are stored as bcrypt hashes so we
+    // must compare individually. We then atomically remove only the matched
+    // hash using a WHERE clause, guarding against concurrent use.
     const upperToken = token.toUpperCase();
-    const affected = await prisma.$executeRaw`
-      UPDATE "User"
-      SET "twoFactorBackupCodes" = array_remove("twoFactorBackupCodes", ${upperToken})
-      WHERE id = ${userId}
-        AND ${upperToken} = ANY("twoFactorBackupCodes")
-    `;
-    if (affected > 0) {
-      return { valid: true, usedBackupCode: true };
+    for (const hashedCode of user.twoFactorBackupCodes) {
+      const match = await bcrypt.compare(upperToken, hashedCode);
+      if (match) {
+        // Atomically remove the specific hashed code so it cannot be reused.
+        const affected = await prisma.$executeRaw`
+          UPDATE "User"
+          SET "twoFactorBackupCodes" = array_remove("twoFactorBackupCodes", ${hashedCode})
+          WHERE id = ${userId}
+            AND ${hashedCode} = ANY("twoFactorBackupCodes")
+        `;
+        if (affected > 0) {
+          return { valid: true, usedBackupCode: true };
+        }
+        // Another concurrent request already consumed this code.
+        return { valid: false, error: 'Backup code already used' };
+      }
     }
 
     // Verify TOTP token
