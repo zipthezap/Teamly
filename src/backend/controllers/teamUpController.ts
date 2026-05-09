@@ -802,7 +802,7 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
     throw new BadRequestError('You cannot respond to your own TeamUp request');
   }
 
-  // Check if user has already responded (cancelled responses may be reapplied)
+  // Check if user has already responded (cancelled/declined responses may be reapplied)
   const existingResponse: any = await prisma.teamUpResponse.findFirst({
     where: {
       teamUpRequestId: id,
@@ -810,7 +810,7 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
     }
   });
 
-  if (existingResponse && existingResponse.status !== 'cancelled') {
+  if (existingResponse && !['cancelled', 'declined'].includes(existingResponse.status)) {
     throw new BadRequestError('You have already responded to this request');
   }
 
@@ -853,7 +853,7 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
     };
 
     if (existingResponse) {
-      // Reapplication: update the cancelled record back to pending
+      // Reapplication: update the cancelled/declined record back to pending
       return tx.teamUpResponse.update({
         where: { id: existingResponse.id },
         data: responseData,

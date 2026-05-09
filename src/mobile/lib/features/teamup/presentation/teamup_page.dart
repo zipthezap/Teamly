@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_constants.dart';
@@ -33,6 +34,10 @@ Color _sportAccentColor(String sport) {
   return colors[sport] ?? AppThemeTokens.primary500;
 }
 
+bool _isApplicationBlockingReapply(TeamUpApplicationModel application) {
+  return application.status == 'pending' || application.status == 'accepted';
+}
+
 final editingTeamUpRequestProvider =
     StateProvider<TeamUpRequestModel?>((ref) => null);
 
@@ -53,7 +58,7 @@ class _TeamUpPageState extends ConsumerState<TeamUpPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
   }
 
   @override
@@ -122,6 +127,7 @@ class _TeamUpPageState extends ConsumerState<TeamUpPage>
                   Tab(text: 'Browse'),
                   Tab(text: 'Nearby'),
                   Tab(text: 'My Posts'),
+                  Tab(text: 'Inbox'),
                   Tab(text: 'Applied'),
                   Tab(text: 'Post'),
                 ],
@@ -138,9 +144,10 @@ class _TeamUpPageState extends ConsumerState<TeamUpPage>
           _MyRequestsTab(
             onEdit: (request) {
               ref.read(editingTeamUpRequestProvider.notifier).state = request;
-              _tabController.animateTo(4);
+              _tabController.animateTo(5);
             },
           ),
+          const _IncomingResponsesTab(),
           const _MyApplicationsTab(),
           const _SubmitRequestTab(),
         ],
@@ -173,12 +180,32 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
   String _typeFilter = '';
   String _skillFilter = '';
   String _cityFilter = '';
+  String _searchFilter = '';
+  DateTime? _fromDateFilter;
+  DateTime? _toDateFilter;
+
+  Future<void> _loadWithCurrentFilters() {
+    return ref.read(teamUpNotifierProvider.notifier).load(
+          sportType: _sportFilter,
+          requestType: _typeFilter,
+          skillLevel: _skillFilter,
+          city: _cityFilter,
+          search: _searchFilter,
+          fromDate: _fromDateFilter != null
+              ? DateFormat('yyyy-MM-dd').format(_fromDateFilter!)
+              : null,
+          toDate: _toDateFilter != null
+              ? DateFormat('yyyy-MM-dd').format(_toDateFilter!)
+              : null,
+        );
+  }
 
   @override
   Widget build(BuildContext context) {
     final requestsAsync = ref.watch(teamUpNotifierProvider);
     final applicationsAsync = ref.watch(myTeamUpApplicationsProvider);
     final appliedRequestIds = applicationsAsync.valueOrNull
+            ?.where(_isApplicationBlockingReapply)
             ?.map((application) => application.requestId)
             .toSet() ??
         <String>{};
@@ -211,12 +238,7 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
                       .toList(),
                   onSelected: (value) {
                     setState(() => _sportFilter = value);
-                    ref.read(teamUpNotifierProvider.notifier).load(
-                          sportType: value,
-                          requestType: _typeFilter,
-                          skillLevel: _skillFilter,
-                          city: _cityFilter,
-                        );
+                    _loadWithCurrentFilters();
                   },
                 ),
                 const SizedBox(width: 8),
@@ -229,12 +251,7 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
                   ],
                   onSelected: (value) {
                     setState(() => _typeFilter = value);
-                    ref.read(teamUpNotifierProvider.notifier).load(
-                          sportType: _sportFilter,
-                          requestType: value,
-                          skillLevel: _skillFilter,
-                          city: _cityFilter,
-                        );
+                    _loadWithCurrentFilters();
                   },
                 ),
                 const SizedBox(width: 8),
@@ -249,12 +266,7 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
                   ],
                   onSelected: (value) {
                     setState(() => _skillFilter = value);
-                    ref.read(teamUpNotifierProvider.notifier).load(
-                          sportType: _sportFilter,
-                          requestType: _typeFilter,
-                          skillLevel: value,
-                          city: _cityFilter,
-                        );
+                    _loadWithCurrentFilters();
                   },
                 ),
                 const SizedBox(width: 8),
@@ -264,12 +276,35 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
                   hintText: 'Enter city',
                   onSelected: (value) {
                     setState(() => _cityFilter = value);
-                    ref.read(teamUpNotifierProvider.notifier).load(
-                          sportType: _sportFilter,
-                          requestType: _typeFilter,
-                          skillLevel: _skillFilter,
-                          city: value,
-                        );
+                    _loadWithCurrentFilters();
+                  },
+                ),
+                const SizedBox(width: 8),
+                _TextFilterChip(
+                  label: 'Search',
+                  value: _searchFilter,
+                  hintText: 'Title or description',
+                  onSelected: (value) {
+                    setState(() => _searchFilter = value);
+                    _loadWithCurrentFilters();
+                  },
+                ),
+                const SizedBox(width: 8),
+                _DateFilterChip(
+                  label: 'From',
+                  value: _fromDateFilter,
+                  onSelected: (value) {
+                    setState(() => _fromDateFilter = value);
+                    _loadWithCurrentFilters();
+                  },
+                ),
+                const SizedBox(width: 8),
+                _DateFilterChip(
+                  label: 'To',
+                  value: _toDateFilter,
+                  onSelected: (value) {
+                    setState(() => _toDateFilter = value);
+                    _loadWithCurrentFilters();
                   },
                 ),
               ],
@@ -281,15 +316,8 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, _) => ErrorDisplay(
               message: extractErrorMessage(error),
-              onRetry: () => ref
-                  .read(teamUpNotifierProvider.notifier)
-                  .load(
-                    sportType: _sportFilter,
-                    requestType: _typeFilter,
-                    skillLevel: _skillFilter,
-                    city: _cityFilter,
-                  ),
-             ),
+              onRetry: _loadWithCurrentFilters,
+              ),
             data: (requests) {
               if (requests.isEmpty) {
                 return const UiEmptyState(
@@ -301,14 +329,7 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
               }
 
                 return RefreshIndicator(
-                  onRefresh: () => ref
-                      .read(teamUpNotifierProvider.notifier)
-                      .load(
-                        sportType: _sportFilter,
-                        requestType: _typeFilter,
-                        skillLevel: _skillFilter,
-                        city: _cityFilter,
-                      ),
+                  onRefresh: _loadWithCurrentFilters,
                   child: ListView.builder(
                   padding:
                       const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -740,6 +761,121 @@ class _MyRequestsTabState extends ConsumerState<_MyRequestsTab> {
 }
 
 // ---------------------------------------------------------------------------
+// Incoming responses tab – creator inbox via /teamup/my-responses
+// ---------------------------------------------------------------------------
+
+class _IncomingResponsesTab extends ConsumerWidget {
+  const _IncomingResponsesTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final responsesAsync = ref.watch(myTeamUpResponsesProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return responsesAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => ErrorDisplay(
+        message: extractErrorMessage(e),
+        onRetry: () => ref.invalidate(myTeamUpResponsesProvider),
+      ),
+      data: (responses) {
+        if (responses.isEmpty) {
+          return const UiEmptyState(
+            icon: Icons.inbox_outlined,
+            title: 'No incoming responses',
+            message: "You don't have new responses on your TeamUp posts yet.",
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(myTeamUpResponsesProvider),
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            itemCount: responses.length,
+            itemBuilder: (context, index) {
+              final response = responses[index];
+              final accent = AppThemeTokens.primary400;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppThemeTokens.darkCard.withValues(alpha: 0.92)
+                      : AppThemeTokens.lightCard.withValues(alpha: 0.98),
+                  borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+                  border: Border.all(
+                    color: isDark
+                        ? AppThemeTokens.darkBorder
+                        : AppThemeTokens.lightBorder,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        UserAvatar(
+                          name: response.responderName,
+                          imageUrl: response.responderPicture,
+                          radius: 14,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            response.responderName,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        UiStatusBadge(
+                          label: response.status,
+                          status: UiStatusBadge.fromString(response.status),
+                        ),
+                      ],
+                    ),
+                    if (response.message.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        response.message,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark
+                              ? AppThemeTokens.darkTextSecondary
+                              : AppThemeTokens.lightTextSecondary,
+                        ),
+                      ),
+                    ],
+                    if (response.requestPositionName != null &&
+                        response.requestPositionName!.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      _MetaChip(
+                        icon: Icons.sports_kabaddi_outlined,
+                        label: response.requestPositionName!,
+                        color: AppThemeTokens.info,
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        onPressed: () => context.push('/teamup/${response.requestId}'),
+                        icon: Icon(Icons.open_in_new_outlined, size: 16, color: accent),
+                        label: const Text('Open request'),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // My applications tab – responses I submitted to others' requests
 // ---------------------------------------------------------------------------
 
@@ -929,10 +1065,10 @@ class _MyApplicationsTab extends ConsumerWidget {
                                   ],
                                  ),
                                ],
-                               if (app.status == 'pending') ...[
-                                 const SizedBox(height: 10),
-                                 Align(
-                                   alignment: Alignment.centerLeft,
+                                if (app.status == 'pending') ...[
+                                  const SizedBox(height: 10),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
                                    child: OutlinedButton.icon(
                                      onPressed: () async {
                                        try {
@@ -971,13 +1107,34 @@ class _MyApplicationsTab extends ConsumerWidget {
                                        }
                                      },
                                      icon: const Icon(Icons.undo_outlined),
-                                     label: const Text('Withdraw'),
-                                   ),
-                                 ),
-                               ],
-                             ],
-                           ),
-                         ),
+                                      label: const Text('Withdraw'),
+                                    ),
+                                  ),
+                                ],
+                                if (app.status == 'cancelled' ||
+                                    app.status == 'declined') ...[
+                                  const SizedBox(height: 10),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      UiStatusBadge(
+                                        label: 'You can apply again',
+                                        status: UiStatusType.info,
+                                      ),
+                                      OutlinedButton.icon(
+                                        onPressed: () =>
+                                            context.push('/teamup/${app.requestId}'),
+                                        icon:
+                                            const Icon(Icons.replay_outlined, size: 16),
+                                        label: const Text('Open to reapply'),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
                       ),
                     ],
                   ),
@@ -1917,7 +2074,9 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
         ref.watch(authNotifierProvider.select((state) => state.user?.id));
     final applications = ref.watch(myTeamUpApplicationsProvider).valueOrNull ?? const [];
     final hasApplied =
-        applications.any((application) => application.requestId == r.id);
+        applications.any((application) =>
+            application.requestId == r.id &&
+            _isApplicationBlockingReapply(application));
     final isOwner = currentUserId != null && currentUserId == r.creatorId;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -2788,6 +2947,117 @@ class _TextFilterChip extends StatelessWidget {
             const SizedBox(width: 4),
             Icon(
               Icons.location_city_outlined,
+              size: 16,
+              color: selected
+                  ? AppThemeTokens.primary400
+                  : (isDark
+                      ? AppThemeTokens.darkTextMuted
+                      : AppThemeTokens.lightTextMuted),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DateFilterChip extends StatelessWidget {
+  const _DateFilterChip({
+    required this.label,
+    required this.value,
+    required this.onSelected,
+  });
+
+  final String label;
+  final DateTime? value;
+  final void Function(DateTime?) onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final selected = value != null;
+
+    return GestureDetector(
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: value ?? DateTime.now(),
+          firstDate: DateTime.now().subtract(const Duration(days: 365)),
+          lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+        );
+        if (picked == null) return;
+        if (!context.mounted) return;
+        final action = await showDialog<String>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('$label filter'),
+            content: Text('Use ${DateFormat('MMM d, yyyy').format(picked)}?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop('clear'),
+                child: const Text('Clear'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop('apply'),
+                child: const Text('Apply'),
+              ),
+            ],
+          ),
+        );
+        if (action == 'clear') {
+          onSelected(null);
+          return;
+        }
+        if (action == 'apply') {
+          onSelected(picked);
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppThemeTokens.primary500.withValues(alpha: 0.15)
+              : (isDark
+                  ? AppThemeTokens.darkCardElevated
+                  : AppThemeTokens.lightCardElevated),
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
+          border: Border.all(
+            color: selected
+                ? AppThemeTokens.primary500
+                : (isDark
+                    ? AppThemeTokens.darkBorder
+                    : AppThemeTokens.lightBorder),
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (selected)
+              const Padding(
+                padding: EdgeInsets.only(right: 5),
+                child: Icon(
+                  Icons.check_circle_rounded,
+                  size: 13,
+                  color: AppThemeTokens.primary400,
+                ),
+              ),
+            Text(
+              selected ? DateFormat('MMM d').format(value!) : label,
+              style: TextStyle(
+                color: selected
+                    ? AppThemeTokens.primary400
+                    : (isDark
+                        ? AppThemeTokens.darkTextSecondary
+                        : AppThemeTokens.lightTextSecondary),
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.calendar_today_outlined,
               size: 16,
               color: selected
                   ? AppThemeTokens.primary400

@@ -80,6 +80,39 @@ export const teamUpCommentLimiter = rateLimit({
   keyGenerator: authAwareKeyGenerator,
 });
 
+// TeamUp post limiter to prevent request creation spam
+export const teamUpCreateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: 'Too many TeamUp requests created, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+  keyGenerator: authAwareKeyGenerator,
+});
+
+// TeamUp response limiter to prevent application spam bursts
+export const teamUpRespondLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 40,
+  message: { error: 'Too many TeamUp responses submitted, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+  keyGenerator: authAwareKeyGenerator,
+});
+
+// TeamUp report limiter to reduce report endpoint abuse
+export const teamUpReportLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many TeamUp reports submitted, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+  keyGenerator: authAwareKeyGenerator,
+});
+
 // Stricter limiter for file uploads to prevent abuse
 export const uploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
