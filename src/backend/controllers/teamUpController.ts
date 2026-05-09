@@ -1,6 +1,12 @@
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import { Request, Response } from 'express';
+import {
+  Prisma,
+  TeamUpModerationStatus,
+  TeamUpRequestType as PrismaTeamUpRequestType,
+  TeamUpResponseStatus,
+} from '@prisma/client';
 import * as teamUpService from '../services/teamUpService';
 import * as locationService from '../services/locationService';
 import * as teamUpNotificationService from '../services/teamUpNotificationService';
@@ -564,7 +570,7 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
       source: typeof source === 'string' ? source : 'browse',
     })),
     skipDuplicates: false,
-  }).catch(() => undefined);
+  }).catch((_error: unknown): undefined => undefined);
 
   // Calculate next cursor for cursor-based pagination – encode last item's (id, dateTime) as base64 JSON
   const lastItem = teamUpRequests.length === validatedLimit ? teamUpRequests[teamUpRequests.length - 1] : null;
@@ -730,7 +736,7 @@ export const getTeamUpRequest = async (req: Request, res: Response) => {
       viewerId: req.user!.id,
       source: 'detail',
     },
-  }).catch(() => undefined);
+  }).catch((_error: unknown): undefined => undefined);
 
   const enrichedRequest = locationService.enrichWithLocationInfo(
     teamUpService.withPositionAvailability(teamUpRequest)
@@ -1098,7 +1104,6 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
       autoFillOfferedAt,
       autoFillExpiresAt,
       rsvpStatus: 'unset' as const,
-      rsvpUpdatedAt: null,
     };
 
     if (existingResponse) {
@@ -2050,15 +2055,16 @@ export const bulkHandleTeamUpResponses = async (req: Request, res: Response) => 
     throw new BadRequestError('Bulk accept exceeds available slots');
   }
 
-  const updateData = {
-    status: action === 'accept' ? 'accepted' : 'declined',
-    ...(action === 'accept'
-      ? {}
+  const updateData: Prisma.TeamUpResponseUpdateManyMutationInput =
+    action === 'accept'
+      ? {
+          status: TeamUpResponseStatus.accepted,
+        }
       : {
-          rsvpStatus: 'unset' as const,
+          status: TeamUpResponseStatus.declined,
+          rsvpStatus: 'unset',
           rsvpUpdatedAt: null,
-        }),
-  };
+        };
 
   await prisma.teamUpResponse.updateMany({
     where: { id: { in: responses.map((item) => item.id) } },
@@ -2135,7 +2141,7 @@ export const updateTeamUpRsvp = async (req: Request, res: Response) => {
         actionUrl: `/teamup/${response.teamUpRequestId}`,
       },
     },
-  }).catch(() => undefined);
+  }).catch((_error: unknown): undefined => undefined);
 
   res.json(updated);
 };
@@ -2266,7 +2272,7 @@ export const sendTeamUpReminderNudges = async (req: Request, res: Response) => {
       sportType: requestRecord.sportType,
     },
     metadata: { actionUrl: `/teamup/${id}`, reminder: true },
-  }).catch(() => undefined);
+  }).catch((_error: unknown): undefined => undefined);
 
   res.json({ message: 'Reminder nudges sent', notifiedCount: recipients.length });
 };
@@ -2277,7 +2283,13 @@ export const listTeamUpModerationCases = async (req: Request, res: Response) => 
   const parsedLimit = Math.min(Math.max(parseInt(String(limit), 10) || 50, 1), 200);
   const parsedOffset = Math.max(parseInt(String(offset), 10) || 0, 0);
 
-  const where = status === 'all' ? {} : { status: String(status) };
+  const normalizedStatus = String(status);
+  const where: Prisma.TeamUpModerationCaseWhereInput =
+    normalizedStatus === 'all'
+      ? {}
+      : {
+          status: normalizedStatus as TeamUpModerationStatus,
+        };
   const [cases, total] = await prisma.$transaction([
     prisma.teamUpModerationCase.findMany({
       where,
@@ -2380,7 +2392,7 @@ export const createTeamUpSavedSearch = async (req: Request, res: Response) => {
       requestType:
         typeof requestType === 'string' &&
         teamUpService.VALID_REQUEST_TYPES.includes(requestType as TeamUpRequestType)
-          ? requestType
+          ? (requestType as PrismaTeamUpRequestType)
           : null,
       skillLevel: teamUpService.parseSkillLevel(skillLevel, 'skillLevel'),
       city: typeof city === 'string' ? sanitizeString(city) : null,
