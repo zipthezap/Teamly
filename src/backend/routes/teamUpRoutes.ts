@@ -1,7 +1,13 @@
 import { Router } from 'express';
 import * as teamUpController from '../controllers/teamUpController';
 import authMiddleware from '../middleware/auth';
-import { authenticatedLimiter, teamUpCommentLimiter } from '../middleware/rateLimiter';
+import {
+  authenticatedLimiter,
+  teamUpCommentLimiter,
+  teamUpCreateLimiter,
+  teamUpRespondLimiter,
+  teamUpReportLimiter,
+} from '../middleware/rateLimiter';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { requireTeamUpPermission } from '../middleware/authorization';
 import { Permission } from '../../shared/types/permissions.types';
@@ -14,7 +20,7 @@ router.use(authMiddleware);
 router.use(authenticatedLimiter);
 
 // Create a TeamUp request (authenticated users can create)
-router.post('/', noCache, asyncHandler(teamUpController.createTeamUpRequest));
+router.post('/', noCache, teamUpCreateLimiter, asyncHandler(teamUpController.createTeamUpRequest));
 
 // Get all TeamUp requests (browse with filters) - cache for 60 seconds
 router.get('/', cacheControl(60, { private: true, staleWhileRevalidate: 30 }), asyncHandler(teamUpController.getTeamUpRequests));
@@ -51,7 +57,7 @@ router.delete(
 );
 
 // Respond to a TeamUp request (authenticated users can respond)
-router.post('/:id/respond', noCache, asyncHandler(teamUpController.respondToTeamUpRequest));
+router.post('/:id/respond', noCache, teamUpRespondLimiter, asyncHandler(teamUpController.respondToTeamUpRequest));
 
 // Withdraw my pending response to a TeamUp request
 router.delete('/:id/respond', noCache, asyncHandler(teamUpController.withdrawTeamUpResponse));
@@ -74,6 +80,6 @@ router.post('/:id/comments', noCache, teamUpCommentLimiter, asyncHandler(teamUpC
 router.delete('/:id/comments/:commentId', noCache, asyncHandler(teamUpController.deleteTeamUpComment));
 
 // Report a TeamUp request
-router.post('/:id/report', noCache, asyncHandler(teamUpController.reportTeamUpRequest));
+router.post('/:id/report', noCache, teamUpReportLimiter, asyncHandler(teamUpController.reportTeamUpRequest));
 
 export default router;

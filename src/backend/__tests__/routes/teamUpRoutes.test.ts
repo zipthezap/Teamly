@@ -12,6 +12,9 @@ vi.mock('../../middleware/rateLimiter', () => ({
   apiLimiter: (_: any, __: any, next: any) => next(),
   authLimiter: (_: any, __: any, next: any) => next(),
   teamUpCommentLimiter: (_: any, __: any, next: any) => next(),
+  teamUpCreateLimiter: (_: any, __: any, next: any) => next(),
+  teamUpRespondLimiter: (_: any, __: any, next: any) => next(),
+  teamUpReportLimiter: (_: any, __: any, next: any) => next(),
 }));
 vi.mock('../../middleware/distributedRateLimiter', () => ({
   distributedAuthLimiter: (_: any, __: any, next: any) => next(),

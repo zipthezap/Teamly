@@ -13,6 +13,9 @@ vi.mock('../../middleware/rateLimiter', () => ({
   passwordResetLimiter: (_: any, __: any, next: any) => next(),
   emailVerificationLimiter: (_: any, __: any, next: any) => next(),
   teamUpCommentLimiter: (_: any, __: any, next: any) => next(),
+  teamUpCreateLimiter: (_: any, __: any, next: any) => next(),
+  teamUpRespondLimiter: (_: any, __: any, next: any) => next(),
+  teamUpReportLimiter: (_: any, __: any, next: any) => next(),
 }));
 vi.mock('../../middleware/distributedRateLimiter', () => ({
   distributedAuthLimiter: (_: any, __: any, next: any) => next(),
@@ -389,6 +392,33 @@ describe('TeamUpController', () => {
         .send({ message: 'I want to join' });
 
       expect(res.status).toBe(400);
+    });
+
+    it('allows reapplying after a declined response', async () => {
+      vi.mocked(prisma.teamUpRequest.findUnique).mockResolvedValueOnce({
+        ...mockTeamUpRequest,
+        creatorId: 'another-user-id',
+        status: 'open',
+        dateTime: new Date(Date.now() + 3600000),
+        positions: [],
+      } as any);
+      vi.mocked(prisma.teamUpResponse.findFirst).mockResolvedValueOnce({
+        id: 'response-1',
+        status: 'declined',
+        userId: 'test-user-id',
+      } as any);
+      vi.mocked(prisma.teamUpResponse.update).mockResolvedValueOnce({
+        id: 'response-1',
+        teamUpRequestId: 'teamup-1',
+        userId: 'test-user-id',
+        status: 'pending',
+      } as any);
+
+      const res = await request(app)
+        .post('/api/teamup/teamup-1/respond')
+        .send({ message: 'Can I reapply?' });
+
+      expect(res.status).toBe(201);
     });
 
   });
