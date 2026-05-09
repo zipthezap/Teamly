@@ -214,11 +214,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   // Check if 2FA is enabled
   if (user.twoFactorEnabled) {
     if (!twoFactorToken) {
-      // Return a flag indicating 2FA is required without exposing the user ID
+      // Return a challenge flag. Do NOT include user ID or email to avoid
+      // leaking account existence beyond what password validation already implies.
       res.status(200).json({
         requires2FA: true,
-        // Note: In production, consider using a temporary session token instead
-        tempAuth: email // Use email instead of userId for the second request
       });
       return;
     }
@@ -227,6 +226,19 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const validation = await validate2FAToken(user.id, twoFactorToken);
 
     if (!validation.valid) {
+      // Re-increment the failed-login counter so 2FA brute-force after a
+      // known-good password is subject to the same lockout as password attempts.
+      const updatedUser = await prisma.user.update({
+        where: { id: user.id },
+        data: { failedLoginAttempts: { increment: 1 } },
+        select: { failedLoginAttempts: true },
+      });
+      if (updatedUser.failedLoginAttempts >= 5) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { accountLockedUntil: new Date(Date.now() + 15 * 60 * 1000) },
+        });
+      }
       throw new UnauthorizedError(validation.error || 'Invalid 2FA token');
     }
   }

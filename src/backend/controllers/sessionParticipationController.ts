@@ -165,7 +165,7 @@ export const leaveEvent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // Use a transaction to ensure atomicity
+    // Use a transaction with serializable isolation to prevent race conditions
     const result = await prisma.$transaction(async (tx) => {
       // Get session details
       const session = await tx.session.findUnique({
@@ -248,6 +248,10 @@ export const leaveEvent = async (req: Request, res: Response) => {
       );
 
       return { groupId: session.groupId, promotedUserId, eventTitle: session.title };
+    }, {
+      isolationLevel: 'Serializable',
+      maxWait: TRANSACTION.MAX_WAIT_MS,
+      timeout: TRANSACTION.TIMEOUT_MS
     });
 
     // Invalidate events cache for all group members
@@ -287,11 +291,15 @@ export const updateParticipationStatus = async (req: Request, res: Response) => 
     const { id } = req.params;
     const { status } = req.body;
 
-    // Validate status using enum
-    const validStatuses = Object.values(SessionParticipantStatus);
-    if (!status || !validStatuses.includes(status as SessionParticipantStatus)) {
+    // Validate status using enum – only statuses a participant may set themselves
+    const selfAssignableStatuses: SessionParticipantStatus[] = [
+      SessionParticipantStatus.confirmed,
+      SessionParticipantStatus.declined,
+      SessionParticipantStatus.pending,
+    ];
+    if (!status || !selfAssignableStatuses.includes(status as SessionParticipantStatus)) {
       return res.status(400).json({ 
-        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` 
+        error: `Invalid status. Must be one of: ${selfAssignableStatuses.join(', ')}` 
       });
     }
 

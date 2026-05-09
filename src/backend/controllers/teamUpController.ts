@@ -257,9 +257,34 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
   }
   where.dateTime = dateFilter;
 
-  // Add cursor-based pagination if cursor is provided
+  // Decode cursor: encoded as base64 JSON {id, dateTime} for composite sort stability
+  let cursorCondition: Record<string, unknown> | undefined;
   if (cursor) {
-    where.id = { gt: cursor as string };
+    try {
+      const decoded = JSON.parse(Buffer.from(cursor as string, 'base64').toString('utf8')) as { id: string; dateTime: string };
+      const cursorDate = new Date(decoded.dateTime);
+      // Include rows where dateTime > cursorDate OR (dateTime == cursorDate AND id > cursorId)
+      cursorCondition = {
+        OR: [
+          { dateTime: { gt: cursorDate } },
+          { dateTime: { equals: cursorDate }, id: { gt: decoded.id } },
+        ],
+      };
+    } catch {
+      // Malformed cursor – ignore and start from the beginning
+    }
+  }
+
+  // Merge cursor condition into the where clause
+  if (cursorCondition) {
+    // Combine with existing OR (search) if present using AND
+    const existing = where.OR;
+    if (existing) {
+      where.AND = [{ OR: existing as unknown[] }, cursorCondition];
+      delete where.OR;
+    } else {
+      Object.assign(where, cursorCondition);
+    }
   }
 
   // Optimize query - fetch responses separately for large result sets
@@ -349,9 +374,10 @@ export const getTeamUpRequests = async (req: Request, res: Response) => {
     locationService.enrichWithLocationInfo(request)
   );
 
-  // Calculate next cursor for cursor-based pagination
-  const nextCursor = teamUpRequests.length === validatedLimit 
-    ? teamUpRequests[teamUpRequests.length - 1].id 
+  // Calculate next cursor for cursor-based pagination – encode last item's (id, dateTime) as base64 JSON
+  const lastItem = teamUpRequests.length === validatedLimit ? teamUpRequests[teamUpRequests.length - 1] : null;
+  const nextCursor = lastItem
+    ? Buffer.from(JSON.stringify({ id: lastItem.id, dateTime: lastItem.dateTime })).toString('base64')
     : null;
 
   // Return paginated response with metadata
@@ -576,7 +602,13 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
   if (sanitized.city !== undefined) updateData.city = sanitized.city;
   if (sanitized.country !== undefined) updateData.country = sanitized.country;
   if (sanitized.skillLevel !== undefined) updateData.skillLevel = sanitized.skillLevel;
-  if (status !== undefined) updateData.status = status;
+  if (status !== undefined) {
+    const VALID_REQUEST_STATUSES = ['open', 'filled', 'cancelled'] as const;
+    if (!VALID_REQUEST_STATUSES.includes(status as typeof VALID_REQUEST_STATUSES[number])) {
+      throw new BadRequestError(`status must be one of: ${VALID_REQUEST_STATUSES.join(', ')}`);
+    }
+    updateData.status = status;
+  }
 
   // Validate and set requestType if provided
   if (requestType !== undefined) {
@@ -615,6 +647,22 @@ export const updateTeamUpRequest = async (req: Request, res: Response) => {
   }
 
   if (positionsInput !== undefined) {
+    // Prevent replacing positions that already have accepted responses, since
+    // doing so would orphan those responses (requestPositionId → null via onDelete:SetNull).
+    const acceptedPositionResponses = await prisma.teamUpResponse.count({
+      where: {
+        teamUpRequestId: id,
+        status: 'accepted',
+        // @ts-ignore
+        requestPositionId: { not: null },
+      },
+    });
+    if (acceptedPositionResponses > 0) {
+      throw new BadRequestError(
+        'Cannot replace positions while accepted responses are linked to them'
+      );
+    }
+
     const { derivedPlayersNeeded, derivedSkillLevel } =
       teamUpService.deriveRequestLevelFieldsFromPositions(parsedPositions);
     updateData.playersNeeded = derivedPlayersNeeded;
@@ -754,7 +802,7 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
     throw new BadRequestError('You cannot respond to your own TeamUp request');
   }
 
-  // Check if user has already responded
+  // Check if user has already responded (cancelled responses may be reapplied)
   const existingResponse: any = await prisma.teamUpResponse.findFirst({
     where: {
       teamUpRequestId: id,
@@ -762,7 +810,7 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
     }
   });
 
-  if (existingResponse) {
+  if (existingResponse && existingResponse.status !== 'cancelled') {
     throw new BadRequestError('You have already responded to this request');
   }
 
@@ -771,59 +819,67 @@ export const respondToTeamUpRequest = async (req: Request, res: Response) => {
     throw new BadRequestError('requestPositionId is required for this TeamUp request');
   }
 
-  let selectedPositionId: string | null = null;
+  let selectedPosition: any = null;
   if (requestPositionId) {
-    const selectedPosition = teamUpRequest.positions.find((position: any) => position.id === requestPositionId);
+    selectedPosition = teamUpRequest.positions.find((position: any) => position.id === requestPositionId);
     if (!selectedPosition) {
       throw new BadRequestError('Invalid requestPositionId for this TeamUp request');
     }
-
-    const acceptedForPosition = await prisma.teamUpResponse.count({
-      where: {
-        teamUpRequestId: id,
-        // @ts-ignore
-        requestPositionId,
-        status: 'accepted',
-      },
-    });
-    if (acceptedForPosition >= selectedPosition.slotsNeeded) {
-      throw new BadRequestError('Selected position is already filled');
-    }
-    selectedPositionId = selectedPosition.id;
   }
 
-  const response: any = await prisma.teamUpResponse.create({
-    data: {
-      teamUpRequestId: id,
-      userId: req.user!.id,
-      message: sanitized.message,
-      status: 'pending',
-      // @ts-ignore
-      requestPositionId: selectedPositionId,
-      applicantSkillLevel: sanitizedApplicantSkillLevel ?? null,
-    },
-    // @ts-ignore
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          profilePicture: true
-        }
-      },
-      // @ts-ignore
-      // @ts-ignore
-      requestPosition: {
-        select: {
-          id: true,
-          name: true,
-          slotsNeeded: true,
-          skillLevelRequired: true,
+  // Perform the slot-fill check and response upsert atomically to prevent
+  // two concurrent requests from overfilling the same position slot.
+  const response: any = await prisma.$transaction(async (tx) => {
+    if (selectedPosition) {
+      const acceptedForPosition = await tx.teamUpResponse.count({
+        where: {
+          teamUpRequestId: id,
+          // @ts-ignore
+          requestPositionId: selectedPosition.id,
+          status: 'accepted',
         },
-      },
+      });
+      if (acceptedForPosition >= selectedPosition.slotsNeeded) {
+        throw new BadRequestError('Selected position is already filled');
+      }
     }
-  });
+
+    const responseData = {
+      message: sanitized.message,
+      status: 'pending' as const,
+      // @ts-ignore
+      requestPositionId: selectedPosition?.id ?? null,
+      applicantSkillLevel: sanitizedApplicantSkillLevel ?? null,
+    };
+
+    if (existingResponse) {
+      // Reapplication: update the cancelled record back to pending
+      return tx.teamUpResponse.update({
+        where: { id: existingResponse.id },
+        data: responseData,
+        // @ts-ignore
+        include: {
+          user: { select: { id: true, name: true, email: true, profilePicture: true } },
+          // @ts-ignore
+          requestPosition: { select: { id: true, name: true, slotsNeeded: true, skillLevelRequired: true } },
+        },
+      });
+    }
+
+    return tx.teamUpResponse.create({
+      data: {
+        teamUpRequestId: id,
+        userId: req.user!.id,
+        ...responseData,
+      },
+      // @ts-ignore
+      include: {
+        user: { select: { id: true, name: true, email: true, profilePicture: true } },
+        // @ts-ignore
+        requestPosition: { select: { id: true, name: true, slotsNeeded: true, skillLevelRequired: true } },
+      },
+    });
+  }, { isolationLevel: 'Serializable' });
 
   // Create notification for the request creator
   try {
