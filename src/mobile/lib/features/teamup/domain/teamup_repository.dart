@@ -30,6 +30,7 @@ abstract class TeamUpRepository {
   });
   Future<void> handleResponse(String requestId, String responseId, String action);
   Future<void> withdrawResponse(String requestId);
+  Future<void> updateRsvp(String requestId, String rsvpStatus);
   Future<List<TeamUpResponseModel>> getRequestResponses(String id);
   Future<List<TeamUpCommentModel>> getComments(String id);
   Future<TeamUpCommentModel> addComment(String id, String content);

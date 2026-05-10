@@ -34,6 +34,21 @@ router.get('/my-requests', cacheControl(120, { private: true, staleWhileRevalida
 // Get applications I submitted (responder view: responses I submitted to others' requests)
 router.get('/my-applications', cacheControl(60, { private: true }), asyncHandler(teamUpController.getMyTeamUpApplications));
 
+// Attendance history for current user
+router.get('/attendance-history', cacheControl(60, { private: true }), asyncHandler(teamUpController.getMyTeamUpAttendanceHistory));
+
+// Saved searches
+router.get('/saved-searches', cacheControl(60, { private: true }), asyncHandler(teamUpController.listTeamUpSavedSearches));
+router.post('/saved-searches', noCache, asyncHandler(teamUpController.createTeamUpSavedSearch));
+router.delete('/saved-searches/:searchId', noCache, asyncHandler(teamUpController.deleteTeamUpSavedSearch));
+
+// Operational analytics
+router.get('/analytics', cacheControl(120, { private: true }), asyncHandler(teamUpController.getTeamUpAnalytics));
+
+// Moderation queue (admin)
+router.get('/moderation/reports', noCache, asyncHandler(teamUpController.listTeamUpModerationCases));
+router.put('/moderation/reports/:caseId', noCache, asyncHandler(teamUpController.updateTeamUpModerationCase));
+
 // Get responses for user's TeamUp requests - cache for 1 minute
 router.get('/my-responses', cacheControl(60, { private: true }), asyncHandler(teamUpController.getMyTeamUpResponses));
 
@@ -61,6 +76,7 @@ router.post('/:id/respond', noCache, teamUpRespondLimiter, asyncHandler(teamUpCo
 
 // Withdraw my pending response to a TeamUp request
 router.delete('/:id/respond', noCache, asyncHandler(teamUpController.withdrawTeamUpResponse));
+router.put('/:id/respond/rsvp', noCache, asyncHandler(teamUpController.updateTeamUpRsvp));
 
 // Accept or decline a response (creator only)
 router.post(
@@ -68,6 +84,30 @@ router.post(
   noCache,
   requireTeamUpPermission(Permission.TEAMUP_MANAGE_RESPONSES),
   asyncHandler(teamUpController.handleTeamUpResponse)
+);
+router.post(
+  '/:id/responses/bulk-handle',
+  noCache,
+  requireTeamUpPermission(Permission.TEAMUP_MANAGE_RESPONSES),
+  asyncHandler(teamUpController.bulkHandleTeamUpResponses)
+);
+router.put(
+  '/:id/responses/:responseId/attendance',
+  noCache,
+  requireTeamUpPermission(Permission.TEAMUP_MANAGE_RESPONSES),
+  asyncHandler(teamUpController.markTeamUpAttendance)
+);
+router.post(
+  '/:id/reminders',
+  noCache,
+  requireTeamUpPermission(Permission.TEAMUP_MANAGE_RESPONSES),
+  asyncHandler(teamUpController.sendTeamUpReminderNudges)
+);
+router.get(
+  '/:id/replacements/suggestions',
+  cacheControl(30, { private: true }),
+  requireTeamUpPermission(Permission.TEAMUP_MANAGE_RESPONSES),
+  asyncHandler(teamUpController.getTeamUpReplacementSuggestions)
 );
 
 // Get comments for a TeamUp request - cache for 1 minute

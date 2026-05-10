@@ -35,7 +35,45 @@ Color _sportAccentColor(String sport) {
 }
 
 bool _isApplicationBlockingReapply(TeamUpApplicationModel application) {
+  if (application.blocksReapply) return true;
   return application.status == 'pending' || application.status == 'accepted';
+}
+
+String _applicationStatusLabel(TeamUpApplicationModel? application) {
+  if (application == null) return 'Open';
+  switch (application.status) {
+    case 'pending':
+      return 'Applied';
+    case 'accepted':
+      return 'Accepted';
+    case 'waitlisted':
+      return application.waitlistRank != null
+          ? 'Waitlisted #${application.waitlistRank}'
+          : 'Waitlisted';
+    case 'cancelled':
+      return 'Withdrawn';
+    case 'declined':
+      return 'Declined';
+    default:
+      return application.status;
+  }
+}
+
+UiStatusType _applicationStatusType(TeamUpApplicationModel? application) {
+  if (application == null) return UiStatusType.success;
+  switch (application.status) {
+    case 'pending':
+      return UiStatusType.info;
+    case 'accepted':
+      return UiStatusType.success;
+    case 'waitlisted':
+      return UiStatusType.warning;
+    case 'cancelled':
+    case 'declined':
+      return UiStatusType.defaultStatus;
+    default:
+      return UiStatusType.defaultStatus;
+  }
 }
 
 final editingTeamUpRequestProvider =
@@ -204,11 +242,10 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
   Widget build(BuildContext context) {
     final requestsAsync = ref.watch(teamUpNotifierProvider);
     final applicationsAsync = ref.watch(myTeamUpApplicationsProvider);
-    final appliedRequestIds = applicationsAsync.valueOrNull
-            ?.where(_isApplicationBlockingReapply)
-            ?.map((application) => application.requestId)
-            .toSet() ??
-        <String>{};
+    final applicationsByRequest = {
+      for (final application in applicationsAsync.valueOrNull ?? const <TeamUpApplicationModel>[])
+        application.requestId: application
+    };
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
@@ -334,12 +371,15 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
                   padding:
                       const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                     itemCount: requests.length,
-                    itemBuilder: (context, index) =>
-                       _RequestTile(
-                         request: requests[index],
-                         hasApplied:
-                             appliedRequestIds.contains(requests[index].id),
-                       ),
+                     itemBuilder: (context, index) =>
+                        _RequestTile(
+                          request: requests[index],
+                          hasApplied:
+                              applicationsByRequest[requests[index].id] != null &&
+                              _isApplicationBlockingReapply(
+                                  applicationsByRequest[requests[index].id]!),
+                          application: applicationsByRequest[requests[index].id],
+                        ),
                  ),
                 );
             },
@@ -1065,7 +1105,7 @@ class _MyApplicationsTab extends ConsumerWidget {
                                   ],
                                  ),
                                ],
-                                if (app.status == 'pending') ...[
+                                 if (app.status == 'pending') ...[
                                   const SizedBox(height: 10),
                                   Align(
                                     alignment: Alignment.centerLeft,
@@ -1110,18 +1150,100 @@ class _MyApplicationsTab extends ConsumerWidget {
                                       label: const Text('Withdraw'),
                                     ),
                                   ),
-                                ],
-                                if (app.status == 'cancelled' ||
-                                    app.status == 'declined') ...[
-                                  const SizedBox(height: 10),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: [
-                                      UiStatusBadge(
-                                        label: 'You can apply again',
-                                        status: UiStatusType.info,
-                                      ),
+                                 ],
+                                 if (app.status == 'accepted') ...[
+                                   const SizedBox(height: 10),
+                                   Wrap(
+                                     spacing: 8,
+                                     runSpacing: 8,
+                                     children: [
+                                       UiStatusBadge(
+                                         label: app.rsvpStatus == null ||
+                                                 app.rsvpStatus == 'unset'
+                                             ? 'RSVP needed'
+                                             : 'RSVP: ${app.rsvpStatus}',
+                                         status: app.rsvpStatus == 'going'
+                                             ? UiStatusType.success
+                                             : UiStatusType.info,
+                                       ),
+                                       OutlinedButton.icon(
+                                         onPressed: () async {
+                                           final nextStatus = await showModalBottomSheet<String>(
+                                             context: context,
+                                             builder: (ctx) => SafeArea(
+                                               child: Column(
+                                                 mainAxisSize: MainAxisSize.min,
+                                                 children: [
+                                                   ListTile(
+                                                     leading: const Icon(Icons.check_circle_outline),
+                                                     title: const Text('Going'),
+                                                     onTap: () => Navigator.of(ctx).pop('going'),
+                                                   ),
+                                                   ListTile(
+                                                     leading: const Icon(Icons.access_time_outlined),
+                                                     title: const Text('Running late'),
+                                                     onTap: () => Navigator.of(ctx).pop('late'),
+                                                   ),
+                                                   ListTile(
+                                                     leading: const Icon(Icons.cancel_outlined),
+                                                     title: const Text('Can’t make it'),
+                                                     onTap: () => Navigator.of(ctx).pop('cant_make_it'),
+                                                   ),
+                                                 ],
+                                               ),
+                                             ),
+                                           );
+                                           if (nextStatus == null) return;
+                                           try {
+                                             await ref
+                                                 .read(teamUpRepositoryProvider)
+                                                 .updateRsvp(app.requestId, nextStatus);
+                                             ref.invalidate(myTeamUpApplicationsProvider);
+                                             if (context.mounted) {
+                                               ScaffoldMessenger.of(context).showSnackBar(
+                                                 const SnackBar(content: Text('RSVP updated')),
+                                               );
+                                             }
+                                           } on Exception catch (e) {
+                                             if (context.mounted) {
+                                               ScaffoldMessenger.of(context).showSnackBar(
+                                                 SnackBar(
+                                                   content: Text(extractErrorMessage(e)),
+                                                   backgroundColor: Theme.of(context).colorScheme.error,
+                                                 ),
+                                               );
+                                             }
+                                           }
+                                         },
+                                         icon: const Icon(Icons.how_to_reg_outlined, size: 16),
+                                         label: const Text('Update RSVP'),
+                                       ),
+                                     ],
+                                   ),
+                                 ],
+                                 if (app.status == 'waitlisted') ...[
+                                   const SizedBox(height: 10),
+                                   UiStatusBadge(
+                                     label: app.waitlistRank != null
+                                         ? 'Waitlisted (position ${app.waitlistRank})'
+                                         : 'Waitlisted',
+                                     status: UiStatusType.warning,
+                                   ),
+                                 ],
+                                 if (app.status == 'cancelled' ||
+                                    app.status == 'declined' ||
+                                    app.status == 'waitlisted') ...[
+                                   const SizedBox(height: 10),
+                                   Wrap(
+                                     spacing: 8,
+                                     runSpacing: 8,
+                                     children: [
+                                       UiStatusBadge(
+                                         label: app.status == 'waitlisted'
+                                             ? 'You can reapply to improve your fit'
+                                             : 'You can apply again',
+                                         status: UiStatusType.info,
+                                       ),
                                       OutlinedButton.icon(
                                         onPressed: () =>
                                             context.push('/teamup/${app.requestId}'),
@@ -1705,11 +1827,13 @@ class _RequestTile extends StatelessWidget {
     required this.request,
     this.trailing,
     this.hasApplied = false,
+    this.application,
   });
 
   final TeamUpRequestModel request;
   final Widget? trailing;
   final bool hasApplied;
+  final TeamUpApplicationModel? application;
 
   @override
   Widget build(BuildContext context) {
@@ -1811,19 +1935,15 @@ class _RequestTile extends StatelessWidget {
                                 ],
                               ),
                             ),
-                           UiStatusBadge(
-                             label: hasApplied
-                                 ? 'Applied'
-                                 : request.status == 'open'
-                                     ? 'Open'
-                                     : request.status,
-                             status: hasApplied
-                                 ? UiStatusType.info
-                                 : request.status == 'open'
-                                     ? UiStatusType.success
-                                     : UiStatusType.defaultStatus,
+                            UiStatusBadge(
+                             label: request.status == 'open'
+                                 ? _applicationStatusLabel(application)
+                                 : request.status,
+                             status: request.status == 'open'
+                                 ? _applicationStatusType(application)
+                                 : UiStatusType.defaultStatus,
                              dot: true,
-                           ),
+                            ),
                           if (trailing != null) trailing!,
                         ],
                       ),
@@ -1906,6 +2026,14 @@ class _RequestTile extends StatelessWidget {
                               icon: Icons.check_circle_outline,
                               label: 'Applied',
                               color: AppThemeTokens.primary400,
+                            ),
+                          if (!hasApplied &&
+                              application != null &&
+                              application!.reapplicationEligible)
+                            _MetaChip(
+                              icon: Icons.refresh_outlined,
+                              label: 'Eligible to reapply',
+                              color: AppThemeTokens.info,
                             ),
                         ],
                       ),
@@ -2073,10 +2201,12 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
     final currentUserId =
         ref.watch(authNotifierProvider.select((state) => state.user?.id));
     final applications = ref.watch(myTeamUpApplicationsProvider).valueOrNull ?? const [];
+    final application = applications.cast<TeamUpApplicationModel?>().firstWhere(
+          (item) => item?.requestId == r.id,
+          orElse: () => null,
+        );
     final hasApplied =
-        applications.any((application) =>
-            application.requestId == r.id &&
-            _isApplicationBlockingReapply(application));
+        application != null && _isApplicationBlockingReapply(application);
     final isOwner = currentUserId != null && currentUserId == r.creatorId;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -2624,8 +2754,24 @@ class _RequestDetailSheetState extends ConsumerState<_RequestDetailSheet> {
                     if (hasApplied) ...[
                       UiCard(
                         padding: const EdgeInsets.all(12),
-                        child: const Text(
-                          'You already applied to this TeamUp request.',
+                        child: Text(
+                          application?.status == 'accepted'
+                              ? 'You are accepted for this TeamUp request. Update RSVP in Applied tab.'
+                              : 'You already applied to this TeamUp request.',
+                        ),
+                      ),
+                    ],
+                    if (!hasApplied &&
+                        application != null &&
+                        application!.reapplicationEligible) ...[
+                      UiCard(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          application!.status == 'cancelled'
+                              ? 'Previous application withdrawn. You can reapply now.'
+                              : application!.status == 'declined'
+                                  ? 'Previous application was declined. You can submit a new one.'
+                                  : 'You were waitlisted before. Reapplying can improve your chances.',
                         ),
                       ),
                     ],

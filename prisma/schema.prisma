@@ -329,6 +329,10 @@ model User {
   teamUpRequests    TeamUpRequest[]  @relation("TeamUpRequestCreator")
   teamUpResponses   TeamUpResponse[]
   teamUpComments    TeamUpComment[]
+  teamUpModerationReports TeamUpModerationCase[] @relation("TeamUpModerationReporter")
+  teamUpModerationAssignments TeamUpModerationCase[] @relation("TeamUpModerationAssignee")
+  teamUpSavedSearches TeamUpSavedSearch[]
+  teamUpRequestViews TeamUpRequestView[]
   tournaments       Tournament[]     @relation("TournamentOrganizer")
   captainedTeams    TournamentTeam[] @relation("TeamCaptain")
   tournamentPlayers TournamentPlayer[] @relation("TournamentPlayer")
@@ -799,6 +803,21 @@ enum TeamUpResponseStatus {
   accepted
   declined
   cancelled
+  waitlisted
+}
+
+enum TeamUpRsvpStatus {
+  unset
+  going
+  late
+  cant_make_it
+}
+
+enum TeamUpAttendanceStatus {
+  attended
+  late
+  no_show
+  excused
 }
 
 // TeamUp functionality for finding substitute/replacement players
@@ -829,6 +848,8 @@ model TeamUpRequest {
   responses      TeamUpResponse[]
   notifications  TeamUpNotification[]
   comments       TeamUpComment[]
+  moderationCases TeamUpModerationCase[]
+  views          TeamUpRequestView[]
   
   @@index([creatorId])
   @@index([dateTime])
@@ -869,6 +890,16 @@ model TeamUpResponse {
   message   String?  // Optional message from the responder
   applicantSkillLevel String?
   status    TeamUpResponseStatus   @default(pending)
+  rsvpStatus TeamUpRsvpStatus @default(unset)
+  rsvpUpdatedAt DateTime?
+  attendanceStatus TeamUpAttendanceStatus?
+  attendanceMarkedAt DateTime?
+  attendanceMarkedByUserId String?
+  waitlistRank Int?
+  autoFillOfferedAt DateTime?
+  autoFillExpiresAt DateTime?
+  matchScore Float?
+  matchReasons Json?
   createdAt DateTime @default(now())
   
   teamUpRequestId String
@@ -884,6 +915,9 @@ model TeamUpResponse {
   @@index([userId])
   @@index([status])
   @@index([userId, teamUpRequestId]) // Composite index for permission checks (scalability)
+  @@index([teamUpRequestId, status, requestPositionId])
+  @@index([teamUpRequestId, requestPositionId, waitlistRank])
+  @@index([userId, attendanceStatus])
 }
 
 // Comments/Chat for TeamUp requests
@@ -901,6 +935,70 @@ model TeamUpComment {
   @@index([teamUpRequestId])
   @@index([userId])
   @@index([createdAt])
+}
+
+enum TeamUpModerationStatus {
+  open
+  in_review
+  resolved
+  dismissed
+}
+
+model TeamUpModerationCase {
+  id              String   @id @default(uuid())
+  teamUpRequestId String
+  teamUpRequest   TeamUpRequest @relation(fields: [teamUpRequestId], references: [id], onDelete: Cascade)
+  reporterId      String
+  reporter        User     @relation("TeamUpModerationReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  assigneeId      String?
+  assignee        User?    @relation("TeamUpModerationAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reason          String
+  status          TeamUpModerationStatus @default(open)
+  resolutionNote  String?
+  decisionAt      DateTime?
+  decidedByUserId String?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([teamUpRequestId, status])
+  @@index([reporterId, createdAt])
+  @@index([status, createdAt])
+}
+
+model TeamUpSavedSearch {
+  id                String   @id @default(uuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String
+  sportType         String?
+  requestType       TeamUpRequestType?
+  skillLevel        String?
+  city              String?
+  country           String?
+  search            String?
+  fromDate          DateTime?
+  toDate            DateTime?
+  preferredPosition String?
+  preferredSkillLevel String?
+  notifyOnMatch     Boolean @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId, createdAt])
+}
+
+model TeamUpRequestView {
+  id              String   @id @default(uuid())
+  teamUpRequestId String
+  teamUpRequest   TeamUpRequest @relation(fields: [teamUpRequestId], references: [id], onDelete: Cascade)
+  viewerId        String?
+  viewer          User?    @relation(fields: [viewerId], references: [id], onDelete: SetNull)
+  source          String?  // browse | nearby | notification | deep_link
+  viewedAt        DateTime @default(now())
+
+  @@index([teamUpRequestId, viewedAt])
+  @@index([viewerId, viewedAt])
 }
 
 // Tournament hosting functionality

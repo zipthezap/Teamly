@@ -167,6 +167,11 @@ class TeamUpResponseModel extends Equatable {
     this.requestPositionId,
     this.requestPositionName,
     this.applicantSkillLevel,
+    this.rsvpStatus,
+    this.attendanceStatus,
+    this.waitlistRank,
+    this.matchScore,
+    this.matchReasons,
   });
 
   final String id;
@@ -180,6 +185,11 @@ class TeamUpResponseModel extends Equatable {
   final String? requestPositionId;
   final String? requestPositionName;
   final String? applicantSkillLevel;
+  final String? rsvpStatus;
+  final String? attendanceStatus;
+  final int? waitlistRank;
+  final double? matchScore;
+  final List<String>? matchReasons;
 
   factory TeamUpResponseModel.fromJson(Map<String, dynamic> json) {
     // Backend returns the responder under 'user' key (was 'responder' – bug fix)
@@ -200,6 +210,13 @@ class TeamUpResponseModel extends Equatable {
       requestPositionId: json['requestPositionId'] as String?,
       requestPositionName: requestPosition?['name'] as String?,
       applicantSkillLevel: json['applicantSkillLevel'] as String?,
+      rsvpStatus: json['rsvpStatus'] as String?,
+      attendanceStatus: json['attendanceStatus'] as String?,
+      waitlistRank: (json['waitlistRank'] as num?)?.toInt(),
+      matchScore: (json['matchScore'] as num?)?.toDouble(),
+      matchReasons: (json['matchReasons'] as List<dynamic>?)
+          ?.map((reason) => reason.toString())
+          .toList(),
     );
   }
 
@@ -228,6 +245,11 @@ class TeamUpApplicationModel extends Equatable {
     this.requestPositionId,
     this.requestPositionName,
     this.applicantSkillLevel,
+    this.reapplicationEligible = false,
+    this.blocksReapply = false,
+    this.rsvpStatus,
+    this.waitlistRank,
+    this.matchScore,
   });
 
   final String id;
@@ -247,6 +269,11 @@ class TeamUpApplicationModel extends Equatable {
   final String? requestPositionId;
   final String? requestPositionName;
   final String? applicantSkillLevel;
+  final bool reapplicationEligible;
+  final bool blocksReapply;
+  final String? rsvpStatus;
+  final int? waitlistRank;
+  final double? matchScore;
 
   factory TeamUpApplicationModel.fromJson(Map<String, dynamic> json) {
     final req = json['teamUpRequest'] as Map<String, dynamic>?;
@@ -275,6 +302,11 @@ class TeamUpApplicationModel extends Equatable {
       requestPositionId: json['requestPositionId'] as String?,
       requestPositionName: requestPosition?['name'] as String?,
       applicantSkillLevel: json['applicantSkillLevel'] as String?,
+      reapplicationEligible: json['reapplicationEligible'] as bool? ?? false,
+      blocksReapply: json['blocksReapply'] as bool? ?? false,
+      rsvpStatus: json['rsvpStatus'] as String?,
+      waitlistRank: (json['waitlistRank'] as num?)?.toInt(),
+      matchScore: (json['matchScore'] as num?)?.toDouble(),
     );
   }
 
