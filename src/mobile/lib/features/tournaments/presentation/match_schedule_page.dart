@@ -22,7 +22,7 @@ class _MatchSchedulePageState extends ConsumerState<MatchSchedulePage> {
 
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(tournamentDetailProvider(tournamentId));
+    final tournamentAsync = ref.watch(tournamentDetailProvider(tournamentId));
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -30,7 +30,7 @@ class _MatchSchedulePageState extends ConsumerState<MatchSchedulePage> {
         title: const Text('Match Schedule'),
         leading: BackButton(onPressed: () => context.pop()),
       ),
-      body: async.when(
+      body: tournamentAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(message: e.toString()),
         data: (tournament) => _ScheduleView(
