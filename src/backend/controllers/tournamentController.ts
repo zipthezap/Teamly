@@ -1073,7 +1073,7 @@ export const updateTeamPayment = async (req: Request, res: Response) => {
 export const generateBrackets = async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = req.user!.id;
-  const { numberOfGroups, forceGenerate } = req.body;
+  const { numberOfGroups, teamsPerGroup, usePoolAssignments, forceGenerate } = req.body;
 
   const tournament = ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
@@ -1119,14 +1119,25 @@ export const generateBrackets = async (req: Request, res: Response) => {
     case TournamentFormat.ROUND_ROBIN:
       result = await tournamentService.generateRoundRobinBrackets(id);
       break;
-    case TournamentFormat.GROUPS_KNOCKOUT:
-      result = await tournamentService.generateGroupsKnockoutBrackets(
-        id,
-        numberOfGroups || 4
-      );
+    case TournamentFormat.GROUPS_KNOCKOUT: {
+      // usePoolAssignments: use existing pool memberships as groups
+      // teamsPerGroup: auto-compute number of groups from team count
+      // numberOfGroups: explicit group count (default 4)
+      if (usePoolAssignments) {
+        result = await tournamentService.generatePoolAwareBrackets(id);
+      } else {
+        let resolvedGroups = numberOfGroups;
+        if (!resolvedGroups && teamsPerGroup) {
+          const teamCount = await prisma.tournamentTeam.count({ where: { tournamentId: id } });
+          resolvedGroups = Math.max(2, Math.floor(teamCount / teamsPerGroup));
+        }
+        result = await tournamentService.generateGroupsKnockoutBrackets(id, resolvedGroups || 4);
+      }
       break;
+    }
     case 'pool':
-      result = await tournamentService.generateRoundRobinBrackets(id);
+      // For pool format: prefer pool-aware generation when pools are set up
+      result = await tournamentService.generatePoolAwareBrackets(id);
       break;
     default:
       throw new BadRequestError('Invalid tournament format');
@@ -2186,7 +2197,7 @@ export const getPoolDetails = async (req: Request, res: Response) => {
 export const createPool = async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = req.user!.id;
-  const { name, description, maxTeams } = req.body;
+  const { name, description, venue, maxTeams } = req.body;
 
   if (!name || !maxTeams) {
     throw new BadRequestError('Pool name and max teams are required');
@@ -2206,6 +2217,7 @@ export const createPool = async (req: Request, res: Response) => {
   }
 
   const sanitizedDescription = description ? sanitizeString(description) : undefined;
+  const sanitizedVenue = venue ? sanitizeString(venue).trim() : undefined;
 
   if (maxTeams < 2) {
     throw new BadRequestError('Pool must allow at least 2 teams');
@@ -2234,6 +2246,7 @@ export const createPool = async (req: Request, res: Response) => {
       data: {
         name: sanitizedName,
         description: sanitizedDescription,
+        venue: sanitizedVenue || undefined,
         maxTeams,
         tournamentId: id
       }
@@ -2260,7 +2273,7 @@ export const createPool = async (req: Request, res: Response) => {
 export const updatePool = async (req: Request, res: Response) => {
   const { id, poolId } = req.params;
   const userId = req.user!.id;
-  const { name, description, maxTeams } = req.body;
+  const { name, description, venue, maxTeams } = req.body;
 
   const tournament = ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
@@ -2296,6 +2309,9 @@ export const updatePool = async (req: Request, res: Response) => {
   }
   if (description !== undefined) {
     updateData.description = description ? sanitizeString(description) : null;
+  }
+  if (venue !== undefined) {
+    updateData.venue = venue ? sanitizeString(venue).trim() : null;
   }
   if (maxTeams !== undefined) {
     if (maxTeams < 2) throw new BadRequestError('Pool must allow at least 2 teams');

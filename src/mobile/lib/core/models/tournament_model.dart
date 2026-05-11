@@ -115,6 +115,7 @@ class TournamentPoolModel extends Equatable {
     required this.name,
     required this.maxTeams,
     this.description,
+    this.venue,
     this.categoryId,
     this.categoryName,
     this.teams = const [],
@@ -126,6 +127,7 @@ class TournamentPoolModel extends Equatable {
   final String name;
   final int maxTeams;
   final String? description;
+  final String? venue;
   final String? categoryId;
   final String? categoryName;
   final List<TournamentTeamModel> teams;
@@ -151,6 +153,7 @@ class TournamentPoolModel extends Equatable {
       name: json['name'] as String,
       maxTeams: (json['maxTeams'] as num?)?.toInt() ?? 0,
       description: json['description'] as String?,
+      venue: json['venue'] as String?,
       categoryId: json['categoryId'] as String? ?? category?['id'] as String?,
       categoryName: category?['name'] as String?,
       teams: teamsList,

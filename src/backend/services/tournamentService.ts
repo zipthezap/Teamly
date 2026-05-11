@@ -556,7 +556,7 @@ export const generateGroupsKnockoutBrackets = async (
     );
   }
   
-  // Distribute teams into groups
+  // Distribute teams into groups evenly (snake draft style)
   const groups: { [key: string]: typeof teams } = {};
   const groupNames = Array.from({ length: numberOfGroups }, (_, i) => 
     String.fromCharCode(65 + i) // A, B, C, D, etc.
@@ -592,6 +592,51 @@ export const generateGroupsKnockoutBrackets = async (
     data: matches
   });
   
+  return createdMatches;
+};
+
+/**
+ * Generate pool-aware round-robin brackets.
+ * Each pool becomes its own group — teams within a pool play each other
+ * in a full round-robin. Pools that have no teams assigned are skipped.
+ * Falls back to a flat round-robin if no pools with teams exist.
+ */
+export const generatePoolAwareBrackets = async (tournamentId: string) => {
+  const pools = await prisma.tournamentPool.findMany({
+    where: { tournamentId },
+    include: { teams: { orderBy: { createdAt: 'asc' } } },
+    orderBy: { name: 'asc' }
+  });
+
+  const populatedPools = pools.filter(p => p.teams.length >= 2);
+
+  // Fall back to plain round-robin if pools aren't populated
+  if (populatedPools.length === 0) {
+    return generateRoundRobinBrackets(tournamentId);
+  }
+
+  const matches = [];
+  for (const pool of populatedPools) {
+    const poolTeams = pool.teams;
+    for (let i = 0; i < poolTeams.length; i++) {
+      for (let j = i + 1; j < poolTeams.length; j++) {
+        matches.push({
+          tournamentId,
+          homeTeamId: poolTeams[i].id,
+          awayTeamId: poolTeams[j].id,
+          groupName: pool.name,
+          stage: BracketStage.GROUP_STAGE,
+          status: MatchStatus.SCHEDULED
+        });
+      }
+    }
+  }
+
+  if (matches.length === 0) {
+    throw new BadRequestError('No pools have enough teams (minimum 2) to generate matches', 'INSUFFICIENT_TEAMS');
+  }
+
+  const createdMatches = await prisma.tournamentMatch.createMany({ data: matches });
   return createdMatches;
 };
 
