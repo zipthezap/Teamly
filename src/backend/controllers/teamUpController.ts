@@ -1489,122 +1489,167 @@ export const handleTeamUpResponse = async (req: Request, res: Response) => {
 
 // Get responses for user's TeamUp requests (creator view: responses others submitted to MY requests)
 export const getMyTeamUpResponses = async (req: Request, res: Response) => {
-  const responses: any[] = await prisma.teamUpResponse.findMany({
-    where: {
-      teamUpRequest: {
-        creatorId: req.user!.id
-      }
-    },
-    // @ts-ignore
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          profilePicture: true
+  const { limit = '50', offset = '0' } = req.query;
+  const parsedLimit = Math.min(Math.max(parseInt(String(limit), 10) || 50, 1), 100);
+  const parsedOffset = Math.max(parseInt(String(offset), 10) || 0, 0);
+
+  const [responses, total]: [any[], number] = await prisma.$transaction([
+    prisma.teamUpResponse.findMany({
+      where: {
+        teamUpRequest: {
+          creatorId: req.user!.id
         }
       },
       // @ts-ignore
-      requestPosition: {
-        select: {
-          id: true,
-          name: true,
-          slotsNeeded: true,
-          skillLevelRequired: true,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            profilePicture: true
+          }
         },
-      },
-      teamUpRequest: {
-        select: {
-          id: true,
-          title: true,
-          sportType: true,
-          requestType: true,
-          dateTime: true,
-          // @ts-ignore
-          positions: {
-            select: {
-              id: true,
-              name: true,
-              slotsNeeded: true,
-              skillLevelRequired: true,
-            },
+        // @ts-ignore
+        requestPosition: {
+          select: {
+            id: true,
+            name: true,
+            slotsNeeded: true,
+            skillLevelRequired: true,
           },
+        },
+        teamUpRequest: {
+          select: {
+            id: true,
+            title: true,
+            sportType: true,
+            requestType: true,
+            dateTime: true,
+            // @ts-ignore
+            positions: {
+              select: {
+                id: true,
+                name: true,
+                slotsNeeded: true,
+                skillLevelRequired: true,
+              },
+            },
+          }
         }
-      }
-    },
-    orderBy: { createdAt: 'desc' }
-  });
+      },
+      orderBy: { createdAt: 'desc' },
+      take: parsedLimit,
+      skip: parsedOffset,
+    }),
+    prisma.teamUpResponse.count({
+      where: {
+        teamUpRequest: {
+          creatorId: req.user!.id
+        }
+      },
+    }),
+  ]);
 
-  res.json(
-    responses.map((response) => ({
+  res.json({
+    data: responses.map((response) => ({
       ...response,
       reapplicationEligible: REAPPLY_ELIGIBLE_STATUSES.includes(response.status),
       blocksReapply: BLOCKING_APPLICATION_STATUSES.includes(response.status),
       canUpdateRsvp: response.status === 'accepted',
-    }))
-  );
+    })),
+    pagination: {
+      limit: parsedLimit,
+      offset: parsedOffset,
+      total,
+      hasMore: parsedOffset + responses.length < total,
+    },
+  });
 };
 
 // Get applications I submitted (responder view: responses I submitted to others' requests)
 export const getMyTeamUpApplications = async (req: Request, res: Response) => {
-  const responses: any[] = await prisma.teamUpResponse.findMany({
-    where: {
-      userId: req.user!.id
-    },
-    // @ts-ignore
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          profilePicture: true
-        }
+  const { limit = '50', offset = '0' } = req.query;
+  const parsedLimit = Math.min(Math.max(parseInt(String(limit), 10) || 50, 1), 100);
+  const parsedOffset = Math.max(parseInt(String(offset), 10) || 0, 0);
+
+  const [responses, total]: [any[], number] = await prisma.$transaction([
+    prisma.teamUpResponse.findMany({
+      where: {
+        userId: req.user!.id
       },
       // @ts-ignore
-      requestPosition: {
-        select: {
-          id: true,
-          name: true,
-          slotsNeeded: true,
-          skillLevelRequired: true,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            profilePicture: true
+          }
         },
-      },
-      teamUpRequest: {
-        select: {
-          id: true,
-          title: true,
-          sportType: true,
-          requestType: true,
-          dateTime: true,
-          city: true,
-          location: true,
-          status: true,
-          // @ts-ignore
-          positions: {
-            select: {
-              id: true,
-              name: true,
-              slotsNeeded: true,
-              skillLevelRequired: true,
-            },
-            orderBy: { createdAt: 'asc' },
+        // @ts-ignore
+        requestPosition: {
+          select: {
+            id: true,
+            name: true,
+            slotsNeeded: true,
+            skillLevelRequired: true,
           },
-          creator: {
-            select: {
-              id: true,
-              name: true,
-              profilePicture: true
+        },
+        teamUpRequest: {
+          select: {
+            id: true,
+            title: true,
+            sportType: true,
+            requestType: true,
+            dateTime: true,
+            city: true,
+            location: true,
+            status: true,
+            // @ts-ignore
+            positions: {
+              select: {
+                id: true,
+                name: true,
+                slotsNeeded: true,
+                skillLevelRequired: true,
+              },
+              orderBy: { createdAt: 'asc' },
+            },
+            creator: {
+              select: {
+                id: true,
+                name: true,
+                profilePicture: true
+              }
             }
           }
         }
-      }
-    },
-    orderBy: { createdAt: 'desc' }
-  });
+      },
+      orderBy: { createdAt: 'desc' },
+      take: parsedLimit,
+      skip: parsedOffset,
+    }),
+    prisma.teamUpResponse.count({
+      where: { userId: req.user!.id },
+    }),
+  ]);
 
-  res.json(responses);
+  res.json({
+    data: responses.map((response) => ({
+      ...response,
+      reapplicationEligible: REAPPLY_ELIGIBLE_STATUSES.includes(response.status),
+      blocksReapply: BLOCKING_APPLICATION_STATUSES.includes(response.status),
+      canUpdateRsvp: response.status === 'accepted',
+    })),
+    pagination: {
+      limit: parsedLimit,
+      offset: parsedOffset,
+      total,
+      hasMore: parsedOffset + responses.length < total,
+    },
+  });
 };
 
 // Get nearby TeamUp requests based on location and radius
@@ -2398,8 +2443,18 @@ export const createTeamUpSavedSearch = async (req: Request, res: Response) => {
       city: typeof city === 'string' ? sanitizeString(city) : null,
       country: typeof country === 'string' ? sanitizeString(country) : null,
       search: typeof search === 'string' ? sanitizeString(search) : null,
-      fromDate: fromDate ? new Date(fromDate) : null,
-      toDate: toDate ? new Date(toDate) : null,
+      fromDate: (() => {
+        if (!fromDate) return null;
+        const d = new Date(fromDate);
+        if (isNaN(d.getTime())) throw new BadRequestError('fromDate must be a valid ISO date string');
+        return d;
+      })(),
+      toDate: (() => {
+        if (!toDate) return null;
+        const d = new Date(toDate);
+        if (isNaN(d.getTime())) throw new BadRequestError('toDate must be a valid ISO date string');
+        return d;
+      })(),
       preferredPosition:
         typeof preferredPosition === 'string' ? sanitizeString(preferredPosition) : null,
       preferredSkillLevel: teamUpService.parseSkillLevel(

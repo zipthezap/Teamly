@@ -7,7 +7,7 @@
 
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
-import { shouldSendEmailNotification, filterUnmutedUsers } from '../utils/notificationHelper';
+import { batchShouldSendEmailNotification, filterUnmutedUsers } from '../utils/notificationHelper';
 import { TeamUpNotificationType } from '../../shared/types/event.types';
 import { dispatchPushNotifications } from './pushNotificationService';
 import { normalizeLocationToken } from './teamUpService';
@@ -119,14 +119,9 @@ export async function notifyUsersAboutNewTeamUp(
       return;
     }
 
-    // Check notification preferences for each user
-    const usersToNotify: string[] = [];
-    for (const userId of userIds) {
-      const shouldSend = await shouldSendEmailNotification(userId, 'nearbyTeamUps');
-      if (shouldSend) {
-        usersToNotify.push(userId);
-      }
-    }
+    // Check notification preferences in batch (avoids N+1 queries)
+    const notifyMap = await batchShouldSendEmailNotification(userIds, 'nearbyTeamUps');
+    const usersToNotify = userIds.filter(userId => notifyMap.get(userId));
 
     if (usersToNotify.length === 0) {
       logger.info('No users with enabled notifications for nearby TeamUps', 'TeamUpNotificationService', {
