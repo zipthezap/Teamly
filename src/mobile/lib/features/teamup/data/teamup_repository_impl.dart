@@ -81,7 +81,14 @@ class TeamUpRepositoryImpl implements TeamUpRepository {
   Future<List<TeamUpApplicationModel>> getMyApplications() async {
     final response = await _dio.get<dynamic>('/teamup/my-applications');
     final data = response.data;
-    final List<dynamic> items = data is List ? data : [];
+    final List<dynamic> items;
+    if (data is List) {
+      items = data;
+    } else if (data is Map<String, dynamic>) {
+      items = data['data'] as List<dynamic>? ?? [];
+    } else {
+      items = [];
+    }
     return items
         .map((e) => TeamUpApplicationModel.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -212,7 +219,10 @@ class TeamUpRepositoryImpl implements TeamUpRepository {
     if (data is List) {
       items = data;
     } else if (data is Map<String, dynamic>) {
-      items = data['responses'] as List<dynamic>? ?? [];
+      // Handle both paginated format ({data: [...]}) and legacy ({responses: [...]})
+      items = data['data'] as List<dynamic>? ??
+          data['responses'] as List<dynamic>? ??
+          [];
     } else {
       items = [];
     }
