@@ -55,6 +55,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
     final nameCtrl = TextEditingController();
     final maxCtrl = TextEditingController();
     final descCtrl = TextEditingController();
+    final venueCtrl = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -64,6 +65,8 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
             TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Pool name *'), textCapitalization: TextCapitalization.words),
             const SizedBox(height: 12),
             TextField(controller: maxCtrl, decoration: const InputDecoration(labelText: 'Max teams *'), keyboardType: TextInputType.number),
+            const SizedBox(height: 12),
+            TextField(controller: venueCtrl, decoration: const InputDecoration(labelText: 'Venue / gym (optional)', hintText: 'e.g. Gym A, Court 3'), textCapitalization: TextCapitalization.words),
             const SizedBox(height: 12),
             TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description (optional)')),
           ]),
@@ -84,6 +87,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
     try {
       await ref.read(tournamentRepositoryProvider).createPool(widget.tournamentId, {
         'name': name, 'maxTeams': maxTeams,
+        if (venueCtrl.text.trim().isNotEmpty) 'venue': venueCtrl.text.trim(),
         if (descCtrl.text.trim().isNotEmpty) 'description': descCtrl.text.trim(),
       });
       _load();
@@ -96,15 +100,20 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
   Future<void> _editPool(TournamentPoolModel pool) async {
     final nameCtrl = TextEditingController(text: pool.name);
     final maxCtrl = TextEditingController(text: '${pool.maxTeams}');
+    final venueCtrl = TextEditingController(text: pool.venue ?? '');
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Edit Pool'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Pool name *'), textCapitalization: TextCapitalization.words),
-          const SizedBox(height: 12),
-          TextField(controller: maxCtrl, decoration: const InputDecoration(labelText: 'Max teams *'), keyboardType: TextInputType.number),
-        ]),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Pool name *'), textCapitalization: TextCapitalization.words),
+            const SizedBox(height: 12),
+            TextField(controller: maxCtrl, decoration: const InputDecoration(labelText: 'Max teams *'), keyboardType: TextInputType.number),
+            const SizedBox(height: 12),
+            TextField(controller: venueCtrl, decoration: const InputDecoration(labelText: 'Venue / gym (optional)', hintText: 'e.g. Gym A, Court 3'), textCapitalization: TextCapitalization.words),
+          ]),
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
@@ -116,7 +125,11 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
     final maxTeams = int.tryParse(maxCtrl.text.trim());
     if (name.isEmpty || maxTeams == null) return;
     try {
-      await ref.read(tournamentRepositoryProvider).updatePool(widget.tournamentId, pool.id, {'name': name, 'maxTeams': maxTeams});
+      await ref.read(tournamentRepositoryProvider).updatePool(widget.tournamentId, pool.id, {
+        'name': name,
+        'maxTeams': maxTeams,
+        'venue': venueCtrl.text.trim().isEmpty ? null : venueCtrl.text.trim(),
+      });
       _load();
     } on Exception catch (e) {
       if (!mounted) return;
@@ -331,7 +344,20 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                   ListTile(
                                     leading: const Icon(Icons.layers_outlined),
                                     title: Text(pool.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                                    subtitle: Text('${pool.teams.length}/${pool.maxTeams} teams${pool.waitlist.isNotEmpty ? ' · ${pool.waitlist.length} waiting' : ''}'),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('${pool.teams.length}/${pool.maxTeams} teams${pool.waitlist.isNotEmpty ? ' · ${pool.waitlist.length} waiting' : ''}'),
+                                        if (pool.venue != null) ...[
+                                          const SizedBox(height: 2),
+                                          Row(children: [
+                                            Icon(Icons.location_on_outlined, size: 12, color: AppThemeTokens.textMuted(context)),
+                                            const SizedBox(width: 3),
+                                            Text(pool.venue!, style: TextStyle(fontSize: 12, color: AppThemeTokens.textMuted(context))),
+                                          ]),
+                                        ],
+                                      ],
+                                    ),
                                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                                       IconButton(icon: const Icon(Icons.person_add_outlined, size: 18), tooltip: 'Add team', onPressed: () => _addTeamToPool(pool)),
                                       IconButton(icon: const Icon(Icons.edit_outlined, size: 18), tooltip: 'Edit', onPressed: () => _editPool(pool)),

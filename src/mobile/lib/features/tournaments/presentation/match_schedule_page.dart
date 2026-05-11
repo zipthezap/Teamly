@@ -8,13 +8,20 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../state/tournaments_notifier.dart';
 
-class MatchSchedulePage extends ConsumerWidget {
+class MatchSchedulePage extends ConsumerStatefulWidget {
   const MatchSchedulePage({super.key, required this.tournamentId});
 
   final String tournamentId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MatchSchedulePage> createState() => _MatchSchedulePageState();
+}
+
+class _MatchSchedulePageState extends ConsumerState<MatchSchedulePage> {
+  String? _filterGroup;
+
+  @override
+  Widget build(BuildContext context) {
     final async = ref.watch(tournamentDetailProvider(tournamentId));
 
     return Scaffold(
@@ -26,24 +33,32 @@ class MatchSchedulePage extends ConsumerWidget {
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(message: e.toString()),
-        data: (tournament) => _ScheduleView(tournament: tournament),
+        data: (tournament) => _ScheduleView(
+          tournament: tournament,
+          filterGroup: _filterGroup,
+          onFilterChanged: (g) => setState(() => _filterGroup = g),
+        ),
       ),
     );
   }
 }
 
 class _ScheduleView extends StatelessWidget {
-  const _ScheduleView({required this.tournament});
+  const _ScheduleView({
+    required this.tournament,
+    required this.filterGroup,
+    required this.onFilterChanged,
+  });
 
   final TournamentModel tournament;
+  final String? filterGroup;
+  final ValueChanged<String?> onFilterChanged;
 
   @override
   Widget build(BuildContext context) {
-    final matches = List<Map<String, dynamic>>.from(
-      tournament.matches.whereType<Map<String, dynamic>>(),
-    );
+    final allMatches = List<TournamentMatchModel>.from(tournament.matches);
 
-    if (matches.isEmpty) {
+    if (allMatches.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -60,31 +75,143 @@ class _ScheduleView extends StatelessWidget {
       );
     }
 
+    // Build pool venue lookup
+    final poolVenueMap = <String, String>{};
+    for (final pool in tournament.pools) {
+      if (pool.venue != null) {
+        poolVenueMap[pool.name] = pool.venue!;
+      }
+    }
+
+    // Collect distinct group/pool names
+    final groups = allMatches
+        .map((m) => m.round)
+        .where((r) => r.isNotEmpty && !r.startsWith('Round'))
+        .toSet()
+        .toList()
+      ..sort();
+    final hasGroups = groups.isNotEmpty;
+
+    // Filter
+    final matches = filterGroup == null
+        ? allMatches
+        : allMatches.where((m) => m.round == filterGroup).toList();
+
     // Sort by scheduled time, nulls last
     matches.sort((a, b) {
-      final aTime = a['scheduledAt'] as String?;
-      final bTime = b['scheduledAt'] as String?;
-      if (aTime == null && bTime == null) return 0;
-      if (aTime == null) return 1;
-      if (bTime == null) return -1;
-      return aTime.compareTo(bTime);
+      if (a.scheduledAt == null && b.scheduledAt == null) return 0;
+      if (a.scheduledAt == null) return 1;
+      if (b.scheduledAt == null) return -1;
+      return a.scheduledAt!.compareTo(b.scheduledAt!);
     });
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: matches.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (context, i) => _MatchTile(match: matches[i]),
+    return Column(
+      children: [
+        if (hasGroups)
+          _GroupFilterBar(
+            groups: groups,
+            selected: filterGroup,
+            onSelected: onFilterChanged,
+          ),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: matches.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (context, i) => _MatchTile(
+              match: matches[i],
+              poolVenueMap: poolVenueMap,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _GroupFilterBar extends StatelessWidget {
+  const _GroupFilterBar({
+    required this.groups,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final List<String> groups;
+  final String? selected;
+  final ValueChanged<String?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        children: [
+          _FilterChip(
+            label: 'All',
+            selected: selected == null,
+            onTap: () => onSelected(null),
+          ),
+          const SizedBox(width: 8),
+          for (final g in groups) ...[
+            _FilterChip(
+              label: g,
+              selected: selected == g,
+              onTap: () => onSelected(g),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppThemeTokens.primary500
+              : AppThemeTokens.cardElevated(context),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected
+                ? AppThemeTokens.primary500
+                : AppThemeTokens.border(context),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : AppThemeTokens.textSecondary(context),
+          ),
+        ),
+      ),
     );
   }
 }
 
 class _MatchTile extends StatelessWidget {
-  const _MatchTile({required this.match});
+  const _MatchTile({required this.match, required this.poolVenueMap});
 
-  final Map<String, dynamic> match;
+  final TournamentMatchModel match;
+  final Map<String, String> poolVenueMap;
 
-  String _statusLabel(String? status) {
+  String _statusLabel(String status) {
     switch (status) {
       case 'completed':
         return 'Completed';
@@ -97,7 +224,7 @@ class _MatchTile extends StatelessWidget {
     }
   }
 
-  Color _statusColor(String? status) {
+  Color _statusColor(String status) {
     switch (status) {
       case 'completed':
         return AppThemeTokens.success;
@@ -112,17 +239,17 @@ class _MatchTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final teamA = match['teamA'] as Map<String, dynamic>?;
-    final teamB = match['teamB'] as Map<String, dynamic>?;
-    final scoreA = match['scoreA'];
-    final scoreB = match['scoreB'];
-    final status = match['status'] as String?;
-    final scheduledAt = match['scheduledAt'] as String?;
-    final venue = match['venue'] as String?;
+    final status = match.status;
     final isCompleted = status == 'completed';
-
-    final scheduledDate = scheduledAt != null ? DateTime.tryParse(scheduledAt) : null;
     final fmt = DateFormat('MMM d, h:mm a');
+
+    // Show pool venue if the match has no specific location
+    final displayVenue = match.location ?? poolVenueMap[match.round];
+
+    // Group/pool badge
+    final groupLabel = match.round.isNotEmpty && !match.round.startsWith('Round')
+        ? match.round
+        : null;
 
     return Container(
       decoration: BoxDecoration(
@@ -151,10 +278,28 @@ class _MatchTile extends StatelessWidget {
                   ),
                 ),
               ),
-              if (scheduledDate != null) ...[
+              if (groupLabel != null) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppThemeTokens.primary500.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    groupLabel,
+                    style: TextStyle(
+                      color: AppThemeTokens.primary500,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+              if (match.scheduledAt != null) ...[
                 const SizedBox(width: 8),
                 Text(
-                  fmt.format(scheduledDate.toLocal()),
+                  fmt.format(match.scheduledAt!.toLocal()),
                   style: TextStyle(
                     fontSize: 12,
                     color: AppThemeTokens.textMuted(context),
@@ -162,9 +307,9 @@ class _MatchTile extends StatelessWidget {
                 ),
               ],
               const Spacer(),
-              if (match['round'] != null)
+              if (groupLabel == null && match.round.isNotEmpty)
                 Text(
-                  'Rd ${match['round']}',
+                  match.round,
                   style: TextStyle(
                     fontSize: 11,
                     color: AppThemeTokens.textMuted(context),
@@ -177,19 +322,19 @@ class _MatchTile extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  teamA?['name'] as String? ?? 'TBD',
+                  match.teamAName ?? 'TBD',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               if (isCompleted) ...[
-                Text('$scoreA', style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('${match.scoreA}', style: const TextStyle(fontWeight: FontWeight.bold)),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: Text('–',
                       style: TextStyle(color: AppThemeTokens.textMuted(context))),
                 ),
-                Text('$scoreB', style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('${match.scoreB}', style: const TextStyle(fontWeight: FontWeight.bold)),
               ] else
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -198,7 +343,7 @@ class _MatchTile extends StatelessWidget {
                 ),
               Expanded(
                 child: Text(
-                  teamB?['name'] as String? ?? 'TBD',
+                  match.teamBName ?? 'TBD',
                   textAlign: TextAlign.end,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                   overflow: TextOverflow.ellipsis,
@@ -206,7 +351,7 @@ class _MatchTile extends StatelessWidget {
               ),
             ],
           ),
-          if (venue != null) ...[
+          if (displayVenue != null) ...[
             const SizedBox(height: 6),
             Row(
               children: [
@@ -214,7 +359,7 @@ class _MatchTile extends StatelessWidget {
                     size: 12, color: AppThemeTokens.textMuted(context)),
                 const SizedBox(width: 4),
                 Text(
-                  venue,
+                  displayVenue,
                   style: TextStyle(
                     fontSize: 12,
                     color: AppThemeTokens.textMuted(context),

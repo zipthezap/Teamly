@@ -98,7 +98,7 @@ abstract class MatchRepository {
 
   // Bracket generation
   Future<Map<String, dynamic>> generateBrackets(String tournamentId,
-      {int? numberOfGroups, bool forceGenerate = false});
+      {int? numberOfGroups, int? teamsPerGroup, bool usePoolAssignments = false, bool forceGenerate = false});
 }
 
 abstract class TournamentRepository

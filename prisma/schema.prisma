@@ -1272,6 +1272,7 @@ model TournamentPool {
   id           String   @id @default(uuid())
   name         String   // Pool name (e.g., "Pool A", "Beginners Pool", "Advanced Pool")
   description  String?
+  venue        String?  // Physical location / gym for this pool (e.g., "Gym A", "Court 3")
   maxTeams     Int      // Maximum number of teams allowed in this pool
   
   tournamentId String
