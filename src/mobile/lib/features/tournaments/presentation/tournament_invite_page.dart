@@ -22,6 +22,8 @@ class _TournamentInvitePageState extends ConsumerState<TournamentInvitePage> {
   bool _declineLoading = false;
   bool _detailsLoading = true;
   String? _result;
+  // Non-null when the invitation was already actioned before this session.
+  String? _preexistingStatus;
   String? _error;
   Map<String, dynamic>? _details;
   Map<String, dynamic>? _invitation;
@@ -36,7 +38,21 @@ class _TournamentInvitePageState extends ConsumerState<TournamentInvitePage> {
     setState(() { _detailsLoading = true; _error = null; });
     try {
       final details = await ref.read(tournamentRepositoryProvider).getInvitationDetails(widget.inviteToken);
-      if (mounted) setState(() { _details = details; _detailsLoading = false; });
+      if (mounted) {
+        final status = details['status'] as String?;
+        String? preexisting;
+        String? result;
+        if (status != null && status != 'pending') {
+          preexisting = status;
+          result = (status == 'accepted') ? 'accepted' : 'declined';
+        }
+        setState(() {
+          _details = details;
+          _preexistingStatus = preexisting;
+          _result = result;
+          _detailsLoading = false;
+        });
+      }
     } on Exception catch (e) {
       if (mounted) setState(() { _error = extractErrorMessage(e); _detailsLoading = false; });
     }
@@ -99,11 +115,26 @@ class _TournamentInvitePageState extends ConsumerState<TournamentInvitePage> {
               ? const CircularProgressIndicator()
               : _result != null
                   ? Column(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(_result == 'accepted' ? Icons.check_circle_outline : Icons.cancel_outlined,
-                          size: 64, color: _result == 'accepted' ? Colors.green : Colors.red),
+                      Icon(
+                        _result == 'accepted'
+                            ? Icons.check_circle_outline
+                            : (_preexistingStatus == 'cancelled' ? Icons.info_outline : Icons.cancel_outlined),
+                        size: 64,
+                        color: _result == 'accepted'
+                            ? Colors.green
+                            : (_preexistingStatus == 'cancelled' ? Colors.orange : Colors.red),
+                      ),
                       const SizedBox(height: 16),
                       Text(
-                        _result == 'accepted' ? 'You have joined the team!' : 'Invitation declined.',
+                        _result == 'accepted'
+                            ? (_preexistingStatus != null
+                                ? 'You have already accepted this invitation.'
+                                : 'You have joined the team!')
+                            : (_preexistingStatus == 'cancelled'
+                                ? 'This invitation is no longer available.'
+                                : (_preexistingStatus != null
+                                    ? 'You have already declined this invitation.'
+                                    : 'Invitation declined.')),
                         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center,
                       ),
