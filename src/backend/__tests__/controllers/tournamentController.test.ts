@@ -243,6 +243,8 @@ const app = createAuthenticatedTestApp(tournamentRoutes, 'test-user-id', '/api/t
 
 // ─── Shared mock data ─────────────────────────────────────────────────────────
 
+const futureTournamentStartDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
 const mockTournament = {
   id: 'tournament-1',
   name: 'Test Tournament',
@@ -250,7 +252,7 @@ const mockTournament = {
   sportType: 'football',
   format: 'single_elimination',
   status: 'draft',
-  startDate: new Date('2025-12-01T10:00:00Z'),
+  startDate: futureTournamentStartDate,
   endDate: null,
   maxTeams: 8,
   location: 'Test Venue',
