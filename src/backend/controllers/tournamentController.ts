@@ -43,6 +43,27 @@ const MAX_TEAMS_UPPER_BOUND = 1000;
 const syncTournamentAutoStatus = tournamentService.syncTournamentAutoStatus;
 const reconcileTournamentLifecycleStatus = tournamentService.reconcileTournamentLifecycleStatus;
 
+const isTournamentEditLocked = (tournament: { status: string; startDate: Date }): boolean => {
+  if (
+    tournament.status === TournamentStatus.CANCELLED ||
+    tournament.status === TournamentStatus.COMPLETED ||
+    tournament.status === TournamentStatus.IN_PROGRESS
+  ) {
+    return true;
+  }
+
+  return new Date() >= new Date(tournament.startDate);
+};
+
+const assertTournamentSetupEditable = (
+  tournament: { status: string; startDate: Date },
+  message: string
+): void => {
+  if (isTournamentEditLocked(tournament)) {
+    throw new BadRequestError(message);
+  }
+};
+
 /**
  * Enforce read access for private tournaments.
  * Public tournaments are visible to any authenticated user.
@@ -510,9 +531,7 @@ export const updateTournament = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the organizer or a co-organizer can update the tournament');
   }
 
-  if (tournament!.status === TournamentStatus.COMPLETED || tournament!.status === TournamentStatus.CANCELLED) {
-    throw new BadRequestError('Completed or cancelled tournaments cannot be edited');
-  }
+  assertTournamentSetupEditable(tournament!, 'Tournaments can only be edited before they start');
 
   if (status !== undefined) {
     throw new BadRequestError('Tournament status is system-managed and cannot be set manually');
@@ -915,6 +934,8 @@ export const updateTeam = async (req: Request, res: Response) => {
 
   ensureResourceExists(tournament, 'Tournament');
 
+  assertTournamentSetupEditable(tournament!, 'Teams can only be edited before the tournament starts');
+
   // Verify the team belongs to this tournament
   const team = await prisma.tournamentTeam.findFirst({
     where: { id: teamId, tournamentId: id }
@@ -992,10 +1013,7 @@ export const deleteTeam = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only organizers and admins can delete teams');
   }
 
-  // Check if tournament has started
-  if (tournament!.status !== TournamentStatus.DRAFT && tournament!.status !== TournamentStatus.REGISTRATION) {
-    throw new BadRequestError('Cannot delete teams once tournament has started');
-  }
+  assertTournamentSetupEditable(tournament!, 'Cannot delete teams once tournament has started');
 
   // Verify the team actually belongs to this tournament before deleting
   const team = await prisma.tournamentTeam.findFirst({
@@ -1037,6 +1055,11 @@ export const updateTeamPayment = async (req: Request, res: Response) => {
   if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
     throw new ForbiddenError('Only organizers and admins can update team payment status');
   }
+
+  assertTournamentSetupEditable(
+    tournament,
+    'Team payment status can only be updated before the tournament starts'
+  );
 
   const team = ensureResourceExists(
     await prisma.tournamentTeam.findFirst({ where: { id: teamId, tournamentId: id } }),
@@ -1084,17 +1107,21 @@ export const generateBrackets = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only organizers and admins can generate brackets');
   }
 
-  if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
-    throw new BadRequestError('Brackets cannot be generated for cancelled or completed tournaments');
-  }
+  assertTournamentSetupEditable(
+    tournament,
+    'Brackets can only be generated or regenerated before the tournament starts'
+  );
 
-  // Check if brackets already exist
   const existingMatches = await prisma.tournamentMatch.count({
     where: { tournamentId: id }
   });
+  const isRegeneration = existingMatches > 0;
 
-  if (existingMatches > 0) {
-    throw new BadRequestError('Brackets have already been generated for this tournament');
+  if (isRegeneration) {
+    await prisma.$transaction([
+      prisma.tournamentStanding.deleteMany({ where: { tournamentId: id } }),
+      prisma.tournamentMatch.deleteMany({ where: { tournamentId: id } }),
+    ]);
   }
 
   // Enforce payment gate when required (organizer can force-override via forceGenerate flag)
@@ -1152,7 +1179,7 @@ export const generateBrackets = async (req: Request, res: Response) => {
   });
 
   res.json({
-    message: 'Brackets generated successfully',
+    message: isRegeneration ? 'Brackets regenerated successfully' : 'Brackets generated successfully',
     matchesCreated: result.count
   });
 };
@@ -1454,9 +1481,7 @@ export const createMatch = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only organizers and admins can create matches');
   }
 
-  if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
-    throw new BadRequestError('Matches cannot be created for cancelled or completed tournaments');
-  }
+  assertTournamentSetupEditable(tournament, 'Matches can only be created before the tournament starts');
 
   // Verify teams exist and belong to this tournament
   const homeTeam = await prisma.tournamentTeam.findFirst({
@@ -1559,9 +1584,7 @@ export const updateMatch = async (req: Request, res: Response) => {
     throw new NotFoundError('Match not found');
   }
 
-  if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
-    throw new BadRequestError('Matches cannot be updated for cancelled or completed tournaments');
-  }
+  assertTournamentSetupEditable(tournament, 'Matches can only be updated before the tournament starts');
 
   // Validate new team IDs if provided
   if (homeTeamId || awayTeamId) {
@@ -1662,9 +1685,7 @@ export const deleteMatch = async (req: Request, res: Response) => {
     throw new NotFoundError('Match not found');
   }
 
-  if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
-    throw new BadRequestError('Matches cannot be deleted for cancelled or completed tournaments');
-  }
+  assertTournamentSetupEditable(tournament, 'Matches can only be deleted before the tournament starts');
 
   // If the match has scores, revert standings first then delete atomically
   await prisma.$transaction(async (tx) => {
@@ -1701,6 +1722,8 @@ export const assignReferee = async (req: Request, res: Response) => {
   if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
     throw new ForbiddenError('Only organizers and admins can assign referees');
   }
+
+  assertTournamentSetupEditable(tournament, 'Referees can only be assigned before the tournament starts');
 
   const match = ensureResourceExists(
     await prisma.tournamentMatch.findUnique({ where: { id: matchId } }),
@@ -1768,6 +1791,8 @@ export const assignTeamToPool = async (req: Request, res: Response) => {
   if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
     throw new ForbiddenError('Only organizers and admins can assign teams to pools');
   }
+
+  assertTournamentSetupEditable(tournament, 'Pools can only be managed before the tournament starts');
 
   const team = await prisma.tournamentTeam.findFirst({
     where: { id: teamId, tournamentId: id }
@@ -2236,9 +2261,7 @@ export const createPool = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only organizers and admins can create pools');
   }
 
-  if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
-    throw new BadRequestError('Pools cannot be managed for cancelled or completed tournaments');
-  }
+  assertTournamentSetupEditable(tournament, 'Pools can only be managed before the tournament starts');
 
   let pool;
   try {
@@ -2284,9 +2307,7 @@ export const updatePool = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only organizers and admins can update pools');
   }
 
-  if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
-    throw new BadRequestError('Pools cannot be managed for cancelled or completed tournaments');
-  }
+  assertTournamentSetupEditable(tournament, 'Pools can only be managed before the tournament starts');
 
   ensureResourceExists(
     await prisma.tournamentPool.findFirst({ where: { id: poolId, tournamentId: id } }),
@@ -2361,9 +2382,7 @@ export const deletePool = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only organizers and admins can delete pools');
   }
 
-  if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
-    throw new BadRequestError('Pools cannot be managed for cancelled or completed tournaments');
-  }
+  assertTournamentSetupEditable(tournament, 'Pools can only be managed before the tournament starts');
 
   const pool = ensureResourceExists(
     await prisma.tournamentPool.findFirst({
@@ -2404,11 +2423,11 @@ export const registerTeamToPool = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the organizer, admin, or team captain can register teams to pools');
   }
 
+  assertTournamentSetupEditable(tournament, 'Pools can only be managed before the tournament starts');
+
   // Non-admins must pass registration eligibility check
   if (!isAdmin) {
     tournamentService.validateRegistrationEligibility(tournament);
-  } else if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
-    throw new BadRequestError('Pools cannot be managed for cancelled or completed tournaments');
   }
 
   const team = ensureResourceExists(
@@ -2550,6 +2569,8 @@ export const removeTeamFromPool = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the organizer, admin, or team captain can remove teams from pools');
   }
 
+  assertTournamentSetupEditable(tournament, 'Pools can only be managed before the tournament starts');
+
   // Remove team from pool and handle waitlist promotion atomically
   const promotionResult = await prisma.$transaction(async (tx) => {
     // Remove team from pool
@@ -2655,6 +2676,8 @@ export const removeTeamFromWaitlist = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the organizer, admin, or team captain can remove teams from waitlist');
   }
 
+  assertTournamentSetupEditable(tournament, 'Pools can only be managed before the tournament starts');
+
   const waitlistEntry = ensureResourceExists(
     await prisma.tournamentPoolWaitlist.findFirst({ where: { poolId, teamId } }),
     'Team not found in waitlist'
@@ -2701,9 +2724,7 @@ export const moveTeamToPool = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only organizers and admins can move teams between pools');
   }
 
-  if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) {
-    throw new BadRequestError('Pools cannot be managed for cancelled or completed tournaments');
-  }
+  assertTournamentSetupEditable(tournament, 'Pools can only be managed before the tournament starts');
 
   const team = ensureResourceExists(
     await prisma.tournamentTeam.findFirst({ where: { id: teamId, tournamentId: id } }),
@@ -3353,9 +3374,7 @@ export const createCategory = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the organizer or a co-organizer can manage categories');
   }
 
-  if (tournament!.status === TournamentStatus.CANCELLED || tournament!.status === TournamentStatus.COMPLETED) {
-    throw new BadRequestError('Categories cannot be managed for cancelled or completed tournaments');
-  }
+  assertTournamentSetupEditable(tournament!, 'Categories can only be managed before the tournament starts');
 
   try {
     const category = await prisma.tournamentCategory.create({
@@ -3393,9 +3412,7 @@ export const updateCategory = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the organizer or a co-organizer can manage categories');
   }
 
-  if (tournament!.status === TournamentStatus.CANCELLED || tournament!.status === TournamentStatus.COMPLETED) {
-    throw new BadRequestError('Categories cannot be managed for cancelled or completed tournaments');
-  }
+  assertTournamentSetupEditable(tournament!, 'Categories can only be managed before the tournament starts');
 
   const category = await prisma.tournamentCategory.findFirst({
     where: { id: categoryId, tournamentId: id }
@@ -3437,9 +3454,7 @@ export const deleteCategory = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the organizer or a co-organizer can manage categories');
   }
 
-  if (tournament!.status === TournamentStatus.CANCELLED || tournament!.status === TournamentStatus.COMPLETED) {
-    throw new BadRequestError('Categories cannot be managed for cancelled or completed tournaments');
-  }
+  assertTournamentSetupEditable(tournament!, 'Categories can only be managed before the tournament starts');
 
   const category = await prisma.tournamentCategory.findFirst({
     where: { id: categoryId, tournamentId: id }
@@ -3468,9 +3483,7 @@ export const assignPoolToCategory = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only the organizer or a co-organizer can assign pools to categories');
   }
 
-  if (tournament!.status === TournamentStatus.CANCELLED || tournament!.status === TournamentStatus.COMPLETED) {
-    throw new BadRequestError('Categories cannot be managed for cancelled or completed tournaments');
-  }
+  assertTournamentSetupEditable(tournament!, 'Categories can only be managed before the tournament starts');
 
   const pool = await prisma.tournamentPool.findFirst({
     where: { id: poolId, tournamentId: id }
@@ -3538,6 +3551,8 @@ export const addAdmin = async (req: Request, res: Response) => {
   if (!tournamentService.isOrganizer(tournament!, userId)) {
     throw new ForbiddenError('Only the organizer can delegate admin roles');
   }
+
+  assertTournamentSetupEditable(tournament!, 'Admins can only be managed before the tournament starts');
 
   // Resolve user by userId or email
   let resolvedUserId = targetUserId;
@@ -3618,6 +3633,8 @@ export const removeAdmin = async (req: Request, res: Response) => {
   if (!tournamentService.isOrganizer(tournament!, userId)) {
     throw new ForbiddenError('Only the organizer can remove admin roles');
   }
+
+  assertTournamentSetupEditable(tournament!, 'Admins can only be managed before the tournament starts');
 
   // The tournament organizer is always an admin by virtue of their organizerId.
   // Prevent removing an admin entry that belongs to the organizer themselves.

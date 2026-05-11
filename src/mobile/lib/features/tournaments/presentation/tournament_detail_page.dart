@@ -168,10 +168,12 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
                     IconButton(
                       icon: const Icon(Icons.admin_panel_settings_outlined),
                       tooltip: 'Admin panel',
-                      onPressed: () async {
-                        await context.push('/tournaments/${t.id}/admins');
-                        if (mounted) refresh();
-                      },
+                      onPressed: canEditTournament(t.status)
+                          ? () async {
+                              await context.push('/tournaments/${t.id}/admins');
+                              if (mounted) refresh();
+                            }
+                          : null,
                     ),
                   if (isOrganizer)
                     PopupMenuButton<String>(
@@ -679,7 +681,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                       ),
                   ],
                 ),
-                label: const Text('Generate Brackets'),
+                label: Text(t.matches.isNotEmpty ? 'Regenerate Brackets' : 'Generate Brackets'),
                 onPressed: canManageTournament ? () => _generateBrackets(context, t) : null,
               ),
             ]),
@@ -747,6 +749,8 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     int? teamsPerGroup;
     bool usePoolAssignments = false;
     bool forceGenerate = false;
+    final hasExistingMatches = tournament.matches.isNotEmpty;
+    final generateVerb = hasExistingMatches ? 'Regenerate' : 'Generate';
 
     // Payment gate warning
     if (tournament.requirePaymentForBrackets && tournament.unpaidTeamCount > 0) {
@@ -795,7 +799,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
         context: context,
         builder: (ctx) => StatefulBuilder(
           builder: (ctx, setS) => AlertDialog(
-            title: const Text('Generate Brackets'),
+            title: Text('$generateVerb Brackets'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -871,7 +875,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
             ),
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Generate')),
+              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(generateVerb)),
             ],
           ),
         ),
@@ -900,7 +904,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Generate Pool Matches'),
+          title: Text('$generateVerb Pool Matches'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -937,7 +941,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Generate')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(generateVerb)),
           ],
         ),
       );
@@ -946,11 +950,15 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Generate Brackets'),
-          content: const Text('This will automatically create matches for all registered teams. Continue?'),
+          title: Text('$generateVerb Brackets'),
+          content: Text(
+            hasExistingMatches
+                ? 'This will replace the current brackets and matches for all registered teams. Continue?'
+                : 'This will automatically create matches for all registered teams. Continue?',
+          ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Generate')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(generateVerb)),
           ],
         ),
       );
@@ -967,7 +975,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
       );
       onRefresh();
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Brackets generated!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(hasExistingMatches ? 'Brackets regenerated!' : 'Brackets generated!')),
+        );
       }
     } on Exception catch (e) {
       if (context.mounted) {
