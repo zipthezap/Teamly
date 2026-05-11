@@ -28,7 +28,7 @@ vi.mock('../../utils/logger', () => ({
 }));
 
 vi.mock('../../utils/notificationHelper', () => ({
-  shouldSendEmailNotification: vi.fn(),
+  batchShouldSendEmailNotification: vi.fn(),
   filterUnmutedUsers: vi.fn()
 }));
 
@@ -41,10 +41,13 @@ import {
   findUsersForTeamUpNotification,
   notifyUsersAboutNewTeamUp
 } from '../../services/teamUpNotificationService';
-import { shouldSendEmailNotification, filterUnmutedUsers } from '../../utils/notificationHelper';
+import {
+  batchShouldSendEmailNotification,
+  filterUnmutedUsers
+} from '../../utils/notificationHelper';
 
 const mockPrisma = vi.mocked(prisma);
-const mockShouldSend = vi.mocked(shouldSendEmailNotification);
+const mockBatchShouldSend = vi.mocked(batchShouldSendEmailNotification);
 const mockFilterUnmuted = vi.mocked(filterUnmutedUsers);
 
 // Test constants
@@ -297,7 +300,7 @@ describe('TeamUpNotificationService', () => {
         .mockResolvedValueOnce(mockUsers) // First call for finding users
         .mockResolvedValueOnce(mockUsersWithDetails); // Second call for user details
 
-      mockShouldSend.mockResolvedValue(true);
+      mockBatchShouldSend.mockResolvedValue(new Map([['user-1', true]]));
       mockFilterUnmuted.mockResolvedValue(['user-1']);
       mockPrisma.teamUpNotification.createMany = vi.fn().mockResolvedValue({ count: 1 });
       mockPrisma.emailQueue.create = vi.fn().mockResolvedValue({});
@@ -348,7 +351,7 @@ describe('TeamUpNotificationService', () => {
       ];
 
       mockPrisma.user.findMany.mockResolvedValueOnce(mockUsers);
-      mockShouldSend.mockResolvedValue(false);
+      mockBatchShouldSend.mockResolvedValue(new Map([['user-1', false]]));
 
       await notifyUsersAboutNewTeamUp(teamUpRequest);
 
@@ -380,7 +383,7 @@ describe('TeamUpNotificationService', () => {
       ];
 
       mockPrisma.user.findMany.mockResolvedValueOnce(mockUsers);
-      mockShouldSend.mockResolvedValue(true);
+      mockBatchShouldSend.mockResolvedValue(new Map([['user-1', true]]));
       mockFilterUnmuted.mockResolvedValue([]); // All users muted
 
       await notifyUsersAboutNewTeamUp(teamUpRequest);
@@ -446,7 +449,7 @@ describe('TeamUpNotificationService', () => {
         .mockResolvedValueOnce(mockUsers)
         .mockResolvedValueOnce(mockUsersWithDetails);
 
-      mockShouldSend.mockResolvedValue(true);
+      mockBatchShouldSend.mockResolvedValue(new Map([['user-1', true]]));
       mockFilterUnmuted.mockResolvedValue(['user-1']);
       mockPrisma.teamUpNotification.createMany = vi.fn().mockResolvedValue({ count: 1 });
       mockPrisma.emailQueue.create = vi.fn().mockResolvedValue({});
