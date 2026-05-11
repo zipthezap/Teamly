@@ -12,6 +12,7 @@ import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
 import '../state/tournaments_notifier.dart';
+import 'tournament_ui_rules.dart';
 
 
 class PoolsManagementPage extends ConsumerStatefulWidget {
@@ -25,6 +26,7 @@ class PoolsManagementPage extends ConsumerStatefulWidget {
 class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
   List<TournamentPoolModel> _pools = [];
   List<TournamentTeamModel> _allTeams = [];
+  String _tournamentStatus = 'draft';
   bool _loading = true;
   String? _error;
 
@@ -39,11 +41,13 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
     try {
       final results = await Future.wait([
         ref.read(tournamentRepositoryProvider).getPools(widget.tournamentId),
-        ref.read(tournamentRepositoryProvider).getTournament(widget.tournamentId).then((t) => t.teams),
+        ref.read(tournamentRepositoryProvider).getTournament(widget.tournamentId),
       ]);
       if (mounted) setState(() {
         _pools = results[0] as List<TournamentPoolModel>;
-        _allTeams = results[1] as List<TournamentTeamModel>;
+        final tournament = results[1] as TournamentModel;
+        _allTeams = tournament.teams;
+        _tournamentStatus = tournament.status;
         _loading = false;
       });
     } on Exception catch (e) {
@@ -311,10 +315,12 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
 
   @override
   Widget build(BuildContext context) {
+    final canManagePools =
+        !_loading && canManageTournamentAdminActions(_tournamentStatus);
     return Scaffold(
       appBar: AppBar(title: const Text('Manage Pools')),
       floatingActionButton: FloatingActionButton(
-        onPressed: _createPool,
+        onPressed: canManagePools ? _createPool : null,
         tooltip: 'Create pool',
         child: const Icon(Icons.add),
       ),
@@ -357,13 +363,13 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                           ]),
                                         ],
                                       ],
-                                    ),
-                                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                                      IconButton(icon: const Icon(Icons.person_add_outlined, size: 18), tooltip: 'Add team', onPressed: () => _addTeamToPool(pool)),
-                                      IconButton(icon: const Icon(Icons.edit_outlined, size: 18), tooltip: 'Edit', onPressed: () => _editPool(pool)),
-                                      IconButton(icon: const Icon(Icons.delete_outline, size: 18), tooltip: 'Delete', onPressed: () => _deletePool(pool)),
-                                    ]),
-                                  ),
+                                     ),
+                                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                                       IconButton(icon: const Icon(Icons.person_add_outlined, size: 18), tooltip: 'Add team', onPressed: canManagePools ? () => _addTeamToPool(pool) : null),
+                                       IconButton(icon: const Icon(Icons.edit_outlined, size: 18), tooltip: 'Edit', onPressed: canManagePools ? () => _editPool(pool) : null),
+                                       IconButton(icon: const Icon(Icons.delete_outline, size: 18), tooltip: 'Delete', onPressed: canManagePools ? () => _deletePool(pool) : null),
+                                     ]),
+                                   ),
                                   if (pool.teams.isNotEmpty) ...[
                                     const Divider(height: 1),
                                     for (final team in pool.teams)
@@ -374,16 +380,16 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                         trailing: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            IconButton(
-                                              icon: const Icon(Icons.swap_horiz, size: 16),
-                                              tooltip: 'Move to another pool',
-                                              onPressed: () => _moveTeam(pool.id, team),
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(Icons.person_remove_outlined, size: 16),
-                                              tooltip: 'Remove from pool',
-                                              onPressed: () => _removeTeam(pool.id, team),
-                                            ),
+                                             IconButton(
+                                               icon: const Icon(Icons.swap_horiz, size: 16),
+                                               tooltip: 'Move to another pool',
+                                               onPressed: canManagePools ? () => _moveTeam(pool.id, team) : null,
+                                             ),
+                                             IconButton(
+                                               icon: const Icon(Icons.person_remove_outlined, size: 16),
+                                               tooltip: 'Remove from pool',
+                                               onPressed: canManagePools ? () => _removeTeam(pool.id, team) : null,
+                                             ),
                                           ],
                                         ),
                                       ),
@@ -401,7 +407,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                         trailing: IconButton(
                                           icon: Icon(Icons.remove_circle_outline, size: 16, color: Theme.of(context).colorScheme.error),
                                           tooltip: 'Remove from waitlist',
-                                          onPressed: () => _removeFromWaitlist(pool.id, w),
+                                          onPressed: canManagePools ? () => _removeFromWaitlist(pool.id, w) : null,
                                         ),
                                       ),
                                   ],
@@ -419,4 +425,3 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
 // ===========================================================================
 // Categories Management Page
 // ===========================================================================
-

@@ -68,10 +68,12 @@ vi.mock('../../config/database', () => ({
       updateMany: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      deleteMany: vi.fn(),
       count: vi.fn(),
     },
     tournamentStanding: {
       findMany: vi.fn(),
+      deleteMany: vi.fn(),
     },
     tournamentPool: {
       findFirst: vi.fn(),
@@ -241,6 +243,8 @@ const app = createAuthenticatedTestApp(tournamentRoutes, 'test-user-id', '/api/t
 
 // ─── Shared mock data ─────────────────────────────────────────────────────────
 
+const futureTournamentStartDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
 const mockTournament = {
   id: 'tournament-1',
   name: 'Test Tournament',
@@ -248,7 +252,7 @@ const mockTournament = {
   sportType: 'football',
   format: 'single_elimination',
   status: 'draft',
-  startDate: new Date('2025-12-01T10:00:00Z'),
+  startDate: futureTournamentStartDate,
   endDate: null,
   maxTeams: 8,
   location: 'Test Venue',
@@ -434,8 +438,10 @@ beforeEach(() => {
   vi.mocked(prisma.tournamentMatch.updateMany).mockResolvedValue({ count: 1 } as any);
   vi.mocked(prisma.tournamentMatch.update).mockResolvedValue(mockMatch as any);
   vi.mocked(prisma.tournamentMatch.delete).mockResolvedValue(mockMatch as any);
+  vi.mocked(prisma.tournamentMatch.deleteMany).mockResolvedValue({ count: 0 } as any);
 
   vi.mocked(prisma.tournamentStanding.findMany).mockResolvedValue([]);
+  vi.mocked(prisma.tournamentStanding.deleteMany).mockResolvedValue({ count: 0 } as any);
 
   vi.mocked(prisma.tournamentPool.findFirst).mockResolvedValue(null);
   vi.mocked(prisma.tournamentPool.findMany).mockResolvedValue([]);
@@ -813,6 +819,23 @@ describe('PUT /api/tournaments/:id (updateTournament)', () => {
     expect(res.body.error).toContain('cannot be edited');
     expect(vi.mocked(prisma.tournament.update)).not.toHaveBeenCalled();
   });
+
+  it('returns 400 when trying to edit a tournament that has already started', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'registration',
+      startDate: new Date(Date.now() - 60_000),
+    } as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1')
+      .send({ name: 'Updated' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('before they start');
+    expect(vi.mocked(prisma.tournament.update)).not.toHaveBeenCalled();
+  });
 });
 
 describe('DELETE /api/tournaments/:id (deleteTournament)', () => {
@@ -1020,13 +1043,22 @@ describe('POST /api/tournaments/:id/generate-brackets (generateBrackets)', () =>
     expect(res.body).toHaveProperty('matchesCreated');
   });
 
-  it('returns 400 when brackets already exist', async () => {
+  it('regenerates brackets when matches already exist and the tournament has not started', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
     vi.mocked(prisma.tournamentMatch.count).mockResolvedValue(4);
+    vi.mocked(prisma.tournamentStanding.deleteMany).mockResolvedValue({ count: 4 } as any);
+    vi.mocked(prisma.tournamentMatch.deleteMany).mockResolvedValue({ count: 4 } as any);
 
     const res = await request(app).post('/api/tournaments/tournament-1/generate-brackets').send({});
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
+    expect(res.body.message).toContain('regenerated');
+    expect(vi.mocked(prisma.tournamentStanding.deleteMany)).toHaveBeenCalledWith({
+      where: { tournamentId: 'tournament-1' },
+    });
+    expect(vi.mocked(prisma.tournamentMatch.deleteMany)).toHaveBeenCalledWith({
+      where: { tournamentId: 'tournament-1' },
+    });
   });
 
   it('returns 400 for double_elimination until explicitly supported', async () => {
@@ -1054,7 +1086,7 @@ describe('POST /api/tournaments/:id/generate-brackets (generateBrackets)', () =>
   it('reconciles lifecycle status after bracket generation', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
       ...mockTournament,
-      startDate: new Date(Date.now() - 60_000),
+      startDate: new Date(Date.now() + 60_000),
       status: 'registration',
       format: 'single_elimination',
     } as any);
@@ -1068,6 +1100,20 @@ describe('POST /api/tournaments/:id/generate-brackets (generateBrackets)', () =>
       'tournament-1',
       expect.any(String)
     );
+  });
+
+  it('returns 400 when trying to generate brackets after the tournament has started', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'registration',
+      startDate: new Date(Date.now() - 60_000),
+    } as any);
+
+    const res = await request(app).post('/api/tournaments/tournament-1/generate-brackets').send({});
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('before the tournament starts');
+    expect(vi.mocked(tournamentService.generateSingleEliminationBrackets)).not.toHaveBeenCalled();
   });
 });
 
@@ -1112,7 +1158,7 @@ describe('POST /api/tournaments/:id/matches (createMatch)', () => {
   it('reconciles lifecycle status after match creation', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
       ...mockTournament,
-      startDate: new Date(Date.now() - 60_000),
+      startDate: new Date(Date.now() + 60_000),
       status: 'registration',
     } as any);
     vi.mocked(prisma.tournamentTeam.findFirst)
@@ -1169,7 +1215,8 @@ describe('PUT /api/tournaments/:id/matches/:matchId (updateMatch)', () => {
   it('reconciles lifecycle status after match update', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
       ...mockTournament,
-      status: 'in_progress',
+      status: 'registration',
+      startDate: new Date(Date.now() + 60_000),
     } as any);
     vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
       ...mockMatch,
@@ -1228,7 +1275,8 @@ describe('DELETE /api/tournaments/:id/matches/:matchId (deleteMatch)', () => {
   it('reconciles lifecycle status after match deletion', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
       ...mockTournament,
-      status: 'in_progress',
+      status: 'registration',
+      startDate: new Date(Date.now() + 60_000),
     } as any);
     vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue(mockMatch as any);
     vi.mocked(prisma.tournamentMatch.delete).mockResolvedValue(mockMatch as any);
@@ -1494,6 +1542,22 @@ describe('PUT /api/tournaments/:id/matches/:matchId/score (adminUpdateScore)', (
 
     expect(res.status).toBe(404);
   });
+
+  it('returns 400 when trying to assign a referee after the tournament has started', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'registration',
+      startDate: new Date(Date.now() - 60_000),
+    } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/referee')
+      .send({});
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('before the tournament starts');
+    expect(vi.mocked(prisma.tournamentMatch.update)).not.toHaveBeenCalled();
+  });
 });
 
 
@@ -1562,6 +1626,7 @@ describe('GET /api/tournaments/:id/standings (getStandings)', () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
       ...mockTournament,
       isPublic: false,
+      organizerId: 'other-user-id',
     } as any);
     vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
@@ -1628,6 +1693,7 @@ describe('GET /api/tournaments/:id/pools/:poolId (getPoolDetails)', () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
       ...mockTournament,
       isPublic: false,
+      organizerId: 'other-user-id',
     } as any);
     vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
@@ -3554,7 +3620,8 @@ describe('DELETE /api/tournaments/:id/matches/:matchId (deleteMatch) — edge ca
   it('returns 200 and reverts standings when deleting a completed match with scores', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
       ...mockTournament,
-      status: 'in_progress',
+      status: 'registration',
+      startDate: new Date(Date.now() + 60_000),
     } as any);
     vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
       ...mockMatch,
@@ -3575,7 +3642,8 @@ describe('DELETE /api/tournaments/:id/matches/:matchId (deleteMatch) — edge ca
   it('returns 200 when deleting a scheduled match', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
       ...mockTournament,
-      status: 'in_progress',
+      status: 'registration',
+      startDate: new Date(Date.now() + 60_000),
     } as any);
     vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
       ...mockMatch,
@@ -3729,7 +3797,8 @@ describe('PUT /api/tournaments/:id/matches/:matchId (updateMatch) — edge cases
   it('returns 400 when trying to set status to completed via update endpoint', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
       ...mockTournament,
-      status: 'in_progress',
+      status: 'registration',
+      startDate: new Date(Date.now() + 60_000),
     } as any);
     vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
       ...mockMatch,
