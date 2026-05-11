@@ -59,6 +59,13 @@ const assertTournamentSetupEditable = (
   tournament: { status: string; startDate: Date },
   message: string
 ): void => {
+  if (
+    tournament.status === TournamentStatus.CANCELLED ||
+    tournament.status === TournamentStatus.COMPLETED
+  ) {
+    throw new BadRequestError('Completed or cancelled tournaments cannot be edited');
+  }
+
   if (isTournamentEditLocked(tournament)) {
     throw new BadRequestError(message);
   }
