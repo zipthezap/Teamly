@@ -94,6 +94,8 @@ vi.mock('../../utils/errors', () => ({
 
 describe('Tournament Service', () => {
   beforeEach(() => {
+    // Reset implementations as well as call history so one-off mock return
+    // values from earlier cases do not leak into later tournament service tests.
     vi.resetAllMocks();
     vi.mocked(prisma.$transaction).mockImplementation(async (fn: any) =>
       typeof fn === 'function' ? fn(prisma) : Promise.all(fn)

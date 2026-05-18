@@ -801,9 +801,9 @@ int _bracketRoundOrder(String label) {
   return m != null ? (int.tryParse(m.group(1)!) ?? 1) * 5 : 5;
 }
 
-double _matchCenterY(int roundIndex, int matchIndex, double unit) {
-  if (roundIndex == 0) return _kColumnHeaderH + unit * (matchIndex + 0.5);
-  return _kColumnHeaderH + unit * (1 << (roundIndex - 1)) * (2 * matchIndex + 1).toDouble();
+double _matchCenterY(int columnIndex, int matchIndex, double unit) {
+  if (columnIndex == 0) return _kColumnHeaderH + unit * (matchIndex + 0.5);
+  return _kColumnHeaderH + unit * (1 << (columnIndex - 1)) * (2 * matchIndex + 1).toDouble();
 }
 
 class _VisualBracketCanvas extends StatelessWidget {

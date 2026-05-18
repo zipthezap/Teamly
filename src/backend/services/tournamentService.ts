@@ -156,7 +156,7 @@ const selectGroupKnockoutQualifiers = (
   const totalTeams = orderedGroups.reduce((sum, [, items]) => sum + items.length, 0);
   const qualifierCount = knockoutBracketSize(totalTeams);
   if (qualifierCount < 2) {
-    throw new BadRequestError('At least 2 group-stage teams are required to seed knockout brackets', 'INSUFFICIENT_TEAMS');
+    throw new BadRequestError('At least 2 qualified teams are required to seed knockout brackets', 'INSUFFICIENT_TEAMS');
   }
 
   const basePerGroup = Math.max(1, Math.floor(qualifierCount / orderedGroups.length));
