@@ -949,44 +949,62 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     } else {
       final hasPoolsWithTeams = tournament.pools.isNotEmpty &&
           tournament.pools.any((p) => p.teams.isNotEmpty);
-      var useRandomFromPools = false;
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => StatefulBuilder(
-          builder: (ctx, setS) => AlertDialog(
-            title: Text('$generateVerb Brackets'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  hasExistingMatches
-                      ? 'This will replace the current brackets and matches for all registered teams. Continue?'
-                      : 'This will automatically create matches for all registered teams. Continue?',
-                ),
-                if (tournament.format == 'single_elimination' && hasPoolsWithTeams) ...[
+      if (tournament.format == 'single_elimination' && hasPoolsWithTeams) {
+        var localUseRandomFromPools = false;
+        final randomFromPoolsSelection = await showDialog<bool?>(
+          context: context,
+          builder: (ctx) => StatefulBuilder(
+            builder: (ctx, setDialogState) => AlertDialog(
+              title: Text('$generateVerb Brackets'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    hasExistingMatches
+                        ? 'This will replace the current brackets and matches for all registered teams. Continue?'
+                        : 'This will automatically create matches for all registered teams. Continue?',
+                  ),
                   const SizedBox(height: 12),
                   CheckboxListTile(
                     contentPadding: EdgeInsets.zero,
-                    value: useRandomFromPools,
-                    onChanged: (value) => setS(() => useRandomFromPools = value ?? false),
+                    value: localUseRandomFromPools,
+                    onChanged: (value) => setDialogState(() => localUseRandomFromPools = value ?? false),
                     title: const Text('Randomize from pools'),
                     subtitle: const Text('Seed teams from existing pools using random draw'),
                     controlAffinity: ListTileControlAffinity.leading,
                   ),
                 ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, localUseRandomFromPools),
+                  child: Text(generateVerb),
+                ),
               ],
+            ),
+          ),
+        );
+        if (randomFromPoolsSelection == null || !context.mounted) return;
+        usePoolAssignments = randomFromPoolsSelection;
+      } else {
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('$generateVerb Brackets'),
+            content: Text(
+              hasExistingMatches
+                  ? 'This will replace the current brackets and matches for all registered teams. Continue?'
+                  : 'This will automatically create matches for all registered teams. Continue?',
             ),
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
               FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(generateVerb)),
             ],
           ),
-        ),
-      );
-      if (ok != true || !context.mounted) return;
-      if (useRandomFromPools) {
-        usePoolAssignments = true;
+        );
+        if (ok != true || !context.mounted) return;
       }
     }
 

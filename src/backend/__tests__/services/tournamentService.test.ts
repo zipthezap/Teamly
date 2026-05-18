@@ -568,10 +568,6 @@ describe('Tournament Service', () => {
 
   describe('generateRandomizedSingleEliminationBracketsFromPools', () => {
     it('should generate brackets using randomized pool teams', async () => {
-      const randomSpy = vi.spyOn(Math, 'random')
-        .mockReturnValueOnce(0)
-        .mockReturnValueOnce(0);
-
       vi.mocked(prisma.tournamentPool.findMany).mockResolvedValueOnce([
         {
           id: 'pool-a',
@@ -594,14 +590,14 @@ describe('Tournament Service', () => {
 
       const result = await generateRandomizedSingleEliminationBracketsFromPools('tournament-1');
 
-      expect(prisma.tournamentMatch.createMany).toHaveBeenCalledWith({
-        data: [
-          expect.objectContaining({ homeTeamId: 'team-2', awayTeamId: 'team-3' }),
-          expect.objectContaining({ homeTeamId: 'team-4', awayTeamId: 'team-1' }),
-        ],
-      });
+      const createManyCall = vi.mocked(prisma.tournamentMatch.createMany).mock.calls[0]?.[0] as
+        | { data: Array<{ homeTeamId: string; awayTeamId: string }> }
+        | undefined;
+      expect(createManyCall).toBeDefined();
+      expect(createManyCall!.data).toHaveLength(2);
+      const seededTeamIds = createManyCall!.data.flatMap(match => [match.homeTeamId, match.awayTeamId]).sort();
+      expect(seededTeamIds).toEqual(['team-1', 'team-2', 'team-3', 'team-4']);
       expect(result.count).toBe(2);
-      randomSpy.mockRestore();
     });
 
     it('should throw error when pooled teams are insufficient', async () => {

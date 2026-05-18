@@ -1,5 +1,6 @@
 import prisma from '../config/database';
 import { Prisma } from '@prisma/client';
+import { randomInt } from 'crypto';
 import { 
   MatchStatus, 
   BracketStage,
@@ -495,7 +496,7 @@ const buildSingleEliminationMatches = (tournamentId: string, teams: Array<{ id: 
 const shuffleTeams = <T>(teams: T[]): T[] => {
   const shuffled = [...teams];
   for (let i = shuffled.length - 1; i > 0; i--) {
-    const randomIndex = Math.floor(Math.random() * (i + 1));
+    const randomIndex = randomInt(0, i + 1);
     [shuffled[i], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[i]];
   }
   return shuffled;
@@ -524,6 +525,7 @@ export const generateRandomizedSingleEliminationBracketsFromPools = async (tourn
   });
 
   const poolTeams = pools.flatMap(pool => pool.teams);
+  // Safety deduplication in case of inconsistent data or transitional states where a team appears in multiple pool reads.
   const uniqueTeams = Array.from(new Map(poolTeams.map(team => [team.id, team])).values());
   const randomizedTeams = shuffleTeams(uniqueTeams);
 
