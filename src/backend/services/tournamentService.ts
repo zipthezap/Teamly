@@ -247,6 +247,15 @@ export const computeAutoStatus = (tournament: {
     return null;
   }
 
+  // Brackets have been generated before the start date — move to in_progress so
+  // scores can be submitted and the tournament shows as active.
+  if (
+    tournament.hasMatches === true &&
+    (tournament.status === 'draft' || tournament.status === 'registration')
+  ) {
+    return 'in_progress';
+  }
+
   if (tournament.registrationStartDate && now >= tournament.registrationStartDate) {
     const deadlinePassed =
       tournament.registrationDeadline != null && now > tournament.registrationDeadline;
@@ -536,7 +545,16 @@ export const generateRandomizedSingleEliminationBracketsFromPools = async (tourn
 };
 
 /**
- * Generate brackets for round robin tournament
+ * Generate brackets for round robin tournament.
+ * Uses the circle (Berger table) method to assign a roundNumber to every
+ * match so the display can group them into "Round 1", "Round 2", etc.
+ * rather than lumping all matches under a single unlabelled group.
+ *
+ * Algorithm:
+ *  - Fix the first team at position 0; rotate the remaining n-1 slots.
+ *  - For odd n, add a virtual "bye" slot so the participant array is even;
+ *    skip any pairing that involves the bye slot.
+ *  - Results in n-1 rounds (even) or n rounds (odd), each with ⌊n/2⌋ games.
  */
 export const generateRoundRobinBrackets = async (tournamentId: string) => {
   const teams = await prisma.tournamentTeam.findMany({
@@ -547,18 +565,44 @@ export const generateRoundRobinBrackets = async (tournamentId: string) => {
   if (teams.length < 2) {
     throw new BadRequestError('At least 2 teams are required to generate brackets', 'INSUFFICIENT_TEAMS');
   }
-  
-  // Generate all possible match combinations
-  const matches = [];
-  for (let i = 0; i < teams.length; i++) {
-    for (let j = i + 1; j < teams.length; j++) {
+
+  const n = teams.length;
+  const isOdd = n % 2 === 1;
+  // Pad to an even number; null represents the bye slot for odd-team counts
+  const participants: (string | null)[] = teams.map(t => t.id);
+  if (isOdd) participants.push(null);
+  const size = participants.length; // always even
+  const roundCount = size - 1;
+
+  const matches: {
+    tournamentId: string;
+    homeTeamId: string;
+    awayTeamId: string;
+    roundNumber: number;
+    status: MatchStatus;
+  }[] = [];
+
+  for (let round = 0; round < roundCount; round++) {
+    const roundNumber = round + 1;
+    for (let i = 0; i < size / 2; i++) {
+      const home = participants[i];
+      const away = participants[size - 1 - i];
+      // Skip the bye pairing
+      if (home === null || away === null) continue;
       matches.push({
         tournamentId,
-        homeTeamId: teams[i].id,
-        awayTeamId: teams[j].id,
-        status: MatchStatus.SCHEDULED
+        homeTeamId: home,
+        awayTeamId: away,
+        roundNumber,
+        status: MatchStatus.SCHEDULED,
       });
     }
+    // Rotate participants[1..size-1] right by 1: last element moves to index 1
+    const last = participants[size - 1];
+    for (let i = size - 1; i > 1; i--) {
+      participants[i] = participants[i - 1];
+    }
+    participants[1] = last;
   }
   
   // Create matches in database

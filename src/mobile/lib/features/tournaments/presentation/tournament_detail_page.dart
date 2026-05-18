@@ -19,7 +19,10 @@ const _kAccent = Color(0xFFFF9800);
 bool _isTournamentStarted(TournamentModel tournament) {
   return tournament.status == 'in_progress' ||
       tournament.status == 'active' ||
-      tournament.status == 'completed';
+      tournament.status == 'completed' ||
+      // Brackets have been generated but the status hasn't synced yet — treat
+      // as started so the Scores tab is visible immediately.
+      tournament.matches.isNotEmpty;
 }
 
 String _statusStageLabel(TournamentModel tournament) {
@@ -687,7 +690,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                   ],
                 ),
                 label: Text(t.matches.isNotEmpty ? 'Regenerate Brackets' : 'Generate Brackets'),
-                onPressed: canManageTournament ? () => _generateBrackets(context, t) : null,
+                onPressed: (canManageTournament || t.status == 'in_progress')
+                    ? () => _generateBrackets(context, t)
+                    : null,
               ),
             ]),
           ],

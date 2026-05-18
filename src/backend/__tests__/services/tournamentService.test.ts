@@ -628,12 +628,13 @@ describe('Tournament Service', () => {
 
       const result = await generateRoundRobinBrackets('tournament-1');
 
-      // With 3 teams, we should have 3 matches: 1v2, 1v3, 2v3
+      // With 3 teams, we should have 3 matches spread across 3 rounds
       expect(prisma.tournamentMatch.createMany).toHaveBeenCalledWith({
         data: expect.arrayContaining([
           expect.objectContaining({
             tournamentId: 'tournament-1',
             status: MatchStatus.SCHEDULED,
+            roundNumber: expect.any(Number),
           }),
         ]),
       });
@@ -662,8 +663,49 @@ describe('Tournament Service', () => {
 
       const result = await generateRoundRobinBrackets('tournament-1');
 
-      // With 4 teams, we should have 6 matches (n * (n-1) / 2)
+      // With 4 teams, we should have 6 matches (n * (n-1) / 2) across 3 rounds
       expect(result.count).toBe(6);
+    });
+
+    it('should assign round numbers distributed across rounds for 4 teams', async () => {
+      const teams = Array.from({ length: 4 }, (_, i) => ({
+        id: `team-${i + 1}`,
+        name: `Team ${i + 1}`,
+        createdAt: new Date(),
+      }));
+
+      vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce(teams as unknown);
+      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 6 } as unknown);
+
+      await generateRoundRobinBrackets('tournament-1');
+
+      const callArg = vi.mocked(prisma.tournamentMatch.createMany).mock.calls[0][0];
+      const data = (callArg as { data: { roundNumber: number }[] }).data;
+
+      // 4 teams → 3 rounds × 2 matches each
+      const roundNumbers = data.map(m => m.roundNumber).sort((a, b) => a - b);
+      expect(roundNumbers).toEqual([1, 1, 2, 2, 3, 3]);
+    });
+
+    it('should handle odd number of teams with round numbers (3 teams → 3 rounds × 1 match)', async () => {
+      const teams = [
+        { id: 'team-1', name: 'Team 1', createdAt: new Date() },
+        { id: 'team-2', name: 'Team 2', createdAt: new Date() },
+        { id: 'team-3', name: 'Team 3', createdAt: new Date() },
+      ];
+
+      vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValueOnce(teams as unknown);
+      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 3 } as unknown);
+
+      await generateRoundRobinBrackets('tournament-1');
+
+      const callArg = vi.mocked(prisma.tournamentMatch.createMany).mock.calls[0][0];
+      const data = (callArg as { data: { roundNumber: number }[] }).data;
+
+      // 3 teams (odd) → 3 rounds × 1 match each = 3 matches
+      expect(data).toHaveLength(3);
+      const roundNumbers = data.map(m => m.roundNumber).sort((a, b) => a - b);
+      expect(roundNumbers).toEqual([1, 2, 3]);
     });
   });
 
@@ -919,6 +961,38 @@ describe('Tournament Service', () => {
         startDate: future,
         registrationStartDate: past,
         registrationDeadline: future,
+      });
+      expect(result).toBeNull();
+    });
+
+    it('returns "in_progress" when brackets are generated before start date (draft)', () => {
+      const result = computeAutoStatus({
+        status: 'draft',
+        startDate: future,
+        hasMatches: true,
+        hasIncompleteMatches: true,
+      });
+      expect(result).toBe('in_progress');
+    });
+
+    it('returns "in_progress" when brackets are generated before start date (registration)', () => {
+      const result = computeAutoStatus({
+        status: 'registration',
+        startDate: future,
+        registrationStartDate: past,
+        registrationDeadline: future,
+        hasMatches: true,
+        hasIncompleteMatches: true,
+      });
+      expect(result).toBe('in_progress');
+    });
+
+    it('returns null when already in_progress and brackets exist before start date', () => {
+      const result = computeAutoStatus({
+        status: 'in_progress',
+        startDate: future,
+        hasMatches: true,
+        hasIncompleteMatches: true,
       });
       expect(result).toBeNull();
     });
