@@ -168,10 +168,12 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
                     IconButton(
                       icon: const Icon(Icons.admin_panel_settings_outlined),
                       tooltip: 'Admin panel',
-                      onPressed: () async {
-                        await context.push('/tournaments/${t.id}/admins');
-                        if (mounted) refresh();
-                      },
+                      onPressed: canEditTournament(t.status)
+                          ? () async {
+                              await context.push('/tournaments/${t.id}/admins');
+                              if (mounted) refresh();
+                            }
+                          : null,
                     ),
                   if (isOrganizer)
                     PopupMenuButton<String>(
@@ -679,7 +681,7 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                       ),
                   ],
                 ),
-                label: const Text('Generate Brackets'),
+                label: Text(t.matches.isNotEmpty ? 'Regenerate Brackets' : 'Generate Brackets'),
                 onPressed: canManageTournament ? () => _generateBrackets(context, t) : null,
               ),
             ]),
@@ -744,7 +746,11 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
 
   Future<void> _generateBrackets(BuildContext context, TournamentModel tournament) async {
     int? numberOfGroups;
+    int? teamsPerGroup;
+    bool usePoolAssignments = false;
     bool forceGenerate = false;
+    final hasExistingMatches = tournament.matches.isNotEmpty;
+    final generateVerb = hasExistingMatches ? 'Regenerate' : 'Generate';
 
     // Payment gate warning
     if (tournament.requirePaymentForBrackets && tournament.unpaidTeamCount > 0) {
@@ -771,45 +777,188 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
       );
       if (!context.mounted) return;
       if (choice == null) return;
-      if (choice == 'wait') return; // user chose to review payments first
+      if (choice == 'wait') return;
       if (choice == 'force') forceGenerate = true;
     }
 
     if (tournament.format == 'groups_knockout') {
-      final ctrl = TextEditingController(text: '4');
+      // Build pool summary to display in dialog
+      final hasPools = tournament.pools.isNotEmpty &&
+          tournament.pools.any((p) => p.teams.isNotEmpty);
+      final poolSummary = tournament.pools
+          .where((p) => p.teams.isNotEmpty)
+          .map((p) => '${p.name} (${p.teams.length} teams)${p.venue != null ? ' · ${p.venue}' : ''}')
+          .join('\n');
+
+      // 0 = not chosen, 1 = auto-split, 2 = use pools
+      int splitMode = hasPools ? 0 : 1;
+      final groupCtrl = TextEditingController(text: '4');
+      final teamCtrl = TextEditingController();
+
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setS) => AlertDialog(
+            title: Text('$generateVerb Brackets'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (hasPools) ...[
+                    const Text('Group Assignment', style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    _RadioOption(
+                      label: 'Use existing pool assignments',
+                      sublabel: 'Each pool becomes its own group',
+                      value: 2,
+                      groupValue: splitMode,
+                      onChanged: (v) => setS(() => splitMode = v!),
+                    ),
+                    const SizedBox(height: 4),
+                    _RadioOption(
+                      label: 'Split teams evenly into groups',
+                      sublabel: 'Ignore current pool assignments',
+                      value: 1,
+                      groupValue: splitMode,
+                      onChanged: (v) => setS(() => splitMode = v!),
+                    ),
+                    const SizedBox(height: 12),
+                    if (splitMode == 2 && poolSummary.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Pools:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                            const SizedBox(height: 4),
+                            Text(poolSummary, style: const TextStyle(fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ],
+                  if (!hasPools || splitMode == 1) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: groupCtrl,
+                            decoration: const InputDecoration(labelText: 'Number of groups', isDense: true),
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: teamCtrl,
+                            decoration: const InputDecoration(labelText: 'Teams per group (optional)', isDense: true),
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'If both are set, "teams per group" takes precedence.',
+                      style: TextStyle(fontSize: 11, color: Theme.of(ctx).colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(generateVerb)),
+            ],
+          ),
+        ),
+      );
+      if (ok != true || !context.mounted) return;
+
+      if (splitMode == 2) {
+        usePoolAssignments = true;
+      } else {
+        final parsedTeamsPerGroup = int.tryParse(teamCtrl.text.trim());
+        if (parsedTeamsPerGroup != null && parsedTeamsPerGroup >= 2) {
+          teamsPerGroup = parsedTeamsPerGroup;
+        } else {
+          numberOfGroups = int.tryParse(groupCtrl.text.trim()) ?? 4;
+        }
+      }
+    } else if (tournament.format == 'pool') {
+      // Pool format: show pool summary and confirm
+      final hasPools = tournament.pools.isNotEmpty &&
+          tournament.pools.any((p) => p.teams.isNotEmpty);
+      final poolSummary = tournament.pools
+          .where((p) => p.teams.isNotEmpty)
+          .map((p) => '${p.name}: ${p.teams.length} teams${p.venue != null ? ' @ ${p.venue}' : ''}')
+          .join('\n');
+
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Generate Brackets'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('How many groups for the group stage?'),
-              const SizedBox(height: 12),
-              TextField(
-                controller: ctrl,
-                decoration: const InputDecoration(labelText: 'Number of groups'),
-                keyboardType: TextInputType.number,
-              ),
-            ],
+          title: Text('$generateVerb Pool Matches'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (hasPools) ...[
+                  const Text(
+                    'Teams within each pool will play round-robin matches against each other.',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Pools:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                        const SizedBox(height: 4),
+                        Text(poolSummary, style: const TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ] else
+                  const Text(
+                    'No pools with teams found. All registered teams will play round-robin.',
+                    style: TextStyle(fontSize: 13),
+                  ),
+              ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Generate')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(generateVerb)),
           ],
         ),
       );
       if (ok != true || !context.mounted) return;
-      numberOfGroups = int.tryParse(ctrl.text.trim());
     } else {
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Generate Brackets'),
-          content: const Text('This will automatically create matches for all registered teams. Continue?'),
+          title: Text('$generateVerb Brackets'),
+          content: Text(
+            hasExistingMatches
+                ? 'This will replace the current brackets and matches for all registered teams. Continue?'
+                : 'This will automatically create matches for all registered teams. Continue?',
+          ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Generate')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(generateVerb)),
           ],
         ),
       );
@@ -820,11 +969,15 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
       await ref.read(tournamentRepositoryProvider).generateBrackets(
         tournament.id,
         numberOfGroups: numberOfGroups,
+        teamsPerGroup: teamsPerGroup,
+        usePoolAssignments: usePoolAssignments,
         forceGenerate: forceGenerate,
       );
       onRefresh();
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Brackets generated!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(hasExistingMatches ? 'Brackets regenerated!' : 'Brackets generated!')),
+        );
       }
     } on Exception catch (e) {
       if (context.mounted) {
@@ -2285,6 +2438,49 @@ class _SectionCard extends StatelessWidget {
           const SizedBox(height: 6),
           child,
         ]),
+      ),
+    );
+  }
+}
+
+// ===========================================================================
+// Helper widgets
+// ===========================================================================
+
+class _RadioOption<T> extends StatelessWidget {
+  const _RadioOption({
+    required this.label,
+    this.sublabel,
+    required this.value,
+    required this.groupValue,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String? sublabel;
+  final T value;
+  final T groupValue;
+  final ValueChanged<T?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => onChanged(value),
+      borderRadius: BorderRadius.circular(8),
+      child: Row(
+        children: [
+          Radio<T>(value: value, groupValue: groupValue, onChanged: onChanged),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                if (sublabel != null)
+                  Text(sublabel!, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

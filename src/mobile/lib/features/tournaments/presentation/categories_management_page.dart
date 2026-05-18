@@ -12,6 +12,7 @@ import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
 import '../state/tournaments_notifier.dart';
+import 'tournament_ui_rules.dart';
 
 
 class CategoriesManagementPage extends ConsumerStatefulWidget {
@@ -25,6 +26,7 @@ class CategoriesManagementPage extends ConsumerStatefulWidget {
 class _CategoriesManagementPageState extends ConsumerState<CategoriesManagementPage> {
   List<TournamentCategoryModel> _categories = [];
   List<TournamentPoolModel> _pools = [];
+  String _tournamentStatus = 'draft';
   bool _loading = true;
   String? _error;
 
@@ -40,11 +42,13 @@ class _CategoriesManagementPageState extends ConsumerState<CategoriesManagementP
       final results = await Future.wait([
         ref.read(tournamentRepositoryProvider).getCategories(widget.tournamentId),
         ref.read(tournamentRepositoryProvider).getPools(widget.tournamentId),
+        ref.read(tournamentRepositoryProvider).getTournament(widget.tournamentId),
       ]);
       if (mounted) {
         setState(() {
           _categories = results[0] as List<TournamentCategoryModel>;
           _pools = results[1] as List<TournamentPoolModel>;
+          _tournamentStatus = (results[2] as TournamentModel).status;
           _loading = false;
         });
       }
@@ -182,10 +186,12 @@ class _CategoriesManagementPageState extends ConsumerState<CategoriesManagementP
 
   @override
   Widget build(BuildContext context) {
+    final canManageCategories =
+        !_loading && canManageTournamentAdminActions(_tournamentStatus);
     return Scaffold(
       appBar: AppBar(title: const Text('Manage Categories')),
       floatingActionButton: FloatingActionButton(
-        onPressed: _createCategory,
+        onPressed: canManageCategories ? _createCategory : null,
         tooltip: 'Create category',
         child: const Icon(Icons.add),
       ),
@@ -216,8 +222,8 @@ class _CategoriesManagementPageState extends ConsumerState<CategoriesManagementP
                                 title: Text(cat.name, style: const TextStyle(fontWeight: FontWeight.w600)),
                                 subtitle: cat.description != null ? Text(cat.description!, style: const TextStyle(fontSize: 12)) : null,
                                 trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                                  IconButton(icon: const Icon(Icons.edit_outlined, size: 18), tooltip: 'Edit', onPressed: () => _editCategory(cat)),
-                                  IconButton(icon: const Icon(Icons.delete_outline, size: 18), tooltip: 'Delete', onPressed: () => _deleteCategory(cat)),
+                                  IconButton(icon: const Icon(Icons.edit_outlined, size: 18), tooltip: 'Edit', onPressed: canManageCategories ? () => _editCategory(cat) : null),
+                                  IconButton(icon: const Icon(Icons.delete_outline, size: 18), tooltip: 'Delete', onPressed: canManageCategories ? () => _deleteCategory(cat) : null),
                                 ]),
                               ),
                               if (cat.pools.isNotEmpty) ...[
@@ -253,7 +259,7 @@ class _CategoriesManagementPageState extends ConsumerState<CategoriesManagementP
                               style: const TextStyle(fontSize: 12),
                             ),
                             trailing: OutlinedButton(
-                              onPressed: () => _assignPool(pool),
+                              onPressed: canManageCategories ? () => _assignPool(pool) : null,
                               child: const Text('Assign'),
                             ),
                           ),
@@ -269,4 +275,3 @@ class _CategoriesManagementPageState extends ConsumerState<CategoriesManagementP
 // ===========================================================================
 // Edit Tournament Page
 // ===========================================================================
-

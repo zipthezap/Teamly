@@ -9,6 +9,7 @@ import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
 import '../state/tournaments_notifier.dart';
+import 'tournament_ui_rules.dart';
 import 'tournament_detail_page.dart' show ScoreDialog;
 
 
@@ -223,10 +224,12 @@ class _MatchesManagementPageState extends ConsumerState<MatchesManagementPage> {
       data: (tournament) {
         final matches = tournament.matches;
         final byRound = _matchesByRound(matches);
+        final canManageStructure =
+            !_loading && canManageTournamentAdminActions(tournament.status);
         return Scaffold(
           appBar: AppBar(title: const Text('Matches')),
           floatingActionButton: FloatingActionButton(
-            onPressed: _loading ? null : () => _showMatchDialog(tournament),
+            onPressed: canManageStructure ? () => _showMatchDialog(tournament) : null,
             tooltip: 'Add match',
             child: const Icon(Icons.add),
           ),
@@ -240,12 +243,14 @@ class _MatchesManagementPageState extends ConsumerState<MatchesManagementPage> {
                         for (final entry in byRound.entries) ...[
                           UiSectionTitle(entry.key.isEmpty ? 'Unassigned' : entry.key),
                           const SizedBox(height: 8),
-                          for (final m in entry.value) _MatchManagementTile(
-                            match: m,
-                            onEdit: () => _showMatchDialog(tournament, match: m),
-                            onScore: () => _showScoreDialog(m),
-                            onDelete: () => _deleteMatch(m),
-                          ),
+                           for (final m in entry.value) _MatchManagementTile(
+                             match: m,
+                             onEdit: canManageStructure
+                                 ? () => _showMatchDialog(tournament, match: m)
+                                 : null,
+                             onScore: () => _showScoreDialog(m),
+                             onDelete: canManageStructure ? () => _deleteMatch(m) : null,
+                           ),
                           const SizedBox(height: 8),
                         ],
                         const SizedBox(height: 80),
@@ -266,9 +271,9 @@ class _MatchManagementTile extends StatelessWidget {
   });
 
   final TournamentMatchModel match;
-  final VoidCallback onEdit;
+  final VoidCallback? onEdit;
   final VoidCallback onScore;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {

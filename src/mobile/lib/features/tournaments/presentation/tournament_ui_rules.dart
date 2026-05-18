@@ -3,7 +3,7 @@ bool canRegisterTeam(String status, {required bool hasMyTeam, bool isOrganizer =
 }
 
 bool canEditTournament(String status) {
-  return status != 'completed' && status != 'cancelled';
+  return status == 'draft' || status == 'registration';
 }
 
 bool canManageTournamentAdminActions(String status) {

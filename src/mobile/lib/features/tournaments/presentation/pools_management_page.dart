@@ -12,6 +12,7 @@ import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
 import '../state/tournaments_notifier.dart';
+import 'tournament_ui_rules.dart';
 
 
 class PoolsManagementPage extends ConsumerStatefulWidget {
@@ -25,6 +26,7 @@ class PoolsManagementPage extends ConsumerStatefulWidget {
 class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
   List<TournamentPoolModel> _pools = [];
   List<TournamentTeamModel> _allTeams = [];
+  String _tournamentStatus = 'draft';
   bool _loading = true;
   String? _error;
 
@@ -39,11 +41,13 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
     try {
       final results = await Future.wait([
         ref.read(tournamentRepositoryProvider).getPools(widget.tournamentId),
-        ref.read(tournamentRepositoryProvider).getTournament(widget.tournamentId).then((t) => t.teams),
+        ref.read(tournamentRepositoryProvider).getTournament(widget.tournamentId),
       ]);
       if (mounted) setState(() {
         _pools = results[0] as List<TournamentPoolModel>;
-        _allTeams = results[1] as List<TournamentTeamModel>;
+        final tournament = results[1] as TournamentModel;
+        _allTeams = tournament.teams;
+        _tournamentStatus = tournament.status;
         _loading = false;
       });
     } on Exception catch (e) {
@@ -55,6 +59,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
     final nameCtrl = TextEditingController();
     final maxCtrl = TextEditingController();
     final descCtrl = TextEditingController();
+    final venueCtrl = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -64,6 +69,8 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
             TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Pool name *'), textCapitalization: TextCapitalization.words),
             const SizedBox(height: 12),
             TextField(controller: maxCtrl, decoration: const InputDecoration(labelText: 'Max teams *'), keyboardType: TextInputType.number),
+            const SizedBox(height: 12),
+            TextField(controller: venueCtrl, decoration: const InputDecoration(labelText: 'Venue / gym (optional)', hintText: 'e.g. Gym A, Court 3'), textCapitalization: TextCapitalization.words),
             const SizedBox(height: 12),
             TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description (optional)')),
           ]),
@@ -84,6 +91,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
     try {
       await ref.read(tournamentRepositoryProvider).createPool(widget.tournamentId, {
         'name': name, 'maxTeams': maxTeams,
+        if (venueCtrl.text.trim().isNotEmpty) 'venue': venueCtrl.text.trim(),
         if (descCtrl.text.trim().isNotEmpty) 'description': descCtrl.text.trim(),
       });
       _load();
@@ -96,15 +104,20 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
   Future<void> _editPool(TournamentPoolModel pool) async {
     final nameCtrl = TextEditingController(text: pool.name);
     final maxCtrl = TextEditingController(text: '${pool.maxTeams}');
+    final venueCtrl = TextEditingController(text: pool.venue ?? '');
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Edit Pool'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Pool name *'), textCapitalization: TextCapitalization.words),
-          const SizedBox(height: 12),
-          TextField(controller: maxCtrl, decoration: const InputDecoration(labelText: 'Max teams *'), keyboardType: TextInputType.number),
-        ]),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Pool name *'), textCapitalization: TextCapitalization.words),
+            const SizedBox(height: 12),
+            TextField(controller: maxCtrl, decoration: const InputDecoration(labelText: 'Max teams *'), keyboardType: TextInputType.number),
+            const SizedBox(height: 12),
+            TextField(controller: venueCtrl, decoration: const InputDecoration(labelText: 'Venue / gym (optional)', hintText: 'e.g. Gym A, Court 3'), textCapitalization: TextCapitalization.words),
+          ]),
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
@@ -116,7 +129,11 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
     final maxTeams = int.tryParse(maxCtrl.text.trim());
     if (name.isEmpty || maxTeams == null) return;
     try {
-      await ref.read(tournamentRepositoryProvider).updatePool(widget.tournamentId, pool.id, {'name': name, 'maxTeams': maxTeams});
+      await ref.read(tournamentRepositoryProvider).updatePool(widget.tournamentId, pool.id, {
+        'name': name,
+        'maxTeams': maxTeams,
+        'venue': venueCtrl.text.trim().isEmpty ? null : venueCtrl.text.trim(),
+      });
       _load();
     } on Exception catch (e) {
       if (!mounted) return;
@@ -298,10 +315,12 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
 
   @override
   Widget build(BuildContext context) {
+    final canManagePools =
+        !_loading && canManageTournamentAdminActions(_tournamentStatus);
     return Scaffold(
       appBar: AppBar(title: const Text('Manage Pools')),
       floatingActionButton: FloatingActionButton(
-        onPressed: _createPool,
+        onPressed: canManagePools ? _createPool : null,
         tooltip: 'Create pool',
         child: const Icon(Icons.add),
       ),
@@ -331,13 +350,26 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                   ListTile(
                                     leading: const Icon(Icons.layers_outlined),
                                     title: Text(pool.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                                    subtitle: Text('${pool.teams.length}/${pool.maxTeams} teams${pool.waitlist.isNotEmpty ? ' · ${pool.waitlist.length} waiting' : ''}'),
-                                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                                      IconButton(icon: const Icon(Icons.person_add_outlined, size: 18), tooltip: 'Add team', onPressed: () => _addTeamToPool(pool)),
-                                      IconButton(icon: const Icon(Icons.edit_outlined, size: 18), tooltip: 'Edit', onPressed: () => _editPool(pool)),
-                                      IconButton(icon: const Icon(Icons.delete_outline, size: 18), tooltip: 'Delete', onPressed: () => _deletePool(pool)),
-                                    ]),
-                                  ),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('${pool.teams.length}/${pool.maxTeams} teams${pool.waitlist.isNotEmpty ? ' · ${pool.waitlist.length} waiting' : ''}'),
+                                        if (pool.venue != null) ...[
+                                          const SizedBox(height: 2),
+                                          Row(children: [
+                                            Icon(Icons.location_on_outlined, size: 12, color: AppThemeTokens.textMuted(context)),
+                                            const SizedBox(width: 3),
+                                            Text(pool.venue!, style: TextStyle(fontSize: 12, color: AppThemeTokens.textMuted(context))),
+                                          ]),
+                                        ],
+                                      ],
+                                     ),
+                                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                                       IconButton(icon: const Icon(Icons.person_add_outlined, size: 18), tooltip: 'Add team', onPressed: canManagePools ? () => _addTeamToPool(pool) : null),
+                                       IconButton(icon: const Icon(Icons.edit_outlined, size: 18), tooltip: 'Edit', onPressed: canManagePools ? () => _editPool(pool) : null),
+                                       IconButton(icon: const Icon(Icons.delete_outline, size: 18), tooltip: 'Delete', onPressed: canManagePools ? () => _deletePool(pool) : null),
+                                     ]),
+                                   ),
                                   if (pool.teams.isNotEmpty) ...[
                                     const Divider(height: 1),
                                     for (final team in pool.teams)
@@ -348,16 +380,16 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                         trailing: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            IconButton(
-                                              icon: const Icon(Icons.swap_horiz, size: 16),
-                                              tooltip: 'Move to another pool',
-                                              onPressed: () => _moveTeam(pool.id, team),
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(Icons.person_remove_outlined, size: 16),
-                                              tooltip: 'Remove from pool',
-                                              onPressed: () => _removeTeam(pool.id, team),
-                                            ),
+                                             IconButton(
+                                               icon: const Icon(Icons.swap_horiz, size: 16),
+                                               tooltip: 'Move to another pool',
+                                               onPressed: canManagePools ? () => _moveTeam(pool.id, team) : null,
+                                             ),
+                                             IconButton(
+                                               icon: const Icon(Icons.person_remove_outlined, size: 16),
+                                               tooltip: 'Remove from pool',
+                                               onPressed: canManagePools ? () => _removeTeam(pool.id, team) : null,
+                                             ),
                                           ],
                                         ),
                                       ),
@@ -375,7 +407,7 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
                                         trailing: IconButton(
                                           icon: Icon(Icons.remove_circle_outline, size: 16, color: Theme.of(context).colorScheme.error),
                                           tooltip: 'Remove from waitlist',
-                                          onPressed: () => _removeFromWaitlist(pool.id, w),
+                                          onPressed: canManagePools ? () => _removeFromWaitlist(pool.id, w) : null,
                                         ),
                                       ),
                                   ],
@@ -393,4 +425,3 @@ class _PoolsManagementPageState extends ConsumerState<PoolsManagementPage> {
 // ===========================================================================
 // Categories Management Page
 // ===========================================================================
-

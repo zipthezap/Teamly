@@ -12,6 +12,7 @@ import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
 import '../state/tournaments_notifier.dart';
+import 'tournament_ui_rules.dart';
 
 
 class AdminManagementPage extends ConsumerStatefulWidget {
@@ -25,6 +26,7 @@ class AdminManagementPage extends ConsumerStatefulWidget {
 
 class _AdminManagementPageState extends ConsumerState<AdminManagementPage> {
   List<TournamentAdminModel> _admins = [];
+  String _tournamentStatus = 'draft';
   bool _loading = true;
   String? _error;
 
@@ -37,8 +39,17 @@ class _AdminManagementPageState extends ConsumerState<AdminManagementPage> {
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
     try {
-      final admins = await ref.read(tournamentRepositoryProvider).getAdmins(widget.tournamentId);
-      if (mounted) setState(() { _admins = admins; _loading = false; });
+      final results = await Future.wait([
+        ref.read(tournamentRepositoryProvider).getAdmins(widget.tournamentId),
+        ref.read(tournamentRepositoryProvider).getTournament(widget.tournamentId),
+      ]);
+      if (mounted) {
+        setState(() {
+          _admins = results[0] as List<TournamentAdminModel>;
+          _tournamentStatus = (results[1] as TournamentModel).status;
+          _loading = false;
+        });
+      }
     } on Exception catch (e) {
       if (mounted) setState(() { _error = extractErrorMessage(e); _loading = false; });
     }
@@ -95,11 +106,17 @@ class _AdminManagementPageState extends ConsumerState<AdminManagementPage> {
 
   @override
   Widget build(BuildContext context) {
+    final canManageAdmins =
+        !_loading && canManageTournamentAdminActions(_tournamentStatus);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Management'),
         actions: [
-          IconButton(icon: const Icon(Icons.person_add_outlined), tooltip: 'Add co-organizer', onPressed: _addAdmin),
+          IconButton(
+            icon: const Icon(Icons.person_add_outlined),
+            tooltip: 'Add co-organizer',
+            onPressed: canManageAdmins ? _addAdmin : null,
+          ),
         ],
       ),
       body: _loading
@@ -122,7 +139,10 @@ class _AdminManagementPageState extends ConsumerState<AdminManagementPage> {
                               leading: const CircleAvatar(child: Icon(Icons.manage_accounts_outlined)),
                               title: Text(admin.userName),
                               subtitle: Text(admin.userEmail),
-                              trailing: IconButton(icon: const Icon(Icons.remove_circle_outline, color: Colors.red), onPressed: () => _removeAdmin(admin)),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                                onPressed: canManageAdmins ? () => _removeAdmin(admin) : null,
+                              ),
                             );
                           },
                         ),
@@ -134,4 +154,3 @@ class _AdminManagementPageState extends ConsumerState<AdminManagementPage> {
 // ===========================================================================
 // Tournament Invite Page
 // ===========================================================================
-
