@@ -1121,17 +1121,49 @@ describe('POST /api/tournaments/:id/generate-brackets (generateBrackets)', () =>
     );
   });
 
-  it('returns 400 when trying to generate brackets after the tournament has started', async () => {
+  it('allows bracket generation for an in_progress tournament (admin regeneration)', async () => {
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
       ...mockTournament,
-      status: 'registration',
+      status: 'in_progress',
+      startDate: new Date(Date.now() - 60_000),
+      format: 'single_elimination',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.count).mockResolvedValue(4);
+    vi.mocked(prisma.tournamentStanding.deleteMany).mockResolvedValue({ count: 0 } as any);
+    vi.mocked(prisma.tournamentMatch.deleteMany).mockResolvedValue({ count: 4 } as any);
+    vi.mocked(tournamentService.generateSingleEliminationBrackets).mockResolvedValue({ count: 4 });
+
+    const res = await request(app).post('/api/tournaments/tournament-1/generate-brackets').send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toContain('regenerated');
+  });
+
+  it('returns 400 when trying to generate brackets for a completed tournament', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'completed',
       startDate: new Date(Date.now() - 60_000),
     } as any);
 
     const res = await request(app).post('/api/tournaments/tournament-1/generate-brackets').send({});
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toContain('before the tournament starts');
+    expect(res.body.error).toContain('active tournaments');
+    expect(vi.mocked(tournamentService.generateSingleEliminationBrackets)).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when trying to generate brackets for a cancelled tournament', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'cancelled',
+      startDate: new Date(Date.now() - 60_000),
+    } as any);
+
+    const res = await request(app).post('/api/tournaments/tournament-1/generate-brackets').send({});
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('active tournaments');
     expect(vi.mocked(tournamentService.generateSingleEliminationBrackets)).not.toHaveBeenCalled();
   });
 });

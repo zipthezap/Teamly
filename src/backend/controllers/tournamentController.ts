@@ -1116,10 +1116,14 @@ export const generateBrackets = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only organizers and admins can generate brackets');
   }
 
-  assertTournamentSetupEditable(
-    tournament,
-    'Brackets can only be generated or regenerated before the tournament starts'
-  );
+  // Brackets can be generated or regenerated at any point while the tournament
+  // is active (draft → in_progress). Only block for completed/cancelled.
+  if (
+    tournament.status === TournamentStatus.COMPLETED ||
+    tournament.status === TournamentStatus.CANCELLED
+  ) {
+    throw new BadRequestError('Brackets can only be generated or regenerated for active tournaments');
+  }
 
   const existingMatches = await prisma.tournamentMatch.count({
     where: { tournamentId: id }
