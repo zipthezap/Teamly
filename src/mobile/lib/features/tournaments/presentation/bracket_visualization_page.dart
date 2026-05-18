@@ -8,10 +8,27 @@ import '../../../shared/widgets/error_display.dart';
 import '../state/tournaments_notifier.dart';
 
 const _kAccentBracket = Color(0xFFFF9800);
+const double _kMatchW = 160.0;
+const double _kMatchH = 62.0;
+const double _kUnit = 82.0;
+const double _kColW = 208.0;
+const double _kWinnerW = 180.0;
+const double _kColumnHeaderH = 40.0;
 
-// ---------------------------------------------------------------------------
-// Standalone bracket page
-// ---------------------------------------------------------------------------
+const List<String> _kEliminationStageOrder = [
+  'round_of_32',
+  'round_of_16',
+  'quarter_finals',
+  'semi_finals',
+  'finals',
+];
+
+const List<String> _kGroupsKnockoutStageOrder = [
+  'round_of_16',
+  'quarter_finals',
+  'semi_finals',
+  'finals',
+];
 
 class BracketVisualizationPage extends ConsumerWidget {
   const BracketVisualizationPage({super.key, required this.tournamentId});
@@ -36,10 +53,6 @@ class BracketVisualizationPage extends ConsumerWidget {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Public shared widget used by both the standalone page and the Brackets tab
-// ---------------------------------------------------------------------------
 
 class TournamentBracketView extends StatelessWidget {
   const TournamentBracketView({super.key, required this.tournament});
@@ -67,10 +80,11 @@ class TournamentBracketView extends StatelessWidget {
       );
     }
 
-    final isPool = tournament.format == 'round_robin' ||
-        tournament.format == 'groups_knockout' ||
-        tournament.format == 'pool';
+    if (tournament.format == 'groups_knockout') {
+      return _GroupsKnockoutView(tournament: tournament);
+    }
 
+    final isPool = tournament.format == 'round_robin' || tournament.format == 'pool';
     if (isPool) {
       return _PoolBracketView(tournament: tournament);
     }
@@ -79,9 +93,176 @@ class TournamentBracketView extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Pool / round-robin format: sections per category, then per group/round
-// ---------------------------------------------------------------------------
+class _GroupsKnockoutView extends StatelessWidget {
+  const _GroupsKnockoutView({required this.tournament});
+
+  final TournamentModel tournament;
+
+  @override
+  Widget build(BuildContext context) {
+    final groupMatches = tournament.matches
+        .where((m) => m.stage == 'group_stage' || m.groupName != null)
+        .toList();
+    final knockoutMatches = tournament.matches
+        .where((m) => m.stage != null && m.stage != 'group_stage')
+        .toList();
+    final allGroupMatchesCompleted =
+        groupMatches.isNotEmpty && groupMatches.every((m) => m.status == 'completed');
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const _StageSectionHeader(
+          title: 'Group Stage',
+          subtitle: 'Teams play within their groups first. The knockout bracket forms after the group stage.',
+        ),
+        const SizedBox(height: 12),
+        _GroupStageSection(tournament: tournament, matches: groupMatches),
+        const SizedBox(height: 24),
+        _StageSectionHeader(
+          title: 'Knockout Bracket',
+          subtitle: knockoutMatches.isEmpty
+              ? (allGroupMatchesCompleted
+                  ? 'Waiting for the final group-stage result to seed the bracket.'
+                  : 'Complete all group-stage matches to form the playoff bracket.')
+              : 'Playoffs, quarterfinals, semifinals, and finals update as winners advance.',
+        ),
+        const SizedBox(height: 12),
+        if (knockoutMatches.isEmpty)
+          _KnockoutWaitingCard(allGroupMatchesCompleted: allGroupMatchesCompleted)
+        else
+          _KnockoutBracketView(
+            matches: knockoutMatches,
+            useGroupsKnockoutLabels: true,
+          ),
+      ],
+    );
+  }
+}
+
+class _KnockoutWaitingCard extends StatelessWidget {
+  const _KnockoutWaitingCard({required this.allGroupMatchesCompleted});
+
+  final bool allGroupMatchesCompleted;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppThemeTokens.cardElevated(context),
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        border: Border.all(color: AppThemeTokens.border(context)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            allGroupMatchesCompleted ? Icons.schedule_outlined : Icons.hourglass_bottom_outlined,
+            color: AppThemeTokens.primary500,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              allGroupMatchesCompleted
+                  ? 'The playoff bracket will appear once the group-stage standings finish syncing.'
+                  : 'No playoff bracket yet. Finish the remaining group-stage matches first.',
+              style: TextStyle(color: AppThemeTokens.textSecondary(context)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StageSectionHeader extends StatelessWidget {
+  const _StageSectionHeader({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: TextStyle(color: AppThemeTokens.textSecondary(context)),
+        ),
+      ],
+    );
+  }
+}
+
+class _GroupStageSection extends StatelessWidget {
+  const _GroupStageSection({required this.tournament, required this.matches});
+
+  final TournamentModel tournament;
+  final List<TournamentMatchModel> matches;
+
+  @override
+  Widget build(BuildContext context) {
+    if (matches.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppThemeTokens.cardElevated(context),
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+          border: Border.all(color: AppThemeTokens.border(context)),
+        ),
+        child: Text(
+          'No group-stage matches have been generated yet.',
+          style: TextStyle(color: AppThemeTokens.textSecondary(context)),
+        ),
+      );
+    }
+
+    final byGroup = <String, List<TournamentMatchModel>>{};
+    for (final match in matches) {
+      final key = match.groupName ?? (match.round.isNotEmpty ? match.round : 'Matches');
+      byGroup.putIfAbsent(key, () => []).add(match);
+    }
+
+    final poolVenueMap = {
+      for (final pool in tournament.pools)
+        if (pool.venue != null) pool.name: pool.venue!,
+    };
+
+    final orderedGroups = byGroup.keys.toList()..sort();
+
+    return Column(
+      children: [
+        for (final groupName in orderedGroups) ...[
+          _PoolGroupHeader(
+            groupName: groupName,
+            venue: poolVenueMap[groupName],
+            matchCount: byGroup[groupName]!.length,
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 120,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: byGroup[groupName]!
+                  .map((m) => Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: SizedBox(width: 200, child: _SmallMatchCard(match: m)),
+                      ))
+                  .toList(),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ],
+    );
+  }
+}
 
 class _PoolBracketView extends StatelessWidget {
   const _PoolBracketView({required this.tournament});
@@ -91,8 +272,6 @@ class _PoolBracketView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final matches = tournament.matches;
-
-    // Build: poolName → categoryName
     final poolCategoryMap = <String, String>{};
     for (final pool in tournament.pools) {
       if (pool.categoryName != null) {
@@ -100,18 +279,13 @@ class _PoolBracketView extends StatelessWidget {
       }
     }
 
-    // Group by category first, then by round/group within
     final hasCategories = tournament.categories.length > 1;
-
     if (hasCategories) {
-      // Build: categoryName → groupName → matches
-      // m.round for pool-stage matches is set from the pool's groupName in the backend,
-      // which equals pool.name — so poolCategoryMap[m.round] correctly resolves the category.
       final Map<String, Map<String, List<TournamentMatchModel>>> byCat = {};
       for (final m in matches) {
-        final cat = poolCategoryMap[m.round] ?? 'General';
-        final group = m.round;
-        byCat.putIfAbsent(cat, () => {}).putIfAbsent(group, () => []).add(m);
+        final key = m.groupName ?? m.round;
+        final cat = poolCategoryMap[key] ?? 'General';
+        byCat.putIfAbsent(cat, () => {}).putIfAbsent(key, () => []).add(m);
       }
 
       return DefaultTabController(
@@ -131,7 +305,7 @@ class _PoolBracketView extends StatelessWidget {
                     byGroup: byGroup,
                     poolVenueMap: {
                       for (final p in tournament.pools)
-                        if (p.venue != null) p.name: p.venue!
+                        if (p.venue != null) p.name: p.venue!,
                     },
                   );
                 }).toList(),
@@ -142,24 +316,23 @@ class _PoolBracketView extends StatelessWidget {
       );
     }
 
-    // No categories — single pool list
     final Map<String, List<TournamentMatchModel>> byRound = {};
     for (final m in matches) {
-      byRound.putIfAbsent(m.round.isEmpty ? 'Matches' : m.round, () => []).add(m);
+      final key = m.groupName ?? (m.round.isEmpty ? 'Matches' : m.round);
+      byRound.putIfAbsent(key, () => []).add(m);
     }
     return _PoolGroupListView(
       byGroup: byRound,
       poolVenueMap: {
         for (final p in tournament.pools)
-          if (p.venue != null) p.name: p.venue!
+          if (p.venue != null) p.name: p.venue!,
       },
     );
   }
 }
 
 class _PoolGroupListView extends StatelessWidget {
-  const _PoolGroupListView(
-      {required this.byGroup, required this.poolVenueMap});
+  const _PoolGroupListView({required this.byGroup, required this.poolVenueMap});
 
   final Map<String, List<TournamentMatchModel>> byGroup;
   final Map<String, String> poolVenueMap;
@@ -196,8 +369,7 @@ class _PoolGroupListView extends StatelessWidget {
 }
 
 class _PoolGroupHeader extends StatelessWidget {
-  const _PoolGroupHeader(
-      {required this.groupName, this.venue, required this.matchCount});
+  const _PoolGroupHeader({required this.groupName, this.venue, required this.matchCount});
 
   final String groupName;
   final String? venue;
@@ -234,10 +406,13 @@ class _PoolGroupHeader extends StatelessWidget {
                       Icon(Icons.location_on_outlined,
                           size: 11, color: AppThemeTokens.textMuted(context)),
                       const SizedBox(width: 3),
-                      Text(venue!,
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: AppThemeTokens.textMuted(context))),
+                      Text(
+                        venue!,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppThemeTokens.textMuted(context),
+                        ),
+                      ),
                     ],
                   ),
               ],
@@ -245,8 +420,7 @@ class _PoolGroupHeader extends StatelessWidget {
           ),
           Text(
             '$matchCount match${matchCount == 1 ? '' : 'es'}',
-            style: TextStyle(
-                fontSize: 11, color: AppThemeTokens.textMuted(context)),
+            style: TextStyle(fontSize: 11, color: AppThemeTokens.textMuted(context)),
           ),
         ],
       ),
@@ -283,13 +457,16 @@ class _SmallMatchCard extends StatelessWidget {
                 ),
               ),
               if (score != null)
-                Text('$score',
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: wins
-                            ? AppThemeTokens.primary400
-                            : AppThemeTokens.textSecondary(context))),
+                Text(
+                  '$score',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: wins
+                        ? AppThemeTokens.primary400
+                        : AppThemeTokens.textSecondary(context),
+                  ),
+                ),
             ],
           ),
         );
@@ -312,10 +489,6 @@ class _SmallMatchCard extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Single-elimination: visual bracket with connecting lines
-// ---------------------------------------------------------------------------
-
 class _SingleEliminationView extends StatelessWidget {
   const _SingleEliminationView({required this.tournament});
 
@@ -324,8 +497,6 @@ class _SingleEliminationView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final matches = tournament.matches;
-
-    // Build poolId → categoryName from pools
     final poolCategoryMap = <String, String>{};
     for (final pool in tournament.pools) {
       if (pool.categoryName != null) {
@@ -333,7 +504,6 @@ class _SingleEliminationView extends StatelessWidget {
       }
     }
 
-    // Build teamId → categoryName via team's poolId
     final teamCategoryMap = <String, String>{};
     for (final team in tournament.teams) {
       if (team.poolId != null && poolCategoryMap.containsKey(team.poolId)) {
@@ -341,10 +511,9 @@ class _SingleEliminationView extends StatelessWidget {
       }
     }
 
-    // Assign each match a category (use teamA's category if available)
     final Map<String, List<TournamentMatchModel>> byCategory = {};
     for (final m in matches) {
-      String cat = 'Open';
+      var cat = 'Open';
       if (m.teamAId != null && teamCategoryMap.containsKey(m.teamAId)) {
         cat = teamCategoryMap[m.teamAId]!;
       } else if (m.teamBId != null && teamCategoryMap.containsKey(m.teamBId)) {
@@ -353,8 +522,6 @@ class _SingleEliminationView extends StatelessWidget {
       byCategory.putIfAbsent(cat, () => []).add(m);
     }
 
-    // Sort categories to match tournament.categories order.
-    // Pre-compute index map for O(n log n) sort instead of O(n²).
     final orderedCatNames = tournament.categories.map((c) => c.name).toList();
     final catIndexMap = <String, int>{
       for (int i = 0; i < orderedCatNames.length; i++) orderedCatNames[i]: i,
@@ -384,7 +551,7 @@ class _SingleEliminationView extends StatelessWidget {
             Expanded(
               child: TabBarView(
                 children: sortedCats.map((cat) {
-                  return _VisualBracketCanvas(matches: byCategory[cat]!);
+                  return _KnockoutBracketView(matches: byCategory[cat]!);
                 }).toList(),
               ),
             ),
@@ -393,24 +560,234 @@ class _SingleEliminationView extends StatelessWidget {
       );
     }
 
-    return _VisualBracketCanvas(matches: matches);
+    return _KnockoutBracketView(matches: matches);
   }
 }
 
-// ---------------------------------------------------------------------------
-// Visual bracket canvas: match cards + connector lines
-// ---------------------------------------------------------------------------
+class _KnockoutBracketView extends StatelessWidget {
+  const _KnockoutBracketView({required this.matches, this.useGroupsKnockoutLabels = false});
 
-// Layout constants
-const double _kMatchW = 160.0;
-const double _kMatchH = 62.0;
-const double _kUnit = 82.0; // vertical unit = spacing between round-1 match centers
-const double _kColW = 208.0; // column width = match width + horizontal gap
-const double _kWinnerW = 180.0; // width reserved for winner badge
+  final List<TournamentMatchModel> matches;
+  final bool useGroupsKnockoutLabels;
 
-/// Maps a round label to a sort order (lower = earlier round).
-/// Generic "Round N" labels get order = N * _kRoundOrderStep.
-const int _kRoundOrderStep = 5;
+  @override
+  Widget build(BuildContext context) {
+    final columns = _buildBracketColumns(
+      matches,
+      useGroupsKnockoutLabels: useGroupsKnockoutLabels,
+    );
+
+    if (columns.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppThemeTokens.cardElevated(context),
+          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+          border: Border.all(color: AppThemeTokens.border(context)),
+        ),
+        child: Text(
+          'No knockout matches available yet.',
+          style: TextStyle(color: AppThemeTokens.textSecondary(context)),
+        ),
+      );
+    }
+
+    return _VisualBracketCanvas(columns: columns);
+  }
+}
+
+class _BracketColumn {
+  const _BracketColumn({required this.key, required this.label, required this.matches});
+
+  final String key;
+  final String label;
+  final List<_BracketCanvasMatch> matches;
+}
+
+class _BracketCanvasMatch {
+  const _BracketCanvasMatch({
+    required this.label,
+    this.teamAName,
+    this.teamBName,
+    this.scoreA,
+    this.scoreB,
+    this.status = 'scheduled',
+    this.isActual = true,
+  });
+
+  final String label;
+  final String? teamAName;
+  final String? teamBName;
+  final int? scoreA;
+  final int? scoreB;
+  final String status;
+  final bool isActual;
+
+  factory _BracketCanvasMatch.fromModel(
+    TournamentMatchModel match, {
+    String? fallbackTeamAName,
+    String? fallbackTeamBName,
+    required String label,
+  }) {
+    return _BracketCanvasMatch(
+      label: label,
+      teamAName: match.teamAName ?? fallbackTeamAName,
+      teamBName: match.teamBName ?? fallbackTeamBName,
+      scoreA: match.scoreA,
+      scoreB: match.scoreB,
+      status: match.status,
+      isActual: true,
+    );
+  }
+}
+
+List<_BracketColumn> _buildBracketColumns(
+  List<TournamentMatchModel> matches, {
+  bool useGroupsKnockoutLabels = false,
+}) {
+  final knockoutMatches = matches.where((m) => m.stage != 'group_stage').toList();
+  final hasExplicitStages = knockoutMatches.any((m) => m.stage != null && m.stage!.isNotEmpty);
+
+  if (hasExplicitStages) {
+    return _buildStageColumns(
+      knockoutMatches.where((m) => m.stage != null && m.stage!.isNotEmpty).toList(),
+      useGroupsKnockoutLabels: useGroupsKnockoutLabels,
+    );
+  }
+
+  return _buildLegacyRoundColumns(matches);
+}
+
+List<_BracketColumn> _buildStageColumns(
+  List<TournamentMatchModel> matches, {
+  bool useGroupsKnockoutLabels = false,
+}) {
+  final stageOrder = useGroupsKnockoutLabels ? _kGroupsKnockoutStageOrder : _kEliminationStageOrder;
+  final byStage = <String, List<TournamentMatchModel>>{};
+  for (final match in matches) {
+    final stage = match.stage;
+    if (stage == null) continue;
+    byStage.putIfAbsent(stage, () => []).add(match);
+  }
+
+  final presentStageIndexes = byStage.keys
+      .map((stage) => stageOrder.indexOf(stage))
+      .where((index) => index >= 0)
+      .toList();
+  if (presentStageIndexes.isEmpty) {
+    return [];
+  }
+
+  final firstIndex = presentStageIndexes.reduce((a, b) => a < b ? a : b);
+  final orderedStages = stageOrder.sublist(firstIndex);
+
+  final columns = <_BracketColumn>[];
+  List<_BracketCanvasMatch> previousRound = const [];
+
+  for (final stage in orderedStages) {
+    final stageMatches = [...(byStage[stage] ?? const <TournamentMatchModel>[])];
+    stageMatches.sort((a, b) {
+      final orderA = a.matchOrder ?? 999;
+      final orderB = b.matchOrder ?? 999;
+      if (orderA != orderB) return orderA.compareTo(orderB);
+      final roundA = a.roundNumber ?? 999;
+      final roundB = b.roundNumber ?? 999;
+      if (roundA != roundB) return roundA.compareTo(roundB);
+      return (a.teamAName ?? '').compareTo(b.teamAName ?? '');
+    });
+
+    final label = _stageLabel(stage, useGroupsKnockoutLabels: useGroupsKnockoutLabels);
+    late final List<_BracketCanvasMatch> roundMatches;
+
+    if (columns.isEmpty) {
+      roundMatches = stageMatches
+          .map((match) => _BracketCanvasMatch.fromModel(match, label: label))
+          .toList();
+    } else {
+      final expectedCount = (previousRound.length / 2).ceil();
+      roundMatches = List.generate(expectedCount, (index) {
+        final feederA = previousRound[index * 2];
+        final feederB = previousRound[index * 2 + 1];
+        final actual = index < stageMatches.length ? stageMatches[index] : null;
+        final fallbackA = _winnerName(feederA);
+        final fallbackB = _winnerName(feederB);
+        if (actual != null) {
+          return _BracketCanvasMatch.fromModel(
+            actual,
+            fallbackTeamAName: fallbackA,
+            fallbackTeamBName: fallbackB,
+            label: label,
+          );
+        }
+        return _BracketCanvasMatch(
+          label: label,
+          teamAName: fallbackA,
+          teamBName: fallbackB,
+          isActual: false,
+        );
+      });
+    }
+
+    columns.add(_BracketColumn(key: stage, label: label, matches: roundMatches));
+    previousRound = roundMatches;
+    if (previousRound.length <= 1) {
+      break;
+    }
+  }
+
+  return columns.where((column) => column.matches.isNotEmpty).toList();
+}
+
+List<_BracketColumn> _buildLegacyRoundColumns(List<TournamentMatchModel> matches) {
+  final byRound = <String, List<TournamentMatchModel>>{};
+  for (final match in matches) {
+    final key = match.round.isEmpty ? 'Round 1' : match.round;
+    byRound.putIfAbsent(key, () => []).add(match);
+  }
+
+  final sortedKeys = byRound.keys.toList()
+    ..sort((a, b) => _bracketRoundOrder(a).compareTo(_bracketRoundOrder(b)));
+
+  return sortedKeys
+      .map(
+        (key) => _BracketColumn(
+          key: key,
+          label: key,
+          matches: byRound[key]!
+              .map((match) => _BracketCanvasMatch.fromModel(match, label: key))
+              .toList(),
+        ),
+      )
+      .toList();
+}
+
+String _stageLabel(String stage, {bool useGroupsKnockoutLabels = false}) {
+  switch (stage) {
+    case 'round_of_32':
+      return 'Round of 32';
+    case 'round_of_16':
+      return useGroupsKnockoutLabels ? 'Playoffs' : 'Round of 16';
+    case 'quarter_finals':
+      return 'Quarterfinals';
+    case 'semi_finals':
+      return 'Semifinals';
+    case 'finals':
+      return 'Finals';
+    default:
+      final normalized = stage.replaceAll('_', ' ');
+      return normalized.isEmpty
+          ? 'Bracket'
+          : normalized[0].toUpperCase() + normalized.substring(1);
+  }
+}
+
+String? _winnerName(_BracketCanvasMatch match) {
+  final hasScore = match.scoreA != null && match.scoreB != null;
+  if (!hasScore) return null;
+  if (match.scoreA! > match.scoreB!) return match.teamAName;
+  if (match.scoreB! > match.scoreA!) return match.teamBName;
+  return null;
+}
 
 int _bracketRoundOrder(String label) {
   final l = label.toLowerCase().trim();
@@ -421,68 +798,45 @@ int _bracketRoundOrder(String label) {
   if (l.contains('round of 32')) return 20;
   if (l.contains('round of 64')) return 10;
   final m = RegExp(r'(\d+)').firstMatch(l);
-  return m != null
-      ? (int.tryParse(m.group(1)!) ?? 1) * _kRoundOrderStep
-      : _kRoundOrderStep;
+  return m != null ? (int.tryParse(m.group(1)!) ?? 1) * 5 : 5;
 }
 
-/// Center Y for match [i] in round [r], given vertical unit [unit].
-double _matchCenterY(int r, int i, double unit) {
-  if (r == 0) return unit * (i + 0.5);
-  return unit * (1 << (r - 1)) * (2 * i + 1).toDouble();
+double _matchCenterY(int roundIndex, int matchIndex, double unit) {
+  if (roundIndex == 0) return _kColumnHeaderH + unit * (matchIndex + 0.5);
+  return _kColumnHeaderH + unit * (1 << (roundIndex - 1)) * (2 * matchIndex + 1).toDouble();
 }
 
 class _VisualBracketCanvas extends StatelessWidget {
-  const _VisualBracketCanvas({required this.matches});
+  const _VisualBracketCanvas({required this.columns});
 
-  final List<TournamentMatchModel> matches;
+  final List<_BracketColumn> columns;
 
   @override
   Widget build(BuildContext context) {
-    // Group and sort by round
-    final Map<String, List<TournamentMatchModel>> byRound = {};
-    for (final m in matches) {
-      final key = m.round.isEmpty ? 'Round 1' : m.round;
-      byRound.putIfAbsent(key, () => []).add(m);
-    }
-    final sortedKeys = byRound.keys.toList()
-      ..sort((a, b) => _bracketRoundOrder(a).compareTo(_bracketRoundOrder(b)));
-    final rounds = sortedKeys.map((k) => byRound[k]!).toList();
-
+    final rounds = columns.map((column) => column.matches).toList();
     if (rounds.isEmpty) return const SizedBox();
 
-    final numR0 = rounds[0].length;
-    final canvasH = numR0 * _kUnit;
-    final canvasW = rounds.length * _kColW;
+    final numR0 = rounds.first.length;
+    final canvasH = (numR0 * _kUnit) + _kColumnHeaderH;
+    final canvasW = columns.length * _kColW;
 
-    // Pre-compute center Ys per round
     final centerYs = <List<double>>[];
     for (int r = 0; r < rounds.length; r++) {
       centerYs.add([
-        for (int i = 0; i < rounds[r].length; i++)
-          _matchCenterY(r, i, _kUnit)
+        for (int i = 0; i < rounds[r].length; i++) _matchCenterY(r, i, _kUnit),
       ]);
     }
 
-    // Determine winner
     String? winnerName;
     if (rounds.isNotEmpty && rounds.last.isNotEmpty) {
-      final finalMatch = rounds.last[0];
-      final hasScore = finalMatch.scoreA != null && finalMatch.scoreB != null;
-      if (hasScore) {
-        if (finalMatch.scoreA! > finalMatch.scoreB!) {
-          winnerName = finalMatch.teamAName;
-        } else if (finalMatch.scoreB! > finalMatch.scoreA!) {
-          winnerName = finalMatch.teamBName;
-        }
-      }
+      winnerName = _winnerName(rounds.last.first);
     }
 
     final lineColor = AppThemeTokens.border(context);
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 16),
         child: SizedBox(
@@ -491,7 +845,6 @@ class _VisualBracketCanvas extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              // Bracket connector lines
               Positioned.fill(
                 child: CustomPaint(
                   painter: _BracketLinePainter(
@@ -501,8 +854,14 @@ class _VisualBracketCanvas extends StatelessWidget {
                   ),
                 ),
               ),
-
-              // Match cards
+              for (int r = 0; r < columns.length; r++)
+                Positioned(
+                  left: r * _kColW,
+                  top: 0,
+                  width: _kMatchW,
+                  height: 28,
+                  child: _BracketColumnHeader(label: columns[r].label),
+                ),
               for (int r = 0; r < rounds.length; r++)
                 for (int i = 0; i < rounds[r].length; i++)
                   Positioned(
@@ -515,8 +874,6 @@ class _VisualBracketCanvas extends StatelessWidget {
                       isFinal: r == rounds.length - 1,
                     ),
                   ),
-
-              // Winner badge to the right of the last column
               if (winnerName != null)
                 Positioned(
                   left: canvasW + 12,
@@ -532,9 +889,34 @@ class _VisualBracketCanvas extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Bracket connector line painter
-// ---------------------------------------------------------------------------
+class _BracketColumnHeader extends StatelessWidget {
+  const _BracketColumnHeader({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppThemeTokens.primary500.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: AppThemeTokens.primary500.withOpacity(0.2)),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: AppThemeTokens.primary500,
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _BracketLinePainter extends CustomPainter {
   const _BracketLinePainter({
@@ -543,7 +925,7 @@ class _BracketLinePainter extends CustomPainter {
     required this.lineColor,
   });
 
-  final List<List<TournamentMatchModel>> rounds;
+  final List<List<_BracketCanvasMatch>> rounds;
   final List<List<double>> centerYs;
   final Color lineColor;
 
@@ -567,7 +949,6 @@ class _BracketLinePainter extends CustomPainter {
         final fi2 = 2 * j + 1;
         final parentY = centerYs[r + 1][j];
 
-        // Horizontal arm from feeder 1 right edge → connector X
         if (fi1 < currCount) {
           final y1 = centerYs[r][fi1];
           canvas.drawLine(
@@ -577,7 +958,6 @@ class _BracketLinePainter extends CustomPainter {
           );
         }
 
-        // Horizontal arm from feeder 2 right edge → connector X
         if (fi2 < currCount) {
           final y2 = centerYs[r][fi2];
           canvas.drawLine(
@@ -586,7 +966,6 @@ class _BracketLinePainter extends CustomPainter {
             paint,
           );
 
-          // Vertical connector between both feeders
           if (fi1 < currCount) {
             canvas.drawLine(
               Offset(connX, centerYs[r][fi1]),
@@ -596,7 +975,6 @@ class _BracketLinePainter extends CustomPainter {
           }
         }
 
-        // Arm from connector midpoint → left edge of parent match
         canvas.drawLine(
           Offset(connX, parentY),
           Offset((r + 1) * _kColW, parentY),
@@ -608,35 +986,27 @@ class _BracketLinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _BracketLinePainter old) =>
-      old.lineColor != lineColor ||
-      old.rounds.length != rounds.length;
+      old.lineColor != lineColor || old.rounds.length != rounds.length;
 }
-
-// ---------------------------------------------------------------------------
-// Bracket match card
-// ---------------------------------------------------------------------------
 
 class _BracketMatchCard extends StatelessWidget {
   const _BracketMatchCard({required this.match, this.isFinal = false});
 
-  final TournamentMatchModel match;
+  final _BracketCanvasMatch match;
   final bool isFinal;
 
   @override
   Widget build(BuildContext context) {
-    final m = match;
-    final hasScore = m.scoreA != null && m.scoreB != null;
-    final aWins = hasScore && m.scoreA! > m.scoreB!;
-    final bWins = hasScore && m.scoreB! > m.scoreA!;
+    final hasScore = match.scoreA != null && match.scoreB != null;
+    final aWins = hasScore && match.scoreA! > match.scoreB!;
+    final bWins = hasScore && match.scoreB! > match.scoreA!;
 
     return Container(
       decoration: BoxDecoration(
         color: AppThemeTokens.cardElevated(context),
         borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
         border: Border.all(
-          color: isFinal
-              ? _kAccentBracket.withOpacity(0.5)
-              : AppThemeTokens.border(context),
+          color: isFinal ? _kAccentBracket.withOpacity(0.5) : AppThemeTokens.border(context),
           width: isFinal ? 1.5 : 1.0,
         ),
       ),
@@ -644,16 +1014,16 @@ class _BracketMatchCard extends StatelessWidget {
         children: [
           Expanded(
             child: _BracketTeamRow(
-              name: m.teamAName,
-              score: m.scoreA,
+              name: match.teamAName,
+              score: match.scoreA,
               isWinner: aWins,
             ),
           ),
           Divider(height: 1, color: AppThemeTokens.border(context)),
           Expanded(
             child: _BracketTeamRow(
-              name: m.teamBName,
-              score: m.scoreB,
+              name: match.teamBName,
+              score: match.scoreB,
               isWinner: bWins,
             ),
           ),
@@ -664,8 +1034,7 @@ class _BracketMatchCard extends StatelessWidget {
 }
 
 class _BracketTeamRow extends StatelessWidget {
-  const _BracketTeamRow(
-      {required this.name, this.score, required this.isWinner});
+  const _BracketTeamRow({required this.name, this.score, required this.isWinner});
 
   final String? name;
   final int? score;
@@ -720,10 +1089,6 @@ class _BracketTeamRow extends StatelessWidget {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Winner badge shown to the right of the bracket
-// ---------------------------------------------------------------------------
 
 class _WinnerBadge extends StatelessWidget {
   const _WinnerBadge({required this.name});

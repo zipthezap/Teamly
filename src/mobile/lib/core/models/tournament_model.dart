@@ -304,6 +304,10 @@ class TournamentMatchModel extends Equatable {
     required this.tournamentId,
     required this.round,
     required this.status,
+    this.stage,
+    this.roundNumber,
+    this.matchOrder,
+    this.groupName,
     this.teamAId,
     this.teamBId,
     this.teamAName,
@@ -319,6 +323,10 @@ class TournamentMatchModel extends Equatable {
   final String tournamentId;
   final String round;
   final String status;
+  final String? stage;
+  final int? roundNumber;
+  final int? matchOrder;
+  final String? groupName;
   final String? teamAId;
   final String? teamBId;
   final String? teamAName;
@@ -354,6 +362,10 @@ class TournamentMatchModel extends Equatable {
       tournamentId: json['tournamentId'] as String? ?? '',
       round: roundLabel,
       status: json['status'] as String? ?? 'scheduled',
+      stage: json['stage'] as String?,
+      roundNumber: (json['roundNumber'] as num?)?.toInt(),
+      matchOrder: (json['matchOrder'] as num?)?.toInt(),
+      groupName: json['groupName'] as String?,
       teamAId: teamA?['id'] as String? ??
           json['homeTeamId'] as String? ??
           json['teamAId'] as String?,
@@ -375,7 +387,16 @@ class TournamentMatchModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, tournamentId, round, status];
+  List<Object?> get props => [
+        id,
+        tournamentId,
+        round,
+        status,
+        stage,
+        roundNumber,
+        matchOrder,
+        groupName,
+      ];
 }
 
 class TournamentModel extends Equatable {
