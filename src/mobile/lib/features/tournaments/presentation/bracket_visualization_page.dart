@@ -5,8 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../../core/models/tournament_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/error_display.dart';
-import '../../../shared/widgets/ui_primitives.dart';
 import '../state/tournaments_notifier.dart';
+
+const _kAccentBracket = Color(0xFFFF9800);
+
+// ---------------------------------------------------------------------------
+// Standalone bracket page
+// ---------------------------------------------------------------------------
 
 class BracketVisualizationPage extends ConsumerWidget {
   const BracketVisualizationPage({super.key, required this.tournamentId});
@@ -26,41 +31,24 @@ class BracketVisualizationPage extends ConsumerWidget {
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorDisplay(message: e.toString()),
-        data: (tournament) => _BracketView(tournament: tournament),
+        data: (tournament) => TournamentBracketView(tournament: tournament),
       ),
     );
   }
 }
 
-class _BracketView extends StatelessWidget {
-  const _BracketView({required this.tournament});
+// ---------------------------------------------------------------------------
+// Public shared widget used by both the standalone page and the Brackets tab
+// ---------------------------------------------------------------------------
+
+class TournamentBracketView extends StatelessWidget {
+  const TournamentBracketView({super.key, required this.tournament});
 
   final TournamentModel tournament;
 
-  bool _hasBracketData(TournamentMatchModel match) {
-    return match.teamAId != null ||
-        match.teamBId != null ||
-        match.scoreA != null ||
-        match.scoreB != null ||
-        match.status.isNotEmpty;
-  }
-
-  int _roundSortKey(String roundLabel) {
-    final normalized = roundLabel.toLowerCase();
-    if (normalized == 'final') return 1000;
-    if (normalized == 'semi-finals') return 999;
-
-    final match = RegExp(r'(\d+)').firstMatch(roundLabel);
-    if (match != null) {
-      return int.tryParse(match.group(1)!) ?? 1;
-    }
-
-    return 1;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final matches = tournament.matches.where(_hasBracketData).toList();
+    final matches = tournament.matches;
 
     if (matches.isEmpty) {
       return Center(
@@ -79,82 +67,135 @@ class _BracketView extends StatelessWidget {
       );
     }
 
-    // Build pool venue lookup: poolName → venue
-    final poolVenueMap = <String, String>{};
+    final isPool = tournament.format == 'round_robin' ||
+        tournament.format == 'groups_knockout' ||
+        tournament.format == 'pool';
+
+    if (isPool) {
+      return _PoolBracketView(tournament: tournament);
+    }
+
+    return _SingleEliminationView(tournament: tournament);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Pool / round-robin format: sections per category, then per group/round
+// ---------------------------------------------------------------------------
+
+class _PoolBracketView extends StatelessWidget {
+  const _PoolBracketView({required this.tournament});
+
+  final TournamentModel tournament;
+
+  @override
+  Widget build(BuildContext context) {
+    final matches = tournament.matches;
+
+    // Build: poolName → categoryName
+    final poolCategoryMap = <String, String>{};
     for (final pool in tournament.pools) {
-      if (pool.venue != null) {
-        poolVenueMap[pool.name] = pool.venue!;
+      if (pool.categoryName != null) {
+        poolCategoryMap[pool.name] = pool.categoryName!;
       }
     }
 
-    // Group matches by group/pool name (round label set from groupName on the model)
-    final hasGroups = matches.any((m) => m.round.isNotEmpty && !m.round.startsWith('Round'));
-    final groupedByStage = <String, List<TournamentMatchModel>>{};
-    for (final m in matches) {
-      final key = m.round.isNotEmpty ? m.round : 'Matches';
-      groupedByStage.putIfAbsent(key, () => []).add(m);
-    }
+    // Group by category first, then by round/group within
+    final hasCategories = tournament.categories.length > 1;
 
-    if (hasGroups && groupedByStage.length > 1) {
-      // Pool/groups view — vertical sections, horizontal round columns per section
-      return ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          for (final entry in groupedByStage.entries) ...[
-            _GroupSectionHeader(
-              groupName: entry.key,
-              venue: poolVenueMap[entry.key],
-              matchCount: entry.value.length,
+    if (hasCategories) {
+      // Build: categoryName → groupName → matches
+      final Map<String, Map<String, List<TournamentMatchModel>>> byCat = {};
+      for (final m in matches) {
+        final cat = poolCategoryMap[m.round] ?? 'General';
+        final group = m.round;
+        byCat.putIfAbsent(cat, () => {}).putIfAbsent(group, () => []).add(m);
+      }
+
+      return DefaultTabController(
+        length: byCat.length,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TabBar(
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              tabs: byCat.keys.map((cat) => Tab(text: cat)).toList(),
             ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 120,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: entry.value.map((m) => Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: SizedBox(
-                    width: 220,
-                    child: _MatchCard(match: m),
-                  ),
-                )).toList(),
+            Expanded(
+              child: TabBarView(
+                children: byCat.values.map((byGroup) {
+                  return _PoolGroupListView(
+                    byGroup: byGroup,
+                    poolVenueMap: {
+                      for (final p in tournament.pools)
+                        if (p.venue != null) p.name: p.venue!
+                    },
+                  );
+                }).toList(),
               ),
             ),
-            const SizedBox(height: 16),
           ],
-        ],
+        ),
       );
     }
 
-    // Group matches by round for standard bracket view.
-    final rounds = <String, List<TournamentMatchModel>>{};
+    // No categories — single pool list
+    final Map<String, List<TournamentMatchModel>> byRound = {};
     for (final m in matches) {
-      final round = m.round.isEmpty ? 'Round 1' : m.round;
-      rounds.putIfAbsent(round, () => []).add(m);
+      byRound.putIfAbsent(m.round.isEmpty ? 'Matches' : m.round, () => []).add(m);
     }
-    final sortedRounds = rounds.keys.toList()
-      ..sort((a, b) => _roundSortKey(a).compareTo(_roundSortKey(b)));
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: sortedRounds.map((round) {
-          final roundMatches = rounds[round]!;
-          return _RoundColumn(roundLabel: round, matches: roundMatches);
-        }).toList(),
-      ),
+    return _PoolGroupListView(
+      byGroup: byRound,
+      poolVenueMap: {
+        for (final p in tournament.pools)
+          if (p.venue != null) p.name: p.venue!
+      },
     );
   }
 }
 
-class _GroupSectionHeader extends StatelessWidget {
-  const _GroupSectionHeader({
-    required this.groupName,
-    this.venue,
-    required this.matchCount,
-  });
+class _PoolGroupListView extends StatelessWidget {
+  const _PoolGroupListView(
+      {required this.byGroup, required this.poolVenueMap});
+
+  final Map<String, List<TournamentMatchModel>> byGroup;
+  final Map<String, String> poolVenueMap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        for (final entry in byGroup.entries) ...[
+          _PoolGroupHeader(
+            groupName: entry.key,
+            venue: poolVenueMap[entry.key],
+            matchCount: entry.value.length,
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 110,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: entry.value
+                  .map((m) => Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: SizedBox(width: 200, child: _SmallMatchCard(match: m)),
+                      ))
+                  .toList(),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ],
+    );
+  }
+}
+
+class _PoolGroupHeader extends StatelessWidget {
+  const _PoolGroupHeader(
+      {required this.groupName, this.venue, required this.matchCount});
 
   final String groupName;
   final String? venue;
@@ -179,7 +220,7 @@ class _GroupSectionHeader extends StatelessWidget {
               children: [
                 Text(
                   groupName,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: AppThemeTokens.primary500,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
@@ -188,12 +229,13 @@ class _GroupSectionHeader extends StatelessWidget {
                 if (venue != null)
                   Row(
                     children: [
-                      Icon(Icons.location_on_outlined, size: 11, color: AppThemeTokens.textMuted(context)),
+                      Icon(Icons.location_on_outlined,
+                          size: 11, color: AppThemeTokens.textMuted(context)),
                       const SizedBox(width: 3),
-                      Text(
-                        venue!,
-                        style: TextStyle(fontSize: 11, color: AppThemeTokens.textMuted(context)),
-                      ),
+                      Text(venue!,
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: AppThemeTokens.textMuted(context))),
                     ],
                   ),
               ],
@@ -201,7 +243,8 @@ class _GroupSectionHeader extends StatelessWidget {
           ),
           Text(
             '$matchCount match${matchCount == 1 ? '' : 'es'}',
-            style: TextStyle(fontSize: 11, color: AppThemeTokens.textMuted(context)),
+            style: TextStyle(
+                fontSize: 11, color: AppThemeTokens.textMuted(context)),
           ),
         ],
       ),
@@ -209,90 +252,45 @@ class _GroupSectionHeader extends StatelessWidget {
   }
 }
 
-class _RoundColumn extends StatelessWidget {
-  const _RoundColumn({required this.roundLabel, required this.matches});
-
-  final String roundLabel;
-  final List<TournamentMatchModel> matches;
-
-  String _roundLabel() {
-    return roundLabel;
-  }
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 16),
-      child: SizedBox(
-        width: 220,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppThemeTokens.primary500.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-              ),
-              child: Text(
-                _roundLabel(),
-                style: TextStyle(
-                  color: AppThemeTokens.primary500,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...matches.map((m) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _MatchCard(match: m),
-                )),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MatchCard extends StatelessWidget {
-  const _MatchCard({required this.match});
+class _SmallMatchCard extends StatelessWidget {
+  const _SmallMatchCard({required this.match});
 
   final TournamentMatchModel match;
 
   @override
   Widget build(BuildContext context) {
-    final scoreA = match.scoreA;
-    final scoreB = match.scoreB;
-    final isCompleted = match.status == 'completed';
+    final hasScore = match.scoreA != null && match.scoreB != null;
+    final aWins = hasScore && match.scoreA! > match.scoreB!;
+    final bWins = hasScore && match.scoreB! > match.scoreA!;
 
-    Widget teamRow(String? name, dynamic score) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                name ?? 'TBD',
-                style: TextStyle(
-                  fontWeight: FontWeight.w500,
-                  color: Theme.of(context).textTheme.bodyMedium?.color,
-                  fontSize: 13,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            if (isCompleted && score != null)
-              Text(
-                '$score',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppThemeTokens.textMuted(context),
+    Widget row(String? name, int? score, bool wins) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  name ?? 'TBD',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: wins ? FontWeight.bold : FontWeight.w500,
+                    color: name == null
+                        ? AppThemeTokens.textMuted(context)
+                        : Theme.of(context).textTheme.bodyMedium?.color,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-          ],
-        ),
-      );
-    }
+              if (score != null)
+                Text('$score',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: wins
+                            ? AppThemeTokens.primary400
+                            : AppThemeTokens.textSecondary(context))),
+            ],
+          ),
+        );
 
     return Container(
       decoration: BoxDecoration(
@@ -303,28 +301,461 @@ class _MatchCard extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          teamRow(match.teamAName, scoreA),
+          row(match.teamAName, match.scoreA, aWins),
           Divider(height: 1, color: AppThemeTokens.border(context)),
-          teamRow(match.teamBName, scoreB),
-          if (match.location != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-              child: Row(
-                children: [
-                  Icon(Icons.location_on_outlined, size: 10, color: AppThemeTokens.textMuted(context)),
-                  const SizedBox(width: 3),
-                  Expanded(
-                    child: Text(
-                      match.location!,
-                      style: TextStyle(fontSize: 10, color: AppThemeTokens.textMuted(context)),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          row(match.teamBName, match.scoreB, bWins),
         ],
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Single-elimination: visual bracket with connecting lines
+// ---------------------------------------------------------------------------
+
+class _SingleEliminationView extends StatelessWidget {
+  const _SingleEliminationView({required this.tournament});
+
+  final TournamentModel tournament;
+
+  @override
+  Widget build(BuildContext context) {
+    final matches = tournament.matches;
+
+    // Build poolId → categoryName from pools
+    final poolCategoryMap = <String, String>{};
+    for (final pool in tournament.pools) {
+      if (pool.categoryName != null) {
+        poolCategoryMap[pool.id] = pool.categoryName!;
+      }
+    }
+
+    // Build teamId → categoryName via team's poolId
+    final teamCategoryMap = <String, String>{};
+    for (final team in tournament.teams) {
+      if (team.poolId != null && poolCategoryMap.containsKey(team.poolId)) {
+        teamCategoryMap[team.id] = poolCategoryMap[team.poolId!]!;
+      }
+    }
+
+    // Assign each match a category (use teamA's category if available)
+    final Map<String, List<TournamentMatchModel>> byCategory = {};
+    for (final m in matches) {
+      String cat = 'Open';
+      if (m.teamAId != null && teamCategoryMap.containsKey(m.teamAId)) {
+        cat = teamCategoryMap[m.teamAId]!;
+      } else if (m.teamBId != null && teamCategoryMap.containsKey(m.teamBId)) {
+        cat = teamCategoryMap[m.teamBId]!;
+      }
+      byCategory.putIfAbsent(cat, () => []).add(m);
+    }
+
+    // Sort categories to match tournament.categories order
+    final orderedCatNames = tournament.categories.map((c) => c.name).toList();
+    final sortedCats = byCategory.keys.toList()
+      ..sort((a, b) {
+        final ai = orderedCatNames.indexOf(a);
+        final bi = orderedCatNames.indexOf(b);
+        if (ai == -1 && bi == -1) return a.compareTo(b);
+        if (ai == -1) return 1;
+        if (bi == -1) return -1;
+        return ai.compareTo(bi);
+      });
+
+    final hasMultipleCategories = sortedCats.length > 1 ||
+        (sortedCats.length == 1 && sortedCats[0] != 'Open');
+
+    if (hasMultipleCategories && sortedCats.length > 1) {
+      return DefaultTabController(
+        length: sortedCats.length,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TabBar(
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              tabs: sortedCats.map((cat) => Tab(text: cat)).toList(),
+            ),
+            Expanded(
+              child: TabBarView(
+                children: sortedCats.map((cat) {
+                  return _VisualBracketCanvas(matches: byCategory[cat]!);
+                }).toList(),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return _VisualBracketCanvas(matches: matches);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Visual bracket canvas: match cards + connector lines
+// ---------------------------------------------------------------------------
+
+// Layout constants
+const double _kMatchW = 160.0;
+const double _kMatchH = 62.0;
+const double _kUnit = 82.0; // vertical unit = spacing between round-1 match centers
+const double _kColW = 208.0; // column width = match width + horizontal gap
+const double _kWinnerW = 180.0; // width reserved for winner badge
+
+/// Maps a round label to a sort order (lower = earlier round).
+int _bracketRoundOrder(String label) {
+  final l = label.toLowerCase().trim();
+  if (l == 'finals' || l == 'final') return 100;
+  if (l.contains('semi')) return 80;
+  if (l.contains('quarter')) return 60;
+  if (l.contains('round of 16')) return 40;
+  if (l.contains('round of 32')) return 20;
+  if (l.contains('round of 64')) return 10;
+  final m = RegExp(r'(\d+)').firstMatch(l);
+  return m != null ? (int.tryParse(m.group(1)!) ?? 5) * 5 : 5;
+}
+
+/// Center Y for match [i] in round [r], given vertical unit [unit].
+double _matchCenterY(int r, int i, double unit) {
+  if (r == 0) return unit * (i + 0.5);
+  return unit * (1 << (r - 1)) * (2 * i + 1).toDouble();
+}
+
+class _VisualBracketCanvas extends StatelessWidget {
+  const _VisualBracketCanvas({required this.matches});
+
+  final List<TournamentMatchModel> matches;
+
+  @override
+  Widget build(BuildContext context) {
+    // Group and sort by round
+    final Map<String, List<TournamentMatchModel>> byRound = {};
+    for (final m in matches) {
+      final key = m.round.isEmpty ? 'Round 1' : m.round;
+      byRound.putIfAbsent(key, () => []).add(m);
+    }
+    final sortedKeys = byRound.keys.toList()
+      ..sort((a, b) => _bracketRoundOrder(a).compareTo(_bracketRoundOrder(b)));
+    final rounds = sortedKeys.map((k) => byRound[k]!).toList();
+
+    if (rounds.isEmpty) return const SizedBox();
+
+    final numR0 = rounds[0].length;
+    final canvasH = numR0 * _kUnit;
+    final canvasW = rounds.length * _kColW;
+
+    // Pre-compute center Ys per round
+    final centerYs = <List<double>>[];
+    for (int r = 0; r < rounds.length; r++) {
+      centerYs.add([
+        for (int i = 0; i < rounds[r].length; i++)
+          _matchCenterY(r, i, _kUnit)
+      ]);
+    }
+
+    // Determine winner
+    String? winnerName;
+    if (rounds.isNotEmpty && rounds.last.isNotEmpty) {
+      final finalMatch = rounds.last[0];
+      final hasScore = finalMatch.scoreA != null && finalMatch.scoreB != null;
+      if (hasScore) {
+        if (finalMatch.scoreA! > finalMatch.scoreB!) {
+          winnerName = finalMatch.teamAName;
+        } else if (finalMatch.scoreB! > finalMatch.scoreA!) {
+          winnerName = finalMatch.teamBName;
+        }
+      }
+    }
+
+    final lineColor = AppThemeTokens.border(context);
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: SizedBox(
+          width: canvasW + _kWinnerW,
+          height: canvasH,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // Bracket connector lines
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _BracketLinePainter(
+                    rounds: rounds,
+                    centerYs: centerYs,
+                    lineColor: lineColor,
+                  ),
+                ),
+              ),
+
+              // Match cards
+              for (int r = 0; r < rounds.length; r++)
+                for (int i = 0; i < rounds[r].length; i++)
+                  Positioned(
+                    left: r * _kColW,
+                    top: centerYs[r][i] - _kMatchH / 2,
+                    width: _kMatchW,
+                    height: _kMatchH,
+                    child: _BracketMatchCard(
+                      match: rounds[r][i],
+                      isFinal: r == rounds.length - 1,
+                    ),
+                  ),
+
+              // Winner badge to the right of the last column
+              if (winnerName != null)
+                Positioned(
+                  left: canvasW + 12,
+                  top: canvasH / 2 - 58,
+                  width: _kWinnerW - 20,
+                  child: _WinnerBadge(name: winnerName),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Bracket connector line painter
+// ---------------------------------------------------------------------------
+
+class _BracketLinePainter extends CustomPainter {
+  const _BracketLinePainter({
+    required this.rounds,
+    required this.centerYs,
+    required this.lineColor,
+  });
+
+  final List<List<TournamentMatchModel>> rounds;
+  final List<List<double>> centerYs;
+  final Color lineColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = lineColor
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final halfGap = (_kColW - _kMatchW) / 2;
+
+    for (int r = 0; r < rounds.length - 1; r++) {
+      final connX = r * _kColW + _kMatchW + halfGap;
+      final nextCount = rounds[r + 1].length;
+      final currCount = rounds[r].length;
+
+      for (int j = 0; j < nextCount; j++) {
+        final fi1 = 2 * j;
+        final fi2 = 2 * j + 1;
+        final parentY = centerYs[r + 1][j];
+
+        // Horizontal arm from feeder 1 right edge → connector X
+        if (fi1 < currCount) {
+          final y1 = centerYs[r][fi1];
+          canvas.drawLine(
+            Offset(r * _kColW + _kMatchW, y1),
+            Offset(connX, y1),
+            paint,
+          );
+        }
+
+        // Horizontal arm from feeder 2 right edge → connector X
+        if (fi2 < currCount) {
+          final y2 = centerYs[r][fi2];
+          canvas.drawLine(
+            Offset(r * _kColW + _kMatchW, y2),
+            Offset(connX, y2),
+            paint,
+          );
+
+          // Vertical connector between both feeders
+          if (fi1 < currCount) {
+            canvas.drawLine(
+              Offset(connX, centerYs[r][fi1]),
+              Offset(connX, y2),
+              paint,
+            );
+          }
+        }
+
+        // Arm from connector midpoint → left edge of parent match
+        canvas.drawLine(
+          Offset(connX, parentY),
+          Offset((r + 1) * _kColW, parentY),
+          paint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BracketLinePainter old) =>
+      old.lineColor != lineColor ||
+      old.rounds.length != rounds.length;
+}
+
+// ---------------------------------------------------------------------------
+// Bracket match card
+// ---------------------------------------------------------------------------
+
+class _BracketMatchCard extends StatelessWidget {
+  const _BracketMatchCard({required this.match, this.isFinal = false});
+
+  final TournamentMatchModel match;
+  final bool isFinal;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = match;
+    final hasScore = m.scoreA != null && m.scoreB != null;
+    final aWins = hasScore && m.scoreA! > m.scoreB!;
+    final bWins = hasScore && m.scoreB! > m.scoreA!;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppThemeTokens.cardElevated(context),
+        borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+        border: Border.all(
+          color: isFinal
+              ? _kAccentBracket.withOpacity(0.5)
+              : AppThemeTokens.border(context),
+          width: isFinal ? 1.5 : 1.0,
+        ),
+      ),
+      child: Column(
+        children: [
+          Expanded(
+            child: _BracketTeamRow(
+              name: m.teamAName,
+              score: m.scoreA,
+              isWinner: aWins,
+            ),
+          ),
+          Divider(height: 1, color: AppThemeTokens.border(context)),
+          Expanded(
+            child: _BracketTeamRow(
+              name: m.teamBName,
+              score: m.scoreB,
+              isWinner: bWins,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BracketTeamRow extends StatelessWidget {
+  const _BracketTeamRow(
+      {required this.name, this.score, required this.isWinner});
+
+  final String? name;
+  final int? score;
+  final bool isWinner;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: isWinner
+          ? BoxDecoration(
+              color: AppThemeTokens.primary500.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd - 1),
+            )
+          : null,
+      child: Row(
+        children: [
+          if (isWinner)
+            const Icon(Icons.star_rounded, size: 10, color: _kAccentBracket)
+          else
+            const SizedBox(width: 10),
+          const SizedBox(width: 3),
+          Expanded(
+            child: Text(
+              name ?? 'TBD',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isWinner ? FontWeight.bold : FontWeight.w500,
+                color: name == null
+                    ? AppThemeTokens.textMuted(context)
+                    : Theme.of(context).textTheme.bodyMedium?.color,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
+          if (score != null) ...[
+            const SizedBox(width: 4),
+            Text(
+              '$score',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isWinner
+                    ? AppThemeTokens.primary400
+                    : AppThemeTokens.textSecondary(context),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Winner badge shown to the right of the bracket
+// ---------------------------------------------------------------------------
+
+class _WinnerBadge extends StatelessWidget {
+  const _WinnerBadge({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.emoji_events_rounded, size: 44, color: _kAccentBracket),
+        const SizedBox(height: 6),
+        Text(
+          'WINNER',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            color: AppThemeTokens.textMuted(context),
+            letterSpacing: 2.5,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: _kAccentBracket.withOpacity(0.14),
+            borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
+            border: Border.all(color: _kAccentBracket.withOpacity(0.45)),
+          ),
+          child: Text(
+            name,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: _kAccentBracket,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

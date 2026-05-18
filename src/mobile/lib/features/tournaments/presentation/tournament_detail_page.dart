@@ -10,6 +10,7 @@ import '../../../features/auth/state/auth_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
+import 'bracket_visualization_page.dart';
 import 'tournament_ui_rules.dart';
 import '../state/tournaments_notifier.dart';
 
@@ -2078,150 +2079,12 @@ class _BracketsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final matches = tournament.matches;
-    if (matches.isEmpty) {
+    if (tournament.matches.isEmpty) {
       return const UiEmptyState(
           icon: Icons.account_tree_outlined,
           message: 'Brackets not generated yet.');
     }
-    final isPool = tournament.format == 'round_robin' ||
-        tournament.format == 'groups_knockout' ||
-        tournament.format == 'pool';
-    final Map<String, List<TournamentMatchModel>> byRound = {};
-    for (final m in matches) {
-      byRound.putIfAbsent(m.round, () => []).add(m);
-    }
-
-    if (isPool) {
-      return ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          for (final entry in byRound.entries) ...[
-            UiSectionTitle(entry.key),
-            const SizedBox(height: 6),
-            for (final match in entry.value) _MatchTile(match: match),
-            const SizedBox(height: 16),
-          ],
-        ],
-      );
-    }
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (final entry in byRound.entries)
-                Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Text(entry.key,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: AppThemeTokens.primary400,
-                                fontSize: 13)),
-                      ),
-                      for (final match in entry.value)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: SizedBox(
-                              width: 180, child: _MatchTile(match: match)),
-                        ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MatchTile extends StatelessWidget {
-  const _MatchTile({required this.match});
-
-  final TournamentMatchModel match;
-
-  @override
-  Widget build(BuildContext context) {
-    final m = match;
-    final hasScore = m.scoreA != null && m.scoreB != null;
-    final aWins = hasScore && m.scoreA! > m.scoreB!;
-    final bWins = hasScore && m.scoreB! > m.scoreA!;
-
-    return Container(
-      decoration: BoxDecoration(
-          color: AppThemeTokens.card(context),
-          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-          border: Border.all(color: AppThemeTokens.border(context))),
-      child: Column(
-        children: [
-          _TeamScoreRow(
-              name: m.teamAName ?? 'TBD', score: m.scoreA, isWinner: aWins),
-          Divider(height: 1, color: AppThemeTokens.border(context)),
-          _TeamScoreRow(
-              name: m.teamBName ?? 'TBD', score: m.scoreB, isWinner: bWins),
-          if (m.scheduledAt != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Text(
-                  DateFormat('MMM d, HH:mm').format(m.scheduledAt!.toLocal()),
-                  style: TextStyle(
-                      color: AppThemeTokens.textMuted(context), fontSize: 10)),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TeamScoreRow extends StatelessWidget {
-  const _TeamScoreRow({required this.name, this.score, required this.isWinner});
-
-  final String name;
-  final int? score;
-  final bool isWinner;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      child: Row(
-        children: [
-          if (isWinner)
-            const Icon(Icons.star, size: 12, color: _kAccent)
-          else
-            const SizedBox(width: 12),
-          const SizedBox(width: 4),
-          Expanded(
-              child: Text(name,
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight:
-                          isWinner ? FontWeight.bold : FontWeight.normal))),
-          if (score != null)
-            Text('$score',
-                style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: isWinner
-                        ? AppThemeTokens.primary400
-                        : AppThemeTokens.textSecondary(context)))
-          else
-            Text('–',
-                style: TextStyle(
-                    color: AppThemeTokens.textMuted(context), fontSize: 13)),
-        ],
-      ),
-    );
+    return TournamentBracketView(tournament: tournament);
   }
 }
 
