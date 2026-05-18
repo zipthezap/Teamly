@@ -452,19 +452,13 @@ export const revertStandings = async (
 /**
  * Generate brackets for single elimination tournament
  */
-export const generateSingleEliminationBrackets = async (tournamentId: string) => {
-  const teams = await prisma.tournamentTeam.findMany({
-    where: { tournamentId },
-    orderBy: { createdAt: 'asc' }
-  });
-  
+const buildSingleEliminationMatches = (tournamentId: string, teams: Array<{ id: string }>) => {
   if (teams.length < 2) {
     throw new BadRequestError('At least 2 teams are required to generate brackets', 'INSUFFICIENT_TEAMS');
   }
-  
-  // Calculate rounds needed
+
   const numTeams = teams.length;
-  
+
   // Determine bracket stage based on number of teams
   let stage: BracketStage = BracketStage.FINALS;
   if (numTeams > 16) stage = BracketStage.ROUND_OF_32;
@@ -494,12 +488,48 @@ export const generateSingleEliminationBrackets = async (tournamentId: string) =>
       });
     }
   }
-  
-  // Create matches in database
-  const createdMatches = await prisma.tournamentMatch.createMany({
-    data: matches
+
+  return matches;
+};
+
+const shuffleTeams = <T>(teams: T[]): T[] => {
+  const shuffled = [...teams];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const randomIndex = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[i]];
+  }
+  return shuffled;
+};
+
+export const generateSingleEliminationBrackets = async (tournamentId: string) => {
+  const teams = await prisma.tournamentTeam.findMany({
+    where: { tournamentId },
+    orderBy: { createdAt: 'asc' }
   });
-  
+
+  const matches = buildSingleEliminationMatches(tournamentId, teams);
+  const createdMatches = await prisma.tournamentMatch.createMany({ data: matches });
+
+  return createdMatches;
+};
+
+/**
+ * Generate randomized single-elimination brackets from existing pool assignments.
+ */
+export const generateRandomizedSingleEliminationBracketsFromPools = async (tournamentId: string) => {
+  const pools = await prisma.tournamentPool.findMany({
+    where: { tournamentId },
+    include: { teams: { orderBy: { createdAt: 'asc' } } },
+    orderBy: { name: 'asc' }
+  });
+
+  const poolTeams = pools.flatMap(pool => pool.teams);
+  const uniqueTeams = Array.from(new Map(poolTeams.map(team => [team.id, team])).values());
+  const randomizedTeams = shuffleTeams(uniqueTeams);
+
+  const matches = buildSingleEliminationMatches(tournamentId, randomizedTeams);
+  const createdMatches = await prisma.tournamentMatch.createMany({ data: matches });
+
   return createdMatches;
 };
 

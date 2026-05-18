@@ -947,22 +947,47 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
       );
       if (ok != true || !context.mounted) return;
     } else {
+      final hasPoolsWithTeams = tournament.pools.isNotEmpty &&
+          tournament.pools.any((p) => p.teams.isNotEmpty);
+      var useRandomFromPools = false;
       final ok = await showDialog<bool>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text('$generateVerb Brackets'),
-          content: Text(
-            hasExistingMatches
-                ? 'This will replace the current brackets and matches for all registered teams. Continue?'
-                : 'This will automatically create matches for all registered teams. Continue?',
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setS) => AlertDialog(
+            title: Text('$generateVerb Brackets'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hasExistingMatches
+                      ? 'This will replace the current brackets and matches for all registered teams. Continue?'
+                      : 'This will automatically create matches for all registered teams. Continue?',
+                ),
+                if (tournament.format == 'single_elimination' && hasPoolsWithTeams) ...[
+                  const SizedBox(height: 12),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: useRandomFromPools,
+                    onChanged: (value) => setS(() => useRandomFromPools = value ?? false),
+                    title: const Text('Randomize from pools'),
+                    subtitle: const Text('Seed teams from existing pools using random draw'),
+                    controlAffinity: ListTileControlAffinity.leading,
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(generateVerb)),
+            ],
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(generateVerb)),
-          ],
         ),
       );
       if (ok != true || !context.mounted) return;
+      if (useRandomFromPools) {
+        usePoolAssignments = true;
+      }
     }
 
     try {
