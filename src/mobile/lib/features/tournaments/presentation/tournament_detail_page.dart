@@ -96,6 +96,7 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
         ),
       ),
       data: (t) {
+
         final isStarted = _isTournamentStarted(t);
         final isOrganizer = t.creatorId == currentUserId;
         final isAdmin =
@@ -114,9 +115,12 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
         }
         final hasMyTeam = myTeam != null;
 
+        final hasBrackets = t.matches.isNotEmpty;
         final tabs = <Tab>[const Tab(text: 'Overview')];
         if (isStarted) {
           tabs.add(const Tab(text: 'Scores'));
+        }
+        if (hasBrackets) {
           tabs.add(const Tab(text: 'Brackets'));
         }
         if (hasMyTeam) tabs.add(const Tab(text: 'My Schedule'));
@@ -224,7 +228,7 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
                   onRefresh: refresh,
                 ),
                 if (isStarted) _ScoresTab(tournament: t),
-                if (isStarted)
+                if (hasBrackets)
                   _BracketsTab(tournament: t, currentUserId: currentUserId),
                 if (hasMyTeam)
                   _MyScheduleTab(
