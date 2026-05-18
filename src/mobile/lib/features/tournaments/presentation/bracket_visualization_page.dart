@@ -37,11 +37,30 @@ class _BracketView extends StatelessWidget {
 
   final TournamentModel tournament;
 
+  bool _hasBracketData(TournamentMatchModel match) {
+    return match.teamAId != null ||
+        match.teamBId != null ||
+        match.scoreA != null ||
+        match.scoreB != null ||
+        match.status.isNotEmpty;
+  }
+
+  int _roundSortKey(String roundLabel) {
+    final normalized = roundLabel.toLowerCase();
+    if (normalized == 'final') return 1000;
+    if (normalized == 'semi-finals') return 999;
+
+    final match = RegExp(r'(\d+)').firstMatch(roundLabel);
+    if (match != null) {
+      return int.tryParse(match.group(1)!) ?? 1;
+    }
+
+    return 1;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final matches = tournament.matches
-        .where((m) => m['stage'] != null || m['round'] != null)
-        .toList();
+    final matches = tournament.matches.where(_hasBracketData).toList();
 
     if (matches.isEmpty) {
       return Center(
@@ -61,12 +80,12 @@ class _BracketView extends StatelessWidget {
     }
 
     // Group matches by round
-    final rounds = <int, List<Map<String, dynamic>>>{};
+    final rounds = <String, List<TournamentMatchModel>>{};
     for (final m in matches) {
-      final round = (m['round'] as num?)?.toInt() ?? 1;
-      rounds.putIfAbsent(round, () => []).add(m as Map<String, dynamic>);
+      rounds.putIfAbsent(m.round, () => []).add(m);
     }
-    final sortedRounds = rounds.keys.toList()..sort();
+    final sortedRounds = rounds.keys.toList()
+      ..sort((a, b) => _roundSortKey(a).compareTo(_roundSortKey(b)));
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -75,7 +94,7 @@ class _BracketView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: sortedRounds.map((round) {
           final roundMatches = rounds[round]!;
-          return _RoundColumn(round: round, matches: roundMatches);
+          return _RoundColumn(roundLabel: round, matches: roundMatches);
         }).toList(),
       ),
     );
@@ -83,20 +102,13 @@ class _BracketView extends StatelessWidget {
 }
 
 class _RoundColumn extends StatelessWidget {
-  const _RoundColumn({required this.round, required this.matches});
+  const _RoundColumn({required this.roundLabel, required this.matches});
 
-  final int round;
-  final List<Map<String, dynamic>> matches;
+  final String roundLabel;
+  final List<TournamentMatchModel> matches;
 
   String _roundLabel() {
-    switch (round) {
-      case -1:
-        return 'Final';
-      case -2:
-        return 'Semi-Finals';
-      default:
-        return 'Round $round';
-    }
+    return roundLabel;
   }
 
   @override
@@ -138,26 +150,26 @@ class _RoundColumn extends StatelessWidget {
 class _MatchCard extends StatelessWidget {
   const _MatchCard({required this.match});
 
-  final Map<String, dynamic> match;
+  final TournamentMatchModel match;
 
   @override
   Widget build(BuildContext context) {
-    final teamA = match['teamA'] as Map<String, dynamic>?;
-    final teamB = match['teamB'] as Map<String, dynamic>?;
-    final scoreA = match['scoreA'];
-    final scoreB = match['scoreB'];
-    final isCompleted = match['status'] == 'completed';
-    final winnerId = match['winnerId'] as String?;
+    final scoreA = match.scoreA;
+    final scoreB = match.scoreB;
+    final isCompleted = match.status == 'completed';
+    final aWins =
+        isCompleted && scoreA != null && scoreB != null && scoreA > scoreB;
+    final bWins =
+        isCompleted && scoreA != null && scoreB != null && scoreB > scoreA;
 
-    Widget teamRow(Map<String, dynamic>? team, dynamic score) {
-      final isWinner = team != null && team['id'] == winnerId;
+    Widget teamRow(String? teamName, dynamic score, bool isWinner) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         child: Row(
           children: [
             Expanded(
               child: Text(
-                team?['name'] as String? ?? 'TBD',
+                teamName ?? 'TBD',
                 style: TextStyle(
                   fontWeight: isWinner ? FontWeight.bold : FontWeight.normal,
                   color: isWinner
@@ -191,9 +203,9 @@ class _MatchCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          teamRow(teamA, scoreA),
+          teamRow(match.teamAName, scoreA, aWins),
           Divider(height: 1, color: AppThemeTokens.border(context)),
-          teamRow(teamB, scoreB),
+          teamRow(match.teamBName, scoreB, bWins),
         ],
       ),
     );
