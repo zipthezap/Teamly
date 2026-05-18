@@ -430,6 +430,7 @@ export const getTournament = async (req: Request, res: Response) => {
         orderBy: [
           { stage: 'asc' },
           { roundNumber: 'asc' },
+          { matchOrder: 'asc' },
           { scheduledAt: 'asc' }
         ]
       },
@@ -1166,7 +1167,9 @@ export const generateBrackets = async (req: Request, res: Response) => {
       // teamsPerGroup: auto-compute number of groups from team count
       // numberOfGroups: explicit group count (default 4)
       if (usePoolAssignments) {
-        result = await tournamentService.generatePoolAwareBrackets(id);
+        result = await tournamentService.generatePoolAwareBrackets(id, {
+          fallbackToRoundRobin: false,
+        });
       } else {
         let resolvedGroups = numberOfGroups;
         if (!resolvedGroups && teamsPerGroup) {

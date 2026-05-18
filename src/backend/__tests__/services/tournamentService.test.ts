@@ -29,7 +29,7 @@ import {
   advanceWinners,
 } from '../../services/tournamentService';
 import prisma from '../../config/database';
-import { VolleyballConfig, BracketStage, MatchStatus } from '../../../shared/types/tournament.types';
+import { VolleyballConfig, BracketStage, MatchStatus, TournamentFormat } from '../../../shared/types/tournament.types';
 
 // Mock dependencies
 vi.mock('../../config/database', () => ({
@@ -58,6 +58,7 @@ vi.mock('../../config/database', () => ({
       count: vi.fn(),
     },
     tournamentStanding: {
+      findMany: vi.fn(),
       updateMany: vi.fn(),
       upsert: vi.fn(),
     },
@@ -83,14 +84,23 @@ vi.mock('../../utils/errors', () => ({
       this.name = 'BadRequestError';
     }
   },
+  ForbiddenError: class ForbiddenError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = 'ForbiddenError';
+    }
+  },
 }));
 
 describe('Tournament Service', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    // Reset implementations as well as call history so one-off mock return
+    // values from earlier test cases do not leak into later tournament service tests.
+    vi.resetAllMocks();
     vi.mocked(prisma.$transaction).mockImplementation(async (fn: any) =>
       typeof fn === 'function' ? fn(prisma) : Promise.all(fn)
     );
+    vi.mocked(prisma.tournamentAdminRole.findFirst).mockResolvedValue(null);
   });
 
   describe('calculateVolleyballWinner', () => {
@@ -761,9 +771,78 @@ describe('Tournament Service', () => {
 
       expect(prisma.tournamentTeam.findMany).toHaveBeenCalled();
     });
+
+    it('throws instead of falling back to flat round robin when pool seeding is required without populated pools', async () => {
+      vi.mocked(prisma.tournamentPool.findMany).mockResolvedValueOnce([
+        { id: 'pool-a', name: 'Group A', teams: [] },
+      ] as unknown);
+
+      const { generatePoolAwareBrackets } = await import('../../services/tournamentService');
+
+      await expect(
+        generatePoolAwareBrackets('tournament-1', { fallbackToRoundRobin: false })
+      ).rejects.toThrow('No populated groups or pools are available to generate a groups + knockout stage');
+    });
   });
 
   describe('advanceWinners', () => {
+    it('seeds the initial knockout round for groups knockout after all group matches complete', async () => {
+      vi.mocked(prisma.tournament.findUnique).mockResolvedValueOnce({
+        format: TournamentFormat.GROUPS_KNOCKOUT,
+        tiebreakerRules: ['goal_difference', 'goals_for'],
+      } as unknown);
+      vi.mocked(prisma.tournamentMatch.findMany).mockResolvedValueOnce([
+        {
+          id: 'group-match-1',
+          tournamentId: 'tournament-1',
+          stage: BracketStage.GROUP_STAGE,
+          status: MatchStatus.COMPLETED,
+          homeTeamId: 'a1',
+          awayTeamId: 'a2',
+          homeScore: 2,
+          awayScore: 1,
+        },
+      ] as unknown);
+      vi.mocked(prisma.tournamentMatch.count).mockResolvedValueOnce(0);
+      vi.mocked(prisma.tournamentStanding.findMany).mockResolvedValueOnce(
+        Array.from({ length: 8 }, (_, groupIndex) => {
+          const groupName = `Group ${String.fromCharCode(65 + groupIndex)}`;
+          return [
+            {
+              teamId: `${groupName}-1`,
+              groupName,
+              points: 9,
+              wins: 3,
+              goalsFor: 6,
+              goalsAgainst: 1,
+            },
+            {
+              teamId: `${groupName}-2`,
+              groupName,
+              points: 6,
+              wins: 2,
+              goalsFor: 4,
+              goalsAgainst: 2,
+            },
+          ];
+        }).flatMap((group) => group) as unknown
+      );
+      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 8 } as unknown);
+
+      await advanceWinners('tournament-1', BracketStage.GROUP_STAGE);
+
+      expect(prisma.tournamentMatch.createMany).toHaveBeenCalledWith({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            stage: BracketStage.ROUND_OF_16,
+            roundNumber: 1,
+            homeTeamId: 'Group A-1',
+            awayTeamId: 'Group H-2',
+          }),
+        ]),
+      });
+    });
+
     it('does nothing when not all matches in current stage are completed', async () => {
       vi.mocked(prisma.tournamentMatch.findMany).mockResolvedValueOnce([
         {
