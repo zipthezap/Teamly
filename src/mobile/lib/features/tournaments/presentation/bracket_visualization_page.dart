@@ -646,9 +646,9 @@ List<_BracketColumn> _buildBracketColumns(
   bool useGroupsKnockoutLabels = false,
 }) {
   final knockoutMatches = matches.where((m) => m.stage != 'group_stage').toList();
-  final hasExplicitStages = knockoutMatches.any((m) => m.stage != null && m.stage!.isNotEmpty);
+  final usesExplicitStages = knockoutMatches.any((m) => m.stage != null && m.stage!.isNotEmpty);
 
-  if (hasExplicitStages) {
+  if (usesExplicitStages) {
     return _buildStageColumns(
       knockoutMatches.where((m) => m.stage != null && m.stage!.isNotEmpty).toList(),
       useGroupsKnockoutLabels: useGroupsKnockoutLabels,

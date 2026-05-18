@@ -65,6 +65,11 @@ type QualifiedTeam = StandingLike & {
   rankInGroup: number;
 };
 
+/**
+ * Returns the largest supported knockout bracket size (power of two, capped at 16)
+ * that fits the number of available teams, or 0 when there are not enough teams
+ * to seed a knockout round.
+ */
 const knockoutBracketSize = (teamCount: number) => {
   if (teamCount >= 16) return 16;
   if (teamCount >= 8) return 8;
@@ -156,7 +161,10 @@ const selectGroupKnockoutQualifiers = (
   const totalTeams = orderedGroups.reduce((sum, [, items]) => sum + items.length, 0);
   const qualifierCount = knockoutBracketSize(totalTeams);
   if (qualifierCount < 2) {
-    throw new BadRequestError('At least 2 qualified teams are required to seed knockout brackets', 'INSUFFICIENT_TEAMS');
+    throw new BadRequestError(
+      `At least 2 qualified teams are required to seed knockout brackets (found ${qualifierCount})`,
+      'INSUFFICIENT_TEAMS'
+    );
   }
 
   const basePerGroup = Math.max(1, Math.floor(qualifierCount / orderedGroups.length));
