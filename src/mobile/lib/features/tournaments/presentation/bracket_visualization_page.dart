@@ -105,6 +105,8 @@ class _PoolBracketView extends StatelessWidget {
 
     if (hasCategories) {
       // Build: categoryName → groupName → matches
+      // m.round for pool-stage matches is set from the pool's groupName in the backend,
+      // which equals pool.name — so poolCategoryMap[m.round] correctly resolves the category.
       final Map<String, Map<String, List<TournamentMatchModel>>> byCat = {};
       for (final m in matches) {
         final cat = poolCategoryMap[m.round] ?? 'General';
@@ -175,7 +177,7 @@ class _PoolGroupListView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           SizedBox(
-            height: 110,
+            height: 120,
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: entry.value
@@ -351,16 +353,18 @@ class _SingleEliminationView extends StatelessWidget {
       byCategory.putIfAbsent(cat, () => []).add(m);
     }
 
-    // Sort categories to match tournament.categories order
+    // Sort categories to match tournament.categories order.
+    // Pre-compute index map for O(n log n) sort instead of O(n²).
     final orderedCatNames = tournament.categories.map((c) => c.name).toList();
+    final catIndexMap = <String, int>{
+      for (int i = 0; i < orderedCatNames.length; i++) orderedCatNames[i]: i,
+    };
     final sortedCats = byCategory.keys.toList()
       ..sort((a, b) {
-        final ai = orderedCatNames.indexOf(a);
-        final bi = orderedCatNames.indexOf(b);
-        if (ai == -1 && bi == -1) return a.compareTo(b);
-        if (ai == -1) return 1;
-        if (bi == -1) return -1;
-        return ai.compareTo(bi);
+        final ai = catIndexMap[a] ?? 999;
+        final bi = catIndexMap[b] ?? 999;
+        if (ai != bi) return ai.compareTo(bi);
+        return a.compareTo(b);
       });
 
     final hasMultipleCategories = sortedCats.length > 1 ||
@@ -405,6 +409,9 @@ const double _kColW = 208.0; // column width = match width + horizontal gap
 const double _kWinnerW = 180.0; // width reserved for winner badge
 
 /// Maps a round label to a sort order (lower = earlier round).
+/// Generic "Round N" labels get order = N * _kRoundOrderStep.
+const int _kRoundOrderStep = 5;
+
 int _bracketRoundOrder(String label) {
   final l = label.toLowerCase().trim();
   if (l == 'finals' || l == 'final') return 100;
@@ -414,7 +421,9 @@ int _bracketRoundOrder(String label) {
   if (l.contains('round of 32')) return 20;
   if (l.contains('round of 64')) return 10;
   final m = RegExp(r'(\d+)').firstMatch(l);
-  return m != null ? (int.tryParse(m.group(1)!) ?? 5) * 5 : 5;
+  return m != null
+      ? (int.tryParse(m.group(1)!) ?? 1) * _kRoundOrderStep
+      : _kRoundOrderStep;
 }
 
 /// Center Y for match [i] in round [r], given vertical unit [unit].
