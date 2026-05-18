@@ -23,9 +23,10 @@ import {
   TournamentNotificationType,
 } from '../../shared/types/tournament.types';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../utils/errors';
-import { isRequired, parseCoordinates, sanitizeString, isValidEmail } from '../utils/validation';
+import { isRequired, parseCoordinates, parseFloatStrict, sanitizeString, isValidEmail } from '../utils/validation';
 import { ensureResourceExists } from '../utils/controllerHelpers';
 import { isPrismaNotFoundError, isPrismaUniqueError } from '../utils/typeGuards';
+import * as locationService from '../services/locationService';
 
 // ==================== CONSTANTS ====================
 
@@ -3879,7 +3880,7 @@ export const selfUnregisterTeam = async (req: Request, res: Response) => {
 // ==================== PUBLIC DISCOVERY ====================
 
 export const getPublicTournaments = async (req: Request, res: Response) => {
-  const { sportType, status, page, limit } = req.query;
+  const { sportType, status, page, limit, latitude, longitude, radius } = req.query;
 
   const parsedPage = Math.max(1, parseInt(page as string, 10) || 1);
   const parsedLimit = Math.min(Math.max(1, parseInt(limit as string, 10) || DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
@@ -3888,20 +3889,68 @@ export const getPublicTournaments = async (req: Request, res: Response) => {
   const where: Record<string, unknown> = { isPublic: true };
   if (sportType) where.sportType = sportType;
   if (status) where.status = status;
+  const hasCoordinates = latitude !== undefined && longitude !== undefined;
+  let lat: number | null = null;
+  let lon: number | null = null;
+  let radiusKm: number | null = null;
 
-  const [tournaments, total] = await Promise.all([
-    prisma.tournament.findMany({
+  if (hasCoordinates) {
+    const parsedCoordinates = parseCoordinates(latitude, longitude);
+    lat = parsedCoordinates.lat;
+    lon = parsedCoordinates.lon;
+    radiusKm = radius !== undefined ? parseFloatStrict(radius, 'Radius') : 25;
+    if (radiusKm <= 0 || radiusKm > 100) {
+      throw new BadRequestError('Radius must be between 0 and 100 kilometers');
+    }
+
+    const { latDelta, lonDelta } = locationService.calculateBoundingBox(lat, radiusKm);
+    where.AND = [
+      { latitude: { not: null } },
+      { longitude: { not: null } },
+      { latitude: { gte: lat - latDelta, lte: lat + latDelta } },
+      { longitude: { gte: lon - lonDelta, lte: lon + lonDelta } },
+    ];
+  }
+
+  let total = 0;
+  let tournaments = [];
+
+  if (hasCoordinates && lat !== null && lon !== null && radiusKm !== null) {
+    const rawTournaments = await prisma.tournament.findMany({
       where,
       include: {
         organizer: { select: { id: true, name: true } },
         _count: { select: { teams: true } },
       },
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take: parsedLimit,
-    }),
-    prisma.tournament.count({ where }),
-  ]);
+      orderBy: { startDate: 'asc' },
+      take: MAX_PAGE_SIZE,
+    });
+
+    const filtered = locationService.filterByLocation(
+      rawTournaments,
+      lat,
+      lon,
+      radiusKm
+    );
+    total = filtered.length;
+    tournaments = filtered.slice(skip, skip + parsedLimit);
+  } else {
+    const [rawTournaments, counted] = await Promise.all([
+      prisma.tournament.findMany({
+        where,
+        include: {
+          organizer: { select: { id: true, name: true } },
+          _count: { select: { teams: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: parsedLimit,
+      }),
+      prisma.tournament.count({ where }),
+    ]);
+    tournaments = rawTournaments;
+    total = counted;
+  }
 
   const syncedTournaments = await Promise.all(
     tournaments.map((tournament) => syncTournamentAutoStatus(tournament, 'public_list_read'))
