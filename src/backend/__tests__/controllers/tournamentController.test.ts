@@ -195,6 +195,7 @@ vi.mock('../../services/tournamentService', () => ({
   canManageTeamInvitations: vi.fn().mockResolvedValue(true),
   computeAutoStatus: vi.fn(() => null),
   generateSingleEliminationBrackets: vi.fn().mockResolvedValue({ count: 4 }),
+  generateRandomizedSingleEliminationBracketsFromPools: vi.fn().mockResolvedValue({ count: 4 }),
   generateRoundRobinBrackets: vi.fn().mockResolvedValue({ count: 6 }),
   generateGroupsKnockoutBrackets: vi.fn().mockResolvedValue({ count: 8 }),
   updateStandings: vi.fn().mockResolvedValue(undefined),
@@ -1041,6 +1042,24 @@ describe('POST /api/tournaments/:id/generate-brackets (generateBrackets)', () =>
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('matchesCreated');
+  });
+
+  it('uses randomized pool teams for single_elimination when usePoolAssignments is true', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      format: 'single_elimination',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.count).mockResolvedValue(0);
+    vi.mocked(tournamentService.generateRandomizedSingleEliminationBracketsFromPools).mockResolvedValue({ count: 4 });
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/generate-brackets')
+      .send({ usePoolAssignments: true });
+
+    expect(res.status).toBe(200);
+    expect(vi.mocked(tournamentService.generateRandomizedSingleEliminationBracketsFromPools))
+      .toHaveBeenCalledWith('tournament-1');
+    expect(vi.mocked(tournamentService.generateSingleEliminationBrackets)).not.toHaveBeenCalled();
   });
 
   it('regenerates brackets when matches already exist and the tournament has not started', async () => {

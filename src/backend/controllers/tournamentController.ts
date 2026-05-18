@@ -1146,7 +1146,9 @@ export const generateBrackets = async (req: Request, res: Response) => {
   let result;
   switch (String(tournament.format)) {
     case TournamentFormat.SINGLE_ELIMINATION:
-      result = await tournamentService.generateSingleEliminationBrackets(id);
+      result = usePoolAssignments
+        ? await tournamentService.generateRandomizedSingleEliminationBracketsFromPools(id)
+        : await tournamentService.generateSingleEliminationBrackets(id);
       break;
     case TournamentFormat.DOUBLE_ELIMINATION:
       throw new BadRequestError('Double elimination bracket generation is not supported yet');

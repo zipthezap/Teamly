@@ -23,6 +23,7 @@ import {
   acceptTeamInvitation,
   expireOldInvitations,
   generateSingleEliminationBrackets,
+  generateRandomizedSingleEliminationBracketsFromPools,
   generateRoundRobinBrackets,
   generateGroupsKnockoutBrackets,
   advanceWinners,
@@ -40,6 +41,9 @@ vi.mock('../../config/database', () => ({
     tournamentTeam: {
       findUnique: vi.fn(),
       findFirst: vi.fn(),
+      findMany: vi.fn(),
+    },
+    tournamentPool: {
       findMany: vi.fn(),
     },
     tournamentPlayer: {
@@ -559,6 +563,55 @@ describe('Tournament Service', () => {
         ],
       });
       expect(result.count).toBe(1);
+    });
+  });
+
+  describe('generateRandomizedSingleEliminationBracketsFromPools', () => {
+    it('should generate brackets using randomized pool teams', async () => {
+      vi.mocked(prisma.tournamentPool.findMany).mockResolvedValueOnce([
+        {
+          id: 'pool-a',
+          name: 'Pool A',
+          teams: [
+            { id: 'team-1', createdAt: new Date('2025-01-01') },
+            { id: 'team-2', createdAt: new Date('2025-01-02') },
+          ],
+        },
+        {
+          id: 'pool-b',
+          name: 'Pool B',
+          teams: [
+            { id: 'team-3', createdAt: new Date('2025-01-03') },
+            { id: 'team-4', createdAt: new Date('2025-01-04') },
+          ],
+        },
+      ] as unknown);
+      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 2 } as unknown);
+
+      const result = await generateRandomizedSingleEliminationBracketsFromPools('tournament-1');
+
+      const createManyCall = vi.mocked(prisma.tournamentMatch.createMany).mock.calls[0]?.[0] as
+        | { data: Array<{ homeTeamId: string; awayTeamId: string }> }
+        | undefined;
+      expect(createManyCall).toBeDefined();
+      expect(createManyCall!.data).toHaveLength(2);
+      const seededTeamIds = createManyCall!.data.flatMap(match => [match.homeTeamId, match.awayTeamId]).sort();
+      expect(seededTeamIds).toEqual(['team-1', 'team-2', 'team-3', 'team-4']);
+      expect(result.count).toBe(2);
+    });
+
+    it('should throw error when pooled teams are insufficient', async () => {
+      vi.mocked(prisma.tournamentPool.findMany).mockResolvedValueOnce([
+        {
+          id: 'pool-a',
+          name: 'Pool A',
+          teams: [{ id: 'team-1', createdAt: new Date('2025-01-01') }],
+        },
+      ] as unknown);
+
+      await expect(
+        generateRandomizedSingleEliminationBracketsFromPools('tournament-1')
+      ).rejects.toThrow('At least 2 teams are required');
     });
   });
 
