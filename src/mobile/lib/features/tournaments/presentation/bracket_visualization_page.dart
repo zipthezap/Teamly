@@ -697,36 +697,31 @@ List<_BracketColumn> _buildStageColumns(
     });
 
     final label = _stageLabel(stage, useGroupsKnockoutLabels: useGroupsKnockoutLabels);
-    late final List<_BracketCanvasMatch> roundMatches;
-
-    if (columns.isEmpty) {
-      roundMatches = stageMatches
-          .map((match) => _BracketCanvasMatch.fromModel(match, label: label))
-          .toList();
-    } else {
-      final expectedCount = (previousRound.length / 2).ceil();
-      roundMatches = List.generate(expectedCount, (index) {
-        final feederA = previousRound[index * 2];
-        final feederB = previousRound[index * 2 + 1];
-        final actual = index < stageMatches.length ? stageMatches[index] : null;
-        final fallbackA = _winnerName(feederA);
-        final fallbackB = _winnerName(feederB);
-        if (actual != null) {
-          return _BracketCanvasMatch.fromModel(
-            actual,
-            fallbackTeamAName: fallbackA,
-            fallbackTeamBName: fallbackB,
-            label: label,
-          );
-        }
-        return _BracketCanvasMatch(
-          label: label,
-          teamAName: fallbackA,
-          teamBName: fallbackB,
-          isActual: false,
-        );
-      });
-    }
+    final roundMatches = columns.isEmpty
+        ? stageMatches
+            .map((match) => _BracketCanvasMatch.fromModel(match, label: label))
+            .toList()
+        : List.generate((previousRound.length / 2).ceil(), (index) {
+            final feederA = previousRound[index * 2];
+            final feederB = previousRound[index * 2 + 1];
+            final actual = index < stageMatches.length ? stageMatches[index] : null;
+            final fallbackA = _winnerName(feederA);
+            final fallbackB = _winnerName(feederB);
+            if (actual != null) {
+              return _BracketCanvasMatch.fromModel(
+                actual,
+                fallbackTeamAName: fallbackA,
+                fallbackTeamBName: fallbackB,
+                label: label,
+              );
+            }
+            return _BracketCanvasMatch(
+              label: label,
+              teamAName: fallbackA,
+              teamBName: fallbackB,
+              isActual: false,
+            );
+          });
 
     columns.add(_BracketColumn(key: stage, label: label, matches: roundMatches));
     previousRound = roundMatches;

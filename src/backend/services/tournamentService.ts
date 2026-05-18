@@ -37,7 +37,7 @@ const ALLOWED_SPORT_TYPES = [
   'other',
 ] as const;
 
-const ELIMINATION_STAGE_ORDER = [
+const ELIMINATION_STAGE_ORDER: BracketStage[] = [
   BracketStage.ROUND_OF_32,
   BracketStage.ROUND_OF_16,
   BracketStage.QUARTER_FINALS,
@@ -45,7 +45,7 @@ const ELIMINATION_STAGE_ORDER = [
   BracketStage.FINALS,
 ] as const;
 
-const GROUPS_KNOCKOUT_STAGE_ORDER = [
+const GROUPS_KNOCKOUT_STAGE_ORDER: BracketStage[] = [
   BracketStage.ROUND_OF_16,
   BracketStage.QUARTER_FINALS,
   BracketStage.SEMI_FINALS,
@@ -117,6 +117,42 @@ const seededPairOrder = (size: number): Array<[number, number]> => {
   }
 };
 
+const compareStandingsPerformance = (
+  a: StandingLike,
+  b: StandingLike,
+  tiebreakerRules?: string[] | null
+) => {
+  if (b.points !== a.points) return b.points - a.points;
+
+  const rules = tiebreakerRules && tiebreakerRules.length > 0
+    ? tiebreakerRules
+    : ['goal_difference', 'goals_for'];
+
+  for (const rule of rules) {
+    switch (rule) {
+      case 'goal_difference': {
+        const gdA = a.goalsFor - a.goalsAgainst;
+        const gdB = b.goalsFor - b.goalsAgainst;
+        if (gdB !== gdA) return gdB - gdA;
+        break;
+      }
+      case 'goals_for':
+        if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
+        break;
+      case 'goals_against':
+        if (a.goalsAgainst !== b.goalsAgainst) return a.goalsAgainst - b.goalsAgainst;
+        break;
+      case 'wins':
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        break;
+      default:
+        break;
+    }
+  }
+
+  return 0;
+};
+
 const compareQualifiedTeams = (
   a: QualifiedTeam,
   b: QualifiedTeam,
@@ -124,9 +160,8 @@ const compareQualifiedTeams = (
 ) => {
   if (a.rankInGroup !== b.rankInGroup) return a.rankInGroup - b.rankInGroup;
 
-  const [higher] = sortStandingsByTiebreakerRules([a, b], tiebreakerRules) as StandingLike[];
-  if (higher.teamId === a.teamId && higher.teamId !== b.teamId) return -1;
-  if (higher.teamId === b.teamId && higher.teamId !== a.teamId) return 1;
+  const performanceCompare = compareStandingsPerformance(a, b, tiebreakerRules);
+  if (performanceCompare !== 0) return performanceCompare;
 
   const groupCompare = (a.groupName ?? '').localeCompare(b.groupName ?? '');
   if (groupCompare !== 0) return groupCompare;
@@ -1035,7 +1070,7 @@ export const advanceWinners = async (tournamentId: string, currentStage: Bracket
     const existingKnockoutMatches = await prisma.tournamentMatch.count({
       where: {
         tournamentId,
-        stage: { in: GROUPS_KNOCKOUT_STAGE_ORDER as unknown as BracketStage[] },
+        stage: { in: GROUPS_KNOCKOUT_STAGE_ORDER },
       },
     });
     if (existingKnockoutMatches > 0) {
