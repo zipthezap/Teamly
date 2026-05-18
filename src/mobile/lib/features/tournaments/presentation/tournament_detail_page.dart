@@ -690,6 +690,9 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                   ],
                 ),
                 label: Text(t.matches.isNotEmpty ? 'Regenerate Brackets' : 'Generate Brackets'),
+                // Allow regeneration while in_progress (backend now supports this).
+                // This whole block is already gated on `isAdmin`, so only organizers
+                // and co-admins ever see it.
                 onPressed: (canManageTournament || t.status == 'in_progress')
                     ? () => _generateBrackets(context, t)
                     : null,

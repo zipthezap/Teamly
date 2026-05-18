@@ -598,11 +598,7 @@ export const generateRoundRobinBrackets = async (tournamentId: string) => {
       });
     }
     // Rotate participants[1..size-1] right by 1: last element moves to index 1
-    const last = participants[size - 1];
-    for (let i = size - 1; i > 1; i--) {
-      participants[i] = participants[i - 1];
-    }
-    participants[1] = last;
+    participants.splice(1, 0, participants.pop()!);
   }
   
   // Create matches in database
