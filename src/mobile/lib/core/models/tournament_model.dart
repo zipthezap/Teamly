@@ -399,6 +399,8 @@ class TournamentModel extends Equatable {
     this.locationName,
     this.city,
     this.country,
+    this.latitude,
+    this.longitude,
     this.prizesDescription,
     this.rulesDescription,
     this.contactEmail,
@@ -440,6 +442,8 @@ class TournamentModel extends Equatable {
   final String? locationName;
   final String? city;
   final String? country;
+  final double? latitude;
+  final double? longitude;
   final String? prizesDescription;
   final String? rulesDescription;
   final String? contactEmail;
@@ -529,6 +533,8 @@ class TournamentModel extends Equatable {
       locationName: json['locationName'] as String?,
       city: json['city'] as String?,
       country: json['country'] as String?,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
       prizesDescription: json['prizesDescription'] as String?,
       rulesDescription: json['rulesDescription'] as String?,
       contactEmail: json['contactEmail'] as String?,
@@ -559,7 +565,16 @@ class TournamentModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, name, sportType, format, status, createdAt];
+  List<Object?> get props => [
+        id,
+        name,
+        sportType,
+        format,
+        status,
+        createdAt,
+        latitude,
+        longitude,
+      ];
 }
 
 // ---------------------------------------------------------------------------

@@ -1,16 +1,30 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/models/tournament_model.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/geocoding_utils.dart';
 import '../../../shared/widgets/error_display.dart';
+import '../../../shared/widgets/location_search_form.dart';
 
-final _publicTournamentsProvider = FutureProvider<List<TournamentModel>>((ref) async {
+final _publicTournamentsProvider = FutureProvider.family<List<TournamentModel>,
+    ({double latitude, double longitude, double radius})?>((ref, location) async {
   final dio = ref.watch(dioProvider);
-  final response = await dio.get<dynamic>('/api/tournaments/public');
+  final response = await dio.get<dynamic>(
+    '/api/tournaments/public',
+    queryParameters: location == null
+        ? null
+        : {
+            'latitude': location.latitude.toString(),
+            'longitude': location.longitude.toString(),
+            'radius': location.radius.round().toString(),
+            'limit': '100',
+          },
+  );
   final data = response.data as Map<String, dynamic>;
   final list = data['data'] as List<dynamic>? ?? [];
   return list
@@ -30,10 +44,152 @@ class _PublicTournamentsPageState extends ConsumerState<PublicTournamentsPage> {
   String _search = '';
   String? _sportFilter;
   String? _statusFilter;
+  final _locationCtrl = TextEditingController();
+  double? _selectedLat;
+  double? _selectedLng;
+  double? _queryLat;
+  double? _queryLng;
+  double _radius = 25;
+  String? _locationError;
+  String? _geocodeError;
+  bool _searchingAddress = false;
+  bool _gettingLocation = false;
+  List<PlaceSuggestion> _suggestions = [];
+  DateTime _lastAddressSearch = DateTime.fromMillisecondsSinceEpoch(0);
+  late final GeocodingUtils _geocoding;
+  bool _geocodingInitialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_geocodingInitialized) {
+      final mapsKey = ref.read(appConfigProvider).googleMapsApiKey;
+      _geocoding = GeocodingUtils(googleMapsApiKey: mapsKey);
+      _geocodingInitialized = true;
+    }
+  }
+
+  @override
+  void dispose() {
+    _locationCtrl.dispose();
+    _geocoding.close();
+    super.dispose();
+  }
+
+  Future<void> _searchAddress(String query) async {
+    if (query.length < 3) {
+      setState(() => _suggestions = []);
+      return;
+    }
+    final now = DateTime.now();
+    _lastAddressSearch = now;
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (_lastAddressSearch != now || !mounted) return;
+
+    setState(() {
+      _searchingAddress = true;
+      _geocodeError = null;
+    });
+    try {
+      final suggestions = await _geocoding.search(query);
+      if (!mounted) return;
+      setState(() => _suggestions = suggestions);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _suggestions = [];
+        _geocodeError = 'Could not search addresses. Check your connection.';
+      });
+    } finally {
+      if (mounted) setState(() => _searchingAddress = false);
+    }
+  }
+
+  void _selectSuggestion(PlaceSuggestion suggestion) {
+    setState(() {
+      _selectedLat = suggestion.lat;
+      _selectedLng = suggestion.lng;
+      _locationCtrl.text = suggestion.displayName;
+      _suggestions = [];
+      _locationError = null;
+    });
+    FocusScope.of(context).unfocus();
+    _applyLocationSearch();
+  }
+
+  Future<void> _useCurrentLocation() async {
+    setState(() {
+      _gettingLocation = true;
+      _locationError = null;
+    });
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        setState(() {
+          _locationError =
+              'Location services are disabled. Please enable them in settings.';
+        });
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() => _locationError = 'Location permission denied.');
+          return;
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        setState(() {
+          _locationError =
+              'Location permission permanently denied. Please enable in settings.';
+        });
+        return;
+      }
+
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.medium),
+      );
+      setState(() {
+        _selectedLat = pos.latitude;
+        _selectedLng = pos.longitude;
+        _locationCtrl.text =
+            '${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)}';
+        _suggestions = [];
+      });
+      _applyLocationSearch();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _locationError = 'Failed to get location: ${e.toString()}');
+    } finally {
+      if (mounted) setState(() => _gettingLocation = false);
+    }
+  }
+
+  void _applyLocationSearch() {
+    if (_selectedLat == null || _selectedLng == null) {
+      setState(() => _locationError = 'Please select a location first');
+      return;
+    }
+    setState(() {
+      _queryLat = _selectedLat;
+      _queryLng = _selectedLng;
+      _locationError = null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(_publicTournamentsProvider);
+    final locationFilter = _queryLat != null && _queryLng != null
+        ? (
+            latitude: _queryLat!,
+            longitude: _queryLng!,
+            radius: _radius,
+          )
+        : null;
+    final async = ref.watch(_publicTournamentsProvider(locationFilter));
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -43,6 +199,28 @@ class _PublicTournamentsPageState extends ConsumerState<PublicTournamentsPage> {
       ),
       body: Column(
         children: [
+          LocationSearchForm(
+            locationCtrl: _locationCtrl,
+            radius: _radius,
+            loading: async.isLoading,
+            gettingLocation: _gettingLocation,
+            searchingAddress: _searchingAddress,
+            suggestions: _suggestions,
+            error: _locationError,
+            geocodeError: _geocodeError,
+            onAddressChanged: _searchAddress,
+            onSuggestionSelected: _selectSuggestion,
+            onRadiusChanged: (value) {
+              setState(() => _radius = value);
+              if (_queryLat != null && _queryLng != null) {
+                _applyLocationSearch();
+              }
+            },
+            onSearch: (_selectedLat != null && _selectedLng != null)
+                ? _applyLocationSearch
+                : null,
+            onUseCurrentLocation: _useCurrentLocation,
+          ),
           _FilterBar(
             search: _search,
             sport: _sportFilter,
