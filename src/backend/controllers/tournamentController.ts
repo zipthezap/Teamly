@@ -33,6 +33,7 @@ import * as locationService from '../services/locationService';
 const INVITATION_EXPIRY_DAYS = 7;
 const MAX_PAGE_SIZE = 100;
 const DEFAULT_PAGE_SIZE = 50;
+const MAX_LOCATION_RADIUS_KM = 100;
 const MAX_LOCATION_FIELD_LENGTH = 100;
 const MAX_NAME_LENGTH = 100;
 const MAX_DESCRIPTION_LENGTH = 2000;
@@ -3899,8 +3900,10 @@ export const getPublicTournaments = async (req: Request, res: Response) => {
     lat = parsedCoordinates.lat;
     lon = parsedCoordinates.lon;
     radiusKm = radius !== undefined ? parseFloatStrict(radius, 'Radius') : 25;
-    if (radiusKm <= 0 || radiusKm > 100) {
-      throw new BadRequestError('Radius must be between 0 and 100 kilometers');
+    if (radiusKm <= 0 || radiusKm > MAX_LOCATION_RADIUS_KM) {
+      throw new BadRequestError(
+        `Radius must be greater than 0 and at most ${MAX_LOCATION_RADIUS_KM} kilometers`
+      );
     }
 
     const { latDelta, lonDelta } = locationService.calculateBoundingBox(lat, radiusKm);
@@ -3922,8 +3925,8 @@ export const getPublicTournaments = async (req: Request, res: Response) => {
         organizer: { select: { id: true, name: true } },
         _count: { select: { teams: true } },
       },
-      orderBy: { startDate: 'asc' },
-      take: MAX_PAGE_SIZE,
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(MAX_PAGE_SIZE, skip + parsedLimit * 2),
     });
 
     const filtered = locationService.filterByLocation(

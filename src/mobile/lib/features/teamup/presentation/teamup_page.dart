@@ -568,7 +568,12 @@ class _NearbyTabState extends ConsumerState<_NearbyTab> {
           geocodeError: _geocodeError,
           onAddressChanged: _searchAddress,
           onSuggestionSelected: _selectSuggestion,
-          onRadiusChanged: (value) => setState(() => _radius = value),
+          onRadiusChanged: (value) {
+            setState(() => _radius = value);
+            if (_lat != null && _lng != null) {
+              _search();
+            }
+          },
           onSearch: (_lat != null && _lng != null) ? _search : null,
           onUseCurrentLocation: _useCurrentLocation,
         ),

@@ -21,7 +21,7 @@ final _publicTournamentsProvider = FutureProvider.family<List<TournamentModel>,
         : {
             'latitude': location.latitude.toString(),
             'longitude': location.longitude.toString(),
-            'radius': location.radius.toStringAsFixed(0),
+            'radius': location.radius.round().toString(),
             'limit': '100',
           },
   );
