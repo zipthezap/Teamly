@@ -3,6 +3,7 @@ import '../../../core/theme/app_theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/error/error_utils.dart';
@@ -146,6 +147,8 @@ class _TeamUpPageState extends ConsumerState<TeamUpPage>
               ),
               child: TabBar(
                 controller: _tabController,
+                isScrollable: false,
+                labelPadding: const EdgeInsets.symmetric(horizontal: 4),
                 indicator: BoxDecoration(
                   color: AppThemeTokens.primary500
                       .withValues(alpha: isDark ? 0.2 : 0.12),
@@ -158,16 +161,16 @@ class _TeamUpPageState extends ConsumerState<TeamUpPage>
                     ? AppThemeTokens.darkTextSecondary
                     : AppThemeTokens.lightTextSecondary,
                 labelStyle:
-                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                 unselectedLabelStyle:
-                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
                 tabs: const [
                   Tab(text: 'Browse'),
                   Tab(text: 'Nearby'),
-                  Tab(text: 'My Posts'),
+                  Tab(text: 'Posts'),
                   Tab(text: 'Inbox'),
-                  Tab(text: 'Applied'),
-                  Tab(text: 'Post'),
+                  Tab(text: 'Apps'),
+                  Tab(text: 'Create'),
                 ],
               ),
             ),
@@ -390,34 +393,189 @@ class _BrowseTabState extends ConsumerState<_BrowseTab> {
   }
 }
 
-class _NearbyTab extends ConsumerWidget {
+class _NearbyTab extends ConsumerStatefulWidget {
   const _NearbyTab();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final nearbyAsync = ref.watch(nearbyTeamUpRequestsProvider);
+  ConsumerState<_NearbyTab> createState() => _NearbyTabState();
+}
+
+class _NearbyTabState extends ConsumerState<_NearbyTab> {
+  String? _fallbackCity;
+
+  Future<void> _pickCityFallback() async {
+    final controller = TextEditingController(text: _fallbackCity ?? '');
+    final value = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Use city instead'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'City',
+            hintText: 'e.g. Los Angeles',
+          ),
+          textCapitalization: TextCapitalization.words,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            child: const Text('Apply'),
+          ),
+        ],
+      ),
+    );
+
+    if (value == null) return;
+    if (!mounted) return;
+    setState(() {
+      _fallbackCity = value.isEmpty ? null : value;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final nearbyAsync = _fallbackCity == null
+        ? ref.watch(nearbyTeamUpRequestsProvider)
+        : ref.watch(nearbyTeamUpRequestsByCityProvider(_fallbackCity!));
+
     return nearbyAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => ErrorDisplay(
-        message: extractErrorMessage(error),
-        onRetry: () => ref.invalidate(nearbyTeamUpRequestsProvider),
-      ),
-      data: (requests) {
-        if (requests.isEmpty) {
-          return const UiEmptyState(
-            icon: Icons.near_me_outlined,
-            title: 'No nearby TeamUps',
-            message: 'Try again later or expand your search area.',
+      error: (error, _) {
+        if (error is NearbyLocationPermissionException) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.location_off_outlined,
+                    size: 40,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Location permission is blocked',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    error.deniedForever
+                        ? 'Enable location access in system settings, or use a city fallback search.'
+                        : 'Grant location access to load nearby requests, or use a city fallback search.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppThemeTokens.textSecondary(context)),
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          final opened = await Geolocator.openAppSettings();
+                          if (!opened) {
+                            await Geolocator.openLocationSettings();
+                          }
+                        },
+                        icon: const Icon(Icons.settings_outlined),
+                        label: const Text('Open Settings'),
+                      ),
+                      FilledButton.icon(
+                        onPressed: _pickCityFallback,
+                        icon: const Icon(Icons.location_city_outlined),
+                        label: const Text('Use City Instead'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           );
         }
-        return RefreshIndicator(
-          onRefresh: () async => ref.invalidate(nearbyTeamUpRequestsProvider),
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            itemCount: requests.length,
-            itemBuilder: (context, index) =>
-                _RequestTile(request: requests[index]),
-          ),
+
+        return ErrorDisplay(
+          message: extractErrorMessage(error),
+          onRetry: () {
+            if (_fallbackCity == null) {
+              ref.invalidate(nearbyTeamUpRequestsProvider);
+            } else {
+              ref.invalidate(nearbyTeamUpRequestsByCityProvider(_fallbackCity!));
+            }
+          },
+        );
+      },
+      data: (requests) {
+        if (requests.isEmpty) {
+          return UiEmptyState(
+            icon: _fallbackCity == null
+                ? Icons.near_me_outlined
+                : Icons.location_city_outlined,
+            title: _fallbackCity == null
+                ? 'No nearby TeamUps'
+                : 'No TeamUps in $_fallbackCity',
+            message: _fallbackCity == null
+                ? 'Try again later or expand your search area.'
+                : 'Try another city or clear fallback to use location search.',
+          );
+        }
+
+        return Column(
+          children: [
+            if (_fallbackCity != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(16, 10, 12, 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.location_city_outlined,
+                      size: 16,
+                      color: AppThemeTokens.textMuted(context),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Showing results for $_fallbackCity',
+                        style: TextStyle(color: AppThemeTokens.textSecondary(context)),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(() => _fallbackCity = null),
+                      child: const Text('Use GPS'),
+                    ),
+                    TextButton(
+                      onPressed: _pickCityFallback,
+                      child: const Text('Change'),
+                    ),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  if (_fallbackCity == null) {
+                    ref.invalidate(nearbyTeamUpRequestsProvider);
+                  } else {
+                    ref.invalidate(nearbyTeamUpRequestsByCityProvider(_fallbackCity!));
+                  }
+                },
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  itemCount: requests.length,
+                  itemBuilder: (context, index) =>
+                      _RequestTile(request: requests[index]),
+                ),
+              ),
+            ),
+          ],
         );
       },
     );

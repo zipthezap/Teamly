@@ -22,7 +22,7 @@ class _MatchSchedulePageState extends ConsumerState<MatchSchedulePage> {
 
   @override
   Widget build(BuildContext context) {
-    final tournamentAsync = ref.watch(tournamentDetailProvider(tournamentId));
+    final tournamentAsync = ref.watch(tournamentDetailProvider(widget.tournamentId));
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,

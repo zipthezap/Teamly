@@ -4,6 +4,19 @@ import 'package:geolocator/geolocator.dart';
 import '../../../core/models/teamup_model.dart';
 import '../data/teamup_repository_impl.dart';
 
+class NearbyLocationPermissionException implements Exception {
+  const NearbyLocationPermissionException({required this.deniedForever});
+
+  final bool deniedForever;
+
+  @override
+  String toString() {
+    return deniedForever
+        ? 'Location access is permanently denied. Enable location permission in system settings or use city fallback.'
+        : 'Location permission is required to browse nearby TeamUps. You can grant permission or use city fallback.';
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Browse requests (with extended filter support)
 // ---------------------------------------------------------------------------
@@ -82,10 +95,12 @@ final nearbyTeamUpRequestsProvider =
     final requested = await Geolocator.requestPermission();
     if (requested == LocationPermission.denied ||
         requested == LocationPermission.deniedForever) {
-      throw Exception('Location permission is required to browse nearby TeamUps');
+      throw NearbyLocationPermissionException(
+        deniedForever: requested == LocationPermission.deniedForever,
+      );
     }
   } else if (permission == LocationPermission.deniedForever) {
-    throw Exception('Location permission is required to browse nearby TeamUps');
+    throw const NearbyLocationPermissionException(deniedForever: true);
   }
 
   final position = await Geolocator.getCurrentPosition();
@@ -93,6 +108,11 @@ final nearbyTeamUpRequestsProvider =
         latitude: position.latitude,
         longitude: position.longitude,
       );
+});
+
+final nearbyTeamUpRequestsByCityProvider =
+    FutureProvider.family<List<TeamUpRequestModel>, String>((ref, city) async {
+  return ref.watch(teamUpRepositoryProvider).getRequests(city: city);
 });
 
 // ---------------------------------------------------------------------------
