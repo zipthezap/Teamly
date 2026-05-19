@@ -1124,12 +1124,15 @@ class _AdminPaymentPanel extends ConsumerStatefulWidget {
 
 class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
   bool _expanded = false;
+  final Set<String> _selectedTeamIds = <String>{};
+  bool _bulkUpdating = false;
 
   Future<void> _setPayment(TournamentTeamModel team, String status) async {
     try {
       await ref.read(tournamentRepositoryProvider).updateTeamPayment(
         widget.tournament.id, team.id, status,
       );
+      _selectedTeamIds.remove(team.id);
       widget.onRefresh();
     } on Exception catch (e) {
       if (mounted) {
@@ -1137,6 +1140,39 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
           content: Text(extractErrorMessage(e)),
           backgroundColor: Theme.of(context).colorScheme.error,
         ));
+      }
+    }
+  }
+
+  Future<void> _setPaymentForSelection(String status) async {
+    if (_selectedTeamIds.isEmpty || _bulkUpdating) return;
+    setState(() => _bulkUpdating = true);
+    try {
+      final response = await ref.read(tournamentRepositoryProvider).batchUpdateTeamPayment(
+        widget.tournament.id,
+        _selectedTeamIds.toList(),
+        status,
+      );
+      if (mounted) {
+        final updated = response['updatedCount'] as num? ?? 0;
+        final skipped = response['skippedCount'] as num? ?? 0;
+        final notFound = response['notFoundCount'] as num? ?? 0;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Updated $updated team(s), skipped $skipped, not found $notFound.')),
+        );
+      }
+      _selectedTeamIds.clear();
+      widget.onRefresh();
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _bulkUpdating = false);
       }
     }
   }
@@ -1223,11 +1259,80 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
     }
   }
 
+  Future<void> _showBulkPaymentOptions() async {
+    if (_selectedTeamIds.isEmpty || _bulkUpdating) return;
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'Update ${_selectedTeamIds.length} selected team(s)',
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.check_circle_outline, color: Colors.green),
+              title: const Text('Mark as Paid'),
+              onTap: () => Navigator.pop(ctx, 'paid'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.schedule_outlined, color: Colors.orange),
+              title: const Text('Mark as Pending'),
+              onTap: () => Navigator.pop(ctx, 'pending'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.do_not_disturb_alt_outlined, color: Colors.blue),
+              title: const Text('Waive Fee'),
+              onTap: () => Navigator.pop(ctx, 'waived'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.money_off_outlined, color: Colors.red),
+              title: const Text('Mark as Unpaid'),
+              onTap: () => Navigator.pop(ctx, 'unpaid'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (choice != null) {
+      await _setPaymentForSelection(choice);
+    }
+  }
+
+  void _toggleTeamSelection(String teamId, bool selected) {
+    setState(() {
+      if (selected) {
+        _selectedTeamIds.add(teamId);
+      } else {
+        _selectedTeamIds.remove(teamId);
+      }
+    });
+  }
+
+  void _toggleSelectAll(List<TournamentTeamModel> teams) {
+    setState(() {
+      if (_selectedTeamIds.length == teams.length) {
+        _selectedTeamIds.clear();
+      } else {
+        _selectedTeamIds
+          ..clear()
+          ..addAll(teams.map((team) => team.id));
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = widget.tournament;
     final unpaid = t.teams.where((tm) => !tm.isPaid).length;
     final paid = t.teams.where((tm) => tm.isPaid).length;
+    final allSelected = t.teams.isNotEmpty && _selectedTeamIds.length == t.teams.length;
 
     return Container(
       decoration: BoxDecoration(
@@ -1274,11 +1379,56 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
           ),
           if (_expanded) ...[
             const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+              child: Row(
+                children: [
+                  InkWell(
+                    borderRadius: BorderRadius.circular(6),
+                    onTap: _bulkUpdating ? null : () => _toggleSelectAll(t.teams),
+                    child: Row(
+                      children: [
+                        Checkbox(
+                          value: allSelected,
+                          onChanged: _bulkUpdating
+                              ? null
+                              : (v) => _toggleSelectAll(t.teams),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          allSelected ? 'Clear all' : 'Select all',
+                          style: TextStyle(fontSize: 12, color: AppThemeTokens.textMuted(context)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  FilledButton.tonalIcon(
+                    onPressed: _selectedTeamIds.isEmpty || _bulkUpdating ? null : _showBulkPaymentOptions,
+                    icon: _bulkUpdating
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.done_all_outlined, size: 16),
+                    label: Text('Bulk (${_selectedTeamIds.length})'),
+                  ),
+                ],
+              ),
+            ),
             for (final team in t.teams)
               ListTile(
                 dense: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                leading: Icon(Icons.shield_outlined, size: 16, color: AppThemeTokens.textMuted(context)),
+                leading: Checkbox(
+                  value: _selectedTeamIds.contains(team.id),
+                  visualDensity: VisualDensity.compact,
+                  onChanged: _bulkUpdating
+                      ? null
+                      : (v) => _toggleTeamSelection(team.id, v ?? false),
+                ),
                 title: Text(team.name, style: const TextStyle(fontSize: 13)),
                 trailing: InkWell(
                   onTap: () => _showPaymentOptions(team),

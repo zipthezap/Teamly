@@ -298,6 +298,19 @@ class TournamentRepositoryImpl implements TournamentRepository {
   }
 
   @override
+  Future<Map<String, dynamic>> batchUpdateTeamPayment(
+      String tournamentId, List<String> teamIds, String paymentStatus) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/tournaments/$tournamentId/teams/payment/batch',
+      data: {
+        'teamIds': teamIds,
+        'paymentStatus': paymentStatus,
+      },
+    );
+    return _requireMapData(response, 'batch update team payment');
+  }
+
+  @override
   Future<void> deleteTeam(String tournamentId, String teamId) async {
     await _dio.delete<void>('/tournaments/$tournamentId/teams/$teamId');
   }

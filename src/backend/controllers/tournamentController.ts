@@ -21,6 +21,8 @@ import {
   MatchStatus,
   BracketStage,
   TournamentNotificationType,
+  TournamentPaymentStatus,
+  TOURNAMENT_PAYMENT_STATUSES,
 } from '../../shared/types/tournament.types';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../utils/errors';
 import { isRequired, parseCoordinates, parseFloatStrict, sanitizeString, isValidEmail } from '../utils/validation';
@@ -40,6 +42,7 @@ const MAX_DESCRIPTION_LENGTH = 2000;
 const MAX_POOL_NAME_LENGTH = 100;
 const MAX_PLAYER_NAME_LENGTH = 100;
 const MAX_TEAMS_UPPER_BOUND = 1000;
+const MAX_BATCH_PAYMENT_TEAMS = 500;
 
 // Lifecycle helpers live in tournamentService; alias for brevity within this file.
 const syncTournamentAutoStatus = tournamentService.syncTournamentAutoStatus;
@@ -72,6 +75,22 @@ const assertTournamentSetupEditable = (
     throw new BadRequestError(message);
   }
 };
+
+const getPaymentUpdatePayload = (paymentStatus: string, userId: string) => ({
+  paymentStatus,
+  paidAt:
+    paymentStatus === TournamentPaymentStatus.PAID
+      ? new Date()
+      : paymentStatus === TournamentPaymentStatus.UNPAID
+        ? null
+        : undefined,
+  paidByUserId:
+    paymentStatus === TournamentPaymentStatus.PAID
+      ? userId
+      : paymentStatus === TournamentPaymentStatus.UNPAID
+        ? null
+        : undefined,
+});
 
 /**
  * Enforce read access for private tournaments.
@@ -1052,9 +1071,10 @@ export const updateTeamPayment = async (req: Request, res: Response) => {
   const userId = req.user!.id;
   const { paymentStatus } = req.body;
 
-  const allowedStatuses = ['unpaid', 'pending', 'paid', 'waived'];
-  if (!paymentStatus || !allowedStatuses.includes(paymentStatus)) {
-    throw new BadRequestError(`paymentStatus must be one of: ${allowedStatuses.join(', ')}`);
+  if (!paymentStatus || !TOURNAMENT_PAYMENT_STATUSES.includes(paymentStatus)) {
+    throw new BadRequestError(
+      `paymentStatus must be one of: ${TOURNAMENT_PAYMENT_STATUSES.join(', ')}`
+    );
   }
 
   const tournament = ensureResourceExists(
@@ -1078,11 +1098,7 @@ export const updateTeamPayment = async (req: Request, res: Response) => {
 
   const updatedTeam = await prisma.tournamentTeam.update({
     where: { id: team.id },
-    data: {
-      paymentStatus,
-      paidAt: paymentStatus === 'paid' ? new Date() : (paymentStatus === 'unpaid' ? null : undefined),
-      paidByUserId: paymentStatus === 'paid' ? userId : (paymentStatus === 'unpaid' ? null : undefined),
-    },
+    data: getPaymentUpdatePayload(paymentStatus, userId),
     include: {
       captainUser: { select: { id: true, name: true, email: true } },
     },
@@ -1096,6 +1112,94 @@ export const updateTeamPayment = async (req: Request, res: Response) => {
   });
 
   res.json(updatedTeam);
+};
+
+/**
+ * Batch update payment status for multiple teams (admin/organizer only)
+ */
+export const batchUpdateTeamPayments = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+  const { teamIds, paymentStatus } = req.body ?? {};
+
+  if (!Array.isArray(teamIds) || teamIds.length === 0) {
+    throw new BadRequestError('teamIds must be a non-empty array');
+  }
+  if (teamIds.length > MAX_BATCH_PAYMENT_TEAMS) {
+    throw new BadRequestError(`teamIds cannot exceed ${MAX_BATCH_PAYMENT_TEAMS} items`);
+  }
+  const normalizedTeamIds = [...new Set(teamIds.filter((teamId) => typeof teamId === 'string' && teamId.trim()))];
+  if (normalizedTeamIds.length === 0) {
+    throw new BadRequestError('teamIds must contain at least one valid team id');
+  }
+  if (!paymentStatus || !TOURNAMENT_PAYMENT_STATUSES.includes(paymentStatus)) {
+    throw new BadRequestError(
+      `paymentStatus must be one of: ${TOURNAMENT_PAYMENT_STATUSES.join(', ')}`
+    );
+  }
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can update team payment status');
+  }
+
+  assertTournamentSetupEditable(
+    tournament,
+    'Team payment status can only be updated before the tournament starts'
+  );
+
+  const updatePayload = getPaymentUpdatePayload(paymentStatus, userId);
+  const result = await prisma.$transaction(async (tx) => {
+    const teams = await tx.tournamentTeam.findMany({
+      where: {
+        tournamentId: id,
+        id: { in: normalizedTeamIds },
+      },
+      select: { id: true, paymentStatus: true },
+    });
+
+    const foundIds = new Set(teams.map((team) => team.id));
+    const notFoundTeamIds = normalizedTeamIds.filter((teamId) => !foundIds.has(teamId));
+    const skipped = teams
+      .filter((team) => team.paymentStatus === paymentStatus)
+      .map((team) => team.id);
+    const idsToUpdate = teams
+      .filter((team) => team.paymentStatus !== paymentStatus)
+      .map((team) => team.id);
+
+    if (idsToUpdate.length > 0) {
+      await tx.tournamentTeam.updateMany({
+        where: { tournamentId: id, id: { in: idsToUpdate } },
+        data: updatePayload,
+      });
+    }
+
+    return {
+      requestedCount: normalizedTeamIds.length,
+      updatedCount: idsToUpdate.length,
+      skippedCount: skipped.length,
+      notFoundCount: notFoundTeamIds.length,
+      updatedTeamIds: idsToUpdate,
+      skippedTeamIds: skipped,
+      notFoundTeamIds,
+    };
+  });
+
+  logger.info('Team payment status batch-updated', 'TournamentController', {
+    tournamentId: id,
+    paymentStatus,
+    ...result,
+    userId,
+  });
+
+  res.json({
+    paymentStatus,
+    ...result,
+  });
 };
 
 // ==================== BRACKET & MATCH MANAGEMENT ====================

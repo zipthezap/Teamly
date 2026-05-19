@@ -84,6 +84,12 @@ router.put(
   asyncHandler(tournamentController.updateTeamPayment)
 );
 router.put(
+  '/:id/teams/payment/batch',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_TEAMS),
+  asyncHandler(tournamentController.batchUpdateTeamPayments)
+);
+router.put(
   '/:id/teams/:teamId/pool',
   noCache,
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_POOLS),
