@@ -1154,9 +1154,9 @@ class _AdminPaymentPanelState extends ConsumerState<_AdminPaymentPanel> {
         status,
       );
       if (mounted) {
-        final updated = response['updatedCount'] as int? ?? 0;
-        final skipped = response['skippedCount'] as int? ?? 0;
-        final notFound = response['notFoundCount'] as int? ?? 0;
+        final updated = (response['updatedCount'] as num?)?.toInt() ?? 0;
+        final skipped = (response['skippedCount'] as num?)?.toInt() ?? 0;
+        final notFound = (response['notFoundCount'] as num?)?.toInt() ?? 0;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Updated $updated team(s), skipped $skipped, not found $notFound.')),
         );
