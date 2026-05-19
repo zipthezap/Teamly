@@ -57,6 +57,7 @@ vi.mock('../../config/database', () => ({
       count: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       delete: vi.fn(),
       deleteMany: vi.fn(),
     },
@@ -429,6 +430,7 @@ beforeEach(() => {
   vi.mocked(prisma.tournamentTeam.count).mockResolvedValue(0);
   vi.mocked(prisma.tournamentTeam.create).mockResolvedValue(mockTeam as any);
   vi.mocked(prisma.tournamentTeam.update).mockResolvedValue(mockTeam as any);
+  vi.mocked(prisma.tournamentTeam.updateMany).mockResolvedValue({ count: 1 } as any);
   vi.mocked(prisma.tournamentTeam.delete).mockResolvedValue(mockTeam as any);
   vi.mocked(prisma.tournamentTeam.deleteMany).mockResolvedValue({ count: 1 } as any);
 
@@ -4042,6 +4044,91 @@ describe('PUT /api/tournaments/:id/teams/:teamId/payment (updateTeamPayment)', (
       .send({ paymentStatus: 'paid' });
 
     expect(res.status).toBe(404);
+  });
+});
+
+describe('PUT /api/tournaments/:id/teams/payment/batch (batchUpdateTeamPayments)', () => {
+  it('returns 200 and updates only teams needing change', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValue([
+      { id: 'team-1', paymentStatus: 'unpaid' },
+      { id: 'team-2', paymentStatus: 'paid' },
+    ] as any);
+    vi.mocked(prisma.tournamentTeam.updateMany).mockResolvedValue({ count: 1 } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/payment/batch')
+      .send({ teamIds: ['team-1', 'team-2', 'missing-team'], paymentStatus: 'paid' });
+
+    expect(res.status).toBe(200);
+    expect(prisma.tournamentTeam.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: { in: ['team-1'] } }),
+      })
+    );
+    expect(res.body).toEqual(
+      expect.objectContaining({
+        paymentStatus: 'paid',
+        requestedCount: 3,
+        updatedCount: 1,
+        skippedCount: 1,
+        notFoundCount: 1,
+        updatedTeamIds: ['team-1'],
+        skippedTeamIds: ['team-2'],
+        notFoundTeamIds: ['missing-team'],
+      })
+    );
+  });
+
+  it('deduplicates duplicate team IDs in request', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValue([
+      { id: 'team-1', paymentStatus: 'unpaid' },
+    ] as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/payment/batch')
+      .send({ teamIds: ['team-1', 'team-1'], paymentStatus: 'paid' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.requestedCount).toBe(1);
+  });
+
+  it('returns 400 when teamIds is missing', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/payment/batch')
+      .send({ paymentStatus: 'paid' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('teamIds must be a non-empty array');
+  });
+
+  it('returns 400 when paymentStatus is invalid', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/payment/batch')
+      .send({ teamIds: ['team-1'], paymentStatus: 'invalid_status' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('paymentStatus must be one of');
+  });
+
+  it('returns 403 when non-organizer tries to batch update payment', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/teams/payment/batch')
+      .send({ teamIds: ['team-1'], paymentStatus: 'paid' });
+
+    expect(res.status).toBe(403);
   });
 });
 

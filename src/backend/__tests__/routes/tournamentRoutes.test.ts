@@ -89,6 +89,7 @@ vi.mock('../../controllers/tournamentController', () => ({
   addAdmin: vi.fn((req: any, res: any) => res.json({ ok: true })),
   removeAdmin: vi.fn((req: any, res: any) => res.json({ ok: true })),
   updateTeamPayment: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  batchUpdateTeamPayments: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getPublicTournaments: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getInvitationDetails: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getTournamentNotifications: vi.fn((req: any, res: any) => res.json({ ok: true })),
@@ -148,6 +149,13 @@ describe('Tournament Routes', () => {
 
   it('DELETE /api/:id/teams/self-register → 200', async () => {
     const res = await request(app).delete('/api/tournament-1/teams/self-register');
+    expect(res.status).toBe(200);
+  });
+
+  it('PUT /api/:id/teams/payment/batch → 200', async () => {
+    const res = await request(app)
+      .put('/api/tournament-1/teams/payment/batch')
+      .send({ teamIds: ['team-1'], paymentStatus: 'paid' });
     expect(res.status).toBe(200);
   });
 

@@ -44,6 +44,15 @@ export enum BracketStage {
   FINALS = 'finals'
 }
 
+export enum TournamentPaymentStatus {
+  UNPAID = 'unpaid',
+  PENDING = 'pending',
+  PAID = 'paid',
+  WAIVED = 'waived',
+}
+
+export const TOURNAMENT_PAYMENT_STATUSES = Object.values(TournamentPaymentStatus);
+
 // Type definitions for detailed scoring
 export interface SetScore {
   home: number;
