@@ -1128,7 +1128,13 @@ export const batchUpdateTeamPayments = async (req: Request, res: Response) => {
   if (teamIds.length > MAX_BATCH_PAYMENT_TEAMS) {
     throw new BadRequestError(`teamIds cannot exceed ${MAX_BATCH_PAYMENT_TEAMS} items`);
   }
-  const normalizedTeamIds = [...new Set(teamIds.filter((teamId) => typeof teamId === 'string' && teamId.trim()))];
+  const normalizedTeamIds = [
+    ...new Set(
+      teamIds
+        .filter((teamId) => typeof teamId === 'string' && teamId.trim().length > 0)
+        .map((teamId) => teamId.trim())
+    )
+  ];
   if (normalizedTeamIds.length === 0) {
     throw new BadRequestError('teamIds must contain at least one valid team id');
   }
