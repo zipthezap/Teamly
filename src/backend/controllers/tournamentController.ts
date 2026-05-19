@@ -1149,7 +1149,7 @@ export const batchUpdateTeamPayments = async (req: Request, res: Response) => {
     'Tournament'
   );
 
-  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+  if (!(await tournamentService.isOrganizerOrAdmin(tournament, userId))) {
     throw new ForbiddenError('Only organizers and admins can update team payment status');
   }
 
