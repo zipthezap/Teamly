@@ -1103,15 +1103,7 @@ List<TournamentMatchModel> _buildProjectedKnockoutMatches(TournamentModel tourna
   final orderedGroups = grouped.keys.toList()..sort();
   final qualifiersByGroup = <String, List<_ProjectedQualifier>>{};
   for (final groupName in orderedGroups) {
-    final ranked = [...grouped[groupName]!]..sort((a, b) {
-        final pointsDiff = b.points.compareTo(a.points);
-        if (pointsDiff != 0) return pointsDiff;
-        final gdDiff = b.goalDifference.compareTo(a.goalDifference);
-        if (gdDiff != 0) return gdDiff;
-        final gfDiff = b.goalsFor.compareTo(a.goalsFor);
-        if (gfDiff != 0) return gfDiff;
-        return a.teamName.compareTo(b.teamName);
-      });
+    final ranked = [...grouped[groupName]!]..sort(_compareStandingsForProjection);
     qualifiersByGroup[groupName] = ranked
         .map((standing) => _ProjectedQualifier(
               teamName: standing.teamName,
@@ -1139,15 +1131,7 @@ List<TournamentMatchModel> _buildProjectedKnockoutMatches(TournamentModel tourna
   final qualifierCount = _projectedQualifierCount(rankedQualifiers.length);
   if (qualifierCount == 0) return const [];
   final seeded = rankedQualifiers.take(qualifierCount).toList()
-    ..sort((a, b) {
-      final pointsDiff = b.points.compareTo(a.points);
-      if (pointsDiff != 0) return pointsDiff;
-      final gdDiff = b.goalDifference.compareTo(a.goalDifference);
-      if (gdDiff != 0) return gdDiff;
-      final gfDiff = b.goalsFor.compareTo(a.goalsFor);
-      if (gfDiff != 0) return gfDiff;
-      return a.teamName.compareTo(b.teamName);
-    });
+    ..sort(_compareProjectedQualifier);
 
   final stage = _initialKnockoutStage(qualifierCount);
   if (stage == null) return const [];
@@ -1192,4 +1176,30 @@ String? _initialKnockoutStage(int qualifierCount) {
     default:
       return null;
   }
+}
+
+int _compareStandingsForProjection(
+  TournamentStandingModel a,
+  TournamentStandingModel b,
+) {
+  final pointsDiff = b.points.compareTo(a.points);
+  if (pointsDiff != 0) return pointsDiff;
+  final gdDiff = b.goalDifference.compareTo(a.goalDifference);
+  if (gdDiff != 0) return gdDiff;
+  final gfDiff = b.goalsFor.compareTo(a.goalsFor);
+  if (gfDiff != 0) return gfDiff;
+  return a.teamName.compareTo(b.teamName);
+}
+
+int _compareProjectedQualifier(
+  _ProjectedQualifier a,
+  _ProjectedQualifier b,
+) {
+  final pointsDiff = b.points.compareTo(a.points);
+  if (pointsDiff != 0) return pointsDiff;
+  final gdDiff = b.goalDifference.compareTo(a.goalDifference);
+  if (gdDiff != 0) return gdDiff;
+  final gfDiff = b.goalsFor.compareTo(a.goalsFor);
+  if (gfDiff != 0) return gfDiff;
+  return a.teamName.compareTo(b.teamName);
 }
