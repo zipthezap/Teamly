@@ -122,7 +122,7 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
         final hasBrackets = t.matches.isNotEmpty;
         final tabs = <Tab>[const Tab(text: 'Overview')];
         if (isStarted) {
-          tabs.add(const Tab(text: 'Scores'));
+          tabs.add(const Tab(text: 'Groups'));
         }
         if (hasBrackets) {
           tabs.add(const Tab(text: 'Brackets'));
@@ -1790,7 +1790,7 @@ class _ScoresTab extends StatelessWidget {
 
     if (t.teams.isEmpty && !hasStandings) {
       return const UiEmptyState(
-          icon: Icons.leaderboard_outlined, message: 'No scores yet.');
+          icon: Icons.leaderboard_outlined, message: 'No group standings yet.');
     }
 
     final showGF = hasStandings &&
@@ -1864,7 +1864,7 @@ class _ScoresTab extends StatelessWidget {
       final rows = rowsForPool(null);
       if (rows.isEmpty) {
         return const UiEmptyState(
-            icon: Icons.leaderboard_outlined, message: 'No scores yet.');
+            icon: Icons.leaderboard_outlined, message: 'No group standings yet.');
       }
       children.add(_ScoreTable(rows: rows, showGoals: showGF));
       children.add(const SizedBox(height: 16));
@@ -1872,7 +1872,7 @@ class _ScoresTab extends StatelessWidget {
 
     if (children.isEmpty) {
       return const UiEmptyState(
-          icon: Icons.leaderboard_outlined, message: 'No scores yet.');
+          icon: Icons.leaderboard_outlined, message: 'No group standings yet.');
     }
     return ListView(padding: const EdgeInsets.all(16), children: children);
   }

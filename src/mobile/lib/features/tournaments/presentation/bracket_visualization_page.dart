@@ -100,41 +100,51 @@ class _GroupsKnockoutView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final groupMatches = tournament.matches
-        .where((m) => m.stage == 'group_stage' || m.groupName != null)
-        .toList();
     final knockoutMatches = tournament.matches
         .where((m) => m.stage != null && m.stage != 'group_stage')
         .toList();
+
+    if (knockoutMatches.isNotEmpty) {
+      return _KnockoutBracketView(
+        matches: knockoutMatches,
+        useGroupsKnockoutLabels: true,
+      );
+    }
+
+    final projectedMatches = _buildProjectedKnockoutMatches(tournament);
+    if (projectedMatches.isNotEmpty) {
+      return ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const _StageSectionHeader(
+            title: 'Projected Playoffs',
+            subtitle: 'Top teams from groups are seeded into a 4, 8, or 16-team playoff bracket.',
+          ),
+          const SizedBox(height: 12),
+          _KnockoutBracketView(
+            matches: projectedMatches,
+            useGroupsKnockoutLabels: true,
+          ),
+        ],
+      );
+    }
+
+    final groupMatches = tournament.matches
+        .where((m) => m.stage == 'group_stage' || m.groupName != null)
+        .toList();
     final allGroupMatchesCompleted =
         groupMatches.isNotEmpty && groupMatches.every((m) => m.status == 'completed');
-
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const _StageSectionHeader(
-          title: 'Group Stage',
-          subtitle: 'Teams play within their groups first. The knockout bracket forms after the group stage.',
-        ),
-        const SizedBox(height: 12),
-        _GroupStageSection(tournament: tournament, matches: groupMatches),
-        const SizedBox(height: 24),
         _StageSectionHeader(
           title: 'Knockout Bracket',
-          subtitle: knockoutMatches.isEmpty
-              ? (allGroupMatchesCompleted
-                  ? 'Waiting for the final group-stage result to seed the bracket.'
-                  : 'Complete all group-stage matches to form the playoff bracket.')
-              : 'Playoffs, quarterfinals, semifinals, and finals update as winners advance.',
+          subtitle: allGroupMatchesCompleted
+              ? 'Waiting for group standings to seed the playoff bracket.'
+              : 'Complete group-stage matches to seed the playoff bracket.',
         ),
         const SizedBox(height: 12),
-        if (knockoutMatches.isEmpty)
-          _KnockoutWaitingCard(allGroupMatchesCompleted: allGroupMatchesCompleted)
-        else
-          _KnockoutBracketView(
-            matches: knockoutMatches,
-            useGroupsKnockoutLabels: true,
-          ),
+        _KnockoutWaitingCard(allGroupMatchesCompleted: allGroupMatchesCompleted),
       ],
     );
   }
@@ -195,70 +205,6 @@ class _StageSectionHeader extends StatelessWidget {
           subtitle,
           style: TextStyle(color: AppThemeTokens.textSecondary(context)),
         ),
-      ],
-    );
-  }
-}
-
-class _GroupStageSection extends StatelessWidget {
-  const _GroupStageSection({required this.tournament, required this.matches});
-
-  final TournamentModel tournament;
-  final List<TournamentMatchModel> matches;
-
-  @override
-  Widget build(BuildContext context) {
-    if (matches.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppThemeTokens.cardElevated(context),
-          borderRadius: BorderRadius.circular(AppThemeTokens.radiusMd),
-          border: Border.all(color: AppThemeTokens.border(context)),
-        ),
-        child: Text(
-          'No group-stage matches have been generated yet.',
-          style: TextStyle(color: AppThemeTokens.textSecondary(context)),
-        ),
-      );
-    }
-
-    final byGroup = <String, List<TournamentMatchModel>>{};
-    for (final match in matches) {
-      final key = match.groupName ?? (match.round.isNotEmpty ? match.round : 'Matches');
-      byGroup.putIfAbsent(key, () => []).add(match);
-    }
-
-    final poolVenueMap = {
-      for (final pool in tournament.pools)
-        if (pool.venue != null) pool.name: pool.venue!,
-    };
-
-    final orderedGroups = byGroup.keys.toList()..sort();
-
-    return Column(
-      children: [
-        for (final groupName in orderedGroups) ...[
-          _PoolGroupHeader(
-            groupName: groupName,
-            venue: poolVenueMap[groupName],
-            matchCount: byGroup[groupName]!.length,
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 120,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: byGroup[groupName]!
-                  .map((m) => Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: SizedBox(width: 200, child: _SmallMatchCard(match: m)),
-                      ))
-                  .toList(),
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
       ],
     );
   }
@@ -1127,4 +1073,158 @@ class _WinnerBadge extends StatelessWidget {
       ],
     );
   }
+}
+
+class _ProjectedQualifier {
+  const _ProjectedQualifier({
+    required this.teamName,
+    required this.points,
+    required this.goalDifference,
+    required this.goalsFor,
+  });
+
+  final String teamName;
+  final int points;
+  final int goalDifference;
+  final int goalsFor;
+}
+
+List<TournamentMatchModel> _buildProjectedKnockoutMatches(TournamentModel tournament) {
+  if (tournament.standings.isEmpty) return const [];
+
+  final teamById = {for (final team in tournament.teams) team.id: team};
+  final grouped = <String, List<TournamentStandingModel>>{};
+  for (final standing in tournament.standings) {
+    final poolName = teamById[standing.teamId]?.poolName;
+    final key = standing.groupName ?? poolName ?? 'Group';
+    grouped.putIfAbsent(key, () => []).add(standing);
+  }
+
+  final orderedGroups = grouped.keys.toList()..sort();
+  final qualifiersByGroup = <String, List<_ProjectedQualifier>>{};
+  for (final groupName in orderedGroups) {
+    final ranked = grouped[groupName]!.toList()..sort(_compareStandingsForProjection);
+    qualifiersByGroup[groupName] = ranked
+        .map((standing) => _ProjectedQualifier(
+              teamName: standing.teamName,
+              points: standing.points,
+              goalDifference: standing.goalDifference,
+              goalsFor: standing.goalsFor,
+            ))
+        .toList();
+  }
+
+  final rankedQualifiers = <_ProjectedQualifier>[];
+  final maxPerGroup = qualifiersByGroup.values.fold<int>(
+    0,
+    (maxSoFar, rows) => rows.length > maxSoFar ? rows.length : maxSoFar,
+  );
+  for (int position = 0; position < maxPerGroup; position++) {
+    for (final groupName in orderedGroups) {
+      final rows = qualifiersByGroup[groupName]!;
+      if (position < rows.length) {
+        rankedQualifiers.add(rows[position]);
+      }
+    }
+  }
+
+  final qualifierCount = _projectedQualifierCount(rankedQualifiers.length);
+  if (qualifierCount == 0) return const [];
+  final seeded = rankedQualifiers.take(qualifierCount).toList()
+    ..sort(_compareProjectedQualifier);
+
+  final stage = _initialKnockoutStage(qualifierCount);
+  if (stage == null) return const [];
+
+  final projectedMatches = <TournamentMatchModel>[];
+  for (int i = 0; i < qualifierCount ~/ 2; i++) {
+    final seedA = seeded[i];
+    final seedB = seeded[qualifierCount - 1 - i];
+    projectedMatches.add(
+      TournamentMatchModel(
+        id: 'projected-${stage}-${i + 1}',
+        tournamentId: tournament.id,
+        round: _stageLabel(stage, useGroupsKnockoutLabels: true),
+        status: 'scheduled',
+        stage: stage,
+        roundNumber: 1,
+        matchOrder: i + 1,
+        teamAName: seedA.teamName,
+        teamBName: seedB.teamName,
+      ),
+    );
+  }
+
+  return projectedMatches;
+}
+
+int _projectedQualifierCount(int totalTeams) {
+  if (totalTeams >= 16) return 16;
+  if (totalTeams >= 8) return 8;
+  if (totalTeams >= 4) return 4;
+  return 0;
+}
+
+String? _initialKnockoutStage(int qualifierCount) {
+  switch (qualifierCount) {
+    case 16:
+      return 'round_of_16';
+    case 8:
+      return 'quarter_finals';
+    case 4:
+      return 'semi_finals';
+    default:
+      return null;
+  }
+}
+
+int _compareStandingsForProjection(
+  TournamentStandingModel a,
+  TournamentStandingModel b,
+) {
+  return _compareProjectionRank(
+    pointsA: a.points,
+    pointsB: b.points,
+    goalDifferenceA: a.goalDifference,
+    goalDifferenceB: b.goalDifference,
+    goalsForA: a.goalsFor,
+    goalsForB: b.goalsFor,
+    teamNameA: a.teamName,
+    teamNameB: b.teamName,
+  );
+}
+
+int _compareProjectedQualifier(
+  _ProjectedQualifier a,
+  _ProjectedQualifier b,
+) {
+  return _compareProjectionRank(
+    pointsA: a.points,
+    pointsB: b.points,
+    goalDifferenceA: a.goalDifference,
+    goalDifferenceB: b.goalDifference,
+    goalsForA: a.goalsFor,
+    goalsForB: b.goalsFor,
+    teamNameA: a.teamName,
+    teamNameB: b.teamName,
+  );
+}
+
+int _compareProjectionRank({
+  required int pointsA,
+  required int pointsB,
+  required int goalDifferenceA,
+  required int goalDifferenceB,
+  required int goalsForA,
+  required int goalsForB,
+  required String teamNameA,
+  required String teamNameB,
+}) {
+  final pointsDiff = pointsB.compareTo(pointsA);
+  if (pointsDiff != 0) return pointsDiff;
+  final gdDiff = goalDifferenceB.compareTo(goalDifferenceA);
+  if (gdDiff != 0) return gdDiff;
+  final gfDiff = goalsForB.compareTo(goalsForA);
+  if (gfDiff != 0) return gfDiff;
+  return teamNameA.compareTo(teamNameB);
 }
