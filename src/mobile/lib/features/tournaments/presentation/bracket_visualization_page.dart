@@ -1182,24 +1182,49 @@ int _compareStandingsForProjection(
   TournamentStandingModel a,
   TournamentStandingModel b,
 ) {
-  final pointsDiff = b.points.compareTo(a.points);
-  if (pointsDiff != 0) return pointsDiff;
-  final gdDiff = b.goalDifference.compareTo(a.goalDifference);
-  if (gdDiff != 0) return gdDiff;
-  final gfDiff = b.goalsFor.compareTo(a.goalsFor);
-  if (gfDiff != 0) return gfDiff;
-  return a.teamName.compareTo(b.teamName);
+  return _compareProjectionRank(
+    pointsA: a.points,
+    pointsB: b.points,
+    goalDifferenceA: a.goalDifference,
+    goalDifferenceB: b.goalDifference,
+    goalsForA: a.goalsFor,
+    goalsForB: b.goalsFor,
+    teamNameA: a.teamName,
+    teamNameB: b.teamName,
+  );
 }
 
 int _compareProjectedQualifier(
   _ProjectedQualifier a,
   _ProjectedQualifier b,
 ) {
-  final pointsDiff = b.points.compareTo(a.points);
+  return _compareProjectionRank(
+    pointsA: a.points,
+    pointsB: b.points,
+    goalDifferenceA: a.goalDifference,
+    goalDifferenceB: b.goalDifference,
+    goalsForA: a.goalsFor,
+    goalsForB: b.goalsFor,
+    teamNameA: a.teamName,
+    teamNameB: b.teamName,
+  );
+}
+
+int _compareProjectionRank({
+  required int pointsA,
+  required int pointsB,
+  required int goalDifferenceA,
+  required int goalDifferenceB,
+  required int goalsForA,
+  required int goalsForB,
+  required String teamNameA,
+  required String teamNameB,
+}) {
+  final pointsDiff = pointsB.compareTo(pointsA);
   if (pointsDiff != 0) return pointsDiff;
-  final gdDiff = b.goalDifference.compareTo(a.goalDifference);
+  final gdDiff = goalDifferenceB.compareTo(goalDifferenceA);
   if (gdDiff != 0) return gdDiff;
-  final gfDiff = b.goalsFor.compareTo(a.goalsFor);
+  final gfDiff = goalsForB.compareTo(goalsForA);
   if (gfDiff != 0) return gfDiff;
-  return a.teamName.compareTo(b.teamName);
+  return teamNameA.compareTo(teamNameB);
 }
