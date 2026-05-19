@@ -3,7 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teamly_mobile/core/models/tournament_model.dart';
 import 'package:teamly_mobile/features/tournaments/presentation/bracket_visualization_page.dart';
 
-TournamentModel _buildTournament(List<TournamentMatchModel> matches) {
+TournamentModel _buildTournament(
+  List<TournamentMatchModel> matches, {
+  List<TournamentStandingModel> standings = const [],
+}) {
   return TournamentModel(
     id: 'tournament-1',
     name: 'Summer Cup',
@@ -13,6 +16,7 @@ TournamentModel _buildTournament(List<TournamentMatchModel> matches) {
     createdAt: DateTime(2025, 1, 1),
     creatorId: 'user-1',
     matches: matches,
+    standings: standings,
   );
 }
 
@@ -63,13 +67,63 @@ TournamentMatchModel _playoffMatch({
 }
 
 void main() {
-  testWidgets('groups knockout shows waiting state before knockout bracket exists', (tester) async {
+  testWidgets('groups knockout projects a playoff bracket from standings before knockout exists',
+      (tester) async {
     final tournament = _buildTournament([
       _groupMatch(
         id: 'group-1',
         groupName: 'Group A',
         home: 'Alpha',
         away: 'Bravo',
+      ),
+    ], standings: const [
+      TournamentStandingModel(
+        id: 's1',
+        teamId: 't1',
+        teamName: 'Lightning FC',
+        points: 9,
+        wins: 3,
+        losses: 0,
+        draws: 0,
+        goalsFor: 8,
+        goalsAgainst: 1,
+        groupName: 'Group A',
+      ),
+      TournamentStandingModel(
+        id: 's2',
+        teamId: 't2',
+        teamName: 'Victory Vipers',
+        points: 6,
+        wins: 2,
+        losses: 1,
+        draws: 0,
+        goalsFor: 6,
+        goalsAgainst: 3,
+        groupName: 'Group A',
+      ),
+      TournamentStandingModel(
+        id: 's3',
+        teamId: 't3',
+        teamName: 'Storm Chasers',
+        points: 9,
+        wins: 3,
+        losses: 0,
+        draws: 0,
+        goalsFor: 7,
+        goalsAgainst: 2,
+        groupName: 'Group B',
+      ),
+      TournamentStandingModel(
+        id: 's4',
+        teamId: 't4',
+        teamName: 'Champion Chiefs',
+        points: 6,
+        wins: 2,
+        losses: 1,
+        draws: 0,
+        goalsFor: 5,
+        goalsAgainst: 4,
+        groupName: 'Group B',
       ),
     ]);
 
@@ -79,9 +133,11 @@ void main() {
       ),
     );
 
-    expect(find.text('Group Stage'), findsOneWidget);
-    expect(find.text('Knockout Bracket'), findsOneWidget);
-    expect(find.textContaining('No playoff bracket yet'), findsOneWidget);
+    expect(find.text('Projected Playoffs'), findsOneWidget);
+    expect(find.text('Semifinals'), findsOneWidget);
+    expect(find.text('Finals'), findsOneWidget);
+    expect(find.text('Lightning FC'), findsWidgets);
+    expect(find.text('Storm Chasers'), findsWidgets);
   });
 
   testWidgets('groups knockout renders named stage columns and advancing winners', (tester) async {
