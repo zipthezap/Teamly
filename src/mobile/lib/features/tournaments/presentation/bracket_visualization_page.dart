@@ -1103,7 +1103,7 @@ List<TournamentMatchModel> _buildProjectedKnockoutMatches(TournamentModel tourna
   final orderedGroups = grouped.keys.toList()..sort();
   final qualifiersByGroup = <String, List<_ProjectedQualifier>>{};
   for (final groupName in orderedGroups) {
-    final ranked = [...grouped[groupName]!]..sort(_compareStandingsForProjection);
+    final ranked = grouped[groupName]!.toList()..sort(_compareStandingsForProjection);
     qualifiersByGroup[groupName] = ranked
         .map((standing) => _ProjectedQualifier(
               teamName: standing.teamName,
