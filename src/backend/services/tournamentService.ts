@@ -311,6 +311,7 @@ export const sanitizeTournamentData = (data: {
   prizesDescription?: string;
   rulesDescription?: string;
   paymentInfo?: string;
+  waiverText?: string;
 }) => {
   return {
     name: data.name ? sanitizeString(data.name) : '',
@@ -319,7 +320,8 @@ export const sanitizeTournamentData = (data: {
     locationName: data.locationName ? sanitizeString(data.locationName) : '',
     prizesDescription: data.prizesDescription ? sanitizeString(data.prizesDescription) : '',
     rulesDescription: data.rulesDescription ? sanitizeString(data.rulesDescription) : '',
-    paymentInfo: data.paymentInfo ? sanitizeString(data.paymentInfo) : ''
+    paymentInfo: data.paymentInfo ? sanitizeString(data.paymentInfo) : '',
+    waiverText: data.waiverText ? sanitizeString(data.waiverText) : '',
   };
 };
 

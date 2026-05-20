@@ -342,6 +342,9 @@ model User {
   grantedAdminRoles       TournamentAdminRole[] @relation("TournamentAdminRolesGranted")
   disputeResolutions      TournamentScoreDispute[] @relation("DisputeResolver")
   tournamentAnnouncements TournamentAnnouncement[] @relation("TournamentAnnouncementAuthor")
+  scorekeeperMatches      TournamentMatch[]        @relation("MatchScorekeeper")
+  resolvedIncidents       TournamentMatchIncident[] @relation("IncidentResolver")
+  acceptedWaivers         TournamentTeam[]          @relation("WaiverAcceptedBy")
   groupBans         GroupBan[]
   issuedGroupBans   GroupBan[]       @relation("GroupBanner")
   auditLogs         AuditLog[]
@@ -1082,11 +1085,16 @@ model Tournament {
   registrationFee           Float?   // Fee per team (in local currency). null = free
   requirePaymentForBrackets Boolean  @default(false) // Block bracket generation until all teams are marked paid
   paymentInfo               String?  // Payment instructions for teams (e.g. how/where to transfer the fee)
+  requireWaiverForRegistration Boolean @default(false) // Require waiver acceptance before team registration
+  waiverText                 String?  // Organizer-provided waiver terms
 
   // New gap-feature fields
   rosterLockDate   DateTime?  // Date after which roster changes are locked (#10)
   paymentDeadline  DateTime?  // Deadline for team payment (#15)
   tiebreakerRules  Json?      // Array of tiebreaker rule keys e.g. ["goal_difference","goals_for"] (#6)
+
+  // Public portal (Phase 4)
+  shareToken       String?   @unique  // Opaque token for shareable/embeddable public URL
 
   // Recurring tournament support
   isRecurring         Boolean  @default(false)
@@ -1105,6 +1113,9 @@ model Tournament {
   registrationWaitlist TournamentRegistrationWaitlist[]
   announcements        TournamentAnnouncement[]
   registrationFields   TournamentRegistrationField[]
+  paymentTransactions  TournamentPaymentTransaction[]
+  courts               TournamentCourt[]
+  incidents            TournamentMatchIncident[]
   
   @@index([organizerId])
   @@index([groupId])
@@ -1114,6 +1125,7 @@ model Tournament {
   @@index([city, country])
   @@index([isPublic])
   @@index([parentTournamentId])
+  @@index([shareToken])
 }
 
 model TournamentTeam {
@@ -1141,10 +1153,14 @@ model TournamentTeam {
   paymentStatus String   @default("unpaid") // unpaid | pending | paid | waived
   paidAt        DateTime?
   paidByUserId  String?  // admin who marked the payment
+  waiverAcceptedAt DateTime?
+  waiverAcceptedByUserId String?
+  waiverAcceptedBy       User?   @relation("WaiverAcceptedBy", fields: [waiverAcceptedByUserId], references: [id], onDelete: SetNull)
 
   // New gap-feature fields
   checkedIn    Boolean  @default(false)  // Day-of check-in (#4)
   checkedInAt  DateTime?                 // When they checked in (#4)
+  checkInToken String?  @unique          // QR-scannable check-in token (Phase 3)
   logoUrl      String?                   // Team logo URL (#13)
 
   createdAt    DateTime @default(now())
@@ -1161,6 +1177,7 @@ model TournamentTeam {
   teamAnswers          TournamentTeamAnswer[]
   playerStats          TournamentPlayerStat[]
   scoreDisputes        TournamentScoreDispute[]
+  paymentTransactions  TournamentPaymentTransaction[]
   
   @@unique([tournamentId, name])
   @@unique([tournamentId, captainUserId])
@@ -1184,6 +1201,10 @@ model TournamentMatch {
   // Referee assignment - team that will officiate this match
   refereeTeamId String?
   refereeTeam   TournamentTeam? @relation("RefereeTeam", fields: [refereeTeamId], references: [id], onDelete: SetNull)
+
+  // Scorekeeper assignment - individual user responsible for live score entry (Phase 3)
+  scorekeeperUserId String?
+  scorekeeper       User?   @relation("MatchScorekeeper", fields: [scorekeeperUserId], references: [id], onDelete: SetNull)
   
   homeScore    Int?
   awayScore    Int?
@@ -1202,6 +1223,9 @@ model TournamentMatch {
   
   status       MatchStatus @default(scheduled)
   scheduledAt  DateTime?
+  scheduledDurationMinutes Int? @default(60)
+  courtId      String?
+  court        TournamentCourt? @relation(fields: [courtId], references: [id], onDelete: SetNull)
   location     String?
   startedAt    DateTime?
   completedAt  DateTime?
@@ -1213,10 +1237,82 @@ model TournamentMatch {
   @@index([homeTeamId])
   @@index([awayTeamId])
   @@index([refereeTeamId])
+  @@index([scorekeeperUserId])
   @@index([status])
   @@index([stage])
   @@index([matchOrder])
-  disputes TournamentScoreDispute[]
+  @@index([courtId])
+  @@index([courtId, scheduledAt])
+  disputes  TournamentScoreDispute[]
+  incidents TournamentMatchIncident[]
+}
+
+enum TournamentPaymentTransactionStatus {
+  initiated
+  pending
+  paid
+  failed
+  refunded
+  cancelled
+}
+
+model TournamentPaymentTransaction {
+  id           String   @id @default(uuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  teamId       String
+  team         TournamentTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdByUserId String
+  provider     String   @default("manual")
+  providerReference String?
+  amount       Float
+  currency     String   @default("USD")
+  status       TournamentPaymentTransactionStatus @default(initiated)
+  metadata     Json?
+  paidAt       DateTime?
+  refundedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tournamentId])
+  @@index([teamId])
+  @@index([status])
+  @@index([providerReference])
+}
+
+model TournamentCourt {
+  id           String   @id @default(uuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  name         String
+  location     String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  matches      TournamentMatch[]
+  availabilities TournamentCourtAvailability[]
+
+  @@unique([tournamentId, name])
+  @@index([tournamentId])
+}
+
+model TournamentCourtAvailability {
+  id         String   @id @default(uuid())
+  courtId    String
+  court      TournamentCourt @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  dayOfWeek  Int?
+  date       DateTime?
+  startTime  String
+  endTime    String
+  isBlocked  Boolean  @default(false)
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([courtId])
+  @@index([date])
+  @@index([dayOfWeek])
 }
 
 model TournamentStanding {
@@ -1427,6 +1523,45 @@ model TournamentPlayerStat {
   @@index([tournamentId])
   @@index([teamId])
   @@index([playerId])
+}
+
+// Game-day incident tracking with SLA (Phase 3)
+enum MatchIncidentType {
+  late_start
+  injury
+  dispute
+  technical
+  other
+}
+
+enum MatchIncidentStatus {
+  open
+  resolved
+  dismissed
+}
+
+model TournamentMatchIncident {
+  id              String              @id @default(uuid())
+  tournamentId    String
+  tournament      Tournament          @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  matchId         String
+  match           TournamentMatch     @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  reportedByUserId String
+  incidentType    MatchIncidentType   @default(other)
+  description     String
+  status          MatchIncidentStatus @default(open)
+  slaDeadline     DateTime?           // When the incident must be resolved by
+  resolvedById    String?
+  resolvedBy      User?               @relation("IncidentResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolution      String?
+  resolvedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tournamentId])
+  @@index([matchId])
+  @@index([status])
+  @@index([slaDeadline])
 }
 
 // Tournament categories - ranking tiers (e.g. "Elite", "Intermediate", "Beginner")

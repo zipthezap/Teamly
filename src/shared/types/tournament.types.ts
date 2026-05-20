@@ -54,6 +54,15 @@ export enum TournamentPaymentStatus {
 
 export const TOURNAMENT_PAYMENT_STATUSES = Object.values(TournamentPaymentStatus);
 
+export enum TournamentPaymentTransactionStatus {
+  INITIATED = 'initiated',
+  PENDING = 'pending',
+  PAID = 'paid',
+  FAILED = 'failed',
+  REFUNDED = 'refunded',
+  CANCELLED = 'cancelled',
+}
+
 // Type definitions for detailed scoring
 export interface SetScore {
   home: number;
@@ -129,6 +138,8 @@ export interface Tournament {
   rosterLockDate?: Date | string;
   paymentDeadline?: Date | string;
   tiebreakerRules?: string[];
+  requireWaiverForRegistration?: boolean;
+  waiverText?: string;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -144,6 +155,8 @@ export interface TournamentTeam {
   poolNumber?: number;
   poolName?: string;
   seedNumber?: number;
+  waiverAcceptedAt?: Date | string;
+  waiverAcceptedByUserId?: string;
   createdAt: Date | string;
   updatedAt: Date | string;
   players?: TournamentPlayer[];
@@ -180,6 +193,8 @@ export interface TournamentMatch {
   matchOrder?: number;
   status: MatchStatus;
   scheduledAt?: Date | string;
+  scheduledDurationMinutes?: number;
+  courtId?: string;
   startedAt?: Date | string;
   completedAt?: Date | string;
   createdAt: Date | string;
@@ -217,6 +232,7 @@ export interface TournamentWithDetails extends Tournament {
   teams?: TournamentTeam[];
   matches?: TournamentMatch[];
   standings?: TournamentStanding[];
+  courts?: TournamentCourt[];
 }
 
 export interface CreateTournamentDto {
@@ -252,6 +268,8 @@ export interface CreateTournamentDto {
   rosterLockDate?: Date | string;
   paymentDeadline?: Date | string;
   tiebreakerRules?: string[];
+  requireWaiverForRegistration?: boolean;
+  waiverText?: string;
 }
 
 export interface UpdateTournamentDto {
@@ -282,6 +300,8 @@ export interface UpdateTournamentDto {
   rosterLockDate?: Date | string;
   paymentDeadline?: Date | string;
   tiebreakerRules?: string[];
+  requireWaiverForRegistration?: boolean;
+  waiverText?: string;
 }
 
 export interface CreateTeamDto {
@@ -335,8 +355,49 @@ export interface UpdateMatchDto {
   roundNumber?: number;
   groupName?: string;
   scheduledAt?: Date | string;
+  scheduledDurationMinutes?: number;
+  courtId?: string;
   matchOrder?: number;
   status?: MatchStatus;
+}
+
+export interface TournamentPaymentTransaction {
+  id: string;
+  tournamentId: string;
+  teamId: string;
+  createdByUserId: string;
+  provider: string;
+  providerReference?: string;
+  amount: number;
+  currency: string;
+  status: TournamentPaymentTransactionStatus;
+  paidAt?: Date | string;
+  refundedAt?: Date | string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+export interface TournamentCourt {
+  id: string;
+  tournamentId: string;
+  name: string;
+  location?: string;
+  isActive: boolean;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+export interface TournamentCourtAvailability {
+  id: string;
+  courtId: string;
+  dayOfWeek?: number;
+  date?: Date | string;
+  startTime: string;
+  endTime: string;
+  isBlocked: boolean;
+  notes?: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 export interface AssignRefereeDto {
@@ -467,4 +528,104 @@ export interface TournamentTeamAnswerDto {
 export interface TournamentPlayerStatDto {
   statKey: string;
   value: number;
+}
+
+// ==================== PHASE 3: GAME-DAY OPERATIONS ====================
+
+export enum MatchIncidentType {
+  LATE_START = 'late_start',
+  INJURY = 'injury',
+  DISPUTE = 'dispute',
+  TECHNICAL = 'technical',
+  OTHER = 'other',
+}
+
+export enum MatchIncidentStatus {
+  OPEN = 'open',
+  RESOLVED = 'resolved',
+  DISMISSED = 'dismissed',
+}
+
+export const MATCH_INCIDENT_TYPES = Object.values(MatchIncidentType);
+export const MATCH_INCIDENT_STATUSES = Object.values(MatchIncidentStatus);
+
+export interface TournamentMatchIncident {
+  id: string;
+  tournamentId: string;
+  matchId: string;
+  reportedByUserId: string;
+  incidentType: MatchIncidentType;
+  description: string;
+  status: MatchIncidentStatus;
+  slaDeadline?: Date | string;
+  resolvedById?: string;
+  resolution?: string;
+  resolvedAt?: Date | string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+export interface CreateMatchIncidentDto {
+  incidentType?: MatchIncidentType;
+  description: string;
+  slaMinutes?: number; // How many minutes from now the SLA deadline is
+}
+
+export interface ResolveMatchIncidentDto {
+  status: MatchIncidentStatus.RESOLVED | MatchIncidentStatus.DISMISSED;
+  resolution?: string;
+}
+
+// ==================== PHASE 4: PUBLIC PORTAL ====================
+
+export interface PublicTournamentPortal {
+  tournament: Tournament & {
+    organizer?: { id: string; name: string };
+  };
+  teams: Array<{ id: string; name: string; checkedIn: boolean; paymentStatus: string }>;
+  matches: TournamentMatch[];
+  standings: TournamentStanding[];
+  courts?: TournamentCourt[];
+  announcements?: Array<{ id: string; title: string; body: string; isPinned: boolean; createdAt: Date | string }>;
+}
+
+// ==================== PHASE 5: ORGANIZER ANALYTICS ====================
+
+export interface TournamentAnalytics {
+  registration: {
+    totalTeams: number;
+    checkedIn: number;
+    noShows: number;
+    paid: number;
+    unpaid: number;
+    pending: number;
+    waived: number;
+    waiverAccepted: number;
+  };
+  matches: {
+    total: number;
+    scheduled: number;
+    inProgress: number;
+    completed: number;
+    cancelled: number;
+    lateStarts: number;       // matches that started more than 10 min after scheduledAt
+    avgDurationMinutes: number | null;
+  };
+  disputes: {
+    total: number;
+    open: number;
+    resolved: number;
+    dismissed: number;
+  };
+  incidents: {
+    total: number;
+    open: number;
+    resolved: number;
+    pastSla: number;          // open incidents whose slaDeadline has passed
+  };
+  payments: {
+    totalRevenue: number;
+    transactionsPaid: number;
+    transactionsRefunded: number;
+  };
 }
