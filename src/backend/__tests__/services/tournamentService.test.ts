@@ -990,6 +990,11 @@ describe('Tournament Service', () => {
       expect(result).toBe('in_progress');
     });
 
+    it('returns "in_progress" when startDate passed from registration_closed', () => {
+      const result = computeAutoStatus({ status: 'registration_closed', startDate: past });
+      expect(result).toBe('in_progress');
+    });
+
     it('returns null when startDate has passed and already in_progress', () => {
       expect(computeAutoStatus({ status: 'in_progress', startDate: past })).toBeNull();
     });
@@ -1024,11 +1029,30 @@ describe('Tournament Service', () => {
       expect(result).toBe('registration');
     });
 
-    it('returns null when registrationDeadline has passed (no auto-registration change)', () => {
+    it('returns "registration_closed" when registrationDeadline has passed and status is registration', () => {
+      const result = computeAutoStatus({
+        status: 'registration',
+        startDate: future,
+        registrationStartDate: farPast,
+        registrationDeadline: past,
+      });
+      expect(result).toBe('registration_closed');
+    });
+
+    it('returns "registration_closed" when registrationDeadline has passed and status is draft', () => {
       const result = computeAutoStatus({
         status: 'draft',
         startDate: future,
         registrationStartDate: farPast,
+        registrationDeadline: past,
+      });
+      expect(result).toBe('registration_closed');
+    });
+
+    it('returns null when status is already registration_closed (startDate in future)', () => {
+      const result = computeAutoStatus({
+        status: 'registration_closed',
+        startDate: future,
         registrationDeadline: past,
       });
       expect(result).toBeNull();
@@ -1072,6 +1096,16 @@ describe('Tournament Service', () => {
         startDate: future,
         hasMatches: true,
         hasIncompleteMatches: true,
+      });
+      expect(result).toBeNull();
+    });
+
+    it('does NOT auto-transition registration_closed back to registration even if deadline cleared', () => {
+      // registration_closed stays locked until startDate arrives
+      const result = computeAutoStatus({
+        status: 'registration_closed',
+        startDate: future,
+        registrationDeadline: null,
       });
       expect(result).toBeNull();
     });
@@ -1178,6 +1212,14 @@ describe('Tournament Service', () => {
       const tournament = {
         status: 'in_progress',
         startDate: new Date(Date.now() - 86_400_000),
+      };
+      expect(() => validateRegistrationEligibility(tournament)).toThrow('Tournament registration is closed');
+    });
+
+    it('throws when tournament is registration_closed', () => {
+      const tournament = {
+        status: 'registration_closed',
+        startDate: new Date(Date.now() + 86_400_000),
       };
       expect(() => validateRegistrationEligibility(tournament)).toThrow('Tournament registration is closed');
     });

@@ -3,7 +3,7 @@ import { cleanupOldEmails } from './emailQueueService';
 import { logger } from '../utils/logger';
 import prisma from '../config/database';
 import { sendEmailWithQueue } from './emailQueueService';
-import { expireOldInvitations } from './tournamentService';
+import { expireOldInvitations, syncTournamentAutoStatus } from './tournamentService';
 
 /**
  * Scheduled Jobs Service
@@ -12,6 +12,56 @@ import { expireOldInvitations } from './tournamentService';
 
 let cleanupInterval: NodeJS.Timeout | null = null;
 let remindersInterval: NodeJS.Timeout | null = null;
+let tournamentSyncInterval: NodeJS.Timeout | null = null;
+
+/**
+ * Sync tournament lifecycle statuses in bulk.
+ * Processes all non-terminal tournaments and transitions those whose
+ * status should change based on current date/match state.
+ */
+export const syncAllTournamentStatuses = async (): Promise<void> => {
+  const now = new Date();
+  try {
+    // Fetch tournaments that might need a status change:
+    // - Not yet completed or cancelled
+    // - Relevant dates are approaching or in the past
+    const candidates = await prisma.tournament.findMany({
+      where: {
+        status: { notIn: ['completed', 'cancelled'] },
+      },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        startDate: true,
+        endDate: true,
+        registrationStartDate: true,
+        registrationDeadline: true,
+      },
+    });
+
+    if (candidates.length === 0) return;
+
+    let updated = 0;
+    for (const t of candidates) {
+      try {
+        const prev = t.status;
+        const synced = await syncTournamentAutoStatus(t as any, 'cron_sync');
+        if ((synced as any).status !== prev) {
+          updated++;
+        }
+      } catch (err) {
+        logger.warn(`Failed to sync status for tournament ${t.id}`, 'ScheduledJobs', { err });
+      }
+    }
+
+    if (updated > 0) {
+      logger.info(`Tournament lifecycle sync: updated ${updated}/${candidates.length} tournaments`, 'ScheduledJobs', { at: now.toISOString() });
+    }
+  } catch (error) {
+    logger.error('Error syncing tournament statuses', 'ScheduledJobs', { error });
+  }
+};
 
 /**
  * Run cleanup tasks
@@ -219,13 +269,19 @@ export const startScheduledJobs = (): void => {
     await runCleanupTasks();
   }, 60 * 60 * 1000); // 1 hour
 
+  // Sync tournament lifecycle statuses every 5 minutes
+  tournamentSyncInterval = setInterval(async () => {
+    await syncAllTournamentStatuses();
+  }, 5 * 60 * 1000); // 5 minutes
+
   // Check for due reminders every 5 minutes
   remindersInterval = setInterval(async () => {
     await sendDueEventReminders();
   }, 5 * 60 * 1000); // 5 minutes
 
-  // Run initial cleanup and reminder check
+  // Run initial tasks
   runCleanupTasks();
+  syncAllTournamentStatuses();
   sendDueEventReminders();
 };
 
@@ -240,6 +296,10 @@ export const stopScheduledJobs = (): void => {
   if (remindersInterval) {
     clearInterval(remindersInterval);
     remindersInterval = null;
+  }
+  if (tournamentSyncInterval) {
+    clearInterval(tournamentSyncInterval);
+    tournamentSyncInterval = null;
   }
   logger.info('Stopped scheduled jobs', 'ScheduledJobs');
 };

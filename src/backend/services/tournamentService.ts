@@ -393,7 +393,11 @@ export const validateRegistrationEligibility = (tournament: {
   registrationDeadline?: Date | null;
   allowLateRegistration?: boolean;
 }) => {
-  if (tournament.status !== 'draft' && tournament.status !== 'registration') {
+  if (
+    tournament.status !== 'draft' &&
+    tournament.status !== 'registration'
+  ) {
+    // registration_closed, in_progress, completed, cancelled all reject registration
     throw new BadRequestError('Tournament registration is closed');
   }
 
@@ -417,11 +421,14 @@ export const validateRegistrationEligibility = (tournament: {
  * Compute the expected automatic tournament status based on tournament dates.
  * Returns the new status string if the status should change, or null if no change is needed.
  *
- * Rules (in priority order):
- *  1. Cancelled tournaments are never auto-changed.
- *  2. If endDate has passed → 'completed'.
- *  3. If startDate has arrived (and not already in_progress/completed) → 'in_progress'.
- *  4. If registrationStartDate has arrived and registration deadline hasn't passed → 'registration'.
+ * Canonical lifecycle:
+ *   draft
+ *   → registration          (when registrationStartDate arrives and deadline hasn't passed)
+ *   → registration_closed   (when registrationDeadline passes, before startDate)
+ *   → in_progress           (when startDate arrives, or matches exist before startDate)
+ *   → completed             (when endDate passes or all matches are done)
+ *
+ * Cancellation is an override and is never auto-set.
  */
 export const computeAutoStatus = (tournament: {
   status: string;
@@ -436,10 +443,12 @@ export const computeAutoStatus = (tournament: {
 
   const now = new Date();
 
+  // Rule 1: endDate has passed → completed
   if (tournament.endDate && now > tournament.endDate) {
     return tournament.status !== 'completed' ? 'completed' : null;
   }
 
+  // Rule 2: startDate has arrived → in_progress (or completed if all matches done)
   if (now >= tournament.startDate) {
     if (tournament.hasMatches === true && tournament.hasIncompleteMatches === false) {
       return tournament.status !== 'completed' ? 'completed' : null;
@@ -451,15 +460,34 @@ export const computeAutoStatus = (tournament: {
     return null;
   }
 
-  // Brackets have been generated before the start date — move to in_progress so
-  // scores can be submitted and the tournament shows as active.
+  // Before startDate:
+
+  // Rule 3: Matches have been generated (group or bracket) before the start date
+  // → move to in_progress so scores can be entered.
   if (
     tournament.hasMatches === true &&
-    (tournament.status === 'draft' || tournament.status === 'registration')
+    tournament.status !== 'in_progress' &&
+    tournament.status !== 'registration_closed' &&
+    tournament.status !== 'completed'
   ) {
     return 'in_progress';
   }
 
+  // Rule 4: registration_closed stays until startDate (no auto-transition back to registration)
+  if (tournament.status === 'registration_closed') {
+    return null;
+  }
+
+  // Rule 5: registrationDeadline has passed → registration_closed
+  if (
+    tournament.registrationDeadline != null &&
+    now > tournament.registrationDeadline &&
+    (tournament.status === 'draft' || tournament.status === 'registration')
+  ) {
+    return 'registration_closed';
+  }
+
+  // Rule 6: registrationStartDate has arrived and deadline hasn't → registration
   if (tournament.registrationStartDate && now >= tournament.registrationStartDate) {
     const deadlinePassed =
       tournament.registrationDeadline != null && now > tournament.registrationDeadline;
@@ -929,9 +957,52 @@ export const generatePoolAwareBrackets = async (
 };
 
 /**
- * Update tournament standings after a match
- * Can accept a transaction client or use global prisma
+ * Generate a knockout bracket from existing group-stage standings.
+ * Called after all group-stage matches are completed. Selects qualifiers from
+ * each group and builds the first knockout round.
  */
+export const generateKnockoutFromStandings = async (tournamentId: string) => {
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: tournamentId },
+    select: { tiebreakerRules: true },
+  });
+
+  const standings = await prisma.tournamentStanding.findMany({
+    where: { tournamentId, groupName: { not: null } },
+    select: {
+      teamId: true,
+      groupName: true,
+      points: true,
+      wins: true,
+      goalsFor: true,
+      goalsAgainst: true,
+    },
+  });
+
+  if (standings.length === 0) {
+    throw new BadRequestError(
+      'No group standings available to seed the knockout bracket. Complete group matches first.',
+      'NO_STANDINGS'
+    );
+  }
+
+  const qualifiers = selectGroupKnockoutQualifiers(
+    standings.filter((s) => s.groupName != null),
+    tournament?.tiebreakerRules as string[] | null | undefined
+  );
+
+  const firstStageMatches = buildKnockoutMatchesFromQualifiedTeams(tournamentId, qualifiers);
+
+  if (firstStageMatches.length === 0) {
+    throw new BadRequestError(
+      'Unable to build knockout bracket from current standings.',
+      'CANNOT_BUILD_KNOCKOUT'
+    );
+  }
+
+  const created = await prisma.tournamentMatch.createMany({ data: firstStageMatches });
+  return created;
+};
 export const updateStandings = async (
   matchId: string, 
   tournament?: { sportConfig?: Prisma.JsonValue },

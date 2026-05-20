@@ -1012,6 +1012,7 @@ enum TournamentFormat {
 enum TournamentStatus {
   draft
   registration
+  registration_closed
   in_progress
   completed
   cancelled

@@ -61,6 +61,7 @@ vi.mock('../../controllers/tournamentController', () => ({
   acceptTeamInvitation: vi.fn((req: any, res: any) => res.json({ ok: true })),
   declineTeamInvitation: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getInvitationByToken: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  generateGroupMatches: vi.fn((req: any, res: any) => res.json({ ok: true })),
   generateBrackets: vi.fn((req: any, res: any) => res.json({ ok: true })),
   submitScore: vi.fn((req: any, res: any) => res.json({ ok: true })),
   adminUpdateScore: vi.fn((req: any, res: any) => res.json({ ok: true })),
