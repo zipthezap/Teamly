@@ -83,6 +83,22 @@ router.put(
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_TEAMS),
   asyncHandler(tournamentController.updateTeamPayment)
 );
+router.get(
+  '/:id/teams/:teamId/payments',
+  etagMiddleware({ weak: true }),
+  asyncHandler(tournamentController.getTeamPaymentTransactions)
+);
+router.post(
+  '/:id/teams/:teamId/payments/intent',
+  noCache,
+  asyncHandler(tournamentController.createTeamPaymentIntent)
+);
+router.put(
+  '/:id/payments/:paymentId/status',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_TEAMS),
+  asyncHandler(tournamentController.updatePaymentTransactionStatus)
+);
 router.put(
   '/:id/teams/payment/batch',
   noCache,
@@ -339,6 +355,32 @@ router.put(
   '/:id/teams/:teamId/check-in',
   noCache,
   asyncHandler(tournamentController.checkInTeam)
+);
+router.put(
+  '/:id/teams/:teamId/waiver',
+  noCache,
+  asyncHandler(tournamentController.acceptTeamWaiver)
+);
+
+// Courts / venue-aware scheduling
+router.get('/:id/courts', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getCourts));
+router.post(
+  '/:id/courts',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
+  asyncHandler(tournamentController.createCourt)
+);
+router.post(
+  '/:id/courts/:courtId/availability',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
+  asyncHandler(tournamentController.createCourtAvailability)
+);
+router.put(
+  '/:id/matches/:matchId/schedule',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
+  asyncHandler(tournamentController.scheduleMatchOnCourt)
 );
 
 // Registration waitlist (#2)

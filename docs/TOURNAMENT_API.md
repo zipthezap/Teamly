@@ -251,6 +251,28 @@ Generate tournament brackets and matches (organizer only).
 }
 ```
 
+### Operations & Commerce Extensions
+
+#### Waiver Acceptance
+- `PUT /api/tournaments/:id/teams/:teamId/waiver`
+- Body: `{ "accepted": true }`
+- Used to store team waiver acceptance (`waiverAcceptedAt`, `waiverAcceptedByUserId`).
+
+#### Payment Intents & Transaction Lifecycle
+- `POST /api/tournaments/:id/teams/:teamId/payments/intent`
+- `GET /api/tournaments/:id/teams/:teamId/payments`
+- `PUT /api/tournaments/:id/payments/:paymentId/status`
+
+Transaction statuses: `initiated`, `pending`, `paid`, `failed`, `refunded`, `cancelled`.
+
+#### Venue/Court Scheduling
+- `GET /api/tournaments/:id/courts`
+- `POST /api/tournaments/:id/courts`
+- `POST /api/tournaments/:id/courts/:courtId/availability`
+- `PUT /api/tournaments/:id/matches/:matchId/schedule`
+
+Scheduling endpoint enforces court conflict checks against existing scheduled matches.
+
 Note: `numberOfGroups` is only used for `groups_knockout` format.
 
 **Response:** `200 OK`

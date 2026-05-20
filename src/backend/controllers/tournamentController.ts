@@ -23,6 +23,7 @@ import {
   TournamentNotificationType,
   TournamentPaymentStatus,
   TOURNAMENT_PAYMENT_STATUSES,
+  TournamentPaymentTransactionStatus,
 } from '../../shared/types/tournament.types';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../utils/errors';
 import { isRequired, parseCoordinates, parseFloatStrict, sanitizeString, isValidEmail } from '../utils/validation';
@@ -43,6 +44,9 @@ const MAX_POOL_NAME_LENGTH = 100;
 const MAX_PLAYER_NAME_LENGTH = 100;
 const MAX_TEAMS_UPPER_BOUND = 1000;
 const MAX_BATCH_PAYMENT_TEAMS = 500;
+const DEFAULT_MATCH_DURATION_MINUTES = 60;
+const MAX_MATCH_DURATION_MINUTES = 480;
+const TOURNAMENT_PAYMENT_TRANSACTION_STATUSES = Object.values(TournamentPaymentTransactionStatus);
 
 // Lifecycle helpers live in tournamentService; alias for brevity within this file.
 const syncTournamentAutoStatus = tournamentService.syncTournamentAutoStatus;
@@ -98,6 +102,37 @@ const getPaymentUpdatePayload = (paymentStatus: string, userId: string) => ({
         ? null
         : undefined,
 });
+
+const parseTimeToMinutes = (time: string): number => {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
+  if (!match) {
+    throw new BadRequestError('Time must be in HH:mm format');
+  }
+  return Number(match[1]) * 60 + Number(match[2]);
+};
+
+const hasScheduleOverlap = (
+  startA: Date,
+  durationMinutesA: number,
+  startB: Date,
+  durationMinutesB: number
+): boolean => {
+  const endA = new Date(startA.getTime() + durationMinutesA * 60_000);
+  const endB = new Date(startB.getTime() + durationMinutesB * 60_000);
+  return startA < endB && startB < endA;
+};
+
+const mapPaymentTransactionStatusToTeamPaymentStatus = (
+  status: TournamentPaymentTransactionStatus
+): TournamentPaymentStatus => {
+  if (status === TournamentPaymentTransactionStatus.PAID) {
+    return TournamentPaymentStatus.PAID;
+  }
+  if (status === TournamentPaymentTransactionStatus.PENDING || status === TournamentPaymentTransactionStatus.INITIATED) {
+    return TournamentPaymentStatus.PENDING;
+  }
+  return TournamentPaymentStatus.UNPAID;
+};
 
 /**
  * Enforce read access for private tournaments.
@@ -165,6 +200,8 @@ export const createTournament = async (req: Request, res: Response) => {
     registrationFee,
     requirePaymentForBrackets,
     paymentInfo,
+    requireWaiverForRegistration,
+    waiverText,
     // New gap-feature fields
     rosterLockDate,
     paymentDeadline,
@@ -189,7 +226,8 @@ export const createTournament = async (req: Request, res: Response) => {
     locationName,
     prizesDescription,
     rulesDescription,
-    paymentInfo
+    paymentInfo,
+    waiverText,
   });
 
   if (!sanitized.name) {
@@ -317,6 +355,8 @@ export const createTournament = async (req: Request, res: Response) => {
       registrationFee: registrationFee != null ? Number(registrationFee) : undefined,
       requirePaymentForBrackets: requirePaymentForBrackets || false,
       paymentInfo: sanitized.paymentInfo || undefined,
+      requireWaiverForRegistration: requireWaiverForRegistration || false,
+      waiverText: sanitized.waiverText || undefined,
       // New gap-feature fields
       rosterLockDate: rosterLockDate ? new Date(rosterLockDate) : undefined,
       paymentDeadline: paymentDeadline ? new Date(paymentDeadline) : undefined,
@@ -550,6 +590,7 @@ export const updateTournament = async (req: Request, res: Response) => {
     sportConfig,
     // Payment / fee
     registrationFee, requirePaymentForBrackets, paymentInfo,
+    requireWaiverForRegistration, waiverText,
     // New gap-feature fields
     rosterLockDate, paymentDeadline, tiebreakerRules,
   } = req.body;
@@ -725,6 +766,16 @@ export const updateTournament = async (req: Request, res: Response) => {
     const sanitized = tournamentService.sanitizeTournamentData({ paymentInfo });
     updateData.paymentInfo = sanitized.paymentInfo || null;
   }
+  if (requireWaiverForRegistration !== undefined) {
+    if (typeof requireWaiverForRegistration !== 'boolean') {
+      throw new BadRequestError('requireWaiverForRegistration must be a boolean');
+    }
+    updateData.requireWaiverForRegistration = requireWaiverForRegistration;
+  }
+  if (waiverText !== undefined) {
+    const sanitized = tournamentService.sanitizeTournamentData({ waiverText });
+    updateData.waiverText = sanitized.waiverText || null;
+  }
   if (rosterLockDate !== undefined) {
     updateData.rosterLockDate = rosterLockDate ? new Date(rosterLockDate) : null;
   }
@@ -856,7 +907,7 @@ export const cancelTournament = async (req: Request, res: Response) => {
 export const addTeam = async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = req.user!.id;
-  const { name, captainName, captainEmail, captainUserId, poolNumber, poolName, seedNumber } = req.body;
+  const { name, captainName, captainEmail, captainUserId, poolNumber, poolName, seedNumber, waiverAccepted } = req.body;
 
   isRequired(name, 'Team name');
   if (typeof name === 'string' && name.trim().length > MAX_NAME_LENGTH) {
@@ -875,6 +926,10 @@ export const addTeam = async (req: Request, res: Response) => {
   ensureResourceExists(tournament, 'Tournament');
 
   tournamentService.validateRegistrationEligibility(tournament!);
+
+  if (tournament!.requireWaiverForRegistration && waiverAccepted !== true) {
+    throw new BadRequestError('This tournament requires waiver acceptance before registration');
+  }
 
   // If a captainUserId is provided, verify the user exists and is not an organizer or admin
   if (captainUserId) {
@@ -906,7 +961,9 @@ export const addTeam = async (req: Request, res: Response) => {
         tournamentId: id,
         poolNumber: poolNumber || undefined,
         poolName: poolName || undefined,
-        seedNumber: seedNumber || undefined
+        seedNumber: seedNumber || undefined,
+        waiverAcceptedAt: waiverAccepted ? new Date() : undefined,
+        waiverAcceptedByUserId: waiverAccepted ? userId : undefined,
       },
       include: {
         captainUser: {
@@ -1215,6 +1272,185 @@ export const batchUpdateTeamPayments = async (req: Request, res: Response) => {
   });
 };
 
+export const acceptTeamWaiver = async (req: Request, res: Response) => {
+  const { id, teamId } = req.params;
+  const userId = req.user!.id;
+  const { accepted = true } = req.body ?? {};
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+
+  const team = ensureResourceExists(
+    await prisma.tournamentTeam.findFirst({ where: { id: teamId, tournamentId: id } }),
+    'Team'
+  );
+
+  const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
+  const isCaptain = team.captainUserId === userId;
+  if (!isOrgOrAdmin && !isCaptain) {
+    throw new ForbiddenError('Only organizers/admins or team captain can update waiver status');
+  }
+
+  if (accepted !== true && accepted !== false) {
+    throw new BadRequestError('accepted must be a boolean');
+  }
+
+  if (accepted === true && tournament.requireWaiverForRegistration && !tournament.waiverText) {
+    throw new BadRequestError('Waiver text must be configured before accepting waivers');
+  }
+
+  const updated = await prisma.tournamentTeam.update({
+    where: { id: team.id },
+    data: {
+      waiverAcceptedAt: accepted ? new Date() : null,
+      waiverAcceptedByUserId: accepted ? userId : null,
+    },
+  });
+
+  res.json(updated);
+};
+
+export const createTeamPaymentIntent = async (req: Request, res: Response) => {
+  const { id, teamId } = req.params;
+  const userId = req.user!.id;
+  const { provider = 'manual', amount, currency = 'USD', metadata } = req.body ?? {};
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+  const team = ensureResourceExists(
+    await prisma.tournamentTeam.findFirst({ where: { id: teamId, tournamentId: id } }),
+    'Team'
+  );
+
+  const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
+  const isCaptain = team.captainUserId === userId;
+  if (!isOrgOrAdmin && !isCaptain) {
+    throw new ForbiddenError('Only organizers/admins or team captain can create payment intents');
+  }
+
+  const resolvedAmount =
+    amount !== undefined
+      ? Number(amount)
+      : tournament.registrationFee !== null && tournament.registrationFee !== undefined
+        ? Number(tournament.registrationFee)
+        : 0;
+  if (Number.isNaN(resolvedAmount) || resolvedAmount < 0) {
+    throw new BadRequestError('amount must be a non-negative number');
+  }
+  if (resolvedAmount === 0) {
+    throw new BadRequestError('Cannot create payment intent for zero amount');
+  }
+
+  const transaction = await prisma.$transaction(async (tx) => {
+    const created = await tx.tournamentPaymentTransaction.create({
+      data: {
+        tournamentId: id,
+        teamId: team.id,
+        createdByUserId: userId,
+        provider: String(provider).trim() || 'manual',
+        providerReference: `tmp_${Date.now()}_${team.id.slice(0, 8)}`,
+        amount: resolvedAmount,
+        currency: String(currency || 'USD').toUpperCase(),
+        status: TournamentPaymentTransactionStatus.INITIATED,
+        metadata: metadata ?? undefined,
+      },
+    });
+
+    await tx.tournamentTeam.update({
+      where: { id: team.id },
+      data: getPaymentUpdatePayload(TournamentPaymentStatus.PENDING, userId),
+    });
+
+    return created;
+  });
+
+  res.status(201).json({
+    ...transaction,
+    paymentInstructions: tournament.paymentInfo ?? null,
+  });
+};
+
+export const getTeamPaymentTransactions = async (req: Request, res: Response) => {
+  const { id, teamId } = req.params;
+  const userId = req.user!.id;
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+  const team = ensureResourceExists(
+    await prisma.tournamentTeam.findFirst({ where: { id: teamId, tournamentId: id } }),
+    'Team'
+  );
+
+  const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
+  const isCaptain = team.captainUserId === userId;
+  if (!isOrgOrAdmin && !isCaptain) {
+    throw new ForbiddenError('Only organizers/admins or team captain can view payment transactions');
+  }
+
+  const transactions = await prisma.tournamentPaymentTransaction.findMany({
+    where: { tournamentId: id, teamId: team.id },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  res.json(transactions);
+};
+
+export const updatePaymentTransactionStatus = async (req: Request, res: Response) => {
+  const { id, paymentId } = req.params;
+  const userId = req.user!.id;
+  const { status } = req.body ?? {};
+
+  if (!status || !TOURNAMENT_PAYMENT_TRANSACTION_STATUSES.includes(status)) {
+    throw new BadRequestError(
+      `status must be one of: ${TOURNAMENT_PAYMENT_TRANSACTION_STATUSES.join(', ')}`
+    );
+  }
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+  if (!(await tournamentService.isOrganizerOrAdmin(tournament, userId))) {
+    throw new ForbiddenError('Only organizers/admins can update payment transaction statuses');
+  }
+
+  const paymentStatus = status as TournamentPaymentTransactionStatus;
+  const transaction = await prisma.$transaction(async (tx) => {
+    const existing = ensureResourceExists(
+      await tx.tournamentPaymentTransaction.findFirst({
+        where: { id: paymentId, tournamentId: id },
+      }),
+      'Payment transaction'
+    );
+
+    const updated = await tx.tournamentPaymentTransaction.update({
+      where: { id: existing.id },
+      data: {
+        status: paymentStatus,
+        paidAt: paymentStatus === TournamentPaymentTransactionStatus.PAID ? new Date() : existing.paidAt,
+        refundedAt:
+          paymentStatus === TournamentPaymentTransactionStatus.REFUNDED ? new Date() : existing.refundedAt,
+      },
+    });
+
+    const teamPaymentStatus = mapPaymentTransactionStatusToTeamPaymentStatus(paymentStatus);
+    await tx.tournamentTeam.update({
+      where: { id: existing.teamId },
+      data: getPaymentUpdatePayload(teamPaymentStatus, userId),
+    });
+
+    return updated;
+  });
+
+  res.json(transaction);
+};
+
 // ==================== BRACKET & MATCH MANAGEMENT ====================
 
 /**
@@ -1256,6 +1492,18 @@ export const generateGroupMatches = async (req: Request, res: Response) => {
     tournament.status === TournamentStatus.CANCELLED
   ) {
     throw new BadRequestError('Cannot generate group matches for a completed or cancelled tournament');
+  }
+
+  // Enforce payment gate
+  if (tournament.requireWaiverForRegistration && !forceGenerate) {
+    const missingWaiverCount = await prisma.tournamentTeam.count({
+      where: { tournamentId: id, waiverAcceptedAt: null },
+    });
+    if (missingWaiverCount > 0) {
+      throw new BadRequestError(
+        `${missingWaiverCount} team(s) are missing waiver acceptance. Collect waivers or use forceGenerate to override.`
+      );
+    }
   }
 
   // Enforce payment gate
@@ -1392,6 +1640,18 @@ export const generateBrackets = async (req: Request, res: Response) => {
       prisma.tournamentStanding.deleteMany({ where: { tournamentId: id } }),
       prisma.tournamentMatch.deleteMany({ where: { tournamentId: id } }),
     ]);
+  }
+
+  // Enforce payment gate when required (organizer can force-override via forceGenerate flag)
+  if (tournament.requireWaiverForRegistration && !forceGenerate) {
+    const missingWaiverCount = await prisma.tournamentTeam.count({
+      where: { tournamentId: id, waiverAcceptedAt: null },
+    });
+    if (missingWaiverCount > 0) {
+      throw new BadRequestError(
+        `${missingWaiverCount} team(s) are missing waiver acceptance. Collect waivers or use forceGenerate to override.`
+      );
+    }
   }
 
   // Enforce payment gate when required (organizer can force-override via forceGenerate flag)
@@ -3918,7 +4178,7 @@ export const removeAdmin = async (req: Request, res: Response) => {
 export const selfRegisterTeam = async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = req.user!.id;
-  const { name, poolId, categoryId } = req.body;
+  const { name, poolId, categoryId, waiverAccepted } = req.body;
 
   isRequired(name, 'Team name');
   if (typeof name === 'string' && name.trim().length > MAX_NAME_LENGTH) {
@@ -3929,6 +4189,10 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
   ensureResourceExists(tournament, 'Tournament');
 
   tournamentService.validateRegistrationEligibility(tournament!);
+
+  if (tournament!.requireWaiverForRegistration && waiverAccepted !== true) {
+    throw new BadRequestError('This tournament requires waiver acceptance before registration');
+  }
 
   if (await tournamentService.isOrganizerOrAdmin(tournament!, userId)) {
     throw new ForbiddenError('Tournament organizers and co-organizers cannot register as participants');
@@ -4008,6 +4272,8 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
           ...(selectedCategory && !validatedPool
             ? { categoryId: selectedCategory.id, poolName: selectedCategory.name }
             : {}),
+          waiverAcceptedAt: waiverAccepted ? new Date() : undefined,
+          waiverAcceptedByUserId: waiverAccepted ? userId : undefined,
         },
         include: {
           captainUser: { select: { id: true, name: true, email: true } }
@@ -4295,6 +4561,202 @@ export const checkInTeam = async (req: Request, res: Response) => {
   });
 
   res.json(updatedTeam);
+};
+
+export const getCourts = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+  await assertCanViewTournament(tournament, req.user!.id);
+
+  const courts = await prisma.tournamentCourt.findMany({
+    where: { tournamentId: id },
+    include: { availabilities: true },
+    orderBy: { name: 'asc' },
+  });
+  res.json(courts);
+};
+
+export const createCourt = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+  const { name, location, isActive } = req.body ?? {};
+
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    throw new BadRequestError('Court name is required');
+  }
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+  if (!(await tournamentService.isOrganizerOrAdmin(tournament, userId))) {
+    throw new ForbiddenError('Only organizers/admins can manage courts');
+  }
+
+  const created = await prisma.tournamentCourt.create({
+    data: {
+      tournamentId: id,
+      name: name.trim(),
+      location: typeof location === 'string' ? location.trim() || null : undefined,
+      isActive: isActive === undefined ? true : Boolean(isActive),
+    },
+  });
+
+  res.status(201).json(created);
+};
+
+export const createCourtAvailability = async (req: Request, res: Response) => {
+  const { id, courtId } = req.params;
+  const userId = req.user!.id;
+  const { dayOfWeek, date, startTime, endTime, isBlocked = false, notes } = req.body ?? {};
+
+  if (!startTime || !endTime) {
+    throw new BadRequestError('startTime and endTime are required');
+  }
+  const startMinutes = parseTimeToMinutes(startTime);
+  const endMinutes = parseTimeToMinutes(endTime);
+  if (endMinutes <= startMinutes) {
+    throw new BadRequestError('endTime must be after startTime');
+  }
+  if ((dayOfWeek === undefined && !date) || (dayOfWeek !== undefined && date)) {
+    throw new BadRequestError('Provide exactly one of dayOfWeek or date');
+  }
+  if (dayOfWeek !== undefined && (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6)) {
+    throw new BadRequestError('dayOfWeek must be an integer between 0 and 6');
+  }
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+  if (!(await tournamentService.isOrganizerOrAdmin(tournament, userId))) {
+    throw new ForbiddenError('Only organizers/admins can manage court availability');
+  }
+
+  const court = ensureResourceExists(
+    await prisma.tournamentCourt.findFirst({ where: { id: courtId, tournamentId: id } }),
+    'Court'
+  );
+
+  const availability = await prisma.tournamentCourtAvailability.create({
+    data: {
+      courtId: court.id,
+      dayOfWeek: dayOfWeek ?? undefined,
+      date: date ? new Date(date) : undefined,
+      startTime,
+      endTime,
+      isBlocked: Boolean(isBlocked),
+      notes: typeof notes === 'string' ? notes.trim() || null : undefined,
+    },
+  });
+
+  res.status(201).json(availability);
+};
+
+export const scheduleMatchOnCourt = async (req: Request, res: Response) => {
+  const { id, matchId } = req.params;
+  const userId = req.user!.id;
+  const { courtId, scheduledAt, scheduledDurationMinutes, location } = req.body ?? {};
+
+  if (!courtId || typeof courtId !== 'string') {
+    throw new BadRequestError('courtId is required');
+  }
+  if (!scheduledAt) {
+    throw new BadRequestError('scheduledAt is required');
+  }
+
+  const duration = scheduledDurationMinutes === undefined
+    ? DEFAULT_MATCH_DURATION_MINUTES
+    : Number(scheduledDurationMinutes);
+  if (!Number.isFinite(duration) || duration <= 0 || duration > MAX_MATCH_DURATION_MINUTES) {
+    throw new BadRequestError(`scheduledDurationMinutes must be between 1 and ${MAX_MATCH_DURATION_MINUTES}`);
+  }
+
+  const startAt = new Date(scheduledAt);
+  if (Number.isNaN(startAt.getTime())) {
+    throw new BadRequestError('scheduledAt must be a valid date');
+  }
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+  if (!(await tournamentService.isOrganizerOrAdmin(tournament, userId))) {
+    throw new ForbiddenError('Only organizers/admins can schedule matches');
+  }
+
+  const match = ensureResourceExists(
+    await prisma.tournamentMatch.findFirst({ where: { id: matchId, tournamentId: id } }),
+    'Match'
+  );
+  const court = ensureResourceExists(
+    await prisma.tournamentCourt.findFirst({ where: { id: courtId, tournamentId: id, isActive: true } }),
+    'Court'
+  );
+
+  const blockedAvailabilities = await prisma.tournamentCourtAvailability.findMany({
+    where: {
+      courtId: court.id,
+      isBlocked: true,
+      OR: [
+        { date: new Date(startAt.toISOString().slice(0, 10)) },
+        { dayOfWeek: startAt.getUTCDay() },
+      ],
+    },
+  });
+  const startMinutes = startAt.getUTCHours() * 60 + startAt.getUTCMinutes();
+  const endMinutes = startMinutes + duration;
+  const blockedOverlap = blockedAvailabilities.some((entry) => {
+    const blockedStart = parseTimeToMinutes(entry.startTime);
+    const blockedEnd = parseTimeToMinutes(entry.endTime);
+    return startMinutes < blockedEnd && endMinutes > blockedStart;
+  });
+  if (blockedOverlap) {
+    throw new ConflictError('Selected court is blocked for the chosen time window');
+  }
+
+  const sameCourtMatches = await prisma.tournamentMatch.findMany({
+    where: {
+      tournamentId: id,
+      courtId: court.id,
+      id: { not: match.id },
+      status: { not: MatchStatus.CANCELLED },
+      scheduledAt: { not: null },
+    },
+    select: { id: true, scheduledAt: true, scheduledDurationMinutes: true },
+  });
+
+  const conflictingMatch = sameCourtMatches.find((other) =>
+    hasScheduleOverlap(
+      startAt,
+      duration,
+      other.scheduledAt!,
+      other.scheduledDurationMinutes ?? DEFAULT_MATCH_DURATION_MINUTES
+    )
+  );
+  if (conflictingMatch) {
+    throw new ConflictError(`Court conflict with match ${conflictingMatch.id}`);
+  }
+
+  const updated = await prisma.tournamentMatch.update({
+    where: { id: match.id },
+    data: {
+      courtId: court.id,
+      scheduledAt: startAt,
+      scheduledDurationMinutes: duration,
+      location: typeof location === 'string' ? location : match.location,
+    },
+    include: {
+      court: true,
+      homeTeam: true,
+      awayTeam: true,
+    },
+  });
+
+  res.json(updated);
 };
 
 // ==================== REGISTRATION WAITLIST (#2) ====================
@@ -5044,6 +5506,8 @@ export const cloneTournament = async (req: Request, res: Response) => {
       registrationFee: source.registrationFee ?? undefined,
       requirePaymentForBrackets: source.requirePaymentForBrackets,
       paymentInfo: source.paymentInfo ?? undefined,
+      requireWaiverForRegistration: source.requireWaiverForRegistration,
+      waiverText: source.waiverText ?? undefined,
       tiebreakerRules: source.tiebreakerRules ?? undefined,
     },
     include: {

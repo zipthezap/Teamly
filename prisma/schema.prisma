@@ -1082,6 +1082,8 @@ model Tournament {
   registrationFee           Float?   // Fee per team (in local currency). null = free
   requirePaymentForBrackets Boolean  @default(false) // Block bracket generation until all teams are marked paid
   paymentInfo               String?  // Payment instructions for teams (e.g. how/where to transfer the fee)
+  requireWaiverForRegistration Boolean @default(false) // Require waiver acceptance before team registration
+  waiverText                 String?  // Organizer-provided waiver terms
 
   // New gap-feature fields
   rosterLockDate   DateTime?  // Date after which roster changes are locked (#10)
@@ -1105,6 +1107,8 @@ model Tournament {
   registrationWaitlist TournamentRegistrationWaitlist[]
   announcements        TournamentAnnouncement[]
   registrationFields   TournamentRegistrationField[]
+  paymentTransactions  TournamentPaymentTransaction[]
+  courts               TournamentCourt[]
   
   @@index([organizerId])
   @@index([groupId])
@@ -1141,6 +1145,8 @@ model TournamentTeam {
   paymentStatus String   @default("unpaid") // unpaid | pending | paid | waived
   paidAt        DateTime?
   paidByUserId  String?  // admin who marked the payment
+  waiverAcceptedAt DateTime?
+  waiverAcceptedByUserId String?
 
   // New gap-feature fields
   checkedIn    Boolean  @default(false)  // Day-of check-in (#4)
@@ -1161,6 +1167,7 @@ model TournamentTeam {
   teamAnswers          TournamentTeamAnswer[]
   playerStats          TournamentPlayerStat[]
   scoreDisputes        TournamentScoreDispute[]
+  paymentTransactions  TournamentPaymentTransaction[]
   
   @@unique([tournamentId, name])
   @@unique([tournamentId, captainUserId])
@@ -1202,6 +1209,9 @@ model TournamentMatch {
   
   status       MatchStatus @default(scheduled)
   scheduledAt  DateTime?
+  scheduledDurationMinutes Int? @default(60)
+  courtId      String?
+  court        TournamentCourt? @relation(fields: [courtId], references: [id], onDelete: SetNull)
   location     String?
   startedAt    DateTime?
   completedAt  DateTime?
@@ -1216,7 +1226,77 @@ model TournamentMatch {
   @@index([status])
   @@index([stage])
   @@index([matchOrder])
+  @@index([courtId])
+  @@index([courtId, scheduledAt])
   disputes TournamentScoreDispute[]
+}
+
+enum TournamentPaymentTransactionStatus {
+  initiated
+  pending
+  paid
+  failed
+  refunded
+  cancelled
+}
+
+model TournamentPaymentTransaction {
+  id           String   @id @default(uuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  teamId       String
+  team         TournamentTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdByUserId String
+  provider     String   @default("manual")
+  providerReference String?
+  amount       Float
+  currency     String   @default("USD")
+  status       TournamentPaymentTransactionStatus @default(initiated)
+  metadata     Json?
+  paidAt       DateTime?
+  refundedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tournamentId])
+  @@index([teamId])
+  @@index([status])
+  @@index([providerReference])
+}
+
+model TournamentCourt {
+  id           String   @id @default(uuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  name         String
+  location     String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  matches      TournamentMatch[]
+  availabilities TournamentCourtAvailability[]
+
+  @@unique([tournamentId, name])
+  @@index([tournamentId])
+}
+
+model TournamentCourtAvailability {
+  id         String   @id @default(uuid())
+  courtId    String
+  court      TournamentCourt @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  dayOfWeek  Int?
+  date       DateTime?
+  startTime  String
+  endTime    String
+  isBlocked  Boolean  @default(false)
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([courtId])
+  @@index([date])
+  @@index([dayOfWeek])
 }
 
 model TournamentStanding {
