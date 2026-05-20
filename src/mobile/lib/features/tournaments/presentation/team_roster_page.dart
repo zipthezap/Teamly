@@ -464,9 +464,8 @@ class _TeamRosterSheetState extends ConsumerState<_TeamRosterSheet> {
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
                       ? ErrorDisplay(message: _error!, onRetry: _load)
-                      : RefreshIndicator(
-                          onRefresh: _load,
-                          child: ListView(
+                      : ListView(
+                            primary: false,
                             padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                             children: [
                               Text(
@@ -595,7 +594,6 @@ class _TeamRosterSheetState extends ConsumerState<_TeamRosterSheet> {
                                   ),
                             ],
                           ),
-                        ),
             ),
           ],
         ),
