@@ -266,15 +266,12 @@ const run = async () => {
     };
   }));
 
-  // eslint-disable-next-line no-console
   console.table(summaries);
-  // eslint-disable-next-line no-console
   console.log(`Seeded ${summaries.length} lifecycle scenarios successfully.`);
 };
 
 run()
   .catch((error) => {
-    // eslint-disable-next-line no-console
     console.error('Failed to seed lifecycle scenarios:', error);
     process.exitCode = 1;
   })
