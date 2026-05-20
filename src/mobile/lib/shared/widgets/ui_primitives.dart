@@ -124,7 +124,23 @@ class UiSectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final trailingWidget = trailing ??
+        (trailingLabel != null
+            ? GestureDetector(
+                onTap: onTrailingTap,
+                child: Text(
+                  trailingLabel!,
+                  style: const TextStyle(
+                    color: AppThemeTokens.primary400,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              )
+            : null);
+
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           text,
@@ -133,21 +149,10 @@ class UiSectionTitle extends StatelessWidget {
                 letterSpacing: -0.2,
               ),
         ),
-        const Spacer(),
-        if (trailing != null)
-          trailing!
-        else if (trailingLabel != null)
-          GestureDetector(
-            onTap: onTrailingTap,
-            child: Text(
-              trailingLabel!,
-              style: const TextStyle(
-                color: AppThemeTokens.primary400,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+        if (trailingWidget != null) ...[
+          const SizedBox(width: 8),
+          trailingWidget,
+        ],
       ],
     );
   }

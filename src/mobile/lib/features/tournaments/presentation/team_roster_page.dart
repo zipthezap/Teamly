@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
-import '../../../core/constants/app_constants.dart';
 import '../../../core/error/error_utils.dart';
 import '../../../core/models/tournament_model.dart';
 import '../../../core/theme/app_theme.dart';
@@ -12,6 +9,25 @@ import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
 import '../state/tournaments_notifier.dart';
+
+Future<void> showTeamRosterSheet(
+  BuildContext context, {
+  required String tournamentId,
+  required TournamentTeamModel team,
+  int? maxPlayers,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _TeamRosterSheet(
+      tournamentId: tournamentId,
+      team: team,
+      maxPlayers: maxPlayers,
+    ),
+  );
+}
 
 
 class TeamRosterPage extends ConsumerStatefulWidget {
@@ -43,11 +59,11 @@ class _TeamRosterPageState extends ConsumerState<TeamRosterPage> {
       final repo = ref.read(tournamentRepositoryProvider);
       // Fetch players (public) and attempt invitations (may be protected).
       // Invitations request must not break the whole roster view for anonymous users.
-      final players = await repo.getPlayers(widget.tournamentId, widget.teamId) as List<Map<String, dynamic>>;
+      final players = await repo.getPlayers(widget.tournamentId, widget.teamId);
       List<Map<String, dynamic>> invitations = [];
       try {
-        invitations = await repo.getTeamInvitations(widget.tournamentId, widget.teamId) as List<Map<String, dynamic>>;
-      } catch (_e) {
+        invitations = await repo.getTeamInvitations(widget.tournamentId, widget.teamId);
+      } catch (ignored) {
         // If invitations are protected (403) or fail, ignore and show players only.
         invitations = [];
       }
@@ -63,14 +79,21 @@ class _TeamRosterPageState extends ConsumerState<TeamRosterPage> {
         }
       }
 
-      if (mounted) setState(() {
-        _players = players;
-        _invitations = invitations;
-        _captainUserId = captainId;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _players = players;
+          _invitations = invitations;
+          _captainUserId = captainId;
+          _loading = false;
+        });
+      }
     } on Exception catch (e) {
-      if (mounted) setState(() { _error = extractErrorMessage(e); _loading = false; });
+      if (mounted) {
+        setState(() {
+          _error = extractErrorMessage(e);
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -155,7 +178,7 @@ class _TeamRosterPageState extends ConsumerState<TeamRosterPage> {
                               padding: const EdgeInsets.only(left: 8),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(color: Colors.red.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+                                decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
                                 child: const Text('Full', style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.w600)),
                               ),
                             ),
@@ -235,9 +258,11 @@ class _TeamRosterPageState extends ConsumerState<TeamRosterPage> {
                                       // Refresh and invalidate tournament data so 'My Team' clears
                                       ref.invalidate(tournamentDetailProvider(widget.tournamentId));
                                       ref.invalidate(tournamentsNotifierProvider);
-                                      if (mounted) _load();
+                                      if (!mounted) return;
+                                      _load();
                                     } on Exception catch (e) {
-                                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
+                                      if (!mounted) return;
+                                      ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
                                     }
                                   }
                                 }, icon: const Icon(Icons.exit_to_app, size: 18), label: const Text('Leave'));
@@ -248,7 +273,7 @@ class _TeamRosterPageState extends ConsumerState<TeamRosterPage> {
                           ),
                       if (_invitations.isNotEmpty) ...[
                         const SizedBox(height: 16),
-                        UiSectionTitle('Pending Invitations'),
+                        const UiSectionTitle('Pending Invitations'),
                         const SizedBox(height: 8),
                         for (final inv in _invitations)
                           ListTile(
@@ -284,9 +309,11 @@ class _TeamRosterPageState extends ConsumerState<TeamRosterPage> {
                                             // Invalidate tournament detail and reload roster
                                             ref.invalidate(tournamentDetailProvider(widget.tournamentId));
                                             ref.invalidate(tournamentsNotifierProvider);
-                                            if (mounted) _load();
+                                            if (!mounted) return;
+                                            _load();
                                           } on Exception catch (e) {
-                                            if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
+                                            if (!mounted) return;
+                                            ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
                                           }
                                         }
                                       },
@@ -302,6 +329,277 @@ class _TeamRosterPageState extends ConsumerState<TeamRosterPage> {
                     ],
                   ),
                 ),
+    );
+  }
+}
+
+class _TeamRosterSheet extends ConsumerStatefulWidget {
+  const _TeamRosterSheet({
+    required this.tournamentId,
+    required this.team,
+    this.maxPlayers,
+  });
+
+  final String tournamentId;
+  final TournamentTeamModel team;
+  final int? maxPlayers;
+
+  @override
+  ConsumerState<_TeamRosterSheet> createState() => _TeamRosterSheetState();
+}
+
+class _TeamRosterSheetState extends ConsumerState<_TeamRosterSheet> {
+  List<Map<String, dynamic>> _players = [];
+  bool _loading = true;
+  String? _error;
+  String? _captainUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final repo = ref.read(tournamentRepositoryProvider);
+      final players = await repo.getPlayers(
+        widget.tournamentId,
+        widget.team.id,
+      );
+
+      String? captainId;
+      for (final player in players) {
+        final playerId = player['id'] as String?;
+        final user = player['user'] as Map<String, dynamic>?;
+        if (playerId != null && playerId.startsWith('captain:') && user != null) {
+          captainId = user['id'] as String?;
+          break;
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _players = players;
+        _captainUserId = captainId;
+        _loading = false;
+      });
+    } on Exception catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = extractErrorMessage(e);
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FractionallySizedBox(
+      heightFactor: 0.72,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 10),
+            Center(
+              child: Container(
+                width: 42,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .outlineVariant
+                      .withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.team.name,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.maxPlayers != null
+                              ? '${_players.length} of ${widget.maxPlayers} players'
+                              : '${_players.length} players',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                    tooltip: 'Close',
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? ErrorDisplay(message: _error!, onRetry: _load)
+                      : RefreshIndicator(
+                          onRefresh: _load,
+                          child: ListView(
+                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                            children: [
+                              Text(
+                                'Roster',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              ),
+                              const SizedBox(height: 12),
+                              if (_players.isEmpty)
+                                const UiEmptyState(
+                                  icon: Icons.people_outline,
+                                  message: 'No players yet.',
+                                )
+                              else
+                                for (final player in _players)
+                                  Builder(
+                                    builder: (context) {
+                                      final user = player['user'] as Map<String, dynamic>?;
+                                      final playerUserId = user?['id'] as String?;
+                                      final name = user?['name'] as String? ??
+                                          player['playerName'] as String? ??
+                                          'Unknown';
+                                      final email = user?['email'] as String? ?? '';
+                                      final isCaptain = playerUserId != null &&
+                                          playerUserId == _captainUserId;
+
+                                      return Container(
+                                        margin: const EdgeInsets.only(bottom: 10),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 12,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .surfaceContainerHighest
+                                              .withValues(alpha: 0.42),
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Stack(
+                                              children: [
+                                                const CircleAvatar(
+                                                  child: Icon(Icons.person_outline),
+                                                ),
+                                                if (isCaptain)
+                                                  Positioned(
+                                                    right: -1,
+                                                    bottom: -1,
+                                                    child: Container(
+                                                      padding: const EdgeInsets.all(2),
+                                                      decoration: BoxDecoration(
+                                                        color: AppThemeTokens.primary500,
+                                                        shape: BoxShape.circle,
+                                                        border: Border.all(
+                                                          color: Colors.white,
+                                                          width: 1.4,
+                                                        ),
+                                                      ),
+                                                      child: const Icon(
+                                                        Icons.star,
+                                                        size: 11,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    name,
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                  if (email.isNotEmpty) ...[
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      email,
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurfaceVariant,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            ),
+                                            if (isCaptain)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 5,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .primary
+                                                      .withValues(alpha: 0.10),
+                                                  borderRadius: BorderRadius.circular(999),
+                                                ),
+                                                child: Text(
+                                                  'Captain',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .primary,
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                            ],
+                          ),
+                        ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

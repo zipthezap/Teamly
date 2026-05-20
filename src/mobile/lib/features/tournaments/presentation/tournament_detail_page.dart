@@ -11,10 +11,9 @@ import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
 import 'bracket_visualization_page.dart';
+import 'team_roster_page.dart';
 import 'tournament_ui_rules.dart';
 import '../state/tournaments_notifier.dart';
-
-const _kAccent = Color(0xFFFF9800);
 
 /// Returns true for matches that belong to the group (round-robin) stage.
 /// Checks both the `stage` field (preferred, set by current backend) and the
@@ -567,79 +566,224 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
           ],
           if (myTeam case final team?) ...[
             const SizedBox(height: 16),
-            _SectionCard(
-              title: 'My Team — ${team.name}',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: Row(
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Theme.of(context).colorScheme.surface,
+                    Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest
+                        .withValues(alpha: 0.72),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .outlineVariant
+                      .withValues(alpha: 0.7),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.035),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _PaymentStatusBadge(status: team.paymentStatus),
-                        const SizedBox(width: 18),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          width: 44,
+                          height: 44,
                           decoration: BoxDecoration(
-                            color: Colors.blueGrey.withOpacity(0.07),
-                            borderRadius: BorderRadius.circular(16),
+                            gradient: LinearGradient(
+                              colors: [
+                                Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withValues(alpha: 0.18),
+                                Theme.of(context)
+                                    .colorScheme
+                                    .tertiary
+                                    .withValues(alpha: 0.18),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          child: Row(
+                          child: Icon(
+                            Icons.shield_rounded,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.group_outlined, size: 16, color: Colors.blueGrey),
-                              const SizedBox(width: 4),
                               Text(
-                                '${team.players.length}${t.maxPlayers != null ? ' / ${t.maxPlayers}' : ''} players',
-                                style: const TextStyle(fontSize: 13, color: Colors.black87, fontWeight: FontWeight.w500),
+                                'My Team',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.4,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                team.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.3,
+                                    ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                isCaptain
+                                    ? 'You are managing this roster.'
+                                    : 'You are registered on this roster.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
                               ),
                             ],
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  if (t.hasFee && !team.isPaid && t.paymentInfo != null) ...[
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: () => _showTextDialog(context, 'Payment Instructions', t.paymentInfo!),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.payment_outlined, size: 14, color: Colors.orange),
-                          const SizedBox(width: 4),
-                          Text(
-                            'How to pay — tap to view',
-                            style: const TextStyle(fontSize: 12, color: Colors.orange, decoration: TextDecoration.underline),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                  if (isCaptain)
+                    const SizedBox(height: 12),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        OutlinedButton.icon(
-                          icon: const Icon(Icons.group_outlined, size: 16),
-                          label: const Text('Manage Roster'),
-                          onPressed: () => context.push(
-                              '/tournaments/${t.id}/teams/${team.id}/roster'),
+                        _TeamCardStatChip(
+                          icon: team.isPaid
+                              ? Icons.verified_rounded
+                              : Icons.priority_high_rounded,
+                          label: team.isPaid
+                              ? 'Payment Confirmed'
+                              : 'Payment Pending',
+                          foregroundColor: team.isPaid
+                              ? Colors.green.shade700
+                              : Colors.deepOrange.shade700,
+                          backgroundColor: team.isPaid
+                              ? Colors.green.withValues(alpha: 0.12)
+                              : Colors.deepOrange.withValues(alpha: 0.12),
                         ),
-                        if (t.status == 'registration' || t.status == 'draft')
-                          OutlinedButton.icon(
-                            icon:
-                                const Icon(Icons.exit_to_app_outlined, size: 16),
-                            label: const Text('Unregister'),
-                            style: OutlinedButton.styleFrom(
-                                foregroundColor:
-                                    Theme.of(context).colorScheme.error),
-                            onPressed: () =>
-                                _confirmUnregister(context, t.id, onRefresh),
-                          ),
+                        _TeamCardStatChip(
+                          icon: Icons.groups_2_rounded,
+                          label: t.maxPlayers != null
+                              ? '${team.players.length} of ${t.maxPlayers} players'
+                              : '${team.players.length} players',
+                          foregroundColor:
+                              Theme.of(context).colorScheme.primary,
+                          backgroundColor: Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withValues(alpha: 0.10),
+                        ),
                       ],
                     ),
-                ],
+                    if (t.hasFee && !team.isPaid && t.paymentInfo != null) ...[
+                      const SizedBox(height: 10),
+                      TextButton.icon(
+                        onPressed: () => _showTextDialog(
+                          context,
+                          'Payment Instructions',
+                          t.paymentInfo!,
+                        ),
+                        icon: const Icon(
+                          Icons.receipt_long_outlined,
+                          size: 16,
+                          color: Colors.orange,
+                        ),
+                        label: const Text('View payment instructions'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.orange.shade800,
+                          padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          minimumSize: Size.zero,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ],
+                    if (isCaptain) ...[
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          FilledButton.icon(
+                            icon: const Icon(Icons.group_outlined, size: 16),
+                            label: const Text('Manage Roster'),
+                            onPressed: () => context.push(
+                              '/tournaments/${t.id}/teams/${team.id}/roster',
+                            ),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          if (t.status == 'registration' || t.status == 'draft')
+                            OutlinedButton.icon(
+                              icon: const Icon(
+                                Icons.exit_to_app_outlined,
+                                size: 16,
+                              ),
+                              label: const Text('Unregister'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor:
+                                    Theme.of(context).colorScheme.error,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                side: BorderSide(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .error
+                                      .withValues(alpha: 0.35),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                              onPressed: () => _confirmUnregister(
+                                context,
+                                t.id,
+                                onRefresh,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -668,7 +812,11 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                   message: 'No teams registered yet.')
             else
               for (final team in t.teams)
-                _TeamRow(team: team, tournamentId: t.id),
+                _TeamRow(
+                  team: team,
+                  tournamentId: t.id,
+                  maxPlayers: t.maxPlayers,
+                ),
           ],
           if (isAdmin) ...[
             const SizedBox(height: 16),
@@ -1886,7 +2034,11 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
                     ),
                     const SizedBox(height: 4),
                     for (final team in unpooledCategoryTeams)
-                      _TeamRow(team: team, tournamentId: tournament.id),
+                      _TeamRow(
+                        team: team,
+                        tournamentId: tournament.id,
+                        maxPlayers: tournament.maxPlayers,
+                      ),
                   ],
                 ),
               ),
@@ -1950,7 +2102,11 @@ class _PoolCard extends StatelessWidget {
           for (final team in pool.teams)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-              child: _TeamRow(team: team, tournamentId: tournament.id),
+                child: _TeamRow(
+                  team: team,
+                  tournamentId: tournament.id,
+                  maxPlayers: tournament.maxPlayers,
+                ),
             ),
           if (pool.waitlist.isNotEmpty) ...[
             Padding(
@@ -1977,16 +2133,25 @@ class _PoolCard extends StatelessWidget {
 }
 
 class _TeamRow extends StatelessWidget {
-  const _TeamRow({required this.team, required this.tournamentId});
+  const _TeamRow({
+    required this.team,
+    required this.tournamentId,
+    this.maxPlayers,
+  });
 
   final TournamentTeamModel team;
   final String tournamentId;
+  final int? maxPlayers;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () =>
-          context.push('/tournaments/$tournamentId/teams/${team.id}/roster'),
+      onTap: () => showTeamRosterSheet(
+        context,
+        tournamentId: tournamentId,
+        team: team,
+        maxPlayers: maxPlayers,
+      ),
       borderRadius: BorderRadius.circular(AppThemeTokens.radiusSm),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -2837,6 +3002,46 @@ class _RadioOption<T> extends StatelessWidget {
                 if (sublabel != null)
                   Text(sublabel!, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant)),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeamCardStatChip extends StatelessWidget {
+  const _TeamCardStatChip({
+    required this.icon,
+    required this.label,
+    required this.foregroundColor,
+    required this.backgroundColor,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color foregroundColor;
+  final Color backgroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: foregroundColor),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: foregroundColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
