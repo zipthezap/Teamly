@@ -58,7 +58,9 @@ const TOURNAMENT_PAYMENT_TRANSACTION_STATUSES = Object.values(TournamentPaymentT
 const DEFAULT_INCIDENT_SLA_MINUTES = 30;
 const MAX_INCIDENT_DESCRIPTION_LENGTH = 1000;
 const SHARE_TOKEN_BYTES = 24; // 48 hex chars — used for both QR check-in tokens and public share tokens
+// Minimum cool-down window between referee assignments to reduce back-to-back fatigue.
 const DEFAULT_REFEREE_REST_WINDOW_MINUTES = 15;
+const OVERLAP_GAP_INDICATOR = -1;
 
 // Lifecycle helpers live in tournamentService; alias for brevity within this file.
 const syncTournamentAutoStatus = tournamentService.syncTournamentAutoStatus;
@@ -143,7 +145,7 @@ const getRequiredRestGapMinutes = (
   const endA = new Date(startA.getTime() + durationMinutesA * 60_000);
   const endB = new Date(startB.getTime() + durationMinutesB * 60_000);
   if (hasScheduleOverlap(startA, durationMinutesA, startB, durationMinutesB)) {
-    return 0;
+    return OVERLAP_GAP_INDICATOR;
   }
   if (endA <= startB) {
     return Math.max(0, Math.floor((startB.getTime() - endA.getTime()) / 60_000));

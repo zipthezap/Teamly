@@ -644,8 +644,11 @@ class _MatchManagementTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final m = match;
     final hasScore = m.scoreA != null && m.scoreB != null;
-    final canStart = m.status == 'scheduled' || m.status == 'in_progress';
-    final isAssignedScorekeeper = currentUserId.isNotEmpty && m.scorekeeperUserId == currentUserId;
+    final showStartControl = m.status == 'scheduled' || m.status == 'in_progress';
+    final isAssignedScorekeeper = m.scorekeeperUserId == currentUserId;
+    // Scheduled matches can always be started; already-live matches only expose
+    // the action to the assigned scorekeeper context.
+    final canStartByCurrentUser = m.status == 'scheduled' || (m.status == 'in_progress' && isAssignedScorekeeper);
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
@@ -705,7 +708,7 @@ class _MatchManagementTile extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                if (canStart)
+                if (showStartControl)
                   OutlinedButton.icon(
                     icon: Icon(
                       m.status == 'in_progress' ? Icons.play_circle : Icons.play_arrow,
@@ -720,9 +723,9 @@ class _MatchManagementTile extends StatelessWidget {
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    onPressed: m.status == 'in_progress' && !isAssignedScorekeeper ? null : onStart,
+                    onPressed: canStartByCurrentUser ? onStart : null,
                   ),
-                if (canStart) const SizedBox(width: 8),
+                if (showStartControl) const SizedBox(width: 8),
                 OutlinedButton.icon(
                   icon: Icon(hasScore ? Icons.edit_note : Icons.sports_score_outlined, size: 16),
                   label: Text(hasScore ? 'Edit Score' : 'Set Score', style: const TextStyle(fontSize: 12)),
