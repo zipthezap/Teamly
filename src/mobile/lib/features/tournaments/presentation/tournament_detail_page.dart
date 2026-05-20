@@ -23,6 +23,19 @@ bool _isGroupStageMatch(TournamentMatchModel m) {
   return m.stage == 'group_stage' || (m.stage == null && m.groupName != null);
 }
 
+bool _isKnockoutStageMatch(TournamentMatchModel m) {
+  return m.stage != null && m.stage != 'group_stage';
+}
+
+bool _isFormingKnockoutBrackets(TournamentModel tournament) {
+  if (tournament.format != 'groups_knockout') return false;
+  final groupMatches = tournament.matches.where(_isGroupStageMatch).toList();
+  if (groupMatches.isEmpty) return false;
+  final hasKnockout = tournament.matches.any(_isKnockoutStageMatch);
+  final allGroupsDone = groupMatches.every((m) => m.status == 'completed');
+  return allGroupsDone && !hasKnockout;
+}
+
 bool _isTournamentStarted(TournamentModel tournament) {
   return tournament.status == 'in_progress' ||
       tournament.status == 'active' ||
@@ -36,8 +49,7 @@ String _statusStageLabel(TournamentModel tournament) {
   if (tournament.status == 'completed') return 'Done';
 
   if (tournament.status == 'in_progress' || tournament.status == 'active') {
-    final hasMatches = tournament.matches.isNotEmpty;
-    return hasMatches ? 'In Progress' : 'Forming Brackets';
+    return _isFormingKnockoutBrackets(tournament) ? 'Forming Brackets' : 'In Progress';
   }
 
   if (tournament.status == 'registration_closed') return 'Registration Closed';
@@ -1099,7 +1111,7 @@ class _GroupMatchesButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = tournament;
-    final canGenerate = t.status == 'registration_closed' || t.status == 'in_progress';
+    final canGenerate = t.status == 'registration_closed';
     final hasGroupMatches = t.matches.any(_isGroupStageMatch);
     final label = hasGroupMatches ? 'Regenerate Group Matches' : 'Generate Group Matches';
 
@@ -1153,6 +1165,14 @@ class _GroupMatchesButton extends ConsumerWidget {
                     groupValue: splitMode,
                     onChanged: (v) => setS(() => splitMode = v!),
                   ),
+                  RadioListTile<int>(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Manually create groups'),
+                    subtitle: const Text('Open pool manager to assign teams to groups yourself'),
+                    value: 3,
+                    groupValue: splitMode,
+                    onChanged: (v) => setS(() => splitMode = v!),
+                  ),
                   if (splitMode == 2 && poolSummary.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Container(
@@ -1165,7 +1185,7 @@ class _GroupMatchesButton extends ConsumerWidget {
                     ),
                   ],
                 ],
-                if (!hasPools || splitMode == 1) ...[
+                if (splitMode == 1 || (!hasPools && splitMode != 3)) ...[
                   const SizedBox(height: 4),
                   Row(
                     children: [
@@ -1199,6 +1219,12 @@ class _GroupMatchesButton extends ConsumerWidget {
     );
 
     if (ok != true || !context.mounted) return;
+
+    if (splitMode == 3) {
+      await context.push('/tournaments/${t.id}/pools');
+      if (context.mounted) onRefresh();
+      return;
+    }
 
     int? numberOfGroups;
     int? teamsPerGroup;
