@@ -57,7 +57,7 @@ const TIME_24H_HH_MM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const TOURNAMENT_PAYMENT_TRANSACTION_STATUSES = Object.values(TournamentPaymentTransactionStatus);
 const DEFAULT_INCIDENT_SLA_MINUTES = 30;
 const MAX_INCIDENT_DESCRIPTION_LENGTH = 1000;
-const SHARE_TOKEN_BYTES = 24; // 48 hex chars
+const SHARE_TOKEN_BYTES = 24; // 48 hex chars — used for both QR check-in tokens and public share tokens
 
 // Lifecycle helpers live in tournamentService; alias for brevity within this file.
 const syncTournamentAutoStatus = tournamentService.syncTournamentAutoStatus;
@@ -1372,7 +1372,7 @@ export const createTeamPaymentIntent = async (req: Request, res: Response) => {
         teamId: team.id,
         createdByUserId: userId,
         provider: String(provider).trim() || 'manual',
-        providerReference: `tmp_${Date.now()}_${team.id.slice(0, PROVIDER_REF_TEAM_ID_PREFIX_LENGTH)}`,
+        providerReference: `manual_${Date.now()}_${team.id.slice(0, PROVIDER_REF_TEAM_ID_PREFIX_LENGTH)}`,
         amount: resolvedAmount,
         currency: String(currency || 'USD').toUpperCase(),
         status: TournamentPaymentTransactionStatus.INITIATED,
@@ -4757,14 +4757,15 @@ export const scheduleMatchOnCourt = async (req: Request, res: Response) => {
     select: { id: true, scheduledAt: true, scheduledDurationMinutes: true },
   });
 
-  const conflictingMatch = sameCourtMatches.find((other) =>
-    hasScheduleOverlap(
+  const conflictingMatch = sameCourtMatches.find((other) => {
+    if (!other.scheduledAt) return false;
+    return hasScheduleOverlap(
       startAt,
       duration,
-      other.scheduledAt!,
+      other.scheduledAt,
       other.scheduledDurationMinutes ?? DEFAULT_MATCH_DURATION_MINUTES
-    )
-  );
+    );
+  });
   if (conflictingMatch) {
     throw new ConflictError(`Court conflict with match ${conflictingMatch.id}`);
   }

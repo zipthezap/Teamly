@@ -344,6 +344,7 @@ model User {
   tournamentAnnouncements TournamentAnnouncement[] @relation("TournamentAnnouncementAuthor")
   scorekeeperMatches      TournamentMatch[]        @relation("MatchScorekeeper")
   resolvedIncidents       TournamentMatchIncident[] @relation("IncidentResolver")
+  acceptedWaivers         TournamentTeam[]          @relation("WaiverAcceptedBy")
   groupBans         GroupBan[]
   issuedGroupBans   GroupBan[]       @relation("GroupBanner")
   auditLogs         AuditLog[]
@@ -1154,6 +1155,7 @@ model TournamentTeam {
   paidByUserId  String?  // admin who marked the payment
   waiverAcceptedAt DateTime?
   waiverAcceptedByUserId String?
+  waiverAcceptedBy       User?   @relation("WaiverAcceptedBy", fields: [waiverAcceptedByUserId], references: [id], onDelete: SetNull)
 
   // New gap-feature fields
   checkedIn    Boolean  @default(false)  // Day-of check-in (#4)
