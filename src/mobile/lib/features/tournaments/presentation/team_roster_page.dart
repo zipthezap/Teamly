@@ -124,12 +124,18 @@ class _TeamRosterPageState extends ConsumerState<TeamRosterPage> {
     final currentUserId = ref.watch(authNotifierProvider).user?.id;
     final isCaptain = _captainUserId == currentUserId;
 
+    final maxPlayers = ref.read(tournamentDetailProvider(widget.tournamentId)).value?.maxPlayers;
+    final isFull = maxPlayers != null && _players.length >= maxPlayers;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Team Roster'),
         actions: [
           if (isCaptain)
-            IconButton(icon: const Icon(Icons.person_add_outlined), tooltip: 'Invite player', onPressed: _showInviteDialog),
+            IconButton(
+              icon: const Icon(Icons.person_add_outlined),
+              tooltip: isFull ? 'Team is full' : 'Invite player',
+              onPressed: isFull ? null : _showInviteDialog,
+            ),
         ],
       ),
       body: _loading
@@ -141,7 +147,20 @@ class _TeamRosterPageState extends ConsumerState<TeamRosterPage> {
                   child: ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
-                      UiSectionTitle('Players (${_players.length})'),
+                      Row(
+                        children: [
+                          UiSectionTitle('Players (${_players.length}${maxPlayers != null ? ' / $maxPlayers' : ''})'),
+                          if (isFull)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(color: Colors.red.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+                                child: const Text('Full', style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.w600)),
+                              ),
+                            ),
+                        ],
+                      ),
                       const SizedBox(height: 8),
                       if (_players.isEmpty)
                         const UiEmptyState(icon: Icons.people_outline, message: 'No players yet.')

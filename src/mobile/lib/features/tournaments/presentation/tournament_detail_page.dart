@@ -60,7 +60,7 @@ String _statusStageLabel(TournamentModel tournament) {
   return 'Draft';
 }
 
-// ===========================================================================
+// ---------------- SECTION DIVIDER ----------------
 // Tournament Detail Page
 // ===========================================================================
 
@@ -560,26 +560,49 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (t.hasFee) ...[
-                    _PaymentStatusBadge(status: team.paymentStatus),
-                    if (!team.isPaid && t.paymentInfo != null) ...[
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: () => _showTextDialog(context, 'Payment Instructions', t.paymentInfo!),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.payment_outlined, size: 14, color: Colors.orange),
-                            const SizedBox(width: 4),
-                            Text(
-                              'How to pay — tap to view',
-                              style: const TextStyle(fontSize: 12, color: Colors.orange, decoration: TextDecoration.underline),
-                            ),
-                          ],
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Row(
+                      children: [
+                        _PaymentStatusBadge(status: team.paymentStatus),
+                        const SizedBox(width: 18),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.blueGrey.withOpacity(0.07),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.group_outlined, size: 16, color: Colors.blueGrey),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${team.players.length}${t.maxPlayers != null ? ' / ${t.maxPlayers}' : ''} players',
+                                style: const TextStyle(fontSize: 13, color: Colors.black87, fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  ),
+                  if (t.hasFee && !team.isPaid && t.paymentInfo != null) ...[
                     const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () => _showTextDialog(context, 'Payment Instructions', t.paymentInfo!),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.payment_outlined, size: 14, color: Colors.orange),
+                          const SizedBox(width: 4),
+                          Text(
+                            'How to pay — tap to view',
+                            style: const TextStyle(fontSize: 12, color: Colors.orange, decoration: TextDecoration.underline),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
+                  const SizedBox(height: 8),
                   if (isCaptain)
                     Wrap(
                       spacing: 8,

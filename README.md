@@ -227,6 +227,13 @@ This project uses Prisma v7, which has a new configuration approach:
 - The `datasource` block in `schema.prisma` only specifies the provider
 - Environment variables are loaded from `.env` via the config file
 
+### Prisma Migration Baseline
+
+- Migrations are currently squashed into a single baseline migration: `prisma/migrations/20260520114500_initial_schema`.
+- For new environments, run migrations normally (`npm run prisma:migrate`).
+- For existing databases that were created before the squash, align migration history before deploying, or recreate the database from a backup/reset workflow to avoid history mismatches.
+- After this baseline, create only incremental migrations for new schema changes.
+
 This is different from Prisma v4-v6 where the URL was in the schema file.
 
 ## Database Schema

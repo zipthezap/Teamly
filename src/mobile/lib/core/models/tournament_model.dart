@@ -414,6 +414,7 @@ class TournamentModel extends Equatable {
     this.startDate,
     this.endDate,
     this.maxTeams,
+    this.maxPlayers,
     this.registrationStartDate,
     this.registrationDeadline,
     this.location,
@@ -457,6 +458,7 @@ class TournamentModel extends Equatable {
   final DateTime? startDate;
   final DateTime? endDate;
   final int? maxTeams;
+  final int? maxPlayers;
   final DateTime? registrationStartDate;
   final DateTime? registrationDeadline;
   final String? location;
@@ -538,8 +540,9 @@ class TournamentModel extends Equatable {
       organizerEmail: organizer?['email'] as String?,
       description: json['description'] as String?,
       startDate: json['startDate'] != null
-          ? DateTime.tryParse(json['startDate'] as String)
+          ? DateTime.parse(json['startDate'] as String)
           : null,
+      maxPlayers: json['maxPlayers'] as int?,
       endDate: json['endDate'] != null
           ? DateTime.tryParse(json['endDate'] as String)
           : null,
