@@ -23,6 +23,8 @@ abstract class TeamRegistrationRepository {
       String tournamentId, String teamId);
   Future<void> removePlayer(
       String tournamentId, String teamId, String playerId);
+  Future<Map<String, dynamic>> generateCheckInQrToken(String tournamentId, String teamId);
+  Future<Map<String, dynamic>> checkInViaQrToken(String tournamentId, String token);
 }
 
 abstract class PoolRepository {
@@ -97,6 +99,23 @@ abstract class MatchRepository {
   Future<void> createMatch(String tournamentId, Map<String, dynamic> data);
   Future<void> updateMatch(String tournamentId, String matchId, Map<String, dynamic> data);
   Future<void> deleteMatch(String tournamentId, String matchId);
+  Future<void> assignReferee(String tournamentId, String matchId, String? refereeTeamId);
+  Future<void> assignScorekeeper(String tournamentId, String matchId, String? scorekeeperUserId);
+  Future<void> startMatch(String tournamentId, String matchId);
+  Future<List<Map<String, dynamic>>> getMatchIncidents(String tournamentId, String matchId);
+  Future<Map<String, dynamic>> createMatchIncident(
+    String tournamentId,
+    String matchId, {
+    String? incidentType,
+    required String description,
+    int? slaMinutes,
+  });
+  Future<Map<String, dynamic>> resolveMatchIncident(
+    String tournamentId,
+    String incidentId, {
+    required String status,
+    String? resolution,
+  });
 
   // Bracket generation
   Future<Map<String, dynamic>> generateBrackets(String tournamentId,

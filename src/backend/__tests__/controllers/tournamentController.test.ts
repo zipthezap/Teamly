@@ -199,6 +199,7 @@ vi.mock('../../services/tournamentService', () => ({
   generateRandomizedSingleEliminationBracketsFromPools: vi.fn().mockResolvedValue({ count: 4 }),
   generateRoundRobinBrackets: vi.fn().mockResolvedValue({ count: 6 }),
   generateGroupsKnockoutBrackets: vi.fn().mockResolvedValue({ count: 8 }),
+  generateKnockoutFromStandings: vi.fn().mockResolvedValue({ count: 4 }),
   updateStandings: vi.fn().mockResolvedValue(undefined),
   revertStandings: vi.fn().mockResolvedValue(undefined),
   advanceWinners: vi.fn().mockResolvedValue(undefined),
@@ -381,6 +382,7 @@ beforeEach(() => {
   vi.mocked(tournamentService.generateSingleEliminationBrackets).mockResolvedValue({ count: 4 });
   vi.mocked(tournamentService.generateRoundRobinBrackets).mockResolvedValue({ count: 6 });
   vi.mocked(tournamentService.generateGroupsKnockoutBrackets).mockResolvedValue({ count: 8 });
+  vi.mocked(tournamentService.generateKnockoutFromStandings).mockResolvedValue({ count: 4 });
   vi.mocked(tournamentService.updateStandings).mockResolvedValue(undefined);
   vi.mocked(tournamentService.revertStandings).mockResolvedValue(undefined);
   vi.mocked(tournamentService.advanceWinners).mockResolvedValue(undefined);
@@ -4346,6 +4348,83 @@ describe('PUT /api/tournaments/:id — registration fee update', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error).toContain('boolean');
+  });
+});
+
+describe('POST /api/tournaments/:id/matches/:matchId/score — groups_knockout auto-generate', () => {
+  it('auto-generates knockout brackets when all groups are complete and autoGenerateBrackets is enabled', async () => {
+    vi.mocked(prisma.tournament.findUnique)
+      .mockResolvedValueOnce({
+        ...mockTournament,
+        format: 'groups_knockout',
+        status: 'in_progress',
+        autoGenerateBrackets: true,
+      } as any)
+      .mockResolvedValueOnce({
+        id: 'tournament-1',
+        format: 'groups_knockout',
+        status: 'in_progress',
+        autoGenerateBrackets: true,
+      } as any);
+    vi.mocked(prisma.tournamentMatch.findUnique)
+      .mockResolvedValueOnce({
+        ...mockMatch,
+        stage: 'group_stage',
+        status: 'scheduled',
+      } as any)
+      .mockResolvedValueOnce({
+        ...mockMatch,
+        stage: 'group_stage',
+        status: 'completed',
+        homeScore: 2,
+        awayScore: 1,
+      } as any);
+    vi.mocked(prisma.tournamentMatch.updateMany).mockResolvedValue({ count: 1 } as any);
+    vi.mocked(prisma.tournamentMatch.count)
+      .mockResolvedValueOnce(8) // group matches
+      .mockResolvedValueOnce(0) // incomplete group matches
+      .mockResolvedValueOnce(0); // knockout matches
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/match-1/score')
+      .send({ homeScore: 2, awayScore: 1 });
+
+    expect(res.status).toBe(200);
+    expect(tournamentService.generateKnockoutFromStandings).toHaveBeenCalledWith('tournament-1');
+  });
+});
+
+describe('PUT /api/tournaments/:id/matches/:matchId/referee — conflict checks', () => {
+  it('returns 400 when referee team has an overlapping assignment', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      ...mockTournament,
+      status: 'registration',
+      startDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    } as any);
+    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
+      ...mockMatch,
+      scheduledAt: new Date('2026-06-20T10:00:00.000Z'),
+      scheduledDurationMinutes: 60,
+    } as any);
+    vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue({
+      ...mockTeam,
+      id: 'ref-team',
+      name: 'Ref Team',
+    } as any);
+    vi.mocked(prisma.tournamentMatch.findMany).mockResolvedValue([
+      {
+        id: 'match-overlap',
+        scheduledAt: new Date('2026-06-20T10:30:00.000Z'),
+        scheduledDurationMinutes: 60,
+      },
+    ] as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/matches/match-1/referee')
+      .send({ refereeTeamId: 'ref-team' });
+
+    expect(res.status).toBe(400);
+    expect(String(res.body.error || '')).toContain('conflict');
   });
 });
 

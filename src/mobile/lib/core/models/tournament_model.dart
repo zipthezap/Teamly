@@ -317,6 +317,12 @@ class TournamentMatchModel extends Equatable {
     this.scheduledAt,
     this.poolId,
     this.location,
+    this.refereeTeamId,
+    this.refereeTeamName,
+    this.scorekeeperUserId,
+    this.scorekeeperUserName,
+    this.startedAt,
+    this.completedAt,
   });
 
   final String id;
@@ -336,11 +342,19 @@ class TournamentMatchModel extends Equatable {
   final DateTime? scheduledAt;
   final String? poolId;
   final String? location;
+  final String? refereeTeamId;
+  final String? refereeTeamName;
+  final String? scorekeeperUserId;
+  final String? scorekeeperUserName;
+  final DateTime? startedAt;
+  final DateTime? completedAt;
 
   factory TournamentMatchModel.fromJson(Map<String, dynamic> json) {
     // Support both frontend naming (teamA/teamB) and backend naming (homeTeam/awayTeam)
     final teamA = (json['homeTeam'] ?? json['teamA']) as Map<String, dynamic>?;
     final teamB = (json['awayTeam'] ?? json['teamB']) as Map<String, dynamic>?;
+    final refereeTeam = json['refereeTeam'] as Map<String, dynamic>?;
+    final scorekeeper = json['scorekeeper'] as Map<String, dynamic>?;
 
     // Build a human-readable round label from available fields
     String roundLabel;
@@ -383,6 +397,17 @@ class TournamentMatchModel extends Equatable {
           : null,
       poolId: json['poolId'] as String?,
       location: json['location'] as String?,
+      refereeTeamId: refereeTeam?['id'] as String? ?? json['refereeTeamId'] as String?,
+      refereeTeamName: refereeTeam?['name'] as String?,
+      scorekeeperUserId:
+          scorekeeper?['id'] as String? ?? json['scorekeeperUserId'] as String?,
+      scorekeeperUserName: scorekeeper?['name'] as String?,
+      startedAt: json['startedAt'] != null
+          ? DateTime.tryParse(json['startedAt'] as String)
+          : null,
+      completedAt: json['completedAt'] != null
+          ? DateTime.tryParse(json['completedAt'] as String)
+          : null,
     );
   }
 
