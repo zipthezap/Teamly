@@ -852,24 +852,18 @@ export const generateGroupsKnockoutBrackets = async (
   tournamentId: string, 
   numberOfGroups: number = 4
 ) => {
-  const [teams, categories] = await Promise.all([
-    prisma.tournamentTeam.findMany({
-      where: { tournamentId },
-      include: {
-        pool: {
-          select: {
-            categoryId: true,
-            category: { select: { id: true, name: true } },
-          }
+  const teams = await prisma.tournamentTeam.findMany({
+    where: { tournamentId },
+    include: {
+      pool: {
+        select: {
+          categoryId: true,
+          category: { select: { id: true, name: true } },
         }
-      },
-      orderBy: { createdAt: 'asc' }
-    }),
-    prisma.tournamentCategory.findMany({
-      where: { tournamentId },
-      select: { id: true, name: true },
-    }),
-  ]);
+      }
+    },
+    orderBy: { createdAt: 'asc' }
+  });
 
   if (teams.length < 2) {
     throw new BadRequestError(
@@ -878,23 +872,26 @@ export const generateGroupsKnockoutBrackets = async (
     );
   }
 
-  const normalizedCategoriesByName = new Map(
-    categories.map((category) => [category.name.trim().toLowerCase(), category])
-  );
-
   const teamsByCategory = new Map<string, { label: string; teams: typeof teams }>();
   const uncategorizedKey = '__uncategorized__';
+  const hasCategoryHints = teams.some(
+    (team) => team.pool?.categoryId != null || (team.poolName?.trim().length ?? 0) > 0
+  );
+
+  if (!hasCategoryHints && teams.length < numberOfGroups * 2) {
+    throw new BadRequestError(
+      `At least ${numberOfGroups * 2} teams are required for ${numberOfGroups} groups`,
+      'INSUFFICIENT_TEAMS_FOR_GROUPS'
+    );
+  }
 
   for (const team of teams) {
     const categoryFromPool = team.pool?.category;
-    const categoryFromName =
-      !categoryFromPool && team.poolName
-        ? normalizedCategoriesByName.get(team.poolName.trim().toLowerCase())
-        : null;
-
-    const categoryKey = categoryFromPool?.id ?? categoryFromName?.id ?? uncategorizedKey;
-    const categoryLabel =
-      categoryFromPool?.name ?? categoryFromName?.name ?? 'Group';
+    const poolNameHint = team.poolName?.trim();
+    const categoryKey =
+      categoryFromPool?.id ??
+      (poolNameHint && poolNameHint.length > 0 ? `name:${poolNameHint.toLowerCase()}` : uncategorizedKey);
+    const categoryLabel = categoryFromPool?.name ?? (poolNameHint != null && poolNameHint.length > 0 ? poolNameHint : 'Group');
 
     if (!teamsByCategory.has(categoryKey)) {
       teamsByCategory.set(categoryKey, { label: categoryLabel, teams: [] });
