@@ -16,6 +16,13 @@ import '../state/tournaments_notifier.dart';
 
 const _kAccent = Color(0xFFFF9800);
 
+/// Returns true for matches that belong to the group (round-robin) stage.
+/// Checks both the `stage` field (preferred, set by current backend) and the
+/// legacy `groupName` field (for matches created by older backend versions).
+bool _isGroupStageMatch(TournamentMatchModel m) {
+  return m.stage == 'group_stage' || (m.stage == null && m.groupName != null);
+}
+
 bool _isTournamentStarted(TournamentModel tournament) {
   return tournament.status == 'in_progress' ||
       tournament.status == 'active' ||
@@ -121,9 +128,9 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
         }
         final hasMyTeam = myTeam != null;
 
-        // Show Groups tab whenever there are any matches (group or knockout stage).
-        final hasGroupMatches = t.matches.any(
-            (m) => m.stage == 'group_stage' || m.groupName != null);
+        // Show Groups tab whenever there are any group-stage matches, or when
+        // the tournament has started (for other formats).
+        final hasGroupMatches = t.matches.any(_isGroupStageMatch);
         final hasGroupsTab = isStarted || hasGroupMatches;
 
         // Brackets tab: only shown when actual knockout matches exist (not just group stage).
@@ -1093,7 +1100,7 @@ class _GroupMatchesButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = tournament;
     final canGenerate = t.status == 'registration_closed' || t.status == 'in_progress';
-    final hasGroupMatches = t.matches.any((m) => m.stage == 'group_stage' || m.groupName != null);
+    final hasGroupMatches = t.matches.any(_isGroupStageMatch);
     final label = hasGroupMatches ? 'Regenerate Group Matches' : 'Generate Group Matches';
 
     return OutlinedButton.icon(
@@ -1244,8 +1251,7 @@ class _KnockoutBracketButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = tournament;
-    final groupMatches =
-        t.matches.where((m) => m.stage == 'group_stage' || m.groupName != null).toList();
+    final groupMatches = t.matches.where(_isGroupStageMatch).toList();
     final allGroupDone =
         groupMatches.isNotEmpty && groupMatches.every((m) => m.status == 'completed');
     final hasKnockout = t.matches.any((m) => m.stage != null && m.stage != 'group_stage');

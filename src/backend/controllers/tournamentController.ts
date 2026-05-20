@@ -1278,7 +1278,8 @@ export const generateGroupMatches = async (req: Request, res: Response) => {
 
   if (isRegeneration) {
     await prisma.$transaction([
-      prisma.tournamentStanding.deleteMany({ where: { tournamentId: id } }),
+      // Delete only group-stage standings to avoid clobbering knockout standings
+      prisma.tournamentStanding.deleteMany({ where: { tournamentId: id, groupName: { not: null } } }),
       prisma.tournamentMatch.deleteMany({ where: { tournamentId: id, stage: 'group_stage' } }),
     ]);
   }

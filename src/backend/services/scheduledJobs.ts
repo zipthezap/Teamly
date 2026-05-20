@@ -46,8 +46,19 @@ export const syncAllTournamentStatuses = async (): Promise<void> => {
     for (const t of candidates) {
       try {
         const prev = t.status;
-        const synced = await syncTournamentAutoStatus(t as any, 'cron_sync');
-        if ((synced as any).status !== prev) {
+        const synced = await syncTournamentAutoStatus(
+          {
+            id: t.id,
+            name: t.name,
+            status: t.status,
+            startDate: t.startDate,
+            endDate: t.endDate,
+            registrationStartDate: t.registrationStartDate,
+            registrationDeadline: t.registrationDeadline,
+          },
+          'cron_sync'
+        );
+        if (synced.status !== prev) {
           updated++;
         }
       } catch (err) {
