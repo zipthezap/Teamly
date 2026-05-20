@@ -890,8 +890,8 @@ export const generateGroupsKnockoutBrackets = async (
     const poolNameHint = team.poolName?.trim();
     const categoryKey =
       categoryFromPool?.id ??
-      (poolNameHint && poolNameHint.length > 0 ? `name:${poolNameHint.toLowerCase()}` : uncategorizedKey);
-    const categoryLabel = categoryFromPool?.name ?? (poolNameHint != null && poolNameHint.length > 0 ? poolNameHint : 'Group');
+      (poolNameHint ? `name:${poolNameHint.toLowerCase()}` : uncategorizedKey);
+    const categoryLabel = categoryFromPool?.name ?? poolNameHint ?? 'Group';
 
     if (!teamsByCategory.has(categoryKey)) {
       teamsByCategory.set(categoryKey, { label: categoryLabel, teams: [] });
