@@ -852,6 +852,7 @@ export const generateGroupsKnockoutBrackets = async (
   tournamentId: string, 
   numberOfGroups: number = 4
 ) => {
+  const NAME_BASED_CATEGORY_KEY_PREFIX = 'name:';
   const teams = await prisma.tournamentTeam.findMany({
     where: { tournamentId },
     include: {
@@ -874,11 +875,11 @@ export const generateGroupsKnockoutBrackets = async (
 
   const teamsByCategory = new Map<string, { label: string; teams: typeof teams }>();
   const uncategorizedKey = '__uncategorized__';
-  const hasCategoryHints = teams.some(
+  const hasTeamsWithCategoryHints = teams.some(
     (team) => team.pool?.categoryId != null || (team.poolName?.trim().length ?? 0) > 0
   );
 
-  if (!hasCategoryHints && teams.length < numberOfGroups * 2) {
+  if (!hasTeamsWithCategoryHints && teams.length < numberOfGroups * 2) {
     throw new BadRequestError(
       `At least ${numberOfGroups * 2} teams are required for ${numberOfGroups} groups`,
       'INSUFFICIENT_TEAMS_FOR_GROUPS'
@@ -890,7 +891,9 @@ export const generateGroupsKnockoutBrackets = async (
     const poolNameHint = team.poolName?.trim();
     const categoryKey =
       categoryFromPool?.id ??
-      (poolNameHint ? `name:${poolNameHint.toLowerCase()}` : uncategorizedKey);
+      (poolNameHint
+        ? `${NAME_BASED_CATEGORY_KEY_PREFIX}${poolNameHint.toLowerCase()}`
+        : uncategorizedKey);
     const categoryLabel = categoryFromPool?.name ?? poolNameHint ?? 'Group';
 
     if (!teamsByCategory.has(categoryKey)) {
