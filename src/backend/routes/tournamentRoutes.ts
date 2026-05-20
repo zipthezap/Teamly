@@ -13,6 +13,9 @@ const router = Router();
 // Public endpoint - no auth required
 router.get('/public', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getPublicTournaments));
 
+// Public tournament portal - accessible by share token or public tournament ID, no auth required
+router.get('/portal/:shareToken', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getPublicTournamentPortal));
+
 // Public invitation preview — no auth required (used by mobile invite page to show context before login)
 router.get('/invitations/preview/:inviteToken', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getInvitationDetails));
 
@@ -356,6 +359,17 @@ router.put(
   noCache,
   asyncHandler(tournamentController.checkInTeam)
 );
+// QR-based check-in (Phase 3)
+router.post(
+  '/:id/teams/:teamId/check-in/token',
+  noCache,
+  asyncHandler(tournamentController.generateCheckInQrToken)
+);
+router.post(
+  '/:id/check-in/qr',
+  noCache,
+  asyncHandler(tournamentController.checkInViaQrToken)
+);
 router.put(
   '/:id/teams/:teamId/waiver',
   noCache,
@@ -381,6 +395,33 @@ router.put(
   noCache,
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
   asyncHandler(tournamentController.scheduleMatchOnCourt)
+);
+// Scorekeeper assignment, match start, incidents (Phase 3)
+router.put(
+  '/:id/matches/:matchId/scorekeeper',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
+  asyncHandler(tournamentController.assignMatchScorekeeper)
+);
+router.put(
+  '/:id/matches/:matchId/start',
+  noCache,
+  asyncHandler(tournamentController.startMatch)
+);
+router.get(
+  '/:id/matches/:matchId/incidents',
+  etagMiddleware({ weak: true }),
+  asyncHandler(tournamentController.getMatchIncidents)
+);
+router.post(
+  '/:id/matches/:matchId/incidents',
+  noCache,
+  asyncHandler(tournamentController.createMatchIncident)
+);
+router.put(
+  '/:id/incidents/:incidentId/resolve',
+  noCache,
+  asyncHandler(tournamentController.resolveMatchIncident)
 );
 
 // Registration waitlist (#2)
@@ -452,6 +493,20 @@ router.post(
   '/:id/clone',
   noCache,
   asyncHandler(tournamentController.cloneTournament)
+);
+
+// Phase 4: Public portal share token
+router.post(
+  '/:id/share-token',
+  noCache,
+  asyncHandler(tournamentController.generateShareToken)
+);
+
+// Phase 5: Organizer analytics
+router.get(
+  '/:id/analytics',
+  etagMiddleware({ weak: true }),
+  asyncHandler(tournamentController.getTournamentAnalytics)
 );
 
 export default router;

@@ -342,6 +342,8 @@ model User {
   grantedAdminRoles       TournamentAdminRole[] @relation("TournamentAdminRolesGranted")
   disputeResolutions      TournamentScoreDispute[] @relation("DisputeResolver")
   tournamentAnnouncements TournamentAnnouncement[] @relation("TournamentAnnouncementAuthor")
+  scorekeeperMatches      TournamentMatch[]        @relation("MatchScorekeeper")
+  resolvedIncidents       TournamentMatchIncident[] @relation("IncidentResolver")
   groupBans         GroupBan[]
   issuedGroupBans   GroupBan[]       @relation("GroupBanner")
   auditLogs         AuditLog[]
@@ -1090,6 +1092,9 @@ model Tournament {
   paymentDeadline  DateTime?  // Deadline for team payment (#15)
   tiebreakerRules  Json?      // Array of tiebreaker rule keys e.g. ["goal_difference","goals_for"] (#6)
 
+  // Public portal (Phase 4)
+  shareToken       String?   @unique  // Opaque token for shareable/embeddable public URL
+
   // Recurring tournament support
   isRecurring         Boolean  @default(false)
   recurrenceRule      String?  // RRule format
@@ -1109,6 +1114,7 @@ model Tournament {
   registrationFields   TournamentRegistrationField[]
   paymentTransactions  TournamentPaymentTransaction[]
   courts               TournamentCourt[]
+  incidents            TournamentMatchIncident[]
   
   @@index([organizerId])
   @@index([groupId])
@@ -1118,6 +1124,7 @@ model Tournament {
   @@index([city, country])
   @@index([isPublic])
   @@index([parentTournamentId])
+  @@index([shareToken])
 }
 
 model TournamentTeam {
@@ -1151,6 +1158,7 @@ model TournamentTeam {
   // New gap-feature fields
   checkedIn    Boolean  @default(false)  // Day-of check-in (#4)
   checkedInAt  DateTime?                 // When they checked in (#4)
+  checkInToken String?  @unique          // QR-scannable check-in token (Phase 3)
   logoUrl      String?                   // Team logo URL (#13)
 
   createdAt    DateTime @default(now())
@@ -1191,6 +1199,10 @@ model TournamentMatch {
   // Referee assignment - team that will officiate this match
   refereeTeamId String?
   refereeTeam   TournamentTeam? @relation("RefereeTeam", fields: [refereeTeamId], references: [id], onDelete: SetNull)
+
+  // Scorekeeper assignment - individual user responsible for live score entry (Phase 3)
+  scorekeeperUserId String?
+  scorekeeper       User?   @relation("MatchScorekeeper", fields: [scorekeeperUserId], references: [id], onDelete: SetNull)
   
   homeScore    Int?
   awayScore    Int?
@@ -1223,12 +1235,14 @@ model TournamentMatch {
   @@index([homeTeamId])
   @@index([awayTeamId])
   @@index([refereeTeamId])
+  @@index([scorekeeperUserId])
   @@index([status])
   @@index([stage])
   @@index([matchOrder])
   @@index([courtId])
   @@index([courtId, scheduledAt])
-  disputes TournamentScoreDispute[]
+  disputes  TournamentScoreDispute[]
+  incidents TournamentMatchIncident[]
 }
 
 enum TournamentPaymentTransactionStatus {
@@ -1507,6 +1521,45 @@ model TournamentPlayerStat {
   @@index([tournamentId])
   @@index([teamId])
   @@index([playerId])
+}
+
+// Game-day incident tracking with SLA (Phase 3)
+enum MatchIncidentType {
+  late_start
+  injury
+  dispute
+  technical
+  other
+}
+
+enum MatchIncidentStatus {
+  open
+  resolved
+  dismissed
+}
+
+model TournamentMatchIncident {
+  id              String              @id @default(uuid())
+  tournamentId    String
+  tournament      Tournament          @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  matchId         String
+  match           TournamentMatch     @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  reportedByUserId String
+  incidentType    MatchIncidentType   @default(other)
+  description     String
+  status          MatchIncidentStatus @default(open)
+  slaDeadline     DateTime?           // When the incident must be resolved by
+  resolvedById    String?
+  resolvedBy      User?               @relation("IncidentResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolution      String?
+  resolvedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tournamentId])
+  @@index([matchId])
+  @@index([status])
+  @@index([slaDeadline])
 }
 
 // Tournament categories - ranking tiers (e.g. "Elite", "Intermediate", "Beginner")

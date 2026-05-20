@@ -529,3 +529,103 @@ export interface TournamentPlayerStatDto {
   statKey: string;
   value: number;
 }
+
+// ==================== PHASE 3: GAME-DAY OPERATIONS ====================
+
+export enum MatchIncidentType {
+  LATE_START = 'late_start',
+  INJURY = 'injury',
+  DISPUTE = 'dispute',
+  TECHNICAL = 'technical',
+  OTHER = 'other',
+}
+
+export enum MatchIncidentStatus {
+  OPEN = 'open',
+  RESOLVED = 'resolved',
+  DISMISSED = 'dismissed',
+}
+
+export const MATCH_INCIDENT_TYPES = Object.values(MatchIncidentType);
+export const MATCH_INCIDENT_STATUSES = Object.values(MatchIncidentStatus);
+
+export interface TournamentMatchIncident {
+  id: string;
+  tournamentId: string;
+  matchId: string;
+  reportedByUserId: string;
+  incidentType: MatchIncidentType;
+  description: string;
+  status: MatchIncidentStatus;
+  slaDeadline?: Date | string;
+  resolvedById?: string;
+  resolution?: string;
+  resolvedAt?: Date | string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+export interface CreateMatchIncidentDto {
+  incidentType?: MatchIncidentType;
+  description: string;
+  slaMinutes?: number; // How many minutes from now the SLA deadline is
+}
+
+export interface ResolveMatchIncidentDto {
+  status: MatchIncidentStatus.RESOLVED | MatchIncidentStatus.DISMISSED;
+  resolution?: string;
+}
+
+// ==================== PHASE 4: PUBLIC PORTAL ====================
+
+export interface PublicTournamentPortal {
+  tournament: Tournament & {
+    organizer?: { id: string; name: string };
+  };
+  teams: Array<{ id: string; name: string; checkedIn: boolean; paymentStatus: string }>;
+  matches: TournamentMatch[];
+  standings: TournamentStanding[];
+  courts?: TournamentCourt[];
+  announcements?: Array<{ id: string; title: string; body: string; isPinned: boolean; createdAt: Date | string }>;
+}
+
+// ==================== PHASE 5: ORGANIZER ANALYTICS ====================
+
+export interface TournamentAnalytics {
+  registration: {
+    totalTeams: number;
+    checkedIn: number;
+    noShows: number;
+    paid: number;
+    unpaid: number;
+    pending: number;
+    waived: number;
+    waiverAccepted: number;
+  };
+  matches: {
+    total: number;
+    scheduled: number;
+    inProgress: number;
+    completed: number;
+    cancelled: number;
+    lateStarts: number;       // matches that started more than 10 min after scheduledAt
+    avgDurationMinutes: number | null;
+  };
+  disputes: {
+    total: number;
+    open: number;
+    resolved: number;
+    dismissed: number;
+  };
+  incidents: {
+    total: number;
+    open: number;
+    resolved: number;
+    pastSla: number;          // open incidents whose slaDeadline has passed
+  };
+  payments: {
+    totalRevenue: number;
+    transactionsPaid: number;
+    transactionsRefunded: number;
+  };
+}

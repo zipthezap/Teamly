@@ -565,3 +565,200 @@ Invitations can have one of the following statuses:
 - `declined` - Invitee has declined the invitation
 - `expired` - Invitation expired after 7 days
 - `cancelled` - Captain/organizer cancelled the invitation
+
+---
+
+## Phase 3: Game-Day Operations
+
+### Generate QR Check-In Token
+
+Generates a unique token for a team that can be encoded into a QR code for day-of check-in scanning.
+
+**Endpoint:** `POST /api/tournaments/:id/teams/:teamId/check-in/token`
+
+**Authorization:** Organizer, admin, or team captain
+
+**Response:** `200 OK` – `{ id, name, checkInToken }`
+
+---
+
+### Check In via QR Token
+
+Checks in a team by verifying their QR token. No authentication required.
+
+**Endpoint:** `POST /api/tournaments/:id/check-in/qr`
+
+**Body:** `{ "token": "<qr_token>" }`
+
+**Response:** `200 OK` – `{ id, name, checkedIn, checkedInAt }`
+
+---
+
+### Assign Scorekeeper
+
+Assigns an individual user as the live scorekeeper for a match.
+
+**Endpoint:** `PUT /api/tournaments/:id/matches/:matchId/scorekeeper`
+
+**Authorization:** Organizer or admin
+
+**Body:** `{ "scorekeeperUserId": "<userId>" }` (set to `null` to remove)
+
+**Response:** `200 OK` – Updated match with scorekeeper details
+
+---
+
+### Start Match
+
+Marks a match as `in_progress` and records the actual start time.
+
+**Endpoint:** `PUT /api/tournaments/:id/matches/:matchId/start`
+
+**Authorization:** Organizer, admin, or assigned scorekeeper
+
+**Response:** `200 OK` – Updated match
+
+---
+
+### Get Match Incidents
+
+Returns all incidents reported for a match, ordered newest first.
+
+**Endpoint:** `GET /api/tournaments/:id/matches/:matchId/incidents`
+
+**Response:** `200 OK` – Array of incidents with resolver info
+
+---
+
+### Report Match Incident
+
+Reports a game-day incident with an SLA deadline for resolution.
+
+**Endpoint:** `POST /api/tournaments/:id/matches/:matchId/incidents`
+
+**Authorization:** Organizer, admin, or assigned scorekeeper
+
+**Body:**
+```json
+{
+  "incidentType": "late_start | injury | dispute | technical | other",
+  "description": "Player dispute over out-of-bounds call",
+  "slaMinutes": 15
+}
+```
+
+`slaMinutes` defaults to 30 if omitted.
+
+**Response:** `201 Created` – Created incident
+
+---
+
+### Resolve Match Incident
+
+Resolves or dismisses an open incident.
+
+**Endpoint:** `PUT /api/tournaments/:id/incidents/:incidentId/resolve`
+
+**Authorization:** Organizer or admin
+
+**Body:**
+```json
+{
+  "status": "resolved | dismissed",
+  "resolution": "Optional explanation"
+}
+```
+
+**Response:** `200 OK` – Updated incident
+
+---
+
+## Phase 4: Public Tournament Portal
+
+### Generate Share Token
+
+Generates a public share token for a tournament. The token can be used to build a shareable or embeddable URL.
+
+**Endpoint:** `POST /api/tournaments/:id/share-token`
+
+**Authorization:** Organizer or admin
+
+**Response:** `200 OK` – `{ id, name, shareToken }`
+
+---
+
+### Public Tournament Portal
+
+Returns the full bracket, standings, teams, courts, and pinned announcements for embedding or public viewing. No authentication required.
+
+**Endpoint:** `GET /api/tournaments/portal/:shareToken`
+
+**Notes:**
+- `:shareToken` can be the opaque token (from `POST /share-token`) or the tournament ID (for public tournaments).
+- Only works for tournaments with `isPublic: true`.
+
+**Response:** `200 OK`
+```json
+{
+  "tournament": { ... },
+  "teams": [ { "id": "...", "name": "...", "checkedIn": true, "paymentStatus": "paid" } ],
+  "matches": [ ... ],
+  "standings": [ ... ],
+  "courts": [ ... ],
+  "announcements": [ ... ]
+}
+```
+
+---
+
+## Phase 5: Organizer Analytics Dashboard
+
+### Get Tournament Analytics
+
+Returns an analytics snapshot for the organizer dashboard.
+
+**Endpoint:** `GET /api/tournaments/:id/analytics`
+
+**Authorization:** Organizer or admin
+
+**Response:** `200 OK`
+```json
+{
+  "registration": {
+    "totalTeams": 16,
+    "checkedIn": 14,
+    "noShows": 2,
+    "paid": 14,
+    "unpaid": 1,
+    "pending": 1,
+    "waived": 0,
+    "waiverAccepted": 15
+  },
+  "matches": {
+    "total": 15,
+    "scheduled": 3,
+    "inProgress": 1,
+    "completed": 10,
+    "cancelled": 1,
+    "lateStarts": 2,
+    "avgDurationMinutes": 47
+  },
+  "disputes": {
+    "total": 2,
+    "open": 0,
+    "resolved": 2,
+    "dismissed": 0
+  },
+  "incidents": {
+    "total": 3,
+    "open": 1,
+    "resolved": 2,
+    "pastSla": 0
+  },
+  "payments": {
+    "totalRevenue": 2100.00,
+    "transactionsPaid": 14,
+    "transactionsRefunded": 0
+  }
+}
+```

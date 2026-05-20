@@ -11,6 +11,7 @@
  */
 
 import { Request, Response } from 'express';
+import { randomBytes } from 'crypto';
 import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import * as tournamentService from '../services/tournamentService';
@@ -24,6 +25,10 @@ import {
   TournamentPaymentStatus,
   TOURNAMENT_PAYMENT_STATUSES,
   TournamentPaymentTransactionStatus,
+  MatchIncidentType,
+  MatchIncidentStatus,
+  MATCH_INCIDENT_TYPES,
+  MATCH_INCIDENT_STATUSES,
 } from '../../shared/types/tournament.types';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../utils/errors';
 import { isRequired, parseCoordinates, parseFloatStrict, sanitizeString, isValidEmail } from '../utils/validation';
@@ -50,6 +55,9 @@ const MAX_PAYMENT_METADATA_BYTES = 4096;
 const PROVIDER_REF_TEAM_ID_PREFIX_LENGTH = 8;
 const TIME_24H_HH_MM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const TOURNAMENT_PAYMENT_TRANSACTION_STATUSES = Object.values(TournamentPaymentTransactionStatus);
+const DEFAULT_INCIDENT_SLA_MINUTES = 30;
+const MAX_INCIDENT_DESCRIPTION_LENGTH = 1000;
+const SHARE_TOKEN_BYTES = 24; // 48 hex chars
 
 // Lifecycle helpers live in tournamentService; alias for brevity within this file.
 const syncTournamentAutoStatus = tournamentService.syncTournamentAutoStatus;
@@ -5540,4 +5548,492 @@ export const cloneTournament = async (req: Request, res: Response) => {
   });
 
   res.status(201).json(cloned);
+};
+
+// ==================== PHASE 3: GAME-DAY OPERATIONS ====================
+
+/**
+ * Generate a unique QR check-in token for a team.
+ * Organizer/admin or the team captain can call this.
+ * Returns the token in plain text (to be encoded into a QR code by the client).
+ */
+export const generateCheckInQrToken = async (req: Request, res: Response) => {
+  const { id, teamId } = req.params;
+  const userId = req.user!.id;
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+
+  const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
+  const isCaptain = await tournamentService.isTeamCaptain(teamId, userId);
+  if (!isOrgOrAdmin && !isCaptain) {
+    throw new ForbiddenError('Only organizer, admin, or team captain can generate a check-in token');
+  }
+
+  const team = ensureResourceExists(
+    await prisma.tournamentTeam.findFirst({ where: { id: teamId, tournamentId: id } }),
+    'Team'
+  );
+
+  const token = randomBytes(SHARE_TOKEN_BYTES).toString('hex');
+  const updated = await prisma.tournamentTeam.update({
+    where: { id: team.id },
+    data: { checkInToken: token },
+    select: { id: true, name: true, checkInToken: true },
+  });
+
+  logger.info('QR check-in token generated', 'TournamentController', { tournamentId: id, teamId, userId });
+  res.json(updated);
+};
+
+/**
+ * Check in a team by scanning their QR token.
+ * No special permission needed — anyone who has the token can check in the team.
+ */
+export const checkInViaQrToken = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { token } = req.body ?? {};
+
+  if (!token || typeof token !== 'string') {
+    throw new BadRequestError('token is required');
+  }
+
+  ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+
+  const team = await prisma.tournamentTeam.findFirst({
+    where: { tournamentId: id, checkInToken: token.trim() },
+  });
+  if (!team) {
+    throw new NotFoundError('Invalid or expired check-in token');
+  }
+
+  const updated = await prisma.tournamentTeam.update({
+    where: { id: team.id },
+    data: { checkedIn: true, checkedInAt: team.checkedInAt ?? new Date() },
+    select: { id: true, name: true, checkedIn: true, checkedInAt: true },
+  });
+
+  logger.info('Team checked in via QR', 'TournamentController', { tournamentId: id, teamId: team.id });
+  res.json(updated);
+};
+
+/**
+ * Assign (or remove) a scorekeeper user to a match.
+ * Only organizer/admin can do this.
+ */
+export const assignMatchScorekeeper = async (req: Request, res: Response) => {
+  const { id, matchId } = req.params;
+  const userId = req.user!.id;
+  const { scorekeeperUserId } = req.body ?? {};
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+  if (!(await tournamentService.isOrganizerOrAdmin(tournament, userId))) {
+    throw new ForbiddenError('Only organizers/admins can assign a scorekeeper');
+  }
+
+  const match = ensureResourceExists(
+    await prisma.tournamentMatch.findFirst({ where: { id: matchId, tournamentId: id } }),
+    'Match'
+  );
+
+  const updated = await prisma.tournamentMatch.update({
+    where: { id: match.id },
+    data: { scorekeeperUserId: scorekeeperUserId ?? null },
+    include: {
+      homeTeam: { select: { id: true, name: true } },
+      awayTeam: { select: { id: true, name: true } },
+      scorekeeper: { select: { id: true, name: true, email: true } },
+    },
+  });
+
+  logger.info('Scorekeeper assigned', 'TournamentController', { tournamentId: id, matchId, scorekeeperUserId, userId });
+  res.json(updated);
+};
+
+/**
+ * Start a match — marks it as in_progress and records startedAt.
+ * Organizer/admin or the assigned scorekeeper can start.
+ */
+export const startMatch = async (req: Request, res: Response) => {
+  const { id, matchId } = req.params;
+  const userId = req.user!.id;
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+
+  const match = ensureResourceExists(
+    await prisma.tournamentMatch.findFirst({ where: { id: matchId, tournamentId: id } }),
+    'Match'
+  );
+
+  const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
+  const isScorekeeper = match.scorekeeperUserId === userId;
+  if (!isOrgOrAdmin && !isScorekeeper) {
+    throw new ForbiddenError('Only organizers, admins, or the assigned scorekeeper can start a match');
+  }
+
+  if (match.status === MatchStatus.COMPLETED || match.status === MatchStatus.CANCELLED) {
+    throw new BadRequestError(`Cannot start a match that is already ${match.status}`);
+  }
+
+  const updated = await prisma.tournamentMatch.update({
+    where: { id: match.id },
+    data: {
+      status: MatchStatus.IN_PROGRESS,
+      startedAt: match.startedAt ?? new Date(),
+    },
+  });
+
+  logger.info('Match started', 'TournamentController', { tournamentId: id, matchId, userId });
+  res.json(updated);
+};
+
+/**
+ * List incidents for a match.
+ */
+export const getMatchIncidents = async (req: Request, res: Response) => {
+  const { id, matchId } = req.params;
+  const userId = req.user!.id;
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+  await assertCanViewTournament(tournament, userId);
+
+  ensureResourceExists(
+    await prisma.tournamentMatch.findFirst({ where: { id: matchId, tournamentId: id } }),
+    'Match'
+  );
+
+  const incidents = await prisma.tournamentMatchIncident.findMany({
+    where: { matchId, tournamentId: id },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      resolvedBy: { select: { id: true, name: true } },
+    },
+  });
+  res.json(incidents);
+};
+
+/**
+ * Report a game-day incident for a match.
+ * Organizer, admin, or the assigned scorekeeper can report.
+ */
+export const createMatchIncident = async (req: Request, res: Response) => {
+  const { id, matchId } = req.params;
+  const userId = req.user!.id;
+  const { incidentType, description, slaMinutes } = req.body ?? {};
+
+  if (!description || typeof description !== 'string' || !description.trim()) {
+    throw new BadRequestError('description is required');
+  }
+  if (description.length > MAX_INCIDENT_DESCRIPTION_LENGTH) {
+    throw new BadRequestError(`description must be at most ${MAX_INCIDENT_DESCRIPTION_LENGTH} characters`);
+  }
+  const resolvedType = incidentType && MATCH_INCIDENT_TYPES.includes(incidentType)
+    ? (incidentType as MatchIncidentType)
+    : MatchIncidentType.OTHER;
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+
+  const match = ensureResourceExists(
+    await prisma.tournamentMatch.findFirst({ where: { id: matchId, tournamentId: id } }),
+    'Match'
+  );
+
+  const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
+  const isScorekeeper = match.scorekeeperUserId === userId;
+  if (!isOrgOrAdmin && !isScorekeeper) {
+    throw new ForbiddenError('Only organizers, admins, or the assigned scorekeeper can report incidents');
+  }
+
+  const slaMs = (typeof slaMinutes === 'number' && slaMinutes > 0
+    ? slaMinutes
+    : DEFAULT_INCIDENT_SLA_MINUTES) * 60_000;
+
+  const incident = await prisma.tournamentMatchIncident.create({
+    data: {
+      tournamentId: id,
+      matchId: match.id,
+      reportedByUserId: userId,
+      incidentType: resolvedType,
+      description: description.trim(),
+      slaDeadline: new Date(Date.now() + slaMs),
+      status: MatchIncidentStatus.OPEN,
+    },
+  });
+
+  logger.info('Match incident reported', 'TournamentController', { tournamentId: id, matchId, incidentId: incident.id, userId });
+  res.status(201).json(incident);
+};
+
+/**
+ * Resolve (or dismiss) an incident.
+ * Only organizer/admin can resolve incidents.
+ */
+export const resolveMatchIncident = async (req: Request, res: Response) => {
+  const { id, incidentId } = req.params;
+  const userId = req.user!.id;
+  const { status, resolution } = req.body ?? {};
+
+  if (!MATCH_INCIDENT_STATUSES.includes(status) || status === MatchIncidentStatus.OPEN) {
+    throw new BadRequestError('status must be "resolved" or "dismissed"');
+  }
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+  if (!(await tournamentService.isOrganizerOrAdmin(tournament, userId))) {
+    throw new ForbiddenError('Only organizers/admins can resolve incidents');
+  }
+
+  const incident = ensureResourceExists(
+    await prisma.tournamentMatchIncident.findFirst({ where: { id: incidentId, tournamentId: id } }),
+    'Incident'
+  );
+
+  if (incident.status !== MatchIncidentStatus.OPEN) {
+    throw new BadRequestError('Incident is already resolved or dismissed');
+  }
+
+  const updated = await prisma.tournamentMatchIncident.update({
+    where: { id: incident.id },
+    data: {
+      status: status as MatchIncidentStatus,
+      resolvedById: userId,
+      resolution: typeof resolution === 'string' ? resolution.trim() || null : null,
+      resolvedAt: new Date(),
+    },
+  });
+
+  logger.info('Match incident resolved', 'TournamentController', { tournamentId: id, incidentId, status, userId });
+  res.json(updated);
+};
+
+// ==================== PHASE 4: PUBLIC PORTAL ====================
+
+/**
+ * Generate (or regenerate) a public share token for a tournament.
+ * Only the organizer/admin can do this.
+ */
+export const generateShareToken = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+  if (!(await tournamentService.isOrganizerOrAdmin(tournament, userId))) {
+    throw new ForbiddenError('Only organizers/admins can generate a share token');
+  }
+
+  const shareToken = randomBytes(SHARE_TOKEN_BYTES).toString('hex');
+  const updated = await prisma.tournament.update({
+    where: { id },
+    data: { shareToken },
+    select: { id: true, name: true, shareToken: true },
+  });
+
+  logger.info('Share token generated', 'TournamentController', { tournamentId: id, userId });
+  res.json(updated);
+};
+
+/**
+ * Public tournament portal — returns full bracket + live match data.
+ * No authentication required. Accepts either a tournament ID or a shareToken.
+ */
+export const getPublicTournamentPortal = async (req: Request, res: Response) => {
+  const { shareToken } = req.params;
+
+  const tournament = await prisma.tournament.findFirst({
+    where: {
+      OR: [
+        { shareToken },
+        { id: shareToken }, // allow direct ID for public tournaments
+      ],
+      isPublic: true,
+    },
+    include: {
+      organizer: { select: { id: true, name: true } },
+      courts: { where: { isActive: true }, select: { id: true, name: true, location: true } },
+      announcements: {
+        where: { isPinned: true },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: { id: true, title: true, body: true, isPinned: true, createdAt: true },
+      },
+    },
+  });
+
+  if (!tournament) {
+    throw new NotFoundError('Tournament not found or is not public');
+  }
+
+  const [teams, matches, standings] = await Promise.all([
+    prisma.tournamentTeam.findMany({
+      where: { tournamentId: tournament.id },
+      select: { id: true, name: true, checkedIn: true, paymentStatus: true, seedNumber: true, poolId: true },
+      orderBy: { name: 'asc' },
+    }),
+    prisma.tournamentMatch.findMany({
+      where: { tournamentId: tournament.id },
+      include: {
+        homeTeam: { select: { id: true, name: true } },
+        awayTeam: { select: { id: true, name: true } },
+        court: { select: { id: true, name: true } },
+      },
+      orderBy: [{ stage: 'asc' }, { roundNumber: 'asc' }, { matchOrder: 'asc' }],
+    }),
+    prisma.tournamentStanding.findMany({
+      where: { tournamentId: tournament.id },
+      include: { team: { select: { id: true, name: true } } },
+      orderBy: [{ points: 'desc' }, { groupName: 'asc' }],
+    }),
+  ]);
+
+  res.json({
+    tournament,
+    teams,
+    matches,
+    standings,
+    courts: tournament.courts,
+    announcements: tournament.announcements,
+  });
+};
+
+// ==================== PHASE 5: ORGANIZER ANALYTICS ====================
+
+/**
+ * Organizer analytics dashboard.
+ * Returns registration funnel, match throughput, payment revenue, and incident SLA stats.
+ */
+export const getTournamentAnalytics = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+  if (!(await tournamentService.isOrganizerOrAdmin(tournament, userId))) {
+    throw new ForbiddenError('Only organizers/admins can view analytics');
+  }
+
+  const [teams, matches, disputes, incidents, paymentTxns] = await Promise.all([
+    prisma.tournamentTeam.findMany({
+      where: { tournamentId: id },
+      select: { checkedIn: true, paymentStatus: true, waiverAcceptedAt: true },
+    }),
+    prisma.tournamentMatch.findMany({
+      where: { tournamentId: id },
+      select: { status: true, scheduledAt: true, startedAt: true, completedAt: true, scheduledDurationMinutes: true },
+    }),
+    prisma.tournamentScoreDispute.findMany({
+      where: { match: { tournamentId: id } },
+      select: { status: true },
+    }),
+    prisma.tournamentMatchIncident.findMany({
+      where: { tournamentId: id },
+      select: { status: true, slaDeadline: true },
+    }),
+    prisma.tournamentPaymentTransaction.findMany({
+      where: { tournamentId: id },
+      select: { status: true, amount: true },
+    }),
+  ]);
+
+  // Registration funnel
+  const totalTeams = teams.length;
+  const checkedIn = teams.filter((t) => t.checkedIn).length;
+  const waiverAccepted = teams.filter((t) => t.waiverAcceptedAt !== null).length;
+  const paid = teams.filter((t) => t.paymentStatus === 'paid').length;
+  const unpaid = teams.filter((t) => t.paymentStatus === 'unpaid').length;
+  const pending = teams.filter((t) => t.paymentStatus === 'pending').length;
+  const waived = teams.filter((t) => t.paymentStatus === 'waived').length;
+  const noShows = teams.filter((t) => !t.checkedIn).length;
+
+  // Match throughput
+  const LATE_START_THRESHOLD_MS = 10 * 60 * 1000;
+  const completedMatches = matches.filter((m) => m.status === MatchStatus.COMPLETED && m.startedAt && m.completedAt);
+  const lateStarts = matches.filter(
+    (m) =>
+      m.scheduledAt &&
+      m.startedAt &&
+      new Date(m.startedAt).getTime() - new Date(m.scheduledAt).getTime() > LATE_START_THRESHOLD_MS
+  ).length;
+  const avgDurationMinutes =
+    completedMatches.length > 0
+      ? Math.round(
+          completedMatches.reduce((sum, m) => {
+            const dur =
+              (new Date(m.completedAt!).getTime() - new Date(m.startedAt!).getTime()) / 60_000;
+            return sum + dur;
+          }, 0) / completedMatches.length
+        )
+      : null;
+
+  // Payments
+  const paidTxns = paymentTxns.filter((p) => p.status === 'paid');
+  const refundedTxns = paymentTxns.filter((p) => p.status === 'refunded');
+  const totalRevenue = paidTxns.reduce((s, p) => s + p.amount, 0);
+
+  // Incident SLA
+  const now = new Date();
+  const openIncidents = incidents.filter((i) => i.status === 'open');
+  const pastSla = openIncidents.filter((i) => i.slaDeadline && new Date(i.slaDeadline) < now).length;
+
+  res.json({
+    registration: {
+      totalTeams,
+      checkedIn,
+      noShows,
+      paid,
+      unpaid,
+      pending,
+      waived,
+      waiverAccepted,
+    },
+    matches: {
+      total: matches.length,
+      scheduled: matches.filter((m) => m.status === MatchStatus.SCHEDULED).length,
+      inProgress: matches.filter((m) => m.status === MatchStatus.IN_PROGRESS).length,
+      completed: completedMatches.length,
+      cancelled: matches.filter((m) => m.status === MatchStatus.CANCELLED).length,
+      lateStarts,
+      avgDurationMinutes,
+    },
+    disputes: {
+      total: disputes.length,
+      open: disputes.filter((d) => d.status === 'open').length,
+      resolved: disputes.filter((d) => d.status === 'resolved').length,
+      dismissed: disputes.filter((d) => d.status === 'dismissed').length,
+    },
+    incidents: {
+      total: incidents.length,
+      open: openIncidents.length,
+      resolved: incidents.filter((i) => i.status === 'resolved').length,
+      pastSla,
+    },
+    payments: {
+      totalRevenue,
+      transactionsPaid: paidTxns.length,
+      transactionsRefunded: refundedTxns.length,
+    },
+  });
 };
