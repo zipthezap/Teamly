@@ -46,6 +46,9 @@ const MAX_TEAMS_UPPER_BOUND = 1000;
 const MAX_BATCH_PAYMENT_TEAMS = 500;
 const DEFAULT_MATCH_DURATION_MINUTES = 60;
 const MAX_MATCH_DURATION_MINUTES = 480;
+const MAX_PAYMENT_METADATA_BYTES = 4096;
+const PROVIDER_REF_TEAM_ID_PREFIX_LENGTH = 8;
+const TIME_24H_HH_MM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const TOURNAMENT_PAYMENT_TRANSACTION_STATUSES = Object.values(TournamentPaymentTransactionStatus);
 
 // Lifecycle helpers live in tournamentService; alias for brevity within this file.
@@ -104,7 +107,7 @@ const getPaymentUpdatePayload = (paymentStatus: string, userId: string) => ({
 });
 
 const parseTimeToMinutes = (time: string): number => {
-  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
+  const match = TIME_24H_HH_MM_REGEX.exec(time);
   if (!match) {
     throw new BadRequestError('Time must be in HH:mm format');
   }
@@ -1344,6 +1347,15 @@ export const createTeamPaymentIntent = async (req: Request, res: Response) => {
   if (resolvedAmount === 0) {
     throw new BadRequestError('Cannot create payment intent for zero amount');
   }
+  if (metadata !== undefined) {
+    if (typeof metadata !== 'object' || metadata === null) {
+      throw new BadRequestError('metadata must be a JSON object when provided');
+    }
+    const metadataBytes = Buffer.byteLength(JSON.stringify(metadata), 'utf8');
+    if (metadataBytes > MAX_PAYMENT_METADATA_BYTES) {
+      throw new BadRequestError(`metadata must be at most ${MAX_PAYMENT_METADATA_BYTES} bytes`);
+    }
+  }
 
   const transaction = await prisma.$transaction(async (tx) => {
     const created = await tx.tournamentPaymentTransaction.create({
@@ -1352,7 +1364,7 @@ export const createTeamPaymentIntent = async (req: Request, res: Response) => {
         teamId: team.id,
         createdByUserId: userId,
         provider: String(provider).trim() || 'manual',
-        providerReference: `tmp_${Date.now()}_${team.id.slice(0, 8)}`,
+        providerReference: `tmp_${Date.now()}_${team.id.slice(0, PROVIDER_REF_TEAM_ID_PREFIX_LENGTH)}`,
         amount: resolvedAmount,
         currency: String(currency || 'USD').toUpperCase(),
         status: TournamentPaymentTransactionStatus.INITIATED,
@@ -4641,11 +4653,16 @@ export const createCourtAvailability = async (req: Request, res: Response) => {
     'Court'
   );
 
+  const normalizedDate = date ? new Date(date) : null;
+  if (normalizedDate) {
+    normalizedDate.setHours(0, 0, 0, 0);
+  }
+
   const availability = await prisma.tournamentCourtAvailability.create({
     data: {
       courtId: court.id,
       dayOfWeek: dayOfWeek ?? undefined,
-      date: date ? new Date(date) : undefined,
+      date: normalizedDate ?? undefined,
       startTime,
       endTime,
       isBlocked: Boolean(isBlocked),
@@ -4697,17 +4714,20 @@ export const scheduleMatchOnCourt = async (req: Request, res: Response) => {
     'Court'
   );
 
+  const localDate = new Date(startAt);
+  localDate.setHours(0, 0, 0, 0);
+
   const blockedAvailabilities = await prisma.tournamentCourtAvailability.findMany({
     where: {
       courtId: court.id,
       isBlocked: true,
       OR: [
-        { date: new Date(startAt.toISOString().slice(0, 10)) },
-        { dayOfWeek: startAt.getUTCDay() },
+        { date: localDate },
+        { dayOfWeek: startAt.getDay() },
       ],
     },
   });
-  const startMinutes = startAt.getUTCHours() * 60 + startAt.getUTCMinutes();
+  const startMinutes = startAt.getHours() * 60 + startAt.getMinutes();
   const endMinutes = startMinutes + duration;
   const blockedOverlap = blockedAvailabilities.some((entry) => {
     const blockedStart = parseTimeToMinutes(entry.startTime);
