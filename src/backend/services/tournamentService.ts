@@ -852,31 +852,87 @@ export const generateGroupsKnockoutBrackets = async (
   tournamentId: string, 
   numberOfGroups: number = 4
 ) => {
+  const NAME_BASED_CATEGORY_KEY_PREFIX = 'name:';
   const teams = await prisma.tournamentTeam.findMany({
     where: { tournamentId },
+    include: {
+      pool: {
+        select: {
+          categoryId: true,
+          category: { select: { id: true, name: true } },
+        }
+      }
+    },
     orderBy: { createdAt: 'asc' }
   });
-  
-  if (teams.length < numberOfGroups * 2) {
+
+  if (teams.length < 2) {
+    throw new BadRequestError(
+      'At least 2 teams are required to generate group matches',
+      'INSUFFICIENT_TEAMS'
+    );
+  }
+
+  const teamsByCategory = new Map<string, { label: string; teams: typeof teams }>();
+  const uncategorizedKey = '__uncategorized__';
+  const hasTeamsWithCategoryHints = teams.some(
+    (team) => team.pool?.categoryId != null || (team.poolName?.trim().length ?? 0) > 0
+  );
+
+  if (!hasTeamsWithCategoryHints && teams.length < numberOfGroups * 2) {
     throw new BadRequestError(
       `At least ${numberOfGroups * 2} teams are required for ${numberOfGroups} groups`,
       'INSUFFICIENT_TEAMS_FOR_GROUPS'
     );
   }
-  
-  // Distribute teams into groups evenly (snake draft style)
-  const groups: { [key: string]: typeof teams } = {};
-  const groupNames = Array.from({ length: numberOfGroups }, (_, i) => 
-    String.fromCharCode(65 + i) // A, B, C, D, etc.
-  );
-  
-  teams.forEach((team, index) => {
-    const groupName = groupNames[index % numberOfGroups];
-    if (!groups[groupName]) {
-      groups[groupName] = [];
+
+  for (const team of teams) {
+    const categoryFromPool = team.pool?.category;
+    const poolNameHint = team.poolName?.trim();
+    const categoryKey =
+      categoryFromPool?.id ??
+      (poolNameHint
+        ? `${NAME_BASED_CATEGORY_KEY_PREFIX}${poolNameHint.toLowerCase()}`
+        : uncategorizedKey);
+    const categoryLabel = categoryFromPool?.name ?? poolNameHint ?? 'Group';
+
+    if (!teamsByCategory.has(categoryKey)) {
+      teamsByCategory.set(categoryKey, { label: categoryLabel, teams: [] });
     }
-    groups[groupName].push(team);
-  });
+    teamsByCategory.get(categoryKey)!.teams.push(team);
+  }
+
+  // Distribute teams into groups separately for each category bucket.
+  // numberOfGroups is treated as groups-per-category.
+  const groups: { [key: string]: typeof teams } = {};
+  for (const [categoryKey, bucket] of teamsByCategory.entries()) {
+    if (bucket.teams.length < 2) continue;
+
+    const groupsForBucket = Math.max(
+      1,
+      Math.min(numberOfGroups, Math.floor(bucket.teams.length / 2))
+    );
+
+    const groupNames = Array.from({ length: groupsForBucket }, (_, i) => {
+      const suffix = String.fromCharCode(65 + i);
+      return categoryKey === uncategorizedKey ? suffix : `${bucket.label} ${suffix}`;
+    });
+
+    bucket.teams.forEach((team, index) => {
+      const groupName = groupNames[index % groupsForBucket];
+      if (!groups[groupName]) {
+        groups[groupName] = [];
+      }
+      groups[groupName].push(team);
+    });
+  }
+
+  if (Object.keys(groups).length === 0) {
+    throw new BadRequestError(
+      'At least one category must have 2 or more teams to generate group matches',
+      'INSUFFICIENT_TEAMS_FOR_GROUPS'
+    );
+  }
   
   // Generate round-robin matches within each group
   const matches = [];

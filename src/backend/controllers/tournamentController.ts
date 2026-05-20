@@ -1475,7 +1475,7 @@ export const updatePaymentTransactionStatus = async (req: Request, res: Response
 
 /**
  * Generate group-stage matches for a groups_knockout tournament.
- * Only allowed once registration is closed (status = registration_closed or in_progress).
+ * Only allowed once registration is closed (status = registration_closed).
  * Deletes and recreates only the group_stage matches, leaving knockout matches untouched.
  */
 export const generateGroupMatches = async (req: Request, res: Response) => {
@@ -1497,13 +1497,10 @@ export const generateGroupMatches = async (req: Request, res: Response) => {
   }
 
   // Group matches can only be generated once registration is closed
-  const allowedStatuses: string[] = [
-    TournamentStatus.REGISTRATION_CLOSED,
-    TournamentStatus.IN_PROGRESS,
-  ];
+  const allowedStatuses: string[] = [TournamentStatus.REGISTRATION_CLOSED];
   if (!allowedStatuses.includes(tournament.status)) {
     throw new BadRequestError(
-      'Group matches can only be generated after registration closes'
+      'Group matches can only be generated while registration is closed'
     );
   }
 
