@@ -4366,23 +4366,24 @@ describe('POST /api/tournaments/:id/matches/:matchId/score — groups_knockout a
         status: 'in_progress',
         autoGenerateBrackets: true,
       } as any);
-    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
-      ...mockMatch,
-      stage: 'group_stage',
-      status: 'scheduled',
-    } as any);
+    vi.mocked(prisma.tournamentMatch.findUnique)
+      .mockResolvedValueOnce({
+        ...mockMatch,
+        stage: 'group_stage',
+        status: 'scheduled',
+      } as any)
+      .mockResolvedValueOnce({
+        ...mockMatch,
+        stage: 'group_stage',
+        status: 'completed',
+        homeScore: 2,
+        awayScore: 1,
+      } as any);
     vi.mocked(prisma.tournamentMatch.updateMany).mockResolvedValue({ count: 1 } as any);
     vi.mocked(prisma.tournamentMatch.count)
       .mockResolvedValueOnce(8) // group matches
       .mockResolvedValueOnce(0) // incomplete group matches
       .mockResolvedValueOnce(0); // knockout matches
-    vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
-      ...mockMatch,
-      stage: 'group_stage',
-      status: 'completed',
-      homeScore: 2,
-      awayScore: 1,
-    } as any);
 
     const res = await request(app)
       .post('/api/tournaments/tournament-1/matches/match-1/score')
@@ -4398,6 +4399,7 @@ describe('PUT /api/tournaments/:id/matches/:matchId/referee — conflict checks'
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue({
       ...mockTournament,
       status: 'registration',
+      startDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
     } as any);
     vi.mocked(prisma.tournamentMatch.findUnique).mockResolvedValue({
       ...mockMatch,

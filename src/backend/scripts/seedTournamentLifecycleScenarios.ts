@@ -1,6 +1,6 @@
 import prisma from '../config/database';
 import * as tournamentService from '../services/tournamentService';
-import { BracketStage, MatchStatus, TournamentFormat, TournamentStatus } from '../../shared/types/tournament.types';
+import { BracketStage, MatchStatus, TournamentFormat } from '../../shared/types/tournament.types';
 
 const SCENARIO_PREFIX = '[Seed] Groups KO';
 const ORGANIZER_EMAIL = 'seed.tournament.lifecycle@teamly.local';
