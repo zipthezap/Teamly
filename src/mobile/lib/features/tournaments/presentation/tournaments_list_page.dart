@@ -197,7 +197,14 @@ class _TournamentCard extends StatelessWidget {
   String _formatStatus(TournamentModel t) {
     if (t.status == 'completed') return 'Done';
     if (t.status == 'in_progress' || t.status == 'active') {
-      return t.matches.isNotEmpty ? 'In Progress' : 'Forming Brackets';
+      final groupMatches =
+          t.matches.where((m) => m.stage == 'group_stage' || (m.stage == null && m.groupName != null)).toList();
+      final hasKnockout = t.matches.any((m) => m.stage != null && m.stage != 'group_stage');
+      final allGroupsDone = groupMatches.isNotEmpty && groupMatches.every((m) => m.status == 'completed');
+      if (t.format == 'groups_knockout' && allGroupsDone && !hasKnockout) {
+        return 'Forming Brackets';
+      }
+      return 'In Progress';
     }
     if (t.status == 'registration_closed') return 'Registration Closed';
     if (t.status == 'registration') return 'Registration Open';
