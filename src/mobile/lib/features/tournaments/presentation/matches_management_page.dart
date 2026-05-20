@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/error/error_utils.dart';
 import '../../../core/models/tournament_model.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../features/auth/state/auth_notifier.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
@@ -208,6 +209,337 @@ class _MatchesManagementPageState extends ConsumerState<MatchesManagementPage> {
     }
   }
 
+  Future<void> _startMatch(TournamentMatchModel match) async {
+    setState(() => _loading = true);
+    try {
+      await ref.read(tournamentRepositoryProvider).startMatch(widget.tournamentId, match.id);
+      _refresh();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Match started')),
+        );
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _assignReferee(TournamentModel tournament, TournamentMatchModel match) async {
+    String? refereeTeamId = match.refereeTeamId;
+    final teams = tournament.teams;
+    final payload = await showDialog<String?>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: const Text('Assign Referee Team'),
+          content: DropdownButtonFormField<String?>(
+            value: refereeTeamId,
+            decoration: const InputDecoration(labelText: 'Referee team'),
+            items: [
+              const DropdownMenuItem<String?>(value: null, child: Text('None')),
+              ...teams.map((t) => DropdownMenuItem<String?>(value: t.id, child: Text(t.name))),
+            ],
+            onChanged: (v) => setS(() => refereeTeamId = v),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, refereeTeamId), child: const Text('Save')),
+          ],
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (payload == null && match.refereeTeamId == null) return;
+
+    setState(() => _loading = true);
+    try {
+      await ref.read(tournamentRepositoryProvider).assignReferee(widget.tournamentId, match.id, payload);
+      _refresh();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Referee updated')));
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _assignScorekeeper(TournamentMatchModel match) async {
+    final userIdCtrl = TextEditingController(text: match.scorekeeperUserId ?? '');
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Assign Scorekeeper'),
+        content: TextField(
+          controller: userIdCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Scorekeeper User ID',
+            helperText: 'Leave empty to clear assignment',
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    setState(() => _loading = true);
+    try {
+      final userId = userIdCtrl.text.trim();
+      await ref.read(tournamentRepositoryProvider).assignScorekeeper(
+            widget.tournamentId,
+            match.id,
+            userId.isEmpty ? null : userId,
+          );
+      _refresh();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Scorekeeper updated')));
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _createIncident(TournamentMatchModel match) async {
+    final typeCtrl = TextEditingController();
+    final descriptionCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Report Incident'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: typeCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Incident type (optional)',
+                  hintText: 'injury, misconduct, equipment, weather...',
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: descriptionCtrl,
+                minLines: 3,
+                maxLines: 6,
+                decoration: const InputDecoration(labelText: 'Description *'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Submit')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    final description = descriptionCtrl.text.trim();
+    if (description.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Description is required')),
+      );
+      return;
+    }
+
+    setState(() => _loading = true);
+    try {
+      await ref.read(tournamentRepositoryProvider).createMatchIncident(
+            widget.tournamentId,
+            match.id,
+            incidentType: typeCtrl.text.trim().isEmpty ? null : typeCtrl.text.trim(),
+            description: description,
+          );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Incident reported')));
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _viewIncidents(TournamentMatchModel match) async {
+    setState(() => _loading = true);
+    try {
+      final incidents =
+          await ref.read(tournamentRepositoryProvider).getMatchIncidents(widget.tournamentId, match.id);
+      if (!mounted) return;
+
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (ctx) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: incidents.isEmpty
+                ? const SizedBox(
+                    height: 120,
+                    child: Center(child: Text('No incidents reported for this match')),
+                  )
+                : ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: incidents.length,
+                    separatorBuilder: (_, __) => const Divider(height: 16),
+                    itemBuilder: (_, i) {
+                      final incident = incidents[i];
+                      final status = (incident['status'] ?? '').toString();
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            (incident['incidentType'] ?? 'other').toString(),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 4),
+                          Text((incident['description'] ?? '').toString()),
+                          const SizedBox(height: 6),
+                          Text('Status: $status'),
+                          if (status == 'open')
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: () async {
+                                  await ref.read(tournamentRepositoryProvider).resolveMatchIncident(
+                                        widget.tournamentId,
+                                        incident['id'].toString(),
+                                        status: 'resolved',
+                                      );
+                                  if (ctx.mounted) Navigator.pop(ctx);
+                                },
+                                child: const Text('Resolve'),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+          ),
+        ),
+      );
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _showQrCheckInTools(TournamentModel tournament) async {
+    String? teamId = tournament.teams.isNotEmpty ? tournament.teams.first.id : null;
+    final checkInTokenCtrl = TextEditingController();
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: const Text('QR Check-In Tools'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Generate token for team'),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: teamId,
+                  items: tournament.teams
+                      .map((t) => DropdownMenuItem(value: t.id, child: Text(t.name)))
+                      .toList(),
+                  onChanged: (v) => setS(() => teamId = v),
+                ),
+                const SizedBox(height: 8),
+                FilledButton.tonal(
+                  onPressed: teamId == null
+                      ? null
+                      : () async {
+                          final response = await ref
+                              .read(tournamentRepositoryProvider)
+                              .generateCheckInQrToken(widget.tournamentId, teamId!);
+                          if (!ctx.mounted) return;
+                          final token = (response['checkInToken'] ?? '').toString();
+                          await showDialog<void>(
+                            context: ctx,
+                            builder: (_) => AlertDialog(
+                              title: const Text('Check-In Token'),
+                              content: SelectableText(token),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(_, true),
+                                  child: const Text('Close'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                  child: const Text('Generate Token'),
+                ),
+                const Divider(height: 20),
+                TextField(
+                  controller: checkInTokenCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Check-in token',
+                    hintText: 'Paste scanned QR token',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                FilledButton(
+                  onPressed: () async {
+                    final token = checkInTokenCtrl.text.trim();
+                    if (token.isEmpty) return;
+                    await ref.read(tournamentRepositoryProvider).checkInViaQrToken(widget.tournamentId, token);
+                    if (!ctx.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Team checked in successfully')),
+                    );
+                    Navigator.pop(ctx);
+                  },
+                  child: const Text('Check In Team'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tournamentAsync = ref.watch(tournamentDetailProvider(widget.tournamentId));
@@ -222,12 +554,23 @@ class _MatchesManagementPageState extends ConsumerState<MatchesManagementPage> {
         ),
       ),
       data: (tournament) {
+        final authState = ref.watch(authNotifierProvider);
+        final currentUserId = authState.user?.id ?? '';
         final matches = tournament.matches;
         final byRound = _matchesByRound(matches);
         final canManageStructure =
             !_loading && canManageTournamentAdminActions(tournament.status);
         return Scaffold(
-          appBar: AppBar(title: const Text('Matches')),
+          appBar: AppBar(
+            title: const Text('Matches'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.qr_code_2_outlined),
+                tooltip: 'QR check-in tools',
+                onPressed: () => _showQrCheckInTools(tournament),
+              ),
+            ],
+          ),
           floatingActionButton: FloatingActionButton(
             onPressed: canManageStructure ? () => _showMatchDialog(tournament) : null,
             tooltip: 'Add match',
@@ -243,14 +586,24 @@ class _MatchesManagementPageState extends ConsumerState<MatchesManagementPage> {
                         for (final entry in byRound.entries) ...[
                           UiSectionTitle(entry.key.isEmpty ? 'Unassigned' : entry.key),
                           const SizedBox(height: 8),
-                           for (final m in entry.value) _MatchManagementTile(
-                             match: m,
-                             onEdit: canManageStructure
-                                 ? () => _showMatchDialog(tournament, match: m)
-                                 : null,
-                             onScore: () => _showScoreDialog(m),
-                             onDelete: canManageStructure ? () => _deleteMatch(m) : null,
-                           ),
+                            for (final m in entry.value) _MatchManagementTile(
+                              match: m,
+                              onEdit: canManageStructure
+                                  ? () => _showMatchDialog(tournament, match: m)
+                                  : null,
+                              onScore: () => _showScoreDialog(m),
+                              onDelete: canManageStructure ? () => _deleteMatch(m) : null,
+                              onStart: () => _startMatch(m),
+                              onAssignReferee: canManageStructure
+                                  ? () => _assignReferee(tournament, m)
+                                  : null,
+                              onAssignScorekeeper: canManageStructure
+                                  ? () => _assignScorekeeper(m)
+                                  : null,
+                              onReportIncident: () => _createIncident(m),
+                              onViewIncidents: () => _viewIncidents(m),
+                              currentUserId: currentUserId,
+                            ),
                           const SizedBox(height: 8),
                         ],
                         const SizedBox(height: 80),
@@ -268,17 +621,34 @@ class _MatchManagementTile extends StatelessWidget {
     required this.onEdit,
     required this.onScore,
     required this.onDelete,
+    required this.onStart,
+    required this.onAssignReferee,
+    required this.onAssignScorekeeper,
+    required this.onReportIncident,
+    required this.onViewIncidents,
+    required this.currentUserId,
   });
 
   final TournamentMatchModel match;
   final VoidCallback? onEdit;
   final VoidCallback onScore;
   final VoidCallback? onDelete;
+  final VoidCallback onStart;
+  final VoidCallback? onAssignReferee;
+  final VoidCallback? onAssignScorekeeper;
+  final VoidCallback onReportIncident;
+  final VoidCallback onViewIncidents;
+  final String currentUserId;
 
   @override
   Widget build(BuildContext context) {
     final m = match;
     final hasScore = m.scoreA != null && m.scoreB != null;
+    final showStartControl = m.status == 'scheduled' || m.status == 'in_progress';
+    final isAssignedScorekeeper = m.scorekeeperUserId == currentUserId;
+    // Scheduled matches can always be started; already-live matches only expose
+    // the action to the assigned scorekeeper context.
+    final canStartByCurrentUser = m.status == 'scheduled' || (m.status == 'in_progress' && isAssignedScorekeeper);
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
@@ -324,10 +694,38 @@ class _MatchManagementTile extends StatelessWidget {
                 style: TextStyle(fontSize: 12, color: AppThemeTokens.textMuted(context)),
               ),
             ],
+            if (m.refereeTeamName != null || m.scorekeeperUserName != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                [
+                  if (m.refereeTeamName != null) 'Referee: ${m.refereeTeamName}',
+                  if (m.scorekeeperUserName != null) 'Scorekeeper: ${m.scorekeeperUserName}',
+                ].join(' • '),
+                style: TextStyle(fontSize: 12, color: AppThemeTokens.textMuted(context)),
+              ),
+            ],
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                if (showStartControl)
+                  OutlinedButton.icon(
+                    icon: Icon(
+                      m.status == 'in_progress' ? Icons.play_circle : Icons.play_arrow,
+                      size: 16,
+                    ),
+                    label: Text(
+                      m.status == 'in_progress' ? 'Live' : 'Start',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: canStartByCurrentUser ? onStart : null,
+                  ),
+                if (showStartControl) const SizedBox(width: 8),
                 OutlinedButton.icon(
                   icon: Icon(hasScore ? Icons.edit_note : Icons.sports_score_outlined, size: 16),
                   label: Text(hasScore ? 'Edit Score' : 'Set Score', style: const TextStyle(fontSize: 12)),
@@ -344,6 +742,43 @@ class _MatchManagementTile extends StatelessWidget {
                   tooltip: 'Edit match',
                   onPressed: onEdit,
                   visualDensity: VisualDensity.compact,
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_horiz, size: 18),
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'assign_referee':
+                        onAssignReferee?.call();
+                        break;
+                      case 'assign_scorekeeper':
+                        onAssignScorekeeper?.call();
+                        break;
+                      case 'report_incident':
+                        onReportIncident();
+                        break;
+                      case 'view_incidents':
+                        onViewIncidents();
+                        break;
+                    }
+                  },
+                  itemBuilder: (ctx) => [
+                    const PopupMenuItem(
+                      value: 'assign_referee',
+                      child: Text('Assign referee team'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'assign_scorekeeper',
+                      child: Text('Assign scorekeeper'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'report_incident',
+                      child: Text('Report incident'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'view_incidents',
+                      child: Text('View incidents'),
+                    ),
+                  ],
                 ),
                 IconButton(
                   icon: Icon(Icons.delete_outline, size: 18, color: Theme.of(context).colorScheme.error),
