@@ -139,6 +139,7 @@ class _InvitationsTabState extends ConsumerState<_InvitationsTab> {
         return RefreshIndicator(
           onRefresh: () async => ref.invalidate(userInvitationsProvider),
           child: ListView.builder(
+            primary: false,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
             itemCount: invitations.length,
             itemBuilder: (context, i) {
@@ -221,6 +222,7 @@ class _MyRequestsTabState extends ConsumerState<_MyRequestsTab> {
         return RefreshIndicator(
           onRefresh: () async => ref.invalidate(myJoinRequestsProvider),
           child: ListView.builder(
+            primary: false,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
             itemCount: requests.length,
             itemBuilder: (context, i) {

@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart'
-  show kIsWeb, defaultTargetPlatform, TargetPlatform, debugPrint;
+  show kIsWeb, debugPrint;
 import 'package:flutter/services.dart' show MissingPluginException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
@@ -98,18 +98,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> _initAuth() async {
+    final token = await _repo.getToken();
+    if (token == null || token.isEmpty) {
+      state = const AuthState.unauthenticated();
+      return;
+    }
+
     try {
-      final token = await _repo.getToken();
-      if (token != null && token.isNotEmpty) {
-        final user = await _repo.getProfile();
-        state = AuthState(
-          status: AuthStatus.authenticated,
-          user: user,
-          isLoading: false,
-        );
-      } else {
-        state = const AuthState.unauthenticated();
+      final user = await _repo.getProfile();
+      state = AuthState(
+        status: AuthStatus.authenticated,
+        user: user,
+        isLoading: false,
+      );
+    } on DioException catch (e) {
+      if (_shouldClearStoredSession(e)) {
+        await _repo.logout();
+        _invalidateNotificationState();
       }
+      state = const AuthState.unauthenticated();
     } catch (_) {
       state = const AuthState.unauthenticated();
     }
@@ -430,6 +437,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final msg = e.toString();
     if (msg.startsWith('Exception: ')) return msg.substring(11);
     return msg;
+  }
+
+  bool _shouldClearStoredSession(DioException error) {
+    final statusCode = error.response?.statusCode;
+    if (statusCode == 401 || statusCode == 403 || statusCode == 404) {
+      return true;
+    }
+
+    final inner = error.error;
+    if (inner is AppException) {
+      final innerStatus = inner.statusCode;
+      if (innerStatus == 401 || innerStatus == 403 || innerStatus == 404) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }
 

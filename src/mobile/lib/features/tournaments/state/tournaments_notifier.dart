@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/error/app_exception.dart';
 import '../../../core/models/tournament_model.dart';
+import '../../auth/state/auth_notifier.dart';
 import '../data/tournament_repository_impl.dart';
 
 // ---------------------------------------------------------------------------
@@ -43,6 +44,12 @@ final tournamentDetailProvider =
 
 final myInvitationsCountProvider =
     FutureProvider<int>((ref) async {
+  final authState = ref.watch(authNotifierProvider);
+  if (!authState.isAuthenticated || authState.user == null) {
+    // No authenticated user context yet; avoid hitting a protected endpoint.
+    return 0;
+  }
+
   try {
     final invites = await ref.watch(tournamentRepositoryProvider).getMyInvitations();
     return invites.where((i) => (i['status'] as String?) == 'pending').length;
