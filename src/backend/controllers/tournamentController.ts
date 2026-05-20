@@ -57,6 +57,13 @@ const isTournamentEditLocked = (tournament: { status: string; startDate: Date })
     return true;
   }
 
+  // registration_closed = deadline passed but tournament hasn't started yet.
+  // General edits (name, dates, deadline) are still allowed until startDate.
+  // Pool/category management is also allowed so admins can configure groups.
+  if (tournament.status === TournamentStatus.REGISTRATION_CLOSED) {
+    return new Date() >= new Date(tournament.startDate);
+  }
+
   return new Date() >= new Date(tournament.startDate);
 };
 
@@ -1211,12 +1218,109 @@ export const batchUpdateTeamPayments = async (req: Request, res: Response) => {
 // ==================== BRACKET & MATCH MANAGEMENT ====================
 
 /**
+ * Generate group-stage matches for a groups_knockout tournament.
+ * Only allowed once registration is closed (status = registration_closed or in_progress).
+ * Deletes and recreates only the group_stage matches, leaving knockout matches untouched.
+ */
+export const generateGroupMatches = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+  const { numberOfGroups, teamsPerGroup, usePoolAssignments, forceGenerate } = req.body;
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can generate group matches');
+  }
+
+  if (String(tournament.format) !== TournamentFormat.GROUPS_KNOCKOUT) {
+    throw new BadRequestError('Group match generation is only available for groups_knockout tournaments');
+  }
+
+  // Group matches can only be generated once registration is closed
+  const allowedStatuses: string[] = [
+    TournamentStatus.REGISTRATION_CLOSED,
+    TournamentStatus.IN_PROGRESS,
+  ];
+  if (!allowedStatuses.includes(tournament.status)) {
+    throw new BadRequestError(
+      'Group matches can only be generated after registration closes'
+    );
+  }
+
+  if (
+    tournament.status === TournamentStatus.COMPLETED ||
+    tournament.status === TournamentStatus.CANCELLED
+  ) {
+    throw new BadRequestError('Cannot generate group matches for a completed or cancelled tournament');
+  }
+
+  // Enforce payment gate
+  if (tournament.requirePaymentForBrackets && !forceGenerate) {
+    const unpaidCount = await prisma.tournamentTeam.count({
+      where: { tournamentId: id, paymentStatus: { notIn: ['paid', 'waived'] } },
+    });
+    if (unpaidCount > 0) {
+      throw new BadRequestError(
+        `${unpaidCount} team(s) have not completed payment. Mark all teams as paid/waived or use forceGenerate to override.`
+      );
+    }
+  }
+
+  // Delete existing group-stage matches and their standings only
+  const existingGroupMatches = await prisma.tournamentMatch.count({
+    where: { tournamentId: id, stage: 'group_stage' }
+  });
+  const isRegeneration = existingGroupMatches > 0;
+
+  if (isRegeneration) {
+    await prisma.$transaction([
+      // Delete only group-stage standings to avoid clobbering knockout standings
+      prisma.tournamentStanding.deleteMany({ where: { tournamentId: id, groupName: { not: null } } }),
+      prisma.tournamentMatch.deleteMany({ where: { tournamentId: id, stage: 'group_stage' } }),
+    ]);
+  }
+
+  let result;
+  if (usePoolAssignments) {
+    result = await tournamentService.generatePoolAwareBrackets(id, {
+      fallbackToRoundRobin: false,
+    });
+  } else {
+    let resolvedGroups = numberOfGroups;
+    if (!resolvedGroups && teamsPerGroup) {
+      const teamCount = await prisma.tournamentTeam.count({ where: { tournamentId: id } });
+      resolvedGroups = Math.max(2, Math.floor(teamCount / teamsPerGroup));
+    }
+    result = await tournamentService.generateGroupsKnockoutBrackets(id, resolvedGroups || 4);
+  }
+
+  await reconcileTournamentLifecycleStatus(id, 'generate_group_matches');
+
+  logger.info('Group matches generated', 'TournamentController', {
+    tournamentId: id,
+    userId,
+    isRegeneration,
+  });
+
+  res.json({
+    message: isRegeneration ? 'Group matches regenerated successfully' : 'Group matches generated successfully',
+    matchesCreated: result.count,
+  });
+};
+
+/**
  * Generate tournament brackets
+ * For groups_knockout: generates only the knockout stage, requiring all group matches to be done.
+ * For other formats: generates the full bracket.
  */
 export const generateBrackets = async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId = req.user!.id;
-  const { numberOfGroups, teamsPerGroup, usePoolAssignments, forceGenerate } = req.body;
+  const { usePoolAssignments, forceGenerate } = req.body;
 
   const tournament = ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
@@ -1228,7 +1332,7 @@ export const generateBrackets = async (req: Request, res: Response) => {
   }
 
   // Brackets can be generated or regenerated at any point while the tournament
-  // is active (draft → in_progress). Only block for completed/cancelled.
+  // is active. Only block for completed/cancelled.
   if (
     tournament.status === TournamentStatus.COMPLETED ||
     tournament.status === TournamentStatus.CANCELLED
@@ -1236,6 +1340,48 @@ export const generateBrackets = async (req: Request, res: Response) => {
     throw new BadRequestError('Brackets can only be generated or regenerated for active tournaments');
   }
 
+  // For groups_knockout: knockout brackets require all group matches to be completed.
+  if (String(tournament.format) === TournamentFormat.GROUPS_KNOCKOUT) {
+    const groupMatchCounts = await prisma.tournamentMatch.findMany({
+      where: { tournamentId: id, stage: 'group_stage' },
+      select: { status: true },
+    });
+
+    if (groupMatchCounts.length === 0) {
+      throw new BadRequestError(
+        'Group matches must be generated and completed before generating the knockout bracket. Use the "Generate Group Matches" action first.'
+      );
+    }
+
+    const incompleteGroupMatches = groupMatchCounts.filter((m) => m.status !== 'completed').length;
+    if (incompleteGroupMatches > 0) {
+      throw new BadRequestError(
+        `${incompleteGroupMatches} group match(es) are not yet completed. All group matches must be finished before generating the knockout bracket.`
+      );
+    }
+
+    // Delete existing knockout matches and regenerate from standings
+    await prisma.tournamentMatch.deleteMany({
+      where: { tournamentId: id, stage: { not: 'group_stage' } },
+    });
+
+    // Generate knockout bracket seeded from current standings
+    const result = await tournamentService.generateKnockoutFromStandings(id);
+
+    await reconcileTournamentLifecycleStatus(id, 'generate_knockout');
+
+    logger.info('Knockout brackets generated', 'TournamentController', {
+      tournamentId: id,
+      userId,
+    });
+
+    return res.json({
+      message: 'Knockout brackets generated successfully',
+      matchesCreated: result.count,
+    });
+  }
+
+  // Non-groups_knockout formats: existing full-bracket generation
   const existingMatches = await prisma.tournamentMatch.count({
     where: { tournamentId: id }
   });
@@ -1272,24 +1418,6 @@ export const generateBrackets = async (req: Request, res: Response) => {
     case TournamentFormat.ROUND_ROBIN:
       result = await tournamentService.generateRoundRobinBrackets(id);
       break;
-    case TournamentFormat.GROUPS_KNOCKOUT: {
-      // usePoolAssignments: use existing pool memberships as groups
-      // teamsPerGroup: auto-compute number of groups from team count
-      // numberOfGroups: explicit group count (default 4)
-      if (usePoolAssignments) {
-        result = await tournamentService.generatePoolAwareBrackets(id, {
-          fallbackToRoundRobin: false,
-        });
-      } else {
-        let resolvedGroups = numberOfGroups;
-        if (!resolvedGroups && teamsPerGroup) {
-          const teamCount = await prisma.tournamentTeam.count({ where: { tournamentId: id } });
-          resolvedGroups = Math.max(2, Math.floor(teamCount / teamsPerGroup));
-        }
-        result = await tournamentService.generateGroupsKnockoutBrackets(id, resolvedGroups || 4);
-      }
-      break;
-    }
     case 'pool':
       // For pool format: prefer pool-aware generation when pools are set up
       result = await tournamentService.generatePoolAwareBrackets(id);

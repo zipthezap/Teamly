@@ -111,24 +111,9 @@ class _GroupsKnockoutView extends StatelessWidget {
       );
     }
 
-    final projectedMatches = _buildProjectedKnockoutMatches(tournament);
-    if (projectedMatches.isNotEmpty) {
-      return ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const _StageSectionHeader(
-            title: 'Projected Playoffs',
-            subtitle: 'Top teams from groups are seeded into a 4, 8, or 16-team playoff bracket.',
-          ),
-          const SizedBox(height: 12),
-          _KnockoutBracketView(
-            matches: projectedMatches,
-            useGroupsKnockoutLabels: true,
-          ),
-        ],
-      );
-    }
-
+    // No knockout matches yet — this view should not normally be reached because
+    // the Brackets tab is hidden until knockout matches exist.  Show a
+    // descriptive placeholder in case it is navigated to directly.
     final groupMatches = tournament.matches
         .where((m) => m.stage == 'group_stage' || m.groupName != null)
         .toList();
@@ -140,8 +125,8 @@ class _GroupsKnockoutView extends StatelessWidget {
         _StageSectionHeader(
           title: 'Knockout Bracket',
           subtitle: allGroupMatchesCompleted
-              ? 'Waiting for group standings to seed the playoff bracket.'
-              : 'Complete group-stage matches to seed the playoff bracket.',
+              ? 'All group matches are done. Ask your tournament admin to generate the knockout bracket.'
+              : 'Complete all group-stage matches first, then the admin can generate the knockout bracket.',
         ),
         const SizedBox(height: 12),
         _KnockoutWaitingCard(allGroupMatchesCompleted: allGroupMatchesCompleted),

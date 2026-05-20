@@ -151,6 +151,12 @@ router.get('/invitations/:inviteToken', noCache, asyncHandler(tournamentControll
 
 // Bracket and match management
 router.post(
+  '/:id/generate-group-matches',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_BRACKETS),
+  asyncHandler(tournamentController.generateGroupMatches)
+);
+router.post(
   '/:id/generate-brackets',
   noCache,
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_BRACKETS),

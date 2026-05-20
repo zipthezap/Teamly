@@ -22,6 +22,7 @@ export enum TournamentFormat {
 export enum TournamentStatus {
   DRAFT = 'draft',
   REGISTRATION = 'registration',
+  REGISTRATION_CLOSED = 'registration_closed',
   IN_PROGRESS = 'in_progress',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled'

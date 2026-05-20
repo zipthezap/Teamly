@@ -199,14 +199,15 @@ class _TournamentCard extends StatelessWidget {
     if (t.status == 'in_progress' || t.status == 'active') {
       return t.matches.isNotEmpty ? 'In Progress' : 'Forming Brackets';
     }
+    if (t.status == 'registration_closed') return 'Registration Closed';
     if (t.status == 'registration') return 'Registration Open';
+    if (t.status == 'cancelled') return 'Cancelled';
     final now = DateTime.now();
     final hasOpened = t.registrationStartDate == null ||
         !now.isBefore(t.registrationStartDate!);
     final isClosed =
         t.registrationDeadline != null && now.isAfter(t.registrationDeadline!);
     if (hasOpened && isClosed) return 'Registration Closed';
-    if (t.status == 'cancelled') return 'Cancelled';
     return 'Draft';
   }
 
@@ -214,6 +215,8 @@ class _TournamentCard extends StatelessWidget {
     switch (s) {
       case 'registration':
         return Icons.app_registration_outlined;
+      case 'registration_closed':
+        return Icons.lock_clock_outlined;
       case 'in_progress':
       case 'active':
         return Icons.play_circle_outline;
@@ -237,6 +240,8 @@ class _TournamentCard extends StatelessWidget {
         return AppThemeTokens.error;
       case 'registration':
         return AppThemeTokens.warning;
+      case 'registration_closed':
+        return AppThemeTokens.error;
       default:
         return AppThemeTokens.primary500;
     }
@@ -253,6 +258,8 @@ class _TournamentCard extends StatelessWidget {
         return AppThemeTokens.errorBg;
       case 'registration':
         return AppThemeTokens.warningBg;
+      case 'registration_closed':
+        return AppThemeTokens.errorBg;
       default:
         return AppThemeTokens.primaryGlow;
     }

@@ -16,6 +16,13 @@ import '../state/tournaments_notifier.dart';
 
 const _kAccent = Color(0xFFFF9800);
 
+/// Returns true for matches that belong to the group (round-robin) stage.
+/// Checks both the `stage` field (preferred, set by current backend) and the
+/// legacy `groupName` field (for matches created by older backend versions).
+bool _isGroupStageMatch(TournamentMatchModel m) {
+  return m.stage == 'group_stage' || (m.stage == null && m.groupName != null);
+}
+
 bool _isTournamentStarted(TournamentModel tournament) {
   return tournament.status == 'in_progress' ||
       tournament.status == 'active' ||
@@ -33,7 +40,9 @@ String _statusStageLabel(TournamentModel tournament) {
     return hasMatches ? 'In Progress' : 'Forming Brackets';
   }
 
+  if (tournament.status == 'registration_closed') return 'Registration Closed';
   if (tournament.status == 'registration') return 'Registration Open';
+  if (tournament.status == 'cancelled') return 'Cancelled';
 
   final now = DateTime.now();
   final hasRegDates =
@@ -119,9 +128,22 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
         }
         final hasMyTeam = myTeam != null;
 
-        final hasBrackets = t.matches.isNotEmpty;
+        // Show Groups tab whenever there are any group-stage matches, or when
+        // the tournament has started (for other formats).
+        final hasGroupMatches = t.matches.any(_isGroupStageMatch);
+        final hasGroupsTab = isStarted || hasGroupMatches;
+
+        // Brackets tab: only shown when actual knockout matches exist (not just group stage).
+        final hasKnockoutMatches = t.matches.any(
+            (m) => m.stage != null && m.stage != 'group_stage');
+        // For non-groups_knockout formats show Brackets whenever there are matches.
+        final isGroupsKnockout = t.format == 'groups_knockout';
+        final hasBrackets = isGroupsKnockout
+            ? hasKnockoutMatches
+            : t.matches.isNotEmpty;
+
         final tabs = <Tab>[const Tab(text: 'Overview')];
-        if (isStarted) {
+        if (hasGroupsTab) {
           tabs.add(const Tab(text: 'Groups'));
         }
         if (hasBrackets) {
@@ -231,7 +253,7 @@ class _TournamentDetailPageState extends ConsumerState<TournamentDetailPage>
                   myTeam: myTeam,
                   onRefresh: refresh,
                 ),
-                if (isStarted) _ScoresTab(tournament: t),
+                if (hasGroupsTab) _ScoresTab(tournament: t),
                 if (hasBrackets)
                   _BracketsTab(tournament: t, currentUserId: currentUserId),
                 if (hasMyTeam)
@@ -697,6 +719,11 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                     ? () => _generateBrackets(context, t)
                     : null,
               ),
+              // groups_knockout: stage-aware generation actions
+              if (t.format == 'groups_knockout') ...[
+                _GroupMatchesButton(tournament: t, onRefresh: onRefresh),
+                _KnockoutBracketButton(tournament: t, onRefresh: onRefresh),
+              ],
             ]),
           ],
           const SizedBox(height: 32),
@@ -1057,6 +1084,221 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
     return m[f] ?? f;
   }
 
+}
+
+// ---------------------------------------------------------------------------
+// Stage-aware group-match generation button (groups_knockout only)
+// ---------------------------------------------------------------------------
+
+class _GroupMatchesButton extends ConsumerWidget {
+  const _GroupMatchesButton({required this.tournament, required this.onRefresh});
+
+  final TournamentModel tournament;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = tournament;
+    final canGenerate = t.status == 'registration_closed' || t.status == 'in_progress';
+    final hasGroupMatches = t.matches.any(_isGroupStageMatch);
+    final label = hasGroupMatches ? 'Regenerate Group Matches' : 'Generate Group Matches';
+
+    return OutlinedButton.icon(
+      icon: const Icon(Icons.table_chart_outlined, size: 16),
+      label: Text(label),
+      onPressed: canGenerate
+          ? () => _generate(context, ref)
+          : null,
+    );
+  }
+
+  Future<void> _generate(BuildContext context, WidgetRef ref) async {
+    final t = tournament;
+    final hasPools = t.pools.isNotEmpty && t.pools.any((p) => p.teams.isNotEmpty);
+    final poolSummary = t.pools
+        .where((p) => p.teams.isNotEmpty)
+        .map((p) => '${p.name} (${p.teams.length} teams)')
+        .join('\n');
+
+    int splitMode = hasPools ? 0 : 1;
+    final groupCtrl = TextEditingController(text: '4');
+    final teamCtrl = TextEditingController();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: const Text('Generate Group Matches'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (hasPools) ...[
+                  const Text('Group Assignment', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  RadioListTile<int>(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Use existing pool assignments'),
+                    subtitle: const Text('Each pool becomes its own group'),
+                    value: 2,
+                    groupValue: splitMode,
+                    onChanged: (v) => setS(() => splitMode = v!),
+                  ),
+                  RadioListTile<int>(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Split teams evenly into groups'),
+                    subtitle: const Text('Ignore current pool assignments'),
+                    value: 1,
+                    groupValue: splitMode,
+                    onChanged: (v) => setS(() => splitMode = v!),
+                  ),
+                  if (splitMode == 2 && poolSummary.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(poolSummary, style: const TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                ],
+                if (!hasPools || splitMode == 1) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: groupCtrl,
+                          decoration: const InputDecoration(labelText: 'Number of groups', isDense: true),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: teamCtrl,
+                          decoration: const InputDecoration(labelText: 'Teams per group (optional)', isDense: true),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Generate')),
+          ],
+        ),
+      ),
+    );
+
+    if (ok != true || !context.mounted) return;
+
+    int? numberOfGroups;
+    int? teamsPerGroup;
+    bool usePoolAssignments = false;
+
+    if (splitMode == 2) {
+      usePoolAssignments = true;
+    } else {
+      final parsedTeams = int.tryParse(teamCtrl.text.trim());
+      if (parsedTeams != null && parsedTeams >= 2) {
+        teamsPerGroup = parsedTeams;
+      } else {
+        numberOfGroups = int.tryParse(groupCtrl.text.trim()) ?? 4;
+      }
+    }
+
+    try {
+      await ref.read(tournamentRepositoryProvider).generateGroupMatches(
+        t.id,
+        numberOfGroups: numberOfGroups,
+        teamsPerGroup: teamsPerGroup,
+        usePoolAssignments: usePoolAssignments,
+      );
+      onRefresh();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Group matches generated!')));
+      }
+    } on Exception catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Knockout bracket generation button (groups_knockout, after group stage done)
+// ---------------------------------------------------------------------------
+
+class _KnockoutBracketButton extends ConsumerWidget {
+  const _KnockoutBracketButton({required this.tournament, required this.onRefresh});
+
+  final TournamentModel tournament;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = tournament;
+    final groupMatches = t.matches.where(_isGroupStageMatch).toList();
+    final allGroupDone =
+        groupMatches.isNotEmpty && groupMatches.every((m) => m.status == 'completed');
+    final hasKnockout = t.matches.any((m) => m.stage != null && m.stage != 'group_stage');
+
+    return OutlinedButton.icon(
+      icon: const Icon(Icons.emoji_events_outlined, size: 16),
+      label: Text(hasKnockout ? 'Regenerate Knockout' : 'Generate Knockout Bracket'),
+      onPressed: allGroupDone ? () => _generate(context, ref) : null,
+    );
+  }
+
+  Future<void> _generate(BuildContext context, WidgetRef ref) async {
+    final t = tournament;
+    final hasKnockout = t.matches.any((m) => m.stage != null && m.stage != 'group_stage');
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Generate Knockout Bracket'),
+        content: Text(
+          hasKnockout
+              ? 'This will regenerate the knockout bracket based on current group standings. Continue?'
+              : 'This will generate the knockout bracket from current group standings. Continue?',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Generate')),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+
+    try {
+      await ref.read(tournamentRepositoryProvider).generateBrackets(t.id);
+      onRefresh();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Knockout bracket generated!')));
+      }
+    } on Exception catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

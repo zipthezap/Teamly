@@ -483,6 +483,22 @@ class TournamentRepositoryImpl implements TournamentRepository {
     );
     return _requireMapData(response, 'generate brackets');
   }
+
+  @override
+  Future<Map<String, dynamic>> generateGroupMatches(
+      String tournamentId,
+      {int? numberOfGroups, int? teamsPerGroup, bool usePoolAssignments = false, bool forceGenerate = false}) async {
+    final body = <String, dynamic>{};
+    if (numberOfGroups != null) body['numberOfGroups'] = numberOfGroups;
+    if (teamsPerGroup != null) body['teamsPerGroup'] = teamsPerGroup;
+    if (usePoolAssignments) body['usePoolAssignments'] = true;
+    if (forceGenerate) body['forceGenerate'] = true;
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/tournaments/$tournamentId/generate-group-matches',
+      data: body,
+    );
+    return _requireMapData(response, 'generate group matches');
+  }
 }
 
 final tournamentRepositoryProvider = Provider<TournamentRepository>((ref) {

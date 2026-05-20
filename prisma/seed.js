@@ -2366,20 +2366,22 @@ async function main() {
   console.log('Created Montreal tournament with 4 pools and 2 categories');
 
   // Create teams for Pool A (Elite Division) - 4 teams (FULL)
+  // team-4a-0 is captained by alice (user1) so she can submit scores directly
   const teamNamesPool4A = [
     'Montreal Canadiens Jr', 'Quebec Nordiques Legacy', 'Ottawa Senators Elite', 'Toronto Maple Leafs Youth'
   ];
   const pool4ATeams = [];
   for (let i = 0; i < teamNamesPool4A.length; i++) {
+    const isCaptainAlice = i === 0;
     const team = await prisma.tournamentTeam.upsert({
       where: { id: `seed-team-4a-${i}` },
-      update: {},
+      update: isCaptainAlice ? { captainUserId: user1.id, captainName: user1.name, captainEmail: user1.email } : {},
       create: {
         id: `seed-team-4a-${i}`,
         name: teamNamesPool4A[i],
-        captainName: `Captain ${teamNamesPool4A[i]}`,
-        captainEmail: `captain.elite.${i}@montreal.hockey`,
-        captainUserId: null,
+        captainName: isCaptainAlice ? user1.name : `Captain ${teamNamesPool4A[i]}`,
+        captainEmail: isCaptainAlice ? user1.email : `captain.elite.${i}@montreal.hockey`,
+        captainUserId: isCaptainAlice ? user1.id : null,
         tournamentId: tournament4.id,
         poolId: pool4A.id,
         poolNumber: 1,
