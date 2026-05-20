@@ -113,7 +113,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
     } on DioException catch (e) {
       if (_shouldClearStoredSession(e)) {
-        await _repo.logout();
+        try {
+          await _repo.logout();
+        } catch (_) {
+          // Best-effort cleanup only during bootstrap.
+        }
         _invalidateNotificationState();
       }
       state = const AuthState.unauthenticated();

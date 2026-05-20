@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/error/app_exception.dart';
 import '../../../core/models/user_model.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/auth_token_store.dart';
@@ -11,6 +12,23 @@ class AuthRepositoryImpl implements AuthRepository {
 
   final Dio _dio;
   final AuthTokenStore _tokenStore;
+
+  bool _isIgnorableLogoutError(DioException error) {
+    final statusCode = error.response?.statusCode;
+    if (statusCode == 401 || statusCode == 403 || statusCode == 404) {
+      return true;
+    }
+
+    final inner = error.error;
+    if (inner is AppException) {
+      final innerStatus = inner.statusCode;
+      if (innerStatus == 401 || innerStatus == 403 || innerStatus == 404) {
+        return true;
+      }
+    }
+
+    return false;
+  }
 
   Map<String, dynamic> _requireData(
     Response<Map<String, dynamic>> response,
@@ -128,6 +146,11 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> logout() async {
     try {
       await _dio.post<void>('/auth/logout');
+    } on DioException catch (e) {
+      // Treat stale/invalid sessions as already logged out.
+      if (!_isIgnorableLogoutError(e)) {
+        rethrow;
+      }
     } finally {
       await _tokenStore.clear();
     }
