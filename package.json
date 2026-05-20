@@ -14,6 +14,7 @@
     "prisma:studio": "prisma studio",
     "teamup:backfill-positions": "ts-node src/backend/scripts/backfillTeamUpPositions.ts",
     "tournaments:backfill-lifecycle-statuses": "ts-node src/backend/scripts/backfillTournamentLifecycleStatuses.ts",
+    "tournaments:seed-lifecycle-scenarios": "ts-node src/backend/scripts/seedTournamentLifecycleScenarios.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

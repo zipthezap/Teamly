@@ -429,6 +429,25 @@ class TournamentRepositoryImpl implements TournamentRepository {
         '/tournaments/$tournamentId/teams/$teamId/players/$playerId');
   }
 
+  @override
+  Future<Map<String, dynamic>> generateCheckInQrToken(
+      String tournamentId, String teamId) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/tournaments/$tournamentId/teams/$teamId/check-in/token',
+    );
+    return _requireMapData(response, 'generate check-in QR token');
+  }
+
+  @override
+  Future<Map<String, dynamic>> checkInViaQrToken(
+      String tournamentId, String token) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/tournaments/$tournamentId/check-in/qr',
+      data: {'token': token},
+    );
+    return _requireMapData(response, 'check in via QR token');
+  }
+
   // ---------------------------------------------------------------------------
   // Tournament update & status
   // ---------------------------------------------------------------------------
@@ -466,6 +485,77 @@ class TournamentRepositoryImpl implements TournamentRepository {
   @override
   Future<void> deleteMatch(String tournamentId, String matchId) async {
     await _dio.delete('/tournaments/$tournamentId/matches/$matchId');
+  }
+
+  @override
+  Future<void> assignReferee(
+      String tournamentId, String matchId, String? refereeTeamId) async {
+    await _dio.put<void>(
+      '/tournaments/$tournamentId/matches/$matchId/referee',
+      data: {'refereeTeamId': refereeTeamId},
+    );
+  }
+
+  @override
+  Future<void> assignScorekeeper(
+      String tournamentId, String matchId, String? scorekeeperUserId) async {
+    await _dio.put<void>(
+      '/tournaments/$tournamentId/matches/$matchId/scorekeeper',
+      data: {'scorekeeperUserId': scorekeeperUserId},
+    );
+  }
+
+  @override
+  Future<void> startMatch(String tournamentId, String matchId) async {
+    await _dio.put<void>('/tournaments/$tournamentId/matches/$matchId/start');
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getMatchIncidents(
+      String tournamentId, String matchId) async {
+    final response = await _dio.get<dynamic>(
+      '/tournaments/$tournamentId/matches/$matchId/incidents',
+    );
+    return _extractList(response.data)
+        .map((e) => e as Map<String, dynamic>)
+        .toList();
+  }
+
+  @override
+  Future<Map<String, dynamic>> createMatchIncident(
+    String tournamentId,
+    String matchId, {
+    String? incidentType,
+    required String description,
+    int? slaMinutes,
+  }) async {
+    final body = <String, dynamic>{'description': description};
+    if (incidentType != null && incidentType.trim().isNotEmpty) {
+      body['incidentType'] = incidentType.trim();
+    }
+    if (slaMinutes != null) body['slaMinutes'] = slaMinutes;
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/tournaments/$tournamentId/matches/$matchId/incidents',
+      data: body,
+    );
+    return _requireMapData(response, 'create match incident');
+  }
+
+  @override
+  Future<Map<String, dynamic>> resolveMatchIncident(
+    String tournamentId,
+    String incidentId, {
+    required String status,
+    String? resolution,
+  }) async {
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/tournaments/$tournamentId/incidents/$incidentId/resolve',
+      data: {
+        'status': status,
+        if (resolution != null) 'resolution': resolution,
+      },
+    );
+    return _requireMapData(response, 'resolve match incident');
   }
 
   @override

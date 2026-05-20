@@ -58,6 +58,7 @@ const TOURNAMENT_PAYMENT_TRANSACTION_STATUSES = Object.values(TournamentPaymentT
 const DEFAULT_INCIDENT_SLA_MINUTES = 30;
 const MAX_INCIDENT_DESCRIPTION_LENGTH = 1000;
 const SHARE_TOKEN_BYTES = 24; // 48 hex chars — used for both QR check-in tokens and public share tokens
+const DEFAULT_REFEREE_REST_WINDOW_MINUTES = 15;
 
 // Lifecycle helpers live in tournamentService; alias for brevity within this file.
 const syncTournamentAutoStatus = tournamentService.syncTournamentAutoStatus;
@@ -131,6 +132,63 @@ const hasScheduleOverlap = (
   const endA = new Date(startA.getTime() + durationMinutesA * 60_000);
   const endB = new Date(startB.getTime() + durationMinutesB * 60_000);
   return startA < endB && startB < endA;
+};
+
+const getRequiredRestGapMinutes = (
+  startA: Date,
+  durationMinutesA: number,
+  startB: Date,
+  durationMinutesB: number
+): number => {
+  const endA = new Date(startA.getTime() + durationMinutesA * 60_000);
+  const endB = new Date(startB.getTime() + durationMinutesB * 60_000);
+  if (hasScheduleOverlap(startA, durationMinutesA, startB, durationMinutesB)) {
+    return 0;
+  }
+  if (endA <= startB) {
+    return Math.max(0, Math.floor((startB.getTime() - endA.getTime()) / 60_000));
+  }
+  return Math.max(0, Math.floor((startA.getTime() - endB.getTime()) / 60_000));
+};
+
+const maybeAutoGenerateGroupsKnockoutBrackets = async (
+  tournamentId: string
+): Promise<void> => {
+  const tournament = await prisma.tournament.findUnique({
+    where: { id: tournamentId },
+    select: {
+      id: true,
+      status: true,
+      format: true,
+      autoGenerateBrackets: true,
+    },
+  });
+  if (!tournament) return;
+  if (String(tournament.format) !== TournamentFormat.GROUPS_KNOCKOUT) return;
+  if (!tournament.autoGenerateBrackets) return;
+  if (tournament.status === TournamentStatus.CANCELLED || tournament.status === TournamentStatus.COMPLETED) return;
+
+  const [groupMatchCount, incompleteGroupMatchCount, knockoutMatchCount] = await Promise.all([
+    prisma.tournamentMatch.count({
+      where: { tournamentId, stage: BracketStage.GROUP_STAGE },
+    }),
+    prisma.tournamentMatch.count({
+      where: { tournamentId, stage: BracketStage.GROUP_STAGE, status: { not: MatchStatus.COMPLETED } },
+    }),
+    prisma.tournamentMatch.count({
+      where: { tournamentId, stage: { not: BracketStage.GROUP_STAGE } },
+    }),
+  ]);
+
+  if (groupMatchCount === 0 || incompleteGroupMatchCount > 0 || knockoutMatchCount > 0) return;
+
+  const result = await tournamentService.generateKnockoutFromStandings(tournamentId);
+  await reconcileTournamentLifecycleStatus(tournamentId, 'auto_generate_knockout');
+
+  logger.info('Auto-generated knockout bracket from completed group stage', 'TournamentController', {
+    tournamentId,
+    matchesCreated: result.count,
+  });
 };
 
 const mapPaymentTransactionStatusToTeamPaymentStatus = (
@@ -502,7 +560,9 @@ export const getTournament = async (req: Request, res: Response) => {
       matches: {
         include: {
           homeTeam: true,
-          awayTeam: true
+          awayTeam: true,
+          refereeTeam: { select: { id: true, name: true } },
+          scorekeeper: { select: { id: true, name: true, email: true } },
         },
         orderBy: [
           { stage: 'asc' },
@@ -1849,6 +1909,7 @@ export const submitScore = async (req: Request, res: Response) => {
     await tournamentService.advanceWinners(id, match.stage as BracketStage);
   }
 
+  await maybeAutoGenerateGroupsKnockoutBrackets(id);
   await reconcileTournamentLifecycleStatus(id, 'submit_score');
 
   logger.info('Match score submitted', 'TournamentController', {
@@ -1938,6 +1999,7 @@ export const adminUpdateScore = async (req: Request, res: Response) => {
     await tournamentService.advanceWinners(id, match.stage as BracketStage);
   }
 
+  await maybeAutoGenerateGroupsKnockoutBrackets(id);
   await reconcileTournamentLifecycleStatus(id, 'admin_update_score');
 
   logger.info('Match score overridden by admin', 'TournamentController', {
@@ -2283,6 +2345,49 @@ export const assignReferee = async (req: Request, res: Response) => {
     });
     if (!refereeTeam) {
       throw new BadRequestError('Invalid referee team ID or team does not belong to this tournament');
+    }
+
+    if (match.scheduledAt) {
+      const relatedMatches = await prisma.tournamentMatch.findMany({
+        where: {
+          tournamentId: id,
+          id: { not: match.id },
+          status: { not: MatchStatus.CANCELLED },
+          scheduledAt: { not: null },
+          OR: [
+            { homeTeamId: refereeTeamId },
+            { awayTeamId: refereeTeamId },
+            { refereeTeamId },
+          ],
+        },
+        select: {
+          id: true,
+          scheduledAt: true,
+          scheduledDurationMinutes: true,
+        },
+      });
+
+      const currentDuration = match.scheduledDurationMinutes ?? DEFAULT_MATCH_DURATION_MINUTES;
+      for (const related of relatedMatches) {
+        if (!related.scheduledAt) continue;
+        const relatedDuration = related.scheduledDurationMinutes ?? DEFAULT_MATCH_DURATION_MINUTES;
+        if (hasScheduleOverlap(match.scheduledAt, currentDuration, related.scheduledAt, relatedDuration)) {
+          throw new BadRequestError(
+            `Referee assignment conflict: team already assigned in overlapping match ${related.id}`
+          );
+        }
+        const restGap = getRequiredRestGapMinutes(
+          match.scheduledAt,
+          currentDuration,
+          related.scheduledAt,
+          relatedDuration
+        );
+        if (restGap < DEFAULT_REFEREE_REST_WINDOW_MINUTES) {
+          throw new BadRequestError(
+            `Referee assignment conflict: team needs at least ${DEFAULT_REFEREE_REST_WINDOW_MINUTES} minutes rest between assignments (conflicts with match ${related.id})`
+          );
+        }
+      }
     }
   }
 
