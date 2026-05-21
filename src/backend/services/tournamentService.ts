@@ -589,12 +589,15 @@ export const isRegisteredPlayer = async (teamId: string, userId: string): Promis
  * - Registered player on the referee team
  */
 export const canSubmitScore = async (
-  match: { homeTeamId: string; awayTeamId: string; refereeTeamId?: string | null },
+  match: { homeTeamId: string; awayTeamId: string; refereeTeamId?: string | null; scorekeeperUserId?: string | null },
   tournament: { id: string; organizerId: string },
   userId: string
 ): Promise<boolean> => {
   // Check if organizer (no DB query needed)
   if (tournament.organizerId === userId) {
+    return true;
+  }
+  if (match.scorekeeperUserId === userId) {
     return true;
   }
 

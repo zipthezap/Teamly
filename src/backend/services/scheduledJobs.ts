@@ -4,6 +4,12 @@ import { logger } from '../utils/logger';
 import prisma from '../config/database';
 import { sendEmailWithQueue } from './emailQueueService';
 import { expireOldInvitations, syncTournamentAutoStatus } from './tournamentService';
+import {
+  MatchIncidentStatus,
+  TournamentNotificationType,
+  TournamentPaymentStatus,
+  TournamentStatus,
+} from '../../shared/types/tournament.types';
 
 /**
  * Scheduled Jobs Service
@@ -269,6 +275,119 @@ export const sendDueEventReminders = async (): Promise<void> => {
   }
 };
 
+export const checkIncidentSlas = async (): Promise<void> => {
+  const now = new Date();
+
+  try {
+    const overdueIncidents = await prisma.tournamentMatchIncident.findMany({
+      where: {
+        status: MatchIncidentStatus.OPEN,
+        slaDeadline: { lt: now },
+      },
+      include: {
+        tournament: {
+          select: { id: true, name: true, organizerId: true },
+        },
+      },
+    });
+
+    for (const incident of overdueIncidents) {
+      const existing = await prisma.tournamentNotification.findFirst({
+        where: {
+          tournamentId: incident.tournamentId,
+          userId: incident.tournament.organizerId,
+          type: TournamentNotificationType.tournament_updated,
+          metadata: { path: ['slaIncidentId'], equals: incident.id },
+        },
+        select: { id: true },
+      });
+
+      if (existing) continue;
+
+      await prisma.tournamentNotification.create({
+        data: {
+          userId: incident.tournament.organizerId,
+          tournamentId: incident.tournamentId,
+          type: TournamentNotificationType.tournament_updated,
+          params: {
+            tournamentName: incident.tournament.name,
+            incidentStatus: 'sla_breached',
+          },
+          metadata: {
+            slaIncidentId: incident.id,
+            matchId: incident.matchId,
+          },
+        },
+      });
+    }
+  } catch (error) {
+    logger.error('Error checking incident SLA deadlines', 'ScheduledJobs', { error });
+  }
+};
+
+export const sendTournamentPaymentDeadlineReminders = async (): Promise<void> => {
+  const now = new Date();
+
+  try {
+    const tournaments = await prisma.tournament.findMany({
+      where: {
+        paymentDeadline: { lt: now },
+        status: { notIn: [TournamentStatus.CANCELLED, TournamentStatus.COMPLETED] },
+      },
+      select: {
+        id: true,
+        name: true,
+        paymentDeadline: true,
+        teams: {
+          where: {
+            captainUserId: { not: null },
+            paymentStatus: {
+              in: [TournamentPaymentStatus.UNPAID, TournamentPaymentStatus.PENDING],
+            },
+          },
+          select: { id: true, captainUserId: true },
+        },
+      },
+    });
+
+    for (const tournament of tournaments) {
+      for (const team of tournament.teams) {
+        if (!team.captainUserId) continue;
+
+        const existing = await prisma.tournamentNotification.findFirst({
+          where: {
+            tournamentId: tournament.id,
+            userId: team.captainUserId,
+            type: TournamentNotificationType.payment_reminder,
+            metadata: { path: ['paymentReminderKey'], equals: `payment_deadline:${tournament.id}:${team.id}` },
+          },
+          select: { id: true },
+        });
+
+        if (existing) continue;
+
+        await prisma.tournamentNotification.create({
+          data: {
+            userId: team.captainUserId,
+            tournamentId: tournament.id,
+            type: TournamentNotificationType.payment_reminder,
+            params: {
+              tournamentName: tournament.name,
+            },
+            metadata: {
+              paymentReminderKey: `payment_deadline:${tournament.id}:${team.id}`,
+              teamId: team.id,
+              paymentDeadline: tournament.paymentDeadline?.toISOString?.() ?? tournament.paymentDeadline,
+            },
+          },
+        });
+      }
+    }
+  } catch (error) {
+    logger.error('Error sending tournament payment deadline reminders', 'ScheduledJobs', { error });
+  }
+};
+
 /**
  * Start scheduled cleanup tasks
  */
@@ -288,12 +407,16 @@ export const startScheduledJobs = (): void => {
   // Check for due reminders every 5 minutes
   remindersInterval = setInterval(async () => {
     await sendDueEventReminders();
+    await checkIncidentSlas();
+    await sendTournamentPaymentDeadlineReminders();
   }, 5 * 60 * 1000); // 5 minutes
 
   // Run initial tasks
   runCleanupTasks();
   syncAllTournamentStatuses();
   sendDueEventReminders();
+  checkIncidentSlas();
+  sendTournamentPaymentDeadlineReminders();
 };
 
 /**

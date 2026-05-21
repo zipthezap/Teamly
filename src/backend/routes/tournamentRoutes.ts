@@ -169,6 +169,7 @@ router.post('/invitations/:inviteToken/decline', noCache, asyncHandler(tournamen
 router.get('/invitations/:inviteToken', noCache, asyncHandler(tournamentController.getInvitationByToken));
 
 // Bracket and match management
+router.get('/:id/matches', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getTournamentMatches));
 router.post(
   '/:id/generate-group-matches',
   noCache,
@@ -207,6 +208,12 @@ router.put(
   noCache,
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
   asyncHandler(tournamentController.updateMatch)
+);
+router.post(
+  '/:id/matches/:matchId/cancel',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
+  asyncHandler(tournamentController.cancelMatch)
 );
 router.delete(
   '/:id/matches/:matchId',
@@ -384,11 +391,29 @@ router.post(
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
   asyncHandler(tournamentController.createCourt)
 );
+router.put(
+  '/:id/courts/:courtId',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
+  asyncHandler(tournamentController.updateCourt)
+);
+router.delete(
+  '/:id/courts/:courtId',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
+  asyncHandler(tournamentController.deleteCourt)
+);
 router.post(
   '/:id/courts/:courtId/availability',
   noCache,
   requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
   asyncHandler(tournamentController.createCourtAvailability)
+);
+router.delete(
+  '/:id/courts/:courtId/availability/:availabilityId',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_MANAGE_MATCHES),
+  asyncHandler(tournamentController.deleteCourtAvailability)
 );
 router.put(
   '/:id/matches/:matchId/schedule',

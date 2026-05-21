@@ -445,6 +445,14 @@ describe('Tournament Service', () => {
       expect(result).toBe(true);
     });
 
+    it('should allow the assigned scorekeeper to submit score', async () => {
+      const matchWithScorekeeper = { ...match, scorekeeperUserId: 'user-1' };
+
+      const result = await canSubmitScore(matchWithScorekeeper, tournament as any, 'user-1');
+
+      expect(result).toBe(true);
+    });
+
     it('should deny submission for unrelated user', async () => {
       vi.mocked(prisma.tournamentTeam.findFirst)
         .mockResolvedValue(null);
