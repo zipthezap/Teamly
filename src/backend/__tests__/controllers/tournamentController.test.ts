@@ -4789,7 +4789,7 @@ describe('PUT /api/tournaments/:id/matches/:matchId/start (startMatch)', () => {
       status: 'registration_closed',
     } as any);
     vi.mocked(prisma.tournamentMatch.findFirst).mockResolvedValue(mockMatch as any);
-    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
 
     const res = await request(app)
       .put('/api/tournaments/tournament-1/matches/match-1/start')
@@ -4901,7 +4901,7 @@ describe('GET /api/tournaments/:id/registration-waitlist (getRegistrationWaitlis
 
 describe('POST /api/tournaments/:id/registration-waitlist (joinRegistrationWaitlist)', () => {
   it('returns 201 when team successfully joins the registration waitlist', async () => {
-    const fullTournament = { ...mockTournament, maxTeams: 2 };
+    const fullTournament = { ...mockTournament, status: 'registration', maxTeams: 2 };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(fullTournament as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue({ ...mockTeam, captainUserId: 'test-user-id' } as any);
     vi.mocked(prisma.tournamentTeam.count).mockResolvedValue(2); // at capacity
@@ -4919,7 +4919,7 @@ describe('POST /api/tournaments/:id/registration-waitlist (joinRegistrationWaitl
   });
 
   it('returns 400 when user has no registered team', async () => {
-    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue({ ...mockTournament, status: 'registration' } as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue(null);
 
     const res = await request(app)
@@ -4931,7 +4931,7 @@ describe('POST /api/tournaments/:id/registration-waitlist (joinRegistrationWaitl
   });
 
   it('returns 400 when tournament still has open spots', async () => {
-    const tournamentWithCap = { ...mockTournament, maxTeams: 8 };
+    const tournamentWithCap = { ...mockTournament, status: 'registration', maxTeams: 8 };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(tournamentWithCap as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue({ ...mockTeam, captainUserId: 'test-user-id' } as any);
     vi.mocked(prisma.tournamentTeam.count).mockResolvedValue(5); // below cap
@@ -4945,7 +4945,7 @@ describe('POST /api/tournaments/:id/registration-waitlist (joinRegistrationWaitl
   });
 
   it('returns 400 when team is already on the waitlist', async () => {
-    const fullTournament = { ...mockTournament, maxTeams: 2 };
+    const fullTournament = { ...mockTournament, status: 'registration', maxTeams: 2 };
     vi.mocked(prisma.tournament.findUnique).mockResolvedValue(fullTournament as any);
     vi.mocked(prisma.tournamentTeam.findFirst).mockResolvedValue({ ...mockTeam, captainUserId: 'test-user-id' } as any);
     vi.mocked(prisma.tournamentTeam.count).mockResolvedValue(2);

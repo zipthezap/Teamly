@@ -61,6 +61,7 @@ const SHARE_TOKEN_BYTES = 24; // 48 hex chars — used for both QR check-in toke
 // Minimum cool-down window between referee assignments to reduce back-to-back fatigue.
 const DEFAULT_REFEREE_REST_WINDOW_MINUTES = 15;
 const OVERLAP_GAP_INDICATOR = -1;
+type PoolWaitlistPromoterClient = Pick<typeof prisma, 'tournamentPoolWaitlist' | 'tournamentPool' | 'tournamentTeam'>;
 
 // Lifecycle helpers live in tournamentService; alias for brevity within this file.
 const syncTournamentAutoStatus = tournamentService.syncTournamentAutoStatus;
@@ -300,7 +301,7 @@ const notifyMatchResultToCaptains = async (
   }
 };
 
-const promoteFirstPoolWaitlistEntry = async (tx: any, poolId: string) => {
+const promoteFirstPoolWaitlistEntry = async (tx: PoolWaitlistPromoterClient, poolId: string) => {
   const firstWaitlistEntry = await tx.tournamentPoolWaitlist.findFirst({
     where: { poolId },
     orderBy: { position: 'asc' },
@@ -781,7 +782,10 @@ export const getTournament = async (req: Request, res: Response) => {
 
   // Apply goal-difference tiebreaker (GD = goalsFor - goalsAgainst) in memory,
   // consistent with getStandings. Prisma nested orderBy cannot express computed columns.
-  const sortedStandings = [...(syncedTournament.standings ?? [])].sort((a: any, b: any) => {
+  const sortedStandings = [...(syncedTournament.standings ?? [])].sort((
+    a: { points: number; goalsFor: number; goalsAgainst: number },
+    b: { points: number; goalsFor: number; goalsAgainst: number }
+  ) => {
     if (b.points !== a.points) return b.points - a.points;
     const gdA = a.goalsFor - a.goalsAgainst;
     const gdB = b.goalsFor - b.goalsAgainst;
@@ -5789,7 +5793,9 @@ export const submitTeamAnswers = async (req: Request, res: Response) => {
 
   // Validate that all submitted fieldIds belong to this tournament
   const submittedFieldIds = [...new Set(
-    answers.filter((a: any) => a.fieldId).map((a: any) => a.fieldId as string)
+    (answers as Array<{ fieldId?: string }>)
+      .filter((answer) => answer.fieldId)
+      .map((answer) => answer.fieldId as string)
   )];
   if (submittedFieldIds.length > 0) {
     const validFields = await prisma.tournamentRegistrationField.findMany({
