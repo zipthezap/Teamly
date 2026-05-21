@@ -331,7 +331,7 @@ export const sendTournamentPaymentDeadlineReminders = async (): Promise<void> =>
   try {
     const tournaments = await prisma.tournament.findMany({
       where: {
-        paymentDeadline: { lt: now },
+        paymentDeadline: { lte: now },
         status: { notIn: [TournamentStatus.CANCELLED, TournamentStatus.COMPLETED] },
       },
       select: {

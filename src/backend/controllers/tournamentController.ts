@@ -112,7 +112,7 @@ const assertTeamPaymentUpdateAllowed = (
 
   if (
     tournament.paymentDeadline &&
-    new Date() > new Date(tournament.paymentDeadline) &&
+    new Date() >= new Date(tournament.paymentDeadline) &&
     paymentStatus !== TournamentPaymentStatus.PAID &&
     paymentStatus !== TournamentPaymentStatus.WAIVED
   ) {
@@ -148,6 +148,26 @@ const parseTimeToMinutes = (time: string): number => {
     throw new BadRequestError('Time must be in HH:mm format');
   }
   return Number(match[1]) * 60 + Number(match[2]);
+};
+
+const normalizeRegistrationAnswers = (
+  answers: unknown
+): Array<{ fieldId: string; value: string }> => {
+  if (!Array.isArray(answers)) {
+    return [];
+  }
+
+  return answers
+    .filter((answer): answer is { fieldId?: string; value?: unknown } => (
+      !!answer &&
+      typeof answer === 'object' &&
+      'fieldId' in answer &&
+      typeof answer.fieldId === 'string'
+    ))
+    .map((answer) => ({
+      fieldId: answer.fieldId!.trim(),
+      value: String(answer.value ?? '').trim(),
+    }));
 };
 
 const hasScheduleOverlap = (
@@ -1549,7 +1569,7 @@ export const createTeamPaymentIntent = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only organizers/admins or team captain can create payment intents');
   }
 
-  if (tournament.paymentDeadline && new Date() > new Date(tournament.paymentDeadline)) {
+  if (tournament.paymentDeadline && new Date() >= new Date(tournament.paymentDeadline)) {
     throw new BadRequestError('Payment deadline has passed');
   }
 
@@ -4552,14 +4572,7 @@ export const selfRegisterTeam = async (req: Request, res: Response) => {
         throw new BadRequestError('You are already a participant in this tournament and cannot register another team');
       }
 
-      const normalizedAnswers = Array.isArray(answers)
-        ? answers
-            .filter((answer) => answer && typeof answer.fieldId === 'string')
-            .map((answer) => ({
-              fieldId: String(answer.fieldId).trim(),
-              value: String(answer.value ?? '').trim(),
-            }))
-        : [];
+      const normalizedAnswers = normalizeRegistrationAnswers(answers);
 
       const requiredFields = await tx.tournamentRegistrationField.findMany({
         where: { tournamentId: id, isRequired: true },
@@ -5793,9 +5806,7 @@ export const submitTeamAnswers = async (req: Request, res: Response) => {
 
   // Validate that all submitted fieldIds belong to this tournament
   const submittedFieldIds = [...new Set(
-    (answers as Array<{ fieldId?: string }>)
-      .filter((answer) => answer.fieldId)
-      .map((answer) => answer.fieldId as string)
+    normalizeRegistrationAnswers(answers).map((answer) => answer.fieldId)
   )];
   if (submittedFieldIds.length > 0) {
     const validFields = await prisma.tournamentRegistrationField.findMany({
@@ -6149,20 +6160,24 @@ export const startMatch = async (req: Request, res: Response) => {
     throw new BadRequestError(`Cannot start a match that is already ${match.status}`);
   }
 
-  const updated = await prisma.tournamentMatch.update({
-    where: { id: match.id },
-    data: {
-      status: MatchStatus.IN_PROGRESS,
-      startedAt: match.startedAt ?? new Date(),
-    },
-  });
-
-  if (canStartEarly) {
-    await prisma.tournament.update({
-      where: { id },
-      data: { status: TournamentStatus.IN_PROGRESS },
+  const updated = await prisma.$transaction(async (tx) => {
+    const updatedMatch = await tx.tournamentMatch.update({
+      where: { id: match.id },
+      data: {
+        status: MatchStatus.IN_PROGRESS,
+        startedAt: match.startedAt ?? new Date(),
+      },
     });
-  }
+
+    if (canStartEarly) {
+      await tx.tournament.update({
+        where: { id },
+        data: { status: TournamentStatus.IN_PROGRESS },
+      });
+    }
+
+    return updatedMatch;
+  });
 
   logger.info('Match started', 'TournamentController', { tournamentId: id, matchId, userId });
   res.json(updated);
