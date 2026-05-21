@@ -42,6 +42,7 @@ vi.mock('../../controllers/tournamentController', () => ({
   createTournament: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getTournaments: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getTournament: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  getTournamentMatches: vi.fn((req: any, res: any) => res.json({ ok: true })),
   updateTournament: vi.fn((req: any, res: any) => res.json({ ok: true })),
   deleteTournament: vi.fn((req: any, res: any) => res.json({ ok: true })),
   cancelTournament: vi.fn((req: any, res: any) => res.json({ ok: true })),
@@ -67,6 +68,7 @@ vi.mock('../../controllers/tournamentController', () => ({
   adminUpdateScore: vi.fn((req: any, res: any) => res.json({ ok: true })),
   createMatch: vi.fn((req: any, res: any) => res.json({ ok: true })),
   updateMatch: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  cancelMatch: vi.fn((req: any, res: any) => res.json({ ok: true })),
   deleteMatch: vi.fn((req: any, res: any) => res.json({ ok: true })),
   assignReferee: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getStandings: vi.fn((req: any, res: any) => res.json({ ok: true })),
@@ -111,7 +113,10 @@ vi.mock('../../controllers/tournamentController', () => ({
   getTournamentAnalytics: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getCourts: vi.fn((req: any, res: any) => res.json({ ok: true })),
   createCourt: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  updateCourt: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  deleteCourt: vi.fn((req: any, res: any) => res.json({ ok: true })),
   createCourtAvailability: vi.fn((req: any, res: any) => res.json({ ok: true })),
+  deleteCourtAvailability: vi.fn((req: any, res: any) => res.json({ ok: true })),
   scheduleMatchOnCourt: vi.fn((req: any, res: any) => res.json({ ok: true })),
   getRegistrationWaitlist: vi.fn((req: any, res: any) => res.json({ ok: true })),
   joinRegistrationWaitlist: vi.fn((req: any, res: any) => res.json({ ok: true })),
@@ -151,6 +156,11 @@ describe('Tournament Routes', () => {
     expect(res.status).toBe(200);
   });
 
+  it('GET /api/:id/matches → 200', async () => {
+    const res = await request(app).get('/api/tournament-1/matches');
+    expect(res.status).toBe(200);
+  });
+
   it('PUT /api/:id → 200 (permission middleware mocked to pass)', async () => {
     const res = await request(app).put('/api/tournament-1').send({});
     expect(res.status).toBe(200);
@@ -175,6 +185,26 @@ describe('Tournament Routes', () => {
     const res = await request(app)
       .put('/api/tournament-1/teams/payment/batch')
       .send({ teamIds: ['team-1'], paymentStatus: 'paid' });
+    expect(res.status).toBe(200);
+  });
+
+  it('POST /api/:id/matches/:matchId/cancel → 200', async () => {
+    const res = await request(app).post('/api/tournament-1/matches/match-1/cancel').send({});
+    expect(res.status).toBe(200);
+  });
+
+  it('PUT /api/:id/courts/:courtId → 200', async () => {
+    const res = await request(app).put('/api/tournament-1/courts/court-1').send({ name: 'Court 1' });
+    expect(res.status).toBe(200);
+  });
+
+  it('DELETE /api/:id/courts/:courtId → 200', async () => {
+    const res = await request(app).delete('/api/tournament-1/courts/court-1');
+    expect(res.status).toBe(200);
+  });
+
+  it('DELETE /api/:id/courts/:courtId/availability/:availabilityId → 200', async () => {
+    const res = await request(app).delete('/api/tournament-1/courts/court-1/availability/availability-1');
     expect(res.status).toBe(200);
   });
 

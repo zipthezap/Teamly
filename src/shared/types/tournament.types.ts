@@ -582,7 +582,7 @@ export interface PublicTournamentPortal {
   tournament: Tournament & {
     organizer?: { id: string; name: string };
   };
-  teams: Array<{ id: string; name: string; checkedIn: boolean; paymentStatus: string }>;
+  teams: Array<{ id: string; name: string; checkedIn: boolean }>;
   matches: TournamentMatch[];
   standings: TournamentStanding[];
   courts?: TournamentCourt[];
