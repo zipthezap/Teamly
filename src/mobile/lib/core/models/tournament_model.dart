@@ -259,6 +259,7 @@ class TournamentTeamModel extends Equatable {
     this.players = const [],
     this.paymentStatus = 'unpaid',
     this.checkedIn = false,
+    this.waiverAcceptedAt,
     this.logoUrl,
   });
 
@@ -271,9 +272,12 @@ class TournamentTeamModel extends Equatable {
   final List<Map<String, dynamic>> players;
   final String paymentStatus; // unpaid | pending | paid | waived
   final bool checkedIn;
+  /// When the team captain accepted the organizer waiver.
+  final DateTime? waiverAcceptedAt;
   final String? logoUrl;
 
   bool get isPaid => paymentStatus == 'paid' || paymentStatus == 'waived';
+  bool get hasAcceptedWaiver => waiverAcceptedAt != null;
 
   factory TournamentTeamModel.fromJson(Map<String, dynamic> json) {
     final playersList = (json['players'] as List<dynamic>?)
@@ -290,6 +294,9 @@ class TournamentTeamModel extends Equatable {
       players: playersList,
       paymentStatus: json['paymentStatus'] as String? ?? 'unpaid',
       checkedIn: json['checkedIn'] as bool? ?? false,
+      waiverAcceptedAt: json['waiverAcceptedAt'] != null
+          ? DateTime.tryParse(json['waiverAcceptedAt'] as String)
+          : null,
       logoUrl: json['logoUrl'] as String?,
     );
   }
@@ -457,6 +464,9 @@ class TournamentModel extends Equatable {
     this.isPublic = true,
     this.registrationFee,
     this.requirePaymentForBrackets = false,
+    this.requireWaiverForRegistration = false,
+    this.waiverText,
+    this.shareToken,
     this.teams = const [],
     this.matches = const [],
     this.pools = const [],
@@ -474,7 +484,7 @@ class TournamentModel extends Equatable {
   final String name;
   final String sportType;
   final String format; // bracket, pool, round_robin
-  final String status; // draft, registration, active, completed
+  final String status; // draft, registration, registration_closed, in_progress, completed, cancelled
   final DateTime createdAt;
   final String creatorId;
   final String? organizerName;
@@ -501,6 +511,12 @@ class TournamentModel extends Equatable {
   final bool isPublic;
   final double? registrationFee;
   final bool requirePaymentForBrackets;
+  /// Whether teams must accept the organizer waiver before registration.
+  final bool requireWaiverForRegistration;
+  /// Full text of the organizer-provided waiver.
+  final String? waiverText;
+  /// Opaque share token for the public portal URL (Phase 4).
+  final String? shareToken;
   final List<TournamentTeamModel> teams;
   final List<TournamentMatchModel> matches;
   final List<TournamentPoolModel> pools;
@@ -515,6 +531,7 @@ class TournamentModel extends Equatable {
 
   bool get hasFee => registrationFee != null && registrationFee! > 0;
   int get unpaidTeamCount => teams.where((t) => !t.isPaid).length;
+  bool get hasShareToken => shareToken != null && shareToken!.isNotEmpty;
 
   factory TournamentModel.fromJson(Map<String, dynamic> json) {
     final teamsList = (json['teams'] as List<dynamic>?)
@@ -594,6 +611,10 @@ class TournamentModel extends Equatable {
       registrationFee: (json['registrationFee'] as num?)?.toDouble(),
       requirePaymentForBrackets:
           json['requirePaymentForBrackets'] as bool? ?? false,
+      requireWaiverForRegistration:
+          json['requireWaiverForRegistration'] as bool? ?? false,
+      waiverText: json['waiverText'] as String?,
+      shareToken: json['shareToken'] as String?,
       teams: teamsList,
       matches: matchesList,
       pools: poolsList,
@@ -818,4 +839,223 @@ class TournamentRegistrationWaitlistModel extends Equatable {
 
   @override
   List<Object?> get props => [id, tournamentId, teamId];
+}
+
+// ---------------------------------------------------------------------------
+// Court model (Phase 3 - Game-day scheduling)
+// ---------------------------------------------------------------------------
+
+class TournamentCourtModel extends Equatable {
+  const TournamentCourtModel({
+    required this.id,
+    required this.tournamentId,
+    required this.name,
+    this.location,
+    this.isActive = true,
+  });
+
+  final String id;
+  final String tournamentId;
+  final String name;
+  final String? location;
+  final bool isActive;
+
+  factory TournamentCourtModel.fromJson(Map<String, dynamic> json) {
+    return TournamentCourtModel(
+      id: json['id'] as String,
+      tournamentId: json['tournamentId'] as String? ?? '',
+      name: json['name'] as String,
+      location: json['location'] as String?,
+      isActive: json['isActive'] as bool? ?? true,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, tournamentId, name];
+}
+
+// ---------------------------------------------------------------------------
+// Analytics models (Phase 5 - Organizer analytics)
+// ---------------------------------------------------------------------------
+
+class TournamentAnalyticsRegistration extends Equatable {
+  const TournamentAnalyticsRegistration({
+    required this.totalTeams,
+    required this.checkedIn,
+    required this.noShows,
+    required this.paid,
+    required this.unpaid,
+    required this.pending,
+    required this.waived,
+    required this.waiverAccepted,
+  });
+
+  final int totalTeams;
+  final int checkedIn;
+  final int noShows;
+  final int paid;
+  final int unpaid;
+  final int pending;
+  final int waived;
+  final int waiverAccepted;
+
+  factory TournamentAnalyticsRegistration.fromJson(Map<String, dynamic> json) {
+    return TournamentAnalyticsRegistration(
+      totalTeams: (json['totalTeams'] as num?)?.toInt() ?? 0,
+      checkedIn: (json['checkedIn'] as num?)?.toInt() ?? 0,
+      noShows: (json['noShows'] as num?)?.toInt() ?? 0,
+      paid: (json['paid'] as num?)?.toInt() ?? 0,
+      unpaid: (json['unpaid'] as num?)?.toInt() ?? 0,
+      pending: (json['pending'] as num?)?.toInt() ?? 0,
+      waived: (json['waived'] as num?)?.toInt() ?? 0,
+      waiverAccepted: (json['waiverAccepted'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  @override
+  List<Object?> get props => [totalTeams, checkedIn, paid];
+}
+
+class TournamentAnalyticsMatches extends Equatable {
+  const TournamentAnalyticsMatches({
+    required this.total,
+    required this.scheduled,
+    required this.inProgress,
+    required this.completed,
+    required this.cancelled,
+    required this.lateStarts,
+    this.avgDurationMinutes,
+  });
+
+  final int total;
+  final int scheduled;
+  final int inProgress;
+  final int completed;
+  final int cancelled;
+  final int lateStarts;
+  final int? avgDurationMinutes;
+
+  factory TournamentAnalyticsMatches.fromJson(Map<String, dynamic> json) {
+    return TournamentAnalyticsMatches(
+      total: (json['total'] as num?)?.toInt() ?? 0,
+      scheduled: (json['scheduled'] as num?)?.toInt() ?? 0,
+      inProgress: (json['inProgress'] as num?)?.toInt() ?? 0,
+      completed: (json['completed'] as num?)?.toInt() ?? 0,
+      cancelled: (json['cancelled'] as num?)?.toInt() ?? 0,
+      lateStarts: (json['lateStarts'] as num?)?.toInt() ?? 0,
+      avgDurationMinutes: (json['avgDurationMinutes'] as num?)?.toInt(),
+    );
+  }
+
+  @override
+  List<Object?> get props => [total, completed];
+}
+
+class TournamentAnalyticsDisputes extends Equatable {
+  const TournamentAnalyticsDisputes({
+    required this.total,
+    required this.open,
+    required this.resolved,
+    required this.dismissed,
+  });
+
+  final int total;
+  final int open;
+  final int resolved;
+  final int dismissed;
+
+  factory TournamentAnalyticsDisputes.fromJson(Map<String, dynamic> json) {
+    return TournamentAnalyticsDisputes(
+      total: (json['total'] as num?)?.toInt() ?? 0,
+      open: (json['open'] as num?)?.toInt() ?? 0,
+      resolved: (json['resolved'] as num?)?.toInt() ?? 0,
+      dismissed: (json['dismissed'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  @override
+  List<Object?> get props => [total, open];
+}
+
+class TournamentAnalyticsIncidents extends Equatable {
+  const TournamentAnalyticsIncidents({
+    required this.total,
+    required this.open,
+    required this.resolved,
+    required this.pastSla,
+  });
+
+  final int total;
+  final int open;
+  final int resolved;
+  final int pastSla;
+
+  factory TournamentAnalyticsIncidents.fromJson(Map<String, dynamic> json) {
+    return TournamentAnalyticsIncidents(
+      total: (json['total'] as num?)?.toInt() ?? 0,
+      open: (json['open'] as num?)?.toInt() ?? 0,
+      resolved: (json['resolved'] as num?)?.toInt() ?? 0,
+      pastSla: (json['pastSla'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  @override
+  List<Object?> get props => [total, open, pastSla];
+}
+
+class TournamentAnalyticsPayments extends Equatable {
+  const TournamentAnalyticsPayments({
+    required this.totalRevenue,
+    required this.transactionsPaid,
+    required this.transactionsRefunded,
+  });
+
+  final double totalRevenue;
+  final int transactionsPaid;
+  final int transactionsRefunded;
+
+  factory TournamentAnalyticsPayments.fromJson(Map<String, dynamic> json) {
+    return TournamentAnalyticsPayments(
+      totalRevenue: (json['totalRevenue'] as num?)?.toDouble() ?? 0,
+      transactionsPaid: (json['transactionsPaid'] as num?)?.toInt() ?? 0,
+      transactionsRefunded: (json['transactionsRefunded'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  @override
+  List<Object?> get props => [totalRevenue, transactionsPaid];
+}
+
+class TournamentAnalyticsModel extends Equatable {
+  const TournamentAnalyticsModel({
+    required this.registration,
+    required this.matches,
+    required this.disputes,
+    required this.incidents,
+    required this.payments,
+  });
+
+  final TournamentAnalyticsRegistration registration;
+  final TournamentAnalyticsMatches matches;
+  final TournamentAnalyticsDisputes disputes;
+  final TournamentAnalyticsIncidents incidents;
+  final TournamentAnalyticsPayments payments;
+
+  factory TournamentAnalyticsModel.fromJson(Map<String, dynamic> json) {
+    return TournamentAnalyticsModel(
+      registration: TournamentAnalyticsRegistration.fromJson(
+          json['registration'] as Map<String, dynamic>? ?? {}),
+      matches: TournamentAnalyticsMatches.fromJson(
+          json['matches'] as Map<String, dynamic>? ?? {}),
+      disputes: TournamentAnalyticsDisputes.fromJson(
+          json['disputes'] as Map<String, dynamic>? ?? {}),
+      incidents: TournamentAnalyticsIncidents.fromJson(
+          json['incidents'] as Map<String, dynamic>? ?? {}),
+      payments: TournamentAnalyticsPayments.fromJson(
+          json['payments'] as Map<String, dynamic>? ?? {}),
+    );
+  }
+
+  @override
+  List<Object?> get props => [registration, matches, disputes, incidents, payments];
 }

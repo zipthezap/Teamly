@@ -66,3 +66,54 @@ final myInvitationsCountProvider =
     rethrow;
   }
 });
+
+// ---------------------------------------------------------------------------
+// Announcements
+// ---------------------------------------------------------------------------
+
+final tournamentAnnouncementsProvider =
+    FutureProvider.family<List<TournamentAnnouncementModel>, String>(
+        (ref, tournamentId) async {
+  return ref.watch(tournamentRepositoryProvider).getAnnouncements(tournamentId);
+});
+
+// ---------------------------------------------------------------------------
+// Analytics (organizer only)
+// ---------------------------------------------------------------------------
+
+final tournamentAnalyticsProvider =
+    FutureProvider.family<TournamentAnalyticsModel, String>(
+        (ref, tournamentId) async {
+  return ref.watch(tournamentRepositoryProvider).getTournamentAnalytics(tournamentId);
+});
+
+// ---------------------------------------------------------------------------
+// Registration fields
+// ---------------------------------------------------------------------------
+
+final tournamentRegistrationFieldsProvider =
+    FutureProvider.family<List<TournamentRegistrationFieldModel>, String>(
+        (ref, tournamentId) async {
+  return ref.watch(tournamentRepositoryProvider).getRegistrationFields(tournamentId);
+});
+
+// ---------------------------------------------------------------------------
+// Registration waitlist
+// ---------------------------------------------------------------------------
+
+final tournamentRegistrationWaitlistProvider =
+    FutureProvider.family<List<TournamentRegistrationWaitlistModel>, String>(
+        (ref, tournamentId) async {
+  return ref
+      .watch(tournamentRepositoryProvider)
+      .getRegistrationWaitlist(tournamentId);
+});
+
+// ---------------------------------------------------------------------------
+// Courts
+// ---------------------------------------------------------------------------
+
+final tournamentCourtsProvider =
+    FutureProvider.family<List<TournamentCourtModel>, String>((ref, tournamentId) async {
+  return ref.watch(tournamentRepositoryProvider).getCourts(tournamentId);
+});
