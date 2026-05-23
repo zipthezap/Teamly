@@ -5598,6 +5598,7 @@ export const resolveScoreDispute = async (req: Request, res: Response) => {
             stage: true,
             homeTeamId: true,
             awayTeamId: true,
+            scheduledAt: true,
             startedAt: true,
             completedAt: true,
           },
@@ -5643,7 +5644,7 @@ export const resolveScoreDispute = async (req: Request, res: Response) => {
     });
 
     if (!includesScoreCorrection) {
-      return { updatedDispute, correctedMatch: null as null };
+      return { updatedDispute, correctedMatch: null };
     }
 
     if (
@@ -5661,8 +5662,12 @@ export const resolveScoreDispute = async (req: Request, res: Response) => {
         awayScore,
         detailedScore: detailedScore || undefined,
         status: MatchStatus.COMPLETED,
-        startedAt: dispute.match.startedAt ?? new Date(),
-        completedAt: dispute.match.completedAt ?? new Date(),
+        startedAt: dispute.match.startedAt ?? dispute.match.scheduledAt ?? new Date(),
+        completedAt:
+          dispute.match.completedAt ??
+          dispute.match.startedAt ??
+          dispute.match.scheduledAt ??
+          new Date(),
       },
       include: {
         homeTeam: true,
@@ -5674,7 +5679,11 @@ export const resolveScoreDispute = async (req: Request, res: Response) => {
     return { updatedDispute, correctedMatch };
   });
 
-  if (result.correctedMatch?.stage && result.correctedMatch.stage !== BracketStage.FINALS) {
+  if (
+    result.correctedMatch?.stage &&
+    result.correctedMatch.stage !== BracketStage.FINALS &&
+    result.correctedMatch.stage !== BracketStage.THIRD_PLACE
+  ) {
     await tournamentService.advanceWinners(id, result.correctedMatch.stage as BracketStage);
   }
   if (result.correctedMatch) {

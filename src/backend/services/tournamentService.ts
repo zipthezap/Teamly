@@ -1373,10 +1373,16 @@ export const advanceWinners = async (tournamentId: string, currentStage: Bracket
   // If both semifinals are complete, also create a third-place match between semifinal losers.
   if (
     currentStage === BracketStage.SEMI_FINALS &&
-    allStageMatches.length >= 2 &&
+    allStageMatches.length === 2 &&
     existingThirdPlaceMatches === 0
   ) {
-    const semiLosers = matches.slice(0, 2).map(match =>
+    const hasDrawnSemiFinal = allStageMatches.some(match => match.homeScore === match.awayScore);
+    if (hasDrawnSemiFinal) {
+      logger.warn('Skipping third-place match generation because semifinals have unresolved winners', 'TournamentService', {
+        tournamentId,
+      });
+    } else {
+    const semiLosers = allStageMatches.map(match =>
       match.homeScore! > match.awayScore! ? match.awayTeamId : match.homeTeamId
     );
 
@@ -1390,6 +1396,7 @@ export const advanceWinners = async (tournamentId: string, currentStage: Bracket
         matchOrder: 1,
         status: MatchStatus.SCHEDULED,
       });
+    }
     }
   }
 
