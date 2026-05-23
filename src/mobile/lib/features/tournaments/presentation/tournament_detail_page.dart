@@ -37,7 +37,6 @@ bool _isFormingKnockoutBrackets(TournamentModel tournament) {
 
 bool _isTournamentStarted(TournamentModel tournament) {
   return tournament.status == 'in_progress' ||
-      tournament.status == 'active' ||
       tournament.status == 'completed' ||
       // Brackets have been generated but the status hasn't synced yet — treat
       // as started so the Scores tab is visible immediately.
@@ -47,7 +46,7 @@ bool _isTournamentStarted(TournamentModel tournament) {
 String _statusStageLabel(TournamentModel tournament) {
   if (tournament.status == 'completed') return 'Done';
 
-  if (tournament.status == 'in_progress' || tournament.status == 'active') {
+  if (tournament.status == 'in_progress') {
     return _isFormingKnockoutBrackets(tournament) ? 'Forming Brackets' : 'In Progress';
   }
 
@@ -511,6 +510,17 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                         color: AppThemeTokens.textSecondary(context),
                         fontSize: 14))),
           ],
+          // Announcements shortcut (visible to everyone)
+          const SizedBox(height: 12),
+          _InfoRow(
+            icon: Icons.campaign_outlined,
+            label: 'Announcements',
+            value: 'View',
+            onTap: () => context.push(
+              '/tournaments/${t.id}/announcements',
+              extra: {'isAdmin': isOrganizer || isAdmin},
+            ),
+          ),
           if (canRegister) ...[
             const SizedBox(height: 16),
             if (t.hasFee) ...[
@@ -907,6 +917,29 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 _GroupMatchesButton(tournament: t, onRefresh: onRefresh),
                 _KnockoutBracketButton(tournament: t, onRefresh: onRefresh),
               ],
+              // Phase 3-5 feature shortcuts
+              OutlinedButton.icon(
+                icon: const Icon(Icons.campaign_outlined, size: 16),
+                label: const Text('Announcements'),
+                onPressed: () async {
+                  await context.push('/tournaments/${t.id}/announcements',
+                      extra: {'isAdmin': true});
+                  if (context.mounted) onRefresh();
+                },
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.dashboard_outlined, size: 16),
+                label: const Text('Operations Hub'),
+                onPressed: canManageTournament || t.status == 'in_progress'
+                    ? () => context.push('/tournaments/${t.id}/operations')
+                    : null,
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.insights_outlined, size: 16),
+                label: const Text('Analytics'),
+                onPressed: () =>
+                    context.push('/tournaments/${t.id}/analytics'),
+              ),
             ]),
           ],
           const SizedBox(height: 32),
@@ -2813,6 +2846,8 @@ class _StatusChip extends StatelessWidget {
         return Icons.cancel_outlined;
       case 'registration':
         return Icons.app_registration_outlined;
+      case 'registration_closed':
+        return Icons.lock_outline;
       default:
         return Icons.edit_note_outlined;
     }
@@ -2823,12 +2858,13 @@ class _StatusChip extends StatelessWidget {
       case 'completed':
         return AppThemeTokens.success;
       case 'in_progress':
-      case 'active':
         return AppThemeTokens.info;
       case 'cancelled':
         return AppThemeTokens.error;
       case 'registration':
         return AppThemeTokens.warning;
+      case 'registration_closed':
+        return const Color(0xFF757575); // grey[600]
       default:
         return AppThemeTokens.primary500;
     }
@@ -2839,12 +2875,13 @@ class _StatusChip extends StatelessWidget {
       case 'completed':
         return AppThemeTokens.successBg;
       case 'in_progress':
-      case 'active':
         return AppThemeTokens.infoBg;
       case 'cancelled':
         return AppThemeTokens.errorBg;
       case 'registration':
         return AppThemeTokens.warningBg;
+      case 'registration_closed':
+        return const Color(0xFFF5F5F5); // grey[100]
       default:
         return AppThemeTokens.primaryGlow;
     }
