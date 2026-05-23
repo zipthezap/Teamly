@@ -720,6 +720,23 @@ describe('POST /api/tournaments (createTournament)', () => {
       })
     );
   });
+
+  it('accepts tennis sportConfig type', async () => {
+    vi.mocked(prisma.tournament.create).mockResolvedValue(mockTournament as any);
+
+    const res = await request(app).post('/api/tournaments').send({
+      ...validBody,
+      sportConfig: {
+        type: 'tennis',
+        bestOfSets: 3,
+        gamesPerSet: 6,
+        tiebreakPoints: 7,
+        decidingSetType: 'advantage',
+      },
+    });
+
+    expect(res.status).toBe(201);
+  });
 });
 
 describe('GET /api/tournaments (getTournaments)', () => {
@@ -4870,6 +4887,30 @@ describe('GET /api/tournaments/portal/:shareToken (getPublicTournamentPortal)', 
     expect(res.status).toBe(200);
     expect(res.body.teams[0].paymentStatus).toBeUndefined();
   });
+
+  it('applies tournament tiebreaker sorting rules to portal standings', async () => {
+    vi.mocked(prisma.tournament.findFirst).mockResolvedValue({
+      ...mockTournament,
+      isPublic: true,
+      tiebreakerRules: ['wins'],
+      courts: [],
+      announcements: [],
+      organizer: { id: 'organizer-1', name: 'Organizer' },
+    } as any);
+    vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValue([] as any);
+    vi.mocked(prisma.tournamentMatch.findMany).mockResolvedValue([] as any);
+    vi.mocked(prisma.tournamentStanding.findMany).mockResolvedValue([
+      { id: 's1', points: 3, wins: 1, goalsFor: 2, goalsAgainst: 0 },
+    ] as any);
+
+    const res = await request(app).get('/api/tournaments/portal/public-token');
+
+    expect(res.status).toBe(200);
+    expect(tournamentService.sortStandingsByTiebreakerRules).toHaveBeenCalledWith(
+      expect.any(Array),
+      ['wins']
+    );
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -5184,7 +5225,18 @@ describe('PUT /api/tournaments/:id/disputes/:disputeId (resolveScoreDispute)', (
     id: 'dispute-1',
     matchId: 'match-1',
     status: 'open',
-    match: { tournamentId: 'tournament-1' },
+    match: {
+      id: 'match-1',
+      tournamentId: 'tournament-1',
+      status: 'completed',
+      homeScore: 2,
+      awayScore: 1,
+      stage: 'group_stage',
+      homeTeamId: 'team-1',
+      awayTeamId: 'team-2',
+      startedAt: null,
+      completedAt: null,
+    },
   };
 
   it('returns 200 when organizer resolves a dispute', async () => {
@@ -5217,6 +5269,58 @@ describe('PUT /api/tournaments/:id/disputes/:disputeId (resolveScoreDispute)', (
       .send({ status: 'dismissed' });
 
     expect(res.status).toBe(200);
+  });
+
+  it('updates the disputed match score when correction payload is provided', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournamentScoreDispute.findUnique).mockResolvedValue(openDispute as any);
+    vi.mocked(prisma.tournamentMatch.update).mockResolvedValue({
+      ...mockMatch,
+      id: 'match-1',
+      homeScore: 0,
+      awayScore: 3,
+      stage: 'group_stage',
+      homeTeam: { id: 'team-1', name: 'Team A' },
+      awayTeam: { id: 'team-2', name: 'Team B' },
+    } as any);
+    vi.mocked(prisma.tournamentScoreDispute.update).mockResolvedValue({
+      ...openDispute,
+      status: 'resolved',
+      disputingTeam: mockTeam,
+      resolvedBy: { id: 'test-user-id', name: 'Test User' },
+    } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/disputes/dispute-1')
+      .send({ status: 'resolved', resolution: 'score corrected', homeScore: 0, awayScore: 3 });
+
+    expect(res.status).toBe(200);
+    expect(prisma.tournamentMatch.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'match-1' },
+        data: expect.objectContaining({ homeScore: 0, awayScore: 3 }),
+      })
+    );
+    expect(tournamentService.revertStandings).toHaveBeenCalledWith('match-1', expect.anything());
+    expect(tournamentService.updateStandings).toHaveBeenCalledWith(
+      'match-1',
+      expect.any(Object),
+      expect.anything()
+    );
+    expect(res.body.correctedMatch).toBeDefined();
+  });
+
+  it('returns 400 when score correction is sent with dismissed status', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/disputes/dispute-1')
+      .send({ status: 'dismissed', homeScore: 1, awayScore: 0 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Score correction');
   });
 
   it('returns 400 when status is invalid', async () => {
@@ -6004,4 +6108,3 @@ describe('POST /api/tournaments/:id/clone (cloneTournament)', () => {
     expect(prisma.tournamentCourt.create).not.toHaveBeenCalled();
   });
 });
-

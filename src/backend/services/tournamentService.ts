@@ -71,6 +71,7 @@ type QualifiedTeam = StandingLike & {
  * to seed a knockout round.
  */
 const knockoutBracketSize = (teamCount: number) => {
+  if (teamCount >= 32) return 32;
   if (teamCount >= 16) return 16;
   if (teamCount >= 8) return 8;
   if (teamCount >= 4) return 4;
@@ -79,6 +80,7 @@ const knockoutBracketSize = (teamCount: number) => {
 };
 
 const firstKnockoutStageForSize = (size: number): BracketStage => {
+  if (size >= 32) return BracketStage.ROUND_OF_32;
   if (size >= 16) return BracketStage.ROUND_OF_16;
   if (size >= 8) return BracketStage.QUARTER_FINALS;
   if (size >= 4) return BracketStage.SEMI_FINALS;
@@ -87,6 +89,25 @@ const firstKnockoutStageForSize = (size: number): BracketStage => {
 
 const seededPairOrder = (size: number): Array<[number, number]> => {
   switch (size) {
+    case 32:
+      return [
+        [0, 31],
+        [15, 16],
+        [8, 23],
+        [7, 24],
+        [4, 27],
+        [11, 20],
+        [12, 19],
+        [3, 28],
+        [2, 29],
+        [13, 18],
+        [10, 21],
+        [5, 26],
+        [6, 25],
+        [9, 22],
+        [14, 17],
+        [1, 30],
+      ];
     case 16:
       return [
         [0, 15],
@@ -1275,7 +1296,18 @@ export const advanceWinners = async (tournamentId: string, currentStage: Bracket
       stage: nextStage,
     },
   });
-  if (existingNextStageMatches > 0) {
+  const existingThirdPlaceMatches = currentStage === BracketStage.SEMI_FINALS
+    ? await prisma.tournamentMatch.count({
+        where: {
+          tournamentId,
+          stage: BracketStage.THIRD_PLACE,
+        },
+      })
+    : 0;
+  if (
+    existingNextStageMatches > 0 &&
+    (currentStage !== BracketStage.SEMI_FINALS || existingThirdPlaceMatches > 0)
+  ) {
     return;
   }
 
@@ -1336,9 +1368,34 @@ export const advanceWinners = async (tournamentId: string, currentStage: Bracket
     }
   }
   
-  if (nextMatches.length > 0) {
+  const matchesToCreate = [...nextMatches];
+
+  // If both semifinals are complete, also create a third-place match between semifinal losers.
+  if (
+    currentStage === BracketStage.SEMI_FINALS &&
+    allStageMatches.length >= 2 &&
+    existingThirdPlaceMatches === 0
+  ) {
+    const semiLosers = matches.slice(0, 2).map(match =>
+      match.homeScore! > match.awayScore! ? match.awayTeamId : match.homeTeamId
+    );
+
+    if (semiLosers.length === 2) {
+      matchesToCreate.push({
+        tournamentId,
+        homeTeamId: semiLosers[0],
+        awayTeamId: semiLosers[1],
+        stage: BracketStage.THIRD_PLACE,
+        roundNumber: currentIndex + 2,
+        matchOrder: 1,
+        status: MatchStatus.SCHEDULED,
+      });
+    }
+  }
+
+  if (matchesToCreate.length > 0) {
     await prisma.tournamentMatch.createMany({
-      data: nextMatches
+      data: matchesToCreate
     });
   }
 };

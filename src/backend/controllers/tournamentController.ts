@@ -55,6 +55,7 @@ const MAX_PAYMENT_METADATA_BYTES = 4096;
 const PROVIDER_REF_TEAM_ID_PREFIX_LENGTH = 8;
 const TIME_24H_HH_MM_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const TOURNAMENT_PAYMENT_TRANSACTION_STATUSES = Object.values(TournamentPaymentTransactionStatus);
+const SPORT_CONFIG_TYPES = ['default', 'volleyball', 'tennis'] as const;
 const DEFAULT_INCIDENT_SLA_MINUTES = 30;
 const MAX_INCIDENT_DESCRIPTION_LENGTH = 1000;
 const SHARE_TOKEN_BYTES = 24; // 48 hex chars — used for both QR check-in tokens and public share tokens
@@ -205,6 +206,7 @@ const maybeAutoGenerateGroupsKnockoutBrackets = async (
     where: { id: tournamentId },
     select: {
       id: true,
+      name: true,
       status: true,
       format: true,
       autoGenerateBrackets: true,
@@ -230,6 +232,10 @@ const maybeAutoGenerateGroupsKnockoutBrackets = async (
   if (groupMatchCount === 0 || incompleteGroupMatchCount > 0 || knockoutMatchCount > 0) return;
 
   const result = await tournamentService.generateKnockoutFromStandings(tournamentId);
+  await notifyKnockoutBracketReadyToCaptains(
+    { id: tournament.id, name: tournament.name },
+    { source: 'auto', matchesCreated: result.count }
+  );
   await reconcileTournamentLifecycleStatus(tournamentId, 'auto_generate_knockout');
 
   logger.info('Auto-generated knockout bracket from completed group stage', 'TournamentController', {
@@ -319,6 +325,37 @@ const notifyMatchResultToCaptains = async (
       error,
     });
   }
+};
+
+const notifyKnockoutBracketReadyToCaptains = async (
+  tournament: { id: string; name: string },
+  metadata: { source: 'manual' | 'auto'; matchesCreated: number }
+): Promise<void> => {
+  const teams = await prisma.tournamentTeam.findMany({
+    where: {
+      tournamentId: tournament.id,
+      captainUserId: { not: null },
+    },
+    select: {
+      captainUserId: true,
+    },
+  });
+
+  const userIds = [...new Set(teams.map((team) => team.captainUserId).filter(Boolean))] as string[];
+  if (userIds.length === 0) return;
+
+  await prisma.tournamentNotification.createMany({
+    data: userIds.map((userId) => ({
+      userId,
+      tournamentId: tournament.id,
+      type: TournamentNotificationType.tournament_updated,
+      params: {
+        tournamentName: tournament.name,
+        updateType: 'knockout_bracket_ready',
+      },
+      metadata,
+    })),
+  });
 };
 
 const promoteFirstPoolWaitlistEntry = async (tx: PoolWaitlistPromoterClient, poolId: string) => {
@@ -520,9 +557,8 @@ export const createTournament = async (req: Request, res: Response) => {
     if (typeof sportConfig !== 'object' || Array.isArray(sportConfig)) {
       throw new BadRequestError('sportConfig must be an object');
     }
-    const allowedTypes = ['default', 'volleyball'];
-    if (sportConfig.type !== undefined && !allowedTypes.includes(sportConfig.type)) {
-      throw new BadRequestError(`sportConfig.type must be one of: ${allowedTypes.join(', ')}`);
+    if (sportConfig.type !== undefined && !SPORT_CONFIG_TYPES.includes(sportConfig.type)) {
+      throw new BadRequestError(`sportConfig.type must be one of: ${SPORT_CONFIG_TYPES.join(', ')}`);
     }
   }
 
@@ -981,9 +1017,8 @@ export const updateTournament = async (req: Request, res: Response) => {
       if (typeof sportConfig !== 'object' || Array.isArray(sportConfig)) {
         throw new BadRequestError('sportConfig must be an object');
       }
-      const allowedTypes = ['default', 'volleyball'];
-      if (sportConfig.type !== undefined && !allowedTypes.includes(sportConfig.type)) {
-        throw new BadRequestError(`sportConfig.type must be one of: ${allowedTypes.join(', ')}`);
+      if (sportConfig.type !== undefined && !SPORT_CONFIG_TYPES.includes(sportConfig.type)) {
+        throw new BadRequestError(`sportConfig.type must be one of: ${SPORT_CONFIG_TYPES.join(', ')}`);
       }
     }
     updateData.sportConfig = sportConfig || null;
@@ -1862,6 +1897,10 @@ export const generateBrackets = async (req: Request, res: Response) => {
 
     // Generate knockout bracket seeded from current standings
     const result = await tournamentService.generateKnockoutFromStandings(id);
+    await notifyKnockoutBracketReadyToCaptains(
+      { id: tournament.id, name: tournament.name },
+      { source: 'manual', matchesCreated: result.count }
+    );
 
     await reconcileTournamentLifecycleStatus(id, 'generate_knockout');
 
@@ -5517,10 +5556,23 @@ export const getMatchDisputes = async (req: Request, res: Response) => {
 export const resolveScoreDispute = async (req: Request, res: Response) => {
   const { id, disputeId } = req.params;
   const userId = req.user!.id;
-  const { status, resolution } = req.body;
+  const { status, resolution, homeScore, awayScore, detailedScore } = req.body;
 
   if (!status || !['resolved', 'dismissed'].includes(status)) {
     throw new BadRequestError('status must be "resolved" or "dismissed"');
+  }
+
+  const includesScoreCorrection = homeScore !== undefined || awayScore !== undefined || detailedScore !== undefined;
+  if (includesScoreCorrection && status !== 'resolved') {
+    throw new BadRequestError('Score correction can only be applied when resolving a dispute');
+  }
+  if (includesScoreCorrection) {
+    if (homeScore === undefined || awayScore === undefined) {
+      throw new BadRequestError('Both homeScore and awayScore are required when applying a score correction');
+    }
+    if (homeScore < 0 || awayScore < 0) {
+      throw new BadRequestError('Scores cannot be negative');
+    }
   }
 
   const tournament = ensureResourceExists(
@@ -5535,7 +5587,22 @@ export const resolveScoreDispute = async (req: Request, res: Response) => {
   const dispute = ensureResourceExists(
     await prisma.tournamentScoreDispute.findUnique({
       where: { id: disputeId },
-      include: { match: { select: { tournamentId: true } } },
+      include: {
+        match: {
+          select: {
+            id: true,
+            tournamentId: true,
+            status: true,
+            homeScore: true,
+            awayScore: true,
+            stage: true,
+            homeTeamId: true,
+            awayTeamId: true,
+            startedAt: true,
+            completedAt: true,
+          },
+        },
+      },
     }),
     'Dispute'
   );
@@ -5548,20 +5615,86 @@ export const resolveScoreDispute = async (req: Request, res: Response) => {
     throw new BadRequestError('This dispute has already been resolved');
   }
 
-  const updated = await prisma.tournamentScoreDispute.update({
-    where: { id: disputeId },
-    data: { status, resolution: resolution || null, resolvedById: userId },
-    include: {
-      disputingTeam: { select: { id: true, name: true } },
-      resolvedBy: { select: { id: true, name: true } },
-    },
+  const isEliminationFormat =
+    tournament.format === TournamentFormat.SINGLE_ELIMINATION ||
+    tournament.format === TournamentFormat.DOUBLE_ELIMINATION;
+  const isKnockoutStage = dispute.match.stage != null && dispute.match.stage !== BracketStage.GROUP_STAGE;
+  if (includesScoreCorrection && (isEliminationFormat || isKnockoutStage) && homeScore === awayScore) {
+    throw new BadRequestError('Draws are not allowed in elimination matches');
+  }
+
+  if (includesScoreCorrection) {
+    tournamentService.validateSportSpecificScore(
+      tournament.sportConfig as unknown as Parameters<typeof tournamentService.validateSportSpecificScore>[0],
+      detailedScore,
+      homeScore,
+      awayScore
+    );
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    const updatedDispute = await tx.tournamentScoreDispute.update({
+      where: { id: disputeId },
+      data: { status, resolution: resolution || null, resolvedById: userId },
+      include: {
+        disputingTeam: { select: { id: true, name: true } },
+        resolvedBy: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!includesScoreCorrection) {
+      return { updatedDispute, correctedMatch: null as null };
+    }
+
+    if (
+      dispute.match.status === MatchStatus.COMPLETED &&
+      dispute.match.homeScore !== null &&
+      dispute.match.awayScore !== null
+    ) {
+      await tournamentService.revertStandings(dispute.match.id, tx);
+    }
+
+    const correctedMatch = await tx.tournamentMatch.update({
+      where: { id: dispute.match.id },
+      data: {
+        homeScore,
+        awayScore,
+        detailedScore: detailedScore || undefined,
+        status: MatchStatus.COMPLETED,
+        startedAt: dispute.match.startedAt ?? new Date(),
+        completedAt: dispute.match.completedAt ?? new Date(),
+      },
+      include: {
+        homeTeam: true,
+        awayTeam: true,
+      },
+    });
+
+    await tournamentService.updateStandings(dispute.match.id, tournament, tx);
+    return { updatedDispute, correctedMatch };
   });
+
+  if (result.correctedMatch?.stage && result.correctedMatch.stage !== BracketStage.FINALS) {
+    await tournamentService.advanceWinners(id, result.correctedMatch.stage as BracketStage);
+  }
+  if (result.correctedMatch) {
+    await notifyMatchResultToCaptains(tournament, result.correctedMatch);
+    await maybeAutoGenerateGroupsKnockoutBrackets(id);
+    await reconcileTournamentLifecycleStatus(id, 'resolve_dispute_score_correction');
+  }
 
   logger.info('Score dispute resolved', 'TournamentController', {
-    tournamentId: id, disputeId, status, userId,
+    tournamentId: id,
+    disputeId,
+    status,
+    userId,
+    scoreCorrected: includesScoreCorrection,
   });
 
-  res.json(updated);
+  res.json({
+    ...result.updatedDispute,
+    correctedMatch: result.correctedMatch ?? undefined,
+  });
 };
 
 // ==================== ANNOUNCEMENTS (#7) ====================
@@ -6510,11 +6643,16 @@ export const getPublicTournamentPortal = async (req: Request, res: Response) => 
     }),
   ]);
 
+  const sortedStandings = tournamentService.sortStandingsByTiebreakerRules(
+    standings,
+    tournament.tiebreakerRules as string[] | null
+  );
+
   res.json({
     tournament,
     teams,
     matches,
-    standings,
+    standings: sortedStandings,
     courts: tournament.courts,
     announcements: tournament.announcements,
   });
