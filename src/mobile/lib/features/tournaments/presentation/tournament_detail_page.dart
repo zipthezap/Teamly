@@ -510,6 +510,17 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                         color: AppThemeTokens.textSecondary(context),
                         fontSize: 14))),
           ],
+          // Announcements shortcut (visible to everyone)
+          const SizedBox(height: 12),
+          _InfoRow(
+            icon: Icons.campaign_outlined,
+            label: 'Announcements',
+            value: 'View',
+            onTap: () => context.push(
+              '/tournaments/${t.id}/announcements',
+              extra: {'isAdmin': isOrganizer || isAdmin},
+            ),
+          ),
           if (canRegister) ...[
             const SizedBox(height: 16),
             if (t.hasFee) ...[
@@ -906,6 +917,29 @@ class _OverviewTabState extends ConsumerState<_OverviewTab> {
                 _GroupMatchesButton(tournament: t, onRefresh: onRefresh),
                 _KnockoutBracketButton(tournament: t, onRefresh: onRefresh),
               ],
+              // Phase 3-5 feature shortcuts
+              OutlinedButton.icon(
+                icon: const Icon(Icons.campaign_outlined, size: 16),
+                label: const Text('Announcements'),
+                onPressed: () async {
+                  await context.push('/tournaments/${t.id}/announcements',
+                      extra: {'isAdmin': true});
+                  if (context.mounted) onRefresh();
+                },
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.dashboard_outlined, size: 16),
+                label: const Text('Operations Hub'),
+                onPressed: canManageTournament || t.status == 'in_progress'
+                    ? () => context.push('/tournaments/${t.id}/operations')
+                    : null,
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.insights_outlined, size: 16),
+                label: const Text('Analytics'),
+                onPressed: () =>
+                    context.push('/tournaments/${t.id}/analytics'),
+              ),
             ]),
           ],
           const SizedBox(height: 32),
