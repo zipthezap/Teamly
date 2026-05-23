@@ -5784,8 +5784,17 @@ describe('POST /api/tournaments/:id/clone (cloneTournament)', () => {
     organizer: { id: 'test-user-id', name: 'Test User', email: 'test@example.com' },
   };
 
+  // Source tournament enriched with the nested data the new clone reads
+  const sourceTournamentWithNested = {
+    ...mockTournament,
+    categories: [],
+    pools: [],
+    registrationFields: [],
+    courts: [],
+  };
+
   it('returns 201 with the cloned tournament', async () => {
-    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(sourceTournamentWithNested as any);
     vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
     vi.mocked(prisma.tournament.create).mockResolvedValue(clonedTournament as any);
 
@@ -5797,7 +5806,7 @@ describe('POST /api/tournaments/:id/clone (cloneTournament)', () => {
   });
 
   it('creates the clone with the caller as organizer', async () => {
-    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(sourceTournamentWithNested as any);
     vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
     vi.mocked(prisma.tournament.create).mockResolvedValue(clonedTournament as any);
 
@@ -5811,7 +5820,7 @@ describe('POST /api/tournaments/:id/clone (cloneTournament)', () => {
   });
 
   it('sets startDate to 7 days from now for the clone', async () => {
-    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(sourceTournamentWithNested as any);
     vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
     vi.mocked(prisma.tournament.create).mockResolvedValue(clonedTournament as any);
 
@@ -5827,7 +5836,7 @@ describe('POST /api/tournaments/:id/clone (cloneTournament)', () => {
   });
 
   it('returns 403 when non-organizer tries to clone', async () => {
-    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(sourceTournamentWithNested as any);
     vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
 
     const res = await request(app)
@@ -5844,4 +5853,155 @@ describe('POST /api/tournaments/:id/clone (cloneTournament)', () => {
 
     expect(res.status).toBe(404);
   });
+
+  // ── Deep-clone tests ──────────────────────────────────────────────────────
+
+  it('deep-clones categories, preserving name and sortOrder', async () => {
+    const sourceWithCategories = {
+      ...sourceTournamentWithNested,
+      categories: [
+        { id: 'cat-1', name: 'Open', description: null, sortOrder: 0 },
+        { id: 'cat-2', name: 'Junior', description: 'Under 18', sortOrder: 1 },
+      ],
+    };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(sourceWithCategories as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournament.create).mockResolvedValue(clonedTournament as any);
+    vi.mocked(prisma.tournamentCategory.create).mockResolvedValue({
+      id: 'new-cat-1', name: 'Open', tournamentId: 'tournament-clone-1',
+    } as any);
+
+    await request(app).post('/api/tournaments/tournament-1/clone');
+
+    expect(prisma.tournamentCategory.create).toHaveBeenCalledTimes(2);
+    expect(prisma.tournamentCategory.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ name: 'Open', sortOrder: 0 }),
+      })
+    );
+    expect(prisma.tournamentCategory.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ name: 'Junior', sortOrder: 1 }),
+      })
+    );
+  });
+
+  it('deep-clones pools without teams', async () => {
+    const sourceWithPools = {
+      ...sourceTournamentWithNested,
+      pools: [
+        { id: 'pool-1', name: 'Pool A', description: null, maxTeams: 4, venue: null, categoryId: null },
+        { id: 'pool-2', name: 'Pool B', description: 'B side', maxTeams: 6, venue: 'Gym B', categoryId: null },
+      ],
+    };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(sourceWithPools as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournament.create).mockResolvedValue(clonedTournament as any);
+
+    await request(app).post('/api/tournaments/tournament-1/clone');
+
+    expect(prisma.tournamentPool.create).toHaveBeenCalledTimes(2);
+    expect(prisma.tournamentPool.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ name: 'Pool A', maxTeams: 4 }),
+      })
+    );
+    expect(prisma.tournamentPool.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ name: 'Pool B', maxTeams: 6 }),
+      })
+    );
+  });
+
+  it('re-links cloned pools to cloned categories by new id', async () => {
+    const sourceWithBoth = {
+      ...sourceTournamentWithNested,
+      categories: [
+        { id: 'src-cat-1', name: 'Open', description: null, sortOrder: 0 },
+      ],
+      pools: [
+        { id: 'src-pool-1', name: 'Pool A', description: null, maxTeams: 4, venue: null, categoryId: 'src-cat-1' },
+      ],
+    };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(sourceWithBoth as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournament.create).mockResolvedValue(clonedTournament as any);
+    vi.mocked(prisma.tournamentCategory.create).mockResolvedValue({
+      id: 'new-cat-id',
+      name: 'Open',
+      tournamentId: 'tournament-clone-1',
+    } as any);
+
+    await request(app).post('/api/tournaments/tournament-1/clone');
+
+    // The pool should be created with the NEW category id, not the old one
+    expect(prisma.tournamentPool.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ categoryId: 'new-cat-id' }),
+      })
+    );
+  });
+
+  it('deep-clones registration fields', async () => {
+    const sourceWithFields = {
+      ...sourceTournamentWithNested,
+      registrationFields: [
+        { id: 'field-1', label: 'T-Shirt Size', fieldType: 'select', isRequired: true, options: ['S', 'M', 'L'], sortOrder: 0 },
+        { id: 'field-2', label: 'Emergency Contact', fieldType: 'text', isRequired: false, options: [], sortOrder: 1 },
+      ],
+    };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(sourceWithFields as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournament.create).mockResolvedValue(clonedTournament as any);
+
+    await request(app).post('/api/tournaments/tournament-1/clone');
+
+    expect(prisma.tournamentRegistrationField.create).toHaveBeenCalledTimes(2);
+    expect(prisma.tournamentRegistrationField.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          label: 'T-Shirt Size',
+          fieldType: 'select',
+          isRequired: true,
+          options: ['S', 'M', 'L'],
+        }),
+      })
+    );
+  });
+
+  it('deep-clones active courts', async () => {
+    const sourceWithCourts = {
+      ...sourceTournamentWithNested,
+      courts: [
+        { id: 'court-1', name: 'Court 1', location: 'Gym A', isActive: true },
+        { id: 'court-2', name: 'Court 2', location: null, isActive: true },
+      ],
+    };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(sourceWithCourts as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournament.create).mockResolvedValue(clonedTournament as any);
+
+    await request(app).post('/api/tournaments/tournament-1/clone');
+
+    expect(prisma.tournamentCourt.create).toHaveBeenCalledTimes(2);
+    expect(prisma.tournamentCourt.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ name: 'Court 1', location: 'Gym A', isActive: true }),
+      })
+    );
+  });
+
+  it('skips deep-clone sub-entities when source has none', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(sourceTournamentWithNested as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournament.create).mockResolvedValue(clonedTournament as any);
+
+    await request(app).post('/api/tournaments/tournament-1/clone');
+
+    expect(prisma.tournamentCategory.create).not.toHaveBeenCalled();
+    expect(prisma.tournamentPool.create).not.toHaveBeenCalled();
+    expect(prisma.tournamentRegistrationField.create).not.toHaveBeenCalled();
+    expect(prisma.tournamentCourt.create).not.toHaveBeenCalled();
+  });
 });
+
