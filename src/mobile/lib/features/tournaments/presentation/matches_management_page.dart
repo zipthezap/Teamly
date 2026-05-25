@@ -540,6 +540,120 @@ class _MatchesManagementPageState extends ConsumerState<MatchesManagementPage> {
     );
   }
 
+  Future<void> _autoAssignReferees(TournamentModel tournament) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Auto-assign Referees'),
+        content: const Text(
+          'This will assign teams on break as referees for all matches that '
+          'don\'t yet have one, prioritising teams with the fewest duties so '
+          'that referee workload stays fair. Continue?',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Assign')),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+
+    setState(() => _loading = true);
+    try {
+      final result = await ref
+          .read(tournamentRepositoryProvider)
+          .autoAssignReferees(widget.tournamentId);
+      _refresh();
+      if (mounted) {
+        final assigned = result['assigned'] ?? 0;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$assigned match(es) assigned a referee')),
+        );
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _showRefereeDuties() async {
+    setState(() => _loading = true);
+    List<RefereeDutyModel> duties = [];
+    try {
+      duties = await ref
+          .read(tournamentRepositoryProvider)
+          .getRefereeDuties(widget.tournamentId);
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(extractErrorMessage(e)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Referee Duties', style: Theme.of(ctx).textTheme.titleMedium),
+              const SizedBox(height: 4),
+              const Text(
+                'Shows how many times each team has been assigned to referee a match.',
+                style: TextStyle(fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              if (duties.isEmpty)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 32),
+                    child: Text('No referee assignments yet'),
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: duties.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (_, i) {
+                    final d = duties[i];
+                    return ListTile(
+                      dense: true,
+                      leading: CircleAvatar(
+                        radius: 16,
+                        child: Text('${d.dutyCount}', style: const TextStyle(fontSize: 12)),
+                      ),
+                      title: Text(d.teamName),
+                      trailing: Text(
+                        d.dutyCount == 1 ? '1 duty' : '${d.dutyCount} duties',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    );
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tournamentAsync = ref.watch(tournamentDetailProvider(widget.tournamentId));
@@ -564,6 +678,18 @@ class _MatchesManagementPageState extends ConsumerState<MatchesManagementPage> {
           appBar: AppBar(
             title: const Text('Matches'),
             actions: [
+              if (tournament.selfRefEnabled && tournament.creatorId == currentUserId)
+                IconButton(
+                  icon: const Icon(Icons.assignment_ind_outlined),
+                  tooltip: 'Auto-assign referees',
+                  onPressed: _loading ? null : () => _autoAssignReferees(tournament),
+                ),
+              if (tournament.selfRefEnabled)
+                IconButton(
+                  icon: const Icon(Icons.bar_chart_outlined),
+                  tooltip: 'Referee duties',
+                  onPressed: () => _showRefereeDuties(),
+                ),
               IconButton(
                 icon: const Icon(Icons.qr_code_2_outlined),
                 tooltip: 'QR check-in tools',

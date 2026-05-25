@@ -140,6 +140,8 @@ export interface Tournament {
   tiebreakerRules?: string[];
   requireWaiverForRegistration?: boolean;
   waiverText?: string;
+  // Self-ref
+  selfRefEnabled?: boolean;
   createdAt: Date | string;
   updatedAt: Date | string;
 }
@@ -270,6 +272,8 @@ export interface CreateTournamentDto {
   tiebreakerRules?: string[];
   requireWaiverForRegistration?: boolean;
   waiverText?: string;
+  // Self-ref
+  selfRefEnabled?: boolean;
 }
 
 export interface UpdateTournamentDto {
@@ -302,6 +306,8 @@ export interface UpdateTournamentDto {
   tiebreakerRules?: string[];
   requireWaiverForRegistration?: boolean;
   waiverText?: string;
+  // Self-ref
+  selfRefEnabled?: boolean;
 }
 
 export interface CreateTeamDto {
@@ -402,6 +408,18 @@ export interface TournamentCourtAvailability {
 
 export interface AssignRefereeDto {
   refereeTeamId: string | null; // null to remove referee assignment
+}
+
+export interface AutoAssignRefereesDto {
+  roundNumber?: number;
+  groupName?: string;
+  stage?: BracketStage;
+}
+
+export interface RefereeDutyEntry {
+  teamId: string;
+  teamName: string;
+  dutyCount: number;
 }
 
 export interface AssignPoolDto {

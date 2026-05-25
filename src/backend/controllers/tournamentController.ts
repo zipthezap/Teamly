@@ -514,6 +514,8 @@ export const createTournament = async (req: Request, res: Response) => {
     rosterLockDate,
     paymentDeadline,
     tiebreakerRules,
+    // Self-ref
+    selfRefEnabled,
   } = req.body;
 
   const userId = req.user!.id;
@@ -669,6 +671,8 @@ export const createTournament = async (req: Request, res: Response) => {
       rosterLockDate: rosterLockDate ? new Date(rosterLockDate) : undefined,
       paymentDeadline: paymentDeadline ? new Date(paymentDeadline) : undefined,
       tiebreakerRules: tiebreakerRules || undefined,
+      // Self-ref
+      selfRefEnabled: selfRefEnabled || false,
     },
     include: {
       organizer: {
@@ -906,6 +910,8 @@ export const updateTournament = async (req: Request, res: Response) => {
     requireWaiverForRegistration, waiverText,
     // New gap-feature fields
     rosterLockDate, paymentDeadline, tiebreakerRules,
+    // Self-ref
+    selfRefEnabled,
   } = req.body;
 
   let tournament = await prisma.tournament.findUnique({
@@ -1097,6 +1103,12 @@ export const updateTournament = async (req: Request, res: Response) => {
   }
   if (tiebreakerRules !== undefined) {
     updateData.tiebreakerRules = tiebreakerRules || null;
+  }
+  if (selfRefEnabled !== undefined) {
+    if (typeof selfRefEnabled !== 'boolean') {
+      throw new BadRequestError('selfRefEnabled must be a boolean');
+    }
+    updateData.selfRefEnabled = selfRefEnabled;
   }
 
   tournamentService.validateTournamentBusinessRules({
@@ -2708,6 +2720,259 @@ export const assignReferee = async (req: Request, res: Response) => {
   });
 
   res.json(updatedMatch);
+};
+
+/**
+ * Auto-assign referee teams to matches that don't yet have one.
+ * Uses a fairness algorithm: teams on break (not playing in overlapping
+ * time slots) are assigned as referees, prioritising those with the
+ * fewest existing referee duties so that the workload is evenly shared.
+ *
+ * Optional body filters:
+ *   - roundNumber: only process matches in this round
+ *   - groupName: only process matches in this group
+ *   - stage: only process matches at this bracket stage
+ */
+export const autoAssignReferees = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+  const { roundNumber, groupName, stage } = req.body ?? {};
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+
+  if (!await tournamentService.isOrganizerOrAdmin(tournament, userId)) {
+    throw new ForbiddenError('Only organizers and admins can auto-assign referees');
+  }
+
+  // Fetch all non-cancelled matches in the tournament
+  const allMatches = await prisma.tournamentMatch.findMany({
+    where: {
+      tournamentId: id,
+      status: { not: MatchStatus.CANCELLED },
+    },
+    select: {
+      id: true,
+      homeTeamId: true,
+      awayTeamId: true,
+      refereeTeamId: true,
+      scheduledAt: true,
+      scheduledDurationMinutes: true,
+      roundNumber: true,
+      groupName: true,
+      stage: true,
+      status: true,
+    },
+  });
+
+  // Fetch all teams in the tournament
+  const allTeams = await prisma.tournamentTeam.findMany({
+    where: { tournamentId: id },
+    select: { id: true, name: true },
+  });
+
+  if (allTeams.length < 3) {
+    throw new BadRequestError(
+      'At least 3 teams are required to use self-ref (one team per match + one referee)',
+      'INSUFFICIENT_TEAMS'
+    );
+  }
+
+  // Build filter predicate for target matches (those needing a referee)
+  const targetMatches = allMatches.filter((m) => {
+    if (m.refereeTeamId !== null) return false; // already has a referee
+    if (m.status === MatchStatus.COMPLETED || m.status === MatchStatus.CANCELLED) return false;
+    if (roundNumber !== undefined && m.roundNumber !== Number(roundNumber)) return false;
+    if (groupName !== undefined && m.groupName !== groupName) return false;
+    if (stage !== undefined && m.stage !== stage) return false;
+    return true;
+  });
+
+  if (targetMatches.length === 0) {
+    return res.json({ assigned: 0, matches: [] });
+  }
+
+  // Count existing referee duties per team (across all non-cancelled matches)
+  const dutyCount = new Map<string, number>();
+  for (const team of allTeams) {
+    dutyCount.set(team.id, 0);
+  }
+  for (const m of allMatches) {
+    if (m.refereeTeamId) {
+      dutyCount.set(m.refereeTeamId, (dutyCount.get(m.refereeTeamId) ?? 0) + 1);
+    }
+  }
+
+  // Helper: does a candidate team have a schedule conflict with a given match?
+  const hasConflict = (
+    candidateId: string,
+    match: (typeof allMatches)[0]
+  ): boolean => {
+    if (!match.scheduledAt) return false; // no scheduled time → no conflict possible
+    const matchDuration = match.scheduledDurationMinutes ?? DEFAULT_MATCH_DURATION_MINUTES;
+    for (const other of allMatches) {
+      if (other.id === match.id) continue;
+      if (!other.scheduledAt) continue;
+      const isInvolved =
+        other.homeTeamId === candidateId ||
+        other.awayTeamId === candidateId ||
+        other.refereeTeamId === candidateId;
+      if (!isInvolved) continue;
+      const otherDuration = other.scheduledDurationMinutes ?? DEFAULT_MATCH_DURATION_MINUTES;
+      if (hasScheduleOverlap(match.scheduledAt!, matchDuration, other.scheduledAt, otherDuration)) {
+        return true;
+      }
+      const gap = getRequiredRestGapMinutes(
+        match.scheduledAt!,
+        matchDuration,
+        other.scheduledAt,
+        otherDuration
+      );
+      if (gap < DEFAULT_REFEREE_REST_WINDOW_MINUTES) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // For unscheduled matches (no scheduledAt), a team is unavailable if it
+  // appears as home/away in another match in the same round + group.
+  const isPlayingInSameSlot = (
+    candidateId: string,
+    match: (typeof allMatches)[0]
+  ): boolean => {
+    if (match.scheduledAt) return false; // handled by hasConflict above
+    return allMatches.some(
+      (other) =>
+        other.id !== match.id &&
+        other.roundNumber === match.roundNumber &&
+        other.groupName === match.groupName &&
+        (other.homeTeamId === candidateId || other.awayTeamId === candidateId)
+    );
+  };
+
+  // Process target matches, maintaining a mutable duty count so assignments
+  // within this batch are also reflected in subsequent picks (fairness).
+  const updatedMatchIds: string[] = [];
+  for (const match of targetMatches) {
+    // Teams ineligible for this match
+    const playingIds = new Set([match.homeTeamId, match.awayTeamId]);
+
+    // Rank eligible candidates by duty count (ascending), then by id (stable sort)
+    const candidates = allTeams
+      .filter((team) => {
+        if (playingIds.has(team.id)) return false;
+        if (match.scheduledAt ? hasConflict(team.id, match) : isPlayingInSameSlot(team.id, match)) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const diff = (dutyCount.get(a.id) ?? 0) - (dutyCount.get(b.id) ?? 0);
+        return diff !== 0 ? diff : a.id.localeCompare(b.id);
+      });
+
+    if (candidates.length === 0) continue; // no eligible referee for this match
+
+    const chosen = candidates[0];
+    await prisma.tournamentMatch.update({
+      where: { id: match.id },
+      data: { refereeTeamId: chosen.id },
+    });
+    dutyCount.set(chosen.id, (dutyCount.get(chosen.id) ?? 0) + 1);
+    updatedMatchIds.push(match.id);
+
+    // Reflect this assignment in allMatches so subsequent iterations see it
+    match.refereeTeamId = chosen.id;
+  }
+
+  // Return updated matches with full details
+  const updatedMatches = updatedMatchIds.length > 0
+    ? await prisma.tournamentMatch.findMany({
+        where: { id: { in: updatedMatchIds } },
+        include: {
+          homeTeam: { select: { id: true, name: true } },
+          awayTeam: { select: { id: true, name: true } },
+          refereeTeam: { select: { id: true, name: true } },
+        },
+      })
+    : [];
+
+  logger.info('Auto-assigned referees', 'TournamentController', {
+    tournamentId: id,
+    assigned: updatedMatchIds.length,
+    userId,
+  });
+
+  res.json({ assigned: updatedMatchIds.length, matches: updatedMatches });
+};
+
+/**
+ * Get the referee duty count for each team in a tournament.
+ * Returns a list sorted by duty count (descending) so organizers can
+ * quickly spot any imbalance.
+ */
+export const getRefereeDuties = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user!.id;
+
+  const tournament = ensureResourceExists(
+    await prisma.tournament.findUnique({ where: { id } }),
+    'Tournament'
+  );
+
+  // Both organizers/admins and registered teams can view referee duties
+  const isOrgOrAdmin = await tournamentService.isOrganizerOrAdmin(tournament, userId);
+  if (!isOrgOrAdmin) {
+    const isMember = await prisma.tournamentTeam.findFirst({
+      where: {
+        tournamentId: id,
+        OR: [
+          { captainUserId: userId },
+          { players: { some: { userId } } },
+        ],
+      },
+    });
+    if (!isMember && tournament.isPublic === false) {
+      throw new ForbiddenError('You do not have access to this tournament');
+    }
+  }
+
+  const teams = await prisma.tournamentTeam.findMany({
+    where: { tournamentId: id },
+    select: { id: true, name: true },
+    orderBy: { name: 'asc' },
+  });
+
+  // Count referee assignments per team (only non-cancelled matches)
+  const refMatches = await prisma.tournamentMatch.groupBy({
+    by: ['refereeTeamId'],
+    where: {
+      tournamentId: id,
+      refereeTeamId: { not: null },
+      status: { not: MatchStatus.CANCELLED },
+    },
+    _count: { refereeTeamId: true },
+  });
+
+  const countMap = new Map<string, number>();
+  for (const row of refMatches) {
+    if (row.refereeTeamId) {
+      countMap.set(row.refereeTeamId, row._count.refereeTeamId);
+    }
+  }
+
+  const duties = teams
+    .map((team) => ({
+      teamId: team.id,
+      teamName: team.name,
+      dutyCount: countMap.get(team.id) ?? 0,
+    }))
+    .sort((a, b) => b.dutyCount - a.dutyCount || a.teamName.localeCompare(b.teamName));
+
+  res.json(duties);
 };
 
 /**
@@ -6160,6 +6425,7 @@ export const cloneTournament = async (req: Request, res: Response) => {
         requireWaiverForRegistration: source.requireWaiverForRegistration,
         waiverText: source.waiverText ?? undefined,
         tiebreakerRules: source.tiebreakerRules ?? undefined,
+        selfRefEnabled: source.selfRefEnabled,
       },
       include: {
         organizer: { select: { id: true, name: true, email: true } },
