@@ -1,14 +1,21 @@
 import { describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
 import { createTestApp } from '../helpers/testApp';
+import { Permission } from '../../../shared/types/permissions.types';
 import tournamentRoutes from '../../routes/tournamentRoutes';
+
+const routeSecurityMocks = vi.hoisted(() => ({
+  authenticatedLimiter: vi.fn((_: any, __: any, next: any) => next()),
+  requireTournamentPermission: vi.fn(() => (_: any, __: any, next: any) => next()),
+  requireTeamPermission: vi.fn(() => (_: any, __: any, next: any) => next()),
+}));
 
 vi.mock('../../middleware/auth', () => ({
   default: (req: any, _res: any, next: any) => { req.user = { id: 'test-user-id', email: 'test@example.com', name: 'Test User' }; next(); },
   optionalAuthMiddleware: (req: any, _res: any, next: any) => { req.user = { id: 'test-user-id' }; next(); }
 }));
 vi.mock('../../middleware/rateLimiter', () => ({
-  authenticatedLimiter: (_: any, __: any, next: any) => next(),
+  authenticatedLimiter: routeSecurityMocks.authenticatedLimiter,
   apiLimiter: (_: any, __: any, next: any) => next(),
   authLimiter: (_: any, __: any, next: any) => next()
 }));
@@ -33,8 +40,8 @@ vi.mock('../../middleware/cacheControl', () => ({
 }));
 
 vi.mock('../../middleware/authorization', () => ({
-  requireTournamentPermission: () => (_: any, __: any, next: any) => next(),
-  requireTeamPermission: () => (_: any, __: any, next: any) => next(),
+  requireTournamentPermission: routeSecurityMocks.requireTournamentPermission,
+  requireTeamPermission: routeSecurityMocks.requireTeamPermission,
   requireTeamUpPermission: () => (_: any, __: any, next: any) => next()
 }));
 
@@ -221,5 +228,18 @@ describe('Tournament Routes', () => {
   it('GET /api/:id/standings → 200', async () => {
     const res = await request(app).get('/api/tournament-1/standings');
     expect(res.status).toBe(200);
+  });
+
+  it('wires high-risk endpoints to tournament permission middleware', async () => {
+    expect(routeSecurityMocks.requireTournamentPermission).toHaveBeenCalledWith(Permission.TOURNAMENT_MANAGE_TEAMS);
+    expect(routeSecurityMocks.requireTournamentPermission).toHaveBeenCalledWith(Permission.TOURNAMENT_MANAGE_BRACKETS);
+    expect(routeSecurityMocks.requireTournamentPermission).toHaveBeenCalledWith(Permission.TOURNAMENT_MANAGE_MATCHES);
+    expect(routeSecurityMocks.requireTournamentPermission).toHaveBeenCalledWith(Permission.TOURNAMENT_SUBMIT_SCORES);
+  });
+
+  it('applies authenticated limiter to protected routes', async () => {
+    routeSecurityMocks.authenticatedLimiter.mockClear();
+    await request(app).post('/api/tournament-1/generate-brackets').send({});
+    expect(routeSecurityMocks.authenticatedLimiter).toHaveBeenCalled();
   });
 });

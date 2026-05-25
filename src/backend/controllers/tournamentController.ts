@@ -6190,7 +6190,7 @@ export const cloneTournament = async (req: Request, res: Response) => {
           name: pool.name,
           description: pool.description ?? undefined,
           maxTeams: pool.maxTeams,
-          venue: (pool as any).venue ?? undefined,
+          venue: (pool as { venue?: string | null }).venue ?? undefined,
           categoryId: pool.categoryId ? categoryIdMap.get(pool.categoryId) ?? undefined : undefined,
         },
       });
