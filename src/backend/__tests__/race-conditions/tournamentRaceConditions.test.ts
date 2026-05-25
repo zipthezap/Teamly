@@ -114,5 +114,61 @@ describe('Tournament Race Conditions', () => {
       expect(finalMatch?.homeScore).toBeDefined();
       expect(finalMatch?.awayScore).toBeDefined();
     });
+
+    describe('Batch payment update idempotency', () => {
+      it('should produce stable results for repeated identical payment updates', async () => {
+        const teams = [
+          { id: 'team-1', paymentStatus: 'unpaid' },
+          { id: 'team-2', paymentStatus: 'unpaid' },
+        ];
+
+        const applyBatchUpdate = (ids: string[], status: string) => {
+          const updated: string[] = [];
+          const skipped: string[] = [];
+
+          for (const id of ids) {
+            const team = teams.find((t) => t.id === id);
+            if (!team) continue;
+            if (team.paymentStatus === status) {
+              skipped.push(team.id);
+              continue;
+            }
+            team.paymentStatus = status;
+            updated.push(team.id);
+          }
+
+          return { updated, skipped };
+        };
+
+        const first = applyBatchUpdate(['team-1', 'team-2'], 'paid');
+        const second = applyBatchUpdate(['team-1', 'team-2'], 'paid');
+
+        expect(first.updated).toEqual(['team-1', 'team-2']);
+        expect(second.updated).toEqual([]);
+        expect(second.skipped).toEqual(['team-1', 'team-2']);
+        expect(teams.every((team) => team.paymentStatus === 'paid')).toBe(true);
+      });
+    });
+
+    describe('Bracket generation concurrency guard', () => {
+      it('should allow only one concurrent generation lock holder', async () => {
+        let generationInProgress = false;
+
+        const tryGenerate = async () => {
+          if (generationInProgress) return { ok: false, reason: 'generation_in_progress' };
+          generationInProgress = true;
+          await Promise.resolve();
+          generationInProgress = false;
+          return { ok: true };
+        };
+
+        const [first, second] = await Promise.all([tryGenerate(), tryGenerate()]);
+        const successes = [first, second].filter((r) => r.ok).length;
+        const blocked = [first, second].filter((r) => !r.ok && r.reason === 'generation_in_progress').length;
+
+        expect(successes).toBe(1);
+        expect(blocked).toBe(1);
+      });
+    });
   });
 });
