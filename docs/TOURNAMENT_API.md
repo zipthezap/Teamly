@@ -8,11 +8,17 @@ All tournament endpoints are prefixed with `/api/tournaments`
 
 ## Authentication
 
-All tournament endpoints require authentication via JWT token in the Authorization header:
+Most tournament endpoints require authentication via JWT token in the Authorization header:
 
 ```
 Authorization: Bearer <your-jwt-token>
 ```
+
+Public no-auth exceptions:
+- `GET /api/tournaments/public`
+- `GET /api/tournaments/portal/:shareToken`
+- `GET /api/tournaments/invitations/preview/:inviteToken`
+- `GET /api/tournaments/:id/teams/:teamId/players`
 
 ## Endpoints
 
@@ -72,7 +78,7 @@ Retrieve all tournaments (with optional filters).
 
 **Query Parameters:**
 - `groupId` (optional) - Filter by group
-- `status` (optional) - Filter by status (draft, registration, in_progress, completed, cancelled)
+- `status` (optional) - Filter by status (`draft`, `registration`, `registration_closed`, `in_progress`, `completed`, `cancelled`)
 - `sportType` (optional) - Filter by sport type
 
 **Example:** `GET /api/tournaments?status=in_progress&sportType=football`
@@ -257,6 +263,11 @@ Generate tournament brackets and matches (organizer only).
 - `PUT /api/tournaments/:id/teams/:teamId/waiver`
 - Body: `{ "accepted": true }`
 - Used to store team waiver acceptance (`waiverAcceptedAt`, `waiverAcceptedByUserId`).
+
+#### Lifecycle and bracket flow
+- `POST /api/tournaments/:id/generate-group-matches` (groups_knockout, `registration_closed`)
+- `POST /api/tournaments/:id/generate-brackets` (active tournaments, non-terminal)
+- For `groups_knockout`, knockout generation requires all group-stage matches completed
 
 #### Payment Intents & Transaction Lifecycle
 - `POST /api/tournaments/:id/teams/:teamId/payments/intent`

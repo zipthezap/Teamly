@@ -35,6 +35,11 @@ import { isRequired, parseCoordinates, parseFloatStrict, sanitizeString, isValid
 import { ensureResourceExists } from '../utils/controllerHelpers';
 import { isPrismaNotFoundError, isPrismaUniqueError } from '../utils/typeGuards';
 import * as locationService from '../services/locationService';
+import {
+  canPerformTournamentLifecycleAction,
+  isTerminalTournamentStatus,
+} from '../services/tournamentLifecyclePolicy';
+import { normalizeIdArrayInput, parseEnumInput } from './tournamentRequestValidators';
 
 // ==================== CONSTANTS ====================
 
@@ -84,10 +89,7 @@ const assertTournamentNotFinalized = (
   tournament: { status: string },
   message: string = 'Completed or cancelled tournaments cannot be edited'
 ): void => {
-  if (
-    tournament.status === TournamentStatus.CANCELLED ||
-    tournament.status === TournamentStatus.COMPLETED
-  ) {
+  if (isTerminalTournamentStatus(tournament.status)) {
     throw new BadRequestError(message);
   }
 };
@@ -405,6 +407,39 @@ const mapPaymentTransactionStatusToTeamPaymentStatus = (
     return TournamentPaymentStatus.PENDING;
   }
   return TournamentPaymentStatus.UNPAID;
+};
+
+const PAYMENT_TRANSACTION_ALLOWED_TRANSITIONS: Record<TournamentPaymentTransactionStatus, TournamentPaymentTransactionStatus[]> = {
+  [TournamentPaymentTransactionStatus.INITIATED]: [
+    TournamentPaymentTransactionStatus.PENDING,
+    TournamentPaymentTransactionStatus.PAID,
+    TournamentPaymentTransactionStatus.FAILED,
+    TournamentPaymentTransactionStatus.CANCELLED,
+  ],
+  [TournamentPaymentTransactionStatus.PENDING]: [
+    TournamentPaymentTransactionStatus.PAID,
+    TournamentPaymentTransactionStatus.FAILED,
+    TournamentPaymentTransactionStatus.CANCELLED,
+  ],
+  [TournamentPaymentTransactionStatus.PAID]: [
+    TournamentPaymentTransactionStatus.REFUNDED,
+  ],
+  [TournamentPaymentTransactionStatus.FAILED]: [
+    TournamentPaymentTransactionStatus.PENDING,
+    TournamentPaymentTransactionStatus.CANCELLED,
+  ],
+  [TournamentPaymentTransactionStatus.REFUNDED]: [],
+  [TournamentPaymentTransactionStatus.CANCELLED]: [],
+};
+
+const assertPaymentTransactionStatusTransitionAllowed = (
+  current: TournamentPaymentTransactionStatus,
+  next: TournamentPaymentTransactionStatus
+): void => {
+  if (current === next) return;
+  if (!(PAYMENT_TRANSACTION_ALLOWED_TRANSITIONS[current] ?? []).includes(next)) {
+    throw new BadRequestError(`Cannot transition payment transaction from ${current} to ${next}`);
+  }
 };
 
 /**
@@ -1411,13 +1446,11 @@ export const deleteTeam = async (req: Request, res: Response) => {
 export const updateTeamPayment = async (req: Request, res: Response) => {
   const { id, teamId } = req.params;
   const userId = req.user!.id;
-  const { paymentStatus } = req.body;
-
-  if (!paymentStatus || !TOURNAMENT_PAYMENT_STATUSES.includes(paymentStatus)) {
-    throw new BadRequestError(
-      `paymentStatus must be one of: ${TOURNAMENT_PAYMENT_STATUSES.join(', ')}`
-    );
-  }
+  const paymentStatus = parseEnumInput(
+    req.body?.paymentStatus,
+    TOURNAMENT_PAYMENT_STATUSES,
+    'paymentStatus'
+  );
 
   const tournament = ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
@@ -1461,27 +1494,12 @@ export const batchUpdateTeamPayments = async (req: Request, res: Response) => {
   const userId = req.user!.id;
   const { teamIds, paymentStatus } = req.body ?? {};
 
-  if (!Array.isArray(teamIds) || teamIds.length === 0) {
-    throw new BadRequestError('teamIds must be a non-empty array');
-  }
-  if (teamIds.length > MAX_BATCH_PAYMENT_TEAMS) {
-    throw new BadRequestError(`teamIds cannot exceed ${MAX_BATCH_PAYMENT_TEAMS} items`);
-  }
-  const normalizedTeamIds = [
-    ...new Set(
-      teamIds
-        .filter((teamId) => typeof teamId === 'string' && teamId.trim().length > 0)
-        .map((teamId) => teamId.trim())
-    )
-  ];
-  if (normalizedTeamIds.length === 0) {
-    throw new BadRequestError('teamIds must contain at least one valid team id');
-  }
-  if (!paymentStatus || !TOURNAMENT_PAYMENT_STATUSES.includes(paymentStatus)) {
-    throw new BadRequestError(
-      `paymentStatus must be one of: ${TOURNAMENT_PAYMENT_STATUSES.join(', ')}`
-    );
-  }
+  const normalizedTeamIds = normalizeIdArrayInput(teamIds, 'teamIds', MAX_BATCH_PAYMENT_TEAMS);
+  const normalizedPaymentStatus = parseEnumInput(
+    paymentStatus,
+    TOURNAMENT_PAYMENT_STATUSES,
+    'paymentStatus'
+  );
 
   const tournament = ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
@@ -1492,9 +1510,9 @@ export const batchUpdateTeamPayments = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only organizers and admins can update team payment status');
   }
 
-  assertTeamPaymentUpdateAllowed(tournament, paymentStatus);
+  assertTeamPaymentUpdateAllowed(tournament, normalizedPaymentStatus);
 
-  const updatePayload = getPaymentUpdatePayload(paymentStatus, userId);
+  const updatePayload = getPaymentUpdatePayload(normalizedPaymentStatus, userId);
   const result = await prisma.$transaction(async (tx) => {
     const teams = await tx.tournamentTeam.findMany({
       where: {
@@ -1507,10 +1525,10 @@ export const batchUpdateTeamPayments = async (req: Request, res: Response) => {
     const foundIds = new Set(teams.map((team) => team.id));
     const notFoundTeamIds = normalizedTeamIds.filter((teamId) => !foundIds.has(teamId));
     const skipped = teams
-      .filter((team) => team.paymentStatus === paymentStatus)
+      .filter((team) => team.paymentStatus === normalizedPaymentStatus)
       .map((team) => team.id);
     const idsToUpdate = teams
-      .filter((team) => team.paymentStatus !== paymentStatus)
+      .filter((team) => team.paymentStatus !== normalizedPaymentStatus)
       .map((team) => team.id);
 
     if (idsToUpdate.length > 0) {
@@ -1533,13 +1551,13 @@ export const batchUpdateTeamPayments = async (req: Request, res: Response) => {
 
   logger.info('Team payment status batch-updated', 'TournamentController', {
     tournamentId: id,
-    paymentStatus,
+    paymentStatus: normalizedPaymentStatus,
     ...result,
     userId,
   });
 
   res.json({
-    paymentStatus,
+    paymentStatus: normalizedPaymentStatus,
     ...result,
   });
 };
@@ -1689,13 +1707,11 @@ export const getTeamPaymentTransactions = async (req: Request, res: Response) =>
 export const updatePaymentTransactionStatus = async (req: Request, res: Response) => {
   const { id, paymentId } = req.params;
   const userId = req.user!.id;
-  const { status } = req.body ?? {};
-
-  if (!status || !TOURNAMENT_PAYMENT_TRANSACTION_STATUSES.includes(status)) {
-    throw new BadRequestError(
-      `status must be one of: ${TOURNAMENT_PAYMENT_TRANSACTION_STATUSES.join(', ')}`
-    );
-  }
+  const paymentStatus = parseEnumInput(
+    req.body?.status,
+    TOURNAMENT_PAYMENT_TRANSACTION_STATUSES,
+    'status'
+  ) as TournamentPaymentTransactionStatus;
 
   const tournament = ensureResourceExists(
     await prisma.tournament.findUnique({ where: { id } }),
@@ -1705,7 +1721,6 @@ export const updatePaymentTransactionStatus = async (req: Request, res: Response
     throw new ForbiddenError('Only organizers/admins can update payment transaction statuses');
   }
 
-  const paymentStatus = status as TournamentPaymentTransactionStatus;
   const transaction = await prisma.$transaction(async (tx) => {
     const existing = ensureResourceExists(
       await tx.tournamentPaymentTransaction.findFirst({
@@ -1713,6 +1728,13 @@ export const updatePaymentTransactionStatus = async (req: Request, res: Response
       }),
       'Payment transaction'
     );
+
+    const existingStatus = existing.status as TournamentPaymentTransactionStatus;
+    assertPaymentTransactionStatusTransitionAllowed(existingStatus, paymentStatus);
+
+    if (existingStatus === paymentStatus) {
+      return existing;
+    }
 
     const updated = await tx.tournamentPaymentTransaction.update({
       where: { id: existing.id },
@@ -1761,19 +1783,12 @@ export const generateGroupMatches = async (req: Request, res: Response) => {
     throw new BadRequestError('Group match generation is only available for groups_knockout tournaments');
   }
 
-  // Group matches can only be generated once registration is closed
-  const allowedStatuses: string[] = [TournamentStatus.REGISTRATION_CLOSED];
-  if (!allowedStatuses.includes(tournament.status)) {
-    throw new BadRequestError(
-      'Group matches can only be generated while registration is closed'
-    );
-  }
-
-  if (
-    tournament.status === TournamentStatus.COMPLETED ||
-    tournament.status === TournamentStatus.CANCELLED
-  ) {
-    throw new BadRequestError('Cannot generate group matches for a completed or cancelled tournament');
+  const groupMatchPolicy = canPerformTournamentLifecycleAction(
+    'generate_group_matches',
+    tournament.status
+  );
+  if (!groupMatchPolicy.allowed) {
+    throw new BadRequestError(groupMatchPolicy.reason ?? 'Group matches cannot be generated in the current tournament status');
   }
 
   // Enforce payment gate
@@ -1861,13 +1876,9 @@ export const generateBrackets = async (req: Request, res: Response) => {
     throw new ForbiddenError('Only organizers and admins can generate brackets');
   }
 
-  // Brackets can be generated or regenerated at any point while the tournament
-  // is active. Only block for completed/cancelled.
-  if (
-    tournament.status === TournamentStatus.COMPLETED ||
-    tournament.status === TournamentStatus.CANCELLED
-  ) {
-    throw new BadRequestError('Brackets can only be generated or regenerated for active tournaments');
+  const bracketPolicy = canPerformTournamentLifecycleAction('generate_brackets', tournament.status);
+  if (!bracketPolicy.allowed) {
+    throw new BadRequestError(bracketPolicy.reason ?? 'Brackets can only be generated or regenerated for active tournaments');
   }
 
   // For groups_knockout: knockout brackets require all group matches to be completed.
@@ -6179,7 +6190,7 @@ export const cloneTournament = async (req: Request, res: Response) => {
           name: pool.name,
           description: pool.description ?? undefined,
           maxTeams: pool.maxTeams,
-          venue: (pool as any).venue ?? undefined,
+          venue: (pool as { venue?: string | null }).venue ?? undefined,
           categoryId: pool.categoryId ? categoryIdMap.get(pool.categoryId) ?? undefined : undefined,
         },
       });
@@ -6376,8 +6387,11 @@ export const startMatch = async (req: Request, res: Response) => {
     isOrgOrAdmin &&
     allowEarlyStart === true &&
     tournament.status === TournamentStatus.REGISTRATION_CLOSED;
-  if (tournament.status !== TournamentStatus.IN_PROGRESS && !canStartEarly) {
-    throw new BadRequestError('Matches can only be started once the tournament is in progress');
+  const startMatchPolicy = canPerformTournamentLifecycleAction('start_match', tournament.status, {
+    allowEarlyStart: canStartEarly,
+  });
+  if (!startMatchPolicy.allowed) {
+    throw new BadRequestError(startMatchPolicy.reason ?? 'Matches can only be started once the tournament is in progress');
   }
 
   if (match.status === MatchStatus.COMPLETED || match.status === MatchStatus.CANCELLED) {

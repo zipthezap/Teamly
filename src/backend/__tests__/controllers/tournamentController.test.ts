@@ -4360,6 +4360,51 @@ describe('PUT /api/tournaments/:id/teams/payment/batch (batchUpdateTeamPayments)
   });
 });
 
+describe('PUT /api/tournaments/:id/payments/:paymentId/status (updatePaymentTransactionStatus)', () => {
+  it('returns 400 for invalid transaction status transition', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournamentPaymentTransaction.findFirst).mockResolvedValue({
+      id: 'payment-1',
+      tournamentId: 'tournament-1',
+      teamId: 'team-1',
+      status: 'refunded',
+      paidAt: new Date('2026-01-01T00:00:00.000Z'),
+      refundedAt: new Date('2026-01-02T00:00:00.000Z'),
+    } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/payments/payment-1/status')
+      .send({ status: 'paid' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Cannot transition payment transaction from refunded to paid');
+    expect(prisma.tournamentPaymentTransaction.update).not.toHaveBeenCalled();
+  });
+
+  it('is idempotent when status is unchanged', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournamentPaymentTransaction.findFirst).mockResolvedValue({
+      id: 'payment-1',
+      tournamentId: 'tournament-1',
+      teamId: 'team-1',
+      status: 'paid',
+      paidAt: new Date('2026-01-01T00:00:00.000Z'),
+      refundedAt: null,
+    } as any);
+
+    const res = await request(app)
+      .put('/api/tournaments/tournament-1/payments/payment-1/status')
+      .send({ status: 'paid' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.id).toBe('payment-1');
+    expect(prisma.tournamentPaymentTransaction.update).not.toHaveBeenCalled();
+    expect(prisma.tournamentTeam.update).not.toHaveBeenCalled();
+  });
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // GENERATE BRACKETS — PAYMENT GATE
 // ═══════════════════════════════════════════════════════════════════════════════

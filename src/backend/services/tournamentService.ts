@@ -18,6 +18,11 @@ import {
   recordTournamentLifecycleTransition,
   recordTournamentLifecycleTransitionFailure,
 } from './metricsService';
+import {
+  canPerformTournamentLifecycleAction,
+  canTransitionTournamentStatus,
+  isTerminalTournamentStatus,
+} from './tournamentLifecyclePolicy';
 
 const ALLOWED_SPORT_TYPES = [
   'football',
@@ -416,11 +421,8 @@ export const validateRegistrationEligibility = (tournament: {
   registrationDeadline?: Date | null;
   allowLateRegistration?: boolean;
 }) => {
-  if (
-    tournament.status !== 'draft' &&
-    tournament.status !== 'registration'
-  ) {
-    // registration_closed, in_progress, completed, cancelled all reject registration
+  const registrationEligibility = canPerformTournamentLifecycleAction('register_team', tournament.status);
+  if (!registrationEligibility.allowed) {
     throw new BadRequestError('Tournament registration is closed');
   }
 
@@ -462,7 +464,7 @@ export const computeAutoStatus = (tournament: {
   hasMatches?: boolean;
   hasIncompleteMatches?: boolean;
 }): string | null => {
-  if (tournament.status === 'cancelled') return null;
+  if (isTerminalTournamentStatus(tournament.status)) return null;
 
   const now = new Date();
 
@@ -1896,6 +1898,22 @@ export const syncTournamentAutoStatus = async <T extends {
   });
 
   if (!nextStatus || nextStatus === tournament.status) {
+    lastSyncedAt.set(tournament.id, new Date());
+    return tournament;
+  }
+
+  if (
+    !canTransitionTournamentStatus(
+      tournament.status as TournamentStatus,
+      nextStatus as TournamentStatus
+    )
+  ) {
+    logger.warn('Skipping invalid lifecycle transition', 'TournamentService', {
+      tournamentId: tournament.id,
+      from: tournament.status,
+      to: nextStatus,
+      trigger,
+    });
     lastSyncedAt.set(tournament.id, new Date());
     return tournament;
   }

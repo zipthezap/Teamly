@@ -12,6 +12,7 @@ import '../../../shared/widgets/ui_primitives.dart';
 import '../data/tournament_repository_impl.dart';
 import 'bracket_visualization_page.dart';
 import 'team_roster_page.dart';
+import 'tournament_status_policy.dart';
 import 'tournament_ui_rules.dart';
 import '../state/tournaments_notifier.dart';
 
@@ -36,38 +37,19 @@ bool _isFormingKnockoutBrackets(TournamentModel tournament) {
 }
 
 bool _isTournamentStarted(TournamentModel tournament) {
-  return tournament.status == 'in_progress' ||
-      tournament.status == 'completed' ||
+  return isTournamentStartedStatus(tournament.status) ||
       // Brackets have been generated but the status hasn't synced yet — treat
       // as started so the Scores tab is visible immediately.
       tournament.matches.isNotEmpty;
 }
 
 String _statusStageLabel(TournamentModel tournament) {
-  if (tournament.status == 'completed') return 'Done';
-
-  if (tournament.status == 'in_progress') {
-    return _isFormingKnockoutBrackets(tournament) ? 'Forming Brackets' : 'In Progress';
-  }
-
-  if (tournament.status == 'registration_closed') return 'Registration Closed';
-  if (tournament.status == 'registration') return 'Registration Open';
-  if (tournament.status == 'cancelled') return 'Cancelled';
-
-  final now = DateTime.now();
-  final hasRegDates =
-      tournament.registrationStartDate != null || tournament.registrationDeadline != null;
-  if (hasRegDates) {
-    final hasOpened = tournament.registrationStartDate == null ||
-        !now.isBefore(tournament.registrationStartDate!);
-    final isClosed = tournament.registrationDeadline != null &&
-        now.isAfter(tournament.registrationDeadline!);
-    if (hasOpened && isClosed) {
-      return 'Registration Closed';
-    }
-  }
-
-  return 'Draft';
+  return getTournamentStageLabel(
+    status: tournament.status,
+    isFormingKnockoutBrackets: _isFormingKnockoutBrackets(tournament),
+    registrationStartDate: tournament.registrationStartDate,
+    registrationDeadline: tournament.registrationDeadline,
+  );
 }
 
 // ---------------- SECTION DIVIDER ----------------
