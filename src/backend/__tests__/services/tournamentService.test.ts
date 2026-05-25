@@ -967,6 +967,59 @@ describe('Tournament Service', () => {
         ],
       });
     });
+
+    it('creates a third-place match when semifinals complete', async () => {
+      vi.mocked(prisma.tournamentMatch.findMany).mockResolvedValueOnce([
+        {
+          id: 'semi-1',
+          tournamentId: 'tournament-1',
+          stage: BracketStage.SEMI_FINALS,
+          status: MatchStatus.COMPLETED,
+          homeTeamId: 'team-1',
+          awayTeamId: 'team-2',
+          homeScore: 2,
+          awayScore: 1,
+          roundNumber: 3,
+          matchOrder: 1,
+          createdAt: new Date('2025-01-10'),
+        },
+        {
+          id: 'semi-2',
+          tournamentId: 'tournament-1',
+          stage: BracketStage.SEMI_FINALS,
+          status: MatchStatus.COMPLETED,
+          homeTeamId: 'team-3',
+          awayTeamId: 'team-4',
+          homeScore: 0,
+          awayScore: 1,
+          roundNumber: 3,
+          matchOrder: 2,
+          createdAt: new Date('2025-01-10'),
+        },
+      ] as unknown);
+      vi.mocked(prisma.tournamentMatch.count)
+        .mockResolvedValueOnce(0) // no finals yet
+        .mockResolvedValueOnce(0) // no third-place match yet
+        .mockResolvedValueOnce(2); // previous stages existed
+      vi.mocked(prisma.tournamentMatch.createMany).mockResolvedValueOnce({ count: 2 } as unknown);
+
+      await advanceWinners('tournament-1', BracketStage.SEMI_FINALS);
+
+      expect(prisma.tournamentMatch.createMany).toHaveBeenCalledWith({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            stage: BracketStage.FINALS,
+            homeTeamId: 'team-1',
+            awayTeamId: 'team-4',
+          }),
+          expect.objectContaining({
+            stage: BracketStage.THIRD_PLACE,
+            homeTeamId: 'team-2',
+            awayTeamId: 'team-3',
+          }),
+        ]),
+      });
+    });
   });
 
   // ─── computeAutoStatus ────────────────────────────────────────────────────

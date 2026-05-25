@@ -19,7 +19,7 @@ A sports event organization app that allows individuals to set and organize smal
 ### 🆕 New Features
 
 - **🏆 Tournament Hosting**: Organize and manage tournaments with comprehensive features:
-  - Multiple tournament formats: Single Elimination, Double Elimination, Round Robin, Groups + Knockout
+  - Multiple tournament formats: Single Elimination, Round Robin, Groups + Knockout
   - **🎯 Full Admin Control**: Tournament organizers have complete control over brackets and pools
     - Manual bracket management: Create, edit, and delete matches as needed
     - Custom pool creation: Build pools exactly how you want them
@@ -30,6 +30,7 @@ A sports event organization app that allows individuals to set and organize smal
     - Track invitation status (pending, accepted, declined)
     - Automatic team membership upon acceptance
   - Team management with captain assignment
+  - Registration payment tracking (manual/offline workflow; no live payment gateway integration yet)
   - Automatic OR manual bracket generation
   - Score tracking and submission (by organizers and team captains)
   - Real-time standings and leaderboards
@@ -519,4 +520,3 @@ A parallel Flutter mobile app scaffold now exists at `src/mobile` for staged mig
 - Migration baseline: `docs/MOBILE_FLUTTER_MIGRATION.md`
 - Mobile app scaffold: `src/mobile/README.md`
 - Mobile CI workflow: `.github/workflows/flutter-mobile.yml`
-
