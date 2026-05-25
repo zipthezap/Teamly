@@ -674,7 +674,7 @@ class RefereeDutyModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [teamId, dutyCount];
+  List<Object?> get props => [teamId, teamName, dutyCount];
 }
 
 // ---------------------------------------------------------------------------
