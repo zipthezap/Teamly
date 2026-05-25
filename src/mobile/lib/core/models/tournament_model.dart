@@ -478,6 +478,7 @@ class TournamentModel extends Equatable {
     this.rosterLockDate,
     this.paymentDeadline,
     this.tiebreakerRules,
+    this.selfRefEnabled = false,
   });
 
   final String id;
@@ -528,6 +529,7 @@ class TournamentModel extends Equatable {
   final DateTime? rosterLockDate;
   final DateTime? paymentDeadline;
   final List<String>? tiebreakerRules;
+  final bool selfRefEnabled;
 
   bool get hasFee => registrationFee != null && registrationFee! > 0;
   int get unpaidTeamCount => teams.where((t) => !t.isPaid).length;
@@ -631,6 +633,7 @@ class TournamentModel extends Equatable {
       tiebreakerRules: (json['tiebreakerRules'] as List<dynamic>?)
           ?.map((r) => r.toString())
           .toList(),
+      selfRefEnabled: json['selfRefEnabled'] as bool? ?? false,
     );
   }
 
@@ -645,6 +648,33 @@ class TournamentModel extends Equatable {
         latitude,
         longitude,
       ];
+}
+
+// ---------------------------------------------------------------------------
+// Referee duty summary (self-ref feature)
+// ---------------------------------------------------------------------------
+
+class RefereeDutyModel extends Equatable {
+  const RefereeDutyModel({
+    required this.teamId,
+    required this.teamName,
+    required this.dutyCount,
+  });
+
+  final String teamId;
+  final String teamName;
+  final int dutyCount;
+
+  factory RefereeDutyModel.fromJson(Map<String, dynamic> json) {
+    return RefereeDutyModel(
+      teamId: json['teamId'] as String,
+      teamName: json['teamName'] as String,
+      dutyCount: (json['dutyCount'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  @override
+  List<Object?> get props => [teamId, dutyCount];
 }
 
 // ---------------------------------------------------------------------------

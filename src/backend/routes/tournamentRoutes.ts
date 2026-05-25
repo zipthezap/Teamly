@@ -227,6 +227,13 @@ router.put(
   requireTournamentPermission(Permission.TOURNAMENT_ASSIGN_REFEREES),
   asyncHandler(tournamentController.assignReferee)
 );
+router.post(
+  '/:id/matches/auto-assign-referees',
+  noCache,
+  requireTournamentPermission(Permission.TOURNAMENT_ASSIGN_REFEREES),
+  asyncHandler(tournamentController.autoAssignReferees)
+);
+router.get('/:id/referee-duties', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getRefereeDuties));
 
 // Standings
 router.get('/:id/standings', etagMiddleware({ weak: true }), asyncHandler(tournamentController.getStandings));

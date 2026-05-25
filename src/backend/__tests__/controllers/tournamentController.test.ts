@@ -1753,8 +1753,99 @@ describe('PUT /api/tournaments/:id/matches/:matchId/referee (assignReferee)', ()
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// STANDINGS
+// AUTO-ASSIGN REFEREES
 // ═══════════════════════════════════════════════════════════════════════════════
+
+describe('POST /api/tournaments/:id/matches/auto-assign-referees (autoAssignReferees)', () => {
+  it('returns 200 with assigned count when matches exist', async () => {
+    const team3 = { ...mockTeam, id: 'team-3', name: 'Team Gamma' };
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournamentMatch.findMany)
+      .mockResolvedValueOnce([
+        // match needing a referee — no scheduledAt so slot-based logic applies
+        { ...mockMatch, refereeTeamId: null, scheduledAt: null, roundNumber: 1, groupName: null, stage: null, status: 'scheduled' },
+      ] as any)
+      .mockResolvedValueOnce([{ ...mockMatch, refereeTeamId: 'team-3', homeTeam: mockTeam, awayTeam: { ...mockTeam, id: 'team-2' }, refereeTeam: team3 }] as any);
+    vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValue([
+      mockTeam,
+      { ...mockTeam, id: 'team-2', name: 'Team Beta' },
+      team3,
+    ] as any);
+    vi.mocked(prisma.tournamentMatch.update).mockResolvedValue({ ...mockMatch, refereeTeamId: 'team-3' } as any);
+    // groupBy mock
+    (prisma.tournamentMatch as any).groupBy = vi.fn().mockResolvedValue([]);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/auto-assign-referees')
+      .send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('assigned');
+  });
+
+  it('returns 404 when tournament not found', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(null);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/auto-assign-referees')
+      .send({});
+
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 400 when fewer than 3 teams', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournamentMatch.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValue([mockTeam, { ...mockTeam, id: 'team-2' }] as any);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/auto-assign-referees')
+      .send({});
+
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 403 when user is not organizer or admin', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(false);
+
+    const res = await request(app)
+      .post('/api/tournaments/tournament-1/matches/auto-assign-referees')
+      .send({});
+
+    expect(res.status).toBe(403);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// REFEREE DUTIES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('GET /api/tournaments/:id/referee-duties (getRefereeDuties)', () => {
+  it('returns 200 with duty counts', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(mockTournament as any);
+    vi.mocked(tournamentService.isOrganizerOrAdmin).mockResolvedValue(true);
+    vi.mocked(prisma.tournamentTeam.findMany).mockResolvedValue([mockTeam] as any);
+    (prisma.tournamentMatch as any).groupBy = vi.fn().mockResolvedValue([]);
+
+    const res = await request(app).get('/api/tournaments/tournament-1/referee-duties');
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+  });
+
+  it('returns 404 when tournament not found', async () => {
+    vi.mocked(prisma.tournament.findUnique).mockResolvedValue(null);
+
+    const res = await request(app).get('/api/tournaments/tournament-1/referee-duties');
+
+    expect(res.status).toBe(404);
+  });
+});
+
+
 
 describe('GET /api/tournaments/:id/standings (getStandings)', () => {
   it('returns 200 with standings list', async () => {

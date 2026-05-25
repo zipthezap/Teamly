@@ -1093,6 +1093,9 @@ model Tournament {
   paymentDeadline  DateTime?  // Deadline for team payment (#15)
   tiebreakerRules  Json?      // Array of tiebreaker rule keys e.g. ["goal_difference","goals_for"] (#6)
 
+  // Self-ref: teams on break are asked to officiate concurrent matches
+  selfRefEnabled   Boolean    @default(false) // Enable self-ref mode for this tournament
+
   // Public portal (Phase 4)
   shareToken       String?   @unique  // Opaque token for shareable/embeddable public URL
 

@@ -497,6 +497,34 @@ class TournamentRepositoryImpl implements TournamentRepository {
   }
 
   @override
+  Future<Map<String, dynamic>> autoAssignReferees(
+    String tournamentId, {
+    int? roundNumber,
+    String? groupName,
+    String? stage,
+  }) async {
+    final body = <String, dynamic>{};
+    if (roundNumber != null) body['roundNumber'] = roundNumber;
+    if (groupName != null) body['groupName'] = groupName;
+    if (stage != null) body['stage'] = stage;
+    final response = await _dio.post<dynamic>(
+      '/tournaments/$tournamentId/matches/auto-assign-referees',
+      data: body,
+    );
+    return (response.data as Map<String, dynamic>?) ?? {};
+  }
+
+  @override
+  Future<List<RefereeDutyModel>> getRefereeDuties(String tournamentId) async {
+    final response = await _dio.get<dynamic>(
+      '/tournaments/$tournamentId/referee-duties',
+    );
+    return _extractList(response.data)
+        .map((e) => RefereeDutyModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
   Future<void> assignScorekeeper(
       String tournamentId, String matchId, String? scorekeeperUserId) async {
     await _dio.put<void>(

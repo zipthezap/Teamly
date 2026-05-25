@@ -107,6 +107,13 @@ abstract class MatchRepository {
   Future<void> updateMatch(String tournamentId, String matchId, Map<String, dynamic> data);
   Future<void> deleteMatch(String tournamentId, String matchId);
   Future<void> assignReferee(String tournamentId, String matchId, String? refereeTeamId);
+  Future<Map<String, dynamic>> autoAssignReferees(
+    String tournamentId, {
+    int? roundNumber,
+    String? groupName,
+    String? stage,
+  });
+  Future<List<RefereeDutyModel>> getRefereeDuties(String tournamentId);
   Future<void> assignScorekeeper(String tournamentId, String matchId, String? scorekeeperUserId);
   Future<void> startMatch(String tournamentId, String matchId);
   Future<List<Map<String, dynamic>>> getMatchIncidents(String tournamentId, String matchId);
