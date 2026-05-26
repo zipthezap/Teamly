@@ -6778,9 +6778,10 @@ export const startMatch = async (req: Request, res: Response) => {
     throw new BadRequestError(`Cannot start a match that is already ${match.status}`);
   }
 
-  // Idempotent: if already in_progress, return the current state without error
+  // Idempotent: if already in_progress, re-fetch from DB for latest state and return
   if (match.status === MatchStatus.IN_PROGRESS) {
-    res.json(match);
+    const current = await prisma.tournamentMatch.findUnique({ where: { id: match.id } });
+    res.json(current ?? match);
     return;
   }
 
@@ -6795,8 +6796,13 @@ export const startMatch = async (req: Request, res: Response) => {
     });
 
     if (updateResult.count === 0) {
-      // Another request already transitioned the match — return current state
-      return tx.tournamentMatch.findUnique({ where: { id: match.id } });
+      // Another request already transitioned the match — fetch and validate current state
+      const current = await tx.tournamentMatch.findUnique({ where: { id: match.id } });
+      if (current && (current.status === MatchStatus.COMPLETED || current.status === MatchStatus.CANCELLED)) {
+        // The match was moved to a terminal state, not started
+        throw new BadRequestError(`Cannot start a match that is already ${current.status}`);
+      }
+      return current;
     }
 
     if (canStartEarly) {
